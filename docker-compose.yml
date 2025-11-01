@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  idp-service:
+    build:
+      context: .
+      dockerfile: Web.IdP/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - db-service
+      - redis-service
+  db-service:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: hybridauth_idp
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    
+  redis-service:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
