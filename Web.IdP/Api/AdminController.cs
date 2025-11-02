@@ -1,9 +1,12 @@
 using Core.Domain;
 using Core.Domain.Constants;
+using Core.Domain.Entities;
 using System.Linq;
+using Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -21,15 +24,18 @@ public class AdminController : ControllerBase
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ApplicationDbContext _context;
 
     public AdminController(
         IOpenIddictApplicationManager applicationManager,
         IOpenIddictScopeManager scopeManager,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
     {
         _applicationManager = applicationManager;
         _scopeManager = scopeManager;
         _userManager = userManager;
+        _context = context;
     }
 
     /// <summary>
@@ -581,6 +587,335 @@ public class AdminController : ControllerBase
 
     #endregion
 
+    #region User Claims Management
+
+    /// <summary>
+    /// Get all user claim definitions.
+    /// </summary>
+    [HttpGet("claims")]
+    public async Task<IActionResult> GetClaims()
+    {
+        var claims = await _context.Set<Core.Domain.Entities.UserClaim>()
+            .Include(c => c.ScopeClaims)
+            .Select(c => new ClaimDefinitionDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                DisplayName = c.DisplayName,
+                Description = c.Description,
+                ClaimType = c.ClaimType,
+                UserPropertyPath = c.UserPropertyPath,
+                DataType = c.DataType,
+                IsStandard = c.IsStandard,
+                IsRequired = c.IsRequired,
+                ScopeCount = c.ScopeClaims.Count
+            })
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+
+        return Ok(claims);
+    }
+
+    /// <summary>
+    /// Get a specific user claim definition by ID.
+    /// </summary>
+    [HttpGet("claims/{id:int}")]
+    public async Task<IActionResult> GetClaim(int id)
+    {
+        var claim = await _context.Set<Core.Domain.Entities.UserClaim>()
+            .Include(c => c.ScopeClaims)
+            .Where(c => c.Id == id)
+            .Select(c => new ClaimDefinitionDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                DisplayName = c.DisplayName,
+                Description = c.Description,
+                ClaimType = c.ClaimType,
+                UserPropertyPath = c.UserPropertyPath,
+                DataType = c.DataType,
+                IsStandard = c.IsStandard,
+                IsRequired = c.IsRequired,
+                ScopeCount = c.ScopeClaims.Count
+            })
+            .FirstOrDefaultAsync();
+
+        if (claim == null)
+        {
+            return NotFound(new { message = $"Claim with ID {id} not found." });
+        }
+
+        return Ok(claim);
+    }
+
+    /// <summary>
+    /// Create a new user claim definition.
+    /// </summary>
+    [HttpPost("claims")]
+    public async Task<IActionResult> CreateClaim([FromBody] CreateClaimRequest request)
+    {
+        // Validate request
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.ClaimType))
+        {
+            return BadRequest(new { message = "Name and ClaimType are required." });
+        }
+
+        // Check if claim name already exists
+        var existingClaim = await _context.Set<Core.Domain.Entities.UserClaim>()
+            .FirstOrDefaultAsync(c => c.Name == request.Name);
+
+        if (existingClaim != null)
+        {
+            return BadRequest(new { message = $"A claim with name '{request.Name}' already exists." });
+        }
+
+        // Create new claim
+        var claim = new Core.Domain.Entities.UserClaim
+        {
+            Name = request.Name,
+            DisplayName = request.DisplayName ?? request.Name,
+            Description = request.Description,
+            ClaimType = request.ClaimType,
+            UserPropertyPath = request.UserPropertyPath ?? request.Name,
+            DataType = request.DataType ?? "String",
+            IsStandard = false, // Custom claims are always non-standard
+            IsRequired = request.IsRequired ?? false
+        };
+
+        _context.Set<Core.Domain.Entities.UserClaim>().Add(claim);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetClaim), new { id = claim.Id }, new ClaimDefinitionDto
+        {
+            Id = claim.Id,
+            Name = claim.Name,
+            DisplayName = claim.DisplayName,
+            Description = claim.Description,
+            ClaimType = claim.ClaimType,
+            UserPropertyPath = claim.UserPropertyPath,
+            DataType = claim.DataType,
+            IsStandard = claim.IsStandard,
+            IsRequired = claim.IsRequired,
+            ScopeCount = 0
+        });
+    }
+
+    /// <summary>
+    /// Update an existing user claim definition.
+    /// </summary>
+    [HttpPut("claims/{id:int}")]
+    public async Task<IActionResult> UpdateClaim(int id, [FromBody] UpdateClaimRequest request)
+    {
+        var claim = await _context.Set<Core.Domain.Entities.UserClaim>()
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (claim == null)
+        {
+            return NotFound(new { message = $"Claim with ID {id} not found." });
+        }
+
+        // Prevent modification of standard claims' core properties
+        if (claim.IsStandard)
+        {
+            return BadRequest(new { message = "Cannot modify standard OIDC claims. Only DisplayName and Description can be updated." });
+        }
+
+        // Update properties
+        if (!string.IsNullOrWhiteSpace(request.DisplayName))
+            claim.DisplayName = request.DisplayName;
+        
+        if (request.Description != null)
+            claim.Description = request.Description;
+
+        if (!claim.IsStandard)
+        {
+            if (!string.IsNullOrWhiteSpace(request.ClaimType))
+                claim.ClaimType = request.ClaimType;
+            
+            if (!string.IsNullOrWhiteSpace(request.UserPropertyPath))
+                claim.UserPropertyPath = request.UserPropertyPath;
+            
+            if (!string.IsNullOrWhiteSpace(request.DataType))
+                claim.DataType = request.DataType;
+            
+            if (request.IsRequired.HasValue)
+                claim.IsRequired = request.IsRequired.Value;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new ClaimDefinitionDto
+        {
+            Id = claim.Id,
+            Name = claim.Name,
+            DisplayName = claim.DisplayName,
+            Description = claim.Description,
+            ClaimType = claim.ClaimType,
+            UserPropertyPath = claim.UserPropertyPath,
+            DataType = claim.DataType,
+            IsStandard = claim.IsStandard,
+            IsRequired = claim.IsRequired,
+            ScopeCount = claim.ScopeClaims.Count
+        });
+    }
+
+    /// <summary>
+    /// Delete a user claim definition.
+    /// </summary>
+    [HttpDelete("claims/{id:int}")]
+    public async Task<IActionResult> DeleteClaim(int id)
+    {
+        var claim = await _context.Set<Core.Domain.Entities.UserClaim>()
+            .Include(c => c.ScopeClaims)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (claim == null)
+        {
+            return NotFound(new { message = $"Claim with ID {id} not found." });
+        }
+
+        // Prevent deletion of standard claims
+        if (claim.IsStandard)
+        {
+            return BadRequest(new { message = "Cannot delete standard OIDC claims." });
+        }
+
+        // Check if claim is used by any scopes
+        if (claim.ScopeClaims.Any())
+        {
+            return BadRequest(new { message = $"Cannot delete claim '{claim.Name}' because it is used by {claim.ScopeClaims.Count} scope(s)." });
+        }
+
+        _context.Set<Core.Domain.Entities.UserClaim>().Remove(claim);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Claim deleted successfully." });
+    }
+
+    #endregion
+
+    #region Scope-to-Claims Mapping
+
+    /// <summary>
+    /// Get all claims associated with a specific scope.
+    /// </summary>
+    [HttpGet("scopes/{scopeId}/claims")]
+    public async Task<IActionResult> GetScopeClaims(string scopeId)
+    {
+        // Verify scope exists
+        var scope = await _scopeManager.FindByIdAsync(scopeId);
+        if (scope == null)
+        {
+            return NotFound(new { message = $"Scope with ID '{scopeId}' not found." });
+        }
+
+        var scopeName = await _scopeManager.GetNameAsync(scope);
+
+        // Get all claims associated with this scope
+        var scopeClaims = await _context.Set<ScopeClaim>()
+            .Include(sc => sc.UserClaim)
+            .Where(sc => sc.ScopeId == scopeId)
+            .Select(sc => new ScopeClaimDto
+            {
+                Id = sc.Id,
+                ScopeId = sc.ScopeId,
+                ScopeName = sc.ScopeName,
+                ClaimId = sc.UserClaimId,
+                ClaimName = sc.UserClaim!.Name,
+                ClaimDisplayName = sc.UserClaim.DisplayName,
+                ClaimType = sc.UserClaim.ClaimType,
+                AlwaysInclude = sc.AlwaysInclude,
+                CustomMappingLogic = sc.CustomMappingLogic
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            scopeId,
+            scopeName,
+            claims = scopeClaims
+        });
+    }
+
+    /// <summary>
+    /// Update the claims associated with a specific scope.
+    /// </summary>
+    [HttpPut("scopes/{scopeId}/claims")]
+    public async Task<IActionResult> UpdateScopeClaims(string scopeId, [FromBody] UpdateScopeClaimsRequest request)
+    {
+        // Verify scope exists
+        var scope = await _scopeManager.FindByIdAsync(scopeId);
+        if (scope == null)
+        {
+            return NotFound(new { message = $"Scope with ID '{scopeId}' not found." });
+        }
+
+        var scopeName = await _scopeManager.GetNameAsync(scope);
+
+        // Remove existing scope claims
+        var existingScopeClaims = await _context.Set<ScopeClaim>()
+            .Where(sc => sc.ScopeId == scopeId)
+            .ToListAsync();
+
+        _context.Set<ScopeClaim>().RemoveRange(existingScopeClaims);
+
+        // Add new scope claims
+        if (request.ClaimIds != null && request.ClaimIds.Any())
+        {
+            foreach (var claimId in request.ClaimIds)
+            {
+                // Verify claim exists
+                var claim = await _context.Set<UserClaim>()
+                    .FirstOrDefaultAsync(c => c.Id == claimId);
+
+                if (claim == null)
+                {
+                    return BadRequest(new { message = $"Claim with ID {claimId} not found." });
+                }
+
+                var scopeClaim = new ScopeClaim
+                {
+                    ScopeId = scopeId,
+                    ScopeName = scopeName ?? "",
+                    UserClaimId = claimId,
+                    AlwaysInclude = claim.IsRequired // Always include required claims
+                };
+
+                _context.Set<ScopeClaim>().Add(scopeClaim);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        // Return updated claims
+        var updatedClaims = await _context.Set<ScopeClaim>()
+            .Include(sc => sc.UserClaim)
+            .Where(sc => sc.ScopeId == scopeId)
+            .Select(sc => new ScopeClaimDto
+            {
+                Id = sc.Id,
+                ScopeId = sc.ScopeId,
+                ScopeName = sc.ScopeName,
+                ClaimId = sc.UserClaimId,
+                ClaimName = sc.UserClaim!.Name,
+                ClaimDisplayName = sc.UserClaim.DisplayName,
+                ClaimType = sc.UserClaim.ClaimType,
+                AlwaysInclude = sc.AlwaysInclude,
+                CustomMappingLogic = sc.CustomMappingLogic
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            scopeId,
+            scopeName,
+            claims = updatedClaims,
+            message = "Scope claims updated successfully."
+        });
+    }
+
+    #endregion
+
     #region DTOs
 
     public sealed class ClientSummary
@@ -637,6 +972,56 @@ public class AdminController : ControllerBase
         public int TotalScopes { get; set; }
         public int TotalUsers { get; set; }
     }
+
+    public sealed class ClaimDefinitionDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string ClaimType { get; set; } = string.Empty;
+        public string UserPropertyPath { get; set; } = string.Empty;
+        public string DataType { get; set; } = string.Empty;
+        public bool IsStandard { get; set; }
+        public bool IsRequired { get; set; }
+        public int ScopeCount { get; set; }
+    }
+
+    public record CreateClaimRequest(
+        string Name,
+        string? DisplayName,
+        string? Description,
+        string ClaimType,
+        string? UserPropertyPath,
+        string? DataType,
+        bool? IsRequired
+    );
+
+    public record UpdateClaimRequest(
+        string? DisplayName,
+        string? Description,
+        string? ClaimType,
+        string? UserPropertyPath,
+        string? DataType,
+        bool? IsRequired
+    );
+
+    public sealed class ScopeClaimDto
+    {
+        public int Id { get; set; }
+        public string ScopeId { get; set; } = string.Empty;
+        public string ScopeName { get; set; } = string.Empty;
+        public int ClaimId { get; set; }
+        public string ClaimName { get; set; } = string.Empty;
+        public string ClaimDisplayName { get; set; } = string.Empty;
+        public string ClaimType { get; set; } = string.Empty;
+        public bool AlwaysInclude { get; set; }
+        public string? CustomMappingLogic { get; set; }
+    }
+
+    public record UpdateScopeClaimsRequest(
+        List<int>? ClaimIds
+    );
 
     #endregion
 }
