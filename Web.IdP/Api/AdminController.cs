@@ -46,16 +46,26 @@ public class AdminController : ControllerBase
     #region OIDC Clients
 
     /// <summary>
-    /// Get all OIDC clients.
+    /// Get OIDC clients with server-side paging, filtering and sorting.
     /// </summary>
+    /// <param name="skip">Number of items to skip (default: 0)</param>
+    /// <param name="take">Number of items to take (default: 25)</param>
+    /// <param name="search">Optional search string matched against clientId/displayName (case-insensitive)</param>
+    /// <param name="type">Optional client type filter: "public" | "confidential"</param>
+    /// <param name="sort">Optional sort expression, e.g. "clientId:asc" (fields: clientId, displayName, type, redirectUrisCount)</param>
     [HttpGet("clients")]
-    public async Task<IActionResult> GetClients()
+    public async Task<IActionResult> GetClients(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 25,
+        [FromQuery] string? search = null,
+        [FromQuery] string? type = null,
+        [FromQuery] string? sort = null)
     {
-        var clients = new List<object>();
-        
+        var summaries = new List<ClientSummary>();
+
         await foreach (var application in _applicationManager.ListAsync())
         {
-            // Retrieve additional details for list display
+            var id = await _applicationManager.GetIdAsync(application);
             var clientId = await _applicationManager.GetClientIdAsync(application);
             var displayName = await _applicationManager.GetDisplayNameAsync(application);
             var clientType = await _applicationManager.GetClientTypeAsync(application);
@@ -63,19 +73,72 @@ public class AdminController : ControllerBase
             var applicationType = await _applicationManager.GetApplicationTypeAsync(application);
             var redirectUris = await _applicationManager.GetRedirectUrisAsync(application);
 
-            clients.Add(new
+            summaries.Add(new ClientSummary
             {
-                id = await _applicationManager.GetIdAsync(application),
-                clientId,
-                displayName,
-                type = clientType,
-                applicationType,
-                consentType,
-                redirectUrisCount = redirectUris.Count()
+                Id = id!,
+                ClientId = clientId!,
+                DisplayName = displayName,
+                Type = clientType!,
+                ApplicationType = applicationType!,
+                ConsentType = consentType!,
+                RedirectUrisCount = redirectUris.Count()
             });
         }
 
-        return Ok(clients);
+        // Filtering
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim();
+            summaries = summaries.Where(x =>
+                (!string.IsNullOrEmpty(x.ClientId) && x.ClientId.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(x.DisplayName) && x.DisplayName.Contains(s, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            var t = type.Trim().ToLowerInvariant();
+            summaries = summaries.Where(x => string.Equals(x.Type, t, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        // Sorting
+        string sortField = "clientId";
+        bool sortAsc = true;
+        if (!string.IsNullOrWhiteSpace(sort))
+        {
+            var parts = sort.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length > 0)
+            {
+                sortField = parts[0].ToLowerInvariant();
+            }
+            if (parts.Length > 1)
+            {
+                sortAsc = !string.Equals(parts[1], "desc", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        Func<ClientSummary, object?> keySelector = sortField switch
+        {
+            "displayname" => x => x.DisplayName,
+            "type" => x => x.Type,
+            "redirecturiscnt" => x => x.RedirectUrisCount,
+            "redirecturicount" => x => x.RedirectUrisCount,
+            _ => x => x.ClientId
+        };
+
+        summaries = (sortAsc
+            ? summaries.OrderBy(keySelector)
+            : summaries.OrderByDescending(keySelector)).ToList();
+
+        var totalCount = summaries.Count;
+
+        // Paging safety
+        if (skip < 0) skip = 0;
+        if (take <= 0) take = 25;
+
+        var items = summaries.Skip(skip).Take(take).ToList();
+
+        return Ok(new { items, totalCount });
     }
 
     /// <summary>
@@ -482,6 +545,17 @@ public class AdminController : ControllerBase
     #endregion
 
     #region DTOs
+
+    public sealed class ClientSummary
+    {
+        public string Id { get; set; } = string.Empty;
+        public string ClientId { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+        public string Type { get; set; } = string.Empty; // public | confidential
+        public string ApplicationType { get; set; } = string.Empty; // web | native
+        public string ConsentType { get; set; } = string.Empty;
+        public int RedirectUrisCount { get; set; }
+    }
 
     public record CreateClientRequest(
         string ClientId,

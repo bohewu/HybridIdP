@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import ClientList from './components/ClientList.vue'
 import ClientForm from './components/ClientForm.vue'
 
@@ -9,15 +9,38 @@ const error = ref(null)
 const selectedClient = ref(null)
 const showForm = ref(false)
 
+// Paging / filtering / sorting state
+const pageSize = ref(10)
+const page = ref(1)
+const totalCount = ref(0)
+const search = ref('')
+const typeFilter = ref('') // '', 'public', 'confidential'
+const sort = ref('clientId:asc')
+
 const fetchClients = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch('/api/admin/clients')
+    const params = new URLSearchParams({
+      skip: String((page.value - 1) * pageSize.value),
+      take: String(pageSize.value),
+      search: search.value || '',
+      type: typeFilter.value || '',
+      sort: sort.value || ''
+    })
+    const response = await fetch(`/api/admin/clients?${params.toString()}`)
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
-    clients.value = await response.json()
+    const data = await response.json()
+    // Support both new shape ({items,totalCount}) and legacy array for safety
+    if (Array.isArray(data)) {
+      clients.value = data
+      totalCount.value = data.length
+    } else {
+      clients.value = data.items || []
+      totalCount.value = data.totalCount ?? clients.value.length
+    }
   } catch (e) {
     error.value = `Failed to load clients: ${e.message}`
     console.error('Error fetching clients:', e)
@@ -83,13 +106,23 @@ const handleFormCancel = () => {
 onMounted(() => {
   fetchClients()
 })
+
+// Refetch when paging/filter/sort change
+watch([page, pageSize, typeFilter, sort], () => {
+  fetchClients()
+})
+
+const setPage = (newPage) => {
+  const maxPage = Math.max(1, Math.ceil(totalCount.value / pageSize.value))
+  page.value = Math.min(Math.max(newPage, 1), maxPage)
+}
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50">
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <!-- Header -->
-      <div class="px-4 py-6 sm:px-0">
+      <div class="px-4 sm:px-0">
         <div class="flex justify-between items-center mb-6">
           <div>
             <h1 class="text-3xl font-bold text-gray-900">OIDC Client Management</h1>
@@ -106,6 +139,54 @@ onMounted(() => {
             </svg>
             Create New Client
           </button>
+        </div>
+
+        <!-- Filters & sorting -->
+        <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700">Search</label>
+            <div class="mt-1 flex">
+              <input
+                v-model="search"
+                type="text"
+                placeholder="Search by Client ID or Display Name"
+                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              />
+              <button
+                @click="page = 1; fetchClients()"
+                class="ml-2 inline-flex items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Search
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Client Type</label>
+            <select
+              v-model="typeFilter"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            >
+              <option value="">All</option>
+              <option value="public">Public</option>
+              <option value="confidential">Confidential</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Sort</label>
+            <select
+              v-model="sort"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            >
+              <option value="clientId:asc">Client ID ↑</option>
+              <option value="clientId:desc">Client ID ↓</option>
+              <option value="displayName:asc">Display Name ↑</option>
+              <option value="displayName:desc">Display Name ↓</option>
+              <option value="redirectUriCount:asc">Redirect URI Count ↑</option>
+              <option value="redirectUriCount:desc">Redirect URI Count ↓</option>
+              <option value="type:asc">Type ↑</option>
+              <option value="type:desc">Type ↓</option>
+            </select>
+          </div>
         </div>
 
         <!-- Error Alert -->
@@ -146,6 +227,28 @@ onMounted(() => {
           @edit="handleEdit"
           @delete="handleDelete"
         />
+
+        <!-- Pagination -->
+        <div v-if="!loading && !showForm && totalCount > 0" class="mt-4 flex items-center justify-between">
+          <div class="text-sm text-gray-600">
+            Showing
+            <span class="font-medium">{{ (page - 1) * pageSize + 1 }}</span>
+            to
+            <span class="font-medium">{{ Math.min(page * pageSize, totalCount) }}</span>
+            of
+            <span class="font-medium">{{ totalCount }}</span>
+            results
+          </div>
+          <div class="inline-flex rounded-md shadow-sm" role="group">
+            <button @click="setPage(page - 1)" class="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-l-lg hover:bg-gray-50 disabled:opacity-50" :disabled="page === 1">Prev</button>
+            <button @click="setPage(page + 1)" class="px-3 py-2 text-sm font-medium bg-white border-t border-b border-gray-300 hover:bg-gray-50 disabled:opacity-50" :disabled="page * pageSize >= totalCount">Next</button>
+            <select v-model.number="pageSize" class="px-2 py-2 text-sm font-medium bg-white border border-gray-300 rounded-r-lg hover:bg-gray-50 ml-2">
+              <option :value="10">10 / page</option>
+              <option :value="25">25 / page</option>
+              <option :value="50">50 / page</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
   </div>

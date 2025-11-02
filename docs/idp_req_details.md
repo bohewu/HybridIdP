@@ -323,7 +323,48 @@ Add these quick verifications to ensure failure paths are correct:
       - Clients list supports paging/sorting/search and returns `totalCount`
       - Form has rich client-side validation with clear messages
       - OpenIddict configuration documented and aligned to enabled flows
-  - **Agent Question:** "Phase 3.6 is complete. **May I proceed to Phase 4.1?**"
+  - **Agent Question:** "Phase 3.6 is complete. **May I proceed to Phase 3.7?**"
+
+  - **3.7: Permission Management (Scope CRUD)**
+    - Goal: Enable admins to create, edit, delete, and manage OIDC scopes/permissions dynamically.
+    - Backend:
+      - API endpoints: `GET /api/admin/permissions`, `GET /api/admin/permissions/{id}`, `POST /api/admin/permissions`, `PUT /api/admin/permissions/{id}`, `DELETE /api/admin/permissions/{id}`
+      - DTOs: PermissionSummary (Id, Name, DisplayName, Description, Type [Resource/Identity])
+      - Validation: Name required, must be unique, alphanumeric with underscores/hyphens
+      - Pagination/filtering: Similar to clients (skip/take/search/type/sort)
+    - Frontend:
+      - Vue SPA: `ClientApp/src/admin/permissions/PermissionsApp.vue`
+      - Components: PermissionList, PermissionForm
+      - Features: Create, edit, delete scopes; filter by type (Resource/Identity); search by name/display name
+      - Validation: Zod schema for name format, required fields
+      - UI shows scope usage count (how many clients use this scope)
+    - Structure:
+
+      ```text
+      Web.IdP/Pages/Admin/
+      └── Permissions.cshtml            → Permission Management
+      └── Permissions.cshtml.cs         → [Authorize(Roles = Admin)]
+
+      Web.IdP/Api/
+      └── AdminController.cs            → Add permissions CRUD endpoints
+
+      ClientApp/src/admin/
+      └── permissions/
+          ├── main.js                   → Entry point
+          ├── PermissionsApp.vue        → Root component with list/form
+          └── components/
+              ├── PermissionList.vue    → Displays permissions table
+              └── PermissionForm.vue    → Create/edit modal
+      ```
+
+    - Verification:
+      - Admin can navigate to `/Admin/Permissions`
+      - Create new scope (e.g., `api.read`, display name "Read API Access")
+      - Edit scope display name and description
+      - Delete unused scope (validation: prevent deletion if used by clients)
+      - Search/filter permissions by name or type
+      - List shows usage count (number of clients using each scope)
+  - **Agent Question:** "Phase 3.7 is complete. **May I proceed to Phase 4.1?**"
 
 ---
 
