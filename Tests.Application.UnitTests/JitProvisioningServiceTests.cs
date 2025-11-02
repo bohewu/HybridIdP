@@ -3,6 +3,7 @@ using Core.Domain;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Moq;
+using System.Security.Claims;
 
 namespace Tests.Application.UnitTests;
 
@@ -23,6 +24,9 @@ public class JitProvisioningServiceTests
         userManagerMock.Setup(um => um.FindByNameAsync(It.IsAny<string>()))
             .ReturnsAsync((ApplicationUser?)null);
         userManagerMock.Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        userManagerMock.Setup(um => um.AddClaimsAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<Claim>>()))
             .ReturnsAsync(IdentityResult.Success);
 
         var service = new JitProvisioningService(userManagerMock.Object);
@@ -58,6 +62,9 @@ public class JitProvisioningServiceTests
         userManagerMock.Setup(um => um.FindByNameAsync(It.IsAny<string>()))
             .ReturnsAsync(existing);
         userManagerMock.Setup(um => um.UpdateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        userManagerMock.Setup(um => um.AddClaimsAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<Claim>>()))
             .ReturnsAsync(IdentityResult.Success);
 
         var service = new JitProvisioningService(userManagerMock.Object);

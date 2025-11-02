@@ -80,6 +80,7 @@ builder.Services.AddScoped<ITurnstileService, TurnstileService>();
 // JIT & Legacy services
 builder.Services.AddScoped<IJitProvisioningService, JitProvisioningService>();
 builder.Services.AddScoped<ILegacyAuthService, LegacyAuthService>();
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, MyUserClaimsPrincipalFactory>();
 
 var app = builder.Build();
 

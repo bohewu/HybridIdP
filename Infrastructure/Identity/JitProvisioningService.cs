@@ -2,6 +2,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 
 namespace Infrastructure.Identity;
 
@@ -39,6 +40,21 @@ public class JitProvisioningService : IJitProvisioningService
                 throw new InvalidOperationException("Failed to create user: " + string.Join(",", createResult.Errors.Select(e => e.Code)));
             }
 
+            // Add basic claims derived from legacy profile (best-effort)
+            var claimsToAdd = new List<Claim>();
+            var nameValue = dto.FullName ?? dto.Email ?? userName;
+            if (!string.IsNullOrWhiteSpace(nameValue))
+            {
+                claimsToAdd.Add(new Claim("name", nameValue));
+            }
+            if (!string.IsNullOrWhiteSpace(dto.Department))
+            {
+                claimsToAdd.Add(new Claim("department", dto.Department));
+            }
+            if (claimsToAdd.Count > 0)
+            {
+                await _userManager.AddClaimsAsync(user, claimsToAdd);
+            }
             return user;
         }
         else
@@ -52,7 +68,21 @@ public class JitProvisioningService : IJitProvisioningService
             {
                 throw new InvalidOperationException("Failed to update user: " + string.Join(",", updateResult.Errors.Select(e => e.Code)));
             }
-
+            // Best-effort: add claims if present (this may duplicate; can be improved later)
+            var claimsToAdd = new List<Claim>();
+            var nameValue = dto.FullName ?? dto.Email ?? existing.UserName;
+            if (!string.IsNullOrWhiteSpace(nameValue))
+            {
+                claimsToAdd.Add(new Claim("name", nameValue));
+            }
+            if (!string.IsNullOrWhiteSpace(dto.Department))
+            {
+                claimsToAdd.Add(new Claim("department", dto.Department));
+            }
+            if (claimsToAdd.Count > 0)
+            {
+                await _userManager.AddClaimsAsync(existing, claimsToAdd);
+            }
             return existing;
         }
     }

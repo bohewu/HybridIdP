@@ -195,6 +195,17 @@ public class AuthorizeModel : PageModel
                 yield return Destinations.IdentityToken;
                 yield break;
 
+            // Custom claims we want in both tokens for client-side display
+            case "preferred_username":
+                yield return Destinations.AccessToken;
+                yield return Destinations.IdentityToken;
+                yield break;
+
+            case "department":
+                yield return Destinations.AccessToken;
+                yield return Destinations.IdentityToken;
+                yield break;
+
             // Never include the security stamp in the access and identity tokens, as it's a secret value.
             case "AspNet.Identity.SecurityStamp":
                 yield break;
