@@ -216,7 +216,25 @@ Phase 3 establishes the complete admin portal for managing all OIDC-related enti
     - Remove/hide unnecessary pages (e.g., Privacy) from admin navigation
   - Frontend:
     - Shared Vue component: `AdminNav.vue` with menu items
-    - Responsive sidebar with icons (Dashboard, Clients, Permissions, Settings)
+    - **Modern UI Design** (Popular Admin Styles):
+      - **Sidebar Layout:** Left sidebar navigation (collapsible on mobile)
+      - **Clean & Minimal:** White/light gray background, subtle shadows
+      - **Color Scheme:** Primary brand color (indigo-600), success/warning/danger states
+      - **Typography:** Clear hierarchy with Tailwind typography utilities
+      - **Icons:** Heroicons or Lucide icons for navigation items
+      - **Hover Effects:** Subtle background color change, smooth transitions
+      - **Active State:** Left border accent or background highlight
+      - **Components:**
+        - Top bar: App logo, breadcrumbs, search bar (optional), user menu
+        - Sidebar: Grouped menu items with icons, collapse/expand sections
+        - Content area: Max-width container with proper padding
+        - Cards: Rounded corners, shadow-sm, hover:shadow-md
+        - Tables: Striped rows, sticky header, hover row highlight
+        - Forms: Floating labels or clear labels, validation states
+        - Buttons: Solid primary, outline secondary, ghost for tertiary actions
+      - **Responsive:** Mobile-first with hamburger menu, slide-out sidebar
+      - **Dark Mode Ready:** Use Tailwind dark mode classes (future enhancement)
+    - Responsive sidebar with icons (Dashboard, Clients, Permissions, Users, Roles, Settings)
     - Active route highlighting
     - User profile dropdown with logout
   - Navigation Structure:
@@ -226,18 +244,27 @@ Phase 3 establishes the complete admin portal for managing all OIDC-related enti
     ├── Dashboard (Overview & Stats)
     ├── OIDC Management
     │   ├── Clients (Applications)
-    │   ├── Permissions (Scopes/Resources)
-    │   └── Authorization Policies
+    │   └── Permissions (Scopes/Resources)
+    ├── Identity Management (Phase 4)
+    │   ├── Users
+    │   └── Roles
     └── Settings
-        ├── Security Policies (Phase 4)
-        └── Admin Users (Phase 5)
+        ├── Security Policies (Phase 5)
+        └── System Settings
     ```
 
+  - UI Reference (Popular Admin Templates):
+    - **Tailwind UI Components:** https://tailwindui.com/components/application-ui
+    - **Flowbite Admin:** Clean, modern Tailwind admin components
+    - **Prime Vue:** Professional component library with admin templates
+    - **Ant Design:** Enterprise-grade UI patterns
   - Verification:
     - Admin user sees navigation menu with all sections
     - Non-admin users get 403 when accessing `/Admin/*`
     - Active menu item is highlighted
     - Privacy page removed from admin layout
+    - Sidebar collapses on mobile with hamburger menu
+    - Clean, modern appearance matching popular admin dashboards
   - **Agent Question:** "Phase 3.1 is complete. **May I proceed to Phase 3.2?**"
 
 - **3.2: Admin Dashboard:** Create overview page with statistics and quick actions.
@@ -381,46 +408,368 @@ Phase 3 establishes the complete admin portal for managing all OIDC-related enti
     - OpenIddict configuration documented and aligned to enabled flows
   - **Agent Question:** "Phase 3.8 is complete. **May I proceed to Phase 3.9?**"
 
-- **3.9: Permission Management (Scope CRUD)**
-  - Goal: Enable admins to create, edit, delete, and manage OIDC scopes/permissions dynamically.
+- **3.9: Scope & Resource Management (Basic CRUD)**
+  - Goal: Enable admins to create, edit, delete, and manage OIDC scopes/resources dynamically.
   - Backend:
-    - API endpoints: `GET /api/admin/permissions`, `GET /api/admin/permissions/{id}`, `POST /api/admin/permissions`, `PUT /api/admin/permissions/{id}`, `DELETE /api/admin/permissions/{id}`
-    - DTOs: PermissionSummary (Id, Name, DisplayName, Description, Type [Resource/Identity])
-    - Validation: Name required, must be unique, alphanumeric with underscores/hyphens
+    - API endpoints: `GET /api/admin/scopes`, `GET /api/admin/scopes/{id}`, `POST /api/admin/scopes`, `PUT /api/admin/scopes/{id}`, `DELETE /api/admin/scopes/{id}`
+    - DTOs: ScopeSummary (Id, Name, DisplayName, Description, Type [Identity/ApiResource], ClaimCount, ClientCount)
+    - Validation: Name required, must be unique, alphanumeric with underscores/colons
     - Pagination/filtering: Similar to clients (skip/take/search/type/sort)
+    - **Important:** This phase creates basic scope entities only; claims mapping comes in Phase 3.9A
   - Frontend:
-    - Vue SPA: `ClientApp/src/admin/permissions/PermissionsApp.vue`
-    - Components: PermissionList, PermissionForm
-    - Features: Create, edit, delete scopes; filter by type (Resource/Identity); search by name/display name
+    - Vue SPA: `ClientApp/src/admin/scopes/ScopesApp.vue`
+    - Components: ScopeList, ScopeForm
+    - Features: Create, edit, delete scopes; filter by type; search by name/display name
     - Validation: Zod schema for name format, required fields
     - UI shows scope usage count (how many clients use this scope)
+  - Standard OIDC Scopes to Seed:
+    - `openid` (Identity) - "OpenID Connect login"
+    - `profile` (Identity) - "User profile information"
+    - `email` (Identity) - "Email address"
+    - `phone` (Identity) - "Phone number"
+    - `address` (Identity) - "Physical address"
   - Structure:
 
     ```text
     Web.IdP/Pages/Admin/
-    └── Permissions.cshtml            → Permission Management
-    └── Permissions.cshtml.cs         → [Authorize(Roles = Admin)]
+    └── Scopes.cshtml                 → Scope Management
+    └── Scopes.cshtml.cs              → [Authorize(Roles = Admin)]
 
     Web.IdP/Api/
-    └── AdminController.cs            → Add permissions CRUD endpoints
+    └── AdminController.cs            → Add scopes CRUD endpoints
 
     ClientApp/src/admin/
-    └── permissions/
+    └── scopes/
         ├── main.js                   → Entry point
-        ├── PermissionsApp.vue        → Root component with list/form
+        ├── ScopesApp.vue             → Root component with list/form
         └── components/
-            ├── PermissionList.vue    → Displays permissions table
-            └── PermissionForm.vue    → Create/edit modal
+            ├── ScopeList.vue         → Displays scopes table
+            └── ScopeForm.vue         → Create/edit modal (basic fields only)
     ```
 
   - Verification:
-    - Admin can navigate to `/Admin/Permissions`
-    - Create new scope (e.g., `api.read`, display name "Read API Access")
+    - Admin can navigate to `/Admin/Scopes`
+    - See standard OIDC scopes (openid, profile, email, phone, address)
+    - Create new scope (e.g., `api:read`, display name "Read API Access")
     - Edit scope display name and description
     - Delete unused scope (validation: prevent deletion if used by clients)
-    - Search/filter permissions by name or type
+    - Search/filter scopes by name or type
     - List shows usage count (number of clients using each scope)
-  - **Agent Question:** "Phase 3.9 is complete. **May I proceed to Phase 3.10?**"
+  - **Agent Question:** "Phase 3.9 is complete. **May I proceed to Phase 3.9A (Claims Management)?**"
+
+- **3.9A: Claims & Scope-to-Claims Mapping**
+  - Goal: Define available user claims and map them to scopes for ID token/UserInfo endpoint.
+  - **Concept:** When a client requests a scope (e.g., `profile`), the IdP needs to know which claims to include in the ID token. This phase creates:
+    1. **Claim Definitions:** Pool of available claims with data types and sources
+    2. **Scope → Claims Mapping:** Which claims are included when a scope is requested
+    3. **User Attribute Mapping:** How to populate claim values from `ApplicationUser` properties
+
+  - **Backend - Part 1: Claim Definitions**
+    - Create `UserClaim` entity:
+      - `Id`, `Name`, `DisplayName`, `Description`
+      - `ClaimType` (standard JWT claim name, e.g., `email`, `family_name`)
+      - `UserPropertyPath` (property on ApplicationUser, e.g., `Email`, `LastName`)
+      - `DataType` (String, Boolean, Integer, DateTime, JSON)
+      - `IsStandard` (true for OIDC standard claims, false for custom)
+      - `IsRequired` (always include if user has value)
+    - API endpoints: `GET /api/admin/claims`, `POST /api/admin/claims`, `PUT /api/admin/claims/{id}`, `DELETE /api/admin/claims/{id}`
+    - DTOs: ClaimDefinitionDto (Id, Name, DisplayName, ClaimType, UserPropertyPath, DataType, IsStandard, ScopeCount)
+    - Seed standard OIDC claims:
+
+      ```csharp
+      // OpenID Connect Standard Claims (from OIDC Core spec)
+      { Name = "sub", DisplayName = "Subject Identifier", ClaimType = "sub", UserPropertyPath = "Id", DataType = "String", IsStandard = true, IsRequired = true },
+      { Name = "name", DisplayName = "Full Name", ClaimType = "name", UserPropertyPath = "UserName", DataType = "String", IsStandard = true },
+      { Name = "given_name", DisplayName = "Given Name", ClaimType = "given_name", UserPropertyPath = "FirstName", DataType = "String", IsStandard = true },
+      { Name = "family_name", DisplayName = "Family Name", ClaimType = "family_name", UserPropertyPath = "LastName", DataType = "String", IsStandard = true },
+      { Name = "middle_name", DisplayName = "Middle Name", ClaimType = "middle_name", UserPropertyPath = "MiddleName", DataType = "String", IsStandard = true },
+      { Name = "nickname", DisplayName = "Nickname", ClaimType = "nickname", UserPropertyPath = "Nickname", DataType = "String", IsStandard = true },
+      { Name = "preferred_username", DisplayName = "Preferred Username", ClaimType = "preferred_username", UserPropertyPath = "UserName", DataType = "String", IsStandard = true },
+      { Name = "profile", DisplayName = "Profile URL", ClaimType = "profile", UserPropertyPath = "ProfileUrl", DataType = "String", IsStandard = true },
+      { Name = "picture", DisplayName = "Picture URL", ClaimType = "picture", UserPropertyPath = "PictureUrl", DataType = "String", IsStandard = true },
+      { Name = "website", DisplayName = "Website", ClaimType = "website", UserPropertyPath = "Website", DataType = "String", IsStandard = true },
+      { Name = "email", DisplayName = "Email Address", ClaimType = "email", UserPropertyPath = "Email", DataType = "String", IsStandard = true },
+      { Name = "email_verified", DisplayName = "Email Verified", ClaimType = "email_verified", UserPropertyPath = "EmailConfirmed", DataType = "Boolean", IsStandard = true },
+      { Name = "phone_number", DisplayName = "Phone Number", ClaimType = "phone_number", UserPropertyPath = "PhoneNumber", DataType = "String", IsStandard = true },
+      { Name = "phone_number_verified", DisplayName = "Phone Verified", ClaimType = "phone_number_verified", UserPropertyPath = "PhoneNumberConfirmed", DataType = "Boolean", IsStandard = true },
+      { Name = "address", DisplayName = "Address", ClaimType = "address", UserPropertyPath = "Address", DataType = "JSON", IsStandard = true },
+      { Name = "birthdate", DisplayName = "Birthdate", ClaimType = "birthdate", UserPropertyPath = "Birthdate", DataType = "String", IsStandard = true },
+      { Name = "gender", DisplayName = "Gender", ClaimType = "gender", UserPropertyPath = "Gender", DataType = "String", IsStandard = true },
+      { Name = "zoneinfo", DisplayName = "Time Zone", ClaimType = "zoneinfo", UserPropertyPath = "TimeZone", DataType = "String", IsStandard = true },
+      { Name = "locale", DisplayName = "Locale", ClaimType = "locale", UserPropertyPath = "Locale", DataType = "String", IsStandard = true },
+      { Name = "updated_at", DisplayName = "Updated At", ClaimType = "updated_at", UserPropertyPath = "UpdatedAt", DataType = "Integer", IsStandard = true },
+      
+      // Custom enterprise claims (examples)
+      { Name = "department", DisplayName = "Department", ClaimType = "department", UserPropertyPath = "Department", DataType = "String", IsStandard = false },
+      { Name = "job_title", DisplayName = "Job Title", ClaimType = "job_title", UserPropertyPath = "JobTitle", DataType = "String", IsStandard = false },
+      { Name = "employee_id", DisplayName = "Employee ID", ClaimType = "employee_id", UserPropertyPath = "EmployeeId", DataType = "String", IsStandard = false },
+      ```
+
+  - **Backend - Part 2: Scope-to-Claims Mapping**
+    - Create `ScopeClaim` join table:
+      - `ScopeId` (FK to Scope entity)
+      - `ClaimId` (FK to UserClaim entity)
+      - `IsRequired` (always include if available, vs. optional)
+      - `Order` (display order in consent screen)
+    - API endpoints: `GET /api/admin/scopes/{id}/claims`, `POST /api/admin/scopes/{id}/claims`, `DELETE /api/admin/scopes/{scopeId}/claims/{claimId}`
+    - DTOs: ScopeClaimMappingDto (ScopeId, ScopeName, Claims: ClaimDefinitionDto[])
+    - Seed standard OIDC scope mappings:
+
+      ```csharp
+      // openid scope (required for OIDC)
+      openid → [sub]
+
+      // profile scope (OIDC Core spec section 5.4)
+      profile → [name, family_name, given_name, middle_name, nickname, 
+                 preferred_username, profile, picture, website, gender, 
+                 birthdate, zoneinfo, locale, updated_at]
+
+      // email scope
+      email → [email, email_verified]
+
+      // phone scope
+      phone → [phone_number, phone_number_verified]
+
+      // address scope
+      address → [address]
+
+      // Custom scopes (examples)
+      department → [department, job_title]
+      employee_info → [employee_id, department, job_title]
+      ```
+
+  - **Backend - Part 3: MyUserClaimsPrincipalFactory Enhancement**
+    - Update `Infrastructure/Identity/MyUserClaimsPrincipalFactory.cs`:
+      - Query `ScopeClaim` mappings based on requested scopes from authorization request
+      - For each mapped claim, read value from `ApplicationUser` using `UserPropertyPath`
+      - Transform data type (e.g., `EmailConfirmed` bool → `"true"` string for `email_verified` claim)
+      - Add claims to `ClaimsPrincipal` for inclusion in ID token
+    - Handle null/empty values gracefully (don't include claim if user property is null)
+    - Support JSON serialization for complex claims (e.g., `address` claim)
+
+  - **Frontend - Claims Management UI**
+    - Vue SPA: `ClientApp/src/admin/claims/ClaimsApp.vue`
+    - Features:
+      - List all claim definitions with type, source property, and usage count
+      - Create custom claims (name, display name, claim type, user property path, data type)
+      - Edit claim definitions (cannot edit standard claims)
+      - Delete unused custom claims
+      - Show which scopes use each claim
+    - Validation:
+      - Claim type must be unique
+      - User property path must exist on ApplicationUser (validate via reflection or list)
+      - Cannot delete claims used by scopes
+
+  - **Frontend - Scope-to-Claims Mapping UI**
+    - Enhance `ScopeForm.vue` with claims mapping section:
+      - Multi-select dropdown showing available claims
+      - Display claims grouped by standard/custom
+      - Checkbox to mark claim as "required" vs "optional"
+      - Drag-and-drop to reorder claims (for consent screen display)
+    - Show preview of ID token structure when scope is requested:
+
+      ```json
+      // When client requests scopes: openid, profile, email
+      {
+        "sub": "user-id-123",
+        "name": "John Doe",
+        "given_name": "John",
+        "family_name": "Doe",
+        "email": "john.doe@example.com",
+        "email_verified": true
+      }
+      ```
+
+  - **Extend ApplicationUser Entity:**
+    - Add properties to support standard OIDC claims:
+
+      ```csharp
+      public class ApplicationUser : IdentityUser
+      {
+          // Existing properties...
+          public string? FirstName { get; set; }
+          public string? LastName { get; set; }
+          public string? MiddleName { get; set; }
+          public string? Nickname { get; set; }
+          public string? ProfileUrl { get; set; }
+          public string? PictureUrl { get; set; }
+          public string? Website { get; set; }
+          public string? Address { get; set; }  // JSON string
+          public string? Birthdate { get; set; }  // ISO 8601 format
+          public string? Gender { get; set; }
+          public string? TimeZone { get; set; }
+          public string? Locale { get; set; }
+          public DateTime? UpdatedAt { get; set; }
+          
+          // Custom enterprise claims
+          public string? Department { get; set; }
+          public string? JobTitle { get; set; }
+          public string? EmployeeId { get; set; }
+      }
+      ```
+
+    - Create database migration for new columns
+
+  - **Structure:**
+
+    ```text
+    Core.Domain/
+    └── Entities/
+        ├── UserClaim.cs              → Claim definition entity
+        └── ScopeClaim.cs             → Scope-to-claims mapping entity
+
+    Web.IdP/Api/
+    └── AdminController.cs            → Add claims CRUD + scope mapping endpoints
+
+    ClientApp/src/admin/
+    ├── claims/
+    │   ├── main.js
+    │   ├── ClaimsApp.vue             → Claims list and CRUD
+    │   └── components/
+    │       ├── ClaimList.vue
+    │       └── ClaimForm.vue
+    └── scopes/
+        └── components/
+            └── ScopeClaimsMapper.vue → Claims mapping UI (embedded in ScopeForm)
+    ```
+
+  - **Verification:**
+    - Admin navigates to `/Admin/Claims`
+    - See list of standard OIDC claims (sub, name, email, etc.) and custom claims
+    - Create custom claim: `department` → `department` claim type → `Department` property
+    - Edit scope "profile" and see it includes claims: name, given_name, family_name, etc.
+    - Add custom claim "department" to a custom scope "employee_info"
+    - Remove claim from scope mapping
+    - Delete unused custom claim
+    - Cannot delete standard claim or claim used by scopes
+    - Preview ID token structure shows correct claims when scope is selected
+    - Standard OIDC scope mappings match spec (openid→sub, profile→name/family_name/etc., email→email/email_verified)
+  - **Agent Question:** "Phase 3.9A is complete. **May I proceed to Phase 3.9B (Consent Screen & Resource Servers)?**"
+
+- **3.9B: Consent Screen Management & API Resource Scopes**
+  - Goal: Provide rich consent screen customization and support for API resource protection.
+  - **Part 1: Consent Screen Customization**
+    - **Concept:** When users authorize a client, they see a consent screen showing what data/permissions the client is requesting. This needs to be clear, translatable, and customizable.
+    - Backend:
+      - Add fields to `Scope` entity:
+        - `ConsentDisplayName` (localized display name for consent screen)
+        - `ConsentDescription` (what this permission allows the app to do)
+        - `IconUrl` (optional icon for visual identification)
+        - `IsRequired` (user cannot opt out if true - e.g., `openid` scope)
+        - `DisplayOrder` (order on consent screen)
+      - Add `Resources` table for localizing consent strings:
+        - Key format: `Scope.{ScopeName}.ConsentDisplayName`, `Scope.{ScopeName}.ConsentDescription`
+        - Support multiple languages (en-US, zh-TW, etc.)
+    - Frontend (Admin):
+      - Enhance `ScopeForm.vue` with consent customization fields
+      - Multi-language editor for display name and description
+      - Upload/select icon for scope
+      - Toggle "Required" checkbox (prevent user from denying)
+      - Preview consent screen appearance
+    - Frontend (User-Facing):
+      - Update `Consent.cshtml` to use localized scope descriptions
+      - Group scopes by category (Profile Information, API Access, etc.)
+      - Show icons next to each scope
+      - Display helpful descriptions instead of technical scope names
+      - Mark required scopes clearly (cannot be unchecked)
+    - **Example Consent Screen:**
+      ```text
+      TestClient would like to:
+      
+      ✓ Know who you are (openid) [Required]
+        Access your basic identity information
+      
+      ☐ Read your profile (profile)
+        Access your name, picture, and other profile information
+      
+      ☐ Access your email (email)
+        View your email address and verification status
+      
+      ☐ Access your company data (api:company:read)
+        Read company records on your behalf
+      ```
+
+  - **Part 2: API Resource Scopes**
+    - **Concept:** Beyond identity scopes (profile, email), IdP must support **API resource scopes** for protecting backend APIs (e.g., `api:read`, `api:write`, `inventory:manage`).
+    - Backend:
+      - Create `ApiResource` entity:
+        - `Id`, `Name`, `DisplayName`, `Description`
+        - `BaseUrl` (API base URL for documentation)
+        - `Scopes` (collection of scopes belonging to this resource)
+      - Example resources:
+        - **Company API:** Scopes: `api:company:read`, `api:company:write`, `api:company:delete`
+        - **Inventory API:** Scopes: `api:inventory:read`, `api:inventory:write`
+        - **User Management API:** Scopes: `api:users:read`, `api:users:manage`
+      - API endpoints: `GET /api/admin/resources`, `POST /api/admin/resources`, `PUT /api/admin/resources/{id}`, `DELETE /api/admin/resources/{id}`
+      - API endpoints: `GET /api/admin/resources/{id}/scopes` (list scopes for a resource)
+    - Frontend:
+      - Vue SPA: `ClientApp/src/admin/resources/ResourcesApp.vue`
+      - Create API resources with name, display name, base URL
+      - Assign scopes to resources (e.g., `api:company:read` → "Company API" resource)
+      - Visual grouping: Show scopes grouped by resource in client configuration
+    - OpenIddict Integration:
+      - Register API resources and scopes in OpenIddict
+      - Configure audience claim for access tokens (includes resource identifier)
+      - API resource scopes appear in client scope selection
+
+  - **Part 3: Scope Authorization Policies (Whitelisting)**
+    - **Concept:** Not all clients should be able to request all scopes. Admins need to whitelist which scopes each client can request.
+    - Backend:
+      - Add `ClientAllowedScopes` join table (already exists in OpenIddict, ensure proper management)
+      - Validation: When client requests scopes during authorization, verify against whitelist
+      - API: Update client creation/edit to include allowed scopes selection
+    - Frontend:
+      - In `ClientForm.vue`, add "Allowed Scopes" multi-select
+      - Show available scopes grouped by:
+        - Identity Scopes (openid, profile, email, phone, address)
+        - API Resources (Company API, Inventory API, etc.)
+        - Custom Scopes
+      - Validation: At least `openid` must be selected for OIDC clients
+    - Verification:
+      - Create client and whitelist only `openid`, `profile`, `email` scopes
+      - Attempt to request `api:company:read` scope → authorization denied
+      - Update client to include `api:company:read` → authorization succeeds
+
+  - **Structure:**
+    ```text
+    Core.Domain/
+    └── Entities/
+        └── ApiResource.cs            → API resource entity
+
+    Web.IdP/Api/
+    └── AdminController.cs            → Add resources CRUD endpoints
+
+    Web.IdP/Pages/
+    └── Consent.cshtml                → Enhanced with localized descriptions, icons, grouping
+
+    ClientApp/src/admin/
+    ├── resources/
+    │   ├── main.js
+    │   ├── ResourcesApp.vue          → API resources management
+    │   └── components/
+    │       ├── ResourceList.vue
+    │       └── ResourceForm.vue
+    └── scopes/
+        └── components/
+            └── ScopeConsentEditor.vue → Consent screen customization UI
+    ```
+
+  - **Verification:**
+    - **Consent Screen:**
+      - Admin edits scope "profile" to add localized description and icon
+      - User sees localized consent screen with clear descriptions
+      - Required scopes (openid) cannot be unchecked
+      - Scopes grouped by category (Identity, API Access)
+    - **API Resources:**
+      - Admin creates "Company API" resource
+      - Adds scopes: `api:company:read`, `api:company:write`, `api:company:delete`
+      - Client configuration shows scopes grouped by resource
+      - Access token includes audience claim for requested resources
+    - **Scope Whitelisting:**
+      - Client A whitelisted for `openid`, `profile`, `api:company:read`
+      - Client A requests `api:inventory:read` → denied
+      - Client B whitelisted for all scopes → can request any scope
+  - **Agent Question:** "Phase 3.9B is complete. **May I proceed to Phase 3.10?**"
 
 - **3.10: Cleanup & Refinement**
   - Goal: Remove unused pages, improve admin layout consistency, add audit logging foundation.
@@ -439,66 +788,234 @@ Phase 3 establishes the complete admin portal for managing all OIDC-related enti
 
 ---
 
-## Phase 4: Dynamic Security Policies (TDD-Driven)
+## Phase 4: Identity Management (Users, Roles & Permissions)
 
-- **4.1: Internationalized Identity Errors:** Create a custom `IdentityErrorDescriber` to provide translated error messages.
-  - **Verification:** Identity errors (e.g., 'Password too short') appear in the configured language.
+> **Critical for IdP:** This phase implements the core identity management system that allows administrators to manage users, roles, and permissions. This is essential for an enterprise-grade Identity Provider.
+
+### Phase 4 Overview
+
+Phase 4 establishes comprehensive user and role management with a modern admin interface. Supports multiple use cases: admin users, application registrars (users who can register their own OIDC clients), and custom role-based access control.
+
+### Sub-Phases
+
+- **4.1: User Management API & Data Model**
+  - Goal: Create backend infrastructure for user CRUD operations with role assignments.
+  - Backend:
+    - Extend `ApplicationUser` entity with additional fields:
+      - `Department`, `JobTitle`, `PhoneNumber`
+      - `IsActive` (soft delete), `LastLoginDate`
+      - `CreatedBy`, `CreatedAt`, `ModifiedBy`, `ModifiedAt`
+    - API endpoints: `GET /api/admin/users`, `GET /api/admin/users/{id}`, `POST /api/admin/users`, `PUT /api/admin/users/{id}`, `DELETE /api/admin/users/{id}`
+    - DTOs: UserSummary (Id, Email, UserName, Roles, Department, IsActive, LastLoginDate)
+    - Support pagination/filtering/sorting: `?skip=0&take=25&search=&role=&isActive=true&sort=email:asc`
+  - Validation:
+    - Email required and must be valid format
+    - Password requirements (min 8 chars, complexity)
+    - Username must be unique
+    - Cannot delete self or other admins without confirmation
+  - Verification:
+    - Create user via API with email and temporary password
+    - Assign roles to user
+    - List users with filtering by role and status
+    - Update user details and role assignments
+    - Soft delete (deactivate) users
   - **Agent Question:** "Phase 4.1 is complete. **May I proceed to Phase 4.2?**"
-- **4.2: TDD for Dynamic Password Validator:** Write failing unit tests for configurable password policies (length, history, etc.).
-  - **Verification:** Failing tests for the password validator exist and fail as expected.
+
+- **4.2: Role Management API**
+  - Goal: Allow dynamic creation and management of custom roles beyond Admin/User.
+  - Backend:
+    - API endpoints: `GET /api/admin/roles`, `GET /api/admin/roles/{id}`, `POST /api/admin/roles`, `PUT /api/admin/roles/{id}`, `DELETE /api/admin/roles/{id}`
+    - DTOs: RoleSummary (Id, Name, Description, UserCount, Permissions, IsSystem)
+    - System roles (Admin, User) cannot be deleted, only modified
+    - Custom roles: `ApplicationRegistrar`, `ScopeManager`, `AuditViewer`, etc.
+  - Role Permissions (Granular):
+    - `clients.read`, `clients.create`, `clients.update`, `clients.delete`
+    - `scopes.read`, `scopes.create`, `scopes.update`, `scopes.delete`
+    - `users.read`, `users.create`, `users.update`, `users.delete`
+    - `roles.read`, `roles.create`, `roles.update`, `roles.delete`
+    - `audit.read`, `settings.read`, `settings.update`
+  - Verification:
+    - Create custom role "ApplicationRegistrar" with permissions: `clients.read`, `clients.create`, `clients.update` (for their own clients)
+    - Create custom role "ScopeManager" with full scope permissions
+    - Assign custom role to user
+    - Prevent deletion of system roles
+    - List roles with user count
   - **Agent Question:** "Phase 4.2 is complete. **May I proceed to Phase 4.3?**"
-- **4.3: Implement Dynamic Password Validator:** Write the validator logic to make the TDD tests pass.
-  - **Verification:** All password validator unit tests pass.
+
+- **4.3: Permission System Implementation**
+  - Goal: Implement fine-grained permission checks across all admin APIs.
+  - Backend:
+    - Create `PermissionAuthorizationHandler` and `PermissionRequirement`
+    - Add `[Authorize(Policy = "clients.create")]` to endpoints
+    - Implement claims-based permissions (permissions stored as claims on user identity)
+    - Create permission middleware for API endpoint protection
+  - Permission Scoping:
+    - Admin: Full access to everything
+    - ApplicationRegistrar: Can only manage their own clients (add `OwnerId` field to Client entity)
+    - ScopeManager: Can manage all scopes but not users/roles
+    - Custom roles: Granular permission combinations
+  - Client Ownership (for ApplicationRegistrar):
+    - Add `OwnerId` field to OpenIddict Client entity (FK to ApplicationUser)
+    - Update Client APIs to filter by OwnerId for non-admin users
+    - `GET /api/admin/clients` returns only user's clients if not admin
+    - `PUT/DELETE /api/admin/clients/{id}` validates ownership
+  - Verification:
+    - Admin can access all endpoints and see all clients
+    - ApplicationRegistrar can create clients (owned by them) and manage only their own clients
+    - ApplicationRegistrar cannot see or modify other users' clients
+    - ScopeManager can manage scopes but not access user management
+    - Permission denied returns proper 403 Forbidden
+    - Admin sees "Owner" column in client list; can filter by owner
   - **Agent Question:** "Phase 4.3 is complete. **May I proceed to Phase 4.4?**"
-- **4.4: API & UI for Policies:** Build the API and Vue UI for an admin to manage security policies.
-  - **MPA Note:** Use the same Admin MPA entry point (e.g., `src/admin/main.js`) and add routing or a new section for security policy management.
-  - **Verification:** An admin can view and update security policies via the UI.
+
+- **4.4: User Management UI**
+  - Goal: Build comprehensive user management interface for administrators.
+  - Frontend:
+    - Vue SPA: `ClientApp/src/admin/users/UsersApp.vue`
+    - Components: UserList, UserForm, RoleAssignment
+    - Features:
+      - List users with pagination/search/filter (by role, status)
+      - Create user with email, password, role assignment
+      - Edit user: update details, assign/remove roles, activate/deactivate
+      - Delete (soft delete) users with confirmation
+      - Password reset (generate temporary password)
+      - Last login timestamp display
+    - Validation: Zod schema for email format, password strength
+  - UI Layout (Modern Admin Style):
+    - Table view with avatar, email, roles badges, status indicator
+    - Quick filters: Active/Inactive, Filter by role dropdown
+    - Bulk actions: Activate/Deactivate selected users
+    - Detail modal with tabs: Profile, Roles, Activity, Security
+  - Structure:
+
+    ```text
+    Web.IdP/Pages/Admin/
+    └── Users.cshtml                → User Management
+    └── Users.cshtml.cs             → [Authorize(Policy = "users.read")]
+
+    ClientApp/src/admin/
+    └── users/
+        ├── main.js                 → Entry point
+        ├── UsersApp.vue            → Root component
+        └── components/
+            ├── UserList.vue        → User table with filters
+            ├── UserForm.vue        → Create/edit modal
+            └── RoleAssignment.vue  → Multi-select role picker
+    ```
+
+  - Verification:
+    - Navigate to `/Admin/Users`
+    - Create new user with ApplicationRegistrar role
+    - Edit user to add/remove roles
+    - Search users by email or name
+    - Filter users by role and status
+    - Deactivate/reactivate user accounts
   - **Agent Question:** "Phase 4.4 is complete. **May I proceed to Phase 4.5?**"
-- **4.5: Integrate Policy System:** Register the new services and add password expiration checks.
-  - **Verification:** The system correctly enforces the configured password policies during login and password changes.
-  - **Agent Question:** "Phase 4 is complete. **May I proceed to Phase 5.1?**"
+
+- **4.5: Role Management UI**
+  - Goal: Build interface for creating and managing custom roles with permissions.
+  - Frontend:
+    - Vue SPA: `ClientApp/src/admin/roles/RolesApp.vue`
+    - Components: RoleList, RoleForm, PermissionSelector
+    - Features:
+      - List roles with user count and permission summary
+      - Create custom role with name, description
+      - Assign permissions to role (multi-select tree/checklist)
+      - Edit role permissions
+      - Delete custom roles (prevent deletion if users assigned)
+      - Show which users have each role
+  - Permission Selector UI:
+    - Grouped by category: Clients, Scopes, Users, Roles, Audit, Settings
+    - Checkboxes: Read, Create, Update, Delete per category
+    - Preset templates: "Read Only", "Manager", "Full Access"
+  - Structure:
+
+    ```text
+    Web.IdP/Pages/Admin/
+    └── Roles.cshtml                → Role Management
+    └── Roles.cshtml.cs             → [Authorize(Policy = "roles.read")]
+
+    ClientApp/src/admin/
+    └── roles/
+        ├── main.js                 → Entry point
+        ├── RolesApp.vue            → Root component
+        └── components/
+            ├── RoleList.vue        → Roles table
+            ├── RoleForm.vue        → Create/edit modal
+            └── PermissionSelector.vue → Permission tree picker
+    ```
+
+  - Verification:
+    - Navigate to `/Admin/Roles`
+    - Create "ApplicationRegistrar" role with client.* permissions
+    - Create "AuditViewer" role with audit.read permission only
+    - Edit role to add/remove permissions
+    - View users assigned to each role
+    - Delete custom role (validation prevents if users exist)
+  - **Agent Question:** "Phase 4.5 is complete. Phase 4 complete! **May I proceed to Phase 5.1?**"
 
 ---
 
-## Phase 5: Production Hardening
+## Phase 5: Dynamic Security Policies (TDD-Driven)
 
-- **5.1: Email Service:** Implement a real email service (e.g., SMTP) and an admin UI to manage its settings.
-  - **MPA Note:** Email service settings UI can be part of the Admin MPA or a separate section within the Admin app.
-  - **Verification:** The system can send emails for features like password reset.
+- **5.1: Internationalized Identity Errors:** Create a custom `IdentityErrorDescriber` to provide translated error messages.
+  - **Verification:** Identity errors (e.g., 'Password too short') appear in the configured language.
   - **Agent Question:** "Phase 5.1 is complete. **May I proceed to Phase 5.2?**"
-- **5.2: Secret Management:** Define and implement a secure strategy for production secrets (e.g., env variables, Docker Secrets).
-  - **Verification:** Sensitive data is loaded from the secret store, not appsettings.
+- **5.2: TDD for Dynamic Password Validator:** Write failing unit tests for configurable password policies (length, history, etc.).
+  - **Verification:** Failing tests for the password validator exist and fail as expected.
   - **Agent Question:** "Phase 5.2 is complete. **May I proceed to Phase 5.3?**"
-- **5.3: Redis Integration:** Configure Redis for caching and as a store for OpenIddict.
-  - **Verification:** The application uses Redis for caching and OpenIddict data.
+- **5.3: Implement Dynamic Password Validator:** Write the validator logic to make the TDD tests pass.
+  - **Verification:** All password validator unit tests pass.
   - **Agent Question:** "Phase 5.3 is complete. **May I proceed to Phase 5.4?**"
-- **5.4: Background Token Cleanup:** Integrate Quartz.NET to periodically clean up expired tokens from the database.
-  - **Verification:** A background job for token cleanup is registered and runs.
+- **5.4: API & UI for Policies:** Build the API and Vue UI for an admin to manage security policies.
+  - **MPA Note:** Use the same Admin MPA entry point (e.g., `src/admin/main.js`) and add routing or a new section for security policy management.
+  - **Verification:** An admin can view and update security policies via the UI.
   - **Agent Question:** "Phase 5.4 is complete. **May I proceed to Phase 5.5?**"
-- **5.5: Auditing & Health Checks:** Integrate Serilog for structured logging and add a health check endpoint.
-  - **Verification:** Logs are structured JSON; `/healthz` endpoint reports status of DB and Redis.
+- **5.5: Integrate Policy System:** Register the new services and add password expiration checks.
+  - **Verification:** The system correctly enforces the configured password policies during login and password changes.
   - **Agent Question:** "Phase 5 is complete. **May I proceed to Phase 6.1?**"
 
 ---
 
-## Phase 6: User Account Management
+## Phase 6: Production Hardening
+
+- **6.1: Email Service:** Implement a real email service (e.g., SMTP) and an admin UI to manage its settings.
+  - **MPA Note:** Email service settings UI can be part of the Admin MPA or a separate section within the Admin app.
+  - **Verification:** The system can send emails for features like password reset.
+  - **Agent Question:** "Phase 6.1 is complete. **May I proceed to Phase 6.2?**"
+- **6.2: Secret Management:** Define and implement a secure strategy for production secrets (e.g., env variables, Docker Secrets).
+  - **Verification:** Sensitive data is loaded from the secret store, not appsettings.
+  - **Agent Question:** "Phase 6.2 is complete. **May I proceed to Phase 6.3?**"
+- **6.3: Redis Integration:** Configure Redis for caching and as a store for OpenIddict.
+  - **Verification:** The application uses Redis for caching and OpenIddict data.
+  - **Agent Question:** "Phase 6.3 is complete. **May I proceed to Phase 6.4?**"
+- **6.4: Background Token Cleanup:** Integrate Quartz.NET to periodically clean up expired tokens from the database.
+  - **Verification:** A background job for token cleanup is registered and runs.
+  - **Agent Question:** "Phase 6.4 is complete. **May I proceed to Phase 6.5?**"
+- **6.5: Auditing & Health Checks:** Integrate Serilog for structured logging and add a health check endpoint.
+  - **Verification:** Logs are structured JSON; `/healthz` endpoint reports status of DB and Redis.
+  - **Agent Question:** "Phase 6 is complete. **May I proceed to Phase 7.1?**"
+
+---
+
+## Phase 7: User Self-Service & Account Management
 
 > **Vue.js MPA Architecture Note:**  
 > This phase introduces a **User Self-Service MPA** for account management features. Create a new entry point (e.g., `src/account-manage/main.js`) in `vite.config.js` for user-facing account pages, separate from the Admin app. See `docs/idp_vue_mpa_structure.md` for guidance.
 
-- **6.1: Account Management UI:** Create protected Razor Pages for users to manage their accounts.
+- **7.1: Account Management UI:** Create protected Razor Pages for users to manage their accounts.
   - **MPA Setup:** Add `accountManage: './src/account-manage/main.js'` to `vite.config.js` inputs. Use `<script type="module" vite-src="~/src/account-manage/main.js"></script>` in the user account Razor Pages.
   - **Verification:** An authenticated user can access the `/Account/Manage` section.
-  - **Agent Question:** "Phase 6.1 is complete. **May I proceed to Phase 6.2?**"
-- **6.2: Change Password:** Implement the change password feature for authenticated users.
+  - **Agent Question:** "Phase 7.1 is complete. **May I proceed to Phase 7.2?**"
+- **7.2: Change Password:** Implement the change password feature for authenticated users.
   - **Verification:** A user can change their own password.
-  - **Agent Question:** "Phase 6.2 is complete. **May I proceed to Phase 6.3?**"
-- **6.3: Forgot Password Flow:** Implement a secure 'Forgot Password' flow via email.
+  - **Agent Question:** "Phase 7.2 is complete. **May I proceed to Phase 7.3?**"
+- **7.3: Forgot Password Flow:** Implement a secure 'Forgot Password' flow via email.
   - **Verification:** A user can reset their password by clicking a link sent to their email.
-  - **Agent Question:** "Phase 6.3 is complete. **May I proceed to Phase 6.4?**"
-- **6.4: Login Activity View:** Display recent sign-in events for the current user.
+  - **Agent Question:** "Phase 7.3 is complete. **May I proceed to Phase 7.4?**"
+- **7.4: Login Activity View:** Display recent sign-in events for the current user.
   - **Verification:** A user can see a list of their recent login attempts.
-  - **Agent Question:** "Phase 6 is complete. The project is finished. Congratulations!"
+  - **Agent Question:** "Phase 7.4 is complete. The project is finished. Congratulations!"
 
 ---
 
