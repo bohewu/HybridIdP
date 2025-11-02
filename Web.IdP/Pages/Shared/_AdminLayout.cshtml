@@ -45,6 +45,10 @@
                     <i class="bi bi-shield-lock"></i>
                     <span>Scopes</span>
                 </a>
+                <a href="/Admin/Claims" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Claims" ? "active" : "")">
+                    <i class="bi bi-card-list"></i>
+                    <span>Claims</span>
+                </a>
                 
                 @* Identity Management *@
                 <div class="nav-section-title">Identity Management</div>

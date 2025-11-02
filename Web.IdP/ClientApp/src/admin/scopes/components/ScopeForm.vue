@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 
 const props = defineProps({
   scope: {
@@ -18,6 +18,11 @@ const formData = ref({
   resources: ''
 })
 
+// Claims management
+const availableClaims = ref([])
+const selectedClaimIds = ref([])
+const loadingClaims = ref(false)
+
 const submitting = ref(false)
 const error = ref(null)
 
@@ -28,10 +33,37 @@ const resetForm = () => {
     description: '',
     resources: ''
   }
+  selectedClaimIds.value = []
   error.value = null
 }
 
-watch(() => props.scope, (newScope) => {
+// Fetch available claims
+const fetchClaims = async () => {
+  loadingClaims.value = true
+  try {
+    const response = await fetch('/api/admin/claims')
+    if (!response.ok) throw new Error('Failed to fetch claims')
+    availableClaims.value = await response.json()
+  } catch (e) {
+    console.error('Error fetching claims:', e)
+  } finally {
+    loadingClaims.value = false
+  }
+}
+
+// Fetch scope claims when editing
+const fetchScopeClaims = async (scopeId) => {
+  try {
+    const response = await fetch(`/api/admin/scopes/${scopeId}/claims`)
+    if (!response.ok) throw new Error('Failed to fetch scope claims')
+    const data = await response.json()
+    selectedClaimIds.value = data.claims ? data.claims.map(sc => sc.claimId) : []
+  } catch (e) {
+    console.error('Error fetching scope claims:', e)
+  }
+}
+
+watch(() => props.scope, async (newScope) => {
   if (newScope) {
     formData.value = {
       name: newScope.name || '',
@@ -39,10 +71,18 @@ watch(() => props.scope, (newScope) => {
       description: newScope.description || '',
       resources: newScope.resources?.join('\n') || ''
     }
+    // Load claims for this scope
+    if (newScope.id) {
+      await fetchScopeClaims(newScope.id)
+    }
   } else {
     resetForm()
   }
 }, { immediate: true })
+
+onMounted(() => {
+  fetchClaims()
+})
 
 const handleSubmit = async () => {
   submitting.value = true
@@ -60,7 +100,7 @@ const handleSubmit = async () => {
     }
 
     const url = isEdit.value
-      ? `/api/admin/scopes/${encodeURIComponent(props.scope.name)}`
+      ? `/api/admin/scopes/${encodeURIComponent(props.scope.id)}`
       : '/api/admin/scopes'
     
     const method = isEdit.value ? 'PUT' : 'POST'
@@ -78,12 +118,41 @@ const handleSubmit = async () => {
       throw new Error(`HTTP error! status: ${response.status}, ${errorText}`)
     }
 
+    const savedScope = await response.json()
+
+    // Save claims mapping
+    if (savedScope.id) {
+      await saveScopeClaims(savedScope.id)
+    }
+
     emit('submit')
   } catch (e) {
     error.value = `Failed to save scope: ${e.message}`
     console.error('Error saving scope:', e)
   } finally {
     submitting.value = false
+  }
+}
+
+// Save scope claims
+const saveScopeClaims = async (scopeId) => {
+  try {
+    const response = await fetch(`/api/admin/scopes/${scopeId}/claims`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        claimIds: selectedClaimIds.value
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to save scope claims')
+    }
+  } catch (e) {
+    console.error('Error saving scope claims:', e)
+    throw e
   }
 }
 </script>
@@ -165,6 +234,45 @@ const handleSubmit = async () => {
                         placeholder="resource_server_1&#10;resource_server_2"
                       ></textarea>
                       <p class="mt-1 text-xs text-gray-500">One resource per line (optional)</p>
+                    </div>
+
+                    <!-- Claims -->
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-2">
+                        User Claims
+                      </label>
+                      <div v-if="loadingClaims" class="text-sm text-gray-500">
+                        Loading claims...
+                      </div>
+                      <div v-else class="border border-gray-300 rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
+                        <div v-if="availableClaims.length === 0" class="text-sm text-gray-500 p-2">
+                          No claims available. Create claims first.
+                        </div>
+                        <label
+                          v-for="claim in availableClaims"
+                          :key="claim.id"
+                          class="flex items-start p-2 hover:bg-gray-50 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            :value="claim.id"
+                            v-model="selectedClaimIds"
+                            class="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                          />
+                          <div class="ml-3 flex-1">
+                            <div class="text-sm font-medium text-gray-900">
+                              {{ claim.name }}
+                              <span v-if="claim.isStandard" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                Standard
+                              </span>
+                            </div>
+                            <div class="text-xs text-gray-500">{{ claim.displayName }}</div>
+                          </div>
+                        </label>
+                      </div>
+                      <p class="mt-1 text-xs text-gray-500">
+                        Select which claims should be included when this scope is requested
+                      </p>
                     </div>
                   </div>
                 </div>
