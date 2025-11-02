@@ -220,8 +220,43 @@ Add these quick verifications to ensure failure paths are correct:
   - **Verification:** A basic Vue page is served correctly by the application. The Vite dev server starts automatically in development.
   - **Agent Question:** "Phase 3.3 is complete. **May I proceed to Phase 3.4?**"
 - **3.4: Admin UI Implementation:** Build Vue components to consume the admin APIs for client/scope management.
-  - **MPA Usage:** Use `<script type="module" vite-src="~/src/admin/main.js"></script>` in Razor Pages to load the Admin app entry point.
-  - **Verification:** The admin UI can create, read, update, and delete OIDC clients and scopes.
+  - **Security-First Architecture (Backend Routes):**
+    - **CRITICAL:** Each admin feature MUST have its own Razor Page with server-side authorization.
+    - Create separate Razor Pages: `/Admin/Clients` and `/Admin/Scopes` (not client-side routes).
+    - Each Razor Page validates `[Authorize(Roles = AuthConstants.Roles.Admin)]` on every navigation.
+    - Each page loads a focused Vue SPA for that specific feature only.
+    - **Benefits:** Server-side auth check on every page load, granular permission control, audit trail, deep linking with proper authorization.
+  - **MPA Configuration:**
+    - Update `vite.config.js` with multiple entry points:
+      - `admin-clients: './src/admin/clients/main.js'` for Client Management
+      - `admin-scopes: './src/admin/scopes/main.js'` for Scope Management
+    - Each Razor Page uses: `<script type="module" vite-src="~/src/admin/clients/main.js"></script>`
+  - **Structure:**
+
+    ```text
+    Web.IdP/Pages/Admin/
+    ├── Index.cshtml              → Dashboard/Overview
+    ├── Clients.cshtml            → Client Management (loads clients Vue SPA)
+    ├── Clients.cshtml.cs         → [Authorize(Roles = Admin)]
+    ├── Scopes.cshtml             → Scope Management (loads scopes Vue SPA)
+    └── Scopes.cshtml.cs          → [Authorize(Roles = Admin)]
+
+    ClientApp/src/admin/
+    ├── clients/
+    │   ├── main.js              → Entry point for Clients page
+    │   ├── ClientsApp.vue       → Root component
+    │   └── components/          → ClientList, ClientForm
+    └── scopes/
+        ├── main.js              → Entry point for Scopes page
+        ├── ScopesApp.vue        → Root component
+        └── components/          → ScopeList, ScopeForm
+    ```
+
+  - **Verification:**
+    - Each admin feature has its own Razor Page route (`/Admin/Clients`, `/Admin/Scopes`).
+    - Server validates authorization on every page navigation.
+    - The admin UI can create, read, update, and delete OIDC clients and scopes.
+    - Direct URL access to `/Admin/Clients` requires authentication.
   - **Agent Question:** "Phase 3 is complete. **May I proceed to Phase 4.1?**"
 
 ---

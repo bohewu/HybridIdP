@@ -15,9 +15,11 @@ export default defineConfig({
     outDir: '../wwwroot/dist',
     emptyOutDir: true,
     rollupOptions: {
-      // Multi-Page Application setup
+      // Multi-Page Application setup with backend routes for security
+      // Each admin feature gets its own entry point loaded by a separate Razor Page
       input: {
-        admin: './src/admin/main.js'
+        'admin-clients': './src/admin/clients/main.js',
+        'admin-scopes': './src/admin/scopes/main.js'
       }
     }
   },
