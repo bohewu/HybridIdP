@@ -20,6 +20,28 @@
 
 ---
 
+## Testing Best Practices
+
+### Process Management
+
+- **Terminate Processes Between Tests:** After completing verification of a phase, stop any running `dotnet.exe` processes before starting the next phase's verification.
+  - Use `taskkill /F /IM dotnet.exe /T` on Windows or `pkill -9 dotnet` on Linux/macOS to ensure ports are freed and no stale processes interfere with subsequent tests.
+  - This prevents port conflicts and ensures a clean test environment.
+
+### UI Testing
+
+- **Playwright MCP for Automated UI Tests:** Use the Playwright Model Context Protocol (MCP) integration to automate browser-based verification steps.
+  - Playwright can navigate to pages, fill forms, click buttons, and verify page content/state.
+  - Example workflow for OIDC flow testing:
+    1. Navigate to the protected resource (e.g., `/Account/Profile`).
+    2. Verify redirect to IdP login page.
+    3. Fill login credentials and submit.
+    4. Verify redirect to consent page and approve.
+    5. Verify final redirect back to the client with authenticated session and claims displayed.
+  - Use `mcp_playwright_browser_*` tools to script these interactions and capture page snapshots for validation.
+
+---
+
 ## Phase 0: Project Scaffolding and Foundation
 
 **Goal:** Establish the solution structure, Docker environment, and foundational elements.
