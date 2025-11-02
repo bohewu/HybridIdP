@@ -89,6 +89,48 @@
 - **2.3: Integrate JIT Provisioning:** Create a mock `LegacyAuthService` and integrate the JIT flow into the login page.
   - **Verification:** Login with a legacy user provisions a new account in the IdP.
   - **Agent Question:** "Phase 2.3 is complete. **May I proceed to Phase 2.4?**"
+
+### Quick E2E (Playwright) — Legacy + JIT
+
+Dev-only flow for rapid verification (no real legacy API needed):
+
+- Legacy stub password: `LegacyDev@123`
+- Username: any email (e.g., `jane@example.com`)
+
+Steps:
+
+1. Start both apps (IdP + TestClient) with HTTPS profiles.
+2. Open TestClient at `https://localhost:7001` and click “Login”.
+3. On IdP login (`https://localhost:7035/Account/Login`), enter the email and password above.
+4. On the consent screen, click “Allow Access”.
+5. You should land on TestClient’s Profile page and see claims including your email.
+
+Notes:
+
+- Turnstile is disabled by default. If enabled, complete the CAPTCHA on login.
+- After testing, stop processes to keep the environment clean.
+
+Optional commands (PowerShell):
+
+```powershell
+# Stop any prior dotnet processes
+taskkill /F /IM dotnet.exe /T
+
+# Start IdP (https)
+cd .\Web.IdP
+dotnet run --launch-profile https
+
+# In another terminal: start TestClient (https)
+cd ..\TestClient
+dotnet run --launch-profile https
+```
+
+Cleanup after verification:
+
+```powershell
+taskkill /F /IM dotnet.exe /T
+```
+
 - **2.4: Custom Claims Factory:** Implement a claims factory to add custom claims from the user profile.
   - **Verification:** Custom claims appear in the user's token/cookie after login.
   - **Agent Question:** "Phase 2 is complete. **May I proceed to Phase 3.1?**"
