@@ -147,6 +147,11 @@ Add these quick verifications to ensure failure paths are correct:
 
 - **2.4: Custom Claims Factory:** Implement a claims factory to add custom claims from the user profile.
   - **Verification:** Custom claims appear in the user's token/cookie after login.
+  - **Details:**
+    - A custom `MyUserClaimsPrincipalFactory` ensures the `preferred_username` claim is present on the Identity principal (from Email/UserName).
+    - The JIT provisioning service enriches users with basic claims such as `name` and `department` when provisioning/updating.
+    - Token emission updated so `preferred_username` and `department` are included in BOTH the access token and the identity token (so the TestClient cookie/principal contains them and they render in the Profile view).
+    - E2E updated to assert `preferred_username` and `department` (value `IT`) are visible on the TestClient Profile page after consent.
   - **Agent Question:** "Phase 2 is complete. **May I proceed to Phase 3.1?**"
 
 ---
