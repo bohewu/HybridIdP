@@ -292,6 +292,75 @@ Add these quick verifications to ensure failure paths are correct:
 
 ---
 
+### 3.5: Admin UX Hardening and Bug Fixes
+
+Goal: Resolve correctness issues in the Clients list and edit form, and expose data needed for large lists.
+
+Changes:
+
+- API: `GET /api/admin/clients`
+  - Include `applicationType` (OpenIddict application type)
+  - Include `redirectUrisCount` (number of redirect URIs) without exposing the URIs
+- UI: Client list
+  - Show `redirectUrisCount` instead of always showing 0
+  - Use server `type` to display Public/Confidential (no guessing from `clientSecret`)
+- UI: Edit flow
+  - When user clicks Edit, fetch the full client (`GET /api/admin/clients/{id}`) to prefill Redirect URIs and Permissions
+
+Acceptance Criteria:
+
+- The list shows accurate “X redirect URI(s)” per client
+- Public/Confidential display matches the server value
+- Edit modal opens with Redirect URIs and Permissions prefilled
+
+Verification Steps:
+
+1. Create a client with at least one Redirect URI
+2. Navigate back to the list: the count shows the correct number
+3. Click Edit: all fields are prefilled (redirect URIs, permissions, etc.)
+
+---
+
+### 3.6: Scalability & Validation Plan (to implement next)
+
+Goal: Prepare the admin area for production-scale datasets and consistent validation.
+
+Planned Work:
+
+- Server pagination, filtering, sorting for clients
+  - API contract: `GET /api/admin/clients?skip=0&take=25&search=&type=&sort=clientId:asc`
+  - Response shape: `{ items: ClientSummary[], totalCount: number }`
+  - Indexing: ensure DB indexes on `ClientId`, `ClientType` for fast query
+- UI data grid
+  - Paged list with page size, sorting, quick search, and filters
+  - Options: TanStack Table (preferred), PrimeVue DataTable, or Vuetify v-data-table
+- Client-side validation
+  - Adopt Vee‑Validate + Zod for schema-driven rules
+  - Mirror backend validation: confidential requires secret, public forbids secret, per‑line URI checks
+
+OpenIddict Server Guidance (reference for config review):
+
+- Endpoints to enable (typical web/native):
+  - Authorization: `/connect/authorize`
+  - Token: `/connect/token`
+  - Logout: `/connect/logout`
+  - Optional: Introspection `/connect/introspect`, Revocation `/connect/revocation`, Device `/connect/device`
+- Grants:
+  - Authorization Code + PKCE, Refresh Token
+  - Optional: Client Credentials (M2M), avoid Implicit
+- Scopes: `openid`, `profile`, `email`, `roles`, and custom API scopes
+- Security: require HTTPS in prod, PKCE for public clients, choose JWT vs reference tokens deliberately.
+
+Acceptance Criteria (when implemented):
+
+- Clients list supports paging, sorting, and search and returns `totalCount`
+- Form enforces rich client-side validation with helpful messages
+- OpenIddict configuration is documented and reviewed against enabled flows
+
+Agent Question: "Phase 3.6 is planned. After implementation of pagination and validation, shall I proceed to commit and request your review?"
+
+---
+
 ## Phase 4: Dynamic Security Policies (TDD-Driven)
 
 - **4.1: Internationalized Identity Errors:** Create a custom `IdentityErrorDescriber` to provide translated error messages.
