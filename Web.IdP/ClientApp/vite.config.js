@@ -19,6 +19,7 @@ export default defineConfig({
       // Each admin feature gets its own entry point loaded by a separate Razor Page
       input: {
         'admin-shared': './src/admin/shared/main.js',
+        'admin-dashboard': './src/admin/dashboard/main.js',
         'admin-clients': './src/admin/clients/main.js',
         'admin-scopes': './src/admin/scopes/main.js'
       }

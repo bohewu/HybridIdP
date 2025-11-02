@@ -1,6 +1,8 @@
+using Core.Domain;
 using Core.Domain.Constants;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -18,13 +20,16 @@ public class AdminController : ControllerBase
 {
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IOpenIddictScopeManager _scopeManager;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public AdminController(
         IOpenIddictApplicationManager applicationManager,
-        IOpenIddictScopeManager scopeManager)
+        IOpenIddictScopeManager scopeManager,
+        UserManager<ApplicationUser> userManager)
     {
         _applicationManager = applicationManager;
         _scopeManager = scopeManager;
+        _userManager = userManager;
     }
 
     /// <summary>
@@ -40,6 +45,38 @@ public class AdminController : ControllerBase
             message = "Admin API is accessible",
             timestamp = DateTime.UtcNow,
             user = User.Identity?.Name
+        });
+    }
+
+    /// <summary>
+    /// Get dashboard statistics including total counts of clients, scopes, and users.
+    /// </summary>
+    /// <returns>Dashboard stats DTO with total counts.</returns>
+    [HttpGet("dashboard/stats")]
+    public async Task<IActionResult> GetDashboardStats()
+    {
+        // Count total clients
+        var totalClients = 0;
+        await foreach (var _ in _applicationManager.ListAsync())
+        {
+            totalClients++;
+        }
+
+        // Count total scopes
+        var totalScopes = 0;
+        await foreach (var _ in _scopeManager.ListAsync())
+        {
+            totalScopes++;
+        }
+
+        // Count total users
+        var totalUsers = _userManager.Users.Count();
+
+        return Ok(new DashboardStatsDto
+        {
+            TotalClients = totalClients,
+            TotalScopes = totalScopes,
+            TotalUsers = totalUsers
         });
     }
 
@@ -593,6 +630,13 @@ public class AdminController : ControllerBase
         string? Description,
         List<string>? Resources
     );
+
+    public sealed class DashboardStatsDto
+    {
+        public int TotalClients { get; set; }
+        public int TotalScopes { get; set; }
+        public int TotalUsers { get; set; }
+    }
 
     #endregion
 }
