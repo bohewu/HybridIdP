@@ -4,6 +4,9 @@ using Core.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Razor;
+using OpenIddict.Abstractions;
+using static OpenIddict.Abstractions.OpenIddictConstants;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -14,12 +17,55 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseNpgsql(connectionString);
+    // Register the entity sets needed by OpenIddict
+    options.UseOpenIddict<Guid>();
 });
 builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+
+// Configure OpenIddict
+builder.Services.AddOpenIddict()
+    // Register the OpenIddict core components
+    .AddCore(options =>
+    {
+        // Configure OpenIddict to use the Entity Framework Core stores and models
+        options.UseEntityFrameworkCore()
+            .UseDbContext<ApplicationDbContext>()
+            .ReplaceDefaultEntities<Guid>();
+    })
+    // Register the OpenIddict server components
+    .AddServer(options =>
+    {
+        // Enable the authorization and token endpoints
+        options.SetAuthorizationEndpointUris("/connect/authorize")
+               .SetTokenEndpointUris("/connect/token");
+
+        // Enable the authorization code flow
+        options.AllowAuthorizationCodeFlow()
+               .RequireProofKeyForCodeExchange();
+
+        // Register the signing and encryption credentials
+        options.AddDevelopmentEncryptionCertificate()
+               .AddDevelopmentSigningCertificate();
+
+        // Register the ASP.NET Core host and configure the ASP.NET Core-specific options
+        options.UseAspNetCore()
+               .EnableAuthorizationEndpointPassthrough()
+               .EnableTokenEndpointPassthrough()
+               .EnableStatusCodePagesIntegration();
+    })
+    // Register the OpenIddict validation components
+    .AddValidation(options =>
+    {
+        // Import the configuration from the local OpenIddict server instance
+        options.UseLocalServer();
+
+        // Register the ASP.NET Core host
+        options.UseAspNetCore();
+    });
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 
@@ -49,10 +95,14 @@ var localizationOptions = new RequestLocalizationOptions()
 
 app.UseRequestLocalization(localizationOptions);
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();
+
+// Seed the database
+await DataSeeder.SeedAsync(app.Services);
 
 app.Run();
