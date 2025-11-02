@@ -97,6 +97,9 @@
 
 ## Phase 3: Admin API & Management UI (Vue 3 & Tailwind)
 
+> **Vue.js MPA Architecture Note:**  
+> This phase uses a **Multi-Page Application (MPA)** structure for Vue.js, powered by Vite and the `Vite.AspNetCore` library. Each functional area (e.g., Admin Portal, User Self-Service) has its own entry point and is loaded on specific Razor Pages. See `docs/idp_vue_mpa_structure.md` for detailed configuration and usage instructions.
+
 - **3.1: Secure Admin API Foundation:** Create API controllers and secure them with an 'admin' role policy.
   - **Verification:** API endpoints return 401/403 unless the user is an authenticated admin.
   - **Agent Question:** "Phase 3.1 is complete. **May I proceed to Phase 3.2?**"
@@ -104,9 +107,16 @@
   - **Verification:** Admin APIs for clients/scopes are fully functional.
   - **Agent Question:** "Phase 3.2 is complete. **May I proceed to Phase 3.3?**"
 - **3.3: Vue.js Scaffolding:** Configure Vite.AspNetCore and Tailwind CSS. Set up the basic Vue app structure.
-  - **Verification:** A basic Vue page is served correctly by the application.
+  - **MPA Setup:**
+    - Install `Vite.AspNetCore` NuGet package.
+    - Configure `vite.config.js` with MPA entry points (e.g., `admin: './src/admin/main.js'`).
+    - Set `PackageDirectory: "ClientApp"` in `appsettings.Development.json`.
+    - Register Vite services in `Program.cs` with `AddViteServices()` and `UseViteDevelopmentServer()`.
+    - Enable tag helpers in `_ViewImports.cshtml`: `@addTagHelper *, Vite.AspNetCore`.
+  - **Verification:** A basic Vue page is served correctly by the application. The Vite dev server starts automatically in development.
   - **Agent Question:** "Phase 3.3 is complete. **May I proceed to Phase 3.4?**"
 - **3.4: Admin UI Implementation:** Build Vue components to consume the admin APIs for client/scope management.
+  - **MPA Usage:** Use `<script type="module" vite-src="~/src/admin/main.js"></script>` in Razor Pages to load the Admin app entry point.
   - **Verification:** The admin UI can create, read, update, and delete OIDC clients and scopes.
   - **Agent Question:** "Phase 3 is complete. **May I proceed to Phase 4.1?**"
 
@@ -124,6 +134,7 @@
   - **Verification:** All password validator unit tests pass.
   - **Agent Question:** "Phase 4.3 is complete. **May I proceed to Phase 4.4?**"
 - **4.4: API & UI for Policies:** Build the API and Vue UI for an admin to manage security policies.
+  - **MPA Note:** Use the same Admin MPA entry point (e.g., `src/admin/main.js`) and add routing or a new section for security policy management.
   - **Verification:** An admin can view and update security policies via the UI.
   - **Agent Question:** "Phase 4.4 is complete. **May I proceed to Phase 4.5?**"
 - **4.5: Integrate Policy System:** Register the new services and add password expiration checks.
@@ -135,6 +146,7 @@
 ## Phase 5: Production Hardening
 
 - **5.1: Email Service:** Implement a real email service (e.g., SMTP) and an admin UI to manage its settings.
+  - **MPA Note:** Email service settings UI can be part of the Admin MPA or a separate section within the Admin app.
   - **Verification:** The system can send emails for features like password reset.
   - **Agent Question:** "Phase 5.1 is complete. **May I proceed to Phase 5.2?**"
 - **5.2: Secret Management:** Define and implement a secure strategy for production secrets (e.g., env variables, Docker Secrets).
@@ -154,7 +166,11 @@
 
 ## Phase 6: User Account Management
 
+> **Vue.js MPA Architecture Note:**  
+> This phase introduces a **User Self-Service MPA** for account management features. Create a new entry point (e.g., `src/account-manage/main.js`) in `vite.config.js` for user-facing account pages, separate from the Admin app. See `docs/idp_vue_mpa_structure.md` for guidance.
+
 - **6.1: Account Management UI:** Create protected Razor Pages for users to manage their accounts.
+  - **MPA Setup:** Add `accountManage: './src/account-manage/main.js'` to `vite.config.js` inputs. Use `<script type="module" vite-src="~/src/account-manage/main.js"></script>` in the user account Razor Pages.
   - **Verification:** An authenticated user can access the `/Account/Manage` section.
   - **Agent Question:** "Phase 6.1 is complete. **May I proceed to Phase 6.2?**"
 - **6.2: Change Password:** Implement the change password feature for authenticated users.
@@ -166,3 +182,13 @@
 - **6.4: Login Activity View:** Display recent sign-in events for the current user.
   - **Verification:** A user can see a list of their recent login attempts.
   - **Agent Question:** "Phase 6 is complete. The project is finished. Congratulations!"
+
+---
+
+## Future Enhancements
+
+The following features are documented separately and can be implemented after the core project is complete:
+
+- **Multi-Factor Authentication (MFA):** See `docs/idp_mfa_req.md` for detailed TOTP-based MFA implementation requirements, including user enrollment, login flow integration, and account recovery.
+- **Content Security Policy (CSP):** See `docs/idp_future_enhancements.md` for CSP hardening guidelines.
+- **User Email Verification:** See `docs/idp_future_enhancements.md` for email verification flow requirements.
