@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - HybridAuth IdP Admin</title>
+    
+    @* Vite Dev Server for Tailwind CSS *@
+    <script type="module" vite-src="~/src/admin/shared/main.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex">
+        @* Sidebar Navigation *@
+        <aside id="admin-sidebar" class="w-64 bg-white shadow-lg fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out z-30">
+            <div class="flex flex-col h-full">
+                @* Logo *@
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <a href="/Admin" class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-bold text-gray-900">HybridAuth</h1>
+                            <p class="text-xs text-gray-500">Admin Portal</p>
+                        </div>
+                    </a>
+                    @* Mobile close button *@
+                    <button id="sidebar-close" class="md:hidden text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                @* Navigation Menu *@
+                <nav class="flex-1 overflow-y-auto py-6">
+                    <div class="px-3 space-y-1">
+                        @* Dashboard *@
+                        <a href="/Admin" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Index" ? "active" : "")">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                            </svg>
+                            <span>Dashboard</span>
+                        </a>
+
+                        @* OIDC Management Section *@
+                        <div class="pt-4 pb-2">
+                            <h3 class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">OIDC Management</h3>
+                        </div>
+                        
+                        <a href="/Admin/Clients" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Clients" ? "active" : "")">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                            <span>Clients</span>
+                        </a>
+
+                        <a href="/Admin/Scopes" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Scopes" ? "active" : "")">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                            <span>Scopes</span>
+                        </a>
+
+                        @* Identity Management Section (Phase 4) *@
+                        <div class="pt-4 pb-2">
+                            <h3 class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Identity Management</h3>
+                        </div>
+                        
+                        <a href="/Admin/Users" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Users" ? "active" : "")">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            <span>Users</span>
+                            <span class="ml-auto text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Phase 4</span>
+                        </a>
+
+                        <a href="/Admin/Roles" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Roles" ? "active" : "")">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                            <span>Roles</span>
+                            <span class="ml-auto text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Phase 4</span>
+                        </a>
+
+                        @* Settings Section *@
+                        <div class="pt-4 pb-2">
+                            <h3 class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Settings</h3>
+                        </div>
+                        
+                        <a href="/Admin/SecurityPolicies" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SecurityPolicies" ? "active" : "")">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                            <span>Security Policies</span>
+                            <span class="ml-auto text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Phase 5</span>
+                        </a>
+                    </div>
+                </nav>
+
+                @* User Profile *@
+                <div class="border-t border-gray-200 p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <span class="text-indigo-600 font-semibold text-sm">
+                                    @(User.Identity?.Name?.Substring(0, 2).ToUpper() ?? "AD")
+                                </span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900 truncate">@User.Identity?.Name</p>
+                                <p class="text-xs text-gray-500">Administrator</p>
+                            </div>
+                        </div>
+                        <a href="/Account/Logout" class="text-gray-400 hover:text-gray-600" title="Logout">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        @* Main Content Area *@
+        <div class="flex-1 md:pl-64">
+            @* Top Bar *@
+            <header class="bg-white shadow-sm sticky top-0 z-20">
+                <div class="flex items-center justify-between px-6 py-4">
+                    @* Mobile menu button *@
+                    <button id="sidebar-toggle" class="md:hidden text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+
+                    @* Breadcrumbs *@
+                    <nav class="hidden md:flex items-center space-x-2 text-sm">
+                        <a href="/Admin" class="text-gray-500 hover:text-gray-700">Admin</a>
+                        @if (!string.IsNullOrEmpty(ViewData["Breadcrumb"]?.ToString()))
+                        {
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                            <span class="text-gray-900 font-medium">@ViewData["Breadcrumb"]</span>
+                        }
+                    </nav>
+
+                    <div class="flex items-center space-x-4">
+                        @* Optional: Search bar placeholder *@
+                        <div class="hidden lg:block">
+                            <span class="text-sm text-gray-400">Search coming soon...</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            @* Page Content *@
+            <main class="p-6">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    @* Mobile Overlay *@
+    <div id="sidebar-overlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-20 md:hidden hidden"></div>
+
+    @* Mobile menu toggle script *@
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('admin-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            const closeBtn = document.getElementById('sidebar-close');
+
+            function openSidebar() {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            }
+
+            function closeSidebar() {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+
+            toggleBtn?.addEventListener('click', openSidebar);
+            closeBtn?.addEventListener('click', closeSidebar);
+            overlay?.addEventListener('click', closeSidebar);
+        });
+    </script>
+</body>
+</html>

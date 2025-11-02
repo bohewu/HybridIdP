@@ -2,17 +2,8 @@
 @model Web.IdP.Pages.Admin.ScopesModel
 @{
     ViewData["Title"] = "Scope Management";
+    ViewData["Breadcrumb"] = "Scopes";
 }
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - HybridAuth IdP</title>
-</head>
-<body>
-    <div id="app"></div>
-    <script type="module" vite-src="~/src/admin/scopes/main.js"></script>
-</body>
-</html>
+<div id="app"></div>
+<script type="module" vite-src="~/src/admin/scopes/main.js"></script>
