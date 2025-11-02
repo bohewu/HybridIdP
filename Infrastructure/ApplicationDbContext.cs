@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Domain;
+using Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
     // Implement the DbSet from IApplicationDbContext
     public new DbSet<ApplicationUser> Users => Set<ApplicationUser>();
+    
+    // Custom claim definitions (different from IdentityUserClaim)
+    DbSet<UserClaim> IApplicationDbContext.UserClaims => Set<UserClaim>();
+    public DbSet<ScopeClaim> ScopeClaims => Set<ScopeClaim>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -27,6 +32,36 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         
         // Configure OpenIddict to use the default ASP.NET Core Identity entity types
         builder.UseOpenIddict<Guid>();
+        
+        // Configure UserClaim entity
+        builder.Entity<UserClaim>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.ClaimType);
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.DisplayName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.ClaimType).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.UserPropertyPath).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.DataType).HasMaxLength(50).IsRequired();
+        });
+        
+        // Configure ScopeClaim entity
+        builder.Entity<ScopeClaim>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ScopeId, e.UserClaimId }).IsUnique();
+            entity.Property(e => e.ScopeId).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.ScopeName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.CustomMappingLogic).HasMaxLength(1000);
+            
+            // Configure relationship with UserClaim
+            entity.HasOne(e => e.UserClaim)
+                .WithMany(c => c.ScopeClaims)
+                .HasForeignKey(e => e.UserClaimId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.
         // For example, you can rename the ASP.NET Identity table names and more.
