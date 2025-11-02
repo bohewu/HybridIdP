@@ -119,12 +119,10 @@ public class AdminController : ControllerBase
             ClientId = request.ClientId,
             ClientSecret = request.ClientSecret,
             DisplayName = request.DisplayName ?? request.ClientId,
-            ConsentType = request.ConsentType ?? ConsentTypes.Explicit
+            ConsentType = request.ConsentType ?? ConsentTypes.Explicit,
+            ApplicationType = ApplicationTypes.Web,  // Web application type
+            ClientType = string.IsNullOrEmpty(request.ClientSecret) ? ClientTypes.Public : ClientTypes.Confidential
         };
-
-        // OpenIddict 6.x doesn't have Type property on descriptor
-        // Client type is inferred from whether ClientSecret is set
-        // Confidential if secret exists, Public if not
 
         // Add redirect URIs
         if (request.RedirectUris != null)
@@ -194,39 +192,74 @@ public class AdminController : ControllerBase
             return NotFound(new { message = $"Client with ID '{id}' not found." });
         }
 
-        var descriptor = new OpenIddictApplicationDescriptor
-        {
-            ClientId = request.ClientId ?? await _applicationManager.GetClientIdAsync(application),
-            ClientSecret = request.ClientSecret,
-            DisplayName = request.DisplayName ?? await _applicationManager.GetDisplayNameAsync(application),
-            ConsentType = request.ConsentType ?? await _applicationManager.GetConsentTypeAsync(application)
-        };
+        // Get descriptor populated from existing application to preserve all properties
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await _applicationManager.PopulateAsync(descriptor, application);
 
-        // OpenIddict 6.x doesn't have Type property on descriptor
-        // Client type is inferred from whether ClientSecret is set
-
-        // Handle redirect URIs
-        var redirectUris = request.RedirectUris?.Select(uri => new Uri(uri)) ?? 
-                          (await _applicationManager.GetRedirectUrisAsync(application)).Select(u => new Uri(u));
-        foreach (var uri in redirectUris)
+        // Ensure ApplicationType and ClientType are set (fix for existing apps without type)
+        if (string.IsNullOrEmpty(descriptor.ApplicationType))
         {
-            descriptor.RedirectUris.Add(uri);
+            descriptor.ApplicationType = ApplicationTypes.Web;
+        }
+        
+        if (string.IsNullOrEmpty(descriptor.ClientType))
+        {
+            // Determine based on whether there's currently a secret
+            var hasSecret = !string.IsNullOrEmpty(descriptor.ClientSecret);
+            descriptor.ClientType = hasSecret ? ClientTypes.Confidential : ClientTypes.Public;
         }
 
-        // Handle post logout redirect URIs
-        var postLogoutUris = request.PostLogoutRedirectUris?.Select(uri => new Uri(uri)) ?? 
-                            (await _applicationManager.GetPostLogoutRedirectUrisAsync(application)).Select(u => new Uri(u));
-        foreach (var uri in postLogoutUris)
+        // Update only the fields provided in the request
+        if (!string.IsNullOrWhiteSpace(request.ClientId))
         {
-            descriptor.PostLogoutRedirectUris.Add(uri);
+            descriptor.ClientId = request.ClientId;
         }
 
-        // Handle permissions
-        var existingPermissions = await _applicationManager.GetPermissionsAsync(application);
-        var permissions = request.Permissions ?? existingPermissions.ToList();
-        foreach (var permission in permissions)
+        if (!string.IsNullOrWhiteSpace(request.DisplayName))
         {
-            descriptor.Permissions.Add(permission);
+            descriptor.DisplayName = request.DisplayName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ConsentType))
+        {
+            descriptor.ConsentType = request.ConsentType;
+        }
+
+        // Only set ClientSecret if a new one is explicitly provided
+        if (!string.IsNullOrEmpty(request.ClientSecret))
+        {
+            descriptor.ClientSecret = request.ClientSecret;
+            descriptor.ClientType = ClientTypes.Confidential;  // Update type if adding/changing secret
+        }
+
+        // Handle redirect URIs - replace if provided
+        if (request.RedirectUris != null)
+        {
+            descriptor.RedirectUris.Clear();
+            foreach (var uri in request.RedirectUris)
+            {
+                descriptor.RedirectUris.Add(new Uri(uri));
+            }
+        }
+
+        // Handle post logout redirect URIs - replace if provided
+        if (request.PostLogoutRedirectUris != null)
+        {
+            descriptor.PostLogoutRedirectUris.Clear();
+            foreach (var uri in request.PostLogoutRedirectUris)
+            {
+                descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
+            }
+        }
+
+        // Handle permissions - replace if provided
+        if (request.Permissions != null)
+        {
+            descriptor.Permissions.Clear();
+            foreach (var permission in request.Permissions)
+            {
+                descriptor.Permissions.Add(permission);
+            }
         }
 
         await _applicationManager.PopulateAsync(application, descriptor);
