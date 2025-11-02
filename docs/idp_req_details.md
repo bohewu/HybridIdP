@@ -288,7 +288,7 @@ Add these quick verifications to ensure failure paths are correct:
     - Client type selection appears in create form with validation
     - Confidential clients require secrets; public clients cannot have secrets
     - Direct URL access to `/Admin/Clients` requires authentication.
-  - **Agent Question:** "Phase 3 is complete. **May I proceed to Phase 4.1?**"
+  - **Agent Question:** "Phase 3 is complete. **May I proceed to Phase 3.5?**"
 
   - **3.5: Admin UX Hardening and Bug Fixes**
     - Goal: Resolve correctness issues in the Clients list and edit form; expose summary data needed for large lists.
@@ -304,7 +304,7 @@ Add these quick verifications to ensure failure paths are correct:
       1. Create a client with at least one Redirect URI
       2. Return to list: count reflects the correct number
       3. Click Edit: fields are prefilled (URIs, permissions)
-    - Agent Question: "Phase 3.5 is complete. May I proceed to 3.6?"
+  - **Agent Question:** "Phase 3.5 is complete. **May I proceed to 3.6?**"
 
   - **3.6: Scalability & Validation (Implementation Next)**
     - Goal: Prepare for production-scale datasets and consistent client-side validation.
@@ -323,7 +323,7 @@ Add these quick verifications to ensure failure paths are correct:
       - Clients list supports paging/sorting/search and returns `totalCount`
       - Form has rich client-side validation with clear messages
       - OpenIddict configuration documented and aligned to enabled flows
-    - Agent Question: "Phase 3.6 is complete. May I proceed to Phase 4.1?"
+  - **Agent Question:** "Phase 3.6 is complete. **May I proceed to Phase 4.1?**"
 
 ---
 
