@@ -53,6 +53,73 @@ identity.AddClaim(new Claim("deparment", department));  // Typo!
 
 ---
 
+### Content Security Policy (CSP) Compliance
+
+**CRITICAL:** All Razor Pages (.cshtml files) MUST separate inline CSS and JavaScript into external files to comply with Content Security Policy best practices.
+
+**Implementation Rules:**
+
+1. **NO Inline `<style>` Tags:**
+   - ❌ WRONG: `<style>body { color: red; }</style>`
+   - ✅ CORRECT: Extract to `wwwroot/css/[page-name].css` and reference with `<link>`
+
+2. **NO Inline `<script>` Tags (except `type="module"` for Vue.js):**
+   - ❌ WRONG: `<script>alert('hello');</script>`
+   - ✅ CORRECT: Extract to `wwwroot/js/[page-name].js` and reference with `<script src>`
+   - ✅ EXCEPTION: Vue.js module scripts are allowed: `<script type="module" src="..."></script>`
+
+3. **NO Inline Style Attributes:**
+   - ❌ WRONG: `<div style="color: red; font-size: 14px;">Text</div>`
+   - ✅ CORRECT: Create CSS class in external stylesheet: `.custom-text { color: red; font-size: 14px; }`
+
+4. **NO Inline Event Handlers:**
+   - ❌ WRONG: `<button onclick="doSomething()">Click</button>`
+   - ✅ CORRECT: Use `addEventListener` in external JS file
+
+**File Organization:**
+
+```
+wwwroot/
+├── css/
+│   ├── site.css              # Global styles
+│   ├── admin-layout.css      # Admin layout specific styles
+│   └── [page-name].css       # Page-specific styles
+└── js/
+    ├── site.js               # Global scripts
+    ├── admin-layout.js       # Admin layout specific scripts
+    └── [page-name].js        # Page-specific scripts
+```
+
+**Razor Page Pattern:**
+
+```cshtml
+@page
+@model PageModel
+
+<head>
+    <!-- External CSS only -->
+    <link href="~/css/page-name.css" rel="stylesheet" asp-append-version="true">
+</head>
+
+<body>
+    <!-- Content with CSS classes only (no inline styles) -->
+    <div class="custom-class">Content</div>
+    
+    <!-- External JS at the end -->
+    <script src="~/js/page-name.js" asp-append-version="true"></script>
+</body>
+```
+
+**Benefits:**
+
+- Enables strict Content Security Policy headers
+- Improves security by preventing XSS attacks
+- Better caching and performance
+- Easier maintenance and debugging
+- Separation of concerns (structure/style/behavior)
+
+---
+
 ## Development Workflow
 
 1.  **Implement Sub-Phase:** I will complete one sub-phase at a time.
