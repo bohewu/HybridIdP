@@ -31,9 +31,22 @@ const handleCreate = () => {
   showForm.value = true
 }
 
-const handleEdit = (client) => {
-  selectedClient.value = client
-  showForm.value = true
+const handleEdit = async (client) => {
+  try {
+    // Fetch full client details for editing (redirect URIs, permissions, etc.)
+    const response = await fetch(`/api/admin/clients/${client.id}`)
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    const full = await response.json()
+    selectedClient.value = { ...client, ...full }
+  } catch (e) {
+    console.error('Failed to fetch client details:', e)
+    // Fall back to the partial object so the form still opens
+    selectedClient.value = client
+  } finally {
+    showForm.value = true
+  }
 }
 
 const handleDelete = async (clientId) => {

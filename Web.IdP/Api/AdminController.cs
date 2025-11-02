@@ -1,4 +1,5 @@
 using Core.Domain.Constants;
+using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
@@ -54,13 +55,23 @@ public class AdminController : ControllerBase
         
         await foreach (var application in _applicationManager.ListAsync())
         {
+            // Retrieve additional details for list display
+            var clientId = await _applicationManager.GetClientIdAsync(application);
+            var displayName = await _applicationManager.GetDisplayNameAsync(application);
+            var clientType = await _applicationManager.GetClientTypeAsync(application);
+            var consentType = await _applicationManager.GetConsentTypeAsync(application);
+            var applicationType = await _applicationManager.GetApplicationTypeAsync(application);
+            var redirectUris = await _applicationManager.GetRedirectUrisAsync(application);
+
             clients.Add(new
             {
                 id = await _applicationManager.GetIdAsync(application),
-                clientId = await _applicationManager.GetClientIdAsync(application),
-                displayName = await _applicationManager.GetDisplayNameAsync(application),
-                type = await _applicationManager.GetClientTypeAsync(application),
-                consentType = await _applicationManager.GetConsentTypeAsync(application)
+                clientId,
+                displayName,
+                type = clientType,
+                applicationType,
+                consentType,
+                redirectUrisCount = redirectUris.Count()
             });
         }
 
