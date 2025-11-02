@@ -1,0 +1,21 @@
+@page
+@using Microsoft.AspNetCore.Hosting
+@inject IWebHostEnvironment Environment
+@model Web.IdP.Pages.Admin.ClaimsModel
+@{
+    ViewData["Title"] = "Claims Management";
+    Layout = "_AdminLayout";
+}
+
+<div id="app"></div>
+
+@section Scripts {
+    @if (Environment.IsDevelopment())
+    {
+        <script type="module" src="http://localhost:5173/src/admin/claims/main.js"></script>
+    }
+    else
+    {
+        <script type="module" src="~/dist/admin-claims.js" asp-append-version="true"></script>
+    }
+}

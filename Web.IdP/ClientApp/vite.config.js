@@ -21,7 +21,8 @@ export default defineConfig({
         'admin-shared': './src/admin/shared/main.js',
         'admin-dashboard': './src/admin/dashboard/main.js',
         'admin-clients': './src/admin/clients/main.js',
-        'admin-scopes': './src/admin/scopes/main.js'
+        'admin-scopes': './src/admin/scopes/main.js',
+        'admin-claims': './src/admin/claims/main.js'
       }
     }
   },
