@@ -14,6 +14,7 @@ const isEdit = computed(() => props.client !== null)
 const formData = ref({
   clientId: '',
   displayName: '',
+  clientType: 'public', // Default to public
   clientSecret: '',
   redirectUris: '',
   postLogoutRedirectUris: '',
@@ -38,6 +39,7 @@ const resetForm = () => {
   formData.value = {
     clientId: '',
     displayName: '',
+    clientType: 'public',
     clientSecret: '',
     redirectUris: '',
     postLogoutRedirectUris: '',
@@ -51,6 +53,7 @@ watch(() => props.client, (newClient) => {
     formData.value = {
       clientId: newClient.clientId || '',
       displayName: newClient.displayName || '',
+      clientType: newClient.type === 'confidential' ? 'confidential' : 'public',
       clientSecret: '',
       redirectUris: newClient.redirectUris?.join('\n') || '',
       postLogoutRedirectUris: newClient.postLogoutRedirectUris?.join('\n') || '',
@@ -69,6 +72,7 @@ const handleSubmit = async () => {
     const payload = {
       clientId: formData.value.clientId,
       displayName: formData.value.displayName || null,
+      type: formData.value.clientType,
       clientSecret: formData.value.clientSecret || null,
       redirectUris: formData.value.redirectUris
         .split('\n')
@@ -169,19 +173,57 @@ const togglePermission = (permission) => {
                       />
                     </div>
 
+                    <!-- Client Type -->
+                    <div v-if="!isEdit">
+                      <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Client Type <span class="text-red-500">*</span>
+                      </label>
+                      <div class="space-y-2">
+                        <div class="flex items-center">
+                          <input
+                            id="type-public"
+                            v-model="formData.clientType"
+                            type="radio"
+                            value="public"
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                          />
+                          <label for="type-public" class="ml-3 block text-sm text-gray-700">
+                            <span class="font-medium">Public</span> - For SPAs, mobile apps, and desktop apps that cannot securely store secrets
+                          </label>
+                        </div>
+                        <div class="flex items-center">
+                          <input
+                            id="type-confidential"
+                            v-model="formData.clientType"
+                            type="radio"
+                            value="confidential"
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                          />
+                          <label for="type-confidential" class="ml-3 block text-sm text-gray-700">
+                            <span class="font-medium">Confidential</span> - For server-side apps that can securely store secrets (requires Client Secret)
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
                     <!-- Client Secret -->
                     <div>
                       <label for="clientSecret" class="block text-sm font-medium text-gray-700">
-                        Client Secret {{ isEdit ? '(leave empty to keep current)' : '' }}
+                        Client Secret {{ isEdit ? '(leave empty to keep current)' : formData.clientType === 'confidential' ? '' : '(not required for public clients)' }}
+                        <span v-if="!isEdit && formData.clientType === 'confidential'" class="text-red-500">*</span>
                       </label>
                       <input
                         id="clientSecret"
                         v-model="formData.clientSecret"
                         type="password"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        placeholder="Enter secret for confidential clients"
+                        :required="!isEdit && formData.clientType === 'confidential'"
+                        :disabled="!isEdit && formData.clientType === 'public'"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        :placeholder="formData.clientType === 'confidential' ? 'Enter a secure secret' : 'Not needed for public clients'"
                       />
-                      <p class="mt-1 text-xs text-gray-500">Leave empty for public clients (SPA, mobile apps)</p>
+                      <p class="mt-1 text-xs text-gray-500">
+                        {{ formData.clientType === 'confidential' ? 'Required for confidential clients' : 'Public clients cannot have secrets' }}
+                      </p>
                     </div>
 
                     <!-- Redirect URIs -->

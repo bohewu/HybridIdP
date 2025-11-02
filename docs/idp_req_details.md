@@ -231,6 +231,25 @@ Add these quick verifications to ensure failure paths are correct:
       - `admin-clients: './src/admin/clients/main.js'` for Client Management
       - `admin-scopes: './src/admin/scopes/main.js'` for Scope Management
     - Each Razor Page uses: `<script type="module" vite-src="~/src/admin/clients/main.js"></script>`
+  - **Client Management Features:**
+    - **Client Type Selection:** Administrators explicitly select client type when creating clients:
+      - **Public Clients:** For SPAs, mobile apps, desktop apps that cannot securely store secrets
+        - Validation: Cannot have a ClientSecret
+        - Use cases: JavaScript SPAs, React Native apps, Electron apps
+      - **Confidential Clients:** For server-side apps that can securely store secrets
+        - Validation: MUST have a ClientSecret (enforced by backend API)
+        - Use cases: ASP.NET Core web apps, Node.js servers, API gateways
+    - **Validation Logic:**
+      - Backend validates client type and secret combination during creation
+      - Confidential clients without secrets are rejected with error: "Confidential clients must have a ClientSecret"
+      - Public clients with secrets are rejected with error: "Public clients should not have a ClientSecret"
+      - Client type field is disabled during edit (immutable after creation)
+    - **UI Enhancements:**
+      - Radio button selection for client type with descriptive labels
+      - Client Secret field dynamically adjusts:
+        - Required and enabled for Confidential clients
+        - Disabled with helpful placeholder for Public clients
+      - Real-time help text updates based on selected type
   - **Structure:**
 
     ```text
@@ -245,7 +264,7 @@ Add these quick verifications to ensure failure paths are correct:
     ├── clients/
     │   ├── main.js              → Entry point for Clients page
     │   ├── ClientsApp.vue       → Root component
-    │   └── components/          → ClientList, ClientForm
+    │   └── components/          → ClientList, ClientForm (with type selection)
     └── scopes/
         ├── main.js              → Entry point for Scopes page
         ├── ScopesApp.vue        → Root component
@@ -256,6 +275,8 @@ Add these quick verifications to ensure failure paths are correct:
     - Each admin feature has its own Razor Page route (`/Admin/Clients`, `/Admin/Scopes`).
     - Server validates authorization on every page navigation.
     - The admin UI can create, read, update, and delete OIDC clients and scopes.
+    - Client type selection appears in create form with validation
+    - Confidential clients require secrets; public clients cannot have secrets
     - Direct URL access to `/Admin/Clients` requires authentication.
   - **Agent Question:** "Phase 3 is complete. **May I proceed to Phase 4.1?**"
 

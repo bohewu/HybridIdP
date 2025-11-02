@@ -114,6 +114,30 @@ public class AdminController : ControllerBase
             return Conflict(new { message = $"Client with ID '{request.ClientId}' already exists." });
         }
 
+        // Determine client type - use provided or infer from secret
+        var clientType = request.Type;
+        if (string.IsNullOrEmpty(clientType))
+        {
+            // If not specified, infer from secret presence
+            clientType = string.IsNullOrEmpty(request.ClientSecret) ? ClientTypes.Public : ClientTypes.Confidential;
+        }
+
+        // Validate client type and secret combination
+        if (clientType == ClientTypes.Confidential)
+        {
+            if (string.IsNullOrEmpty(request.ClientSecret))
+            {
+                return BadRequest(new { message = "Confidential clients must have a ClientSecret." });
+            }
+        }
+        else if (clientType == ClientTypes.Public)
+        {
+            if (!string.IsNullOrEmpty(request.ClientSecret))
+            {
+                return BadRequest(new { message = "Public clients should not have a ClientSecret. Remove the secret or select Confidential client type." });
+            }
+        }
+
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = request.ClientId,
@@ -121,7 +145,7 @@ public class AdminController : ControllerBase
             DisplayName = request.DisplayName ?? request.ClientId,
             ConsentType = request.ConsentType ?? ConsentTypes.Explicit,
             ApplicationType = ApplicationTypes.Web,  // Web application type
-            ClientType = string.IsNullOrEmpty(request.ClientSecret) ? ClientTypes.Public : ClientTypes.Confidential
+            ClientType = clientType
         };
 
         // Add redirect URIs
