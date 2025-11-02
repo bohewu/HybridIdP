@@ -14,6 +14,7 @@ const isEdit = computed(() => props.client !== null)
 const formData = ref({
   clientId: '',
   displayName: '',
+  applicationType: 'web', // Default to web
   clientType: 'public', // Default to public
   clientSecret: '',
   redirectUris: '',
@@ -21,16 +22,40 @@ const formData = ref({
   permissions: []
 })
 
+// All available permissions from OpenIddict
 const availablePermissions = [
-  'ept:authorization',
-  'ept:token',
-  'ept:logout',
-  'gt:authorization_code',
-  'gt:refresh_token',
-  'scp:openid',
-  'scp:profile',
-  'scp:email'
+  // Endpoints
+  { value: 'ept:authorization', label: 'Authorization Endpoint', category: 'Endpoints' },
+  { value: 'ept:token', label: 'Token Endpoint', category: 'Endpoints' },
+  { value: 'ept:logout', label: 'Logout Endpoint', category: 'Endpoints' },
+  { value: 'ept:introspection', label: 'Introspection Endpoint', category: 'Endpoints' },
+  { value: 'ept:revocation', label: 'Revocation Endpoint', category: 'Endpoints' },
+  { value: 'ept:device', label: 'Device Authorization Endpoint', category: 'Endpoints' },
+  // Grant Types
+  { value: 'gt:authorization_code', label: 'Authorization Code', category: 'Grant Types' },
+  { value: 'gt:client_credentials', label: 'Client Credentials', category: 'Grant Types' },
+  { value: 'gt:refresh_token', label: 'Refresh Token', category: 'Grant Types' },
+  { value: 'gt:device_code', label: 'Device Code', category: 'Grant Types' },
+  { value: 'gt:password', label: 'Password (Resource Owner)', category: 'Grant Types' },
+  { value: 'gt:implicit', label: 'Implicit', category: 'Grant Types' },
+  // Scopes
+  { value: 'scp:openid', label: 'OpenID', category: 'Scopes' },
+  { value: 'scp:profile', label: 'Profile', category: 'Scopes' },
+  { value: 'scp:email', label: 'Email', category: 'Scopes' },
+  { value: 'scp:roles', label: 'Roles', category: 'Scopes' }
 ]
+
+// Group permissions by category
+const permissionsByCategory = computed(() => {
+  const grouped = {}
+  availablePermissions.forEach(perm => {
+    if (!grouped[perm.category]) {
+      grouped[perm.category] = []
+    }
+    grouped[perm.category].push(perm)
+  })
+  return grouped
+})
 
 const submitting = ref(false)
 const error = ref(null)
@@ -39,6 +64,7 @@ const resetForm = () => {
   formData.value = {
     clientId: '',
     displayName: '',
+    applicationType: 'web',
     clientType: 'public',
     clientSecret: '',
     redirectUris: '',
@@ -53,6 +79,7 @@ watch(() => props.client, (newClient) => {
     formData.value = {
       clientId: newClient.clientId || '',
       displayName: newClient.displayName || '',
+      applicationType: newClient.applicationType || 'web',
       clientType: newClient.type === 'confidential' ? 'confidential' : 'public',
       clientSecret: '',
       redirectUris: newClient.redirectUris?.join('\n') || '',
@@ -72,6 +99,7 @@ const handleSubmit = async () => {
     const payload = {
       clientId: formData.value.clientId,
       displayName: formData.value.displayName || null,
+      applicationType: formData.value.applicationType,
       type: formData.value.clientType,
       clientSecret: formData.value.clientSecret || null,
       redirectUris: formData.value.redirectUris
@@ -173,6 +201,39 @@ const togglePermission = (permission) => {
                       />
                     </div>
 
+                    <!-- Application Type -->
+                    <div v-if="!isEdit">
+                      <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Application Type <span class="text-red-500">*</span>
+                      </label>
+                      <div class="space-y-2">
+                        <div class="flex items-center">
+                          <input
+                            id="app-type-web"
+                            v-model="formData.applicationType"
+                            type="radio"
+                            value="web"
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                          />
+                          <label for="app-type-web" class="ml-3 block text-sm text-gray-700">
+                            <span class="font-medium">Web</span> - Traditional web applications (default)
+                          </label>
+                        </div>
+                        <div class="flex items-center">
+                          <input
+                            id="app-type-native"
+                            v-model="formData.applicationType"
+                            type="radio"
+                            value="native"
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                          />
+                          <label for="app-type-native" class="ml-3 block text-sm text-gray-700">
+                            <span class="font-medium">Native</span> - Desktop/mobile apps with custom URI schemes
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
                     <!-- Client Type -->
                     <div v-if="!isEdit">
                       <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -262,30 +323,40 @@ const togglePermission = (permission) => {
                       <label class="block text-sm font-medium text-gray-700 mb-2">
                         Permissions <span class="text-red-500">*</span>
                       </label>
-                      <div class="grid grid-cols-2 gap-2">
-                        <div
-                          v-for="permission in availablePermissions"
-                          :key="permission"
-                          class="relative flex items-start"
-                        >
-                          <div class="flex h-5 items-center">
-                            <input
-                              :id="permission"
-                              type="checkbox"
-                              :checked="formData.permissions.includes(permission)"
-                              @change="togglePermission(permission)"
-                              class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                          </div>
-                          <div class="ml-3 text-sm">
-                            <label :for="permission" class="font-medium text-gray-700">
-                              {{ permission }}
-                            </label>
+                      
+                      <!-- Grouped by category -->
+                      <div class="space-y-4">
+                        <div v-for="(permissions, category) in permissionsByCategory" :key="category">
+                          <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                            {{ category }}
+                          </h4>
+                          <div class="grid grid-cols-2 gap-2">
+                            <div
+                              v-for="permission in permissions"
+                              :key="permission.value"
+                              class="relative flex items-start"
+                            >
+                              <div class="flex h-5 items-center">
+                                <input
+                                  :id="permission.value"
+                                  type="checkbox"
+                                  :checked="formData.permissions.includes(permission.value)"
+                                  @change="togglePermission(permission.value)"
+                                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                              </div>
+                              <div class="ml-3 text-sm">
+                                <label :for="permission.value" class="font-medium text-gray-700">
+                                  {{ permission.label }}
+                                </label>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <p class="mt-2 text-xs text-gray-500">
-                        ept = endpoint, gt = grant type, scp = scope
+                      
+                      <p class="mt-3 text-xs text-gray-500 border-t pt-2">
+                        💡 <strong>Tip:</strong> Most OAuth/OIDC flows need at minimum: Authorization Endpoint, Token Endpoint, Authorization Code grant, and OpenID scope.
                       </p>
                     </div>
                   </div>

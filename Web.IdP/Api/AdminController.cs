@@ -144,7 +144,7 @@ public class AdminController : ControllerBase
             ClientSecret = request.ClientSecret,
             DisplayName = request.DisplayName ?? request.ClientId,
             ConsentType = request.ConsentType ?? ConsentTypes.Explicit,
-            ApplicationType = ApplicationTypes.Web,  // Web application type
+            ApplicationType = request.ApplicationType ?? ApplicationTypes.Web,  // Default to web if not specified
             ClientType = clientType
         };
 
@@ -476,7 +476,8 @@ public class AdminController : ControllerBase
         string ClientId,
         string? ClientSecret,
         string? DisplayName,
-        string? Type,
+        string? ApplicationType,  // web, native
+        string? Type,  // public, confidential
         string? ConsentType,
         List<string>? RedirectUris,
         List<string>? PostLogoutRedirectUris,

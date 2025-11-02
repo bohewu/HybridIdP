@@ -232,24 +232,34 @@ Add these quick verifications to ensure failure paths are correct:
       - `admin-scopes: './src/admin/scopes/main.js'` for Scope Management
     - Each Razor Page uses: `<script type="module" vite-src="~/src/admin/clients/main.js"></script>`
   - **Client Management Features:**
+    - **Application Type Selection:** Choose the platform type for the client:
+      - **Web:** Traditional web applications (default) - server-side or SPA applications accessed via browser
+      - **Native:** Desktop/mobile applications - apps with custom URI schemes for redirect handling
     - **Client Type Selection:** Administrators explicitly select client type when creating clients:
       - **Public Clients:** For SPAs, mobile apps, desktop apps that cannot securely store secrets
         - Validation: Cannot have a ClientSecret
-        - Use cases: JavaScript SPAs, React Native apps, Electron apps
+        - Use cases: JavaScript SPAs (React, Vue, Angular), React Native apps, Electron apps, CLI tools
       - **Confidential Clients:** For server-side apps that can securely store secrets
         - Validation: MUST have a ClientSecret (enforced by backend API)
-        - Use cases: ASP.NET Core web apps, Node.js servers, API gateways
+        - Use cases: ASP.NET Core web apps, Node.js servers, Java Spring apps, API gateways, backend services
+    - **Comprehensive Permissions:** All OpenIddict-supported permissions grouped by category:
+      - **Endpoints:** Authorization, Token, Logout, Introspection, Revocation, Device Authorization
+      - **Grant Types:** Authorization Code, Client Credentials, Refresh Token, Device Code, Password (Resource Owner), Implicit
+      - **Scopes:** OpenID, Profile, Email, Roles
     - **Validation Logic:**
       - Backend validates client type and secret combination during creation
       - Confidential clients without secrets are rejected with error: "Confidential clients must have a ClientSecret"
       - Public clients with secrets are rejected with error: "Public clients should not have a ClientSecret"
-      - Client type field is disabled during edit (immutable after creation)
+      - Client type and application type fields are disabled during edit (immutable after creation)
     - **UI Enhancements:**
-      - Radio button selection for client type with descriptive labels
+      - Radio button selection for application type (Web/Native)
+      - Radio button selection for client type (Public/Confidential)
       - Client Secret field dynamically adjusts:
         - Required and enabled for Confidential clients
         - Disabled with helpful placeholder for Public clients
+      - Permissions grouped by category with descriptive labels (not just codes)
       - Real-time help text updates based on selected type
+      - Helpful tip about minimum required permissions for OAuth/OIDC flows
   - **Structure:**
 
     ```text
