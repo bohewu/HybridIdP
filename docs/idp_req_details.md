@@ -199,18 +199,72 @@ Add these quick verifications to ensure failure paths are correct:
 
 ---
 
-## Phase 3: Admin API & Management UI (Vue 3 & Tailwind)
+## Phase 3: Admin Portal & OIDC Entity Management (Vue 3 & Tailwind)
 
 > **Vue.js MPA Architecture Note:**  
 > This phase uses a **Multi-Page Application (MPA)** structure for Vue.js, powered by Vite and the `Vite.AspNetCore` library. Each functional area (e.g., Admin Portal, User Self-Service) has its own entry point and is loaded on specific Razor Pages. See `docs/idp_vue_mpa_structure.md` for detailed configuration and usage instructions.
 
-- **3.1: Secure Admin API Foundation:** Create API controllers and secure them with an 'admin' role policy.
-  - **Verification:** API endpoints return 401/403 unless the user is an authenticated admin.
+### Overview
+
+Phase 3 establishes the complete admin portal for managing all OIDC-related entities with a modern Vue.js + Tailwind CSS interface. This includes role-based navigation, entity CRUD operations, and comprehensive validation.
+
+- **3.1: Admin Layout & Navigation:** Create role-based admin layout with navigation menu.
+  - Goal: Professional admin portal with sidebar navigation and proper role checks.
+  - Backend:
+    - Create `_AdminLayout.cshtml` shared layout for all admin pages
+    - Add `[Authorize(Roles = AuthConstants.Roles.Admin)]` to base admin pages
+    - Remove/hide unnecessary pages (e.g., Privacy) from admin navigation
+  - Frontend:
+    - Shared Vue component: `AdminNav.vue` with menu items
+    - Responsive sidebar with icons (Dashboard, Clients, Permissions, Settings)
+    - Active route highlighting
+    - User profile dropdown with logout
+  - Navigation Structure:
+
+    ```text
+    Admin Portal
+    ├── Dashboard (Overview & Stats)
+    ├── OIDC Management
+    │   ├── Clients (Applications)
+    │   ├── Permissions (Scopes/Resources)
+    │   └── Authorization Policies
+    └── Settings
+        ├── Security Policies (Phase 4)
+        └── Admin Users (Phase 5)
+    ```
+
+  - Verification:
+    - Admin user sees navigation menu with all sections
+    - Non-admin users get 403 when accessing `/Admin/*`
+    - Active menu item is highlighted
+    - Privacy page removed from admin layout
   - **Agent Question:** "Phase 3.1 is complete. **May I proceed to Phase 3.2?**"
-- **3.2: API Implementation:** Implement CRUD for OIDC clients and scopes. Remove hardcoded test client.
-  - **Verification:** Admin APIs for clients/scopes are fully functional.
+
+- **3.2: Admin Dashboard:** Create overview page with statistics and quick actions.
+  - Goal: Provide admins with at-a-glance metrics and shortcuts.
+  - Backend:
+    - API: `GET /api/admin/dashboard/stats`
+    - Returns: `{ clientCount, permissionCount, recentClients: Client[], recentActivity: Activity[] }`
+  - Frontend:
+    - Vue SPA: `DashboardApp.vue`
+    - Stat cards: Total Clients, Total Permissions, Active Sessions
+    - Recent activity timeline
+    - Quick action buttons (Create Client, Create Permission)
+  - Verification:
+    - Dashboard shows accurate counts
+    - Recent items display correctly
+    - Quick actions navigate to create forms
   - **Agent Question:** "Phase 3.2 is complete. **May I proceed to Phase 3.3?**"
-- **3.3: Vue.js Scaffolding:** Configure Vite.AspNetCore and Tailwind CSS. Set up the basic Vue app structure.
+
+- **3.3: Secure Admin API Foundation:** Create API controllers and secure them with an 'admin' role policy.
+  - **Verification:** API endpoints return 401/403 unless the user is an authenticated admin.
+  - **Agent Question:** "Phase 3.3 is complete. **May I proceed to Phase 3.4?**"
+
+- **3.4: Client CRUD API Implementation:** Implement full CRUD for OIDC clients. Remove hardcoded test client.
+  - **Verification:** Admin APIs for clients are fully functional with validation.
+  - **Agent Question:** "Phase 3.4 is complete. **May I proceed to Phase 3.5?**"
+
+- **3.5: Vue.js Scaffolding:** Configure Vite.AspNetCore and Tailwind CSS. Set up the basic Vue app structure.
   - **MPA Setup:**
     - Install `Vite.AspNetCore` NuGet package.
     - Configure `vite.config.js` with MPA entry points (e.g., `admin: './src/admin/main.js'`).
@@ -218,8 +272,9 @@ Add these quick verifications to ensure failure paths are correct:
     - Register Vite services in `Program.cs` with `AddViteServices()` and `UseViteDevelopmentServer()`.
     - Enable tag helpers in `_ViewImports.cshtml`: `@addTagHelper *, Vite.AspNetCore`.
   - **Verification:** A basic Vue page is served correctly by the application. The Vite dev server starts automatically in development.
-  - **Agent Question:** "Phase 3.3 is complete. **May I proceed to Phase 3.4?**"
-- **3.4: Admin UI Implementation:** Build Vue components to consume the admin APIs for client/scope management.
+  - **Agent Question:** "Phase 3.5 is complete. **May I proceed to Phase 3.6?**"
+
+- **3.6: Client Management UI Implementation:** Build Vue components to consume the admin APIs for client management.
   - **Security-First Architecture (Backend Routes):**
     - **CRITICAL:** Each admin feature MUST have its own Razor Page with server-side authorization.
     - Create separate Razor Pages: `/Admin/Clients` and `/Admin/Scopes` (not client-side routes).
@@ -282,15 +337,16 @@ Add these quick verifications to ensure failure paths are correct:
     ```
 
   - **Verification:**
-    - Each admin feature has its own Razor Page route (`/Admin/Clients`, `/Admin/Scopes`).
+    - Each admin feature has its own Razor Page route (`/Admin/Dashboard`, `/Admin/Clients`).
     - Server validates authorization on every page navigation.
-    - The admin UI can create, read, update, and delete OIDC clients and scopes.
+    - The admin UI can create, read, update, and delete OIDC clients.
     - Client type selection appears in create form with validation
     - Confidential clients require secrets; public clients cannot have secrets
     - Direct URL access to `/Admin/Clients` requires authentication.
-  - **Agent Question:** "Phase 3 is complete. **May I proceed to Phase 3.5?**"
+    - Admin navigation menu shows correct active state
+  - **Agent Question:** "Phase 3.6 is complete. **May I proceed to Phase 3.7?**"
 
-  - **3.5: Admin UX Hardening and Bug Fixes**
+- **3.7: Client List UX Hardening:** Improve client list display and edit form data loading.
     - Goal: Resolve correctness issues in the Clients list and edit form; expose summary data needed for large lists.
     - API: `GET /api/admin/clients`
       - Include `applicationType` and `redirectUrisCount` (do not expose actual URIs)
@@ -300,71 +356,86 @@ Add these quick verifications to ensure failure paths are correct:
       - Accurate “X redirect URI(s)” per client in list
       - Public/Confidential matches server value
       - Edit modal prefilled with Redirect URIs and Permissions
-    - Verification:
-      1. Create a client with at least one Redirect URI
-      2. Return to list: count reflects the correct number
-      3. Click Edit: fields are prefilled (URIs, permissions)
-  - **Agent Question:** "Phase 3.5 is complete. **May I proceed to 3.6?**"
+  - Verification:
+    1. Create a client with at least one Redirect URI
+    2. Return to list: count reflects the correct number
+    3. Click Edit: fields are prefilled (URIs, permissions)
+  - **Agent Question:** "Phase 3.7 is complete. **May I proceed to 3.8?**"
 
-  - **3.6: Scalability & Validation (Implementation Next)**
-    - Goal: Prepare for production-scale datasets and consistent client-side validation.
-    - Server pagination/filter/sort for clients
-      - API: `GET /api/admin/clients?skip=0&take=25&search=&type=&sort=clientId:asc`
-      - Response: `{ items: ClientSummary[], totalCount: number }`
-      - DB indexing on `ClientId`, `ClientType`
-    - UI data grid: paging, sorting, quick search, filters (TanStack Table / PrimeVue DataTable / Vuetify)
-    - Client-side validation: Vee‑Validate + Zod; mirror backend rules (confidential requires secret; public forbids secret; per‑line URI validation)
-    - OpenIddict server guidance:
-      - Endpoints: authorize, token, logout; optional: introspect, revocation, device
-      - Grants: Authorization Code + PKCE, Refresh Token; optional Client Credentials; avoid Implicit
-      - Scopes: openid, profile, email, roles, API scopes
-      - Security: HTTPS in prod, PKCE for public clients, choose JWT vs reference tokens deliberately
-    - Acceptance:
-      - Clients list supports paging/sorting/search and returns `totalCount`
-      - Form has rich client-side validation with clear messages
-      - OpenIddict configuration documented and aligned to enabled flows
-  - **Agent Question:** "Phase 3.6 is complete. **May I proceed to Phase 3.7?**"
+- **3.8: Scalability & Validation**
+  - Goal: Prepare for production-scale datasets and consistent client-side validation.
+  - Server pagination/filter/sort for clients
+    - API: `GET /api/admin/clients?skip=0&take=25&search=&type=&sort=clientId:asc`
+    - Response: `{ items: ClientSummary[], totalCount: number }`
+    - DB indexing on `ClientId`, `ClientType`
+  - UI data grid: paging, sorting, quick search, filters (TanStack Table / PrimeVue DataTable / Vuetify)
+  - Client-side validation: Vee‑Validate + Zod; mirror backend rules (confidential requires secret; public forbids secret; per‑line URI validation)
+  - OpenIddict server guidance:
+    - Endpoints: authorize, token, logout; optional: introspect, revocation, device
+    - Grants: Authorization Code + PKCE, Refresh Token; optional Client Credentials; avoid Implicit
+    - Scopes: openid, profile, email, roles, API scopes
+    - Security: HTTPS in prod, PKCE for public clients, choose JWT vs reference tokens deliberately
+  - Acceptance:
+    - Clients list supports paging/sorting/search and returns `totalCount`
+    - Form has rich client-side validation with clear messages
+    - OpenIddict configuration documented and aligned to enabled flows
+  - **Agent Question:** "Phase 3.8 is complete. **May I proceed to Phase 3.9?**"
 
-  - **3.7: Permission Management (Scope CRUD)**
-    - Goal: Enable admins to create, edit, delete, and manage OIDC scopes/permissions dynamically.
-    - Backend:
-      - API endpoints: `GET /api/admin/permissions`, `GET /api/admin/permissions/{id}`, `POST /api/admin/permissions`, `PUT /api/admin/permissions/{id}`, `DELETE /api/admin/permissions/{id}`
-      - DTOs: PermissionSummary (Id, Name, DisplayName, Description, Type [Resource/Identity])
-      - Validation: Name required, must be unique, alphanumeric with underscores/hyphens
-      - Pagination/filtering: Similar to clients (skip/take/search/type/sort)
-    - Frontend:
-      - Vue SPA: `ClientApp/src/admin/permissions/PermissionsApp.vue`
-      - Components: PermissionList, PermissionForm
-      - Features: Create, edit, delete scopes; filter by type (Resource/Identity); search by name/display name
-      - Validation: Zod schema for name format, required fields
-      - UI shows scope usage count (how many clients use this scope)
-    - Structure:
+- **3.9: Permission Management (Scope CRUD)**
+  - Goal: Enable admins to create, edit, delete, and manage OIDC scopes/permissions dynamically.
+  - Backend:
+    - API endpoints: `GET /api/admin/permissions`, `GET /api/admin/permissions/{id}`, `POST /api/admin/permissions`, `PUT /api/admin/permissions/{id}`, `DELETE /api/admin/permissions/{id}`
+    - DTOs: PermissionSummary (Id, Name, DisplayName, Description, Type [Resource/Identity])
+    - Validation: Name required, must be unique, alphanumeric with underscores/hyphens
+    - Pagination/filtering: Similar to clients (skip/take/search/type/sort)
+  - Frontend:
+    - Vue SPA: `ClientApp/src/admin/permissions/PermissionsApp.vue`
+    - Components: PermissionList, PermissionForm
+    - Features: Create, edit, delete scopes; filter by type (Resource/Identity); search by name/display name
+    - Validation: Zod schema for name format, required fields
+    - UI shows scope usage count (how many clients use this scope)
+  - Structure:
 
-      ```text
-      Web.IdP/Pages/Admin/
-      └── Permissions.cshtml            → Permission Management
-      └── Permissions.cshtml.cs         → [Authorize(Roles = Admin)]
+    ```text
+    Web.IdP/Pages/Admin/
+    └── Permissions.cshtml            → Permission Management
+    └── Permissions.cshtml.cs         → [Authorize(Roles = Admin)]
 
-      Web.IdP/Api/
-      └── AdminController.cs            → Add permissions CRUD endpoints
+    Web.IdP/Api/
+    └── AdminController.cs            → Add permissions CRUD endpoints
 
-      ClientApp/src/admin/
-      └── permissions/
-          ├── main.js                   → Entry point
-          ├── PermissionsApp.vue        → Root component with list/form
-          └── components/
-              ├── PermissionList.vue    → Displays permissions table
-              └── PermissionForm.vue    → Create/edit modal
-      ```
+    ClientApp/src/admin/
+    └── permissions/
+        ├── main.js                   → Entry point
+        ├── PermissionsApp.vue        → Root component with list/form
+        └── components/
+            ├── PermissionList.vue    → Displays permissions table
+            └── PermissionForm.vue    → Create/edit modal
+    ```
 
-    - Verification:
-      - Admin can navigate to `/Admin/Permissions`
-      - Create new scope (e.g., `api.read`, display name "Read API Access")
-      - Edit scope display name and description
-      - Delete unused scope (validation: prevent deletion if used by clients)
-      - Search/filter permissions by name or type
-      - List shows usage count (number of clients using each scope)
-  - **Agent Question:** "Phase 3.7 is complete. **May I proceed to Phase 4.1?**"
+  - Verification:
+    - Admin can navigate to `/Admin/Permissions`
+    - Create new scope (e.g., `api.read`, display name "Read API Access")
+    - Edit scope display name and description
+    - Delete unused scope (validation: prevent deletion if used by clients)
+    - Search/filter permissions by name or type
+    - List shows usage count (number of clients using each scope)
+  - **Agent Question:** "Phase 3.9 is complete. **May I proceed to Phase 3.10?**"
+
+- **3.10: Cleanup & Refinement**
+  - Goal: Remove unused pages, improve admin layout consistency, add audit logging foundation.
+  - Tasks:
+    - Remove Privacy page from admin portal navigation
+    - Add `_AdminLayout.cshtml` with shared navigation to all admin pages
+    - Create audit logging infrastructure (log admin actions to database)
+    - Add "Last Modified" and "Created By" fields to Client/Permission entities
+    - Update all admin APIs to log create/update/delete actions
+  - Verification:
+    - Privacy link not visible in admin navigation
+    - All admin pages use consistent layout with navigation
+    - Admin actions are logged (view in database or future audit log UI)
+    - Client/Permission entities show creation and modification metadata
+  - **Agent Question:** "Phase 3.10 is complete. Phase 3 complete! **May I proceed to Phase 4.1?**"
 
 ---
 
