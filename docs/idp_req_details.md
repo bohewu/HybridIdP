@@ -131,6 +131,20 @@ Cleanup after verification:
 taskkill /F /IM dotnet.exe /T
 ```
 
+### Negative E2E checks (deliberate failures)
+
+Add these quick verifications to ensure failure paths are correct:
+
+1. Invalid legacy password
+
+- Steps: Start both apps → go to IdP Login via TestClient → enter any email (e.g., `jane@example.com`) and a wrong password (not `LegacyDev@123`) → click Login.
+- Expect: Remain on IdP Login; an error message “Invalid login attempt.” is shown; no consent screen appears.
+
+1. Optional: Deny consent
+
+- Steps: Login successfully → on consent page click “Deny”.
+- Expect: The client receives an access denied error and the user is not authenticated.
+
 - **2.4: Custom Claims Factory:** Implement a claims factory to add custom claims from the user profile.
   - **Verification:** Custom claims appear in the user's token/cookie after login.
   - **Agent Question:** "Phase 2 is complete. **May I proceed to Phase 3.1?**"
