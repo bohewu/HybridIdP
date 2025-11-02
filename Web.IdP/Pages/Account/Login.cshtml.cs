@@ -95,7 +95,20 @@ public class LoginModel : PageModel
                 }
             }
 
-            // Phase 2.3: Delegate to legacy auth, then JIT provision and sign-in
+            // Phase 2.3: Try local account first, then legacy auth with JIT provisioning
+            // First, try local account authentication (for admin and other local users)
+            var localUser = await _signInManager.UserManager.FindByNameAsync(Input.Email);
+            if (localUser != null)
+            {
+                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("User logged in with local account.");
+                    return LocalRedirect(returnUrl);
+                }
+            }
+
+            // If local auth failed or user doesn't exist locally, try legacy auth + JIT
             var legacyResult = await _legacyAuthService.ValidateAsync(Input.Email, Input.Password);
             if (!legacyResult.IsAuthenticated)
             {

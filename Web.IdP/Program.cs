@@ -12,6 +12,7 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddControllers(); // Add controllers for API endpoints
 builder.Services.AddRazorPages();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -108,6 +109,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+app.MapControllers(); // Map API controller endpoints
 app.MapRazorPages()
    .WithStaticAssets();
 
