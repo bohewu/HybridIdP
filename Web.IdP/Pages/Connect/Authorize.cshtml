@@ -1,0 +1,72 @@
+@page
+@model Web.IdP.Pages.Connect.AuthorizeModel
+@{
+    ViewData["Title"] = "Authorize Application";
+}
+
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <h2 class="card-title text-center mb-4">@ViewData["Title"]</h2>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <strong>@Model.ApplicationName</strong> is requesting access to your account.
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.Scope))
+                    {
+                        <div class="mb-4">
+                            <h5>This application will be able to:</h5>
+                            <ul class="list-group">
+                                @foreach (var scope in Model.Scope.Split(' '))
+                                {
+                                    <li class="list-group-item">
+                                        @if (scope == "openid")
+                                        {
+                                            <i class="bi bi-person-badge"></i> <strong>Verify your identity</strong>
+                                        }
+                                        else if (scope == "email")
+                                        {
+                                            <i class="bi bi-envelope"></i> <strong>Access your email address</strong>
+                                        }
+                                        else if (scope == "profile")
+                                        {
+                                            <i class="bi bi-person"></i> <strong>Access your profile information</strong>
+                                        }
+                                        else if (scope == "roles")
+                                        {
+                                            <i class="bi bi-shield-check"></i> <strong>Access your roles</strong>
+                                        }
+                                        else
+                                        {
+                                            <strong>@scope</strong>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    <form method="post">
+                        <div class="d-grid gap-2">
+                            <button type="submit" name="submit" value="allow" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> Allow Access
+                            </button>
+                            <button type="submit" name="submit" value="deny" class="btn btn-danger">
+                                <i class="bi bi-x-circle"></i> Deny
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            By allowing access, you agree to share the requested information with this application.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
