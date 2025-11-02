@@ -1,4 +1,6 @@
 using Infrastructure;
+using Infrastructure.Identity;
+using Infrastructure.Services;
 using Core.Application;
 using Core.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -75,6 +77,9 @@ builder.Services.AddMvc()
 // Register Turnstile service and HttpClient
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<ITurnstileService, TurnstileService>();
+// JIT & Legacy services
+builder.Services.AddScoped<IJitProvisioningService, JitProvisioningService>();
+builder.Services.AddScoped<ILegacyAuthService, LegacyAuthService>();
 
 var app = builder.Build();
 
