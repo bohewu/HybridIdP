@@ -1,0 +1,24 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace TestClient.Controllers;
+
+public class AccountController : Controller
+{
+    [Authorize]
+    public async Task<IActionResult> Profile()
+    {
+        // Get the access token
+        var accessToken = await HttpContext.GetTokenAsync("access_token");
+        ViewData["AccessToken"] = accessToken;
+        
+        return View();
+    }
+
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync("Cookies");
+        return RedirectToAction("Index", "Home");
+    }
+}

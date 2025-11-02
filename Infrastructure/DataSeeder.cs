@@ -126,12 +126,14 @@ public static class DataSeeder
                 RedirectUris =
                 {
                     new Uri("https://localhost:5001/signin-oidc"),
-                    new Uri("https://localhost:7001/signin-oidc")
+                        new Uri("https://localhost:7001/signin-oidc"),
+                        new Uri("https://localhost:7170/signin-oidc")
                 },
                 PostLogoutRedirectUris =
                 {
                     new Uri("https://localhost:5001/signout-callback-oidc"),
-                    new Uri("https://localhost:7001/signout-callback-oidc")
+                        new Uri("https://localhost:7001/signout-callback-oidc"),
+                        new Uri("https://localhost:7170/signout-callback-oidc")
                 }
             });
         }

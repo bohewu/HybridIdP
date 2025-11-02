@@ -1,0 +1,44 @@
+@{
+    ViewData["Title"] = "User Profile";
+}
+
+<div class="container mt-5">
+    <h2>User Profile</h2>
+    
+    <div class="card mt-3">
+        <div class="card-header">
+            <h5>User Claims</h5>
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Claim Type</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var claim in User.Claims)
+                    {
+                        <tr>
+                            <td>@claim.Type</td>
+                            <td>@claim.Value</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (ViewData["AccessToken"] != null)
+    {
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5>Access Token</h5>
+            </div>
+            <div class="card-body">
+                <textarea class="form-control" rows="5" readonly>@ViewData["AccessToken"]</textarea>
+            </div>
+        </div>
+    }
+</div>
