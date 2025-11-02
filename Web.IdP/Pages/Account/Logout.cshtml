@@ -1,0 +1,31 @@
+@page
+@model Web.IdP.Pages.Account.LogoutModel
+@{
+    ViewData["Title"] = "Log out";
+}
+
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body p-4 text-center">
+                    <h2 class="card-title mb-4">@ViewData["Title"]</h2>
+                    
+                    @if (Model.ShowLogoutPrompt)
+                    {
+                        <p class="mb-4">Are you sure you want to log out?</p>
+                        <form method="post">
+                            <button type="submit" class="btn btn-danger">Yes, Log out</button>
+                            <a asp-page="/Index" class="btn btn-secondary">Cancel</a>
+                        </form>
+                    }
+                    else
+                    {
+                        <p class="text-success mb-4">You have been successfully logged out.</p>
+                        <a asp-page="/Index" class="btn btn-primary">Return to Home</a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
