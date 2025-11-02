@@ -10,6 +10,49 @@
 
 ---
 
+## Coding Standards and Best Practices
+
+### Use Constants for Magic Strings
+
+**CRITICAL:** All role names, claim types, scope names, and other string identifiers MUST be defined as constants to prevent typos and improve maintainability.
+
+**Implementation:**
+
+- All authentication/authorization constants are centralized in `Core.Domain.Constants.AuthConstants`
+- This includes:
+  - **Role Names:** `AuthConstants.Roles.Admin`, `AuthConstants.Roles.User`
+  - **Claim Types:** `AuthConstants.Claims.PreferredUsername`, `AuthConstants.Claims.Department`
+  - **OIDC Scopes:** `AuthConstants.Scopes.OpenId`, `AuthConstants.Scopes.Email`, etc.
+  - **Default Admin Credentials:** `AuthConstants.DefaultAdmin.Email`, `AuthConstants.DefaultAdmin.Password`
+  - **Resource Identifiers:** `AuthConstants.Resources.ResourceServer`
+
+**Usage Example:**
+
+```csharp
+// ✅ CORRECT - Using constants
+[Authorize(Roles = AuthConstants.Roles.Admin)]
+public class AdminController : ControllerBase { }
+
+await userManager.AddToRoleAsync(user, AuthConstants.Roles.Admin);
+
+identity.AddClaim(new Claim(AuthConstants.Claims.Department, department));
+
+// ❌ WRONG - Magic strings (error-prone)
+[Authorize(Roles = "Admin")]  // Typo risk!
+await userManager.AddToRoleAsync(user, "admin");  // Case mismatch!
+identity.AddClaim(new Claim("deparment", department));  // Typo!
+```
+
+**Benefits:**
+
+- Prevents typos and case sensitivity issues
+- Enables IntelliSense/autocomplete
+- Single source of truth for all identifiers
+- Easier refactoring and maintenance
+- Compile-time checking instead of runtime errors
+
+---
+
 ## Development Workflow
 
 1.  **Implement Sub-Phase:** I will complete one sub-phase at a time.

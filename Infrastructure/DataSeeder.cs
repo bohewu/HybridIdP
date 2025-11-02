@@ -1,4 +1,5 @@
 using Core.Domain;
+using Core.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
@@ -35,7 +36,7 @@ public static class DataSeeder
 
     private static async Task SeedRolesAsync(RoleManager<IdentityRole<Guid>> roleManager)
     {
-        string[] roles = { "Admin", "User" };
+        string[] roles = { AuthConstants.Roles.Admin, AuthConstants.Roles.User };
 
         foreach (var role in roles)
         {
@@ -50,25 +51,22 @@ public static class DataSeeder
         UserManager<ApplicationUser> userManager, 
         RoleManager<IdentityRole<Guid>> roleManager)
     {
-        const string adminEmail = "admin@hybridauth.local";
-        const string adminPassword = "Admin@123"; // TODO: Change this in production
-
-        var adminUser = await userManager.FindByEmailAsync(adminEmail);
+        var adminUser = await userManager.FindByEmailAsync(AuthConstants.DefaultAdmin.Email);
         
         if (adminUser == null)
         {
             adminUser = new ApplicationUser
             {
-                UserName = adminEmail,
-                Email = adminEmail,
+                UserName = AuthConstants.DefaultAdmin.Email,
+                Email = AuthConstants.DefaultAdmin.Email,
                 EmailConfirmed = true
             };
 
-            var result = await userManager.CreateAsync(adminUser, adminPassword);
+            var result = await userManager.CreateAsync(adminUser, AuthConstants.DefaultAdmin.Password);
 
             if (result.Succeeded)
             {
-                await userManager.AddToRoleAsync(adminUser, "Admin");
+                await userManager.AddToRoleAsync(adminUser, AuthConstants.Roles.Admin);
             }
         }
     }
@@ -77,10 +75,10 @@ public static class DataSeeder
     {
         var scopes = new[]
         {
-            new { Name = "openid", DisplayName = "OpenID", Description = "OpenID scope" },
-            new { Name = "email", DisplayName = "Email", Description = "Email scope" },
-            new { Name = "profile", DisplayName = "Profile", Description = "Profile scope" },
-            new { Name = "roles", DisplayName = "Roles", Description = "User roles" }
+            new { Name = AuthConstants.Scopes.OpenId, DisplayName = "OpenID", Description = "OpenID scope" },
+            new { Name = AuthConstants.Scopes.Email, DisplayName = "Email", Description = "Email scope" },
+            new { Name = AuthConstants.Scopes.Profile, DisplayName = "Profile", Description = "Profile scope" },
+            new { Name = AuthConstants.Scopes.Roles, DisplayName = "Roles", Description = "User roles" }
         };
 
         foreach (var scope in scopes)
@@ -94,7 +92,7 @@ public static class DataSeeder
                     Description = scope.Description,
                     Resources =
                     {
-                        "resource_server"
+                        AuthConstants.Resources.ResourceServer
                     }
                 });
             }

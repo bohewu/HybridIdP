@@ -1,4 +1,5 @@
 using Core.Domain;
+using Core.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
@@ -20,9 +21,9 @@ public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Applicati
 
         // Ensure preferred_username claim for downstream clients
         var preferredUsername = user.Email ?? user.UserName ?? string.Empty;
-        if (!string.IsNullOrEmpty(preferredUsername) && !identity.HasClaim(c => c.Type == "preferred_username"))
+        if (!string.IsNullOrEmpty(preferredUsername) && !identity.HasClaim(c => c.Type == AuthConstants.Claims.PreferredUsername))
         {
-            identity.AddClaim(new Claim("preferred_username", preferredUsername));
+            identity.AddClaim(new Claim(AuthConstants.Claims.PreferredUsername, preferredUsername));
         }
 
         return identity;

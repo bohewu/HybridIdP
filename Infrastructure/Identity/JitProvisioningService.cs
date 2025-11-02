@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 
@@ -49,7 +50,7 @@ public class JitProvisioningService : IJitProvisioningService
             }
             if (!string.IsNullOrWhiteSpace(dto.Department))
             {
-                claimsToAdd.Add(new Claim("department", dto.Department));
+                claimsToAdd.Add(new Claim(AuthConstants.Claims.Department, dto.Department));
             }
             if (claimsToAdd.Count > 0)
             {
@@ -77,7 +78,7 @@ public class JitProvisioningService : IJitProvisioningService
             }
             if (!string.IsNullOrWhiteSpace(dto.Department))
             {
-                claimsToAdd.Add(new Claim("department", dto.Department));
+                claimsToAdd.Add(new Claim(AuthConstants.Claims.Department, dto.Department));
             }
             if (claimsToAdd.Count > 0)
             {

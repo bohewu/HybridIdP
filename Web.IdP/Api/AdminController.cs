@@ -1,3 +1,4 @@
+using Core.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -5,11 +6,11 @@ namespace Web.IdP.Api;
 
 /// <summary>
 /// Admin API controller for management operations.
-/// All endpoints require the 'admin' role.
+/// All endpoints require the Admin role.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = AuthConstants.Roles.Admin)]
 public class AdminController : ControllerBase
 {
     /// <summary>

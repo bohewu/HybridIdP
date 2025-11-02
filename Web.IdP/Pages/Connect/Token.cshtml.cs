@@ -1,4 +1,5 @@
 using Core.Domain;
+using Core.Domain.Constants;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -108,12 +109,12 @@ public class TokenModel : PageModel
                 yield break;
 
             // Custom claims we want in both tokens for client-side display
-            case "preferred_username":
+            case AuthConstants.Claims.PreferredUsername:
                 yield return Destinations.AccessToken;
                 yield return Destinations.IdentityToken;
                 yield break;
 
-            case "department":
+            case AuthConstants.Claims.Department:
                 yield return Destinations.AccessToken;
                 yield return Destinations.IdentityToken;
                 yield break;
