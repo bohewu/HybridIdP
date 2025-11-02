@@ -30,8 +30,8 @@ public static class DataSeeder
         // Seed OpenIddict scopes
         await SeedScopesAsync(scopeManager);
 
-        // Seed OpenIddict test application (will be removed in Phase 3.2)
-        await SeedTestApplicationAsync(applicationManager);
+        // Note: Test client seeding removed in Phase 3.2 - use Admin API to manage clients dynamically
+        // await SeedTestApplicationAsync(applicationManager);
     }
 
     private static async Task SeedRolesAsync(RoleManager<IdentityRole<Guid>> roleManager)
