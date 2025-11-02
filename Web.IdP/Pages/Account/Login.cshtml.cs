@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Core.Application;
 using Core.Domain;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -10,13 +11,19 @@ namespace Web.IdP.Pages.Account;
 public class LoginModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly ITurnstileService _turnstileService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<LoginModel> _logger;
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
+        ITurnstileService turnstileService,
+        IConfiguration configuration,
         ILogger<LoginModel> logger)
     {
         _signInManager = signInManager;
+        _turnstileService = turnstileService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -24,6 +31,9 @@ public class LoginModel : PageModel
     public InputModel Input { get; set; } = default!;
 
     public string? ReturnUrl { get; set; }
+    
+    public bool TurnstileEnabled => _configuration.GetValue<bool>("Turnstile:Enabled");
+    public string TurnstileSiteKey => _configuration["Turnstile:SiteKey"] ?? string.Empty;
 
     public class InputModel
     {
@@ -58,6 +68,27 @@ public class LoginModel : PageModel
 
         if (ModelState.IsValid)
         {
+            // Validate Turnstile if enabled
+            if (TurnstileEnabled)
+            {
+                var turnstileResponse = Request.Form["cf-turnstile-response"].ToString();
+                if (string.IsNullOrEmpty(turnstileResponse))
+                {
+                    ModelState.AddModelError(string.Empty, "Please complete the CAPTCHA verification.");
+                    return Page();
+                }
+
+                var isValid = await _turnstileService.ValidateTokenAsync(
+                    turnstileResponse,
+                    HttpContext.Connection.RemoteIpAddress?.ToString());
+
+                if (!isValid)
+                {
+                    ModelState.AddModelError(string.Empty, "CAPTCHA validation failed. Please try again.");
+                    return Page();
+                }
+            }
+
             // This doesn't count login failures towards account lockout
             // To enable password failures to trigger account lockout, set lockoutOnFailure: true
             var result = await _signInManager.PasswordSignInAsync(

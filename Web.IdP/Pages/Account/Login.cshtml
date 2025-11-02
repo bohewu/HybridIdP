@@ -33,6 +33,13 @@
                             <label asp-for="Input.RememberMe" class="form-check-label"></label>
                         </div>
                         
+                        @if (Model.TurnstileEnabled)
+                        {
+                            <div class="mb-3">
+                                <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey"></div>
+                            </div>
+                        }
+                        
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-lg">Login</button>
                         </div>
@@ -48,5 +55,9 @@
 </div>
 
 @section Scripts {
+    @if (Model.TurnstileEnabled)
+    {
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    }
     <partial name="_ValidationScriptsPartial" />
 }

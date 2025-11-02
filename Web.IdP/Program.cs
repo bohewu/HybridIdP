@@ -72,6 +72,10 @@ builder.Services.AddMvc()
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
     .AddDataAnnotationsLocalization();
 
+// Register Turnstile service and HttpClient
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<ITurnstileService, TurnstileService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
