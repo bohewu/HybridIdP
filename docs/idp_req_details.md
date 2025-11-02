@@ -65,6 +65,15 @@ identity.AddClaim(new Claim("deparment", department));  // Typo!
 
 ## Testing Best Practices
 
+### Development & Testing Setup
+
+- **Complete Testing Guidelines:** See `docs/dev_testing_guide.md` for comprehensive instructions on:
+  - Correct startup sequence (Database → IdP → Vite dev server)
+  - Vite configuration and manual dev server management
+  - Default locale (zh-TW) and language settings
+  - Bootstrap 5 + Vue.js hybrid architecture
+  - Common troubleshooting and cleanup procedures
+
 ### Process Management
 
 - **Terminate Processes Between Tests:** After completing verification of a phase, stop any running `dotnet.exe` processes before starting the next phase's verification.
@@ -199,88 +208,107 @@ Add these quick verifications to ensure failure paths are correct:
 
 ---
 
-## Phase 3: Admin Portal & OIDC Entity Management (Vue 3 & Tailwind)
+## Phase 3: Admin Portal & OIDC Entity Management (Hybrid Architecture)
 
-> **Vue.js MPA Architecture Note:**  
-> This phase uses a **Multi-Page Application (MPA)** structure for Vue.js, powered by Vite and the `Vite.AspNetCore` library. Each functional area (e.g., Admin Portal, User Self-Service) has its own entry point and is loaded on specific Razor Pages. See `docs/idp_vue_mpa_structure.md` for detailed configuration and usage instructions.
+> **Hybrid Architecture Note:**  
+> This phase uses a **hybrid architecture** combining the strengths of server-side rendering and client-side interactivity:
+> - **Bootstrap 5 (CDN)**: Used for `_AdminLayout.cshtml` (sidebar, header, footer) - stable, no build required, works without Vite
+> - **Vue.js 3 + Tailwind CSS (Vite)**: Used for main content areas within each admin page - interactive CRUD interfaces
+> - **Backend Authorization**: Each Razor Page validates `[Authorize(Roles = AuthConstants.Roles.Admin)]` ensuring server-side security
+> - **MPA Structure**: Each admin feature has its own Razor Page (route) with dedicated Vue.js SPA entry point
+> 
+> See `docs/idp_vue_mpa_structure.md` for MPA configuration and `docs/dev_testing_guide.md` for Bootstrap + Vue integration details.
 
 ### Overview
 
-Phase 3 establishes the complete admin portal for managing all OIDC-related entities with a modern Vue.js + Tailwind CSS interface. This includes role-based navigation, entity CRUD operations, and comprehensive validation.
+Phase 3 establishes the complete admin portal with a secure hybrid architecture:
+- **Server-side security**: Razor Pages control routing and authorization (Backend → Frontend)
+- **Client-side interactivity**: Vue.js SPAs handle CRUD operations with Tailwind CSS styling
+- **Separation of concerns**: Bootstrap for stable layout structure, Vue for dynamic content areas
 
 - **3.1: Admin Layout & Navigation:** Create role-based admin layout with navigation menu.
-  - Goal: Professional admin portal with sidebar navigation and proper role checks.
-  - Backend:
-    - Create `_AdminLayout.cshtml` shared layout for all admin pages
-    - Add `[Authorize(Roles = AuthConstants.Roles.Admin)]` to base admin pages
-    - Remove/hide unnecessary pages (e.g., Privacy) from admin navigation
-  - Frontend:
-    - Shared Vue component: `AdminNav.vue` with menu items
-    - **Modern UI Design** (Popular Admin Styles):
-      - **Sidebar Layout:** Left sidebar navigation (collapsible on mobile)
-      - **Clean & Minimal:** White/light gray background, subtle shadows
-      - **Color Scheme:** Primary brand color (indigo-600), success/warning/danger states
-      - **Typography:** Clear hierarchy with Tailwind typography utilities
-      - **Icons:** Heroicons or Lucide icons for navigation items
-      - **Hover Effects:** Subtle background color change, smooth transitions
-      - **Active State:** Left border accent or background highlight
-      - **Components:**
-        - Top bar: App logo, breadcrumbs, search bar (optional), user menu
-        - Sidebar: Grouped menu items with icons, collapse/expand sections
-        - Content area: Max-width container with proper padding
-        - Cards: Rounded corners, shadow-sm, hover:shadow-md
-        - Tables: Striped rows, sticky header, hover row highlight
-        - Forms: Floating labels or clear labels, validation states
-        - Buttons: Solid primary, outline secondary, ghost for tertiary actions
-      - **Responsive:** Mobile-first with hamburger menu, slide-out sidebar
-      - **Dark Mode Ready:** Use Tailwind dark mode classes (future enhancement)
-    - Responsive sidebar with icons (Dashboard, Clients, Permissions, Users, Roles, Settings)
-    - Active route highlighting
-    - User profile dropdown with logout
+  - Goal: Professional admin portal with sidebar navigation and server-side authorization.
+  - **Architecture Decision (COMPLETED)**: 
+    - **Bootstrap 5 for Layout**: `_AdminLayout.cshtml` uses Bootstrap 5 (CDN) for outer frame
+    - **Why Bootstrap?**: Stable, no build dependency, works without Vite dev server, SEO-friendly
+    - **Vue.js for Content**: Main content areas use Vue.js SPAs with Tailwind CSS
+  - Backend (COMPLETED):
+    - ✅ `_AdminLayout.cshtml` with Bootstrap 5 (CDN: 5.3.2)
+    - ✅ Bootstrap Icons (1.11.1) for navigation
+    - ✅ Each admin page has `[Authorize(Roles = AuthConstants.Roles.Admin)]` - **server-side security**
+    - ✅ Custom CSS embedded in layout (sidebar: 260px fixed, responsive mobile sidebar)
+  - Frontend Layout Features (COMPLETED):
+    - ✅ **Sidebar (Bootstrap 5)**:
+      - Fixed 260px width with sticky navigation
+      - Logo/brand section with gradient icon
+      - Navigation sections: OIDC Management, Identity Management (Phase 4), Settings
+      - Active route highlighting (server-side via `ViewData["Breadcrumb"]`)
+      - User profile section at bottom with avatar and logout
+    - ✅ **Responsive Design**:
+      - Mobile: Sidebar hidden by default, slide-out with overlay on toggle
+      - Hamburger menu button (`.navbar-toggler`)
+      - Smooth CSS transitions for sidebar animation
+    - ✅ **Main Content Area**:
+      - Header with breadcrumbs (e.g., "Admin / Clients")
+      - Content container with proper padding
+      - Footer with copyright and links
+    - ✅ **Bootstrap Components Used**:
+      - Navigation: `.nav`, `.nav-link`, `.active`
+      - Layout: `.container-fluid`, `.d-flex`, `.flex-column`
+      - Utilities: `.text-muted`, `.border-top`, `.shadow-sm`
+      - Icons: Bootstrap Icons (`.bi-speedometer2`, `.bi-grid`, etc.)
   - Navigation Structure:
 
     ```text
-    Admin Portal
-    ├── Dashboard (Overview & Stats)
-    ├── OIDC Management
-    │   ├── Clients (Applications)
-    │   └── Permissions (Scopes/Resources)
+    Admin Portal (Server-side Routes)
+    ├── /Admin (Index.cshtml) → Dashboard Vue SPA
+    ├── /Admin/Clients (Clients.cshtml) → Clients Vue SPA
+    ├── /Admin/Scopes (Scopes.cshtml) → Scopes Vue SPA
     ├── Identity Management (Phase 4)
-    │   ├── Users
-    │   └── Roles
-    └── Settings
-        ├── Security Policies (Phase 5)
-        └── System Settings
+    │   ├── /Admin/Users → Users Vue SPA
+    │   └── /Admin/Roles → Roles Vue SPA
+    └── Settings (Phase 5)
+        └── /Admin/Settings → Settings Vue SPA
+    
+    Each route:
+    - Has its own Razor Page with [Authorize(Roles = "Admin")]
+    - Loads Bootstrap 5 layout (_AdminLayout.cshtml)
+    - Mounts a dedicated Vue.js SPA for content area
     ```
 
-  - UI Reference (Popular Admin Templates):
-    - **Tailwind UI Components:** https://tailwindui.com/components/application-ui
-    - **Flowbite Admin:** Clean, modern Tailwind admin components
-    - **Prime Vue:** Professional component library with admin templates
-    - **Ant Design:** Enterprise-grade UI patterns
-  - Verification:
-    - Admin user sees navigation menu with all sections
-    - Non-admin users get 403 when accessing `/Admin/*`
-    - Active menu item is highlighted
-    - Privacy page removed from admin layout
-    - Sidebar collapses on mobile with hamburger menu
-    - Clean, modern appearance matching popular admin dashboards
+  - **Verification (COMPLETED via Playwright MCP)**:
+    - ✅ Admin user can access `/Admin` (authorized)
+    - ✅ Non-admin users get 403 when accessing `/Admin/*` (server-side security)
+    - ✅ Bootstrap 5 sidebar displays correctly (260px fixed width)
+    - ✅ Navigation links work (Dashboard, Clients, Scopes)
+    - ✅ Active menu item highlighted via server-side breadcrumb
+    - ✅ Mobile responsive: sidebar collapses, hamburger menu works
+    - ✅ User profile section displays at bottom with logout link
+    - ✅ Layout works WITHOUT Vite dev server (Bootstrap CDN)
   - **Agent Question:** "Phase 3.1 is complete. **May I proceed to Phase 3.2?**"
 
 - **3.2: Admin Dashboard:** Create overview page with statistics and quick actions.
   - Goal: Provide admins with at-a-glance metrics and shortcuts.
+  - **Architecture Decision:** Rewrite Dashboard as a Vue.js SPA to maintain consistency with Admin Portal architecture (Bootstrap 5 for layout, Vue.js + Tailwind for interactive components).
   - Backend:
     - API: `GET /api/admin/dashboard/stats`
-    - Returns: `{ clientCount, permissionCount, recentClients: Client[], recentActivity: Activity[] }`
+    - Returns: `{ clientCount, scopeCount, userCount, recentClients: Client[], recentActivity: Activity[] }`
   - Frontend:
-    - Vue SPA: `DashboardApp.vue`
-    - Stat cards: Total Clients, Total Permissions, Active Sessions
-    - Recent activity timeline
-    - Quick action buttons (Create Client, Create Permission)
+    - **Razor Page:** `Pages/Admin/Index.cshtml` with Bootstrap 5 `_AdminLayout.cshtml` (sidebar, header, footer)
+    - **Vue SPA Entry:** `ClientApp/src/admin/dashboard/main.js` loaded via Vite
+    - **Vue Component:** `DashboardApp.vue` with Tailwind CSS styling
+    - **Features:**
+      - Stat cards with icons: Total Clients, Total Scopes, Total Users (API-driven)
+      - Navigation cards: Quick links to Clients and Scopes management pages
+      - Responsive grid layout (1 column mobile, 2-3 columns desktop)
+      - Loading states and error handling
+    - **Migration Note:** Replace current `Index.cshtml` Tailwind-only implementation with Vue.js SPA approach for maintainability
   - Verification:
-    - Dashboard shows accurate counts
-    - Recent items display correctly
-    - Quick actions navigate to create forms
+    - Dashboard loads as Vue.js SPA within Bootstrap 5 layout
+    - API returns accurate statistics
+    - Stat cards display with proper Tailwind styling
+    - Navigation cards link to `/Admin/Clients` and `/Admin/Scopes`
+    - Responsive design works on mobile and desktop
   - **Agent Question:** "Phase 3.2 is complete. **May I proceed to Phase 3.3?**"
 
 - **3.3: Secure Admin API Foundation:** Create API controllers and secure them with an 'admin' role policy.
@@ -304,15 +332,28 @@ Phase 3 establishes the complete admin portal for managing all OIDC-related enti
 - **3.6: Client Management UI Implementation:** Build Vue components to consume the admin APIs for client management.
   - **Security-First Architecture (Backend Routes):**
     - **CRITICAL:** Each admin feature MUST have its own Razor Page with server-side authorization.
-    - Create separate Razor Pages: `/Admin/Clients` and `/Admin/Scopes` (not client-side routes).
-    - Each Razor Page validates `[Authorize(Roles = AuthConstants.Roles.Admin)]` on every navigation.
-    - Each page loads a focused Vue SPA for that specific feature only.
+    - ✅ Separate Razor Pages created: `/Admin/Clients.cshtml` and `/Admin/Scopes.cshtml`
+    - ✅ Each Razor Page has `[Authorize(Roles = AuthConstants.Roles.Admin)]` in PageModel
+    - ✅ Each page loads Bootstrap 5 `_AdminLayout.cshtml` (outer frame)
+    - ✅ Each page mounts a dedicated Vue.js SPA (main content area)
     - **Benefits:** Server-side auth check on every page load, granular permission control, audit trail, deep linking with proper authorization.
+  - **Hybrid Architecture Implementation:**
+    - ✅ **Bootstrap 5 Layout (Outer Frame)**:
+      - Loaded from `_AdminLayout.cshtml`
+      - Includes sidebar, header with breadcrumbs, footer
+      - Works WITHOUT Vite dev server (CDN-based)
+      - Server-side route protection via Razor Pages
+    - ✅ **Vue.js SPA (Main Content)**:
+      - Each Razor Page has `<div id="app"></div>` mount point
+      - Vite loads Vue SPA via `<script type="module" vite-src="~/src/admin/clients/main.js">`
+      - Uses Tailwind CSS for styling (requires Vite dev server)
+      - Handles all CRUD interactions via API calls
   - **MPA Configuration:**
     - Update `vite.config.js` with multiple entry points:
       - `admin-clients: './src/admin/clients/main.js'` for Client Management
       - `admin-scopes: './src/admin/scopes/main.js'` for Scope Management
-    - Each Razor Page uses: `<script type="module" vite-src="~/src/admin/clients/main.js"></script>`
+      - `admin-dashboard: './src/admin/dashboard/main.js'` for Dashboard (Phase 3.2)
+    - Each Razor Page uses: `<script type="module" vite-src="~/src/admin/[feature]/main.js"></script>`
   - **Client Management Features:**
     - **Application Type Selection:** Choose the platform type for the client:
       - **Web:** Traditional web applications (default) - server-side or SPA applications accessed via browser
@@ -345,11 +386,44 @@ Phase 3 establishes the complete admin portal for managing all OIDC-related enti
   - **Structure:**
 
     ```text
+    Hybrid Architecture Layout:
+    
+    /Admin/Clients (Server-side Route)
+    ├── Clients.cshtml.cs
+    │   └── [Authorize(Roles = AuthConstants.Roles.Admin)] ← Backend Security
+    └── Clients.cshtml
+        ├── Bootstrap 5 Layout (_AdminLayout.cshtml)
+        │   ├── Sidebar (260px, fixed)
+        │   ├── Header (Breadcrumbs: "Admin / Clients")
+        │   └── Footer
+        └── Vue.js Mount Point
+            └── <div id="app"></div>
+                └── ClientsApp.vue (Tailwind CSS)
+                    ├── Client List (Table)
+                    ├── Create/Edit Modal
+                    ├── Delete Confirmation
+                    └── API Integration
+    
+    File Structure:
     Web.IdP/Pages/Admin/
-    ├── Index.cshtml              → Dashboard/Overview
-    ├── Clients.cshtml            → Client Management (loads clients Vue SPA)
+    ├── Index.cshtml              → Dashboard (Vue SPA with Tailwind)
+    ├── Index.cshtml.cs           → [Authorize(Roles = Admin)]
+    ├── Clients.cshtml            → Client Management mount point
     ├── Clients.cshtml.cs         → [Authorize(Roles = Admin)]
-    ├── Scopes.cshtml             → Scope Management (loads scopes Vue SPA)
+    ├── Scopes.cshtml             → Scope Management mount point
+    ├── Scopes.cshtml.cs          → [Authorize(Roles = Admin)]
+    
+    Web.IdP/ClientApp/src/admin/
+    ├── clients/
+    │   ├── main.js               → Entry point for Clients SPA
+    │   └── ClientsApp.vue        → Main component (Tailwind CSS)
+    ├── scopes/
+    │   ├── main.js               → Entry point for Scopes SPA
+    │   └── ScopesApp.vue         → Main component (Tailwind CSS)
+    └── dashboard/
+        ├── main.js               → Entry point for Dashboard SPA (Phase 3.2)
+        └── DashboardApp.vue      → Main component (Tailwind CSS)
+    ```
     └── Scopes.cshtml.cs          → [Authorize(Roles = Admin)]
 
     ClientApp/src/admin/
@@ -364,13 +438,18 @@ Phase 3 establishes the complete admin portal for managing all OIDC-related enti
     ```
 
   - **Verification:**
-    - Each admin feature has its own Razor Page route (`/Admin/Dashboard`, `/Admin/Clients`).
-    - Server validates authorization on every page navigation.
-    - The admin UI can create, read, update, and delete OIDC clients.
-    - Client type selection appears in create form with validation
-    - Confidential clients require secrets; public clients cannot have secrets
-    - Direct URL access to `/Admin/Clients` requires authentication.
-    - Admin navigation menu shows correct active state
+    - ✅ Bootstrap 5 layout renders correctly (sidebar, breadcrumbs, footer)
+    - ✅ Each admin feature has its own Razor Page route with `[Authorize]` attribute
+    - ✅ Server validates authorization on every page navigation (403 for non-admin)
+    - ✅ Vue.js SPAs mount correctly in `<div id="app">`
+    - ✅ Tailwind CSS applies to Vue components (requires Vite dev server running)
+    - ✅ The admin UI can create, read, update, and delete OIDC clients
+    - ✅ Client type selection appears in create form with validation
+    - ✅ Confidential clients require secrets; public clients cannot have secrets
+    - ✅ Direct URL access to `/Admin/Clients` requires authentication
+    - ✅ Admin navigation menu shows correct active state (server-side breadcrumb)
+    - ✅ Hybrid architecture works: Bootstrap layout + Vue content
+  - **Testing Reference:** See `docs/dev_testing_guide.md` for startup sequence (DB → IdP → Vite)
   - **Agent Question:** "Phase 3.6 is complete. **May I proceed to Phase 3.7?**"
 
 - **3.7: Client List UX Hardening:** Improve client list display and edit form data loading.

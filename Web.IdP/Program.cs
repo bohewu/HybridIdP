@@ -107,9 +107,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 
-var supportedCultures = new[] { "en-US", "zh-TW" };
+var supportedCultures = new[] { "zh-TW", "en-US" };
 var localizationOptions = new RequestLocalizationOptions()
-    .SetDefaultCulture(supportedCultures[0])
+    .SetDefaultCulture(supportedCultures[0])  // 預設為 zh-TW
     .AddSupportedCultures(supportedCultures)
     .AddSupportedUICultures(supportedCultures);
 
