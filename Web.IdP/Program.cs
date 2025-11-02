@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Razor;
 using OpenIddict.Abstractions;
+using Vite.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers(); // Add controllers for API endpoints
 builder.Services.AddRazorPages();
+
+// Add Vite services for Vue.js integration
+builder.Services.AddViteServices();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
@@ -94,6 +98,12 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Use Vite development server in development mode
+if (app.Environment.IsDevelopment())
+{
+    app.UseViteDevelopmentServer();
+}
 
 app.UseRouting();
 

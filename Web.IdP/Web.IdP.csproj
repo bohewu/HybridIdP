@@ -10,6 +10,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="OpenIddict.AspNetCore" Version="7.1.0" />
+    <PackageReference Include="Vite.AspNetCore" Version="2.4.1" />
   </ItemGroup>
 
   <PropertyGroup>
