@@ -290,74 +290,40 @@ Add these quick verifications to ensure failure paths are correct:
     - Direct URL access to `/Admin/Clients` requires authentication.
   - **Agent Question:** "Phase 3 is complete. **May I proceed to Phase 4.1?**"
 
----
+  - **3.5: Admin UX Hardening and Bug Fixes**
+    - Goal: Resolve correctness issues in the Clients list and edit form; expose summary data needed for large lists.
+    - API: `GET /api/admin/clients`
+      - Include `applicationType` and `redirectUrisCount` (do not expose actual URIs)
+    - UI: Client list shows `redirectUrisCount` and uses server `type` (Public/Confidential)
+    - UI: Edit flow fetches full client via `GET /api/admin/clients/{id}` to prefill Redirect URIs and Permissions
+    - Acceptance:
+      - Accurate “X redirect URI(s)” per client in list
+      - Public/Confidential matches server value
+      - Edit modal prefilled with Redirect URIs and Permissions
+    - Verification:
+      1. Create a client with at least one Redirect URI
+      2. Return to list: count reflects the correct number
+      3. Click Edit: fields are prefilled (URIs, permissions)
+    - Agent Question: "Phase 3.5 is complete. May I proceed to 3.6?"
 
-### 3.5: Admin UX Hardening and Bug Fixes
-
-Goal: Resolve correctness issues in the Clients list and edit form, and expose data needed for large lists.
-
-Changes:
-
-- API: `GET /api/admin/clients`
-  - Include `applicationType` (OpenIddict application type)
-  - Include `redirectUrisCount` (number of redirect URIs) without exposing the URIs
-- UI: Client list
-  - Show `redirectUrisCount` instead of always showing 0
-  - Use server `type` to display Public/Confidential (no guessing from `clientSecret`)
-- UI: Edit flow
-  - When user clicks Edit, fetch the full client (`GET /api/admin/clients/{id}`) to prefill Redirect URIs and Permissions
-
-Acceptance Criteria:
-
-- The list shows accurate “X redirect URI(s)” per client
-- Public/Confidential display matches the server value
-- Edit modal opens with Redirect URIs and Permissions prefilled
-
-Verification Steps:
-
-1. Create a client with at least one Redirect URI
-2. Navigate back to the list: the count shows the correct number
-3. Click Edit: all fields are prefilled (redirect URIs, permissions, etc.)
-
----
-
-### 3.6: Scalability & Validation Plan (to implement next)
-
-Goal: Prepare the admin area for production-scale datasets and consistent validation.
-
-Planned Work:
-
-- Server pagination, filtering, sorting for clients
-  - API contract: `GET /api/admin/clients?skip=0&take=25&search=&type=&sort=clientId:asc`
-  - Response shape: `{ items: ClientSummary[], totalCount: number }`
-  - Indexing: ensure DB indexes on `ClientId`, `ClientType` for fast query
-- UI data grid
-  - Paged list with page size, sorting, quick search, and filters
-  - Options: TanStack Table (preferred), PrimeVue DataTable, or Vuetify v-data-table
-- Client-side validation
-  - Adopt Vee‑Validate + Zod for schema-driven rules
-  - Mirror backend validation: confidential requires secret, public forbids secret, per‑line URI checks
-
-OpenIddict Server Guidance (reference for config review):
-
-- Endpoints to enable (typical web/native):
-  - Authorization: `/connect/authorize`
-  - Token: `/connect/token`
-  - Logout: `/connect/logout`
-  - Optional: Introspection `/connect/introspect`, Revocation `/connect/revocation`, Device `/connect/device`
-- Grants:
-  - Authorization Code + PKCE, Refresh Token
-  - Optional: Client Credentials (M2M), avoid Implicit
-- Scopes: `openid`, `profile`, `email`, `roles`, and custom API scopes
-- Security: require HTTPS in prod, PKCE for public clients, choose JWT vs reference tokens deliberately.
-
-Acceptance Criteria (when implemented):
-
-- Clients list supports paging, sorting, and search and returns `totalCount`
-- Form enforces rich client-side validation with helpful messages
-- OpenIddict configuration is documented and reviewed against enabled flows
-
-Agent Question: "Phase 3.6 is planned. After implementation of pagination and validation, shall I proceed to commit and request your review?"
+  - **3.6: Scalability & Validation (Implementation Next)**
+    - Goal: Prepare for production-scale datasets and consistent client-side validation.
+    - Server pagination/filter/sort for clients
+      - API: `GET /api/admin/clients?skip=0&take=25&search=&type=&sort=clientId:asc`
+      - Response: `{ items: ClientSummary[], totalCount: number }`
+      - DB indexing on `ClientId`, `ClientType`
+    - UI data grid: paging, sorting, quick search, filters (TanStack Table / PrimeVue DataTable / Vuetify)
+    - Client-side validation: Vee‑Validate + Zod; mirror backend rules (confidential requires secret; public forbids secret; per‑line URI validation)
+    - OpenIddict server guidance:
+      - Endpoints: authorize, token, logout; optional: introspect, revocation, device
+      - Grants: Authorization Code + PKCE, Refresh Token; optional Client Credentials; avoid Implicit
+      - Scopes: openid, profile, email, roles, API scopes
+      - Security: HTTPS in prod, PKCE for public clients, choose JWT vs reference tokens deliberately
+    - Acceptance:
+      - Clients list supports paging/sorting/search and returns `totalCount`
+      - Form has rich client-side validation with clear messages
+      - OpenIddict configuration documented and aligned to enabled flows
+    - Agent Question: "Phase 3.6 is complete. May I proceed to Phase 4.1?"
 
 ---
 
