@@ -54,7 +54,6 @@ builder.Services.AddOpenIddict()
         // Register the ASP.NET Core host and configure the ASP.NET Core-specific options
         options.UseAspNetCore()
                .EnableAuthorizationEndpointPassthrough()
-               .EnableTokenEndpointPassthrough()
                .EnableStatusCodePagesIntegration();
     })
     // Register the OpenIddict validation components

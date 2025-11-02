@@ -50,6 +50,14 @@
                     }
 
                     <form method="post">
+                        @* Preserve original authorize request parameters in the POST body *@
+                        @foreach (var kvp in Request.Query)
+                        {
+                            foreach (var val in kvp.Value)
+                            {
+                                <input type="hidden" name="@kvp.Key" value="@val" />
+                            }
+                        }
                         <div class="d-grid gap-2">
                             <button type="submit" name="submit" value="allow" class="btn btn-success btn-lg">
                                 <i class="bi bi-check-circle"></i> Allow Access

@@ -9,8 +9,9 @@ builder.Services.AddAuthentication(options =>
 .AddCookie("Cookies")
 .AddOpenIdConnect("oidc", options =>
 {
-    options.Authority = "http://localhost:5186";
+    options.Authority = "https://localhost:7035";
     options.ClientId = "test_client";
+    options.ClientSecret = "test_secret";
     options.ResponseType = "code";
     options.UsePkce = true;
     options.SaveTokens = true;
@@ -21,8 +22,18 @@ builder.Services.AddAuthentication(options =>
     options.Scope.Add("email");
     options.Scope.Add("roles");
     
-    options.RequireHttpsMetadata = false; // Only for development
+    options.RequireHttpsMetadata = true; // Using trusted dev cert
     options.GetClaimsFromUserInfoEndpoint = false; // OpenIddict doesn't require userinfo endpoint
+
+    // Ensure client_secret is sent when redeeming the authorization code
+    options.Events.OnAuthorizationCodeReceived = context =>
+    {
+        if (context.TokenEndpointRequest is not null)
+        {
+            context.TokenEndpointRequest.ClientSecret = "test_secret";
+        }
+        return Task.CompletedTask;
+    };
 });
 
 builder.Services.AddControllersWithViews();

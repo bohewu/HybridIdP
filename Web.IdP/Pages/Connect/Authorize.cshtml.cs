@@ -58,6 +58,8 @@ public class AuthorizeModel : PageModel
         // Retrieve the application details from the database
         var application = await _applicationManager.FindByClientIdAsync(request.ClientId!) ??
             throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
+        var applicationId = await _applicationManager.GetIdAsync(application)
+            ?? throw new InvalidOperationException("The application identifier cannot be resolved.");
 
         ApplicationName = await _applicationManager.GetDisplayNameAsync(application);
         Scope = request.Scope;
@@ -68,7 +70,7 @@ public class AuthorizeModel : PageModel
         
         var authorizationsEnumerable = _authorizationManager.FindAsync(
             subject: userId,
-            client: request.ClientId!,
+            client: applicationId,
             status: Statuses.Valid,
             type: AuthorizationTypes.Permanent,
             scopes: scopes);
@@ -112,6 +114,12 @@ public class AuthorizeModel : PageModel
     {
         var request = HttpContext.GetOpenIddictServerRequest() ??
             throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
+
+        // Resolve the calling application and its identifier (GUID key)
+        var application = await _applicationManager.FindByClientIdAsync(request.ClientId!) ??
+            throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
+        var applicationId = await _applicationManager.GetIdAsync(application)
+            ?? throw new InvalidOperationException("The application identifier cannot be resolved.");
 
         // Retrieve the user principal stored in the authentication cookie
         var result = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
@@ -159,7 +167,7 @@ public class AuthorizeModel : PageModel
         var authorization = await _authorizationManager.CreateAsync(
             identity: identity,
             subject: await _userManager.GetUserIdAsync(user),
-            client: request.ClientId!,
+            client: applicationId,
             type: AuthorizationTypes.Permanent,
             scopes: identity.GetScopes());
 
