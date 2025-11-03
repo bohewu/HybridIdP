@@ -1,0 +1,352 @@
+using Core.Application;
+using Core.Application.DTOs;
+using Core.Domain;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+namespace Infrastructure.Services;
+
+public class UserManagementService : IUserManagementService
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+
+    public UserManagementService(
+        UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole<Guid>> roleManager)
+    {
+        _userManager = userManager;
+        _roleManager = roleManager;
+    }
+
+    public async Task<PagedUsersDto> GetUsersAsync(
+        int skip = 0,
+        int take = 25,
+        string? search = null,
+        string? role = null,
+        bool? isActive = null,
+        string? sortBy = "email",
+        string? sortDirection = "asc")
+    {
+        var query = _userManager.Users.AsQueryable();
+
+        // Apply filters
+        if (isActive.HasValue)
+        {
+            query = query.Where(u => u.IsActive == isActive.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.ToLower();
+            query = query.Where(u =>
+                (u.Email != null && u.Email.ToLower().Contains(searchLower)) ||
+                (u.UserName != null && u.UserName.ToLower().Contains(searchLower)) ||
+                (u.FirstName != null && u.FirstName.ToLower().Contains(searchLower)) ||
+                (u.LastName != null && u.LastName.ToLower().Contains(searchLower)));
+        }
+
+        // Apply sorting
+        query = sortBy?.ToLower() switch
+        {
+            "username" => sortDirection?.ToLower() == "desc"
+                ? query.OrderByDescending(u => u.UserName)
+                : query.OrderBy(u => u.UserName),
+            "firstname" => sortDirection?.ToLower() == "desc"
+                ? query.OrderByDescending(u => u.FirstName)
+                : query.OrderBy(u => u.FirstName),
+            "lastname" => sortDirection?.ToLower() == "desc"
+                ? query.OrderByDescending(u => u.LastName)
+                : query.OrderBy(u => u.LastName),
+            "createdat" => sortDirection?.ToLower() == "desc"
+                ? query.OrderByDescending(u => u.CreatedAt)
+                : query.OrderBy(u => u.CreatedAt),
+            _ => sortDirection?.ToLower() == "desc"
+                ? query.OrderByDescending(u => u.Email)
+                : query.OrderBy(u => u.Email)
+        };
+
+        var totalCount = await query.CountAsync();
+
+        var users = await query
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+
+        var userSummaries = new List<UserSummaryDto>();
+
+        foreach (var user in users)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+
+            // Apply role filter if specified
+            if (!string.IsNullOrWhiteSpace(role) && !roles.Contains(role))
+            {
+                totalCount--; // Adjust count since we're filtering after query
+                continue;
+            }
+
+            userSummaries.Add(new UserSummaryDto
+            {
+                Id = user.Id,
+                Email = user.Email ?? string.Empty,
+                UserName = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Department = user.Department,
+                JobTitle = user.JobTitle,
+                IsActive = user.IsActive,
+                EmailConfirmed = user.EmailConfirmed,
+                LastLoginDate = user.LastLoginDate,
+                CreatedAt = user.CreatedAt,
+                Roles = roles.ToList()
+            });
+        }
+
+        return new PagedUsersDto
+        {
+            Items = userSummaries,
+            TotalCount = totalCount,
+            Skip = skip,
+            Take = take
+        };
+    }
+
+    public async Task<UserDetailDto?> GetUserByIdAsync(Guid userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+            return null;
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return new UserDetailDto
+        {
+            Id = user.Id,
+            Email = user.Email ?? string.Empty,
+            UserName = user.UserName,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            MiddleName = user.MiddleName,
+            Nickname = user.Nickname,
+            PhoneNumber = user.PhoneNumber,
+            Department = user.Department,
+            JobTitle = user.JobTitle,
+            ProfileUrl = user.ProfileUrl,
+            PictureUrl = user.PictureUrl,
+            Website = user.Website,
+            Address = user.Address,
+            Birthdate = user.Birthdate,
+            Gender = user.Gender,
+            TimeZone = user.TimeZone,
+            Locale = user.Locale,
+            EmployeeId = user.EmployeeId,
+            IsActive = user.IsActive,
+            EmailConfirmed = user.EmailConfirmed,
+            PhoneNumberConfirmed = user.PhoneNumberConfirmed,
+            TwoFactorEnabled = user.TwoFactorEnabled,
+            LastLoginDate = user.LastLoginDate,
+            CreatedAt = user.CreatedAt,
+            ModifiedAt = user.ModifiedAt,
+            Roles = roles.ToList()
+        };
+    }
+
+    public async Task<(bool Success, Guid? UserId, IEnumerable<string> Errors)> CreateUserAsync(
+        CreateUserDto createDto,
+        Guid? createdBy = null)
+    {
+        var user = new ApplicationUser
+        {
+            Email = createDto.Email,
+            UserName = createDto.UserName ?? createDto.Email,
+            FirstName = createDto.FirstName,
+            LastName = createDto.LastName,
+            PhoneNumber = createDto.PhoneNumber,
+            Department = createDto.Department,
+            JobTitle = createDto.JobTitle,
+            EmployeeId = createDto.EmployeeId,
+            IsActive = createDto.IsActive,
+            EmailConfirmed = createDto.EmailConfirmed,
+            CreatedBy = createdBy,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var result = await _userManager.CreateAsync(user, createDto.Password);
+
+        if (!result.Succeeded)
+        {
+            return (false, null, result.Errors.Select(e => e.Description));
+        }
+
+        // Assign roles
+        if (createDto.Roles.Any())
+        {
+            var roleResult = await _userManager.AddToRolesAsync(user, createDto.Roles);
+            if (!roleResult.Succeeded)
+            {
+                // User created but role assignment failed
+                return (false, user.Id, roleResult.Errors.Select(e => e.Description));
+            }
+        }
+
+        return (true, user.Id, Array.Empty<string>());
+    }
+
+    public async Task<(bool Success, IEnumerable<string> Errors)> UpdateUserAsync(
+        Guid userId,
+        UpdateUserDto updateDto,
+        Guid? modifiedBy = null)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+        {
+            return (false, new[] { "User not found" });
+        }
+
+        // Update properties
+        user.Email = updateDto.Email;
+        user.UserName = updateDto.UserName ?? updateDto.Email;
+        user.FirstName = updateDto.FirstName;
+        user.LastName = updateDto.LastName;
+        user.MiddleName = updateDto.MiddleName;
+        user.Nickname = updateDto.Nickname;
+        user.PhoneNumber = updateDto.PhoneNumber;
+        user.Department = updateDto.Department;
+        user.JobTitle = updateDto.JobTitle;
+        user.ProfileUrl = updateDto.ProfileUrl;
+        user.PictureUrl = updateDto.PictureUrl;
+        user.Website = updateDto.Website;
+        user.Address = updateDto.Address;
+        user.Birthdate = updateDto.Birthdate;
+        user.Gender = updateDto.Gender;
+        user.TimeZone = updateDto.TimeZone;
+        user.Locale = updateDto.Locale;
+        user.EmployeeId = updateDto.EmployeeId;
+        user.IsActive = updateDto.IsActive;
+        user.EmailConfirmed = updateDto.EmailConfirmed;
+        user.PhoneNumberConfirmed = updateDto.PhoneNumberConfirmed;
+        user.ModifiedBy = modifiedBy;
+        user.ModifiedAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        var result = await _userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+        {
+            return (false, result.Errors.Select(e => e.Description));
+        }
+
+        // Update roles
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        var rolesToRemove = currentRoles.Except(updateDto.Roles).ToList();
+        var rolesToAdd = updateDto.Roles.Except(currentRoles).ToList();
+
+        if (rolesToRemove.Any())
+        {
+            var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+            if (!removeResult.Succeeded)
+            {
+                return (false, removeResult.Errors.Select(e => e.Description));
+            }
+        }
+
+        if (rolesToAdd.Any())
+        {
+            var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+            if (!addResult.Succeeded)
+            {
+                return (false, addResult.Errors.Select(e => e.Description));
+            }
+        }
+
+        return (true, Array.Empty<string>());
+    }
+
+    public async Task<(bool Success, IEnumerable<string> Errors)> DeactivateUserAsync(
+        Guid userId,
+        Guid? modifiedBy = null)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+        {
+            return (false, new[] { "User not found" });
+        }
+
+        user.IsActive = false;
+        user.ModifiedBy = modifiedBy;
+        user.ModifiedAt = DateTime.UtcNow;
+
+        var result = await _userManager.UpdateAsync(user);
+
+        return result.Succeeded
+            ? (true, Array.Empty<string>())
+            : (false, result.Errors.Select(e => e.Description));
+    }
+
+    public async Task<(bool Success, IEnumerable<string> Errors)> ReactivateUserAsync(
+        Guid userId,
+        Guid? modifiedBy = null)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+        {
+            return (false, new[] { "User not found" });
+        }
+
+        user.IsActive = true;
+        user.ModifiedBy = modifiedBy;
+        user.ModifiedAt = DateTime.UtcNow;
+
+        var result = await _userManager.UpdateAsync(user);
+
+        return result.Succeeded
+            ? (true, Array.Empty<string>())
+            : (false, result.Errors.Select(e => e.Description));
+    }
+
+    public async Task UpdateLastLoginAsync(Guid userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user != null)
+        {
+            user.LastLoginDate = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+        }
+    }
+
+    public async Task<(bool Success, IEnumerable<string> Errors)> AssignRolesAsync(
+        Guid userId,
+        IEnumerable<string> roles)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+        {
+            return (false, new[] { "User not found" });
+        }
+
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        var rolesToRemove = currentRoles.Except(roles).ToList();
+        var rolesToAdd = roles.Except(currentRoles).ToList();
+
+        if (rolesToRemove.Any())
+        {
+            var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+            if (!removeResult.Succeeded)
+            {
+                return (false, removeResult.Errors.Select(e => e.Description));
+            }
+        }
+
+        if (rolesToAdd.Any())
+        {
+            var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+            if (!addResult.Succeeded)
+            {
+                return (false, addResult.Errors.Select(e => e.Description));
+            }
+        }
+
+        return (true, Array.Empty<string>());
+    }
+}
