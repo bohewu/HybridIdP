@@ -86,8 +86,9 @@ builder.Services.AddScoped<ITurnstileService, TurnstileService>();
 builder.Services.AddScoped<IJitProvisioningService, JitProvisioningService>();
 builder.Services.AddScoped<ILegacyAuthService, LegacyAuthService>();
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, MyUserClaimsPrincipalFactory>();
-// User management service
+// Identity management services
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
 
 var app = builder.Build();
 
