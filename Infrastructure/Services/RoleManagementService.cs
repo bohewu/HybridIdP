@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -155,42 +156,7 @@ public class RoleManagementService : IRoleManagementService
 
     public Task<List<string>> GetAvailablePermissionsAsync()
     {
-        // Define all available permissions
-        var permissions = new List<string>
-        {
-            // Client permissions
-            "clients.read",
-            "clients.create",
-            "clients.update",
-            "clients.delete",
-            
-            // Scope permissions
-            "scopes.read",
-            "scopes.create",
-            "scopes.update",
-            "scopes.delete",
-            
-            // User permissions
-            "users.read",
-            "users.create",
-            "users.update",
-            "users.delete",
-            
-            // Role permissions
-            "roles.read",
-            "roles.create",
-            "roles.update",
-            "roles.delete",
-            
-            // Audit permissions
-            "audit.read",
-            
-            // Settings permissions
-            "settings.read",
-            "settings.update"
-        };
-
-        return Task.FromResult(permissions);
+        return Task.FromResult(Permissions.GetAll());
     }
 
     private List<string> ParsePermissions(string? permissionsString)

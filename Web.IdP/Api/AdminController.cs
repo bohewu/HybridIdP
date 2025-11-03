@@ -5,6 +5,7 @@ using Core.Domain.Constants;
 using Core.Domain.Entities;
 using System.Linq;
 using Infrastructure;
+using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -1046,6 +1047,7 @@ public class AdminController : ControllerBase
     /// <param name="sortBy">Optional sort field: email, username, firstname, lastname, createdat (default: email)</param>
     /// <param name="sortDirection">Sort direction: asc or desc (default: asc)</param>
     [HttpGet("users")]
+    [HasPermission(Core.Domain.Constants.Permissions.Users.Read)]
     public async Task<IActionResult> GetUsers(
         [FromQuery] int skip = 0,
         [FromQuery] int take = 25,

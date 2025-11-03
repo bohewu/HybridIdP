@@ -79,6 +79,22 @@ builder.Services.AddMvc()
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
     .AddDataAnnotationsLocalization();
 
+// Configure authorization with permission-based policies
+builder.Services.AddAuthorization(options =>
+{
+    // Register a policy for each permission
+    var permissions = Core.Domain.Constants.Permissions.GetAll();
+    foreach (var permission in permissions)
+    {
+        options.AddPolicy(permission, policy =>
+            policy.Requirements.Add(new Infrastructure.Authorization.PermissionRequirement(permission)));
+    }
+});
+
+// Register permission authorization handler
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, 
+    Infrastructure.Authorization.PermissionAuthorizationHandler>();
+
 // Register Turnstile service and HttpClient
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<ITurnstileService, TurnstileService>();
