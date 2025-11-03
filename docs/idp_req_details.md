@@ -790,147 +790,11 @@ Phase 3 establishes the complete admin portal with a secure hybrid architecture:
     - Cannot delete standard claim or claim used by scopes
     - Preview ID token structure shows correct claims when scope is selected
     - Standard OIDC scope mappings match spec (openid→sub, profile→name/family_name/etc., email→email/email_verified)
-  - **Agent Question:** "Phase 3.9A is complete. **May I proceed to Phase 3.9B (Consent Screen & Resource Servers)?**"
+  - **Agent Question:** "Phase 3.9A is complete. Phase 3 complete! **May I proceed to Phase 4.1?**"
 
-- **3.9B: Consent Screen Management & API Resource Scopes**
-  - Goal: Provide rich consent screen customization and support for API resource protection.
-  - **Part 1: Consent Screen Customization**
-    - **Concept:** When users authorize a client, they see a consent screen showing what data/permissions the client is requesting. This needs to be clear, translatable, and customizable.
-    - Backend:
-      - Add fields to `Scope` entity:
-        - `ConsentDisplayName` (localized display name for consent screen)
-        - `ConsentDescription` (what this permission allows the app to do)
-        - `IconUrl` (optional icon for visual identification)
-        - `IsRequired` (user cannot opt out if true - e.g., `openid` scope)
-        - `DisplayOrder` (order on consent screen)
-      - Add `Resources` table for localizing consent strings:
-        - Key format: `Scope.{ScopeName}.ConsentDisplayName`, `Scope.{ScopeName}.ConsentDescription`
-        - Support multiple languages (en-US, zh-TW, etc.)
-    - Frontend (Admin):
-      - Enhance `ScopeForm.vue` with consent customization fields
-      - Multi-language editor for display name and description
-      - Upload/select icon for scope
-      - Toggle "Required" checkbox (prevent user from denying)
-      - Preview consent screen appearance
-    - Frontend (User-Facing):
-      - Update `Consent.cshtml` to use localized scope descriptions
-      - Group scopes by category (Profile Information, API Access, etc.)
-      - Show icons next to each scope
-      - Display helpful descriptions instead of technical scope names
-      - Mark required scopes clearly (cannot be unchecked)
-    - **Example Consent Screen:**
-      ```text
-      TestClient would like to:
-      
-      ✓ Know who you are (openid) [Required]
-        Access your basic identity information
-      
-      ☐ Read your profile (profile)
-        Access your name, picture, and other profile information
-      
-      ☐ Access your email (email)
-        View your email address and verification status
-      
-      ☐ Access your company data (api:company:read)
-        Read company records on your behalf
-      ```
+---
 
-  - **Part 2: API Resource Scopes**
-    - **Concept:** Beyond identity scopes (profile, email), IdP must support **API resource scopes** for protecting backend APIs (e.g., `api:read`, `api:write`, `inventory:manage`).
-    - Backend:
-      - Create `ApiResource` entity:
-        - `Id`, `Name`, `DisplayName`, `Description`
-        - `BaseUrl` (API base URL for documentation)
-        - `Scopes` (collection of scopes belonging to this resource)
-      - Example resources:
-        - **Company API:** Scopes: `api:company:read`, `api:company:write`, `api:company:delete`
-        - **Inventory API:** Scopes: `api:inventory:read`, `api:inventory:write`
-        - **User Management API:** Scopes: `api:users:read`, `api:users:manage`
-      - API endpoints: `GET /api/admin/resources`, `POST /api/admin/resources`, `PUT /api/admin/resources/{id}`, `DELETE /api/admin/resources/{id}`
-      - API endpoints: `GET /api/admin/resources/{id}/scopes` (list scopes for a resource)
-    - Frontend:
-      - Vue SPA: `ClientApp/src/admin/resources/ResourcesApp.vue`
-      - Create API resources with name, display name, base URL
-      - Assign scopes to resources (e.g., `api:company:read` → "Company API" resource)
-      - Visual grouping: Show scopes grouped by resource in client configuration
-    - OpenIddict Integration:
-      - Register API resources and scopes in OpenIddict
-      - Configure audience claim for access tokens (includes resource identifier)
-      - API resource scopes appear in client scope selection
-
-  - **Part 3: Scope Authorization Policies (Whitelisting)**
-    - **Concept:** Not all clients should be able to request all scopes. Admins need to whitelist which scopes each client can request.
-    - Backend:
-      - Add `ClientAllowedScopes` join table (already exists in OpenIddict, ensure proper management)
-      - Validation: When client requests scopes during authorization, verify against whitelist
-      - API: Update client creation/edit to include allowed scopes selection
-    - Frontend:
-      - In `ClientForm.vue`, add "Allowed Scopes" multi-select
-      - Show available scopes grouped by:
-        - Identity Scopes (openid, profile, email, phone, address)
-        - API Resources (Company API, Inventory API, etc.)
-        - Custom Scopes
-      - Validation: At least `openid` must be selected for OIDC clients
-    - Verification:
-      - Create client and whitelist only `openid`, `profile`, `email` scopes
-      - Attempt to request `api:company:read` scope → authorization denied
-      - Update client to include `api:company:read` → authorization succeeds
-
-  - **Structure:**
-    ```text
-    Core.Domain/
-    └── Entities/
-        └── ApiResource.cs            → API resource entity
-
-    Web.IdP/Api/
-    └── AdminController.cs            → Add resources CRUD endpoints
-
-    Web.IdP/Pages/
-    └── Consent.cshtml                → Enhanced with localized descriptions, icons, grouping
-
-    ClientApp/src/admin/
-    ├── resources/
-    │   ├── main.js
-    │   ├── ResourcesApp.vue          → API resources management
-    │   └── components/
-    │       ├── ResourceList.vue
-    │       └── ResourceForm.vue
-    └── scopes/
-        └── components/
-            └── ScopeConsentEditor.vue → Consent screen customization UI
-    ```
-
-  - **Verification:**
-    - **Consent Screen:**
-      - Admin edits scope "profile" to add localized description and icon
-      - User sees localized consent screen with clear descriptions
-      - Required scopes (openid) cannot be unchecked
-      - Scopes grouped by category (Identity, API Access)
-    - **API Resources:**
-      - Admin creates "Company API" resource
-      - Adds scopes: `api:company:read`, `api:company:write`, `api:company:delete`
-      - Client configuration shows scopes grouped by resource
-      - Access token includes audience claim for requested resources
-    - **Scope Whitelisting:**
-      - Client A whitelisted for `openid`, `profile`, `api:company:read`
-      - Client A requests `api:inventory:read` → denied
-      - Client B whitelisted for all scopes → can request any scope
-  - **Agent Question:** "Phase 3.9B is complete. **May I proceed to Phase 3.10?**"
-
-- **3.10: Cleanup & Refinement**
-  - Goal: Remove unused pages, improve admin layout consistency, add audit logging foundation.
-  - Tasks:
-    - Remove Privacy page from admin portal navigation
-    - Add `_AdminLayout.cshtml` with shared navigation to all admin pages
-    - Create audit logging infrastructure (log admin actions to database)
-    - Add "Last Modified" and "Created By" fields to Client/Permission entities
-    - Update all admin APIs to log create/update/delete actions
-  - Verification:
-    - Privacy link not visible in admin navigation
-    - All admin pages use consistent layout with navigation
-    - Admin actions are logged (view in database or future audit log UI)
-    - Client/Permission entities show creation and modification metadata
-  - **Agent Question:** "Phase 3.10 is complete. Phase 3 complete! **May I proceed to Phase 4.1?**"
+> **Note:** Phase 3.9B (Consent Screen Management & API Resource Scopes) has been moved to Phase 5.6 to allow focus on core identity management features first. The current implementation provides functional OIDC flows with basic scope management.
 
 ---
 
@@ -1119,7 +983,134 @@ Phase 4 establishes comprehensive user and role management with a modern admin i
   - **Agent Question:** "Phase 5.4 is complete. **May I proceed to Phase 5.5?**"
 - **5.5: Integrate Policy System:** Register the new services and add password expiration checks.
   - **Verification:** The system correctly enforces the configured password policies during login and password changes.
-  - **Agent Question:** "Phase 5 is complete. **May I proceed to Phase 6.1?**"
+  - **Agent Question:** "Phase 5.5 is complete. **May I proceed to Phase 5.6?**"
+
+- **5.6: Consent Screen Management & API Resource Scopes** *(Moved from Phase 3.9B)*
+  - Goal: Provide rich consent screen customization and support for API resource protection.
+  - **Part 1: Consent Screen Customization**
+    - **Concept:** When users authorize a client, they see a consent screen showing what data/permissions the client is requesting. This needs to be clear, translatable, and customizable.
+    - Backend:
+      - Add fields to `Scope` entity:
+        - `ConsentDisplayName` (localized display name for consent screen)
+        - `ConsentDescription` (what this permission allows the app to do)
+        - `IconUrl` (optional icon for visual identification)
+        - `IsRequired` (user cannot opt out if true - e.g., `openid` scope)
+        - `DisplayOrder` (order on consent screen)
+      - Add `Resources` table for localizing consent strings:
+        - Key format: `Scope.{ScopeName}.ConsentDisplayName`, `Scope.{ScopeName}.ConsentDescription`
+        - Support multiple languages (en-US, zh-TW, etc.)
+    - Frontend (Admin):
+      - Enhance `ScopeForm.vue` with consent customization fields
+      - Multi-language editor for display name and description
+      - Upload/select icon for scope
+      - Toggle "Required" checkbox (prevent user from denying)
+      - Preview consent screen appearance
+    - Frontend (User-Facing):
+      - Update `Consent.cshtml` to use localized scope descriptions
+      - Group scopes by category (Profile Information, API Access, etc.)
+      - Show icons next to each scope
+      - Display helpful descriptions instead of technical scope names
+      - Mark required scopes clearly (cannot be unchecked)
+    - **Example Consent Screen:**
+
+      ```text
+      TestClient would like to:
+      
+      ✓ Know who you are (openid) [Required]
+        Access your basic identity information
+      
+      ☐ Read your profile (profile)
+        Access your name, picture, and other profile information
+      
+      ☐ Access your email (email)
+        View your email address and verification status
+      
+      ☐ Access your company data (api:company:read)
+        Read company records on your behalf
+      ```
+
+  - **Part 2: API Resource Scopes**
+    - **Concept:** Beyond identity scopes (profile, email), IdP must support **API resource scopes** for protecting backend APIs (e.g., `api:read`, `api:write`, `inventory:manage`).
+    - Backend:
+      - Create `ApiResource` entity:
+        - `Id`, `Name`, `DisplayName`, `Description`
+        - `BaseUrl` (API base URL for documentation)
+        - `Scopes` (collection of scopes belonging to this resource)
+      - Example resources:
+        - **Company API:** Scopes: `api:company:read`, `api:company:write`, `api:company:delete`
+        - **Inventory API:** Scopes: `api:inventory:read`, `api:inventory:write`
+        - **User Management API:** Scopes: `api:users:read`, `api:users:manage`
+      - API endpoints: `GET /api/admin/resources`, `POST /api/admin/resources`, `PUT /api/admin/resources/{id}`, `DELETE /api/admin/resources/{id}`
+      - API endpoints: `GET /api/admin/resources/{id}/scopes` (list scopes for a resource)
+    - Frontend:
+      - Vue SPA: `ClientApp/src/admin/resources/ResourcesApp.vue`
+      - Create API resources with name, display name, base URL
+      - Assign scopes to resources (e.g., `api:company:read` → "Company API" resource)
+      - Visual grouping: Show scopes grouped by resource in client configuration
+    - OpenIddict Integration:
+      - Register API resources and scopes in OpenIddict
+      - Configure audience claim for access tokens (includes resource identifier)
+      - API resource scopes appear in client scope selection
+
+  - **Part 3: Scope Authorization Policies (Whitelisting)**
+    - **Concept:** Not all clients should be able to request all scopes. Admins need to whitelist which scopes each client can request.
+    - Backend:
+      - Add `ClientAllowedScopes` join table (already exists in OpenIddict, ensure proper management)
+      - Validation: When client requests scopes during authorization, verify against whitelist
+      - API: Update client creation/edit to include allowed scopes selection
+    - Frontend:
+      - In `ClientForm.vue`, add "Allowed Scopes" multi-select
+      - Show available scopes grouped by:
+        - Identity Scopes (openid, profile, email, phone, address)
+        - API Resources (Company API, Inventory API, etc.)
+        - Custom Scopes
+      - Validation: At least `openid` must be selected for OIDC clients
+    - Verification:
+      - Create client and whitelist only `openid`, `profile`, `email` scopes
+      - Attempt to request `api:company:read` scope → authorization denied
+      - Update client to include `api:company:read` → authorization succeeds
+
+  - **Structure:**
+
+    ```text
+    Core.Domain/
+    └── Entities/
+        └── ApiResource.cs            → API resource entity
+
+    Web.IdP/Api/
+    └── AdminController.cs            → Add resources CRUD endpoints
+
+    Web.IdP/Pages/
+    └── Consent.cshtml                → Enhanced with localized descriptions, icons, grouping
+
+    ClientApp/src/admin/
+    ├── resources/
+    │   ├── main.js
+    │   ├── ResourcesApp.vue          → API resources management
+    │   └── components/
+    │       ├── ResourceList.vue
+    │       └── ResourceForm.vue
+    └── scopes/
+        └── components/
+            └── ScopeConsentEditor.vue → Consent screen customization UI
+    ```
+
+  - **Verification:**
+    - **Consent Screen:**
+      - Admin edits scope "profile" to add localized description and icon
+      - User sees localized consent screen with clear descriptions
+      - Required scopes (openid) cannot be unchecked
+      - Scopes grouped by category (Identity, API Access)
+    - **API Resources:**
+      - Admin creates "Company API" resource
+      - Adds scopes: `api:company:read`, `api:company:write`, `api:company:delete`
+      - Client configuration shows scopes grouped by resource
+      - Access token includes audience claim for requested resources
+    - **Scope Whitelisting:**
+      - Client A whitelisted for `openid`, `profile`, `api:company:read`
+      - Client A requests `api:inventory:read` → denied
+      - Client B whitelisted for all scopes → can request any scope
+  - **Agent Question:** "Phase 5.6 is complete. Phase 5 complete! **May I proceed to Phase 6.1?**"
 
 ---
 
