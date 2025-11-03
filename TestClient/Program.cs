@@ -1,13 +1,15 @@
+using TestClient.Constants;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultScheme = "Cookies";
-    options.DefaultChallengeScheme = "oidc";
+    options.DefaultScheme = AuthenticationSchemes.Cookies;
+    options.DefaultChallengeScheme = AuthenticationSchemes.OpenIdConnect;
 })
-.AddCookie("Cookies")
-.AddOpenIdConnect("oidc", options =>
+.AddCookie(AuthenticationSchemes.Cookies)
+.AddOpenIdConnect(AuthenticationSchemes.OpenIdConnect, options =>
 {
     options.Authority = "https://localhost:7035";
     options.ClientId = "test_client";

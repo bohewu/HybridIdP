@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TestClient.Constants;
 
 namespace TestClient.Controllers;
 
@@ -18,7 +19,7 @@ public class AccountController : Controller
 
     public async Task<IActionResult> Logout()
     {
-        await HttpContext.SignOutAsync("Cookies");
+        await HttpContext.SignOutAsync(AuthenticationSchemes.Cookies);
         return RedirectToAction("Index", "Home");
     }
 
