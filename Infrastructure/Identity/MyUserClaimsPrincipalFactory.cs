@@ -6,11 +6,11 @@ using System.Security.Claims;
 
 namespace Infrastructure.Identity;
 
-public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole<Guid>>
+public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser, ApplicationRole>
 {
     public MyUserClaimsPrincipalFactory(
         UserManager<ApplicationUser> userManager,
-        RoleManager<IdentityRole<Guid>> roleManager,
+        RoleManager<ApplicationRole> roleManager,
         IOptions<IdentityOptions> optionsAccessor) : base(userManager, roleManager, optionsAccessor)
     {
     }

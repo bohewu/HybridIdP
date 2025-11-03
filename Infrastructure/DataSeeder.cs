@@ -15,7 +15,7 @@ public static class DataSeeder
         using var scope = serviceProvider.CreateScope();
         
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var applicationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
         var scopeManager = scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
@@ -39,7 +39,7 @@ public static class DataSeeder
         // await SeedTestApplicationAsync(applicationManager);
     }
 
-    private static async Task SeedRolesAsync(RoleManager<IdentityRole<Guid>> roleManager)
+    private static async Task SeedRolesAsync(RoleManager<ApplicationRole> roleManager)
     {
         string[] roles = { AuthConstants.Roles.Admin, AuthConstants.Roles.User };
 
@@ -47,14 +47,21 @@ public static class DataSeeder
         {
             if (!await roleManager.RoleExistsAsync(role))
             {
-                await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+                await roleManager.CreateAsync(new ApplicationRole 
+                { 
+                    Name = role,
+                    IsSystem = true,
+                    Description = role == AuthConstants.Roles.Admin 
+                        ? "Administrator with full system access" 
+                        : "Standard user role"
+                });
             }
         }
     }
 
     private static async Task SeedAdminUserAsync(
         UserManager<ApplicationUser> userManager, 
-        RoleManager<IdentityRole<Guid>> roleManager)
+        RoleManager<ApplicationRole> roleManager)
     {
         var adminUser = await userManager.FindByEmailAsync(AuthConstants.DefaultAdmin.Email);
         

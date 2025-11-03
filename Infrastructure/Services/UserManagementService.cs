@@ -9,11 +9,11 @@ namespace Infrastructure.Services;
 public class UserManagementService : IUserManagementService
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
-        RoleManager<IdentityRole<Guid>> roleManager)
+        RoleManager<ApplicationRole> roleManager)
     {
         _userManager = userManager;
         _roleManager = roleManager;

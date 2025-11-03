@@ -9,7 +9,7 @@ namespace Tests.Application.UnitTests;
 public class UserManagementTests
 {
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
-    private readonly Mock<RoleManager<IdentityRole<Guid>>> _mockRoleManager;
+    private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
 
     public UserManagementTests()
     {
@@ -19,8 +19,8 @@ public class UserManagementTests
             userStore.Object, null, null, null, null, null, null, null, null);
 
         // Setup RoleManager mock
-        var roleStore = new Mock<IRoleStore<IdentityRole<Guid>>>();
-        _mockRoleManager = new Mock<RoleManager<IdentityRole<Guid>>>(
+        var roleStore = new Mock<IRoleStore<ApplicationRole>>();
+        _mockRoleManager = new Mock<RoleManager<ApplicationRole>>(
             roleStore.Object, null, null, null, null);
     }
 
