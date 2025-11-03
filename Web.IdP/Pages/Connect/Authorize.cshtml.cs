@@ -12,6 +12,8 @@ using OpenIddict.Server.AspNetCore;
 using System.Collections.Immutable;
 using System.Security.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using Infrastructure;
+using Core.Domain.Entities;
 
 namespace Web.IdP.Pages.Connect;
 
@@ -22,17 +24,20 @@ public class AuthorizeModel : PageModel
     private readonly IOpenIddictAuthorizationManager _authorizationManager;
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ApplicationDbContext _db;
 
     public AuthorizeModel(
         IOpenIddictApplicationManager applicationManager,
         IOpenIddictAuthorizationManager authorizationManager,
         IOpenIddictScopeManager scopeManager,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext db)
     {
         _applicationManager = applicationManager;
         _authorizationManager = authorizationManager;
         _scopeManager = scopeManager;
         _userManager = userManager;
+        _db = db;
     }
 
     public string? ApplicationName { get; set; }
@@ -87,7 +92,8 @@ public class AuthorizeModel : PageModel
         if (authorizations.Any())
         {
             // If a permanent authorization was found, return immediately
-            var identity = new ClaimsIdentity(result.Principal.Claims,
+            // Create a clean identity without ASP.NET Identity cookie claims to avoid duplicates
+            var identity = new ClaimsIdentity(
                 authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
             // Add custom claims (email, roles, etc.)
@@ -100,6 +106,9 @@ public class AuthorizeModel : PageModel
 
                 var roles = await _userManager.GetRolesAsync(user);
                 identity.SetClaims(Claims.Role, roles.ToImmutableArray());
+
+                // Enrich with scope-mapped claims from DB based on requested scopes
+                await AddScopeMappedClaimsAsync(identity, user, scopes.ToImmutableArray());
             }
 
             identity.SetDestinations(GetDestinations);
@@ -150,8 +159,8 @@ public class AuthorizeModel : PageModel
         var user = await _userManager.GetUserAsync(result.Principal) ??
             throw new InvalidOperationException("The user details cannot be retrieved.");
 
-        // Create a new ClaimsIdentity
-        var identity = new ClaimsIdentity(result.Principal.Claims,
+        // Create a clean ClaimsIdentity without copying ASP.NET Identity cookie claims to avoid duplicates
+        var identity = new ClaimsIdentity(
             authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
         // Add custom claims
@@ -161,6 +170,9 @@ public class AuthorizeModel : PageModel
 
         var roles = await _userManager.GetRolesAsync(user);
         identity.SetClaims(Claims.Role, roles.ToImmutableArray());
+
+        // Enrich with scope-mapped claims from DB based on requested scopes
+        await AddScopeMappedClaimsAsync(identity, user, request.GetScopes().ToImmutableArray());
 
         identity.SetDestinations(GetDestinations);
 
@@ -212,8 +224,63 @@ public class AuthorizeModel : PageModel
                 yield break;
 
             default:
+                // Include custom/dynamic claims in both tokens by default
                 yield return Destinations.AccessToken;
+                yield return Destinations.IdentityToken;
                 yield break;
         }
+    }
+
+    private async Task AddScopeMappedClaimsAsync(ClaimsIdentity identity, ApplicationUser user, ImmutableArray<string> requestedScopes)
+    {
+        if (requestedScopes.IsDefaultOrEmpty)
+        {
+            return;
+        }
+
+        var scopeNames = requestedScopes.ToArray();
+        var mappings = await _db.ScopeClaims
+            .Include(sc => sc.UserClaim)
+            .Where(sc => scopeNames.Contains(sc.ScopeName))
+            .ToListAsync();
+
+        foreach (var map in mappings)
+        {
+            var def = map.UserClaim;
+            if (def == null) continue;
+
+            var value = ResolveUserProperty(user, def.UserPropertyPath);
+
+            if (string.IsNullOrEmpty(value) && !map.AlwaysInclude)
+            {
+                continue;
+            }
+
+            if (identity.HasClaim(c => c.Type == def.ClaimType))
+            {
+                continue;
+            }
+
+            identity.SetClaim(def.ClaimType, value ?? string.Empty);
+        }
+    }
+
+    private static string? ResolveUserProperty(ApplicationUser user, string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+
+        object? current = user;
+        var segments = path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        foreach (var seg in segments)
+        {
+            if (current == null) return null;
+            var type = current.GetType();
+            var prop = type.GetProperty(seg);
+            if (prop == null) return null;
+            current = prop.GetValue(current);
+        }
+
+        return current?.ToString();
     }
 }

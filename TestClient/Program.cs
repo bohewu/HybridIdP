@@ -25,6 +25,9 @@ builder.Services.AddAuthentication(options =>
     options.RequireHttpsMetadata = true; // Using trusted dev cert
     options.GetClaimsFromUserInfoEndpoint = false; // OpenIddict doesn't require userinfo endpoint
 
+    // Keep original JWT claim types (don't remap to WS-* URIs)
+    options.MapInboundClaims = false;
+
     // Ensure client_secret is sent when redeeming the authorization code
     options.Events.OnAuthorizationCodeReceived = context =>
     {
