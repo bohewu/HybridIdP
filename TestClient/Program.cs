@@ -37,6 +37,32 @@ builder.Services.AddAuthentication(options =>
         }
         return Task.CompletedTask;
     };
+
+    // Handle remote authentication failures (e.g., user denies consent)
+    options.Events.OnRemoteFailure = context =>
+    {
+        // Check if the error is from the authorization endpoint
+        if (context.Failure?.Message.Contains("access_denied") == true)
+        {
+            // User denied authorization
+            context.Response.Redirect("/Account/AccessDenied");
+            context.HandleResponse();
+            return Task.CompletedTask;
+        }
+
+        if (context.Failure?.Message.Contains("invalid_") == true)
+        {
+            // OAuth/OIDC error (invalid_request, invalid_scope, etc.)
+            context.Response.Redirect("/Account/AuthError?error=" + Uri.EscapeDataString(context.Failure.Message));
+            context.HandleResponse();
+            return Task.CompletedTask;
+        }
+
+        // For other errors, use default error handling
+        context.Response.Redirect("/Home/Error");
+        context.HandleResponse();
+        return Task.CompletedTask;
+    };
 });
 
 builder.Services.AddControllersWithViews();

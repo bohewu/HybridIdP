@@ -1,0 +1,50 @@
+@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<div class="text-center mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="alert alert-warning" role="alert">
+                <h1 class="display-4">
+                    <i class="bi bi-shield-exclamation"></i>
+                    Access Denied
+                </h1>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Authorization Declined</h5>
+                    <p class="card-text">
+                        You chose not to grant this application access to your account.
+                    </p>
+                    <p class="card-text text-muted">
+                        To use this application, you need to authorize it to access your profile information.
+                        If you didn't mean to deny access, you can try logging in again.
+                    </p>
+                    
+                    <div class="mt-4">
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-primary">
+                            <i class="bi bi-house-door"></i> Go to Home
+                        </a>
+                        <a asp-controller="Account" asp-action="Profile" class="btn btn-outline-secondary ms-2">
+                            <i class="bi bi-arrow-clockwise"></i> Try Again
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 text-muted">
+                <small>
+                    <strong>Note:</strong> This application requires authorization to:
+                </small>
+                <ul class="list-unstyled mt-2">
+                    <li><i class="bi bi-check-circle text-success"></i> Verify your identity</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Access your profile information</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Access your email address</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Access your roles</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

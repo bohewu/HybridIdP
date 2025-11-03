@@ -21,4 +21,15 @@ public class AccountController : Controller
         await HttpContext.SignOutAsync("Cookies");
         return RedirectToAction("Index", "Home");
     }
+
+    public IActionResult AccessDenied()
+    {
+        return View();
+    }
+
+    public IActionResult AuthError(string? error)
+    {
+        ViewData["ErrorMessage"] = error ?? "An authentication error occurred.";
+        return View();
+    }
 }

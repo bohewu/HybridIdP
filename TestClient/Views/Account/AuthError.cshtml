@@ -1,0 +1,93 @@
+@{
+    ViewData["Title"] = "Authentication Error";
+    var errorMessage = ViewData["ErrorMessage"]?.ToString() ?? "An authentication error occurred.";
+    
+    // Parse error type from message
+    var isInvalidScope = errorMessage.Contains("invalid_scope");
+    var isInvalidRequest = errorMessage.Contains("invalid_request");
+    var isServerError = errorMessage.Contains("server_error");
+}
+
+<div class="text-center mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="alert alert-danger" role="alert">
+                <h1 class="display-4">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Authentication Error
+                </h1>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Unable to Complete Sign In</h5>
+                    
+                    @if (isInvalidScope)
+                    {
+                        <p class="card-text">
+                            The requested permissions (scopes) are not available or invalid.
+                        </p>
+                        <p class="card-text text-muted">
+                            This application may be requesting access to data that is not currently supported.
+                            Please contact the application administrator.
+                        </p>
+                    }
+                    else if (isInvalidRequest)
+                    {
+                        <p class="card-text">
+                            The authentication request was not properly formatted.
+                        </p>
+                        <p class="card-text text-muted">
+                            This is likely a configuration issue. Please contact the application administrator.
+                        </p>
+                    }
+                    else if (isServerError)
+                    {
+                        <p class="card-text">
+                            The authentication server encountered an error.
+                        </p>
+                        <p class="card-text text-muted">
+                            Please try again later. If the problem persists, contact support.
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="card-text">
+                            An error occurred while trying to sign you in.
+                        </p>
+                        <p class="card-text text-muted">
+                            Please try again. If the problem persists, contact support.
+                        </p>
+                    }
+                    
+                    <div class="mt-4">
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-primary">
+                            <i class="bi bi-house-door"></i> Go to Home
+                        </a>
+                        <a asp-controller="Account" asp-action="Profile" class="btn btn-outline-secondary ms-2">
+                            <i class="bi bi-arrow-clockwise"></i> Try Again
+                        </a>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <details class="mt-4">
+                            <summary class="text-muted" style="cursor: pointer;">
+                                <small>Technical Details</small>
+                            </summary>
+                            <div class="alert alert-secondary mt-2" role="alert">
+                                <small><code>@errorMessage</code></small>
+                            </div>
+                        </details>
+                    }
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <small class="text-muted">
+                    Error Code: AUTH_ERROR | Timestamp: @DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC")
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
