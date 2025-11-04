@@ -53,6 +53,62 @@ public class RoleManagementServiceTests
     }
 
     [Fact]
+    public async Task GetRoleById_NotFound_ReturnsNull()
+    {
+        // Arrange
+        var service = CreateService(Array.Empty<ApplicationRole>(), out var roleMgr, out _);
+        var missingId = Guid.NewGuid();
+        roleMgr.Setup(x => x.FindByIdAsync(missingId.ToString())).ReturnsAsync((ApplicationRole?)null);
+
+        // Act
+        var result = await service.GetRoleByIdAsync(missingId);
+
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetRoleById_ReturnsDetail_WithUsersAndPermissions()
+    {
+        // Arrange
+        var roleId = Guid.NewGuid();
+        var role = new ApplicationRole
+        {
+            Id = roleId,
+            Name = "Editors",
+            NormalizedName = "EDITORS",
+            Description = "Content editors",
+            Permissions = "users.read,roles.read",
+            IsSystem = false,
+            CreatedAt = DateTime.UtcNow.AddDays(-2)
+        };
+
+        var service = CreateService(new[] { role }, out var roleMgr, out var userMgr);
+
+        roleMgr.Setup(x => x.FindByIdAsync(roleId.ToString())).ReturnsAsync(role);
+        userMgr.Setup(x => x.GetUsersInRoleAsync("Editors")).ReturnsAsync(new List<ApplicationUser>
+        {
+            new ApplicationUser { Id = Guid.NewGuid(), Email = "alice@example.com", UserName = "alice" },
+            new ApplicationUser { Id = Guid.NewGuid(), Email = "bob@example.com", UserName = "bob" }
+        });
+
+        // Act
+        var detail = await service.GetRoleByIdAsync(roleId);
+
+        // Assert
+        Assert.NotNull(detail);
+        Assert.Equal(roleId, detail!.Id);
+        Assert.Equal("Editors", detail.Name);
+        Assert.Equal("EDITORS", detail.NormalizedName);
+        Assert.Equal("Content editors", detail.Description);
+        Assert.Contains("users.read", detail.Permissions);
+        Assert.Contains("roles.read", detail.Permissions);
+        Assert.Equal(2, detail.UserCount);
+        Assert.Equal(2, detail.Users.Count);
+        Assert.All(detail.Users, u => Assert.Contains("Editors", u.Roles));
+    }
+
+    [Fact]
     public async Task GetRoles_Pagination_Works()
     {
         // Arrange
