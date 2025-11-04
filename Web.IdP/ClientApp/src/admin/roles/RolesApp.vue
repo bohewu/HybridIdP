@@ -40,16 +40,17 @@
                 <th class="text-center">Permissions</th>
                 <th class="text-center">Users</th>
                 <th class="text-center">System</th>
+                <th class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="loading">
-                <td colspan="5">
+                <td colspan="6">
                   <div class="text-center py-4">Loading...</div>
                 </td>
               </tr>
               <tr v-else-if="roles.length === 0">
-                <td colspan="5">
+                <td colspan="6">
                   <div class="text-center py-4">No roles found</div>
                 </td>
               </tr>
@@ -64,6 +65,16 @@
                 </td>
                 <td class="text-center">
                   <span v-if="r.isSystem" class="badge text-bg-warning">System</span>
+                </td>
+                <td class="text-center">
+                  <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" @click="onEdit(r)" title="Edit Role">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-outline-danger" @click="onDelete(r)" title="Delete Role">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -86,6 +97,22 @@
       @close="showCreateModal = false"
       @created="handleRoleCreated"
     />
+
+    <!-- Edit Role Modal -->
+    <EditRoleModal
+      v-if="showEditModal && selectedRole"
+      :role="selectedRole"
+      @close="showEditModal = false"
+      @updated="handleRoleUpdated"
+    />
+
+    <!-- Delete Role Modal -->
+    <DeleteRoleModal
+      v-if="showDeleteModal && selectedRole"
+      :role="selectedRole"
+      @close="showDeleteModal = false"
+      @deleted="handleRoleDeleted"
+    />
   </div>
   
 </template>
@@ -93,6 +120,8 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import CreateRoleModal from './components/CreateRoleModal.vue'
+import EditRoleModal from './components/EditRoleModal.vue'
+import DeleteRoleModal from './components/DeleteRoleModal.vue'
 
 const roles = ref([])
 const loading = ref(false)
@@ -107,6 +136,9 @@ const sortBy = ref('name')
 const sortDirection = ref('asc')
 
 const showCreateModal = ref(false)
+const showEditModal = ref(false)
+const showDeleteModal = ref(false)
+const selectedRole = ref(null)
 
 async function fetchRoles(newSkip = skip.value) {
   loading.value = true
@@ -142,6 +174,33 @@ function handleRoleCreated() {
   showCreateModal.value = false
   // Refresh the list and reset to first page
   fetchRoles(0)
+}
+
+function onEdit(role) {
+  selectedRole.value = role
+  showEditModal.value = true
+}
+
+function handleRoleUpdated() {
+  showEditModal.value = false
+  selectedRole.value = null
+  // Refresh the list keeping current page
+  fetchRoles(skip.value)
+}
+
+function onDelete(role) {
+  selectedRole.value = role
+  showDeleteModal.value = true
+}
+
+function handleRoleDeleted() {
+  showDeleteModal.value = false
+  selectedRole.value = null
+  // Refresh the list, go to first page if current page becomes empty
+  const newTotal = totalCount.value - 1
+  const maxSkip = Math.max(0, newTotal - 1)
+  const newSkip = skip.value > maxSkip ? Math.max(0, skip.value - take.value) : skip.value
+  fetchRoles(newSkip)
 }
 
 onMounted(() => fetchRoles(0))
