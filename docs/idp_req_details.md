@@ -122,11 +122,89 @@ wwwroot/
 
 ## Development Workflow
 
-1.  **Implement Sub-Phase:** I will complete one sub-phase at a time.
-2.  **Verify:** I will perform the outlined verification steps.
-3.  **Request Approval:** I will ask for your approval to proceed.
-4.  **Commit:** Upon approval, I will commit the changes with a descriptive message.
-5.  **Proceed:** I will then move to the next sub-phase.
+### Git Commit Strategy: Small Steps (Option A) ✅
+
+**Philosophy:** Commit early, commit often - each logical unit gets its own commit.
+
+**Rules:**
+
+1. **Atomic Commits:** Each commit should represent one logical change that can be understood in isolation
+2. **Test Before Commit:** Every commit should pass tests and be in a runnable state
+3. **API First, Then UI:** Always implement and test backend APIs before building the frontend
+4. **UI Layered Approach:**
+   - First: Layout/scaffolding (Razor Page + Vue SPA mount point + Tailwind CSS)
+   - Second: Data display (list/table components)
+   - Third: CRUD operations (create, edit, delete - one at a time)
+
+**Implementation Order for Features:**
+
+```text
+Phase X.Y: Feature Name
+├── Step 1: API - DTOs (commit)
+├── Step 2: API - GET endpoint + tests (commit)
+├── Step 3: API - POST endpoint + validation + tests (commit)
+├── Step 4: API - PUT endpoint + tests (commit)
+├── Step 5: API - DELETE endpoint + tests (commit)
+├── Step 6: UI - Razor Page + Vue scaffolding + Tailwind CSS (commit)
+├── Step 7: UI - List component with API integration (commit)
+├── Step 8: UI - Create form component (commit)
+├── Step 9: UI - Edit form component (commit)
+├── Step 10: UI - Delete confirmation (commit)
+└── Step 11: E2E Testing & Verification (commit)
+```
+
+**Commit Message Format (Conventional Commits):**
+
+```text
+<type>(<scope>): <subject>
+
+[optional body]
+[optional footer]
+```
+
+**Types:**
+
+- `feat`: New feature
+- `fix`: Bug fix
+- `test`: Add/update tests
+- `docs`: Documentation only
+- `refactor`: Code refactoring
+- `style`: Formatting, missing semicolons, etc.
+- `chore`: Build tasks, package manager configs
+
+**Scopes:**
+
+- `api`: Backend API
+- `ui`: Frontend UI
+- `auth`: Authentication/Authorization
+- `db`: Database/migrations
+- `test`: Testing infrastructure
+
+**Examples:**
+
+```bash
+feat(api): Add RoleSummaryDto for role list endpoint
+feat(api): Implement GET /api/admin/roles with pagination
+test(api): Add unit tests for role creation validation
+feat(ui): Add Roles.cshtml with admin authorization
+feat(ui): Implement RoleList component with table display
+feat(ui): Add role creation form with permission selector
+```
+
+**Verification Checkpoint:** After each commit, verify:
+
+- ✅ Code compiles without errors
+- ✅ Relevant tests pass
+- ✅ Application runs without crashes
+- ✅ No regression in existing features
+
+### Sub-Phase Workflow
+
+1. **Implement Small Step:** Complete one atomic unit (e.g., one API endpoint, one UI component)
+2. **Test:** Verify the change works correctly (unit tests, integration tests, or manual browser testing)
+3. **Commit:** Create descriptive commit with conventional commit format
+4. **Request Approval:** Ask if ready to proceed to next step or if changes needed
+5. **Proceed:** Move to the next atomic unit
 
 ---
 
