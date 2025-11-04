@@ -4,6 +4,7 @@ using Core.Domain;
 using Core.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace Infrastructure.Services;
 
@@ -68,8 +69,19 @@ public class RoleManagementService : IRoleManagementService
             _ => asc ? rolesQuery.OrderBy(r => r.Name) : rolesQuery.OrderByDescending(r => r.Name)
         };
 
-        var total = await rolesQuery.CountAsync();
-        var page = await rolesQuery.Skip(skip).Take(take).ToListAsync();
+        List<ApplicationRole> page;
+        int total;
+        var providerIsAsync = rolesQuery.Provider is IAsyncQueryProvider;
+        if (providerIsAsync)
+        {
+            total = await rolesQuery.CountAsync();
+            page = await rolesQuery.Skip(skip).Take(take).ToListAsync();
+        }
+        else
+        {
+            total = rolesQuery.Count();
+            page = rolesQuery.Skip(skip).Take(take).ToList();
+        }
 
         var summaries = new List<RoleSummaryDto>(page.Count);
         foreach (var role in page)
