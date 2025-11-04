@@ -3,7 +3,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1 class="h3">Role Management</h1>
       <div>
-        <button class="btn btn-primary" @click="onCreate" :disabled="loading">
+        <button class="btn btn-primary" @click="showCreateModal = true" :disabled="loading">
           <i class="bi bi-plus-circle me-2"></i>
           Create Role
         </button>
@@ -79,12 +79,20 @@
         </div>
       </div>
     </div>
+
+    <!-- Create Role Modal -->
+    <CreateRoleModal
+      v-if="showCreateModal"
+      @close="showCreateModal = false"
+      @created="handleRoleCreated"
+    />
   </div>
   
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import CreateRoleModal from './components/CreateRoleModal.vue'
 
 const roles = ref([])
 const loading = ref(false)
@@ -97,6 +105,8 @@ const totalCount = ref(0)
 const search = ref('')
 const sortBy = ref('name')
 const sortDirection = ref('asc')
+
+const showCreateModal = ref(false)
 
 async function fetchRoles(newSkip = skip.value) {
   loading.value = true
@@ -128,8 +138,10 @@ async function fetchRoles(newSkip = skip.value) {
 function prevPage() { if (skip.value > 0) fetchRoles(Math.max(0, skip.value - take.value)) }
 function nextPage() { if (skip.value + take.value < totalCount.value) fetchRoles(skip.value + take.value) }
 
-function onCreate() {
-  // TODO: open create role modal (to be implemented next steps)
+function handleRoleCreated() {
+  showCreateModal.value = false
+  // Refresh the list and reset to first page
+  fetchRoles(0)
 }
 
 onMounted(() => fetchRoles(0))
