@@ -24,10 +24,10 @@
   - [ ] Commit: `feat(api): Add RoleSummaryDto and RoleDetailDto`
 
 - [ ] **Step 2:** GET Endpoint
-  - [ ] Implement `GET /api/admin/roles` with pagination
-  - [ ] Return list of roles with permission counts
+  - [x] Implement `GET /api/admin/roles` with pagination (skip/take/search/sort)
+  - [x] Return list of roles with permission counts
   - [ ] Add unit tests for role list endpoint
-  - [ ] Commit: `feat(api): Implement GET /api/admin/roles with pagination`
+  - [x] Commit: `feat(api): roles list supports paging/search/sort + permission checks`
   - [ ] Commit: `test(api): Add unit tests for role list endpoint`
 
 - [ ] **Step 3:** GET Detail Endpoint

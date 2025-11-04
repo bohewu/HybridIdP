@@ -43,6 +43,58 @@ public class RoleManagementService : IRoleManagementService
         return roleSummaries;
     }
 
+    public async Task<PagedRolesDto> GetRolesAsync(int skip, int take, string? search = null, string? sortBy = "name", string? sortDirection = "asc")
+    {
+        if (skip < 0) skip = 0;
+        if (take <= 0) take = 25;
+
+        var rolesQuery = _roleManager.Roles.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            rolesQuery = rolesQuery.Where(r =>
+                (r.Name != null && r.Name.ToLower().Contains(s)) ||
+                (r.Description != null && r.Description.ToLower().Contains(s))
+            );
+        }
+
+        // Sorting
+        var sortField = (sortBy ?? "name").ToLower();
+        var asc = (sortDirection ?? "asc").ToLower() != "desc";
+        rolesQuery = (sortField) switch
+        {
+            "createdat" => asc ? rolesQuery.OrderBy(r => r.CreatedAt) : rolesQuery.OrderByDescending(r => r.CreatedAt),
+            _ => asc ? rolesQuery.OrderBy(r => r.Name) : rolesQuery.OrderByDescending(r => r.Name)
+        };
+
+        var total = await rolesQuery.CountAsync();
+        var page = await rolesQuery.Skip(skip).Take(take).ToListAsync();
+
+        var summaries = new List<RoleSummaryDto>(page.Count);
+        foreach (var role in page)
+        {
+            var usersInRole = await _userManager.GetUsersInRoleAsync(role.Name!);
+            summaries.Add(new RoleSummaryDto
+            {
+                Id = role.Id,
+                Name = role.Name ?? string.Empty,
+                Description = role.Description,
+                UserCount = usersInRole.Count,
+                Permissions = ParsePermissions(role.Permissions),
+                IsSystem = role.IsSystem
+            });
+        }
+
+        return new PagedRolesDto
+        {
+            Items = summaries,
+            TotalCount = total,
+            Skip = skip,
+            Take = take
+        };
+    }
+
     public async Task<RoleDetailDto?> GetRoleByIdAsync(Guid roleId)
     {
         var role = await _roleManager.FindByIdAsync(roleId.ToString());

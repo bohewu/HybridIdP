@@ -1242,15 +1242,26 @@ public class AdminController : ControllerBase
     #region Role Management
 
     /// <summary>
-    /// Get all roles.
+    /// Get roles with server-side paging, optional search and sorting.
     /// </summary>
+    /// <param name="skip">Number of items to skip (default: 0)</param>
+    /// <param name="take">Number of items to take (default: 25)</param>
+    /// <param name="search">Optional search string matched against name/description (case-insensitive)</param>
+    /// <param name="sortBy">Optional sort field: name, createdat (default: name)</param>
+    /// <param name="sortDirection">Sort direction: asc or desc (default: asc)</param>
     [HttpGet("roles")]
-    public async Task<IActionResult> GetRoles()
+    [HasPermission(DomainPermissions.Roles.Read)]
+    public async Task<IActionResult> GetRoles(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 25,
+        [FromQuery] string? search = null,
+        [FromQuery] string? sortBy = "name",
+        [FromQuery] string? sortDirection = "asc")
     {
         try
         {
-            var roles = await _roleManagementService.GetRolesAsync();
-            return Ok(roles);
+            var result = await _roleManagementService.GetRolesAsync(skip, take, search, sortBy, sortDirection);
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -1263,6 +1274,7 @@ public class AdminController : ControllerBase
     /// </summary>
     /// <param name="id">Role ID</param>
     [HttpGet("roles/{id}")]
+    [HasPermission(DomainPermissions.Roles.Read)]
     public async Task<IActionResult> GetRole(Guid id)
     {
         try
@@ -1284,6 +1296,7 @@ public class AdminController : ControllerBase
     /// </summary>
     /// <param name="request">Role creation data</param>
     [HttpPost("roles")]
+    [HasPermission(DomainPermissions.Roles.Create)]
     public async Task<IActionResult> CreateRole([FromBody] CreateRoleDto request)
     {
         try
@@ -1308,6 +1321,7 @@ public class AdminController : ControllerBase
     /// <param name="id">Role ID</param>
     /// <param name="request">Role update data</param>
     [HttpPut("roles/{id}")]
+    [HasPermission(DomainPermissions.Roles.Update)]
     public async Task<IActionResult> UpdateRole(Guid id, [FromBody] UpdateRoleDto request)
     {
         try
@@ -1335,6 +1349,7 @@ public class AdminController : ControllerBase
     /// </summary>
     /// <param name="id">Role ID</param>
     [HttpDelete("roles/{id}")]
+    [HasPermission(DomainPermissions.Roles.Delete)]
     public async Task<IActionResult> DeleteRole(Guid id)
     {
         try
@@ -1360,6 +1375,7 @@ public class AdminController : ControllerBase
     /// Get all available permissions.
     /// </summary>
     [HttpGet("roles/permissions")]
+    [HasPermission(DomainPermissions.Roles.Read)]
     public async Task<IActionResult> GetAvailablePermissions()
     {
         try

@@ -13,6 +13,16 @@ public interface IRoleManagementService
     Task<List<RoleSummaryDto>> GetRolesAsync();
     
     /// <summary>
+    /// Get roles with paging, optional search and sorting
+    /// </summary>
+    /// <param name="skip">Items to skip</param>
+    /// <param name="take">Items to take</param>
+    /// <param name="search">Optional search text (matches name/description)</param>
+    /// <param name="sortBy">Sort field: name or createdat (default: name)</param>
+    /// <param name="sortDirection">asc or desc (default: asc)</param>
+    Task<PagedRolesDto> GetRolesAsync(int skip, int take, string? search = null, string? sortBy = "name", string? sortDirection = "asc");
+    
+    /// <summary>
     /// Get role by ID with detailed information
     /// </summary>
     Task<RoleDetailDto?> GetRoleByIdAsync(Guid roleId);
