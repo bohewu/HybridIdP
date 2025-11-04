@@ -3,11 +3,7 @@
 @{
     ViewData["Title"] = "Role Management";
     ViewData["Breadcrumb"] = "Roles";
-    Layout = "_AdminLayout";
 }
 
 <div id="app"></div>
-
-@section Scripts {
-    <script type="module" src="~/src/admin/roles/main.js" asp-append-version="true"></script>
-}
+<script type="module" vite-src="~/src/admin/roles/main.js"></script>
