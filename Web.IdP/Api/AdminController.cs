@@ -107,6 +107,7 @@ public class AdminController : ControllerBase
     /// <param name="type">Optional client type filter: "public" | "confidential"</param>
     /// <param name="sort">Optional sort expression, e.g. "clientId:asc" (fields: clientId, displayName, type, redirectUrisCount)</param>
     [HttpGet("clients")]
+    [HasPermission(DomainPermissions.Clients.Read)]
     public async Task<IActionResult> GetClients(
         [FromQuery] int skip = 0,
         [FromQuery] int take = 25,
@@ -198,6 +199,7 @@ public class AdminController : ControllerBase
     /// Get a specific OIDC client by ID.
     /// </summary>
     [HttpGet("clients/{id}")]
+    [HasPermission(DomainPermissions.Clients.Read)]
     public async Task<IActionResult> GetClient(string id)
     {
         var application = await _applicationManager.FindByIdAsync(id);
@@ -227,6 +229,7 @@ public class AdminController : ControllerBase
     /// Create a new OIDC client.
     /// </summary>
     [HttpPost("clients")]
+    [HasPermission(DomainPermissions.Clients.Create)]
     public async Task<IActionResult> CreateClient([FromBody] CreateClientRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.ClientId))
@@ -335,6 +338,7 @@ public class AdminController : ControllerBase
     /// Update an existing OIDC client.
     /// </summary>
     [HttpPut("clients/{id}")]
+    [HasPermission(DomainPermissions.Clients.Update)]
     public async Task<IActionResult> UpdateClient(string id, [FromBody] UpdateClientRequest request)
     {
         var application = await _applicationManager.FindByIdAsync(id);
@@ -427,6 +431,7 @@ public class AdminController : ControllerBase
     /// Delete an OIDC client.
     /// </summary>
     [HttpDelete("clients/{id}")]
+    [HasPermission(DomainPermissions.Clients.Delete)]
     public async Task<IActionResult> DeleteClient(string id)
     {
         var application = await _applicationManager.FindByIdAsync(id);
@@ -448,6 +453,7 @@ public class AdminController : ControllerBase
     /// Get all OIDC scopes.
     /// </summary>
     [HttpGet("scopes")]
+    [HasPermission(DomainPermissions.Scopes.Read)]
     public async Task<IActionResult> GetScopes()
     {
         var scopes = new List<object>();
@@ -470,6 +476,7 @@ public class AdminController : ControllerBase
     /// Get a specific OIDC scope by ID.
     /// </summary>
     [HttpGet("scopes/{id}")]
+    [HasPermission(DomainPermissions.Scopes.Read)]
     public async Task<IActionResult> GetScope(string id)
     {
         var scope = await _scopeManager.FindByIdAsync(id);
@@ -494,6 +501,7 @@ public class AdminController : ControllerBase
     /// Create a new OIDC scope.
     /// </summary>
     [HttpPost("scopes")]
+    [HasPermission(DomainPermissions.Scopes.Create)]
     public async Task<IActionResult> CreateScope([FromBody] CreateScopeRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
@@ -545,6 +553,7 @@ public class AdminController : ControllerBase
     /// Update an existing OIDC scope.
     /// </summary>
     [HttpPut("scopes/{id}")]
+    [HasPermission(DomainPermissions.Scopes.Update)]
     public async Task<IActionResult> UpdateScope(string id, [FromBody] UpdateScopeRequest request)
     {
         var scope = await _scopeManager.FindByIdAsync(id);
@@ -582,6 +591,7 @@ public class AdminController : ControllerBase
     /// Delete an OIDC scope.
     /// </summary>
     [HttpDelete("scopes/{id}")]
+    [HasPermission(DomainPermissions.Scopes.Delete)]
     public async Task<IActionResult> DeleteScope(string id)
     {
         var scope = await _scopeManager.FindByIdAsync(id);
@@ -1075,6 +1085,7 @@ public class AdminController : ControllerBase
     /// </summary>
     /// <param name="id">User ID</param>
     [HttpGet("users/{id}")]
+    [HasPermission(DomainPermissions.Users.Read)]
     public async Task<IActionResult> GetUser(Guid id)
     {
         try
@@ -1096,6 +1107,7 @@ public class AdminController : ControllerBase
     /// </summary>
     /// <param name="request">User creation data</param>
     [HttpPost("users")]
+    [HasPermission(DomainPermissions.Users.Create)]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserDto request)
     {
         try
@@ -1123,6 +1135,7 @@ public class AdminController : ControllerBase
     /// <param name="id">User ID</param>
     /// <param name="request">User update data</param>
     [HttpPut("users/{id}")]
+    [HasPermission(DomainPermissions.Users.Update)]
     public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserDto request)
     {
         try
@@ -1153,6 +1166,7 @@ public class AdminController : ControllerBase
     /// </summary>
     /// <param name="id">User ID</param>
     [HttpDelete("users/{id}")]
+    [HasPermission(DomainPermissions.Users.Delete)]
     public async Task<IActionResult> DeactivateUser(Guid id)
     {
         try
@@ -1182,6 +1196,7 @@ public class AdminController : ControllerBase
     /// </summary>
     /// <param name="id">User ID</param>
     [HttpPost("users/{id}/reactivate")]
+    [HasPermission(DomainPermissions.Users.Update)]
     public async Task<IActionResult> ReactivateUser(Guid id)
     {
         try
@@ -1213,6 +1228,7 @@ public class AdminController : ControllerBase
     /// <param name="id">User ID</param>
     /// <param name="request">Role assignment data</param>
     [HttpPut("users/{id}/roles")]
+    [HasPermission(DomainPermissions.Users.Update)]
     public async Task<IActionResult> AssignRoles(Guid id, [FromBody] AssignRolesRequest request)
     {
         try
