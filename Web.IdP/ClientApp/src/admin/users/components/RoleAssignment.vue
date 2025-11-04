@@ -58,7 +58,7 @@ const handleSave = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        roleNames: selectedRoles.value
+        roles: selectedRoles.value
       })
     })
     
