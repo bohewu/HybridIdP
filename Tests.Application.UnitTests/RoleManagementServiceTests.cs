@@ -109,6 +109,203 @@ public class RoleManagementServiceTests
     }
 
     [Fact]
+    public async Task CreateRole_DuplicateName_ShouldFail()
+    {
+        // Arrange
+        var existing = new ApplicationRole { Id = Guid.NewGuid(), Name = "Admins" };
+        var service = CreateService(new[] { existing }, out var roleMgr, out _);
+        roleMgr.Setup(x => x.FindByNameAsync("Admins")).ReturnsAsync(existing);
+
+        var dto = new CreateRoleDto
+        {
+            Name = "Admins",
+            Description = "Duplicate",
+            Permissions = new List<string> { Core.Domain.Constants.Permissions.Users.Read }
+        };
+
+        // Act
+        var (success, _, errors) = await service.CreateRoleAsync(dto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("already exists", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task CreateRole_InvalidPermission_ShouldFail()
+    {
+        // Arrange
+        var service = CreateService(Array.Empty<ApplicationRole>(), out var roleMgr, out _);
+        roleMgr.Setup(x => x.FindByNameAsync(It.IsAny<string>())).ReturnsAsync((ApplicationRole?)null);
+        var dto = new CreateRoleDto
+        {
+            Name = "ContentEditor",
+            Description = "",
+            Permissions = new List<string> { "users.read", "invalid.permission" }
+        };
+
+        // Act
+        var (success, _, errors) = await service.CreateRoleAsync(dto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Invalid permissions", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task CreateRole_Valid_ShouldSucceed()
+    {
+        // Arrange
+        var service = CreateService(Array.Empty<ApplicationRole>(), out var roleMgr, out _);
+        roleMgr.Setup(x => x.FindByNameAsync(It.IsAny<string>())).ReturnsAsync((ApplicationRole?)null);
+        roleMgr.Setup(x => x.CreateAsync(It.IsAny<ApplicationRole>())).ReturnsAsync(IdentityResult.Success);
+
+        var dto = new CreateRoleDto
+        {
+            Name = "ContentEditor",
+            Description = "",
+            Permissions = new List<string>
+            {
+                Core.Domain.Constants.Permissions.Users.Read,
+                Core.Domain.Constants.Permissions.Roles.Read
+            }
+        };
+
+        // Act
+    var (success, roleId, errors) = await service.CreateRoleAsync(dto);
+
+        // Assert
+        Assert.True(success);
+        Assert.NotNull(roleId);
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public async Task UpdateRole_RenameToExisting_ShouldFail()
+    {
+        // Arrange
+        var existing = new ApplicationRole { Id = Guid.NewGuid(), Name = "Admins" };
+        var target = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors" };
+        var service = CreateService(new[] { existing, target }, out var roleMgr, out _);
+        roleMgr.Setup(x => x.FindByIdAsync(target.Id.ToString())).ReturnsAsync(target);
+        roleMgr.Setup(x => x.FindByNameAsync("Admins")).ReturnsAsync(existing);
+
+        var dto = new UpdateRoleDto
+        {
+            Name = "Admins",
+            Description = target.Description ?? "",
+            Permissions = new List<string> { Core.Domain.Constants.Permissions.Users.Read }
+        };
+
+        // Act
+        var (success, errors) = await service.UpdateRoleAsync(target.Id, dto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("already exists", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task UpdateRole_SystemRoleRename_ShouldFail()
+    {
+        // Arrange
+        var systemRole = new ApplicationRole { Id = Guid.NewGuid(), Name = "Admin", IsSystem = true };
+        var service = CreateService(new[] { systemRole }, out var roleMgr, out _);
+        roleMgr.Setup(x => x.FindByIdAsync(systemRole.Id.ToString())).ReturnsAsync(systemRole);
+
+        var dto = new UpdateRoleDto
+        {
+            Name = "SuperAdmin",
+            Description = systemRole.Description ?? "",
+            Permissions = new List<string> { Core.Domain.Constants.Permissions.Users.Read }
+        };
+
+        // Act
+        var (success, errors) = await service.UpdateRoleAsync(systemRole.Id, dto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Cannot rename system roles", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task UpdateRole_InvalidPermissions_ShouldFail()
+    {
+        // Arrange
+        var role = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors" };
+        var service = CreateService(new[] { role }, out var roleMgr, out _);
+        roleMgr.Setup(x => x.FindByIdAsync(role.Id.ToString())).ReturnsAsync(role);
+
+        var dto = new UpdateRoleDto
+        {
+            Name = "Editors",
+            Description = role.Description ?? "",
+            Permissions = new List<string> { "invalid.permission" }
+        };
+
+        // Act
+        var (success, errors) = await service.UpdateRoleAsync(role.Id, dto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Invalid permissions", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DeleteRole_SystemRole_ShouldFail()
+    {
+        // Arrange
+        var systemRole = new ApplicationRole { Id = Guid.NewGuid(), Name = "Admin", IsSystem = true };
+        var service = CreateService(new[] { systemRole }, out var roleMgr, out _);
+        roleMgr.Setup(x => x.FindByIdAsync(systemRole.Id.ToString())).ReturnsAsync(systemRole);
+
+        // Act
+        var (success, errors) = await service.DeleteRoleAsync(systemRole.Id);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Cannot delete system roles", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DeleteRole_WithUsersAssigned_ShouldFail()
+    {
+        // Arrange
+        var role = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors" };
+        var service = CreateService(new[] { role }, out var roleMgr, out var userMgr);
+        roleMgr.Setup(x => x.FindByIdAsync(role.Id.ToString())).ReturnsAsync(role);
+        userMgr.Setup(x => x.GetUsersInRoleAsync("Editors")).ReturnsAsync(new List<ApplicationUser>
+        {
+            new ApplicationUser { Id = Guid.NewGuid(), Email = "alice@example.com" }
+        });
+
+        // Act
+        var (success, errors) = await service.DeleteRoleAsync(role.Id);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Remove users from role first", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DeleteRole_Valid_ShouldSucceed()
+    {
+        // Arrange
+        var role = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors" };
+        var service = CreateService(new[] { role }, out var roleMgr, out var userMgr);
+        roleMgr.Setup(x => x.FindByIdAsync(role.Id.ToString())).ReturnsAsync(role);
+        userMgr.Setup(x => x.GetUsersInRoleAsync("Editors")).ReturnsAsync(new List<ApplicationUser>());
+        roleMgr.Setup(x => x.DeleteAsync(role)).ReturnsAsync(IdentityResult.Success);
+
+        // Act
+        var (success, errors) = await service.DeleteRoleAsync(role.Id);
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+    }
+
+    [Fact]
     public async Task GetRoles_Pagination_Works()
     {
         // Arrange

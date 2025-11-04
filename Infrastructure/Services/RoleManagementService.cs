@@ -146,11 +146,33 @@ public class RoleManagementService : IRoleManagementService
 
     public async Task<(bool Success, Guid? RoleId, IEnumerable<string> Errors)> CreateRoleAsync(CreateRoleDto createDto)
     {
+        // Validate name uniqueness
+        if (string.IsNullOrWhiteSpace(createDto.Name))
+        {
+            return (false, null, new[] { "Role name is required" });
+        }
+
+        var existingByName = await _roleManager.FindByNameAsync(createDto.Name);
+        if (existingByName != null)
+        {
+            return (false, null, new[] { "Role name already exists" });
+        }
+
+        // Validate permissions
+        var allPermissions = Permissions.GetAll();
+        var invalidPermissions = (createDto.Permissions ?? new List<string>())
+            .Where(p => !allPermissions.Contains(p))
+            .ToList();
+        if (invalidPermissions.Any())
+        {
+            return (false, null, new[] { $"Invalid permissions: {string.Join(", ", invalidPermissions)}" });
+        }
+
         var role = new ApplicationRole
         {
             Name = createDto.Name,
             Description = createDto.Description,
-            Permissions = SerializePermissions(createDto.Permissions),
+            Permissions = SerializePermissions(createDto.Permissions ?? new List<string>()),
             IsSystem = false,
             CreatedAt = DateTime.UtcNow
         };
@@ -179,9 +201,29 @@ public class RoleManagementService : IRoleManagementService
             return (false, new[] { "Cannot rename system roles" });
         }
 
+        // Validate name uniqueness if name changed
+        if (!string.Equals(role.Name, updateDto.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            var existingByName = await _roleManager.FindByNameAsync(updateDto.Name);
+            if (existingByName != null && existingByName.Id != role.Id)
+            {
+                return (false, new[] { "Role name already exists" });
+            }
+        }
+
+        // Validate permissions
+        var allPermissions = Permissions.GetAll();
+        var invalidPermissions = (updateDto.Permissions ?? new List<string>())
+            .Where(p => !allPermissions.Contains(p))
+            .ToList();
+        if (invalidPermissions.Any())
+        {
+            return (false, new[] { $"Invalid permissions: {string.Join(", ", invalidPermissions)}" });
+        }
+
         role.Name = updateDto.Name;
         role.Description = updateDto.Description;
-        role.Permissions = SerializePermissions(updateDto.Permissions);
+    role.Permissions = SerializePermissions(updateDto.Permissions ?? new List<string>());
         role.ModifiedAt = DateTime.UtcNow;
 
         var result = await _roleManager.UpdateAsync(role);
