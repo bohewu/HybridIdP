@@ -18,11 +18,11 @@ namespace Web.IdP.Api;
 
 /// <summary>
 /// Admin API controller for management operations.
-/// All endpoints require the Admin role.
+/// All endpoints require specific permissions (enforced via HasPermission attribute).
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = AuthConstants.Roles.Admin)]
+[Authorize] // Require authentication, permissions checked per-endpoint
 public class AdminController : ControllerBase
 {
     private readonly IOpenIddictApplicationManager _applicationManager;
