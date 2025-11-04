@@ -496,13 +496,38 @@ Phase 3 establishes the complete admin portal with a secure hybrid architecture:
     ClientApp/src/admin/
     ├── clients/
     │   ├── main.js              → Entry point for Clients page
+    │   ├── style.css            → ⚠️ MUST include: @tailwind directives
     │   ├── ClientsApp.vue       → Root component
     │   └── components/          → ClientList, ClientForm (with type selection)
     └── scopes/
         ├── main.js              → Entry point for Scopes page
+        ├── style.css            → ⚠️ MUST include: @tailwind directives
         ├── ScopesApp.vue        → Root component
         └── components/          → ScopeList, ScopeForm
     ```
+
+  - **⚠️ CRITICAL - Tailwind CSS Setup for Each Vue SPA:**
+    - **Pattern for ALL new Vue SPA entry points:**
+      1. Create `style.css` in the same directory as `main.js`:
+         ```css
+         @tailwind base;
+         @tailwind components;
+         @tailwind utilities;
+         ```
+      2. Import in `main.js`:
+         ```javascript
+         import { createApp } from 'vue'
+         import YourApp from './YourApp.vue'
+         import './style.css'  // ← CRITICAL: Must import Tailwind
+
+         createApp(YourApp).mount('#app')
+         ```
+    - **Why:** Vite needs explicit CSS imports to process Tailwind directives
+    - **Consequence of missing:** Components render without Tailwind styling (layout breaks)
+    - **Verification:** 
+      - Browser console shows `[vite] connected`
+      - Tailwind utility classes (e.g., `p-4`, `bg-blue-500`) render correctly
+      - Check Network tab for CSS file loaded from Vite dev server
 
   - **Verification:**
     - ✅ Bootstrap 5 layout renders correctly (sidebar, breadcrumbs, footer)
@@ -884,6 +909,17 @@ Phase 4 establishes comprehensive user and role management with a modern admin i
 
 - **4.4: User Management UI**
   - Goal: Build comprehensive user management interface for administrators.
+  - **⚠️ CRITICAL - Tailwind CSS Setup:**
+    - **MUST create** `ClientApp/src/admin/users/style.css` with Tailwind directives:
+      ```css
+      @tailwind base;
+      @tailwind components;
+      @tailwind utilities;
+      ```
+    - **MUST import** in `main.js`: `import './style.css'`
+    - **Pattern:** Every new Vue SPA entry point requires its own `style.css` import
+    - **Reference:** Follow same pattern as `clients/main.js`, `scopes/main.js`, `claims/main.js`
+    - **Verification:** Check browser console for `[vite] connected` and verify Tailwind classes render correctly
   - Frontend:
     - Vue SPA: `ClientApp/src/admin/users/UsersApp.vue`
     - Components: UserList, UserForm, RoleAssignment
