@@ -334,18 +334,58 @@
 
 ---
 
+## Phase 4.6: Permission System Implementation ✅
+
+**完成時間：** 2025-01-10
+
+**目標：** 為所有 Admin API 端點實施細粒度的基於權限的授權
+
+**Permission Infrastructure（已存在）：**
+- Permission Constants (`Core.Domain/Constants/Permissions.cs`)
+  - 6 categories: Clients, Scopes, Users, Roles, Audit, Settings
+  - 17 total permissions (clients.read/create/update/delete, etc.)
+- Authorization Components:
+  - `PermissionRequirement` - IAuthorizationRequirement 實作
+  - `PermissionAuthorizationHandler` - 檢查 Admin role bypass & role-based permissions
+  - `HasPermissionAttribute` - Policy-based authorization attribute
+  - Program.cs - Policy registration for all permissions
+
+**實施內容：**
+- Applied `[HasPermission]` to 24 Admin API endpoints:
+  - **Clients:** 5 endpoints (Read/Create/Update/Delete)
+  - **Scopes:** 5 endpoints (Read/Create/Update/Delete)
+  - **Users:** 7 endpoints (Read/Create/Update/Delete + Reactivate + Update Roles)
+  - **Claims:** 7 endpoints (Read/Create/Update/Delete + Scope Claims Read/Update)
+- Roles endpoints already had HasPermission (verified)
+
+**Authorization Behavior:**
+- Admin role: Full access to all endpoints (bypass)
+- Other roles: Permission checked against `ApplicationRole.Permissions` string (comma-separated)
+- Unauthorized: 403 Forbidden response
+
+**Commits:**
+- `d076500` - feat(auth): Apply permission-based authorization to Clients, Scopes, and Users endpoints
+- `00c58ab` - feat(auth): Apply permission-based authorization to Claims management endpoints
+
+**技術細節:**
+- Modified: `Web.IdP/Api/AdminController.cs` (24 endpoints updated)
+- Permission Check: PermissionAuthorizationHandler checks user's roles for required permission
+- Claims as Scopes: Claim management uses Scopes.* permissions (logical grouping)
+
+---
+
 ## 統計數據
 
-- **完成的 Phases:** 15
-- **API Endpoints:** 36+
+- **完成的 Phases:** 16
+- **API Endpoints:** 36+ (24 with permission-based auth)
 - **UI Pages:** 8
-- **Commits:** 56 (採用 Small Steps 策略)
-- **測試涵蓋率:** 
+- **Commits:** 58 (採用 Small Steps 策略)
+- **測試涵蓋率:**
   - Unit Tests: Core.Application, Infrastructure
   - E2E Tests: OIDC Flow, Admin Portal CRUD (Clients, Scopes, Users, Roles)
 
 ---
 
-**下一步：** Phase 4.6 - Permission System Implementation
+**下一步:** Test Permission System, then continue with remaining phases
 
 **參考文件：** `progress_todo.md` 查看待辦事項
