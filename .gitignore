@@ -34,3 +34,13 @@ bld/
 # Test results
 TestResults/
 .fake
+
+# Frontend build outputs
+Web.IdP/wwwroot/dist/
+
+# MCP Playwright screenshots
+.playwright-mcp/
+
+# Test scripts
+test-*.ps1
+test-*.md
