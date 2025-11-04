@@ -256,6 +256,37 @@
 - [ ] Policies apply consistently across all password change flows
 
 **預計完成時間：** 1 開發 session
+ 
+---
+
+## Phase 4.7: UI Spacing & Visual Consistency Review
+
+**目標：** 審視並統一 Admin Portal 的 spacing（padding / margin）、card / table / modal 間距與視覺風格，使各頁面看起來協調一致。
+
+### 實作步驟
+- [ ] Audit admin pages: Users, Roles, Clients, Scopes, Claims, Dashboard
+- [ ] For each page, identify inconsistent spacing issues (record selector, current value, desired value)
+- [ ] Propose a spacing scale (e.g., spacing-1..spacing-6) and preferred Tailwind/Bootstrap utility usage
+- [ ] Create shared spacing fragment `ClientApp/src/admin/_shared/_spacing.css` or update per-feature `style.css`
+- [ ] Apply small, incremental CSS fixes (atomic commits):
+  - normalize card padding
+  - unify table cell padding / row height
+  - standardize modal body/footer spacing
+  - align form field margins and label spacing
+- [ ] Update `docs/implementation_guidelines.md` UI section with spacing rules and code examples
+- [ ] Run Vite and perform visual verification (http://localhost:5173)
+- [ ] Commit each logical change with conventional commit messages (e.g., `fix(ui): normalize card padding in users list`)
+
+### 驗證（Acceptance criteria）
+- [ ] Card padding consistent across admin pages
+- [ ] Table cell padding and row heights are uniform
+- [ ] Modal spacing and form layouts are consistent
+- [ ] No visual regressions on mobile and desktop (quick responsive check)
+- [ ] `implementation_guidelines.md` updated with spacing conventions
+
+**預計完成時間：** 0.5-1 開發 session
+
+---
 
 ---
 
