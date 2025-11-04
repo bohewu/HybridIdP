@@ -8,11 +8,34 @@
 
 ## 當前優先級
 
-### 🎯 Next Up: Phase 4.5 - Role Management UI
+### ✅ ~~Phase 4.5 - Role Management UI~~ (已完成)
 
-**目標：** 實作角色管理介面，包含 Permission 分配功能
+**完成時間：** 2025-11-04
+
+**實作內容：**
+- ✅ Role CRUD API (GET, POST, PUT, DELETE with permissions endpoint)
+- ✅ Role Management UI (RolesApp.vue with Create/Edit/Delete modals)
+- ✅ Permission selector with category grouping
+- ✅ System role protections (Admin, User cannot be deleted/renamed)
+- ✅ User count tracking and deletion protection
+- ✅ E2E testing with Playwright MCP
+
+**詳細資訊：** 見 `progress_completed.md`
+
+---
+
+### 🎯 Next Up: Phase 4.6 - Permission System Implementation
+
+**目標：** 實作完整的權限檢查系統，將 Role-based permissions 應用於 API 端點
 
 **實作步驟（按 Small Steps 策略）：**
+
+#### Permission Infrastructure
+
+- [ ] **Step 1:** Permission Attribute
+  - [ ] Create `[RequirePermission]` attribute (custom authorization attribute)
+  - [ ] Define permission constants (e.g., "users.read", "users.write", "scopes.manage")
+  - [ ] Commit: `feat(auth): Add RequirePermission attribute and constants`
 
 #### API Implementation
 

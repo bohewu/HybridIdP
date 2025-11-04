@@ -277,18 +277,75 @@
 
 ---
 
-## 統計數據
+## Phase 4.5: Role Management UI ✅
 
-- **完成的 Phases:** 14
-- **API Endpoints:** 30+
-- **UI Pages:** 7
-- **Commits:** 50+ (採用 Small Steps 策略)
-- **測試涵蓋率:** 
-  - Unit Tests: Core.Application, Infrastructure
-  - E2E Tests: OIDC Flow, Admin Portal CRUD
+**完成時間：** 2025-11-04
+
+**功能摘要：**
+- Role CRUD 完整實作
+- Permission 分配管理（按類別分組）
+- 系統角色保護（Admin, User 不可刪除/重命名）
+- 分配用戶數追蹤
+- 權限選擇器（Category-level 全選功能）
+
+**API Endpoints:**
+- GET /api/admin/roles (分頁列表，包含 userCount 和 permissionCount)
+- GET /api/admin/roles/{id} (詳細資料)
+- POST /api/admin/roles (建立角色)
+- PUT /api/admin/roles/{id} (更新角色)
+- DELETE /api/admin/roles/{id} (刪除角色，檢查系統角色和分配用戶)
+- GET /api/admin/roles/permissions (所有可用的權限列表)
+
+**UI Features:**
+- Role 列表（Name, Description, Permissions Count, Users Count, Is System）
+- 建立 Role Modal（Name, Description, Permissions selector with categories）
+- 編輯 Role Modal（系統角色 Name 欄位禁用，權限預選）
+- 刪除 Role Modal（系統角色和有用戶分配的角色顯示保護警告）
+- 權限分類顯示（Clients, Scopes, Users, Roles, Audit, Settings）
+- Category-level checkboxes（indeterminate state 支援）
+
+**驗證結果（Playwright MCP）：**
+- ✅ 列表載入正常（Admin: 1 user, User: 3 users, 均為 0 permissions）
+- ✅ 建立角色成功（"Content Editor" with users.read, scopes.read）
+- ✅ 編輯角色成功（添加 users.update，權限數從 2 增至 3）
+- ✅ 系統角色保護正常（Admin 顯示 "Users Assigned" 警告，無法刪除）
+- ✅ 刪除功能正常（Content Editor 成功刪除）
+- ✅ Vite 配置正確（admin-roles entry point）
+
+**Commits:**
+- `2f8a045` - feat(ui): Add CreateRoleModal with permission selector
+- `41b3e7d` - feat(ui): Add EditRoleModal and DeleteRoleModal with protections
+- `7329767` - fix(config): Add admin-roles entry to vite.config.js and fix Roles.cshtml script tag
+
+**技術實作：**
+- Razor Page: `Pages/Admin/Roles.cshtml`
+- Vue SPA: `ClientApp/src/admin/roles/`
+  - `RolesApp.vue` (主組件，整合三個 modals)
+  - `components/CreateRoleModal.vue` (305 lines，完整權限選擇器)
+  - `components/EditRoleModal.vue` (系統角色處理)
+  - `components/DeleteRoleModal.vue` (保護邏輯)
+  - `main.js`, `style.css` (Tailwind directives)
+- API: `Api/Admin/RolesController.cs`
+- Service: `Infrastructure/Services/RoleManagementService.cs`
+- Vite Config: `vite.config.js` (added 'admin-roles' entry)
+
+**UI Route:**
+- `/Admin/Roles` - Role Management
 
 ---
 
-**下一步：** Phase 4.5 - Role Management UI
+## 統計數據
+
+- **完成的 Phases:** 15
+- **API Endpoints:** 36+
+- **UI Pages:** 8
+- **Commits:** 56 (採用 Small Steps 策略)
+- **測試涵蓋率:** 
+  - Unit Tests: Core.Application, Infrastructure
+  - E2E Tests: OIDC Flow, Admin Portal CRUD (Clients, Scopes, Users, Roles)
+
+---
+
+**下一步：** Phase 4.6 - Permission System Implementation
 
 **參考文件：** `progress_todo.md` 查看待辦事項
