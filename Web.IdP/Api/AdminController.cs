@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using DomainPermissions = Core.Domain.Constants.Permissions;
 
 namespace Web.IdP.Api;
 
@@ -309,13 +310,13 @@ public class AdminController : ControllerBase
         else
         {
             // Default permissions for authorization code flow
-            descriptor.Permissions.Add(Permissions.Endpoints.Authorization);
-            descriptor.Permissions.Add(Permissions.Endpoints.Token);
-            descriptor.Permissions.Add(Permissions.GrantTypes.AuthorizationCode);
-            descriptor.Permissions.Add(Permissions.ResponseTypes.Code);
-            descriptor.Permissions.Add(Permissions.Scopes.Email);
-            descriptor.Permissions.Add(Permissions.Scopes.Profile);
-            descriptor.Permissions.Add($"{Permissions.Prefixes.Scope}{AuthConstants.Scopes.OpenId}");
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Authorization);
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode);
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.ResponseTypes.Code);
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.Scopes.Email);
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.Scopes.Profile);
+            descriptor.Permissions.Add($"{OpenIddictConstants.Permissions.Prefixes.Scope}{AuthConstants.Scopes.OpenId}");
         }
 
         var application = await _applicationManager.CreateAsync(descriptor);
