@@ -170,7 +170,7 @@ public class UserManagementService : IUserManagementService
             JobTitle = createDto.JobTitle,
             EmployeeId = createDto.EmployeeId,
             IsActive = true, // Default to active for new users
-            EmailConfirmed = createDto.EmailConfirmed,
+            EmailConfirmed = true, // Admin-created users are pre-confirmed and can login immediately
             CreatedBy = createdBy,
             CreatedAt = DateTime.UtcNow
         };

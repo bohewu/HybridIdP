@@ -97,10 +97,13 @@ public class LoginModel : PageModel
 
             // Phase 2.3: Try local account first, then legacy auth with JIT provisioning
             // First, try local account authentication (for admin and other local users)
-            var localUser = await _signInManager.UserManager.FindByNameAsync(Input.Email);
+            // Try to find user by email first, then by username if not found
+            var localUser = await _signInManager.UserManager.FindByEmailAsync(Input.Email) 
+                         ?? await _signInManager.UserManager.FindByNameAsync(Input.Email);
             if (localUser != null)
             {
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                // Use the actual username for sign-in (PasswordSignInAsync expects username, not email)
+                var result = await _signInManager.PasswordSignInAsync(localUser.UserName!, Input.Password, Input.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in with local account.");
