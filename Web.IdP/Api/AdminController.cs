@@ -594,15 +594,39 @@ public class AdminController : ControllerBase
     [HasPermission(DomainPermissions.Scopes.Delete)]
     public async Task<IActionResult> DeleteScope(string id)
     {
-        var scope = await _scopeManager.FindByIdAsync(id);
+        // Note: id is actually the scope name, not a GUID
+        var scope = await _scopeManager.FindByNameAsync(id);
         if (scope == null)
         {
-            return NotFound(new { message = $"Scope with ID '{id}' not found." });
+            return NotFound(new { message = $"Scope with name '{id}' not found." });
         }
 
-        await _scopeManager.DeleteAsync(scope);
+        // Check if scope is in use by any clients
+        var clientsCount = 0;
+        await foreach (var app in _applicationManager.ListAsync())
+        {
+            var permissions = await _applicationManager.GetPermissionsAsync(app);
+            if (permissions.Any(p => p == $"{OpenIddict.Abstractions.OpenIddictConstants.Permissions.Prefixes.Scope}{id}"))
+            {
+                clientsCount++;
+                break; // Found at least one, that's enough
+            }
+        }
 
-        return Ok(new { message = "Scope deleted successfully." });
+        if (clientsCount > 0)
+        {
+            return BadRequest(new { message = "Cannot delete this scope because it is currently in use by one or more clients. Please remove the scope from all clients first." });
+        }
+
+        try
+        {
+            await _scopeManager.DeleteAsync(scope);
+            return Ok(new { message = "Scope deleted successfully." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"An error occurred while deleting the scope: {ex.Message}" });
+        }
     }
 
     #endregion
