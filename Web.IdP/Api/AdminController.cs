@@ -1172,7 +1172,7 @@ public class AdminController : ControllerBase
     /// Deactivate a user (soft delete).
     /// </summary>
     /// <param name="id">User ID</param>
-    [HttpDelete("users/{id}")]
+    [HttpPost("users/{id}/deactivate")]
     [HasPermission(DomainPermissions.Users.Delete)]
     public async Task<IActionResult> DeactivateUser(Guid id)
     {
@@ -1195,6 +1195,47 @@ public class AdminController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { error = "An error occurred while deactivating the user", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Permanently delete a user (soft delete - won't show in UI).
+    /// </summary>
+    /// <param name="id">User ID</param>
+    [HttpDelete("users/{id}")]
+    [HasPermission(DomainPermissions.Users.Delete)]
+    public async Task<IActionResult> DeleteUser(Guid id)
+    {
+        try
+        {
+            var user = await _userManager.FindByIdAsync(id.ToString());
+            if (user == null)
+            {
+                return NotFound(new { errors = new[] { "User not found" } });
+            }
+
+            // Soft delete: mark as deleted in database
+            user.IsDeleted = true;
+            user.DeletedAt = DateTime.UtcNow;
+            
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (currentUserId != null)
+            {
+                user.DeletedBy = Guid.Parse(currentUserId);
+            }
+            user.ModifiedAt = DateTime.UtcNow;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+            }
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while deleting the user", details = ex.Message });
         }
     }
 

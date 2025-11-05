@@ -32,6 +32,11 @@ public class ApplicationUser : IdentityUser<Guid>
     public DateTime? LastLoginDate { get; set; }
     public DateTime? UpdatedAt { get; set; }
     
+    // Soft Delete
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
+    
     // Audit Fields
     public Guid? CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -30,6 +30,9 @@ public class UserManagementService : IUserManagementService
     {
         var query = _userManager.Users.AsQueryable();
 
+        // Filter out soft-deleted users
+        query = query.Where(u => !u.IsDeleted);
+
         // Apply filters
         if (isActive.HasValue)
         {
@@ -166,7 +169,7 @@ public class UserManagementService : IUserManagementService
             Department = createDto.Department,
             JobTitle = createDto.JobTitle,
             EmployeeId = createDto.EmployeeId,
-            IsActive = createDto.IsActive,
+            IsActive = true, // Default to active for new users
             EmailConfirmed = createDto.EmailConfirmed,
             CreatedBy = createdBy,
             CreatedAt = DateTime.UtcNow

@@ -121,7 +121,41 @@ const handleDeactivate = async (user) => {
     return
   }
   
-  if (!confirm(`Are you sure you want to deactivate user ${user.email}?`)) {
+  if (!confirm(`Are you sure you want to deactivate user ${user.email}?\n\nThis will disable their login but keep their data.`)) {
+    return
+  }
+  
+  try {
+    const response = await fetch(`/api/admin/users/${user.id}/deactivate`, {
+      method: 'POST'
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    await fetchUsers()
+    alert('User deactivated successfully')
+  } catch (e) {
+    alert(`Failed to deactivate user: ${e.message}`)
+    console.error('Error deactivating user:', e)
+  }
+}
+
+const handleDelete = async (user) => {
+  if (!canDelete.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = "You don't have permission to delete users."
+    deniedPermission.value = Permissions.Users.Delete
+    return
+  }
+  
+  if (!confirm(`⚠️ WARNING: Are you sure you want to PERMANENTLY DELETE user ${user.email}?\n\nThis action cannot be undone!\nThe user will be completely removed from the system and will no longer appear in any lists.`)) {
+    return
+  }
+  
+  // Second confirmation for safety
+  if (!confirm(`FINAL CONFIRMATION: Delete ${user.email} permanently?`)) {
     return
   }
   
@@ -135,10 +169,10 @@ const handleDeactivate = async (user) => {
     }
     
     await fetchUsers()
-    alert('User deactivated successfully')
+    alert('User deleted successfully')
   } catch (e) {
-    alert(`Failed to deactivate user: ${e.message}`)
-    console.error('Error deactivating user:', e)
+    alert(`Failed to delete user: ${e.message}`)
+    console.error('Error deleting user:', e)
   }
 }
 
@@ -310,6 +344,7 @@ onMounted(() => {
         @edit="handleEdit"
         @manage-roles="handleManageRoles"
         @deactivate="handleDeactivate"
+        @delete="handleDelete"
         @reactivate="handleReactivate"
         @page-change="handlePageChange"
         @page-size-change="handlePageSizeChange"
