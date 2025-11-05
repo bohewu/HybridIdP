@@ -2,7 +2,17 @@
 
 **Date**: 2025-01-05  
 **Testing Session**: Partial Permissions Testing  
-**Status**: BLOCKING - Prevents role assignment via UI
+**Status**: ✅ FIXED - Commit 16ea589
+
+---
+
+## ✅ Resolution Summary
+
+**Fixed in commit `16ea589`**:
+- Changed `availableRoles.value = data || []` to `availableRoles.value = data.items || []`
+- Changed `roles: selectedRoles.value` to `Roles: selectedRoles.value` (capital R to match backend contract)
+
+All bugs documented below have been **RESOLVED**. Role assignment now works correctly via UI.
 
 ---
 
