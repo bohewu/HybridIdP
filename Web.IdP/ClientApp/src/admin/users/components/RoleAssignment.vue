@@ -22,7 +22,7 @@ const fetchRoles = async () => {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
     const data = await response.json()
-    availableRoles.value = data || []
+    availableRoles.value = data.items || []
     
     // Pre-select user's current roles
     selectedRoles.value = props.user.roles || []
@@ -58,7 +58,7 @@ const handleSave = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        roles: selectedRoles.value
+        Roles: selectedRoles.value
       })
     })
     
