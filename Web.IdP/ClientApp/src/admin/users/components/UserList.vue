@@ -1,3 +1,4 @@
+
 <script setup>
 import { computed } from 'vue'
 
@@ -9,7 +10,9 @@ const props = defineProps({
   totalCount: { type: Number, required: true },
   search: { type: String, default: '' },
   isActiveFilter: { type: String, default: '' },
-  sort: { type: String, default: '' }
+  sort: { type: String, default: '' },
+  canUpdate: { type: Boolean, default: false },
+  canDelete: { type: Boolean, default: false }
 })
 
 const emit = defineEmits([
@@ -212,7 +215,9 @@ const getSortIcon = (field) => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex justify-end gap-2">
+                  <!-- Edit button - only show if canUpdate -->
                   <button
+                    v-if="canUpdate"
                     @click="emit('edit', user)"
                     class="text-indigo-600 hover:text-indigo-900"
                     title="Edit"
@@ -221,7 +226,10 @@ const getSortIcon = (field) => {
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
                   </button>
+                  
+                  <!-- Manage Roles button - only show if canUpdate -->
                   <button
+                    v-if="canUpdate"
                     @click="emit('manage-roles', user)"
                     class="text-blue-600 hover:text-blue-900"
                     title="Manage Roles"
@@ -230,8 +238,10 @@ const getSortIcon = (field) => {
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                     </svg>
                   </button>
+                  
+                  <!-- Deactivate button - only show if canDelete -->
                   <button
-                    v-if="user.isActive"
+                    v-if="user.isActive && canDelete"
                     @click="emit('deactivate', user)"
                     class="text-red-600 hover:text-red-900"
                     title="Deactivate"
@@ -240,8 +250,10 @@ const getSortIcon = (field) => {
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                   </button>
+                  
+                  <!-- Reactivate button - only show if canUpdate -->
                   <button
-                    v-else
+                    v-if="!user.isActive && canUpdate"
                     @click="emit('reactivate', user)"
                     class="text-green-600 hover:text-green-900"
                     title="Reactivate"
@@ -250,6 +262,11 @@ const getSortIcon = (field) => {
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                   </button>
+                  
+                  <!-- Show message if no permissions -->
+                  <span v-if="!canUpdate && !canDelete" class="text-xs text-gray-400 italic">
+                    No actions available
+                  </span>
                 </div>
               </td>
             </tr>

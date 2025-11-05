@@ -3,6 +3,8 @@ import { ref, onMounted, watch } from 'vue'
 import UserList from './components/UserList.vue'
 import UserForm from './components/UserForm.vue'
 import RoleAssignment from './components/RoleAssignment.vue'
+import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import { permissionService, Permissions } from '@/utils/permissionService'
 
 const users = ref([])
 const loading = ref(true)
@@ -10,6 +12,34 @@ const error = ref(null)
 const selectedUser = ref(null)
 const showForm = ref(false)
 const showRoleDialog = ref(false)
+const showAccessDenied = ref(false)
+const deniedMessage = ref('')
+const deniedPermission = ref('')
+
+// Check permissions
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
+const canRead = ref(false)
+
+// Load permissions on mount
+onMounted(async () => {
+  await permissionService.loadPermissions()
+  canCreate.value = permissionService.hasPermission(Permissions.Users.Create)
+  canUpdate.value = permissionService.hasPermission(Permissions.Users.Update)
+  canDelete.value = permissionService.hasPermission(Permissions.Users.Delete)
+  canRead.value = permissionService.hasPermission(Permissions.Users.Read)
+  
+  // Show access denied if user doesn't have read permission
+  if (!canRead.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = "You don't have permission to view users."
+    deniedPermission.value = Permissions.Users.Read
+    return
+  }
+  
+  fetchUsers()
+})
 
 // Paging / filtering / sorting state
 const pageSize = ref(10)
@@ -51,21 +81,46 @@ const fetchUsers = async () => {
 }
 
 const handleCreate = () => {
+  if (!canCreate.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = "You don't have permission to create users."
+    deniedPermission.value = Permissions.Users.Create
+    return
+  }
   selectedUser.value = null
   showForm.value = true
 }
 
 const handleEdit = (user) => {
+  if (!canUpdate.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = "You don't have permission to edit users."
+    deniedPermission.value = Permissions.Users.Update
+    return
+  }
   selectedUser.value = user
   showForm.value = true
 }
 
 const handleManageRoles = (user) => {
+  if (!canUpdate.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = "You don't have permission to manage user roles."
+    deniedPermission.value = Permissions.Users.Update
+    return
+  }
   selectedUser.value = user
   showRoleDialog.value = true
 }
 
 const handleDeactivate = async (user) => {
+  if (!canDelete.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = "You don't have permission to deactivate users."
+    deniedPermission.value = Permissions.Users.Delete
+    return
+  }
+  
   if (!confirm(`Are you sure you want to deactivate user ${user.email}?`)) {
     return
   }
@@ -88,6 +143,13 @@ const handleDeactivate = async (user) => {
 }
 
 const handleReactivate = async (user) => {
+  if (!canUpdate.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = "You don't have permission to reactivate users."
+    deniedPermission.value = Permissions.Users.Update
+    return
+  }
+  
   if (!confirm(`Are you sure you want to reactivate user ${user.email}?`)) {
     return
   }
@@ -165,11 +227,22 @@ onMounted(() => {
 </script>
 
 <template>
+  <!-- Access Denied Dialog - Outside main container for proper z-index -->
+  <AccessDeniedDialog
+    :show="showAccessDenied"
+    :message="deniedMessage"
+    :requiredPermission="deniedPermission"
+    @close="showAccessDenied = false"
+  />
+
   <div class="users-app">
     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
       <div class="mb-6 flex justify-content-between items-center">
         <h1 class="text-2xl font-bold text-gray-900">User Management</h1>
+        
+        <!-- Create button - only show if user has create permission -->
         <button
+          v-if="canCreate"
           @click="handleCreate"
           class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
@@ -178,6 +251,26 @@ onMounted(() => {
           </svg>
           Create User
         </button>
+        
+        <!-- Show button but disabled if no permission (alternative approach) -->
+        <!--
+        <button
+          @click="handleCreate"
+          :disabled="!canCreate"
+          :class="[
+            'inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium',
+            canCreate 
+              ? 'text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500' 
+              : 'text-gray-400 bg-gray-200 cursor-not-allowed'
+          ]"
+          :title="!canCreate ? 'You don\'t have permission to create users' : ''"
+        >
+          <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          Create User
+        </button>
+        -->
       </div>
 
       <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
@@ -212,6 +305,8 @@ onMounted(() => {
         :search="search"
         :is-active-filter="isActiveFilter"
         :sort="sort"
+        :can-update="canUpdate"
+        :can-delete="canDelete"
         @edit="handleEdit"
         @manage-roles="handleManageRoles"
         @deactivate="handleDeactivate"
