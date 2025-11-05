@@ -101,8 +101,8 @@ class PermissionService {
   }
 }
 
-// Export singleton instance
-export const permissionService = new PermissionService();
+// Create singleton instance
+const permissionService = new PermissionService();
 
 // Permission constants (should match backend)
 export const Permissions = {
@@ -138,3 +138,6 @@ export const Permissions = {
     Update: 'settings.update'
   }
 };
+
+// Export as default
+export default permissionService;
