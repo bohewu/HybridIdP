@@ -2,6 +2,19 @@
 import { ref, onMounted } from 'vue'
 import ScopeList from './components/ScopeList.vue'
 import ScopeForm from './components/ScopeForm.vue'
+import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import permissionService, { Permissions } from '@/utils/permissionService'
+
+// Permission state
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
+const canRead = ref(false)
+
+// Access denied dialog
+const showAccessDenied = ref(false)
+const deniedMessage = ref('')
+const deniedPermission = ref('')
 
 const scopes = ref([])
 const loading = ref(true)
@@ -27,16 +40,35 @@ const fetchScopes = async () => {
 }
 
 const handleCreate = () => {
+  if (!canCreate.value) {
+    deniedMessage.value = 'You do not have permission to create scopes.'
+    deniedPermission.value = Permissions.Scopes.CREATE
+    showAccessDenied.value = true
+    return
+  }
   selectedScope.value = null
   showForm.value = true
 }
 
 const handleEdit = (scope) => {
+  if (!canUpdate.value) {
+    deniedMessage.value = 'You do not have permission to update scopes.'
+    deniedPermission.value = Permissions.Scopes.UPDATE
+    showAccessDenied.value = true
+    return
+  }
   selectedScope.value = scope
   showForm.value = true
 }
 
 const handleDelete = async (scopeName) => {
+  if (!canDelete.value) {
+    deniedMessage.value = 'You do not have permission to delete scopes.'
+    deniedPermission.value = Permissions.Scopes.DELETE
+    showAccessDenied.value = true
+    return
+  }
+  
   if (!confirm('Are you sure you want to delete this scope?')) {
     return
   }
@@ -67,12 +99,35 @@ const handleFormCancel = () => {
   selectedScope.value = null
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Load permissions
+  await permissionService.loadPermissions()
+  
+  canRead.value = permissionService.hasPermission(Permissions.Scopes.READ)
+  canCreate.value = permissionService.hasPermission(Permissions.Scopes.CREATE)
+  canUpdate.value = permissionService.hasPermission(Permissions.Scopes.UPDATE)
+  canDelete.value = permissionService.hasPermission(Permissions.Scopes.DELETE)
+  
+  if (!canRead.value) {
+    deniedMessage.value = 'You do not have permission to view scopes.'
+    deniedPermission.value = Permissions.Scopes.READ
+    showAccessDenied.value = true
+    return
+  }
+  
   fetchScopes()
 })
 </script>
 
 <template>
+  <!-- Access Denied Dialog -->
+  <AccessDeniedDialog
+    :show="showAccessDenied"
+    :message="deniedMessage"
+    :required-permission="deniedPermission"
+    @close="showAccessDenied = false"
+  />
+
   <div class="min-h-screen bg-gray-50">
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <!-- Header -->
@@ -85,6 +140,7 @@ onMounted(() => {
             </p>
           </div>
           <button
+            v-if="canCreate"
             @click="handleCreate"
             class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
@@ -130,6 +186,8 @@ onMounted(() => {
         <ScopeList
           v-if="!loading && !showForm"
           :scopes="scopes"
+          :can-update="canUpdate"
+          :can-delete="canDelete"
           @edit="handleEdit"
           @delete="handleDelete"
         />

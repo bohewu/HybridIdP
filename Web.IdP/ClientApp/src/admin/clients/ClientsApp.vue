@@ -2,6 +2,19 @@
 import { ref, onMounted, watch } from 'vue'
 import ClientList from './components/ClientList.vue'
 import ClientForm from './components/ClientForm.vue'
+import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import permissionService, { Permissions } from '@/utils/permissionService'
+
+// Permission state
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
+const canRead = ref(false)
+
+// Access denied dialog
+const showAccessDenied = ref(false)
+const deniedMessage = ref('')
+const deniedPermission = ref('')
 
 const clients = ref([])
 const loading = ref(true)
@@ -50,11 +63,23 @@ const fetchClients = async () => {
 }
 
 const handleCreate = () => {
+  if (!canCreate.value) {
+    deniedMessage.value = 'You do not have permission to create clients.'
+    deniedPermission.value = Permissions.Clients.CREATE
+    showAccessDenied.value = true
+    return
+  }
   selectedClient.value = null
   showForm.value = true
 }
 
 const handleEdit = async (client) => {
+  if (!canUpdate.value) {
+    deniedMessage.value = 'You do not have permission to update clients.'
+    deniedPermission.value = Permissions.Clients.UPDATE
+    showAccessDenied.value = true
+    return
+  }
   try {
     // Fetch full client details for editing (redirect URIs, permissions, etc.)
     const response = await fetch(`/api/admin/clients/${client.id}`)
@@ -73,6 +98,13 @@ const handleEdit = async (client) => {
 }
 
 const handleDelete = async (clientId) => {
+  if (!canDelete.value) {
+    deniedMessage.value = 'You do not have permission to delete clients.'
+    deniedPermission.value = Permissions.Clients.DELETE
+    showAccessDenied.value = true
+    return
+  }
+  
   if (!confirm('Are you sure you want to delete this client?')) {
     return
   }
@@ -103,7 +135,22 @@ const handleFormCancel = () => {
   selectedClient.value = null
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Load permissions
+  await permissionService.loadPermissions()
+  
+  canRead.value = permissionService.hasPermission(Permissions.Clients.READ)
+  canCreate.value = permissionService.hasPermission(Permissions.Clients.CREATE)
+  canUpdate.value = permissionService.hasPermission(Permissions.Clients.UPDATE)
+  canDelete.value = permissionService.hasPermission(Permissions.Clients.DELETE)
+  
+  if (!canRead.value) {
+    deniedMessage.value = 'You do not have permission to view clients.'
+    deniedPermission.value = Permissions.Clients.READ
+    showAccessDenied.value = true
+    return
+  }
+  
   fetchClients()
 })
 
@@ -119,6 +166,14 @@ const setPage = (newPage) => {
 </script>
 
 <template>
+  <!-- Access Denied Dialog -->
+  <AccessDeniedDialog
+    :show="showAccessDenied"
+    :message="deniedMessage"
+    :required-permission="deniedPermission"
+    @close="showAccessDenied = false"
+  />
+
   <div class="min-h-screen bg-gray-50">
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <!-- Header -->
@@ -131,6 +186,7 @@ const setPage = (newPage) => {
             </p>
           </div>
           <button
+            v-if="canCreate"
             @click="handleCreate"
             class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
@@ -224,6 +280,8 @@ const setPage = (newPage) => {
         <ClientList
           v-if="!loading && !showForm"
           :clients="clients"
+          :can-update="canUpdate"
+          :can-delete="canDelete"
           @edit="handleEdit"
           @delete="handleDelete"
         />

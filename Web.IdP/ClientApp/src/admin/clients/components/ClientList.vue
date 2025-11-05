@@ -3,6 +3,14 @@ defineProps({
   clients: {
     type: Array,
     required: true
+  },
+  canUpdate: {
+    type: Boolean,
+    default: false
+  },
+  canDelete: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -52,6 +60,7 @@ defineEmits(['edit', 'delete'])
           </div>
           <div class="flex space-x-2">
             <button
+              v-if="canUpdate"
               @click="$emit('edit', client)"
               class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
@@ -61,6 +70,7 @@ defineEmits(['edit', 'delete'])
               Edit
             </button>
             <button
+              v-if="canDelete"
               @click="$emit('delete', client.id)"
               class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             >
@@ -69,6 +79,7 @@ defineEmits(['edit', 'delete'])
               </svg>
               Delete
             </button>
+            <span v-if="!canUpdate && !canDelete" class="text-xs text-gray-400 italic">No actions available</span>
           </div>
         </div>
       </li>

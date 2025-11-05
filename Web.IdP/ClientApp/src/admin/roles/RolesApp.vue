@@ -1,9 +1,18 @@
 <template>
+  <!-- Access Denied Dialog -->
+  <AccessDeniedDialog
+    :show="showAccessDenied"
+    :message="deniedMessage"
+    :required-permission="deniedPermission"
+    @close="showAccessDenied = false"
+  />
+
   <div class="px-4 py-6">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900">Role Management</h1>
       <div>
-        <button 
+        <button
+          v-if="canCreate"
           class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed" 
           @click="showCreateModal = true" 
           :disabled="loading"
@@ -98,7 +107,8 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
                   <div class="inline-flex gap-1">
-                    <button 
+                    <button
+                      v-if="canUpdate"
                       class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" 
                       @click="onEdit(r)" 
                       title="Edit Role"
@@ -107,7 +117,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
-                    <button 
+                    <button
+                      v-if="canDelete"
                       class="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-700 text-sm font-medium rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" 
                       @click="onDelete(r)" 
                       title="Delete Role"
@@ -116,6 +127,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
+                    <span v-if="!canUpdate && !canDelete" class="text-xs text-gray-400 italic">No actions</span>
                   </div>
                 </td>
               </tr>
@@ -176,6 +188,19 @@ import { onMounted, ref } from 'vue'
 import CreateRoleModal from './components/CreateRoleModal.vue'
 import EditRoleModal from './components/EditRoleModal.vue'
 import DeleteRoleModal from './components/DeleteRoleModal.vue'
+import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import permissionService, { Permissions } from '@/utils/permissionService'
+
+// Permission state
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
+const canRead = ref(false)
+
+// Access denied dialog
+const showAccessDenied = ref(false)
+const deniedMessage = ref('')
+const deniedPermission = ref('')
 
 const roles = ref([])
 const loading = ref(false)
@@ -231,6 +256,12 @@ function handleRoleCreated() {
 }
 
 function onEdit(role) {
+  if (!canUpdate.value) {
+    deniedMessage.value = 'You do not have permission to update roles.'
+    deniedPermission.value = Permissions.Roles.UPDATE
+    showAccessDenied.value = true
+    return
+  }
   selectedRole.value = role
   showEditModal.value = true
 }
@@ -243,6 +274,12 @@ function handleRoleUpdated() {
 }
 
 function onDelete(role) {
+  if (!canDelete.value) {
+    deniedMessage.value = 'You do not have permission to delete roles.'
+    deniedPermission.value = Permissions.Roles.DELETE
+    showAccessDenied.value = true
+    return
+  }
   selectedRole.value = role
   showDeleteModal.value = true
 }
@@ -257,7 +294,24 @@ function handleRoleDeleted() {
   fetchRoles(newSkip)
 }
 
-onMounted(() => fetchRoles(0))
+onMounted(async () => {
+  // Load permissions
+  await permissionService.loadPermissions()
+  
+  canRead.value = permissionService.hasPermission(Permissions.Roles.READ)
+  canCreate.value = permissionService.hasPermission(Permissions.Roles.CREATE)
+  canUpdate.value = permissionService.hasPermission(Permissions.Roles.UPDATE)
+  canDelete.value = permissionService.hasPermission(Permissions.Roles.DELETE)
+  
+  if (!canRead.value) {
+    deniedMessage.value = 'You do not have permission to view roles.'
+    deniedPermission.value = Permissions.Roles.READ
+    showAccessDenied.value = true
+    return
+  }
+  
+  fetchRoles(0)
+})
 </script>
 
 <style scoped>
