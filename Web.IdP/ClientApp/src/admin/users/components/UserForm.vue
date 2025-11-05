@@ -169,6 +169,14 @@ const handleSubmit = async () => {
       employeeId: form.value.employeeId || null
     }
     
+    // For updates, preserve existing user state fields that aren't in the form
+    if (isEdit.value && props.user) {
+      payload.isActive = props.user.isActive
+      payload.emailConfirmed = props.user.emailConfirmed
+      payload.phoneNumberConfirmed = props.user.phoneNumberConfirmed
+      payload.roles = props.user.roles || []
+    }
+    
     // Only include password if it's set (create or edit with password change)
     if (form.value.password) {
       payload.password = form.value.password
