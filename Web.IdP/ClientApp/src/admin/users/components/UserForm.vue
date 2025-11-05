@@ -74,8 +74,12 @@ const validate = () => {
   if (!isEdit.value) {
     if (!form.value.password) {
       errors.value.password = 'Password is required for new users'
-    } else if (form.value.password.length < 6) {
-      errors.value.password = 'Password must be at least 6 characters'
+    } else {
+      // Validate password complexity for new users
+      const passwordErrors = validatePasswordComplexity(form.value.password)
+      if (passwordErrors.length > 0) {
+        errors.value.password = passwordErrors.join('; ')
+      }
     }
     
     if (form.value.password !== form.value.confirmPassword) {
@@ -83,8 +87,11 @@ const validate = () => {
     }
   } else {
     // For edit, only validate password if it's provided
-    if (form.value.password && form.value.password.length < 6) {
-      errors.value.password = 'Password must be at least 6 characters'
+    if (form.value.password) {
+      const passwordErrors = validatePasswordComplexity(form.value.password)
+      if (passwordErrors.length > 0) {
+        errors.value.password = passwordErrors.join('; ')
+      }
     }
     
     if (form.value.password && form.value.password !== form.value.confirmPassword) {
@@ -94,6 +101,53 @@ const validate = () => {
   
   return Object.keys(errors.value).length === 0
 }
+
+// Password complexity validation matching backend requirements
+const validatePasswordComplexity = (password) => {
+  const errors = []
+  
+  if (password.length < 6) {
+    errors.push('At least 6 characters')
+  }
+  
+  if (!/[A-Z]/.test(password)) {
+    errors.push('At least one uppercase letter (A-Z)')
+  }
+  
+  if (!/[a-z]/.test(password)) {
+    errors.push('At least one lowercase letter (a-z)')
+  }
+  
+  if (!/[0-9]/.test(password)) {
+    errors.push('At least one digit (0-9)')
+  }
+  
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    errors.push('At least one special character (!@#$%^&*)')
+  }
+  
+  return errors
+}
+
+// Real-time password strength indicator
+const passwordStrength = computed(() => {
+  const password = form.value.password
+  if (!password) return { label: '', color: '', strength: 0 }
+  
+  const errors = validatePasswordComplexity(password)
+  const requirements = 5
+  const met = requirements - errors.length
+  
+  if (met === requirements) {
+    return { label: 'Strong', color: 'text-green-600', strength: 100 }
+  } else if (met >= 4) {
+    return { label: 'Good', color: 'text-blue-600', strength: 80 }
+  } else if (met >= 3) {
+    return { label: 'Fair', color: 'text-yellow-600', strength: 60 }
+  } else {
+    return { label: 'Weak', color: 'text-red-600', strength: 40 }
+  }
+})
 
 const handleSubmit = async () => {
   if (!validate()) {
@@ -319,6 +373,62 @@ onMounted(() => {
                           :required="!isEdit"
                         />
                         <p v-if="errors.confirmPassword" class="mt-1 text-sm text-red-600">{{ errors.confirmPassword }}</p>
+                      </div>
+                    </div>
+
+                    <!-- Password Requirements Info Box -->
+                    <div v-if="form.password || !isEdit" class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                      <p class="text-sm font-medium text-blue-900 mb-2">Password must contain:</p>
+                      <ul class="text-sm text-blue-800 space-y-1">
+                        <li class="flex items-center">
+                          <span :class="form.password && form.password.length >= 6 ? 'text-green-600 font-bold' : 'text-gray-500'">
+                            {{ form.password && form.password.length >= 6 ? '✓' : '○' }}
+                          </span>
+                          <span class="ml-2">At least 6 characters</span>
+                        </li>
+                        <li class="flex items-center">
+                          <span :class="form.password && /[A-Z]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
+                            {{ form.password && /[A-Z]/.test(form.password) ? '✓' : '○' }}
+                          </span>
+                          <span class="ml-2">At least one uppercase letter (A-Z)</span>
+                        </li>
+                        <li class="flex items-center">
+                          <span :class="form.password && /[a-z]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
+                            {{ form.password && /[a-z]/.test(form.password) ? '✓' : '○' }}
+                          </span>
+                          <span class="ml-2">At least one lowercase letter (a-z)</span>
+                        </li>
+                        <li class="flex items-center">
+                          <span :class="form.password && /[0-9]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
+                            {{ form.password && /[0-9]/.test(form.password) ? '✓' : '○' }}
+                          </span>
+                          <span class="ml-2">At least one digit (0-9)</span>
+                        </li>
+                        <li class="flex items-center">
+                          <span :class="form.password && /[^A-Za-z0-9]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
+                            {{ form.password && /[^A-Za-z0-9]/.test(form.password) ? '✓' : '○' }}
+                          </span>
+                          <span class="ml-2">At least one special character (!@#$%^&*)</span>
+                        </li>
+                      </ul>
+                      
+                      <!-- Password Strength Indicator -->
+                      <div v-if="form.password" class="mt-3">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-xs text-gray-600">Password Strength:</span>
+                          <span :class="['text-xs font-semibold', passwordStrength.color]">{{ passwordStrength.label }}</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            :class="[
+                              'h-2 rounded-full transition-all duration-300',
+                              passwordStrength.strength === 100 ? 'bg-green-600' :
+                              passwordStrength.strength >= 80 ? 'bg-blue-600' :
+                              passwordStrength.strength >= 60 ? 'bg-yellow-600' : 'bg-red-600'
+                            ]"
+                            :style="`width: ${passwordStrength.strength}%`"
+                          ></div>
+                        </div>
                       </div>
                     </div>
                   </div>

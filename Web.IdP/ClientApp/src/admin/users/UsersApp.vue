@@ -4,7 +4,7 @@ import UserList from './components/UserList.vue'
 import UserForm from './components/UserForm.vue'
 import RoleAssignment from './components/RoleAssignment.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
-import { permissionService, Permissions } from '@/utils/permissionService'
+import permissionService, { Permissions } from '@/utils/permissionService'
 
 const users = ref([])
 const loading = ref(true)
