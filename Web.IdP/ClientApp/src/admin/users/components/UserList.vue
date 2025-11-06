@@ -86,42 +86,42 @@ const getSortIcon = (field) => {
 
 <template>
   <div class="user-list">
-    <!-- Filters and Search -->
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-4">
-      <div class="flex flex-col md:flex-row md:items-center gap-3">
-        <!-- Search Input - Takes more space -->
-        <div class="flex-1">
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
+    <!-- Unified Card: Filters + Table + Pagination -->
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+      <!-- Filters Section -->
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex flex-col md:flex-row md:items-center gap-3">
+          <!-- Search Input - Takes more space -->
+          <div class="flex-1">
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+              </div>
+              <input
+                v-model="localSearch"
+                type="text"
+                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10"
+                placeholder="Search by email, name, or employee ID..."
+              />
             </div>
-            <input
-              v-model="localSearch"
-              type="text"
-              class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10"
-              placeholder="Search by email, name, or employee ID..."
-            />
+          </div>
+          
+          <!-- Status Filter - Fixed width -->
+          <div class="w-full md:w-48">
+            <select
+              v-model="localFilter"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10"
+            >
+              <option value="">All Users</option>
+              <option value="true">Active Only</option>
+              <option value="false">Inactive Only</option>
+            </select>
           </div>
         </div>
-        
-        <!-- Status Filter - Fixed width -->
-        <div class="w-full md:w-48">
-          <select
-            v-model="localFilter"
-            class="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10"
-          >
-            <option value="">All Users</option>
-            <option value="true">Active Only</option>
-            <option value="false">Inactive Only</option>
-          </select>
-        </div>
       </div>
-    </div>
 
-    <!-- Users Table Card -->
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
       <!-- Loading State -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-12">
         <svg class="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -291,24 +291,24 @@ const getSortIcon = (field) => {
       </div>
 
       <!-- Pagination -->
-      <div v-if="!loading && users.length > 0" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+      <div v-if="!loading && users.length > 0" class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-4 py-3 border-t border-gray-200">
         <div class="flex-1 flex justify-between sm:hidden">
           <button
             @click="emit('page-change', page - 1)"
             :disabled="page === 1"
-            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="relative inline-flex items-center justify-center px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
           >
             Previous
           </button>
           <button
             @click="emit('page-change', page + 1)"
             :disabled="page === totalPages"
-            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="relative inline-flex items-center justify-center px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
           >
             Next
           </button>
         </div>
-        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
           <div>
             <p class="text-sm text-gray-700">
               Showing
@@ -324,7 +324,7 @@ const getSortIcon = (field) => {
             <select
               :value="pageSize"
               @change="emit('page-size-change', Number($event.target.value))"
-              class="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              class="block px-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md transition-colors h-10"
             >
               <option :value="10">10 per page</option>
               <option :value="25">25 per page</option>
@@ -335,7 +335,7 @@ const getSortIcon = (field) => {
               <button
                 @click="emit('page-change', page - 1)"
                 :disabled="page === 1"
-                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="relative inline-flex items-center justify-center px-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
               >
                 <span class="sr-only">Previous</span>
                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
@@ -347,7 +347,7 @@ const getSortIcon = (field) => {
                 :key="p"
                 @click="emit('page-change', p)"
                 :class="[
-                  'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
+                  'relative inline-flex items-center justify-center px-4 border text-sm font-medium transition-colors h-10',
                   p === page
                     ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
                     : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
@@ -358,7 +358,7 @@ const getSortIcon = (field) => {
               <button
                 @click="emit('page-change', page + 1)"
                 :disabled="page === totalPages"
-                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="relative inline-flex items-center justify-center px-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
               >
                 <span class="sr-only">Next</span>
                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
