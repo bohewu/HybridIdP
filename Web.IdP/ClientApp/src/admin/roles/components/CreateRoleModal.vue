@@ -173,73 +173,73 @@ onMounted(() => {
                   </div>
 
                   <!-- Role Name -->
-                  <div class="mb-4">
-                    <label for="name" class="block text-sm font-medium text-gray-700">
+                  <div class="mb-5">
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
                       Role Name <span class="text-red-600">*</span>
                     </label>
                     <input
                       id="name"
                       v-model="form.name"
                       type="text"
-                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                       :class="{ 'border-red-500': errors.name }"
                       required
                       placeholder="e.g., Content Editor"
                     />
-                    <p v-if="errors.name" class="mt-1 text-sm text-red-600">{{ errors.name }}</p>
+                    <p v-if="errors.name" class="mt-1.5 text-sm text-red-600">{{ errors.name }}</p>
                   </div>
 
                   <!-- Description -->
-                  <div class="mb-4">
-                    <label for="description" class="block text-sm font-medium text-gray-700">
+                  <div class="mb-5">
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1.5">
                       Description
                     </label>
                     <textarea
                       id="description"
                       v-model="form.description"
                       rows="3"
-                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors px-3 py-2"
                       placeholder="Optional description of the role"
                     />
                   </div>
 
                   <!-- Permissions Selector -->
-                  <div class="mb-4">
+                  <div class="mb-5">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                       Permissions
                     </label>
                     <div v-if="loadingPermissions" class="text-center py-4 text-gray-500">
                       Loading permissions...
                     </div>
-                    <div v-else class="border rounded-md p-4 max-h-96 overflow-y-auto bg-gray-50">
+                    <div v-else class="border border-gray-300 rounded-md p-4 max-h-96 overflow-y-auto bg-gray-50">
                       <div v-for="(group, key) in permissionGroups" :key="key" class="mb-4 last:mb-0">
                         <div v-if="group.permissions.length > 0" class="mb-2">
                           <!-- Category Header -->
-                          <div class="flex items-center mb-2 pb-2 border-b border-gray-200">
+                          <div class="flex items-center mb-3 pb-2 border-b border-gray-200">
                             <input
                               :id="`category-${key}`"
                               type="checkbox"
                               :checked="isCategoryFullySelected(key)"
                               :indeterminate.prop="isCategoryPartiallySelected(key)"
                               @change="toggleAllInCategory(key)"
-                              class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                             />
-                            <label :for="`category-${key}`" class="ml-2 text-sm font-semibold text-gray-900 cursor-pointer">
+                            <label :for="`category-${key}`" class="ml-3 text-sm font-semibold text-gray-900 cursor-pointer">
                               {{ group.label }}
                             </label>
                           </div>
                           
                           <!-- Individual Permissions -->
-                          <div class="ml-6 space-y-2">
+                          <div class="ml-6 space-y-2.5">
                             <div v-for="perm in group.permissions" :key="perm" class="flex items-center">
                               <input
                                 :id="`perm-${perm}`"
                                 type="checkbox"
                                 :checked="form.permissions.includes(perm)"
                                 @change="togglePermission(perm)"
-                                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                               />
-                              <label :for="`perm-${perm}`" class="ml-2 text-sm text-gray-700 cursor-pointer font-mono">
+                              <label :for="`perm-${perm}`" class="ml-3 text-sm text-gray-700 cursor-pointer font-mono">
                                 {{ perm }}
                               </label>
                             </div>

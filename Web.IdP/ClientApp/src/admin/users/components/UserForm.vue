@@ -238,10 +238,10 @@ onMounted(() => {
                     <p class="text-sm text-red-700">{{ error }}</p>
                   </div>
 
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
                     <!-- Email -->
                     <div>
-                      <label for="email" class="block text-sm font-medium text-gray-700">
+                      <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Email <span class="text-red-600">*</span>
                       </label>
                       <input
@@ -249,106 +249,106 @@ onMounted(() => {
                         v-model="form.email"
                         type="email"
                         :disabled="isEdit"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors h-10 px-3"
                         :class="{ 'border-red-500': errors.email }"
                         required
                       />
-                      <p v-if="errors.email" class="mt-1 text-sm text-red-600">{{ errors.email }}</p>
-                      <p v-if="isEdit" class="mt-1 text-xs text-gray-500">Email cannot be changed</p>
+                      <p v-if="errors.email" class="mt-1.5 text-sm text-red-600">{{ errors.email }}</p>
+                      <p v-if="isEdit" class="mt-1.5 text-xs text-gray-500">Email cannot be changed</p>
                     </div>
 
                     <!-- Username -->
                     <div>
-                      <label for="userName" class="block text-sm font-medium text-gray-700">
+                      <label for="userName" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Username <span class="text-red-600">*</span>
                       </label>
                       <input
                         id="userName"
                         v-model="form.userName"
                         type="text"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                         :class="{ 'border-red-500': errors.userName }"
                         required
                       />
-                      <p v-if="errors.userName" class="mt-1 text-sm text-red-600">{{ errors.userName }}</p>
+                      <p v-if="errors.userName" class="mt-1.5 text-sm text-red-600">{{ errors.userName }}</p>
                     </div>
 
                     <!-- First Name -->
                     <div>
-                      <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
+                      <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
                       <input
                         id="firstName"
                         v-model="form.firstName"
                         type="text"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                       />
                     </div>
 
                     <!-- Last Name -->
                     <div>
-                      <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
+                      <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
                       <input
                         id="lastName"
                         v-model="form.lastName"
                         type="text"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                       />
                     </div>
 
                     <!-- Phone Number -->
                     <div>
-                      <label for="phoneNumber" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                      <label for="phoneNumber" class="block text-sm font-medium text-gray-700 mb-1.5">Phone Number</label>
                       <input
                         id="phoneNumber"
                         v-model="form.phoneNumber"
                         type="tel"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                       />
                     </div>
 
                     <!-- Employee ID -->
                     <div>
-                      <label for="employeeId" class="block text-sm font-medium text-gray-700">Employee ID</label>
+                      <label for="employeeId" class="block text-sm font-medium text-gray-700 mb-1.5">Employee ID</label>
                       <input
                         id="employeeId"
                         v-model="form.employeeId"
                         type="text"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                       />
                     </div>
 
                     <!-- Department -->
                     <div>
-                      <label for="department" class="block text-sm font-medium text-gray-700">Department</label>
+                      <label for="department" class="block text-sm font-medium text-gray-700 mb-1.5">Department</label>
                       <input
                         id="department"
                         v-model="form.department"
                         type="text"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                       />
                     </div>
 
                     <!-- Job Title -->
                     <div>
-                      <label for="jobTitle" class="block text-sm font-medium text-gray-700">Job Title</label>
+                      <label for="jobTitle" class="block text-sm font-medium text-gray-700 mb-1.5">Job Title</label>
                       <input
                         id="jobTitle"
                         v-model="form.jobTitle"
                         type="text"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                       />
                     </div>
                   </div>
 
-                  <div class="mt-6 pt-4 border-t border-gray-200">
-                    <h4 class="text-md font-medium text-gray-900 mb-4">
+                  <div class="mt-6 pt-6 border-t border-gray-200">
+                    <h4 class="text-md font-medium text-gray-900 mb-5">
                       {{ isEdit ? 'Change Password (optional)' : 'Password' }}
                     </h4>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
                       <!-- Password -->
                       <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700">
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
                           Password
                           <span v-if="!isEdit" class="text-red-600">*</span>
                         </label>
@@ -357,17 +357,17 @@ onMounted(() => {
                           v-model="form.password"
                           type="password"
                           autocomplete="new-password"
-                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                           :class="{ 'border-red-500': errors.password }"
                           :required="!isEdit"
                         />
-                        <p v-if="errors.password" class="mt-1 text-sm text-red-600">{{ errors.password }}</p>
-                        <p v-if="isEdit" class="mt-1 text-xs text-gray-500">Leave blank to keep current password</p>
+                        <p v-if="errors.password" class="mt-1.5 text-sm text-red-600">{{ errors.password }}</p>
+                        <p v-if="isEdit" class="mt-1.5 text-xs text-gray-500">Leave blank to keep current password</p>
                       </div>
 
                       <!-- Confirm Password -->
                       <div>
-                        <label for="confirmPassword" class="block text-sm font-medium text-gray-700">
+                        <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1.5">
                           Confirm Password
                           <span v-if="!isEdit" class="text-red-600">*</span>
                         </label>
@@ -376,11 +376,11 @@ onMounted(() => {
                           v-model="form.confirmPassword"
                           type="password"
                           autocomplete="new-password"
-                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                           :class="{ 'border-red-500': errors.confirmPassword }"
                           :required="!isEdit"
                         />
-                        <p v-if="errors.confirmPassword" class="mt-1 text-sm text-red-600">{{ errors.confirmPassword }}</p>
+                        <p v-if="errors.confirmPassword" class="mt-1.5 text-sm text-red-600">{{ errors.confirmPassword }}</p>
                       </div>
                     </div>
 
