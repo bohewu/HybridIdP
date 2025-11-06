@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Web.IdP.Pages.Admin;
 
-[Authorize(Roles = AuthConstants.Roles.Admin)]
+[Authorize(Policy = "clients.read")]
 public class ClientsModel : PageModel
 {
     public void OnGet()

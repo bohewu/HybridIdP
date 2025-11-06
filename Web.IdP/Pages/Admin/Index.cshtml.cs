@@ -5,7 +5,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Web.IdP.Pages.Admin;
 
-[Authorize(Roles = AuthConstants.Roles.Admin)]
+// Dashboard accessible to users with any read permission
+[Authorize(Policy = "users.read")]
 public class IndexModel : PageModel
 {
     public void OnGet()
