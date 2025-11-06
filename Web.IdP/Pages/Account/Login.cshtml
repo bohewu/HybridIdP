@@ -20,13 +20,13 @@
                         
                         <div class="mb-3">
                             <label for="Input_Email" class="form-label">@Localizer["Email"]</label>
-                            <input asp-for="Input.Email" class="form-control" autocomplete="username" autofocus />
+                            <input asp-for="Input.Email" class="form-control" placeholder="@Localizer["Email"]" autocomplete="username" autofocus />
                             <span asp-validation-for="Input.Email" class="text-danger small"></span>
                         </div>
                         
                         <div class="mb-3">
                             <label for="Input_Password" class="form-label">@Localizer["Password"]</label>
-                            <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
+                            <input asp-for="Input.Password" class="form-control" placeholder="@Localizer["Password"]" autocomplete="current-password" />
                             <span asp-validation-for="Input.Password" class="text-danger small"></span>
                         </div>
                         
@@ -63,3 +63,4 @@
     }
     <partial name="_ValidationScriptsPartial" />
 }
+ 

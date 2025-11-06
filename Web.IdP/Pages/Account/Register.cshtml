@@ -18,19 +18,19 @@
                         
                         <div class="mb-3">
                             <label for="Input_Email" class="form-label">@Localizer["Email"]</label>
-                            <input asp-for="Input.Email" class="form-control" autocomplete="username" />
+                            <input asp-for="Input.Email" class="form-control" placeholder="@Localizer["Email"]" autocomplete="username" />
                             <span asp-validation-for="Input.Email" class="text-danger small"></span>
                         </div>
                         
                         <div class="mb-3">
                             <label for="Input_Password" class="form-label">@Localizer["Password"]</label>
-                            <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
+                            <input asp-for="Input.Password" class="form-control" placeholder="@Localizer["Password"]" autocomplete="new-password" />
                             <span asp-validation-for="Input.Password" class="text-danger small"></span>
                         </div>
                         
                         <div class="mb-4">
                             <label for="Input_ConfirmPassword" class="form-label">@Localizer["Confirm password"]</label>
-                            <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" />
+                            <input asp-for="Input.ConfirmPassword" class="form-control" placeholder="@Localizer["Confirm password"]" autocomplete="new-password" />
                             <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
                         </div>
                         
