@@ -1,7 +1,24 @@
 /* Admin Layout Custom Styles */
-body {
+
+/* Ensure proper box-sizing for all elements */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+}
+
+body.admin-layout {
     min-height: 100vh;
+    margin: 0;
+    padding: 0;
     background-color: #f8f9fa;
+    overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 /* Sidebar */
@@ -140,8 +157,26 @@ body {
 .main-content {
     margin-left: 260px;
     min-height: 100vh;
+    width: calc(100vw - 260px); /* Full viewport width minus sidebar */
+    max-width: 100%;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+/* Main content inner wrapper for max-width control */
+main {
+    flex-grow: 1;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 100%; /* Default: no max-width restriction */
+}
+
+/* Optional: Add max-width container class for Vue apps if needed */
+.vue-app-container {
+    width: 100%;
+    max-width: 1400px; /* Adjust as needed */
+    margin: 0 auto;
 }
 
 /* Header */
@@ -181,6 +216,11 @@ body {
     
     .main-content {
         margin-left: 0;
+        width: 100vw; /* Full viewport width on mobile */
+    }
+    
+    main {
+        padding: 1rem; /* Reduced padding on mobile */
     }
     
     .mobile-overlay {
@@ -213,6 +253,7 @@ body {
     
     .main-content {
         margin-left: 220px;
+        width: calc(100vw - 220px);
     }
     
     .sidebar-brand-text h1 {
@@ -233,6 +274,15 @@ body {
     
     .main-content {
         margin-left: 260px;
+        width: calc(100vw - 260px);
+    }
+}
+
+/* Extra large screens - optional wider layout */
+@media (min-width: 1600px) {
+    .main-content main {
+        max-width: 1600px; /* Limit content width on very large screens */
+        margin: 0 auto;
     }
 }
 
@@ -247,5 +297,48 @@ body {
     /* Ensure sidebar is completely hidden when modal is open */
     body.modal-open .sidebar {
         transform: translateX(-260px) !important;
+    }
+    
+    /* Smaller padding on very small screens */
+    main {
+        padding: 0.75rem;
+    }
+    
+    .top-header {
+        padding: 0.75rem 1rem;
+    }
+}
+
+/* Vue App Container Responsive Utilities */
+.vue-app-container {
+    width: 100%;
+    max-width: 100%; /* Default: no restriction */
+    margin: 0 auto;
+}
+
+/* Optional: Adjust max-width for different screen sizes */
+@media (min-width: 1400px) {
+    .vue-app-container {
+        max-width: 1320px; /* Match Bootstrap container-xxl */
+    }
+}
+
+/* Ensure tables and cards are responsive within Vue apps */
+.vue-app-container .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Print styles */
+@media print {
+    .sidebar,
+    .top-header,
+    .admin-footer,
+    .mobile-overlay {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
     }
 }

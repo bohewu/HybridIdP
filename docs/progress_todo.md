@@ -2,29 +2,69 @@
 
 > 📝 本文件列出所有待完成的 Phases 和功能
 
-最後更新：2025-11-04
+最後更新：2025-11-06
 
 ---
 
 ## 當前優先級
 
-### ✅ ~~Phase 4.5 - Role Management UI~~ (已完成)
+### ✅ ~~Phase 4.6 - Permission System & Menu Filtering~~ (已完成)
 
-**完成時間：** 2025-11-04
+**完成時間：** 2025-11-06
 
 **實作內容：**
-- ✅ Role CRUD API (GET, POST, PUT, DELETE with permissions endpoint)
-- ✅ Role Management UI (RolesApp.vue with Create/Edit/Delete modals)
-- ✅ Permission selector with category grouping
-- ✅ System role protections (Admin, User cannot be deleted/renamed)
-- ✅ User count tracking and deletion protection
-- ✅ E2E testing with Playwright MCP
+- ✅ Permission-based authorization for all Admin API endpoints (24 endpoints)
+- ✅ Claims permissions added (claims.read/create/update/delete)
+- ✅ Pure backend menu filtering using PermissionHelper
+- ✅ Type-safe permission constants (Permissions.*)
+- ✅ Responsive layout fixes (z-index for modals)
 
 **詳細資訊：** 見 `progress_completed.md`
 
 ---
 
-### 🎯 Next Up: Phase 4.6 - Permission System Implementation
+### ✅ ~~Phase 4.6.1 - Responsive Layout Enhancement~~ (已完成)
+
+**完成時間：** 2025-11-06
+
+**目標：** 確保 Razor Layout 和 Vue App 的完整響應式設計
+
+**實作內容：**
+
+#### Razor Layout 改進
+- ✅ 更新 `_AdminLayout.cshtml` viewport meta tag
+- ✅ 添加 `admin-layout` class 到 body
+- ✅ 改進 mobile overlay 和 sidebar 交互
+
+#### CSS 響應式改進
+- ✅ 添加全局 box-sizing reset 和防止水平滾動
+- ✅ Main content 使用 `calc(100vw - sidebar-width)` 確保正確寬度
+- ✅ 添加 `.vue-app-container` class 用於控制 Vue 應用最大寬度
+- ✅ 改進所有斷點的響應式設計：
+  - Mobile: < 576px (sidebar 隱藏)
+  - Tablet: 576px - 991px (sidebar 可切換)
+  - Small Desktop: 992px - 1199px (sidebar 220px)
+  - Desktop: 1200px - 1599px (sidebar 260px)
+  - Large Desktop: 1600px+ (content max-width 限制)
+- ✅ 添加 print styles
+
+#### Tailwind 配置同步
+- ✅ 更新 `tailwind.config.js` 斷點匹配 Bootstrap 5
+- ✅ 添加自定義 z-index 和 spacing 常量
+
+#### Vue App 容器
+- ✅ 所有 Admin pages 添加 `vue-app-container` class：
+  - Users.cshtml
+  - Clients.cshtml
+  - Scopes.cshtml
+  - Roles.cshtml
+  - Claims.cshtml
+
+**測試指南：** 見 `responsive_testing_checklist.md`
+
+---
+
+### 🎯 Next Up: Phase 4.7 - UI Spacing & Visual Consistency
 
 **目標：** 實作完整的權限檢查系統，將 Role-based permissions 應用於 API 端點
 
