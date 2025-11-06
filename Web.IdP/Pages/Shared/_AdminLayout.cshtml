@@ -1,3 +1,15 @@
+@using Core.Domain
+@using Core.Domain.Constants
+@using Microsoft.AspNetCore.Identity
+@using Web.IdP.Helpers
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<ApplicationRole> RoleManager
+
+@{
+    // Get user permissions once for the entire layout
+    var userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User);
+}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -28,7 +40,7 @@
             </a>
             
             @* Navigation *@
-            <nav class="sidebar-nav flex-grow-1" id="admin-nav">
+            <nav class="sidebar-nav flex-grow-1">
                 @* Dashboard - always visible *@
                 <a href="/Admin" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Index" ? "active" : "")">
                     <i class="bi bi-house-door"></i>
@@ -36,40 +48,64 @@
                 </a>
                 
                 @* OIDC Management *@
-                <div class="nav-section-title" data-section="oidc">OIDC Management</div>
-                <a href="/Admin/Clients" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Clients" ? "active" : "")" data-permission="clients.read">
-                    <i class="bi bi-pc-display"></i>
-                    <span>Clients</span>
-                </a>
-                <a href="/Admin/Scopes" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Scopes" ? "active" : "")" data-permission="scopes.read">
-                    <i class="bi bi-shield-lock"></i>
-                    <span>Scopes</span>
-                </a>
-                <a href="/Admin/Claims" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Claims" ? "active" : "")" data-permission="claims.read">
-                    <i class="bi bi-card-list"></i>
-                    <span>Claims</span>
-                </a>
+                @if (userPermissions.HasAnyPermission(Permissions.Clients.Read, Permissions.Scopes.Read, Permissions.Claims.Read))
+                {
+                    <div class="nav-section-title">OIDC Management</div>
+                }
+                @if (userPermissions.HasPermission(Permissions.Clients.Read))
+                {
+                    <a href="/Admin/Clients" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Clients" ? "active" : "")">
+                        <i class="bi bi-pc-display"></i>
+                        <span>Clients</span>
+                    </a>
+                }
+                @if (userPermissions.HasPermission(Permissions.Scopes.Read))
+                {
+                    <a href="/Admin/Scopes" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Scopes" ? "active" : "")">
+                        <i class="bi bi-shield-lock"></i>
+                        <span>Scopes</span>
+                    </a>
+                }
+                @if (userPermissions.HasPermission(Permissions.Claims.Read))
+                {
+                    <a href="/Admin/Claims" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Claims" ? "active" : "")">
+                        <i class="bi bi-card-list"></i>
+                        <span>Claims</span>
+                    </a>
+                }
                 
                 @* Identity Management *@
-                <div class="nav-section-title" data-section="identity">Identity Management</div>
-                <a href="/Admin/Users" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Users" ? "active" : "")" data-permission="users.read">
-                    <i class="bi bi-people"></i>
-                    <span>Users</span>
-                    <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
-                </a>
-                <a href="/Admin/Roles" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Roles" ? "active" : "")" data-permission="roles.read">
-                    <i class="bi bi-award"></i>
-                    <span>Roles</span>
-                    <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
-                </a>
+                @if (userPermissions.HasAnyPermission(Permissions.Users.Read, Permissions.Roles.Read))
+                {
+                    <div class="nav-section-title">Identity Management</div>
+                }
+                @if (userPermissions.HasPermission(Permissions.Users.Read))
+                {
+                    <a href="/Admin/Users" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Users" ? "active" : "")">
+                        <i class="bi bi-people"></i>
+                        <span>Users</span>
+                        <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
+                    </a>
+                }
+                @if (userPermissions.HasPermission(Permissions.Roles.Read))
+                {
+                    <a href="/Admin/Roles" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Roles" ? "active" : "")">
+                        <i class="bi bi-award"></i>
+                        <span>Roles</span>
+                        <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
+                    </a>
+                }
                 
                 @* Settings *@
-                <div class="nav-section-title" data-section="settings">Settings</div>
-                <a href="/Admin/SecurityPolicies" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SecurityPolicies" ? "active" : "")" data-permission="settings.read">
-                    <i class="bi bi-lock"></i>
-                    <span>Security Policies</span>
-                    <span class="badge bg-secondary badge-phase ms-auto">Phase 5</span>
-                </a>
+                @if (userPermissions.HasPermission(Permissions.Settings.Read))
+                {
+                    <div class="nav-section-title">Settings</div>
+                    <a href="/Admin/SecurityPolicies" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SecurityPolicies" ? "active" : "")">
+                        <i class="bi bi-lock"></i>
+                        <span>Security Policies</span>
+                        <span class="badge bg-secondary badge-phase ms-auto">Phase 5</span>
+                    </a>
+                }
             </nav>
             
             @* User Profile *@
@@ -148,55 +184,6 @@
     
     @* Admin Layout Mobile Menu Script *@
     <script src="~/js/admin-layout.js" asp-append-version="true"></script>
-    
-    @* Permission-based Menu Filtering *@
-    <script>
-        (async function() {
-            try {
-                // Fetch user permissions from API
-                const response = await fetch('/api/admin/permissions/current');
-                if (!response.ok) {
-                    console.warn('Failed to load permissions, showing all menu items');
-                    return;
-                }
-                
-                const data = await response.json();
-                const permissions = data.permissions || [];
-                
-                // Hide menu items user doesn't have permission for
-                const nav = document.getElementById('admin-nav');
-                const menuItems = nav.querySelectorAll('a[data-permission]');
-                
-                menuItems.forEach(item => {
-                    const requiredPermission = item.getAttribute('data-permission');
-                    if (!permissions.includes(requiredPermission)) {
-                        item.style.display = 'none';
-                    }
-                });
-                
-                // Hide section headers if all items in that section are hidden
-                const sections = {
-                    'oidc': ['clients.read', 'scopes.read', 'claims.read'],
-                    'identity': ['users.read', 'roles.read'],
-                    'settings': ['settings.read']
-                };
-                
-                Object.keys(sections).forEach(sectionKey => {
-                    const sectionPermissions = sections[sectionKey];
-                    const hasAnyPermission = sectionPermissions.some(p => permissions.includes(p));
-                    
-                    if (!hasAnyPermission) {
-                        const sectionHeader = nav.querySelector(`[data-section="${sectionKey}"]`);
-                        if (sectionHeader) {
-                            sectionHeader.style.display = 'none';
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Error loading permissions:', error);
-            }
-        })();
-    </script>
     
     @* Page-specific scripts (e.g., Vue.js bundles) *@
     @RenderSection("Scripts", required: false)
