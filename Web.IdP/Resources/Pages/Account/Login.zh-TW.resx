@@ -61,6 +61,9 @@
   <data name="Login" xml:space="preserve">
     <value>登入</value>
   </data>
+  <data name="Sign in to continue" xml:space="preserve">
+    <value>登入以繼續</value>
+  </data>
   <data name="Email" xml:space="preserve">
     <value>電子郵件</value>
   </data>

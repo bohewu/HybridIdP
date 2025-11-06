@@ -1,0 +1,192 @@
+/* Modern Auth Pages (Google/M365 Style) */
+
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem 1rem;
+}
+
+.auth-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-width: 450px;
+    width: 100%;
+    padding: 48px 40px 36px;
+}
+
+.auth-logo {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.auth-logo h1 {
+    font-size: 24px;
+    font-weight: 400;
+    color: #202124;
+    margin: 0;
+}
+
+.auth-title {
+    font-size: 24px;
+    font-weight: 400;
+    color: #202124;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.auth-subtitle {
+    font-size: 16px;
+    color: #5f6368;
+    margin-bottom: 32px;
+    text-align: center;
+}
+
+.auth-form .form-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #202124;
+    margin-bottom: 8px;
+}
+
+.auth-form .form-control {
+    height: 48px;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    transition: border-color 0.2s;
+}
+
+.auth-form .form-control:focus {
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    outline: none;
+}
+
+.auth-form .form-control::placeholder {
+    color: #80868b;
+}
+
+.auth-form .form-check {
+    margin: 24px 0;
+}
+
+.auth-form .form-check-label {
+    font-size: 14px;
+    color: #5f6368;
+}
+
+.auth-btn-primary {
+    height: 48px;
+    background: #1a73e8;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.25px;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+}
+
+.auth-btn-primary:hover {
+    background: #1765cc;
+    box-shadow: 0 1px 2px 0 rgba(66, 133, 244, 0.3), 0 1px 3px 1px rgba(66, 133, 244, 0.15);
+}
+
+.auth-btn-primary:active {
+    background: #1557b0;
+}
+
+.auth-link {
+    color: #1a73e8;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.auth-link:hover {
+    color: #1765cc;
+    text-decoration: underline;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 24px;
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    margin: 24px 0;
+    color: #5f6368;
+    font-size: 14px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #dadce0;
+}
+
+.auth-divider span {
+    padding: 0 16px;
+}
+
+.language-selector {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+}
+
+.language-selector select {
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    padding: 8px 32px 8px 12px;
+    font-size: 14px;
+    color: #5f6368;
+    background: white;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235f6368' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+}
+
+.language-selector select:focus {
+    outline: none;
+    border-color: #1a73e8;
+}
+
+.alert {
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.text-danger {
+    color: #d93025 !important;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    .auth-card {
+        padding: 32px 24px;
+    }
+
+    .language-selector {
+        position: relative;
+        top: auto;
+        right: auto;
+        margin-bottom: 16px;
+        text-align: right;
+    }
+}

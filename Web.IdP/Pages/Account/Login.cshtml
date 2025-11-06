@@ -1,66 +1,87 @@
 @page
 @model Web.IdP.Pages.Account.LoginModel
 @using Microsoft.AspNetCore.Mvc.Localization
+@using Microsoft.AspNetCore.Localization
 @inject IViewLocalizer Localizer
 @{
     ViewData["Title"] = Localizer["Login"];
+    Layout = null;
+    var currentCulture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
 }
 
-<div class="container">
-    <div class="row justify-content-center mt-5">
-        <div class="col-md-6 col-lg-5">
-            <div class="card shadow">
-                <div class="card-body p-4">
-                    <h2 class="card-title text-center mb-4">@ViewData["Title"]</h2>
-                    
-                    <form method="post">
-                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
-                        
-                        <input type="hidden" asp-for="ReturnUrl" />
-                        
-                        <div class="mb-3">
-                            <label for="Input_Email" class="form-label">@Localizer["Email"]</label>
-                            <input asp-for="Input.Email" class="form-control" placeholder="@Localizer["Email"]" autocomplete="username" autofocus />
-                            <span asp-validation-for="Input.Email" class="text-danger small"></span>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="Input_Password" class="form-label">@Localizer["Password"]</label>
-                            <input asp-for="Input.Password" class="form-control" placeholder="@Localizer["Password"]" autocomplete="current-password" />
-                            <span asp-validation-for="Input.Password" class="text-danger small"></span>
-                        </div>
-                        
-                        <div class="form-check mb-4">
-                            <input asp-for="Input.RememberMe" class="form-check-input" />
-                            <label for="Input_RememberMe" class="form-check-label">@Localizer["Remember me?"]</label>
-                        </div>
-                        
-                        @if (Model.TurnstileEnabled)
-                        {
-                            <div class="mb-3">
-                                <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey"></div>
-                            </div>
-                        }
-                        
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">@Localizer["Login"]</button>
-                        </div>
-                        
-                        <div class="text-center mt-3">
-                            <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl">@Localizer["Don't have an account? Register"]</a>
-                        </div>
-                    </form>
-                </div>
+<!DOCTYPE html>
+<html lang="@currentCulture">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - HybridAuth IdP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="auth-container">
+        <div class="language-selector">
+            <select class="language-select">
+                <option value="en-US" selected="@(currentCulture == "en-US")">English</option>
+                <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文</option>
+            </select>
+        </div>
+
+        <div class="auth-card">
+            <div class="auth-logo">
+                <h1>HybridAuth IdP</h1>
             </div>
+
+            <h2 class="auth-title">@ViewData["Title"]</h2>
+            <p class="auth-subtitle">@Localizer["Sign in to continue"]</p>
+
+            <form method="post" class="auth-form">
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                
+                <input type="hidden" asp-for="ReturnUrl" />
+                
+                <div class="mb-3">
+                    <label for="Input_Email" class="form-label">@Localizer["Email"]</label>
+                    <input asp-for="Input.Email" class="form-control" placeholder="@Localizer["Email"]" autocomplete="username" autofocus />
+                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="Input_Password" class="form-label">@Localizer["Password"]</label>
+                    <input asp-for="Input.Password" class="form-control" placeholder="@Localizer["Password"]" autocomplete="current-password" />
+                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                </div>
+                
+                <div class="form-check">
+                    <input asp-for="Input.RememberMe" class="form-check-input" />
+                    <label for="Input_RememberMe" class="form-check-label">@Localizer["Remember me?"]</label>
+                </div>
+                
+                @if (Model.TurnstileEnabled)
+                {
+                    <div class="mb-3 mt-3">
+                        <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey"></div>
+                    </div>
+                }
+                
+                <div class="d-grid mt-4">
+                    <button type="submit" class="auth-btn-primary">@Localizer["Login"]</button>
+                </div>
+                
+                <div class="auth-footer">
+                    <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="auth-link">@Localizer["Don't have an account? Register"]</a>
+                </div>
+            </form>
         </div>
     </div>
-</div>
 
-@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/language.js" asp-append-version="true"></script>
     @if (Model.TurnstileEnabled)
     {
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     }
     <partial name="_ValidationScriptsPartial" />
-}
+</body>
+</html>
  
