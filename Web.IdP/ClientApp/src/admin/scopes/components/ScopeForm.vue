@@ -175,10 +175,10 @@ const saveScopeClaims = async (scopeId) => {
                     <p class="text-sm text-red-700">{{ error }}</p>
                   </div>
 
-                  <div class="space-y-4">
+                  <div class="space-y-5">
                     <!-- Scope Name -->
-                    <div>
-                      <label for="name" class="block text-sm font-medium text-gray-700">
+                    <div class="mb-5">
+                      <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Scope Name <span class="text-red-500">*</span>
                       </label>
                       <input
@@ -187,50 +187,50 @@ const saveScopeClaims = async (scopeId) => {
                         type="text"
                         required
                         :disabled="isEdit"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         placeholder="api:read"
                       />
                       <p class="mt-1 text-xs text-gray-500">Unique identifier for this scope</p>
                     </div>
 
                     <!-- Display Name -->
-                    <div>
-                      <label for="displayName" class="block text-sm font-medium text-gray-700">
+                    <div class="mb-5">
+                      <label for="displayName" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Display Name
                       </label>
                       <input
                         id="displayName"
                         v-model="formData.displayName"
                         type="text"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
                         placeholder="Read API Access"
                       />
                     </div>
 
                     <!-- Description -->
-                    <div>
-                      <label for="description" class="block text-sm font-medium text-gray-700">
+                    <div class="mb-5">
+                      <label for="description" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Description
                       </label>
                       <textarea
                         id="description"
                         v-model="formData.description"
                         rows="3"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
                         placeholder="Allows read-only access to the API"
                       ></textarea>
                     </div>
 
                     <!-- Resources -->
-                    <div>
-                      <label for="resources" class="block text-sm font-medium text-gray-700">
+                    <div class="mb-5">
+                      <label for="resources" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Resources
                       </label>
                       <textarea
                         id="resources"
                         v-model="formData.resources"
                         rows="2"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
                         placeholder="resource_server_1&#10;resource_server_2"
                       ></textarea>
                       <p class="mt-1 text-xs text-gray-500">One resource per line (optional)</p>

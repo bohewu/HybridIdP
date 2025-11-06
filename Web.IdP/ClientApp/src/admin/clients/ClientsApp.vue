@@ -198,15 +198,15 @@ const setPage = (newPage) => {
         </div>
 
         <!-- Filters & sorting -->
-        <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div class="mb-5 grid grid-cols-1 md:grid-cols-4 gap-3">
           <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700">Search</label>
-            <div class="mt-1 flex">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Search</label>
+            <div class="flex">
               <input
                 v-model="search"
                 type="text"
                 placeholder="Search by Client ID or Display Name"
-                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
               />
               <button
                 @click="page = 1; fetchClients()"
@@ -217,10 +217,10 @@ const setPage = (newPage) => {
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">Client Type</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Client Type</label>
             <select
               v-model="typeFilter"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
             >
               <option value="">All</option>
               <option value="public">Public</option>
@@ -228,10 +228,10 @@ const setPage = (newPage) => {
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">Sort</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Sort</label>
             <select
               v-model="sort"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
             >
               <option value="clientId:asc">Client ID ↑</option>
               <option value="clientId:desc">Client ID ↓</option>

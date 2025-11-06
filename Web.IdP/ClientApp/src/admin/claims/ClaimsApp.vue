@@ -43,31 +43,32 @@
     </div>
 
     <!-- Claims Table -->
-    <div v-else class="bg-white shadow overflow-hidden sm:rounded-lg">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Name
-            </th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Display Name
-            </th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Claim Type
-            </th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Type
-            </th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Scopes
-            </th>
-            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
+    <div v-else class="bg-white shadow-sm rounded-lg border border-gray-200">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Name
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Display Name
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Claim Type
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Type
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Scopes
+              </th>
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
           <tr v-for="claim in claims" :key="claim.id" class="hover:bg-gray-50">
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center">
@@ -124,6 +125,7 @@
         <h3 class="mt-2 text-sm font-medium text-gray-900">No claims</h3>
         <p class="mt-1 text-sm text-gray-500">Get started by creating a new claim.</p>
       </div>
+      </div>
     </div>
 
     <!-- Create/Edit Modal -->
@@ -134,81 +136,81 @@
         <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
           <form @submit.prevent="saveClaim">
             <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">
+              <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
                 {{ editingClaim ? 'Edit Claim' : 'Create Claim' }}
               </h3>
 
               <!-- Name -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700">Name *</label>
+              <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Name *</label>
                 <input
                   v-model="formData.name"
                   type="text"
                   required
                   :disabled="editingClaim?.isStandard"
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
                   placeholder="e.g., department"
                 />
               </div>
 
               <!-- Display Name -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700">Display Name *</label>
+              <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Display Name *</label>
                 <input
                   v-model="formData.displayName"
                   type="text"
                   required
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10 px-3"
                   placeholder="e.g., Department"
                 />
               </div>
 
               <!-- Description -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700">Description</label>
+              <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
                 <textarea
                   v-model="formData.description"
                   rows="2"
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors px-3 py-2"
                   placeholder="Description of what this claim represents"
                 ></textarea>
               </div>
 
               <!-- Claim Type -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700">Claim Type *</label>
+              <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Claim Type *</label>
                 <input
                   v-model="formData.claimType"
                   type="text"
                   required
                   :disabled="editingClaim?.isStandard"
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
                   placeholder="e.g., department"
                 />
-                <p class="mt-1 text-xs text-gray-500">The JWT claim name that appears in tokens</p>
+                <p class="mt-1.5 text-xs text-gray-500">The JWT claim name that appears in tokens</p>
               </div>
 
               <!-- User Property Path -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700">User Property Path *</label>
+              <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">User Property Path *</label>
                 <input
                   v-model="formData.userPropertyPath"
                   type="text"
                   required
                   :disabled="editingClaim?.isStandard"
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
                   placeholder="e.g., Department"
                 />
-                <p class="mt-1 text-xs text-gray-500">Property path on ApplicationUser entity</p>
+                <p class="mt-1.5 text-xs text-gray-500">Property path on ApplicationUser entity</p>
               </div>
 
               <!-- Data Type -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700">Data Type *</label>
+              <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Data Type *</label>
                 <select
                   v-model="formData.dataType"
                   :disabled="editingClaim?.isStandard"
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
                 >
                   <option value="String">String</option>
                   <option value="Boolean">Boolean</option>
@@ -219,13 +221,13 @@
               </div>
 
               <!-- Is Required -->
-              <div class="mb-4">
+              <div class="mb-5">
                 <label class="flex items-center">
                   <input
                     v-model="formData.isRequired"
                     type="checkbox"
                     :disabled="editingClaim?.isStandard"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 disabled:bg-gray-100"
+                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 disabled:bg-gray-100 h-4 w-4"
                   />
                   <span class="ml-2 text-sm text-gray-700">Always include in tokens (Required)</span>
                 </label>
@@ -238,7 +240,7 @@
               </div>
             </div>
 
-            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <div class="bg-gray-50 px-4 py-2.5 sm:px-6 sm:flex sm:flex-row-reverse">
               <button
                 type="submit"
                 :disabled="saving"
@@ -250,7 +252,7 @@
                 type="button"
                 @click="closeModal"
                 :disabled="saving"
-                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                class="mt-2.5 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
               >
                 Cancel
               </button>

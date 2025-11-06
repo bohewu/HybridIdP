@@ -230,10 +230,10 @@ const togglePermission = (permission) => {
                     </div>
                   </div>
 
-                  <div class="space-y-4">
+                  <div class="space-y-5">
                     <!-- Client ID -->
-                    <div>
-                      <label for="clientId" class="block text-sm font-medium text-gray-700">
+                    <div class="mb-5">
+                      <label for="clientId" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Client ID <span class="text-red-500">*</span>
                       </label>
                       <input
@@ -243,7 +243,7 @@ const togglePermission = (permission) => {
                         required
                         :disabled="isEdit"
                         :class="[
-                          'mt-1 block w-full rounded-md shadow-sm sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed',
+                          'block w-full rounded-md shadow-sm sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed',
                           fieldErrors.clientId 
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500' 
                             : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
@@ -262,15 +262,15 @@ const togglePermission = (permission) => {
                     </div>
 
                     <!-- Display Name -->
-                    <div>
-                      <label for="displayName" class="block text-sm font-medium text-gray-700">
+                    <div class="mb-5">
+                      <label for="displayName" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Display Name
                       </label>
                       <input
                         id="displayName"
                         v-model="formData.displayName"
                         type="text"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
                         placeholder="My Application"
                       />
                     </div>
@@ -342,8 +342,8 @@ const togglePermission = (permission) => {
                     </div>
 
                     <!-- Client Secret -->
-                    <div>
-                      <label for="clientSecret" class="block text-sm font-medium text-gray-700">
+                    <div class="mb-5">
+                      <label for="clientSecret" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Client Secret {{ isEdit ? '(leave empty to keep current)' : formData.clientType === 'confidential' ? '' : '(not required for public clients)' }}
                         <span v-if="!isEdit && formData.clientType === 'confidential'" class="text-red-500">*</span>
                       </label>
@@ -354,7 +354,7 @@ const togglePermission = (permission) => {
                         :required="!isEdit && formData.clientType === 'confidential'"
                         :disabled="!isEdit && formData.clientType === 'public'"
                         :class="[
-                          'mt-1 block w-full rounded-md shadow-sm sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed',
+                          'block w-full rounded-md shadow-sm sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed',
                           fieldErrors.clientSecret
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
                             : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
@@ -375,8 +375,8 @@ const togglePermission = (permission) => {
                     </div>
 
                     <!-- Redirect URIs -->
-                    <div>
-                      <label for="redirectUris" class="block text-sm font-medium text-gray-700">
+                    <div class="mb-5">
+                      <label for="redirectUris" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Redirect URIs <span class="text-red-500">*</span>
                       </label>
                       <textarea
@@ -385,7 +385,7 @@ const togglePermission = (permission) => {
                         required
                         rows="3"
                         :class="[
-                          'mt-1 block w-full rounded-md shadow-sm sm:text-sm',
+                          'block w-full rounded-md shadow-sm sm:text-sm px-3 py-2',
                           fieldErrors.redirectUris
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
                             : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
@@ -404,8 +404,8 @@ const togglePermission = (permission) => {
                     </div>
 
                     <!-- Post Logout Redirect URIs -->
-                    <div>
-                      <label for="postLogoutRedirectUris" class="block text-sm font-medium text-gray-700">
+                    <div class="mb-5">
+                      <label for="postLogoutRedirectUris" class="block text-sm font-medium text-gray-700 mb-1.5">
                         Post Logout Redirect URIs
                       </label>
                       <textarea
@@ -413,7 +413,7 @@ const togglePermission = (permission) => {
                         v-model="formData.postLogoutRedirectUris"
                         rows="2"
                         :class="[
-                          'mt-1 block w-full rounded-md shadow-sm sm:text-sm',
+                          'block w-full rounded-md shadow-sm sm:text-sm px-3 py-2',
                           fieldErrors.postLogoutRedirectUris
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
                             : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
