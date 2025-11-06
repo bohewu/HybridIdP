@@ -4,7 +4,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Web.IdP.Pages.Admin;
 
-[Authorize(Roles = AuthConstants.Roles.Admin)]
+// Allow access with users.read permission OR Admin role
+[Authorize(Policy = "users.read")]
 public class UsersModel : PageModel
 {
     public void OnGet()
