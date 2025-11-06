@@ -4,14 +4,16 @@
 @using Web.IdP.Helpers
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<ApplicationRole> RoleManager
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 
 @{
     // Get user permissions once for the entire layout
     var userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User);
+    var currentCulture = System.Globalization.CultureInfo.CurrentUICulture.Name;
 }
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@System.Globalization.CultureInfo.CurrentUICulture.Name">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
@@ -35,7 +37,7 @@
                 </div>
                 <div class="sidebar-brand-text">
                     <h1>HybridAuth</h1>
-                    <p>Admin Portal</p>
+                    <p>@Localizer["AdminPortal"]</p>
                 </div>
             </a>
             
@@ -44,46 +46,46 @@
                 @* Dashboard - always visible *@
                 <a href="/Admin" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Index" ? "active" : "")">
                     <i class="bi bi-house-door"></i>
-                    <span>Dashboard</span>
+                    <span>@Localizer["Dashboard"]</span>
                 </a>
                 
                 @* OIDC Management *@
                 @if (userPermissions.HasAnyPermission(Permissions.Clients.Read, Permissions.Scopes.Read, Permissions.Claims.Read))
                 {
-                    <div class="nav-section-title">OIDC Management</div>
+                    <div class="nav-section-title">@Localizer["OidcManagement"]</div>
                 }
                 @if (userPermissions.HasPermission(Permissions.Clients.Read))
                 {
                     <a href="/Admin/Clients" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Clients" ? "active" : "")">
                         <i class="bi bi-pc-display"></i>
-                        <span>Clients</span>
+                        <span>@Localizer["Clients"]</span>
                     </a>
                 }
                 @if (userPermissions.HasPermission(Permissions.Scopes.Read))
                 {
                     <a href="/Admin/Scopes" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Scopes" ? "active" : "")">
                         <i class="bi bi-shield-lock"></i>
-                        <span>Scopes</span>
+                        <span>@Localizer["Scopes"]</span>
                     </a>
                 }
                 @if (userPermissions.HasPermission(Permissions.Claims.Read))
                 {
                     <a href="/Admin/Claims" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Claims" ? "active" : "")">
                         <i class="bi bi-card-list"></i>
-                        <span>Claims</span>
+                        <span>@Localizer["Claims"]</span>
                     </a>
                 }
                 
                 @* Identity Management *@
                 @if (userPermissions.HasAnyPermission(Permissions.Users.Read, Permissions.Roles.Read))
                 {
-                    <div class="nav-section-title">Identity Management</div>
+                    <div class="nav-section-title">@Localizer["IdentityManagement"]</div>
                 }
                 @if (userPermissions.HasPermission(Permissions.Users.Read))
                 {
                     <a href="/Admin/Users" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Users" ? "active" : "")">
                         <i class="bi bi-people"></i>
-                        <span>Users</span>
+                        <span>@Localizer["Users"]</span>
                         <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
                     </a>
                 }
@@ -91,7 +93,7 @@
                 {
                     <a href="/Admin/Roles" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Roles" ? "active" : "")">
                         <i class="bi bi-award"></i>
-                        <span>Roles</span>
+                        <span>@Localizer["Roles"]</span>
                         <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
                     </a>
                 }
@@ -99,10 +101,10 @@
                 @* Settings *@
                 @if (userPermissions.HasPermission(Permissions.Settings.Read))
                 {
-                    <div class="nav-section-title">Settings</div>
+                    <div class="nav-section-title">@Localizer["Settings"]</div>
                     <a href="/Admin/SecurityPolicies" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SecurityPolicies" ? "active" : "")">
                         <i class="bi bi-lock"></i>
-                        <span>Security Policies</span>
+                        <span>@Localizer["SecurityPolicies"]</span>
                         <span class="badge bg-secondary badge-phase ms-auto">Phase 5</span>
                     </a>
                 }
@@ -117,7 +119,7 @@
                         </div>
                         <div class="flex-grow-1">
                             <div class="fw-medium small text-truncate user-info-name">@User.Identity?.Name</div>
-                            <div class="text-muted user-info-role">Administrator</div>
+                                <div class="text-muted user-info-role">@Localizer["Administrator"]</div>
                         </div>
                     </div>
                     <a href="/Account/Logout" class="text-muted" title="Logout">
@@ -151,7 +153,21 @@
                 
                 @* Right Side *@
                 <div>
-                    <span class="text-muted small">Welcome back!</span>
+                    <span class="text-muted small">@Localizer["WelcomeBack"]</span>
+                    <div class="d-inline-block ms-3">
+                        <select class="form-select form-select-sm language-select" style="width:140px; display:inline-block;">
+                            @if (currentCulture == "zh-TW") {
+                                <option value="zh-TW" selected>中文 (繁體)</option>
+                            } else {
+                                <option value="zh-TW">中文 (繁體)</option>
+                            }
+                            @if (currentCulture == "en-US") {
+                                <option value="en-US" selected>English</option>
+                            } else {
+                                <option value="en-US">English</option>
+                            }
+                        </select>
+                    </div>
                 </div>
             </div>
         </header>
@@ -183,6 +199,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
     @* Admin Layout Mobile Menu Script *@
+    <script src="~/js/language.js" asp-append-version="true"></script>
     <script src="~/js/admin-layout.js" asp-append-version="true"></script>
     
     @* Page-specific scripts (e.g., Vue.js bundles) *@
