@@ -17,19 +17,19 @@
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
                         
                         <div class="mb-3">
-                            <label asp-for="Input.Email" class="form-label"></label>
+                            <label for="Input_Email" class="form-label">@Localizer["Email"]</label>
                             <input asp-for="Input.Email" class="form-control" autocomplete="username" />
                             <span asp-validation-for="Input.Email" class="text-danger small"></span>
                         </div>
                         
                         <div class="mb-3">
-                            <label asp-for="Input.Password" class="form-label"></label>
+                            <label for="Input_Password" class="form-label">@Localizer["Password"]</label>
                             <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
                             <span asp-validation-for="Input.Password" class="text-danger small"></span>
                         </div>
                         
                         <div class="mb-4">
-                            <label asp-for="Input.ConfirmPassword" class="form-label"></label>
+                            <label for="Input_ConfirmPassword" class="form-label">@Localizer["Confirm password"]</label>
                             <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" />
                             <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
                         </div>

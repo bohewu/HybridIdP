@@ -102,11 +102,7 @@ builder.Services.AddLocalization(options => options.ResourcesPath = "Resources")
 
 builder.Services.AddMvc()
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
-    .AddDataAnnotationsLocalization(options =>
-    {
-        options.DataAnnotationLocalizerProvider = (type, factory) =>
-            factory.Create("SharedResource", "Web.IdP");
-    });
+    .AddDataAnnotationsLocalization();
 
 // Configure authorization with permission-based policies
 builder.Services.AddAuthorization(options =>
