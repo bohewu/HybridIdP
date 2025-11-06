@@ -8,12 +8,13 @@
   />
 
   <div class="px-4 py-6">
-    <div class="flex justify-between items-center mb-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
       <h1 class="text-2xl font-bold text-gray-900">Role Management</h1>
       <div>
         <button
           v-if="canCreate"
-          class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed" 
+          class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10" 
           @click="showCreateModal = true" 
           :disabled="loading"
         >
@@ -30,32 +31,38 @@
     </div>
 
     <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-      <div class="p-4">
-        <div class="flex justify-between items-center mb-4 gap-4">
-          <input 
-            v-model="search" 
-            @keyup.enter="fetchRoles(0)" 
-            type="text" 
-            class="block w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
-            placeholder="Search name/description" 
-          />
+      <!-- Filter Section -->
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex flex-col md:flex-row md:items-center gap-3">
+          <!-- Search Input -->
+          <div class="flex-1">
+            <input 
+              v-model="search" 
+              @keyup.enter="fetchRoles(0)" 
+              type="text" 
+              class="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10" 
+              placeholder="Search name/description" 
+            />
+          </div>
+          
+          <!-- Sort and Apply -->
           <div class="flex gap-2">
             <select 
               v-model="sortBy" 
-              class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
             >
               <option value="name">Name</option>
               <option value="createdat">Created</option>
             </select>
             <select 
               v-model="sortDirection" 
-              class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
             >
               <option value="asc">Asc</option>
               <option value="desc">Desc</option>
             </select>
             <button 
-              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50" 
+              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors h-10" 
               @click="fetchRoles(0)" 
               :disabled="loading"
             >
@@ -63,9 +70,11 @@
             </button>
           </div>
         </div>
+      </div>
 
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+      <!-- Table Section -->
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -135,18 +144,19 @@
           </table>
         </div>
 
-        <div class="flex justify-between items-center mt-4 px-6">
+        <!-- Pagination -->
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-4 py-3 border-t border-gray-200">
           <div class="text-sm text-gray-700">Total: {{ totalCount }}</div>
           <div class="inline-flex gap-2">
             <button 
-              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed" 
+              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10" 
               :disabled="skip === 0 || loading" 
               @click="prevPage"
             >
               Prev
             </button>
             <button 
-              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed" 
+              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10" 
               :disabled="skip + take >= totalCount || loading" 
               @click="nextPage"
             >
@@ -155,7 +165,6 @@
           </div>
         </div>
       </div>
-    </div>
 
     <!-- Create Role Modal -->
     <CreateRoleModal
