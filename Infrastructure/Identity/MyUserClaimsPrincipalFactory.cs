@@ -1,6 +1,7 @@
 using Core.Domain;
 using Core.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 
@@ -24,6 +25,29 @@ public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Applicati
         if (!string.IsNullOrEmpty(preferredUsername) && !identity.HasClaim(c => c.Type == AuthConstants.Claims.PreferredUsername))
         {
             identity.AddClaim(new Claim(AuthConstants.Claims.PreferredUsername, preferredUsername));
+        }
+
+        // Add permission claims from user's roles
+        var userRoles = await UserManager.GetRolesAsync(user);
+        var permissions = new HashSet<string>();
+
+        foreach (var roleName in userRoles)
+        {
+            var role = await RoleManager.FindByNameAsync(roleName);
+            if (role != null)
+            {
+                var roleClaims = await RoleManager.GetClaimsAsync(role);
+                foreach (var claim in roleClaims.Where(c => c.Type == "permission"))
+                {
+                    permissions.Add(claim.Value);
+                }
+            }
+        }
+
+        // Add permission claims to identity
+        foreach (var permission in permissions)
+        {
+            identity.AddClaim(new Claim("permission", permission));
         }
 
         return identity;
