@@ -10,11 +10,12 @@ body {
     top: 0;
     bottom: 0;
     left: 0;
-    z-index: 100;
+    z-index: 40; /* Below Vue modals (z-50) and Bootstrap modals (1055) */
     padding: 0;
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     background-color: #fff;
     width: 260px;
+    transition: transform 0.3s ease-in-out;
 }
 
 .sidebar-sticky {
@@ -150,7 +151,7 @@ body {
     padding: 1rem 1.5rem;
     position: sticky;
     top: 0;
-    z-index: 99;
+    z-index: 30; /* Below sidebar (40) and modals (50+) */
 }
 
 .breadcrumb {
@@ -168,14 +169,14 @@ body {
 }
 
 /* Mobile Responsive */
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
+    /* Hide sidebar by default on tablets and smaller */
     .sidebar {
-        margin-left: -260px;
-        transition: margin 0.3s ease-in-out;
+        transform: translateX(-260px);
     }
     
     .sidebar.show {
-        margin-left: 0;
+        transform: translateX(0);
     }
     
     .main-content {
@@ -190,10 +191,61 @@ body {
         right: 0;
         bottom: 0;
         background-color: rgba(0, 0, 0, 0.5);
-        z-index: 99;
+        z-index: 35; /* Above content, below sidebar (40) and modals (50+) */
     }
     
     .mobile-overlay.show {
         display: block;
+    }
+    
+    /* Ensure mobile toggle button is visible */
+    #sidebar-toggle {
+        display: inline-block !important;
+    }
+}
+
+/* Medium screens - collapsible sidebar */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    /* Narrower sidebar on medium screens */
+    .sidebar {
+        width: 220px;
+    }
+    
+    .main-content {
+        margin-left: 220px;
+    }
+    
+    .sidebar-brand-text h1 {
+        font-size: 1rem;
+    }
+    
+    .sidebar .nav-link {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.9375rem;
+    }
+}
+
+/* Large screens - full sidebar */
+@media (min-width: 1200px) {
+    .sidebar {
+        width: 260px;
+    }
+    
+    .main-content {
+        margin-left: 260px;
+    }
+}
+
+/* Extra small screens - ensure modals are fully visible */
+@media (max-width: 575.98px) {
+    /* Adjust modal dialog for very small screens */
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+    
+    /* Ensure sidebar is completely hidden when modal is open */
+    body.modal-open .sidebar {
+        transform: translateX(-260px) !important;
     }
 }
