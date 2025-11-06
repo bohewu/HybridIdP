@@ -271,40 +271,21 @@ onMounted(() => {
 
   <div class="users-app">
     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      <div class="mb-6 flex justify-content-between items-center">
+      <!-- Page Header -->
+      <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h1 class="text-2xl font-bold text-gray-900">User Management</h1>
         
         <!-- Create button - only show if user has create permission -->
         <button
           v-if="canCreate"
           @click="handleCreate"
-          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          class="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors h-10"
         >
           <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
           </svg>
           Create User
         </button>
-        
-        <!-- Show button but disabled if no permission (alternative approach) -->
-        <!--
-        <button
-          @click="handleCreate"
-          :disabled="!canCreate"
-          :class="[
-            'inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium',
-            canCreate 
-              ? 'text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500' 
-              : 'text-gray-400 bg-gray-200 cursor-not-allowed'
-          ]"
-          :title="!canCreate ? 'You don\'t have permission to create users' : ''"
-        >
-          <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-          </svg>
-          Create User
-        </button>
-        -->
       </div>
 
       <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">

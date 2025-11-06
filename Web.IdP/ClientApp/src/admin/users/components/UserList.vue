@@ -87,9 +87,10 @@ const getSortIcon = (field) => {
 <template>
   <div class="user-list">
     <!-- Filters and Search -->
-    <div class="bg-white shadow rounded-lg p-4 mb-4">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="md:col-span-2">
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-4 mb-4">
+      <div class="flex flex-col md:flex-row md:items-center gap-3">
+        <!-- Search Input - Takes more space -->
+        <div class="flex-1">
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,15 +100,17 @@ const getSortIcon = (field) => {
             <input
               v-model="localSearch"
               type="text"
-              class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10"
               placeholder="Search by email, name, or employee ID..."
             />
           </div>
         </div>
-        <div>
+        
+        <!-- Status Filter - Fixed width -->
+        <div class="w-full md:w-48">
           <select
             v-model="localFilter"
-            class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            class="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10"
           >
             <option value="">All Users</option>
             <option value="true">Active Only</option>
@@ -118,7 +121,7 @@ const getSortIcon = (field) => {
     </div>
 
     <!-- Users Table Card -->
-    <div class="bg-white shadow rounded-lg overflow-hidden">
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
       <!-- Loading State -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-12">
         <svg class="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
