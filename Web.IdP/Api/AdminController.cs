@@ -636,7 +636,7 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Get all user claim definitions.
     /// </summary>
-    [HasPermission(DomainPermissions.Scopes.Read)]
+    [HasPermission(DomainPermissions.Claims.Read)]
     [HttpGet("claims")]
     public async Task<IActionResult> GetClaims()
     {
@@ -664,7 +664,7 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Get a specific user claim definition by ID.
     /// </summary>
-    [HasPermission(DomainPermissions.Scopes.Read)]
+    [HasPermission(DomainPermissions.Claims.Read)]
     [HttpGet("claims/{id:int}")]
     public async Task<IActionResult> GetClaim(int id)
     {
@@ -697,7 +697,7 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Create a new user claim definition.
     /// </summary>
-    [HasPermission(DomainPermissions.Scopes.Create)]
+    [HasPermission(DomainPermissions.Claims.Create)]
     [HttpPost("claims")]
     public async Task<IActionResult> CreateClaim([FromBody] CreateClaimRequest request)
     {
@@ -750,7 +750,7 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Update an existing user claim definition.
     /// </summary>
-    [HasPermission(DomainPermissions.Scopes.Update)]
+    [HasPermission(DomainPermissions.Claims.Update)]
     [HttpPut("claims/{id:int}")]
     public async Task<IActionResult> UpdateClaim(int id, [FromBody] UpdateClaimRequest request)
     {
@@ -810,7 +810,7 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Delete a user claim definition.
     /// </summary>
-    [HasPermission(DomainPermissions.Scopes.Delete)]
+    [HasPermission(DomainPermissions.Claims.Delete)]
     [HttpDelete("claims/{id:int}")]
     public async Task<IActionResult> DeleteClaim(int id)
     {

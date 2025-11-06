@@ -50,6 +50,17 @@ public static class Permissions
     }
 
     /// <summary>
+    /// Claim management permissions
+    /// </summary>
+    public static class Claims
+    {
+        public const string Read = "claims.read";
+        public const string Create = "claims.create";
+        public const string Update = "claims.update";
+        public const string Delete = "claims.delete";
+    }
+
+    /// <summary>
     /// Audit log permissions
     /// </summary>
     public static class Audit
@@ -77,6 +88,7 @@ public static class Permissions
             Scopes.Read, Scopes.Create, Scopes.Update, Scopes.Delete,
             Users.Read, Users.Create, Users.Update, Users.Delete,
             Roles.Read, Roles.Create, Roles.Update, Roles.Delete,
+            Claims.Read, Claims.Create, Claims.Update, Claims.Delete,
             Audit.Read,
             Settings.Read, Settings.Update
         };

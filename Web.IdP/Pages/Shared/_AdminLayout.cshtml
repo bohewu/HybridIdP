@@ -36,40 +36,64 @@
                 </a>
                 
                 @* OIDC Management *@
-                <div class="nav-section-title">OIDC Management</div>
-                <a href="/Admin/Clients" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Clients" ? "active" : "")">
-                    <i class="bi bi-pc-display"></i>
-                    <span>Clients</span>
-                </a>
-                <a href="/Admin/Scopes" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Scopes" ? "active" : "")">
-                    <i class="bi bi-shield-lock"></i>
-                    <span>Scopes</span>
-                </a>
-                <a href="/Admin/Claims" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Claims" ? "active" : "")">
-                    <i class="bi bi-card-list"></i>
-                    <span>Claims</span>
-                </a>
+                @if (User.HasClaim(c => c.Type == "permission" && (c.Value == "clients.read" || c.Value == "scopes.read" || c.Value == "claims.read")))
+                {
+                    <div class="nav-section-title">OIDC Management</div>
+                }
+                @if (User.HasClaim(c => c.Type == "permission" && c.Value == "clients.read"))
+                {
+                    <a href="/Admin/Clients" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Clients" ? "active" : "")">
+                        <i class="bi bi-pc-display"></i>
+                        <span>Clients</span>
+                    </a>
+                }
+                @if (User.HasClaim(c => c.Type == "permission" && c.Value == "scopes.read"))
+                {
+                    <a href="/Admin/Scopes" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Scopes" ? "active" : "")">
+                        <i class="bi bi-shield-lock"></i>
+                        <span>Scopes</span>
+                    </a>
+                }
+                @if (User.HasClaim(c => c.Type == "permission" && c.Value == "claims.read"))
+                {
+                    <a href="/Admin/Claims" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Claims" ? "active" : "")">
+                        <i class="bi bi-card-list"></i>
+                        <span>Claims</span>
+                    </a>
+                }
                 
                 @* Identity Management *@
-                <div class="nav-section-title">Identity Management</div>
-                <a href="/Admin/Users" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Users" ? "active" : "")">
-                    <i class="bi bi-people"></i>
-                    <span>Users</span>
-                    <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
-                </a>
-                <a href="/Admin/Roles" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Roles" ? "active" : "")">
-                    <i class="bi bi-award"></i>
-                    <span>Roles</span>
-                    <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
-                </a>
+                @if (User.HasClaim(c => c.Type == "permission" && (c.Value == "users.read" || c.Value == "roles.read")))
+                {
+                    <div class="nav-section-title">Identity Management</div>
+                }
+                @if (User.HasClaim(c => c.Type == "permission" && c.Value == "users.read"))
+                {
+                    <a href="/Admin/Users" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Users" ? "active" : "")">
+                        <i class="bi bi-people"></i>
+                        <span>Users</span>
+                        <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
+                    </a>
+                }
+                @if (User.HasClaim(c => c.Type == "permission" && c.Value == "roles.read"))
+                {
+                    <a href="/Admin/Roles" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Roles" ? "active" : "")">
+                        <i class="bi bi-award"></i>
+                        <span>Roles</span>
+                        <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
+                    </a>
+                }
                 
-                @* Settings *@
-                <div class="nav-section-title">Settings</div>
-                <a href="/Admin/SecurityPolicies" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SecurityPolicies" ? "active" : "")">
-                    <i class="bi bi-lock"></i>
-                    <span>Security Policies</span>
-                    <span class="badge bg-secondary badge-phase ms-auto">Phase 5</span>
-                </a>
+                @* Settings - Only show if user has settings permissions *@
+                @if (User.HasClaim(c => c.Type == "permission" && c.Value == "settings.read"))
+                {
+                    <div class="nav-section-title">Settings</div>
+                    <a href="/Admin/SecurityPolicies" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SecurityPolicies" ? "active" : "")">
+                        <i class="bi bi-lock"></i>
+                        <span>Security Policies</span>
+                        <span class="badge bg-secondary badge-phase ms-auto">Phase 5</span>
+                    </a>
+                }
             </nav>
             
             @* User Profile *@
