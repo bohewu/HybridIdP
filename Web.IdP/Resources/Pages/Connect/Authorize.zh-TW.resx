@@ -46,4 +46,25 @@
   <data name="Deny" xml:space="preserve">
     <value>拒絕</value>
   </data>
+  <data name="is requesting access to your account" xml:space="preserve">
+    <value>正在請求存取您的帳號</value>
+  </data>
+  <data name="This application will be able to:" xml:space="preserve">
+    <value>此應用程式將能夠：</value>
+  </data>
+  <data name="Verify your identity" xml:space="preserve">
+    <value>驗證您的身分</value>
+  </data>
+  <data name="Access your email address" xml:space="preserve">
+    <value>存取您的電子郵件地址</value>
+  </data>
+  <data name="Access your profile information" xml:space="preserve">
+    <value>存取您的個人資料</value>
+  </data>
+  <data name="Access your roles" xml:space="preserve">
+    <value>存取您的角色</value>
+  </data>
+  <data name="By allowing access, you agree to share the requested information with this application." xml:space="preserve">
+    <value>允許存取即表示您同意與此應用程式分享所請求的資訊。</value>
+  </data>
 </root>

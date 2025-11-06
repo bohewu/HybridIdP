@@ -1,7 +1,9 @@
 @page
 @model Web.IdP.Pages.Account.RegisterModel
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IViewLocalizer Localizer
 @{
-    ViewData["Title"] = "Register";
+    ViewData["Title"] = Localizer["Register"];
 }
 
 <div class="container">
@@ -40,11 +42,11 @@
                         }
                         
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">Register</button>
+                            <button type="submit" class="btn btn-primary btn-lg">@Localizer["Register"]</button>
                         </div>
                         
                         <div class="text-center mt-3">
-                            <a asp-page="./Login">Already have an account? Sign in</a>
+                            <a asp-page="./Login">@Localizer["Already have an account? Sign in"]</a>
                         </div>
                     </form>
                 </div>

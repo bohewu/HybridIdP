@@ -1,7 +1,9 @@
 @page
 @model Web.IdP.Pages.Connect.AuthorizeModel
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IViewLocalizer Localizer
 @{
-    ViewData["Title"] = "Authorize Application";
+    ViewData["Title"] = Localizer["Authorize Application"];
 }
 
 <div class="container">
@@ -12,32 +14,32 @@
                     <h2 class="card-title text-center mb-4">@ViewData["Title"]</h2>
                     
                     <div class="alert alert-info" role="alert">
-                        <strong>@Model.ApplicationName</strong> is requesting access to your account.
+                        <strong>@Model.ApplicationName</strong> @Localizer["is requesting access to your account"]
                     </div>
 
                     @if (!string.IsNullOrEmpty(Model.Scope))
                     {
                         <div class="mb-4">
-                            <h5>This application will be able to:</h5>
+                            <h5>@Localizer["This application will be able to:"]</h5>
                             <ul class="list-group">
                                 @foreach (var scope in Model.Scope.Split(' '))
                                 {
                                     <li class="list-group-item">
                                         @if (scope == "openid")
                                         {
-                                            <i class="bi bi-person-badge"></i> <strong>Verify your identity</strong>
+                                            <i class="bi bi-person-badge"></i> <strong>@Localizer["Verify your identity"]</strong>
                                         }
                                         else if (scope == "email")
                                         {
-                                            <i class="bi bi-envelope"></i> <strong>Access your email address</strong>
+                                            <i class="bi bi-envelope"></i> <strong>@Localizer["Access your email address"]</strong>
                                         }
                                         else if (scope == "profile")
                                         {
-                                            <i class="bi bi-person"></i> <strong>Access your profile information</strong>
+                                            <i class="bi bi-person"></i> <strong>@Localizer["Access your profile information"]</strong>
                                         }
                                         else if (scope == "roles")
                                         {
-                                            <i class="bi bi-shield-check"></i> <strong>Access your roles</strong>
+                                            <i class="bi bi-shield-check"></i> <strong>@Localizer["Access your roles"]</strong>
                                         }
                                         else
                                         {
@@ -60,17 +62,17 @@
                         }
                         <div class="d-grid gap-2">
                             <button type="submit" name="submit" value="allow" class="btn btn-success btn-lg">
-                                <i class="bi bi-check-circle"></i> Allow Access
+                                <i class="bi bi-check-circle"></i> @Localizer["Allow Access"]
                             </button>
                             <button type="submit" name="submit" value="deny" class="btn btn-danger">
-                                <i class="bi bi-x-circle"></i> Deny
+                                <i class="bi bi-x-circle"></i> @Localizer["Deny"]
                             </button>
                         </div>
                     </form>
 
                     <div class="text-center mt-3">
                         <small class="text-muted">
-                            By allowing access, you agree to share the requested information with this application.
+                            @Localizer["By allowing access, you agree to share the requested information with this application."]
                         </small>
                     </div>
                 </div>
