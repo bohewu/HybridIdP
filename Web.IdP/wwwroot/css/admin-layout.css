@@ -164,6 +164,16 @@ body.admin-layout {
     overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
+/* Scrollable content wrapper - contains main and footer */
+.content-scroll-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 65px); /* Full viewport height minus header height */
+}
+
 /* Main content inner wrapper for max-width control */
 main {
     flex-grow: 1;
@@ -187,6 +197,10 @@ main {
     position: sticky;
     top: 0;
     z-index: 30; /* Below sidebar (40) and modals (50+) */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .breadcrumb {
@@ -201,6 +215,7 @@ main {
     padding: 1.5rem;
     background-color: #fff;
     border-top: 1px solid #dee2e6;
+    flex-shrink: 0; /* Prevent footer from shrinking */
 }
 
 /* Mobile Responsive */
@@ -217,6 +232,10 @@ main {
     .main-content {
         margin-left: 0;
         width: 100vw; /* Full viewport width on mobile */
+    }
+    
+    .content-scroll-wrapper {
+        height: calc(100vh - 60px); /* Slightly smaller header on mobile */
     }
     
     main {

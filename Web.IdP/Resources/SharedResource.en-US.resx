@@ -9,6 +9,9 @@
   <data name="AdminPortal" xml:space="preserve">
     <value>Admin Portal</value>
   </data>
+  <data name="Admin" xml:space="preserve">
+    <value>Admin</value>
+  </data>
   <data name="Dashboard" xml:space="preserve">
     <value>Dashboard</value>
   </data>
@@ -44,5 +47,14 @@
   </data>
   <data name="WelcomeBack" xml:space="preserve">
     <value>Welcome back!</value>
+  </data>
+  <data name="PrivacyPolicy" xml:space="preserve">
+    <value>Privacy Policy</value>
+  </data>
+  <data name="Documentation" xml:space="preserve">
+    <value>Documentation</value>
+  </data>
+  <data name="Support" xml:space="preserve">
+    <value>Support</value>
   </data>
 </root>

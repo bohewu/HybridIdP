@@ -25,7 +25,8 @@
         "users": {
           "title": "使用者",
           "description": "管理使用者帳號、角色和身分管理的權限。",
-          "action": "管理使用者"
+          "action": "管理使用者",
+          "badge": "階段 4"
         }
       },
       "errors": {

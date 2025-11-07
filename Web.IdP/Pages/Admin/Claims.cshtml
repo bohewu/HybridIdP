@@ -1,9 +1,10 @@
 @page
 @using Microsoft.AspNetCore.Hosting
 @inject IWebHostEnvironment Environment
+@inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
 @model Web.IdP.Pages.Admin.ClaimsModel
 @{
-    ViewData["Title"] = "Claims Management";
+    ViewData["Title"] = Localizer["Claims"];
     Layout = "_AdminLayout";
 }
 

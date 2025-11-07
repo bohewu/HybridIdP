@@ -25,7 +25,8 @@
         "users": {
           "title": "Users",
           "description": "Manage user accounts, roles, and permissions for identity management.",
-          "action": "Manage Users"
+          "action": "Manage Users",
+          "badge": "Phase 4"
         }
       },
       "errors": {
