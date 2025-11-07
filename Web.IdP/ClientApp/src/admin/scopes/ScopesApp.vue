@@ -6,6 +6,7 @@ import ScopeForm from './components/ScopeForm.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
+import SearchInput from '@/components/common/SearchInput.vue'
 
 const { t } = useI18n()
 
@@ -139,14 +140,9 @@ onMounted(async () => {
 })
 
 // Refetch when paging/search/sort change
-watch([page, pageSize, sort], () => {
+watch([page, pageSize, search, sort], () => {
   fetchScopes()
 })
-
-const handleSearch = () => {
-  page.value = 1
-  fetchScopes()
-}
 
 const setPage = (newPage) => {
   const maxPage = Math.max(1, Math.ceil(totalCount.value / pageSize.value))
@@ -196,13 +192,7 @@ const setPage = (newPage) => {
         <div class="flex flex-col md:flex-row md:items-center gap-3">
           <!-- Search Input -->
           <div class="flex-1">
-            <input 
-              v-model="search" 
-              @keyup.enter="handleSearch" 
-              type="text" 
-              class="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10" 
-              :placeholder="$t('scopes.searchPlaceholder')" 
-            />
+            <SearchInput v-model="search" :placeholder="$t('scopes.searchPlaceholder')" />
           </div>
           
           <!-- Sort -->
