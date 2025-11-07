@@ -1,6 +1,8 @@
-
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   users: { type: Array, required: true },
@@ -43,7 +45,7 @@ const localFilter = computed({
 })
 
 const formatDate = (dateString) => {
-  if (!dateString) return 'Never'
+  if (!dateString) return t('userDetails.never')
   return new Date(dateString).toLocaleString()
 }
 
@@ -103,7 +105,7 @@ const getSortIcon = (field) => {
                 v-model="localSearch"
                 type="text"
                 class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10"
-                placeholder="Search by email, name, or employee ID..."
+                :placeholder="$t('searchPlaceholder')"
               />
             </div>
           </div>
@@ -114,9 +116,9 @@ const getSortIcon = (field) => {
               v-model="localFilter"
               class="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10"
             >
-              <option value="">All Users</option>
-              <option value="true">Active Only</option>
-              <option value="false">Inactive Only</option>
+              <option value="">{{ $t('filterOptions.all') }}</option>
+              <option value="true">{{ $t('filterOptions.activeOnly') }}</option>
+              <option value="false">{{ $t('filterOptions.inactiveOnly') }}</option>
             </select>
           </div>
         </div>
@@ -128,7 +130,7 @@ const getSortIcon = (field) => {
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p class="mt-2 text-sm text-gray-600">Loading users...</p>
+        <p class="mt-2 text-sm text-gray-600">{{ $t('admin.users.loading') }}</p>
       </div>
 
       <!-- Empty State -->
@@ -136,7 +138,7 @@ const getSortIcon = (field) => {
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
         </svg>
-        <p class="mt-2 text-sm text-gray-600">No users found</p>
+        <p class="mt-2 text-sm text-gray-600">{{ $t('admin.users.noUsers') }}</p>
       </div>
 
       <!-- Users Table -->
@@ -149,33 +151,33 @@ const getSortIcon = (field) => {
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>Email</span>
+                  <span>{{ $t('tableHeaders.email') }}</span>
                   <span v-html="getSortIcon('email')"></span>
                 </div>
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
+                {{ $t('tableHeaders.name') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Department
+                {{ $t('tableHeaders.department') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Roles
+                {{ $t('tableHeaders.roles') }}
               </th>
               <th
                 @click="handleSort('isActive')"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>Status</span>
+                  <span>{{ $t('tableHeaders.status') }}</span>
                   <span v-html="getSortIcon('isActive')"></span>
                 </div>
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Last Login
+                {{ $t('tableHeaders.lastLogin') }}
               </th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
+                {{ $t('tableHeaders.actions') }}
               </th>
             </tr>
           </thead>
@@ -189,7 +191,7 @@ const getSortIcon = (field) => {
                 <div v-if="user.firstName || user.lastName" class="text-sm text-gray-900">
                   {{ user.firstName }} {{ user.lastName }}
                 </div>
-                <div v-else class="text-sm text-gray-400 italic">No name</div>
+                <div v-else class="text-sm text-gray-400 italic">{{ $t('userDetails.noName') }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span v-if="user.department" class="text-sm text-gray-900">{{ user.department }}</span>
@@ -205,13 +207,13 @@ const getSortIcon = (field) => {
                     {{ role }}
                   </span>
                 </div>
-                <span v-else class="text-sm text-gray-400">No roles</span>
+                <span v-else class="text-sm text-gray-400">{{ $t('userDetails.noRoles') }}</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getBadgeClass(user.isActive)]"
                 >
-                  {{ user.isActive ? 'Active' : 'Inactive' }}
+                  {{ user.isActive ? $t('userDetails.active') : $t('userDetails.inactive') }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -224,7 +226,7 @@ const getSortIcon = (field) => {
                     v-if="canUpdate"
                     @click="emit('edit', user)"
                     class="text-indigo-600 hover:text-indigo-900"
-                    title="Edit"
+                    :title="$t('admin.users.edit')"
                   >
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -236,7 +238,7 @@ const getSortIcon = (field) => {
                     v-if="canUpdate"
                     @click="emit('manage-roles', user)"
                     class="text-blue-600 hover:text-blue-900"
-                    title="Manage Roles"
+                    :title="$t('admin.users.manageRoles')"
                   >
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
@@ -248,7 +250,7 @@ const getSortIcon = (field) => {
                     v-if="user.isActive && canDelete"
                     @click="emit('deactivate', user)"
                     class="text-orange-600 hover:text-orange-900"
-                    title="Deactivate"
+                    :title="$t('userActions.deactivate')"
                   >
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
@@ -260,7 +262,7 @@ const getSortIcon = (field) => {
                     v-if="canDelete"
                     @click="emit('delete', user)"
                     class="text-red-600 hover:text-red-900"
-                    title="Delete Permanently"
+                    :title="$t('userActions.deletePermanently')"
                   >
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -272,7 +274,7 @@ const getSortIcon = (field) => {
                     v-if="!user.isActive && canUpdate"
                     @click="emit('reactivate', user)"
                     class="text-green-600 hover:text-green-900"
-                    title="Reactivate"
+                    :title="$t('userActions.reactivate')"
                   >
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -298,26 +300,24 @@ const getSortIcon = (field) => {
             :disabled="page === 1"
             class="relative inline-flex items-center justify-center px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
           >
-            Previous
+            {{ $t('pagination.previous') }}
           </button>
           <button
             @click="emit('page-change', page + 1)"
             :disabled="page === totalPages"
             class="relative inline-flex items-center justify-center px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
           >
-            Next
+            {{ $t('pagination.next') }}
           </button>
         </div>
         <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
           <div>
             <p class="text-sm text-gray-700">
-              Showing
-              <span class="font-medium">{{ (page - 1) * pageSize + 1 }}</span>
-              to
-              <span class="font-medium">{{ Math.min(page * pageSize, totalCount) }}</span>
-              of
-              <span class="font-medium">{{ totalCount }}</span>
-              results
+              {{ $t('pagination.showing', { 
+                from: (page - 1) * pageSize + 1, 
+                to: Math.min(page * pageSize, totalCount), 
+                total: totalCount 
+              }) }}
             </p>
           </div>
           <div class="flex items-center gap-2">
@@ -326,10 +326,10 @@ const getSortIcon = (field) => {
               @change="emit('page-size-change', Number($event.target.value))"
               class="block px-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md transition-colors h-10"
             >
-              <option :value="10">10 per page</option>
-              <option :value="25">25 per page</option>
-              <option :value="50">50 per page</option>
-              <option :value="100">100 per page</option>
+              <option :value="10">{{ $t('pagination.perPage', { count: 10 }) }}</option>
+              <option :value="25">{{ $t('pagination.perPage', { count: 25 }) }}</option>
+              <option :value="50">{{ $t('pagination.perPage', { count: 50 }) }}</option>
+              <option :value="100">{{ $t('pagination.perPage', { count: 100 }) }}</option>
             </select>
             <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
               <button
@@ -337,7 +337,7 @@ const getSortIcon = (field) => {
                 :disabled="page === 1"
                 class="relative inline-flex items-center justify-center px-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
               >
-                <span class="sr-only">Previous</span>
+                <span class="sr-only">{{ $t('pagination.previous') }}</span>
                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
                 </svg>
@@ -360,7 +360,7 @@ const getSortIcon = (field) => {
                 :disabled="page === totalPages"
                 class="relative inline-flex items-center justify-center px-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
               >
-                <span class="sr-only">Next</span>
+                <span class="sr-only">{{ $t('pagination.next') }}</span>
                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                 </svg>

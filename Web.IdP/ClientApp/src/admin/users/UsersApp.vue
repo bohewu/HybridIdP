@@ -86,7 +86,7 @@ const fetchUsers = async () => {
 const handleCreate = () => {
   if (!canCreate.value) {
     showAccessDenied.value = true
-    deniedMessage.value = "You don't have permission to create users."
+    deniedMessage.value = t('deniedMessages.create')
     deniedPermission.value = Permissions.Users.Create
     return
   }
@@ -97,7 +97,7 @@ const handleCreate = () => {
 const handleEdit = (user) => {
   if (!canUpdate.value) {
     showAccessDenied.value = true
-    deniedMessage.value = "You don't have permission to edit users."
+    deniedMessage.value = t('deniedMessages.edit')
     deniedPermission.value = Permissions.Users.Update
     return
   }
@@ -108,7 +108,7 @@ const handleEdit = (user) => {
 const handleManageRoles = (user) => {
   if (!canUpdate.value) {
     showAccessDenied.value = true
-    deniedMessage.value = "You don't have permission to manage user roles."
+    deniedMessage.value = t('deniedMessages.manageRoles')
     deniedPermission.value = Permissions.Users.Update
     return
   }
@@ -119,7 +119,7 @@ const handleManageRoles = (user) => {
 const handleDeactivate = async (user) => {
   if (!canDelete.value) {
     showAccessDenied.value = true
-    deniedMessage.value = "You don't have permission to deactivate users."
+    deniedMessage.value = t('deniedMessages.deactivate')
     deniedPermission.value = Permissions.Users.Delete
     return
   }
@@ -148,7 +148,7 @@ const handleDeactivate = async (user) => {
 const handleDelete = async (user) => {
   if (!canDelete.value) {
     showAccessDenied.value = true
-    deniedMessage.value = "You don't have permission to delete users."
+    deniedMessage.value = t('deniedMessages.delete')
     deniedPermission.value = Permissions.Users.Delete
     return
   }
@@ -182,7 +182,7 @@ const handleDelete = async (user) => {
 const handleReactivate = async (user) => {
   if (!canUpdate.value) {
     showAccessDenied.value = true
-    deniedMessage.value = "You don't have permission to reactivate users."
+    deniedMessage.value = t('deniedMessages.reactivate')
     deniedPermission.value = Permissions.Users.Update
     return
   }
@@ -314,6 +314,30 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Search and Filter -->
+      <div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-4">
+        <!-- Search Input -->
+        <div class="flex-1">
+          <input
+            v-model="search"
+            :placeholder="t('admin.users.search')"
+            class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
+          />
+        </div>
+
+        <!-- Filter Options -->
+        <div>
+          <select
+            v-model="isActiveFilter"
+            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
+          >
+            <option value="">{{ t('admin.users.all') }}</option>
+            <option value="true">{{ t('admin.users.active') }}</option>
+            <option value="false">{{ t('admin.users.inactive') }}</option>
+          </select>
+        </div>
+      </div>
+
       <UserList
         :users="users"
         :loading="loading"
@@ -340,6 +364,24 @@ onMounted(() => {
       <UserForm
         v-if="showForm"
         :user="selectedUser"
+        :labels="{
+          firstName: t('admin.users.firstName'),
+          lastName: t('admin.users.lastName'),
+          email: t('admin.users.email'),
+          password: t('admin.users.password'),
+          confirmPassword: t('admin.users.confirmPassword')
+        }"
+        :placeholders="{
+          firstName: t('admin.users.firstName'),
+          lastName: t('admin.users.lastName'),
+          email: t('admin.users.email'),
+          password: t('admin.users.password'),
+          confirmPassword: t('admin.users.confirmPassword')
+        }"
+        :validationMessages="{
+          required: t('validation.required'),
+          email: t('validation.email')
+        }"
         @close="handleFormClose"
         @save="handleFormSave"
       />

@@ -43,7 +43,24 @@
       "page": "第 {page} 頁，共 {total} 頁",
       "accessDenied": "拒絕存取",
       "noPermission": "您沒有權限執行此操作",
-      "requiredPermission": "需要權限"
+      "requiredPermission": "需要權限",
+      "jobTitle": "職稱",
+      "department": "部門",
+      "employeeId": "員工編號",
+      "passwordMustContain": "密碼必須包含：",
+      "passwordRequirements": {
+        "minLength": "至少 {minLength} 個字元",
+        "uppercase": "至少一個大寫字母 (A-Z)",
+        "lowercase": "至少一個小寫字母 (a-z)",
+        "digit": "至少一個數字 (0-9)",
+        "specialChar": "至少一個特殊字元 (!@#$%^&*)"
+      },
+      "atLeast6Characters": "至少 6 個字元",
+      "atLeastOneUppercase": "至少一個大寫字母 (A-Z)",
+      "atLeastOneLowercase": "至少一個小寫字母 (a-z)",
+      "atLeastOneDigit": "至少一個數字 (0-9)",
+      "atLeastOneSpecialChar": "至少一個特殊字元 (!@#$%^&*)",
+      "createNewUser": "新增使用者"
     },
     "roles": {
       "title": "角色管理",
@@ -130,6 +147,53 @@
       "success": "操作成功",
       "confirm": "確認",
       "pageInfo": "第 {page} 頁，共 {total} 頁"
+    },
+    "deniedMessages": {
+      "create": "您沒有新增使用者的權限。",
+      "edit": "您沒有編輯使用者的權限。",
+      "manageRoles": "您沒有管理使用者角色的權限。",
+      "deactivate": "您沒有停用使用者的權限。",
+      "delete": "您沒有刪除使用者的權限。",
+      "reactivate": "您沒有重新啟用使用者的權限。"
     }
+  },
+  "tableHeaders": {
+    "email": "電子郵件",
+    "name": "名稱",
+    "department": "部門",
+    "roles": "角色",
+    "status": "狀態",
+    "lastLogin": "最後登入",
+    "actions": "操作"
+  },
+  "searchPlaceholder": "依電子郵件、姓名或員工編號搜尋...",
+  "filterOptions": {
+    "all": "全部使用者",
+    "activeOnly": "僅啟用",
+    "inactiveOnly": "僅停用"
+  },
+  "userDetails": {
+    "noName": "無名稱",
+    "noRoles": "無角色",
+    "active": "啟用",
+    "inactive": "停用",
+    "never": "從未"
+  },
+  "userActions": {
+    "deactivate": "停用",
+    "deletePermanently": "永久刪除",
+    "reactivate": "重新啟用"
+  },
+  "pagination": {
+    "showing": "顯示 {from} 至 {to}，共 {total} 筆結果",
+    "perPage": "每頁 {count} 筆",
+    "previous": "上一頁",
+    "next": "下一頁"
+  },
+  "validation": {
+    "required": "此欄位為必填",
+    "email": "請輸入有效的電子郵件地址",
+    "passwordMismatch": "密碼不一致",
+    "passwordComplexity": "密碼必須符合複雜性要求"
   }
 }

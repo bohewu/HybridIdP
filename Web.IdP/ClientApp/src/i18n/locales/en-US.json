@@ -43,7 +43,24 @@
       "page": "Page {page} of {total}",
       "accessDenied": "Access Denied",
       "noPermission": "You don't have permission for this action",
-      "requiredPermission": "Required Permission"
+      "requiredPermission": "Required Permission",
+      "jobTitle": "Job Title",
+      "department": "Department",
+      "employeeId": "Employee ID",
+      "passwordMustContain": "Password must contain:",
+      "passwordRequirements": {
+        "minLength": "At least {minLength} characters",
+        "uppercase": "At least one uppercase letter (A-Z)",
+        "lowercase": "At least one lowercase letter (a-z)",
+        "digit": "At least one digit (0-9)",
+        "specialChar": "At least one special character (!@#$%^&*)"
+      },
+      "atLeast6Characters": "At least 6 characters",
+      "atLeastOneUppercase": "At least one uppercase letter (A-Z)",
+      "atLeastOneLowercase": "At least one lowercase letter (a-z)",
+      "atLeastOneDigit": "At least one digit (0-9)",
+      "atLeastOneSpecialChar": "At least one special character (!@#$%^&*)",
+      "createNewUser": "Create New User"
     },
     "roles": {
       "title": "Role Management",
@@ -130,6 +147,53 @@
       "success": "Operation successful",
       "confirm": "Confirm",
       "pageInfo": "Page {page} of {total}"
+    },
+    "deniedMessages": {
+      "create": "You don't have permission to create users.",
+      "edit": "You don't have permission to edit users.",
+      "manageRoles": "You don't have permission to manage user roles.",
+      "deactivate": "You don't have permission to deactivate users.",
+      "delete": "You don't have permission to delete users.",
+      "reactivate": "You don't have permission to reactivate users."
     }
+  },
+  "tableHeaders": {
+    "email": "Email",
+    "name": "Name",
+    "department": "Department",
+    "roles": "Roles",
+    "status": "Status",
+    "lastLogin": "Last Login",
+    "actions": "Actions"
+  },
+  "searchPlaceholder": "Search by email, name, or employee ID...",
+  "filterOptions": {
+    "all": "All Users",
+    "activeOnly": "Active Only",
+    "inactiveOnly": "Inactive Only"
+  },
+  "userDetails": {
+    "noName": "No name",
+    "noRoles": "No roles",
+    "active": "Active",
+    "inactive": "Inactive",
+    "never": "Never"
+  },
+  "userActions": {
+    "deactivate": "Deactivate",
+    "deletePermanently": "Delete Permanently",
+    "reactivate": "Reactivate"
+  },
+  "pagination": {
+    "showing": "Showing {from} to {to} of {total} results",
+    "perPage": "{count} per page",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Please enter a valid email address",
+    "passwordMismatch": "Passwords do not match",
+    "passwordComplexity": "Password must meet complexity requirements"
   }
 }
