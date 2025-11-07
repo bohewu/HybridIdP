@@ -324,7 +324,7 @@ const search = ref('')
 const sortBy = ref('name')
 const sortDirection = ref('asc')
 const page = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 const totalCount = ref(0)
 
 const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value))
