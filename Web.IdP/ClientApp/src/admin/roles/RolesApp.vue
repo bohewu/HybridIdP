@@ -35,12 +35,7 @@
         <div class="flex flex-col md:flex-row md:items-center gap-3">
           <!-- Search Input -->
           <div class="flex-1">
-            <input 
-              v-model="search" 
-              type="text" 
-              class="form-input-padded"
-              :placeholder="$t('admin.roles.searchPlaceholder')" 
-            />
+            <SearchInput v-model="search" :placeholder="$t('admin.roles.searchPlaceholder')" />
           </div>
           
           <!-- Sort and Apply -->
@@ -191,6 +186,7 @@ import DeleteRoleModal from './components/DeleteRoleModal.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
+import SearchInput from '@/components/common/SearchInput.vue'
 
 // Permission state
 const canCreate = ref(false)

@@ -6,6 +6,7 @@ import UserForm from './components/UserForm.vue'
 import RoleAssignment from './components/RoleAssignment.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
+import SearchInput from '@/components/common/SearchInput.vue'
 
 const { t } = useI18n()
 
@@ -318,11 +319,7 @@ onMounted(() => {
       <div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-4">
         <!-- Search Input -->
         <div class="flex-1">
-          <input
-            v-model="search"
-            :placeholder="t('admin.users.search')"
-            class="form-input-padded"
-          />
+          <SearchInput v-model="search" :placeholder="t('admin.users.search')" />
         </div>
 
         <!-- Filter Options -->
