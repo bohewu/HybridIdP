@@ -78,28 +78,42 @@
       "passwordSpecialChar": "At least one special character (!{'@'}#$%^&*)"
     },
     "roles": {
-      "title": "Role Management",
-      "createRole": "Create Role",
-      "editRole": "Edit Role",
-      "deleteRole": "Delete Role",
-      "name": "Name",
-      "description": "Description",
-      "permissions": "Permissions",
-      "userCount": "User Count",
-      "actions": "Actions",
-      "edit": "Edit",
-      "delete": "Delete",
-      "noRoles": "No roles found",
-      "loading": "Loading...",
-      "confirmDelete": "Are you sure you want to delete this role?",
-      "deleteSuccess": "Role deleted",
-      "deleteFailed": "Delete failed",
-      "createSuccess": "Role created",
-      "updateSuccess": "Role updated",
-      "save": "Save",
-      "cancel": "Cancel",
-      "selectPermissions": "Select Permissions",
-      "search": "Search roles..."
+      "pageTitle": "Role Management",
+      "createButton": "Create Role",
+      "searchPlaceholder": "Search name/description",
+      "sortBy": "Sort By",
+      "sortOptions": {
+        "name": "Name",
+        "created": "Created"
+      },
+      "sortDirection": {
+        "asc": "Asc",
+        "desc": "Desc"
+      },
+      "applyButton": "Apply",
+      "loadingMessage": "Loading...",
+      "noRolesMessage": "No roles found",
+      "table": {
+        "name": "Name",
+        "description": "Description",
+        "permissions": "Permissions",
+        "users": "Users",
+        "system": "System",
+        "actions": "Actions"
+      },
+      "badges": {
+        "system": "System"
+      },
+      "actions": {
+        "edit": "Edit Role",
+        "delete": "Delete Role",
+        "noActions": "No actions"
+      },
+      "pagination": {
+        "total": "Total: {count}",
+        "prev": "Prev",
+        "next": "Next"
+      }
     },
     "clients": {
       "title": "Client Management",
