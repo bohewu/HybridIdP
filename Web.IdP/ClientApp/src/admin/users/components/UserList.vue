@@ -185,7 +185,7 @@ const getSortIcon = (field) => {
             <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ user.email }}</div>
-                <div v-if="user.employeeId" class="text-sm text-gray-500">ID: {{ user.employeeId }}</div>
+                <div v-if="user.employeeId" class="text-sm text-gray-500">{{ t('userDetails.id', { id: user.employeeId }) }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div v-if="user.firstName || user.lastName" class="text-sm text-gray-900">
@@ -195,7 +195,7 @@ const getSortIcon = (field) => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span v-if="user.department" class="text-sm text-gray-900">{{ user.department }}</span>
-                <span v-else class="text-sm text-gray-400">—</span>
+                <span v-else class="text-sm text-gray-400">{{ t('userDetails.noDepartment') }}</span>
               </td>
               <td class="px-6 py-4">
                 <div v-if="user.roles && user.roles.length > 0" class="flex flex-wrap gap-1">
