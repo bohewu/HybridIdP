@@ -183,9 +183,9 @@ const setPage = (newPage) => {
       <div class="px-4 sm:px-0">
         <div class="flex justify-between items-center mb-6">
           <div>
-            <h1 class="text-3xl font-bold text-gray-900">OIDC Client Management</h1>
+            <h1 class="text-3xl font-bold text-gray-900">{{ $t('clients.pageTitle') }}</h1>
             <p class="mt-2 text-sm text-gray-600">
-              Manage OpenID Connect clients for your identity provider
+              {{ $t('clients.pageSubtitle') }}
             </p>
           </div>
           <button
@@ -196,54 +196,54 @@ const setPage = (newPage) => {
             <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
             </svg>
-            Create New Client
+            {{ $t('clients.createButton') }}
           </button>
         </div>
 
         <!-- Filters & sorting -->
         <div class="mb-5 grid grid-cols-1 md:grid-cols-4 gap-3">
           <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Search</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('clients.searchButton') }}</label>
             <div class="flex">
               <input
                 v-model="search"
                 type="text"
-                placeholder="Search by Client ID or Display Name"
+                :placeholder="$t('clients.searchPlaceholder')"
                 class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
               />
               <button
                 @click="page = 1; fetchClients()"
                 class="ml-2 inline-flex items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
               >
-                Search
+                {{ $t('clients.searchButton') }}
               </button>
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Client Type</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('clients.filterLabel') }}</label>
             <select
               v-model="typeFilter"
               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
             >
-              <option value="">All</option>
-              <option value="public">Public</option>
-              <option value="confidential">Confidential</option>
+              <option value="">{{ $t('clients.filterOptions.all') }}</option>
+              <option value="public">{{ $t('clients.filterOptions.public') }}</option>
+              <option value="confidential">{{ $t('clients.filterOptions.confidential') }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Sort</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('clients.sortLabel') }}</label>
             <select
               v-model="sort"
               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
             >
-              <option value="clientId:asc">Client ID ↑</option>
-              <option value="clientId:desc">Client ID ↓</option>
-              <option value="displayName:asc">Display Name ↑</option>
-              <option value="displayName:desc">Display Name ↓</option>
+              <option value="clientId:asc">{{ $t('clients.sortOptions.idAsc') }}</option>
+              <option value="clientId:desc">{{ $t('clients.sortOptions.idDesc') }}</option>
+              <option value="displayName:asc">{{ $t('clients.sortOptions.nameAsc') }}</option>
+              <option value="displayName:desc">{{ $t('clients.sortOptions.nameDesc') }}</option>
               <option value="redirectUriCount:asc">Redirect URI Count ↑</option>
               <option value="redirectUriCount:desc">Redirect URI Count ↓</option>
-              <option value="type:asc">Type ↑</option>
-              <option value="type:desc">Type ↓</option>
+              <option value="type:asc">{{ $t('clients.sortOptions.typeAsc') }}</option>
+              <option value="type:desc">{{ $t('clients.sortOptions.typeDesc') }}</option>
             </select>
           </div>
         </div>
@@ -268,7 +268,7 @@ const setPage = (newPage) => {
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p class="mt-2 text-sm text-gray-600">Loading clients...</p>
+          <p class="mt-2 text-sm text-gray-600">{{ $t('clients.loadingMessage') }}</p>
         </div>
 
         <!-- Client Form Modal -->
@@ -292,21 +292,15 @@ const setPage = (newPage) => {
         <!-- Pagination -->
         <div v-if="!loading && !showForm && totalCount > 0" class="mt-4 flex items-center justify-between">
           <div class="text-sm text-gray-600">
-            Showing
-            <span class="font-medium">{{ (page - 1) * pageSize + 1 }}</span>
-            to
-            <span class="font-medium">{{ Math.min(page * pageSize, totalCount) }}</span>
-            of
-            <span class="font-medium">{{ totalCount }}</span>
-            results
+            {{ $t('pagination.showing', { from: (page - 1) * pageSize + 1, to: Math.min(page * pageSize, totalCount), total: totalCount }) }}
           </div>
           <div class="inline-flex rounded-md shadow-sm" role="group">
-            <button @click="setPage(page - 1)" class="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-l-lg hover:bg-gray-50 disabled:opacity-50" :disabled="page === 1">Prev</button>
-            <button @click="setPage(page + 1)" class="px-3 py-2 text-sm font-medium bg-white border-t border-b border-gray-300 hover:bg-gray-50 disabled:opacity-50" :disabled="page * pageSize >= totalCount">Next</button>
+            <button @click="setPage(page - 1)" class="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-l-lg hover:bg-gray-50 disabled:opacity-50" :disabled="page === 1">{{ $t('pagination.previous') }}</button>
+            <button @click="setPage(page + 1)" class="px-3 py-2 text-sm font-medium bg-white border-t border-b border-gray-300 hover:bg-gray-50 disabled:opacity-50" :disabled="page * pageSize >= totalCount">{{ $t('pagination.next') }}</button>
             <select v-model.number="pageSize" class="px-2 py-2 text-sm font-medium bg-white border border-gray-300 rounded-r-lg hover:bg-gray-50 ml-2">
-              <option :value="10">10 / page</option>
-              <option :value="25">25 / page</option>
-              <option :value="50">50 / page</option>
+              <option :value="10">{{ $t('pagination.perPage', { count: 10 }) }}</option>
+              <option :value="25">{{ $t('pagination.perPage', { count: 25 }) }}</option>
+              <option :value="50">{{ $t('pagination.perPage', { count: 50 }) }}</option>
             </select>
           </div>
         </div>

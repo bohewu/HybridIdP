@@ -242,14 +242,14 @@ const saveScopeClaims = async (scopeId) => {
                     <!-- Claims -->
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-2">
-                        User Claims
+                        {{ $t('scopes.form.userClaimsTitle') }}
                       </label>
                       <div v-if="loadingClaims" class="text-sm text-gray-500">
-                        Loading claims...
+                        {{ $t('scopes.form.userClaimsLoading') }}
                       </div>
                       <div v-else class="border border-gray-300 rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
                         <div v-if="availableClaims.length === 0" class="text-sm text-gray-500 p-2">
-                          No claims available. Create claims first.
+                          {{ $t('scopes.form.userClaimsNone') }}
                         </div>
                         <label
                           v-for="claim in availableClaims"
@@ -266,7 +266,7 @@ const saveScopeClaims = async (scopeId) => {
                             <div class="text-sm font-medium text-gray-900">
                               {{ claim.name }}
                               <span v-if="claim.isStandard" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                Standard
+                                {{ $t('scopes.form.userClaimsStandardLabel') }}
                               </span>
                             </div>
                             <div class="text-xs text-gray-500">{{ claim.displayName }}</div>
@@ -274,7 +274,7 @@ const saveScopeClaims = async (scopeId) => {
                         </label>
                       </div>
                       <p class="mt-1 text-xs text-gray-500">
-                        Select which claims should be included when this scope is requested
+                        {{ $t('scopes.form.userClaimsHelp') }}
                       </p>
                     </div>
                   </div>

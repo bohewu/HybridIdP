@@ -200,6 +200,29 @@
     "reactivate": "Reactivate"
   },
   "clients": {
+    "pageTitle": "OIDC Client Management",
+    "pageSubtitle": "Manage OpenID Connect clients for your identity provider",
+    "searchPlaceholder": "Search by Client ID or Display Name",
+    "searchButton": "Search",
+    "createButton": "Create New Client",
+    "filterLabel": "Client Type",
+    "sortLabel": "Sort By",
+    "sortOptions": {
+      "idAsc": "Client ID ↑",
+      "idDesc": "Client ID ↓",
+      "nameAsc": "Display Name ↑",
+      "nameDesc": "Display Name ↓",
+      "typeAsc": "Type ↑",
+      "typeDesc": "Type ↓",
+      "createdAsc": "Created ↑",
+      "createdDesc": "Created ↓"
+    },
+    "filterOptions": {
+      "all": "All",
+      "public": "Public",
+      "confidential": "Confidential"
+    },
+    "loadingMessage": "Loading clients...",
     "title": "Client Management",
     "createClient": "Create Client",
     "editClient": "Edit Client",
@@ -292,6 +315,21 @@
     }
   },
   "scopes": {
+    "pageTitle": "OIDC Scope Management",
+    "pageSubtitle": "Manage OpenID Connect scopes for your identity provider",
+    "searchPlaceholder": "Search by Scope Name or Display Name",
+    "searchButton": "Search",
+    "createButton": "Create New Scope",
+    "sortLabel": "Sort By",
+    "sortOptions": {
+      "nameAsc": "Name ↑",
+      "nameDesc": "Name ↓",
+      "displayNameAsc": "Display Name ↑",
+      "displayNameDesc": "Display Name ↓",
+      "createdAsc": "Created ↑",
+      "createdDesc": "Created ↓"
+    },
+    "loadingMessage": "Loading scopes...",
     "title": "Scope Management",
     "createScope": "Create Scope",
     "editScope": "Edit Scope",
@@ -318,6 +356,11 @@
       "resources": "Resources",
       "resourcesHelp": "One resource URI per line (optional)",
       "resourcesPlaceholder": "https://api.example.com\nhttps://api2.example.com",
+      "userClaimsTitle": "User Claims",
+      "userClaimsLoading": "Loading claims...",
+      "userClaimsNone": "No claims available. Create claims first.",
+      "userClaimsStandardLabel": "Standard",
+      "userClaimsHelp": "Select which claims should be included when this scope is requested",
       "saving": "Saving...",
       "createButton": "Create Scope",
       "updateButton": "Update Scope",

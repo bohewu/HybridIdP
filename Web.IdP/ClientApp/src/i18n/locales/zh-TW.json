@@ -200,6 +200,29 @@
     "reactivate": "重新啟用"
   },
   "clients": {
+    "pageTitle": "OIDC 用戶端管理",
+    "pageSubtitle": "管理您的身分提供者的 OpenID Connect 用戶端",
+    "searchPlaceholder": "依用戶端 ID 或顯示名稱搜尋",
+    "searchButton": "搜尋",
+    "createButton": "新增用戶端",
+    "filterLabel": "用戶端類型",
+    "sortLabel": "排序方式",
+    "sortOptions": {
+      "idAsc": "用戶端 ID ↑",
+      "idDesc": "用戶端 ID ↓",
+      "nameAsc": "顯示名稱 ↑",
+      "nameDesc": "顯示名稱 ↓",
+      "typeAsc": "類型 ↑",
+      "typeDesc": "類型 ↓",
+      "createdAsc": "建立時間 ↑",
+      "createdDesc": "建立時間 ↓"
+    },
+    "filterOptions": {
+      "all": "全部",
+      "public": "公開",
+      "confidential": "機密"
+    },
+    "loadingMessage": "載入用戶端中...",
     "title": "用戶端管理",
     "createClient": "新增用戶端",
     "editClient": "編輯用戶端",
@@ -292,6 +315,21 @@
     }
   },
   "scopes": {
+    "pageTitle": "OIDC 範圍管理",
+    "pageSubtitle": "管理您的身分提供者的 OpenID Connect 範圍",
+    "searchPlaceholder": "依範圍名稱或顯示名稱搜尋",
+    "searchButton": "搜尋",
+    "createButton": "新增範圍",
+    "sortLabel": "排序方式",
+    "sortOptions": {
+      "nameAsc": "名稱 ↑",
+      "nameDesc": "名稱 ↓",
+      "displayNameAsc": "顯示名稱 ↑",
+      "displayNameDesc": "顯示名稱 ↓",
+      "createdAsc": "建立時間 ↑",
+      "createdDesc": "建立時間 ↓"
+    },
+    "loadingMessage": "載入範圍中...",
     "title": "範圍管理",
     "createScope": "新增範圍",
     "editScope": "編輯範圍",
@@ -318,6 +356,11 @@
       "resources": "資源",
       "resourcesHelp": "每行一個資源 URI（選填）",
       "resourcesPlaceholder": "https://api.example.com\nhttps://api2.example.com",
+      "userClaimsTitle": "使用者 Claims",
+      "userClaimsLoading": "載入 claims 中...",
+      "userClaimsNone": "沒有可用的 claims。請先建立 claims。",
+      "userClaimsStandardLabel": "標準",
+      "userClaimsHelp": "選擇當請求此範圍時應包含哪些 claims",
       "saving": "儲存中...",
       "createButton": "新增範圍",
       "updateButton": "更新範圍",

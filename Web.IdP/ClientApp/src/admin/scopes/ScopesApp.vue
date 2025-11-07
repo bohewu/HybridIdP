@@ -137,9 +137,9 @@ onMounted(async () => {
       <div class="px-4 py-6 sm:px-0">
         <div class="flex justify-between items-center mb-6">
           <div>
-            <h1 class="text-3xl font-bold text-gray-900">OIDC Scope Management</h1>
+            <h1 class="text-3xl font-bold text-gray-900">{{ $t('scopes.pageTitle') }}</h1>
             <p class="mt-2 text-sm text-gray-600">
-              Manage OpenID Connect scopes for your identity provider
+              {{ $t('scopes.pageSubtitle') }}
             </p>
           </div>
           <button
@@ -150,7 +150,7 @@ onMounted(async () => {
             <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
             </svg>
-            Create New Scope
+            {{ $t('scopes.createButton') }}
           </button>
         </div>
 
@@ -174,7 +174,7 @@ onMounted(async () => {
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p class="mt-2 text-sm text-gray-600">Loading scopes...</p>
+          <p class="mt-2 text-sm text-gray-600">{{ $t('scopes.loadingMessage') }}</p>
         </div>
 
         <!-- Scope Form Modal -->
