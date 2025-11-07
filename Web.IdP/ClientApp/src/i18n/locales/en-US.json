@@ -214,6 +214,8 @@
       "nameDesc": "Display Name ↓",
       "typeAsc": "Type ↑",
       "typeDesc": "Type ↓",
+      "uriCountAsc": "Redirect URI Count ↑",
+      "uriCountDesc": "Redirect URI Count ↓",
       "createdAsc": "Created ↑",
       "createdDesc": "Created ↓"
     },

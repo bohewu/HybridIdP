@@ -240,8 +240,8 @@ const setPage = (newPage) => {
               <option value="clientId:desc">{{ $t('clients.sortOptions.idDesc') }}</option>
               <option value="displayName:asc">{{ $t('clients.sortOptions.nameAsc') }}</option>
               <option value="displayName:desc">{{ $t('clients.sortOptions.nameDesc') }}</option>
-              <option value="redirectUriCount:asc">Redirect URI Count ↑</option>
-              <option value="redirectUriCount:desc">Redirect URI Count ↓</option>
+              <option value="redirectUriCount:asc">{{ $t('clients.sortOptions.uriCountAsc') }}</option>
+              <option value="redirectUriCount:desc">{{ $t('clients.sortOptions.uriCountDesc') }}</option>
               <option value="type:asc">{{ $t('clients.sortOptions.typeAsc') }}</option>
               <option value="type:desc">{{ $t('clients.sortOptions.typeDesc') }}</option>
             </select>

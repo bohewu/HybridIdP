@@ -214,6 +214,8 @@
       "nameDesc": "顯示名稱 ↓",
       "typeAsc": "類型 ↑",
       "typeDesc": "類型 ↓",
+      "uriCountAsc": "重新導向 URI 數量 ↑",
+      "uriCountDesc": "重新導向 URI 數量 ↓",
       "createdAsc": "建立時間 ↑",
       "createdDesc": "建立時間 ↓"
     },
