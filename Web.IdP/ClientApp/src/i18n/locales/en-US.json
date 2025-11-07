@@ -435,6 +435,18 @@
     "pageTitle": "User Claims Management",
     "pageSubtitle": "Manage OIDC user claims that can be included in ID tokens and access tokens",
     "createButton": "Create Claim",
+    "searchPlaceholder": "Search name, display name, or description",
+    "sortOptions": {
+      "name": "Name",
+      "displayName": "Display Name",
+      "claimType": "Claim Type",
+      "type": "Type"
+    },
+    "sortDirection": {
+      "asc": "Ascending",
+      "desc": "Descending"
+    },
+    "applyButton": "Apply",
     "loadingMessage": "Loading claims...",
     "errorLoading": "Error loading claims",
     "tryAgain": "Try again",
@@ -491,7 +503,12 @@
     },
     "confirmDelete": "Are you sure you want to delete the claim \"{name}\"?",
     "deleteError": "Failed to delete claim",
-    "saveError": "Failed to save claim"
+    "saveError": "Failed to save claim",
+    "pagination": {
+      "total": "Total: {count}",
+      "prev": "Prev",
+      "next": "Next"
+    }
   },
   "pagination": {
     "showing": "Showing {from} to {to} of {total} results",
