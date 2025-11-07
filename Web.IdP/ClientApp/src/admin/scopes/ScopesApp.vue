@@ -37,8 +37,8 @@ const fetchScopes = async () => {
   error.value = null
   try {
     const params = new URLSearchParams({
-      page: page.value,
-      pageSize: pageSize.value,
+      skip: ((page.value - 1) * pageSize.value).toString(),
+      take: pageSize.value.toString(),
       search: search.value,
       sort: sort.value
     })

@@ -454,22 +454,78 @@ public class AdminController : ControllerBase
     /// </summary>
     [HttpGet("scopes")]
     [HasPermission(DomainPermissions.Scopes.Read)]
-    public async Task<IActionResult> GetScopes()
+    public async Task<IActionResult> GetScopes(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 25,
+        [FromQuery] string? search = null,
+        [FromQuery] string? sort = null)
     {
-        var scopes = new List<object>();
+        var scopes = new List<ScopeSummary>();
         
         await foreach (var scope in _scopeManager.ListAsync())
         {
-            scopes.Add(new
+            var id = await _scopeManager.GetIdAsync(scope);
+            var name = await _scopeManager.GetNameAsync(scope);
+            var displayName = await _scopeManager.GetDisplayNameAsync(scope);
+            var description = await _scopeManager.GetDescriptionAsync(scope);
+            var resources = await _scopeManager.GetResourcesAsync(scope);
+
+            scopes.Add(new ScopeSummary
             {
-                id = await _scopeManager.GetIdAsync(scope),
-                name = await _scopeManager.GetNameAsync(scope),
-                displayName = await _scopeManager.GetDisplayNameAsync(scope),
-                description = await _scopeManager.GetDescriptionAsync(scope)
+                Id = id!,
+                Name = name!,
+                DisplayName = displayName,
+                Description = description,
+                Resources = resources.ToList()
             });
         }
 
-        return Ok(scopes);
+        // Filtering
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim();
+            scopes = scopes.Where(x =>
+                (!string.IsNullOrEmpty(x.Name) && x.Name.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(x.DisplayName) && x.DisplayName.Contains(s, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        // Sorting
+        string sortField = "name";
+        bool sortAsc = true;
+        if (!string.IsNullOrWhiteSpace(sort))
+        {
+            var parts = sort.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length > 0)
+            {
+                sortField = parts[0].ToLowerInvariant();
+            }
+            if (parts.Length > 1)
+            {
+                sortAsc = !string.Equals(parts[1], "desc", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        Func<ScopeSummary, object?> keySelector = sortField switch
+        {
+            "displayname" => x => x.DisplayName,
+            "description" => x => x.Description,
+            _ => x => x.Name
+        };
+
+        scopes = (sortAsc
+            ? scopes.OrderBy(keySelector)
+            : scopes.OrderByDescending(keySelector)).ToList();
+
+        var totalCount = scopes.Count;
+
+        // Paging safety
+        if (skip < 0) skip = 0;
+        if (take <= 0) take = 25;
+
+        var items = scopes.Skip(skip).Take(take).ToList();
+
+        return Ok(new { items, totalCount });
     }
 
     /// <summary>
@@ -978,6 +1034,15 @@ public class AdminController : ControllerBase
         public string ApplicationType { get; set; } = string.Empty; // web | native
         public string ConsentType { get; set; } = string.Empty;
         public int RedirectUrisCount { get; set; }
+    }
+
+    public sealed class ScopeSummary
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+        public string? Description { get; set; }
+        public List<string> Resources { get; set; } = new();
     }
 
     public record CreateClientRequest(
