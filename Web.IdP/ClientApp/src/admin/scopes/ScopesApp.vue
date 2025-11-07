@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ScopeList from './components/ScopeList.vue'
 import ScopeForm from './components/ScopeForm.vue'
@@ -25,15 +25,31 @@ const error = ref(null)
 const selectedScope = ref(null)
 const showForm = ref(false)
 
+// Pagination & filtering
+const page = ref(1)
+const pageSize = ref(10)
+const totalCount = ref(0)
+const search = ref('')
+const sort = ref('name:asc')
+
 const fetchScopes = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch('/api/admin/scopes')
+    const params = new URLSearchParams({
+      page: page.value,
+      pageSize: pageSize.value,
+      search: search.value,
+      sort: sort.value
+    })
+    
+    const response = await fetch(`/api/admin/scopes?${params}`)
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
-    scopes.value = await response.json()
+    const data = await response.json()
+    scopes.value = data.items || data
+    totalCount.value = data.totalCount || data.length
   } catch (e) {
     error.value = `Failed to load scopes: ${e.message}`
     console.error('Error fetching scopes:', e)
@@ -120,6 +136,16 @@ onMounted(async () => {
   
   fetchScopes()
 })
+
+// Refetch when paging/search/sort change
+watch([page, pageSize, sort], () => {
+  fetchScopes()
+})
+
+const setPage = (newPage) => {
+  const maxPage = Math.max(1, Math.ceil(totalCount.value / pageSize.value))
+  page.value = Math.min(Math.max(newPage, 1), maxPage)
+}
 </script>
 
 <template>
@@ -152,6 +178,39 @@ onMounted(async () => {
             </svg>
             {{ $t('scopes.createButton') }}
           </button>
+        </div>
+
+        <!-- Filters & sorting -->
+        <div class="mb-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('scopes.searchButton') }}</label>
+            <div class="flex">
+              <input
+                v-model="search"
+                type="text"
+                :placeholder="$t('scopes.searchPlaceholder')"
+                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+              />
+              <button
+                @click="page = 1; fetchScopes()"
+                class="ml-2 inline-flex items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
+              >
+                {{ $t('scopes.searchButton') }}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('scopes.sortLabel') }}</label>
+            <select
+              v-model="sort"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+            >
+              <option value="name:asc">{{ $t('scopes.sortOptions.nameAsc') }}</option>
+              <option value="name:desc">{{ $t('scopes.sortOptions.nameDesc') }}</option>
+              <option value="displayName:asc">{{ $t('scopes.sortOptions.displayNameAsc') }}</option>
+              <option value="displayName:desc">{{ $t('scopes.sortOptions.displayNameDesc') }}</option>
+            </select>
+          </div>
         </div>
 
         <!-- Error Alert -->
@@ -194,6 +253,22 @@ onMounted(async () => {
           @edit="handleEdit"
           @delete="handleDelete"
         />
+
+        <!-- Pagination -->
+        <div v-if="!loading && !showForm && totalCount > 0" class="mt-4 flex items-center justify-between">
+          <div class="text-sm text-gray-600">
+            {{ $t('pagination.showing', { from: (page - 1) * pageSize + 1, to: Math.min(page * pageSize, totalCount), total: totalCount }) }}
+          </div>
+          <div class="inline-flex rounded-md shadow-sm" role="group">
+            <button @click="setPage(page - 1)" class="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-l-lg hover:bg-gray-50 disabled:opacity-50" :disabled="page === 1">{{ $t('pagination.previous') }}</button>
+            <button @click="setPage(page + 1)" class="px-3 py-2 text-sm font-medium bg-white border-t border-b border-gray-300 hover:bg-gray-50 disabled:opacity-50" :disabled="page * pageSize >= totalCount">{{ $t('pagination.next') }}</button>
+            <select v-model.number="pageSize" class="px-2 py-2 text-sm font-medium bg-white border border-gray-300 rounded-r-lg hover:bg-gray-50 ml-2">
+              <option :value="10">{{ $t('pagination.perPage', { count: 10 }) }}</option>
+              <option :value="25">{{ $t('pagination.perPage', { count: 25 }) }}</option>
+              <option :value="50">{{ $t('pagination.perPage', { count: 50 }) }}</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
   </div>

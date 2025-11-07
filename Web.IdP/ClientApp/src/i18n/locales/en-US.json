@@ -339,6 +339,14 @@
     "noDisplayName": "No display name",
     "resources": "Resources: {resources}",
     "confirmDelete": "Are you sure you want to delete this scope?",
+    "table": {
+      "name": "Scope Name",
+      "displayName": "Display Name",
+      "description": "Description",
+      "resources": "Resources",
+      "resourceCount": "resource(s)",
+      "actions": "Actions"
+    },
     "actions": {
       "edit": "Edit",
       "delete": "Delete",

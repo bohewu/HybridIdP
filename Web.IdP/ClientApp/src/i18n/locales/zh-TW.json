@@ -339,6 +339,14 @@
     "noDisplayName": "無顯示名稱",
     "resources": "資源：{resources}",
     "confirmDelete": "確定要刪除這個範圍嗎？",
+    "table": {
+      "name": "範圍名稱",
+      "displayName": "顯示名稱",
+      "description": "描述",
+      "resources": "資源",
+      "resourceCount": "個資源",
+      "actions": "操作"
+    },
     "actions": {
       "edit": "編輯",
       "delete": "刪除",
