@@ -1,10 +1,13 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import UserList from './components/UserList.vue'
 import UserForm from './components/UserForm.vue'
 import RoleAssignment from './components/RoleAssignment.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
+
+const { t } = useI18n()
 
 const users = ref([])
 const loading = ref(true)
@@ -33,7 +36,7 @@ onMounted(async () => {
   // Show access denied if user doesn't have read permission
   if (!canRead.value) {
     showAccessDenied.value = true
-    deniedMessage.value = "You don't have permission to view users."
+    deniedMessage.value = t('admin.users.noPermission')
     deniedPermission.value = Permissions.Users.Read
     return
   }
@@ -273,7 +276,7 @@ onMounted(() => {
     <div class="px-4 py-6">
       <!-- Page Header -->
       <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h1 class="text-2xl font-bold text-gray-900">User Management</h1>
+        <h1 class="text-2xl font-bold text-gray-900">{{ t('admin.users.title') }}</h1>
         
         <!-- Create button - only show if user has create permission -->
         <button
@@ -284,7 +287,7 @@ onMounted(() => {
           <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
           </svg>
-          Create User
+          {{ t('admin.users.createUser') }}
         </button>
       </div>
 

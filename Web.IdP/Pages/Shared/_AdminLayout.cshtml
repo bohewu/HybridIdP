@@ -4,7 +4,7 @@
 @using Web.IdP.Helpers
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<ApplicationRole> RoleManager
-@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
 
 @{
     // Get user permissions once for the entire layout
@@ -13,10 +13,11 @@
 }
 
 <!DOCTYPE html>
-<html lang="@System.Globalization.CultureInfo.CurrentUICulture.Name">
+<html lang="@currentCulture">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="locale" content="@currentCulture" />
     <title>@ViewData["Title"] - HybridAuth IdP Admin</title>
     
     @* Bootstrap 5 CSS *@
