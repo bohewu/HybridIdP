@@ -13,8 +13,8 @@
       <template #actions>
         <button
           v-if="canCreate"
-          class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10" 
-          @click="showCreateModal = true" 
+          class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
+          @click="showCreateModal = true"
           :disabled="loading"
         >
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -40,15 +40,15 @@
           
           <!-- Sort and Apply -->
           <div class="flex gap-2">
-            <select 
-              v-model="sortBy" 
+            <select
+              v-model="sortBy"
               class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
             >
               <option value="name">{{ $t('admin.roles.sortOptions.name') }}</option>
               <option value="createdat">{{ $t('admin.roles.sortOptions.created') }}</option>
             </select>
-            <select 
-              v-model="sortDirection" 
+            <select
+              v-model="sortDirection"
               class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
             >
               <option value="asc">{{ $t('admin.roles.sortDirection.asc') }}</option>
@@ -104,8 +104,8 @@
                   <div class="inline-flex gap-1">
                     <button
                       v-if="canUpdate"
-                      class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" 
-                      @click="onEdit(r)" 
+                      class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      @click="onEdit(r)"
                       :title="$t('admin.roles.actions.edit')"
                     >
                       <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,8 +114,8 @@
                     </button>
                     <button
                       v-if="canDelete"
-                      class="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-700 text-sm font-medium rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" 
-                      @click="onDelete(r)" 
+                      class="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-700 text-sm font-medium rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      @click="onDelete(r)"
                       :title="$t('admin.roles.actions.delete')"
                     >
                       <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,25 +131,14 @@
         </div>
 
         <!-- Pagination -->
-        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-4 py-3 border-t border-gray-200">
-          <div class="text-sm text-gray-700">{{ $t('admin.roles.pagination.total', { count: totalCount }) }}</div>
-          <div class="inline-flex gap-2">
-            <button 
-              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10" 
-              :disabled="skip === 0 || loading" 
-              @click="prevPage"
-            >
-              {{ $t('admin.roles.pagination.prev') }}
-            </button>
-            <button 
-              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10" 
-              :disabled="skip + take >= totalCount || loading" 
-              @click="nextPage"
-            >
-              {{ $t('admin.roles.pagination.next') }}
-            </button>
-          </div>
-        </div>
+        <Pagination
+          :page="page"
+          :page-size="pageSize"
+          :total-count="totalCount"
+          :total-pages="totalPages"
+          @page-change="handlePageChange"
+          @page-size-change="handlePageSizeChange"
+        />
       </div>
 
     <!-- Create Role Modal -->
@@ -179,7 +168,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
 import CreateRoleModal from './components/CreateRoleModal.vue'
 import EditRoleModal from './components/EditRoleModal.vue'
 import DeleteRoleModal from './components/DeleteRoleModal.vue'
@@ -187,6 +176,7 @@ import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 import SearchInput from '@/components/common/SearchInput.vue'
+import Pagination from '@/components/common/Pagination.vue'
 
 // Permission state
 const canCreate = ref(false)
@@ -203,8 +193,8 @@ const roles = ref([])
 const loading = ref(false)
 const error = ref('')
 
-const skip = ref(0)
-const take = ref(25)
+const page = ref(1)
+const pageSize = ref(25)
 const totalCount = ref(0)
 
 const search = ref('')
@@ -216,13 +206,15 @@ const showEditModal = ref(false)
 const showDeleteModal = ref(false)
 const selectedRole = ref(null)
 
-async function fetchRoles(newSkip = skip.value) {
+const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value))
+
+async function fetchRoles() {
   loading.value = true
   error.value = ''
   try {
     const params = new URLSearchParams({
-      skip: String(newSkip),
-      take: String(take.value),
+      skip: String((page.value - 1) * pageSize.value),
+      take: String(pageSize.value),
       search: search.value || '',
       sortBy: sortBy.value,
       sortDirection: sortDirection.value
@@ -234,8 +226,6 @@ async function fetchRoles(newSkip = skip.value) {
     const data = await res.json()
     roles.value = data.items || []
     totalCount.value = data.totalCount || 0
-    skip.value = data.skip || 0
-    take.value = data.take || take.value
   } catch (e) {
     error.value = e?.message || 'Unknown error'
   } finally {
@@ -243,13 +233,18 @@ async function fetchRoles(newSkip = skip.value) {
   }
 }
 
-function prevPage() { if (skip.value > 0) fetchRoles(Math.max(0, skip.value - take.value)) }
-function nextPage() { if (skip.value + take.value < totalCount.value) fetchRoles(skip.value + take.value) }
+const handlePageChange = (newPage) => {
+  page.value = newPage
+}
+
+const handlePageSizeChange = (newSize) => {
+  pageSize.value = newSize
+  page.value = 1
+}
 
 function handleRoleCreated() {
   showCreateModal.value = false
-  // Refresh the list and reset to first page
-  fetchRoles(0)
+  fetchRoles()
 }
 
 function onEdit(role) {
@@ -266,8 +261,7 @@ function onEdit(role) {
 function handleRoleUpdated() {
   showEditModal.value = false
   selectedRole.value = null
-  // Refresh the list keeping current page
-  fetchRoles(skip.value)
+  fetchRoles()
 }
 
 function onDelete(role) {
@@ -284,15 +278,11 @@ function onDelete(role) {
 function handleRoleDeleted() {
   showDeleteModal.value = false
   selectedRole.value = null
-  // Refresh the list, go to first page if current page becomes empty
-  const newTotal = totalCount.value - 1
-  const maxSkip = Math.max(0, newTotal - 1)
-  const newSkip = skip.value > maxSkip ? Math.max(0, skip.value - take.value) : skip.value
-  fetchRoles(newSkip)
+  fetchRoles()
 }
 
-watch([search, sortBy, sortDirection], () => {
-  fetchRoles(0)
+watch([search, sortBy, sortDirection, page, pageSize], () => {
+  fetchRoles()
 })
 
 onMounted(async () => {
@@ -311,7 +301,7 @@ onMounted(async () => {
     return
   }
   
-  fetchRoles(0)
+  fetchRoles()
 })
 </script>
 
