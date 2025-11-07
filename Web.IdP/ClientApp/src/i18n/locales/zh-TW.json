@@ -291,6 +291,45 @@
       "delete": "您沒有權限刪除用戶端。"
     }
   },
+  "scopes": {
+    "title": "範圍管理",
+    "createScope": "新增範圍",
+    "editScope": "編輯範圍",
+    "noScopes": "沒有找到範圍。建立您的第一個 OIDC 範圍以開始使用。",
+    "noDisplayName": "無顯示名稱",
+    "resources": "資源：{resources}",
+    "confirmDelete": "確定要刪除這個範圍嗎？",
+    "actions": {
+      "edit": "編輯",
+      "delete": "刪除",
+      "noActions": "無可用操作"
+    },
+    "form": {
+      "createTitle": "新增範圍",
+      "editTitle": "編輯範圍",
+      "name": "範圍名稱",
+      "nameRequired": "範圍名稱為必填",
+      "namePlaceholder": "profile",
+      "nameHelp": "此範圍的唯一識別碼（例如：profile、email）",
+      "displayName": "顯示名稱",
+      "displayNamePlaceholder": "使用者個人資料",
+      "description": "描述",
+      "descriptionPlaceholder": "存取使用者個人資料資訊",
+      "resources": "資源",
+      "resourcesHelp": "每行一個資源 URI（選填）",
+      "resourcesPlaceholder": "https://api.example.com\nhttps://api2.example.com",
+      "saving": "儲存中...",
+      "createButton": "新增範圍",
+      "updateButton": "更新範圍",
+      "cancel": "取消",
+      "validationError": "請修正以下驗證錯誤。"
+    },
+    "accessDenied": {
+      "create": "您沒有權限新增範圍。",
+      "update": "您沒有權限更新範圍。",
+      "delete": "您沒有權限刪除範圍。"
+    }
+  },
   "pagination": {
     "showing": "顯示 {from} 至 {to}，共 {total} 筆結果",
     "perPage": "每頁 {count} 筆",

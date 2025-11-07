@@ -1,5 +1,8 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   scope: {
@@ -167,7 +170,7 @@ const saveScopeClaims = async (scopeId) => {
               <div class="sm:flex sm:items-start">
                 <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
                   <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                    {{ isEdit ? 'Edit Scope' : 'Create New Scope' }}
+                    {{ $t(isEdit ? 'scopes.form.editTitle' : 'scopes.form.createTitle') }}
                   </h3>
 
                   <!-- Error Alert -->
@@ -179,7 +182,7 @@ const saveScopeClaims = async (scopeId) => {
                     <!-- Scope Name -->
                     <div class="mb-5">
                       <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        Scope Name <span class="text-red-500">*</span>
+                        {{ $t('scopes.form.name') }} <span class="text-red-500">*</span>
                       </label>
                       <input
                         id="name"
@@ -188,52 +191,52 @@ const saveScopeClaims = async (scopeId) => {
                         required
                         :disabled="isEdit"
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        placeholder="api:read"
+                        :placeholder="$t('scopes.form.namePlaceholder')"
                       />
-                      <p class="mt-1 text-xs text-gray-500">Unique identifier for this scope</p>
+                      <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.nameHelp') }}</p>
                     </div>
 
                     <!-- Display Name -->
                     <div class="mb-5">
                       <label for="displayName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        Display Name
+                        {{ $t('scopes.form.displayName') }}
                       </label>
                       <input
                         id="displayName"
                         v-model="formData.displayName"
                         type="text"
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
-                        placeholder="Read API Access"
+                        :placeholder="$t('scopes.form.displayNamePlaceholder')"
                       />
                     </div>
 
                     <!-- Description -->
                     <div class="mb-5">
                       <label for="description" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        Description
+                        {{ $t('scopes.form.description') }}
                       </label>
                       <textarea
                         id="description"
                         v-model="formData.description"
                         rows="3"
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
-                        placeholder="Allows read-only access to the API"
+                        :placeholder="$t('scopes.form.descriptionPlaceholder')"
                       ></textarea>
                     </div>
 
                     <!-- Resources -->
                     <div class="mb-5">
                       <label for="resources" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        Resources
+                        {{ $t('scopes.form.resources') }}
                       </label>
                       <textarea
                         id="resources"
                         v-model="formData.resources"
                         rows="2"
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
-                        placeholder="resource_server_1&#10;resource_server_2"
+                        :placeholder="$t('scopes.form.resourcesPlaceholder')"
                       ></textarea>
-                      <p class="mt-1 text-xs text-gray-500">One resource per line (optional)</p>
+                      <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.resourcesHelp') }}</p>
                     </div>
 
                     <!-- Claims -->
@@ -289,7 +292,7 @@ const saveScopeClaims = async (scopeId) => {
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ submitting ? 'Saving...' : (isEdit ? 'Update Scope' : 'Create Scope') }}
+                {{ $t(submitting ? 'scopes.form.saving' : (isEdit ? 'scopes.form.updateButton' : 'scopes.form.createButton')) }}
               </button>
               <button
                 type="button"
@@ -297,7 +300,7 @@ const saveScopeClaims = async (scopeId) => {
                 :disabled="submitting"
                 class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancel
+                {{ $t('scopes.form.cancel') }}
               </button>
             </div>
           </form>

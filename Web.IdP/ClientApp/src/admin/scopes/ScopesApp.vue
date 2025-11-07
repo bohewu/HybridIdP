@@ -1,9 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ScopeList from './components/ScopeList.vue'
 import ScopeForm from './components/ScopeForm.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
+
+const { t } = useI18n()
 
 // Permission state
 const canCreate = ref(false)
@@ -41,7 +44,7 @@ const fetchScopes = async () => {
 
 const handleCreate = () => {
   if (!canCreate.value) {
-    deniedMessage.value = 'You do not have permission to create scopes.'
+    deniedMessage.value = t('scopes.accessDenied.create')
     deniedPermission.value = Permissions.Scopes.CREATE
     showAccessDenied.value = true
     return
@@ -52,7 +55,7 @@ const handleCreate = () => {
 
 const handleEdit = (scope) => {
   if (!canUpdate.value) {
-    deniedMessage.value = 'You do not have permission to update scopes.'
+    deniedMessage.value = t('scopes.accessDenied.update')
     deniedPermission.value = Permissions.Scopes.UPDATE
     showAccessDenied.value = true
     return
@@ -63,13 +66,13 @@ const handleEdit = (scope) => {
 
 const handleDelete = async (scopeName) => {
   if (!canDelete.value) {
-    deniedMessage.value = 'You do not have permission to delete scopes.'
+    deniedMessage.value = t('scopes.accessDenied.delete')
     deniedPermission.value = Permissions.Scopes.DELETE
     showAccessDenied.value = true
     return
   }
   
-  if (!confirm('Are you sure you want to delete this scope?')) {
+  if (!confirm(t('scopes.confirmDelete'))) {
     return
   }
 

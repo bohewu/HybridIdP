@@ -1,4 +1,8 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps({
   scopes: {
     type: Array,
@@ -21,7 +25,7 @@ defineEmits(['edit', 'delete'])
   <div class="bg-white shadow overflow-hidden sm:rounded-md">
     <ul role="list" class="divide-y divide-gray-200">
       <li v-if="scopes.length === 0" class="px-6 py-8 text-center text-gray-500">
-        No scopes found. Create your first OIDC scope to get started.
+        {{ $t('scopes.noScopes') }}
       </li>
       <li v-for="scope in scopes" :key="scope.name" class="px-6 py-4 hover:bg-gray-50">
         <div class="flex items-center justify-between">
@@ -39,7 +43,7 @@ defineEmits(['edit', 'delete'])
                   {{ scope.name }}
                 </p>
                 <p class="text-sm text-gray-500 truncate">
-                  {{ scope.displayName || 'No display name' }}
+                  {{ scope.displayName || $t('scopes.noDisplayName') }}
                 </p>
               </div>
             </div>
@@ -48,7 +52,7 @@ defineEmits(['edit', 'delete'])
             </div>
             <div class="mt-1 flex items-center text-xs text-gray-500">
               <span v-if="scope.resources && scope.resources.length > 0">
-                Resources: {{ scope.resources.join(', ') }}
+                {{ $t('scopes.resources', { resources: scope.resources.join(', ') }) }}
               </span>
             </div>
           </div>
@@ -61,7 +65,7 @@ defineEmits(['edit', 'delete'])
               <svg class="-ml-0.5 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
-              Edit
+              {{ $t('scopes.actions.edit') }}
             </button>
             <button
               v-if="canDelete"
@@ -71,9 +75,9 @@ defineEmits(['edit', 'delete'])
               <svg class="-ml-0.5 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              Delete
+              {{ $t('scopes.actions.delete') }}
             </button>
-            <span v-if="!canUpdate && !canDelete" class="text-xs text-gray-400 italic">No actions available</span>
+            <span v-if="!canUpdate && !canDelete" class="text-xs text-gray-400 italic">{{ $t('scopes.actions.noActions') }}</span>
           </div>
         </div>
       </li>

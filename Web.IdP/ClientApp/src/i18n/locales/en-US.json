@@ -291,6 +291,45 @@
       "delete": "You do not have permission to delete clients."
     }
   },
+  "scopes": {
+    "title": "Scope Management",
+    "createScope": "Create Scope",
+    "editScope": "Edit Scope",
+    "noScopes": "No scopes found. Create your first OIDC scope to get started.",
+    "noDisplayName": "No display name",
+    "resources": "Resources: {resources}",
+    "confirmDelete": "Are you sure you want to delete this scope?",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "noActions": "No actions available"
+    },
+    "form": {
+      "createTitle": "Create New Scope",
+      "editTitle": "Edit Scope",
+      "name": "Scope Name",
+      "nameRequired": "Scope name is required",
+      "namePlaceholder": "profile",
+      "nameHelp": "Unique identifier for this scope (e.g., profile, email)",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "User Profile",
+      "description": "Description",
+      "descriptionPlaceholder": "Access to user profile information",
+      "resources": "Resources",
+      "resourcesHelp": "One resource URI per line (optional)",
+      "resourcesPlaceholder": "https://api.example.com\nhttps://api2.example.com",
+      "saving": "Saving...",
+      "createButton": "Create Scope",
+      "updateButton": "Update Scope",
+      "cancel": "Cancel",
+      "validationError": "Please correct the validation errors below."
+    },
+    "accessDenied": {
+      "create": "You do not have permission to create scopes.",
+      "update": "You do not have permission to update scopes.",
+      "delete": "You do not have permission to delete scopes."
+    }
+  },
   "pagination": {
     "showing": "Showing {from} to {to} of {total} results",
     "perPage": "{count} per page",
