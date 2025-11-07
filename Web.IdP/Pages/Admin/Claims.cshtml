@@ -1,7 +1,7 @@
 @page
 @using Microsoft.AspNetCore.Hosting
 @inject IWebHostEnvironment Environment
-@inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @model Web.IdP.Pages.Admin.ClaimsModel
 @{
     ViewData["Title"] = Localizer["Claims"].Value;

@@ -1,6 +1,6 @@
 @page
 @model Web.IdP.Pages.Admin.RolesModel
-@inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
     ViewData["Title"] = Localizer["Roles"].Value;
     ViewData["Breadcrumb"] = Localizer["Roles"].Value;
