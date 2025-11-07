@@ -173,9 +173,9 @@ onMounted(() => {
   <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50" @click.self="handleClose">
     <div class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full sm:max-w-2xl">
           <form @submit.prevent="handleSubmit">
-            <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+            <div class="bg-white px-4 pt-5 sm:p-6">
               <div class="sm:flex sm:items-start">
                 <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
                   <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
@@ -190,99 +190,100 @@ onMounted(() => {
                     <p class="text-sm text-red-700">{{ error }}</p>
                   </div>
 
-                  <!-- System Role Info -->
-                  <div v-if="role.isSystem" class="mb-4 bg-blue-50 border-l-4 border-blue-400 p-4">
-                    <p class="text-sm text-blue-700">
-                      <strong>{{ $t('admin.roles.editModal.note') }}</strong> {{ $t('admin.roles.editModal.systemRoleInfo') }}
-                    </p>
-                  </div>
-
-                  <!-- Role Name -->
-                  <div class="mb-5">
-                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
-                      {{ $t('admin.roles.createModal.roleName') }} <span class="text-red-600">*</span>
-                    </label>
-                    <input
-                      id="name"
-                      v-model="form.name"
-                      type="text"
-                      :disabled="role.isSystem"
-                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors h-10 px-3"
-                      :class="{ 'border-red-500': errors.name }"
-                      required
-                      :placeholder="$t('admin.roles.createModal.roleNamePlaceholder')"
-                    />
-                    <p v-if="errors.name" class="mt-1.5 text-sm text-red-600">{{ errors.name }}</p>
-                    <p v-if="role.isSystem" class="mt-1.5 text-xs text-gray-500">{{ $t('admin.roles.editModal.systemRoleNameWarning') }}</p>
-                  </div>
-
-                  <!-- Description -->
-                  <div class="mb-5">
-                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1.5">
-                      {{ $t('admin.roles.createModal.description') }}
-                    </label>
-                    <textarea
-                      id="description"
-                      v-model="form.description"
-                      rows="3"
-                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors px-3 py-2"
-                      :placeholder="$t('admin.roles.editModal.descriptionPlaceholder')"
-                    />
-                  </div>
-
-                  <!-- Permissions Selector -->
-                  <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                      {{ $t('admin.roles.createModal.permissions') }}
-                    </label>
-                    <div v-if="loadingPermissions" class="text-center py-4 text-gray-500">
-                      {{ $t('admin.roles.createModal.loadingPermissions') }}
+                  <div class="max-h-[80vh] overflow-y-auto px-1">
+                    <!-- System Role Info -->
+                    <div v-if="role.isSystem" class="mb-4 bg-blue-50 border-l-4 border-blue-400 p-4">
+                      <p class="text-sm text-blue-700">
+                        <strong>{{ $t('admin.roles.editModal.note') }}</strong> {{ $t('admin.roles.editModal.systemRoleInfo') }}
+                      </p>
                     </div>
-                    <div v-else class="border border-gray-300 rounded-md p-4 max-h-96 overflow-y-auto bg-gray-50">
-                      <div v-for="(group, key) in permissionGroups" :key="key" class="mb-4 last:mb-0">
-                        <div v-if="group.permissions.length > 0" class="mb-2">
-                          <!-- Category Header -->
-                          <div class="flex items-center mb-3 pb-2 border-b border-gray-200">
-                            <input
-                              :id="`category-${key}`"
-                              type="checkbox"
-                              :checked="isCategoryFullySelected(key)"
-                              :indeterminate.prop="isCategoryPartiallySelected(key)"
-                              @change="toggleAllInCategory(key)"
-                              class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                            />
-                            <label :for="`category-${key}`" class="ml-3 text-sm font-semibold text-gray-900 cursor-pointer">
-                              {{ group.label }}
-                            </label>
-                          </div>
-                          
-                          <!-- Individual Permissions -->
-                          <div class="ml-6 space-y-2.5">
-                            <div v-for="perm in group.permissions" :key="perm" class="flex items-center">
+
+                    <!-- Role Name -->
+                    <div class="mb-5">
+                      <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        {{ $t('admin.roles.createModal.roleName') }} <span class="text-red-600">*</span>
+                      </label>
+                      <input
+                          id="name"
+                          v-model="form.name"
+                          type="text"
+                          :disabled="role.isSystem"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors h-10 px-3"
+                          :class="{ 'border-red-500': errors.name }"
+                          required
+                          :placeholder="$t('admin.roles.createModal.roleNamePlaceholder')"
+                      />
+                      <p v-if="errors.name" class="mt-1.5 text-sm text-red-600">{{ errors.name }}</p>
+                      <p v-if="role.isSystem" class="mt-1.5 text-xs text-gray-500">{{ $t('admin.roles.editModal.systemRoleNameWarning') }}</p>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-5">
+                      <label for="description" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        {{ $t('admin.roles.createModal.description') }}
+                      </label>
+                      <textarea
+                          id="description"
+                          v-model="form.description"
+                          rows="3"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors px-3 py-2"
+                          :placeholder="$t('admin.roles.editModal.descriptionPlaceholder')"
+                      />
+                    </div>
+
+                    <!-- Permissions Selector -->
+                    <div class="mb-5">
+                      <label class="block text-sm font-medium text-gray-700 mb-2">
+                        {{ $t('admin.roles.createModal.permissions') }}
+                      </label>
+                      <div v-if="loadingPermissions" class="text-center py-4 text-gray-500">
+                        {{ $t('admin.roles.createModal.loadingPermissions') }}
+                      </div>
+                      <div v-else class="border border-gray-300 rounded-md p-4 max-h-96 overflow-y-auto bg-gray-50">
+                        <div v-for="(group, key) in permissionGroups" :key="key" class="mb-4 last:mb-0">
+                          <div v-if="group.permissions.length > 0" class="mb-2">
+                            <!-- Category Header -->
+                            <div class="flex items-center mb-3 pb-2 border-b border-gray-200">
                               <input
-                                :id="`perm-${perm}`"
-                                type="checkbox"
-                                :checked="form.permissions.includes(perm)"
-                                @change="togglePermission(perm)"
-                                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                  :id="`category-${key}`"
+                                  type="checkbox"
+                                  :checked="isCategoryFullySelected(key)"
+                                  :indeterminate.prop="isCategoryPartiallySelected(key)"
+                                  @change="toggleAllInCategory(key)"
+                                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                               />
-                              <label :for="`perm-${perm}`" class="ml-3 text-sm text-gray-700 cursor-pointer font-mono">
-                                {{ perm }}
+                              <label :for="`category-${key}`" class="ml-3 text-sm font-semibold text-gray-900 cursor-pointer">
+                                {{ group.label }}
                               </label>
+                            </div>
+
+                            <!-- Individual Permissions -->
+                            <div class="ml-6 space-y-2.5">
+                              <div v-for="perm in group.permissions" :key="perm" class="flex items-center">
+                                <input
+                                    :id="`perm-${perm}`"
+                                    type="checkbox"
+                                    :checked="form.permissions.includes(perm)"
+                                    @change="togglePermission(perm)"
+                                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                />
+                                <label :for="`perm-${perm}`" class="ml-3 text-sm text-gray-700 cursor-pointer font-mono">
+                                  {{ perm }}
+                                </label>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                      
-                      <!-- Selected Count -->
-                      <div class="mt-4 pt-3 border-t border-gray-200">
-                        <p class="text-sm text-gray-600">
-                          {{ $t('admin.roles.createModal.selectedCount', { count: form.permissions.length }) }}
-                        </p>
+
+                        <!-- Selected Count -->
+                        <div class="mt-4 pt-3 border-t border-gray-200">
+                          <p class="text-sm text-gray-600">
+                            {{ $t('admin.roles.createModal.selectedCount', { count: form.permissions.length }) }}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
-
                 </div>
               </div>
             </div>
@@ -290,17 +291,17 @@ onMounted(() => {
             <!-- Footer Buttons -->
             <div class="bg-gray-50 px-4 py-2.5 sm:flex sm:flex-row-reverse sm:px-6">
               <button
-                type="submit"
-                :disabled="saving || loadingPermissions"
-                class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
+                  type="submit"
+                  :disabled="saving || loadingPermissions"
+                  class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
               >
                 {{ saving ? $t('admin.roles.editModal.updating') : $t('admin.roles.editModal.updateButton') }}
               </button>
               <button
-                type="button"
-                @click="handleClose"
-                :disabled="saving"
-                class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
+                  type="button"
+                  @click="handleClose"
+                  :disabled="saving"
+                  class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
               >
                 {{ $t('admin.roles.createModal.cancel') }}
               </button>

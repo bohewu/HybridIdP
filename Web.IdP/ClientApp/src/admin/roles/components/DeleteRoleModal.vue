@@ -62,8 +62,8 @@ const handleClose = () => {
   <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50" @click.self="handleClose">
     <div class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+        <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full sm:max-w-lg">
+          <div class="bg-white px-4 pt-5 sm:p-6">
             <div class="sm:flex sm:items-start">
               <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
                 <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -74,7 +74,7 @@ const handleClose = () => {
                 <h3 class="text-base font-semibold leading-6 text-gray-900">
                   {{ $t('admin.roles.deleteModal.title') }}
                 </h3>
-                <div class="mt-2">
+                <div class="mt-2 max-h-[80vh] overflow-y-auto px-1">
                   <!-- Error Alert -->
                   <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
                     <p class="text-sm text-red-700">{{ error }}</p>
