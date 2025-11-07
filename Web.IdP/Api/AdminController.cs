@@ -694,10 +694,52 @@ public class AdminController : ControllerBase
     /// </summary>
     [HasPermission(DomainPermissions.Claims.Read)]
     [HttpGet("claims")]
-    public async Task<IActionResult> GetClaims()
+    public async Task<IActionResult> GetClaims(
+        [FromQuery] string? search = null,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20,
+        [FromQuery] string sortBy = "name",
+        [FromQuery] string sortDirection = "asc")
     {
-        var claims = await _context.Set<Core.Domain.Entities.UserClaim>()
+        var query = _context.Set<Core.Domain.Entities.UserClaim>()
             .Include(c => c.ScopeClaims)
+            .AsQueryable();
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.ToLower();
+            query = query.Where(c =>
+                c.Name.ToLower().Contains(searchLower) ||
+                c.DisplayName.ToLower().Contains(searchLower) ||
+                (c.Description != null && c.Description.ToLower().Contains(searchLower)) ||
+                c.ClaimType.ToLower().Contains(searchLower));
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply sorting
+        query = sortBy.ToLower() switch
+        {
+            "displayname" => sortDirection.ToLower() == "desc"
+                ? query.OrderByDescending(c => c.DisplayName)
+                : query.OrderBy(c => c.DisplayName),
+            "claimtype" => sortDirection.ToLower() == "desc"
+                ? query.OrderByDescending(c => c.ClaimType)
+                : query.OrderBy(c => c.ClaimType),
+            "type" => sortDirection.ToLower() == "desc"
+                ? query.OrderByDescending(c => c.IsStandard)
+                : query.OrderBy(c => c.IsStandard),
+            _ => sortDirection.ToLower() == "desc"
+                ? query.OrderByDescending(c => c.Name)
+                : query.OrderBy(c => c.Name)
+        };
+
+        // Apply pagination
+        var claims = await query
+            .Skip(skip)
+            .Take(take)
             .Select(c => new ClaimDefinitionDto
             {
                 Id = c.Id,
@@ -711,10 +753,15 @@ public class AdminController : ControllerBase
                 IsRequired = c.IsRequired,
                 ScopeCount = c.ScopeClaims.Count
             })
-            .OrderBy(c => c.Name)
             .ToListAsync();
 
-        return Ok(claims);
+        return Ok(new
+        {
+            items = claims,
+            totalCount = totalCount,
+            skip = skip,
+            take = take
+        });
     }
 
     /// <summary>
