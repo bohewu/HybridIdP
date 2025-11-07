@@ -9,9 +9,8 @@
 
   <div class="px-4 py-6">
     <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">{{ $t('admin.roles.pageTitle') }}</h1>
-      <div>
+    <PageHeader :title="$t('admin.roles.pageTitle')">
+      <template #actions>
         <button
           v-if="canCreate"
           class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10" 
@@ -23,8 +22,8 @@
           </svg>
           {{ $t('admin.roles.createButton') }}
         </button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4" role="alert">
       <p class="text-sm text-red-700">{{ error }}</p>
@@ -198,6 +197,7 @@ import CreateRoleModal from './components/CreateRoleModal.vue'
 import EditRoleModal from './components/EditRoleModal.vue'
 import DeleteRoleModal from './components/DeleteRoleModal.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 
 // Permission state

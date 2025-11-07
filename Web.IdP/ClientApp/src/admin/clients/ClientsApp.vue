@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import ClientList from './components/ClientList.vue'
 import ClientForm from './components/ClientForm.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 
 const { t } = useI18n()
@@ -184,25 +185,24 @@ const setPage = (newPage) => {
 
   <div class="px-4 py-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">{{ $t('clients.pageTitle') }}</h1>
-        <p class="mt-1 text-sm text-gray-600">
-          {{ $t('clients.pageSubtitle') }}
-        </p>
-      </div>
-      <button
-        v-if="canCreate"
-        @click="handleCreate"
-        class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
-        :disabled="loading"
-      >
-        <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        {{ $t('clients.createButton') }}
-      </button>
-    </div>
+    <PageHeader 
+      :title="$t('clients.pageTitle')" 
+      :subtitle="$t('clients.pageSubtitle')"
+    >
+      <template #actions>
+        <button
+          v-if="canCreate"
+          @click="handleCreate"
+          class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
+          :disabled="loading"
+        >
+          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          {{ $t('clients.createButton') }}
+        </button>
+      </template>
+    </PageHeader>
 
     <!-- Error State -->
     <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4" role="alert">
