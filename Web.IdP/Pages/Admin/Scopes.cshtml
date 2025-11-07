@@ -2,8 +2,8 @@
 @model Web.IdP.Pages.Admin.ScopesModel
 @inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
 @{
-    ViewData["Title"] = Localizer["Scopes"];
-    ViewData["Breadcrumb"] = Localizer["Scopes"];
+    ViewData["Title"] = Localizer["Scopes"].Value;
+    ViewData["Breadcrumb"] = Localizer["Scopes"].Value;
 }
 
 <div id="app" class="vue-app-container"></div>

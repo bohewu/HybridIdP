@@ -4,7 +4,7 @@
 @inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
 @model Web.IdP.Pages.Admin.ClaimsModel
 @{
-    ViewData["Title"] = Localizer["Claims"];
+    ViewData["Title"] = Localizer["Claims"].Value;
     Layout = "_AdminLayout";
 }
 

@@ -2,8 +2,8 @@
 @model Web.IdP.Pages.Admin.ClientsModel
 @inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
 @{
-    ViewData["Title"] = Localizer["Clients"];
-    ViewData["Breadcrumb"] = Localizer["Clients"];
+    ViewData["Title"] = Localizer["Clients"].Value;
+    ViewData["Breadcrumb"] = Localizer["Clients"].Value;
 }
 
 <div id="app" class="vue-app-container"></div>

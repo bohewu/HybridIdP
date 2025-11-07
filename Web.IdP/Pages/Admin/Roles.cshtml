@@ -2,8 +2,8 @@
 @model Web.IdP.Pages.Admin.RolesModel
 @inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
 @{
-    ViewData["Title"] = Localizer["Roles"];
-    ViewData["Breadcrumb"] = Localizer["Roles"];
+    ViewData["Title"] = Localizer["Roles"].Value;
+    ViewData["Breadcrumb"] = Localizer["Roles"].Value;
 }
 
 <div id="app" class="vue-app-container"></div>

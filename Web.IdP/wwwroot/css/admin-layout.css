@@ -171,6 +171,7 @@ body.admin-layout {
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    margin-top: 65px; /* Push down by header height */
     height: calc(100vh - 65px); /* Full viewport height minus header height */
 }
 
@@ -194,13 +195,16 @@ main {
     background-color: #fff;
     border-bottom: 1px solid #dee2e6;
     padding: 1rem 1.5rem;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 260px; /* Position after sidebar */
+    right: 0;
     z-index: 30; /* Below sidebar (40) and modals (50+) */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     flex-shrink: 0; /* Prevent header from shrinking */
+    height: 65px; /* Fixed height for positioning */
 }
 
 .breadcrumb {
@@ -234,7 +238,13 @@ main {
         width: 100vw; /* Full viewport width on mobile */
     }
     
+    .top-header {
+        left: 0; /* Full width on mobile */
+        height: 60px; /* Slightly smaller on mobile */
+    }
+    
     .content-scroll-wrapper {
+        margin-top: 60px; /* Match mobile header height */
         height: calc(100vh - 60px); /* Slightly smaller header on mobile */
     }
     

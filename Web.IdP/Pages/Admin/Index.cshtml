@@ -2,8 +2,8 @@
 @model Web.IdP.Pages.Admin.IndexModel
 @inject Microsoft.AspNetCore.Mvc.Localization.IViewLocalizer Localizer
 @{
-    ViewData["Title"] = Localizer["Dashboard"];
-    ViewData["Breadcrumb"] = Localizer["Dashboard"];
+    ViewData["Title"] = Localizer["Dashboard"].Value;
+    ViewData["Breadcrumb"] = Localizer["Dashboard"].Value;
 }
 
 @section Scripts {
