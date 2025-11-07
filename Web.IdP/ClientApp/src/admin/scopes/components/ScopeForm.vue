@@ -46,7 +46,8 @@ const fetchClaims = async () => {
   try {
     const response = await fetch('/api/admin/claims')
     if (!response.ok) throw new Error('Failed to fetch claims')
-    availableClaims.value = await response.json()
+    const data = await response.json()
+    availableClaims.value = data.items || []
   } catch (e) {
     console.error('Error fetching claims:', e)
   } finally {
