@@ -1,5 +1,39 @@
 {
   "admin": {
+    "dashboard": {
+      "title": "管理儀表板",
+      "subtitle": "歡迎使用 HybridAuth IdP 管理介面",
+      "loading": "載入中...",
+      "quickStats": "快速統計",
+      "stats": {
+        "totalClients": "用戶端總數",
+        "totalScopes": "範圍總數",
+        "totalUsers": "使用者總數"
+      },
+      "cards": {
+        "clients": {
+          "title": "OIDC 用戶端",
+          "description": "管理可以使用此 IdP 進行身分驗證的 OpenID Connect 用戶端應用程式。",
+          "action": "管理用戶端"
+        },
+        "scopes": {
+          "title": "OIDC 範圍",
+          "description": "定義範圍以控制用戶端可以從使用者設定檔存取哪些資訊。",
+          "action": "管理範圍"
+        },
+        "users": {
+          "title": "使用者",
+          "description": "管理使用者帳號、角色和身分管理的權限。",
+          "action": "即將推出",
+          "badge": "Phase 4"
+        }
+      },
+      "errors": {
+        "unauthorized": "未授權 - 請重新登入",
+        "accessDenied": "拒絕存取 - 需要管理員角色",
+        "loadFailed": "無法載入儀表板統計資料"
+      }
+    },
     "users": {
       "title": "使用者管理",
       "createUser": "新增使用者",

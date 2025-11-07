@@ -1,5 +1,39 @@
 {
   "admin": {
+    "dashboard": {
+      "title": "Admin Dashboard",
+      "subtitle": "Welcome to the HybridAuth IdP Administration Interface",
+      "loading": "Loading...",
+      "quickStats": "Quick Stats",
+      "stats": {
+        "totalClients": "Total Clients",
+        "totalScopes": "Total Scopes",
+        "totalUsers": "Total Users"
+      },
+      "cards": {
+        "clients": {
+          "title": "OIDC Clients",
+          "description": "Manage OpenID Connect client applications that can authenticate with this IdP.",
+          "action": "Manage Clients"
+        },
+        "scopes": {
+          "title": "OIDC Scopes",
+          "description": "Define scopes that control what information clients can access from user profiles.",
+          "action": "Manage Scopes"
+        },
+        "users": {
+          "title": "Users",
+          "description": "Manage user accounts, roles, and permissions for identity management.",
+          "action": "Coming Soon",
+          "badge": "Phase 4"
+        }
+      },
+      "errors": {
+        "unauthorized": "Unauthorized - Please log in again",
+        "accessDenied": "Access Denied - Admin role required",
+        "loadFailed": "Failed to load dashboard statistics"
+      }
+    },
     "users": {
       "title": "User Management",
       "createUser": "Create User",
