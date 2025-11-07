@@ -203,12 +203,13 @@ const handleSubmit = async () => {
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => null)
-      throw new Error(errorData?.message || `HTTP error! status: ${response.status}`)
+      const errorMessage = errorData?.message || t('admin.users.errors.saveFailed')
+      throw new Error(errorMessage)
     }
     
     emit('save')
   } catch (e) {
-    error.value = e.message || 'admin.users.saveFailed'
+    error.value = e.message || t('admin.users.errors.unknownSaveFailed')
     console.error('Error saving user:', e)
   } finally {
     saving.value = false
