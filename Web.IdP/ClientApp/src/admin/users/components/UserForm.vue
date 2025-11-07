@@ -1,5 +1,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   user: { type: Object, default: null }
@@ -78,7 +81,8 @@ const validate = () => {
       // Validate password complexity for new users
       const passwordErrors = validatePasswordComplexity(form.value.password)
       if (passwordErrors.length > 0) {
-        errors.value.password = passwordErrors.join('; ')
+        // Translate each error and join them
+        errors.value.password = passwordErrors.map(key => t(key)).join('; ')
       }
     }
     
@@ -90,7 +94,8 @@ const validate = () => {
     if (form.value.password) {
       const passwordErrors = validatePasswordComplexity(form.value.password)
       if (passwordErrors.length > 0) {
-        errors.value.password = passwordErrors.join('; ')
+        // Translate each error and join them
+        errors.value.password = passwordErrors.map(key => t(key)).join('; ')
       }
     }
     
@@ -382,7 +387,7 @@ onMounted(() => {
                           :required="!isEdit"
                           :placeholder="$t('admin.users.password')"
                         />
-                        <p v-if="errors.password" class="mt-1.5 text-sm text-red-600">{{ $t(errors.password) }}</p>
+                        <p v-if="errors.password" class="mt-1.5 text-sm text-red-600">{{ errors.password }}</p>
                         <p v-if="isEdit" class="mt-1.5 text-xs text-gray-500">{{ $t('admin.users.leaveBlankToKeepCurrent') }}</p>
                       </div>
 
@@ -446,7 +451,7 @@ onMounted(() => {
                       <div v-if="form.password" class="mt-3">
                         <div class="flex items-center justify-between mb-1">
                           <span class="text-xs text-gray-600">{{ $t('admin.users.passwordStrength') }}:</span>
-                          <span :class="['text-xs font-semibold', passwordStrength.color]">{{ passwordStrength.label }}</span>
+                          <span :class="['text-xs font-semibold', passwordStrength.color]">{{ $t(passwordStrength.label) }}</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2">
                           <div 

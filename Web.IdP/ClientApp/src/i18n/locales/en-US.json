@@ -53,14 +53,29 @@
         "uppercase": "At least one uppercase letter (A-Z)",
         "lowercase": "At least one lowercase letter (a-z)",
         "digit": "At least one digit (0-9)",
-        "specialChar": "At least one special character (!@#$%^&*)"
+        "specialChar": "At least one special character (!{'@'}#$%^&*)"
       },
       "atLeast6Characters": "At least 6 characters",
       "atLeastOneUppercase": "At least one uppercase letter (A-Z)",
       "atLeastOneLowercase": "At least one lowercase letter (a-z)",
       "atLeastOneDigit": "At least one digit (0-9)",
-      "atLeastOneSpecialChar": "At least one special character (!@#$%^&*)",
-      "createNewUser": "Create New User"
+      "atLeastOneSpecialChar": "At least one special character (!{'@'}#$%^&*)",
+      "createNewUser": "Create New User",
+      "passwordStrength": "Password Strength",
+      "weak": "Weak",
+      "fair": "Fair",
+      "good": "Good",
+      "strong": "Strong",
+      "emailRequired": "Email is required",
+      "invalidEmail": "Invalid email format",
+      "usernameRequired": "Username is required",
+      "passwordRequired": "Password is required for new users",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "passwordMinLength": "At least 6 characters",
+      "passwordUppercase": "At least one uppercase letter (A-Z)",
+      "passwordLowercase": "At least one lowercase letter (a-z)",
+      "passwordDigit": "At least one digit (0-9)",
+      "passwordSpecialChar": "At least one special character (!{'@'}#$%^&*)"
     },
     "roles": {
       "title": "Role Management",
