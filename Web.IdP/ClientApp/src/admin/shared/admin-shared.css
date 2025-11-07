@@ -1,22 +1,29 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Admin Shared Styles (converted from Tailwind @apply to plain CSS for lint compatibility) */
 
-/* Admin Layout Custom Styles */
-@layer components {
-  .nav-item {
-    @apply flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-150;
-    @apply text-gray-700 hover:bg-gray-100 hover:text-gray-900;
-  }
-  
-  .nav-item.active {
-    @apply bg-indigo-50 text-indigo-600;
-    border-left: 4px solid theme('colors.indigo.600');
-    margin-left: -1px;
-    padding-left: 0.625rem;
-  }
-  
-  .nav-item svg {
-    @apply flex-shrink-0;
-  }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* space-x-3 */
+  padding: 0.5rem 0.75rem; /* px-3 py-2 */
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500; /* font-medium */
+  border-radius: 0.5rem; /* rounded-lg */
+  color: #374151; /* text-gray-700 */
+  transition: background-color .15s, color .15s; /* transition-colors duration-150 */
+  text-decoration: none;
 }
+.nav-item:hover {
+  background-color: #f3f4f6; /* hover:bg-gray-100 */
+  color: #111827; /* hover:text-gray-900 */
+}
+.nav-item.active {
+  background-color: #eef2ff; /* bg-indigo-50 */
+  color: #4f46e5; /* text-indigo-600 */
+  border-left: 4px solid #4f46e5;
+  margin-left: -1px;
+  padding-left: 0.625rem;
+}
+.nav-item svg { flex-shrink: 0; }
+
+/* Import shared spacing utilities (pure CSS) */
+@import './spacing.css';

@@ -1,0 +1,36 @@
+/* Shared spacing utilities for Admin portal - Phase 4.7 UI Spacing & Visual Consistency */
+/* Pure CSS (no Tailwind @apply) to avoid build/lint issues. */
+
+/* Scale reference (rem values): xs=0.25, sm=0.5, md=0.75, lg=1, xl=1.5, xxl=2 */
+
+.space-card { padding: 1rem; }
+@media (min-width: 768px) { .space-card { padding: 1.25rem; } }
+
+.space-card-tight { padding: 0.75rem; }
+@media (min-width: 768px) { .space-card-tight { padding: 1rem; } }
+
+.space-card-wide { padding: 1.5rem; }
+
+.space-form-group { margin-bottom: 1rem; }
+.space-form-group-tight { margin-bottom: 0.5rem; }
+.space-form-group-wide { margin-bottom: 1.5rem; }
+
+.space-modal-body { padding: 1rem; }
+@media (min-width: 768px) { .space-modal-body { padding: 1.25rem; } }
+
+.space-modal-footer { padding: 0.75rem 1rem; }
+@media (min-width: 768px) { .space-modal-footer { padding-left: 1.25rem; padding-right: 1.25rem; } }
+
+.space-table-cell { padding: 0.5rem 0.75rem; }
+.space-table-cell-tight { padding: 0.25rem 0.5rem; }
+.space-table-cell-wide { padding: 0.75rem 1rem; }
+
+.space-section { margin-bottom: 1.5rem; }
+.space-section-tight { margin-bottom: 1rem; }
+
+/* Vertical rhythm helpers */
+.space-stack-xs > * + * { margin-top: 0.25rem; }
+.space-stack-sm > * + * { margin-top: 0.5rem; }
+.space-stack-md > * + * { margin-top: 0.75rem; }
+.space-stack-lg > * + * { margin-top: 1rem; }
+.space-stack-xl > * + * { margin-top: 1.5rem; }

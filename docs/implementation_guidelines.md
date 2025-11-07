@@ -12,6 +12,7 @@
 6. [Tailwind CSS 設定](#tailwind-css-設定)
 7. [測試範本](#測試範本)
 8. [常見陷阱](#常見陷阱)
+9. [UI 間距規範](#ui-間距規範)
 
 ---
 
@@ -846,6 +847,82 @@ const handleSubmit = async () => {
 };
 </script>
 ```
+
+---
+
+## UI 間距規範
+
+> Phase 4.7 引入的 **統一 Spacing Scale**，協助 Admin 頁面達成一致視覺節奏。採語義化輔助 class，不強制覆蓋既有 Tailwind 用法。
+
+### 間距刻度 (Scale)
+
+| 名稱 | 值 (rem) | 建議用途 |
+|------|---------|----------|
+| xs   | 0.25    | 緊密圖示、徽章間距 |
+| sm   | 0.5     | 紧密表單、標籤 |
+| md   | 0.75    | 一般表單欄位垂直間距 |
+| lg   | 1.0     | 卡片內邊距、分組分隔 |
+| xl   | 1.5     | 區塊段落、模態主要分區 |
+| xxl  | 2.0     | 稀疏大分隔 (謹慎使用) |
+
+### 語義化 Class 來源
+
+檔案：`ClientApp/src/admin/shared/spacing.css`
+
+| Class | 說明 |
+|-------|------|
+| `.space-card` / `-tight` / `-wide` | 卡片容器 padding 標準化 |
+| `.space-form-group` / `-tight` / `-wide` | 表單欄位群組垂直間距 |
+| `.space-modal-body`, `.space-modal-footer` | 模態內容/底部一致化 |
+| `.space-table-cell` / `-tight` / `-wide` | 表格儲存格 padding 範圍 |
+| `.space-section` / `-tight` | 區塊垂直分隔 |
+| `.space-stack-*` (`xs&#124;sm&#124;md&#124;lg&#124;xl`) | 同層兄弟元素縱向節奏 (`> * + *`) |
+
+### 使用範例
+
+```vue
+<template>
+  <div class="space-card space-stack-md">
+    <h2 class="text-lg font-semibold">Role Detail</h2>
+    <div class="space-form-group">
+      <label class="block text-sm font-medium mb-1">Name</label>
+      <input type="text" class="form-control" />
+    </div>
+    <div class="space-form-group-wide">
+      <label class="block text-sm font-medium mb-1">Description</label>
+      <textarea class="form-control" rows="3"></textarea>
+    </div>
+    <div class="space-section">
+      <h3 class="text-sm font-semibold mb-2">Permissions</h3>
+      <div class="space-stack-sm">
+        <div class="space-card-tight bg-white rounded border">users.read</div>
+        <div class="space-card-tight bg-white rounded border">users.update</div>
+      </div>
+    </div>
+  </div>
+</template>
+```
+
+### 採用策略
+
+1. 漸進式：新頁/新組件優先使用 `.space-*`。
+2. 不強制重構：舊組件逐步替換裸露的 `p-* mb-*`。
+3. 模態統一：Body → `.space-modal-body`；Footer → `.space-modal-footer`。
+4. 表格列高度：標準 `.space-table-cell`；密集列表用 `-tight`。
+5. 垂直節奏：複數欄位群組使用 `.space-stack-md` 取代多個 `mt-*`。
+
+### 驗證清單
+
+- 各頁卡片/模態/表單是否使用語義化間距 class
+- 不混用多種 px/py/margin magic numbers
+- 表格列高度在 Users / Roles / Clients / Scopes / Claims 一致
+- 手機與桌面密度合理 (tight 不犧牲可用性)
+
+### 後續擴充可能
+
+- Grid gap 語義化 class
+- 以 PostCSS 產生 spacing utilities
+- 與 E2E 視覺驗證（快照 diff）整合
 
 ---
 

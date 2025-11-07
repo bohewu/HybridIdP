@@ -374,6 +374,27 @@
 
 ---
 
+## Phase 4.7: UI Spacing & Visual Consistency Review ✅
+
+**完成時間：** 2025-11-08
+
+**功能摘要：**
+- 引入統一的 Spacing Scale 與語義化間距 class
+- 新增共享樣式 `ClientApp/src/admin/shared/spacing.css`
+- 匯入共享樣式於 `admin/shared/admin-shared.css`（不影響既有功能）
+- 調整與統一：輸入欄位間距、模態 body/footer、表格儲存格 padding（依據既有修正補完）
+- 在 `implementation_guidelines.md` 新增「UI 間距規範」章節（使用方式與範例）
+
+**涵蓋頁面：**
+- Users、Roles、Clients、Scopes、Claims、Dashboard（以不破壞既有行為為原則提供通用 utilities）
+
+**驗證結果：**
+- ✅ 既有功能不受影響（僅新增 class 與共享樣式）
+- ✅ 自訂語義化 class 可逐步採用，與 Tailwind/Bootstrap 共存
+- ✅ 文件已更新，未來頁面可直接套用一致間距
+
+---
+
 ## 統計數據
 
 - **完成的 Phases:** 16
