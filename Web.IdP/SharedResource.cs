@@ -1,2 +1,9 @@
-// Removed: We now use IViewLocalizer with view-specific .resx files.
-// This file is intentionally left empty and will be deleted after the editor releases the lock.
+namespace Web.IdP;
+
+/// <summary>
+/// Marker class for shared resources used across the application.
+/// Resource files: SharedResource.en-US.resx, SharedResource.zh-TW.resx
+/// </summary>
+public class SharedResource
+{
+}
