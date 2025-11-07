@@ -72,7 +72,7 @@ const handleClose = () => {
               </div>
               <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
                 <h3 class="text-base font-semibold leading-6 text-gray-900">
-                  Delete Role
+                  {{ $t('admin.roles.deleteModal.title') }}
                 </h3>
                 <div class="mt-2">
                   <!-- Error Alert -->
@@ -90,7 +90,7 @@ const handleClose = () => {
                       </div>
                       <div class="ml-3">
                         <p class="text-sm text-yellow-700">
-                          <strong>System Role Protected:</strong> This is a system role and cannot be deleted. System roles are essential for the application's security model.
+                          <strong>{{ $t('admin.roles.deleteModal.systemRoleProtected') }}</strong> {{ $t('admin.roles.deleteModal.systemRoleInfo') }}
                         </p>
                       </div>
                     </div>
@@ -106,10 +106,10 @@ const handleClose = () => {
                       </div>
                       <div class="ml-3">
                         <p class="text-sm text-orange-700">
-                          <strong>Users Assigned:</strong> This role is currently assigned to <strong>{{ role.userCount }}</strong> user(s). You cannot delete a role that has users assigned to it.
+                          <strong>{{ $t('admin.roles.deleteModal.usersAssigned') }}</strong> {{ $t('admin.roles.deleteModal.usersAssignedInfo', { count: role.userCount }) }}
                         </p>
                         <p class="text-sm text-orange-700 mt-1">
-                          Please reassign or remove these users from this role before deleting it.
+                          {{ $t('admin.roles.deleteModal.reassignWarning') }}
                         </p>
                       </div>
                     </div>
@@ -118,15 +118,15 @@ const handleClose = () => {
                   <!-- Normal Delete Confirmation -->
                   <div v-else>
                     <p class="text-sm text-gray-500">
-                      Are you sure you want to delete the role <strong>"{{ role.name }}"</strong>?
+                      {{ $t('admin.roles.deleteModal.message', { name: role.name }) }}
                     </p>
                     <p class="text-sm text-gray-500 mt-2">
-                      This action cannot be undone.
+                      {{ $t('admin.roles.deleteModal.warning') }}
                     </p>
                     <div v-if="role.permissions && role.permissions.length > 0" class="mt-3 p-3 bg-gray-50 rounded">
-                      <p class="text-xs text-gray-600 mb-1">This role has:</p>
+                      <p class="text-xs text-gray-600 mb-1">{{ $t('admin.roles.deleteModal.roleHas') }}</p>
                       <ul class="text-xs text-gray-600 list-disc list-inside">
-                        <li>{{ role.permissions.length }} permission(s)</li>
+                        <li>{{ $t('admin.roles.deleteModal.permissionCount', { count: role.permissions.length }) }}</li>
                       </ul>
                     </div>
                   </div>
@@ -142,7 +142,7 @@ const handleClose = () => {
               :disabled="deleting"
               class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
             >
-              {{ deleting ? 'Deleting...' : 'Delete' }}
+              {{ deleting ? $t('admin.roles.deleteModal.deleting') : $t('admin.roles.deleteModal.deleteButton') }}
             </button>
             <button
               type="button"
@@ -150,7 +150,7 @@ const handleClose = () => {
               :disabled="deleting"
               class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
             >
-              {{ canDelete && role.userCount === 0 ? 'Cancel' : 'Close' }}
+              {{ canDelete && role.userCount === 0 ? $t('admin.roles.createModal.cancel') : $t('admin.roles.deleteModal.close') }}
             </button>
           </div>
         </div>

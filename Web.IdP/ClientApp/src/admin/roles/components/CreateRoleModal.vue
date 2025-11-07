@@ -164,7 +164,7 @@ onMounted(() => {
               <div class="sm:flex sm:items-start">
                 <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
                   <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                    Create New Role
+                    {{ $t('admin.roles.createModal.title') }}
                   </h3>
 
                   <!-- Error Alert -->
@@ -175,7 +175,7 @@ onMounted(() => {
                   <!-- Role Name -->
                   <div class="mb-5">
                     <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
-                      Role Name <span class="text-red-600">*</span>
+                      {{ $t('admin.roles.createModal.roleName') }} <span class="text-red-600">*</span>
                     </label>
                     <input
                       id="name"
@@ -184,7 +184,7 @@ onMounted(() => {
                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                       :class="{ 'border-red-500': errors.name }"
                       required
-                      placeholder="e.g., Content Editor"
+                      :placeholder="$t('admin.roles.createModal.roleNamePlaceholder')"
                     />
                     <p v-if="errors.name" class="mt-1.5 text-sm text-red-600">{{ errors.name }}</p>
                   </div>
@@ -192,24 +192,24 @@ onMounted(() => {
                   <!-- Description -->
                   <div class="mb-5">
                     <label for="description" class="block text-sm font-medium text-gray-700 mb-1.5">
-                      Description
+                      {{ $t('admin.roles.createModal.description') }}
                     </label>
                     <textarea
                       id="description"
                       v-model="form.description"
                       rows="3"
                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors px-3 py-2"
-                      placeholder="Optional description of the role"
+                      :placeholder="$t('admin.roles.createModal.descriptionPlaceholder')"
                     />
                   </div>
 
                   <!-- Permissions Selector -->
                   <div class="mb-5">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                      Permissions
+                      {{ $t('admin.roles.createModal.permissions') }}
                     </label>
                     <div v-if="loadingPermissions" class="text-center py-4 text-gray-500">
-                      Loading permissions...
+                      {{ $t('admin.roles.createModal.loadingPermissions') }}
                     </div>
                     <div v-else class="border border-gray-300 rounded-md p-4 max-h-96 overflow-y-auto bg-gray-50">
                       <div v-for="(group, key) in permissionGroups" :key="key" class="mb-4 last:mb-0">
@@ -250,7 +250,7 @@ onMounted(() => {
                       <!-- Selected Count -->
                       <div class="mt-4 pt-3 border-t border-gray-200">
                         <p class="text-sm text-gray-600">
-                          Selected: <span class="font-semibold">{{ form.permissions.length }}</span> permission(s)
+                          {{ $t('admin.roles.createModal.selectedCount', { count: form.permissions.length }) }}
                         </p>
                       </div>
                     </div>
@@ -267,7 +267,7 @@ onMounted(() => {
                 :disabled="saving || loadingPermissions"
                 class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
               >
-                {{ saving ? 'Creating...' : 'Create Role' }}
+                {{ saving ? $t('admin.roles.createModal.creating') : $t('admin.roles.createModal.createButton') }}
               </button>
               <button
                 type="button"
@@ -275,7 +275,7 @@ onMounted(() => {
                 :disabled="saving"
                 class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
               >
-                Cancel
+                {{ $t('admin.roles.createModal.cancel') }}
               </button>
             </div>
           </form>
