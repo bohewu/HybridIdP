@@ -321,7 +321,7 @@ onMounted(() => {
           <input
             v-model="search"
             :placeholder="t('admin.users.search')"
-            class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
+            class="form-input-padded"
           />
         </div>
 
@@ -344,8 +344,6 @@ onMounted(() => {
         :page="page"
         :page-size="pageSize"
         :total-count="totalCount"
-        :search="search"
-        :is-active-filter="isActiveFilter"
         :sort="sort"
         :can-update="canUpdate"
         :can-delete="canDelete"
@@ -356,8 +354,6 @@ onMounted(() => {
         @reactivate="handleReactivate"
         @page-change="handlePageChange"
         @page-size-change="handlePageSizeChange"
-        @search-change="handleSearchChange"
-        @filter-change="handleFilterChange"
         @sort-change="handleSortChange"
       />
 

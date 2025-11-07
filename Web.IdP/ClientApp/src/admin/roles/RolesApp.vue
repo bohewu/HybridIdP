@@ -37,9 +37,8 @@
           <div class="flex-1">
             <input 
               v-model="search" 
-              @keyup.enter="fetchRoles(0)" 
               type="text" 
-              class="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10" 
+              class="form-input-padded"
               :placeholder="$t('admin.roles.searchPlaceholder')" 
             />
           </div>
@@ -60,13 +59,6 @@
               <option value="asc">{{ $t('admin.roles.sortDirection.asc') }}</option>
               <option value="desc">{{ $t('admin.roles.sortDirection.desc') }}</option>
             </select>
-            <button 
-              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors h-10" 
-              @click="fetchRoles(0)" 
-              :disabled="loading"
-            >
-              {{ $t('admin.roles.applyButton') }}
-            </button>
           </div>
         </div>
       </div>
@@ -192,7 +184,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import CreateRoleModal from './components/CreateRoleModal.vue'
 import EditRoleModal from './components/EditRoleModal.vue'
 import DeleteRoleModal from './components/DeleteRoleModal.vue'
@@ -302,6 +294,10 @@ function handleRoleDeleted() {
   const newSkip = skip.value > maxSkip ? Math.max(0, skip.value - take.value) : skip.value
   fetchRoles(newSkip)
 }
+
+watch([search, sortBy, sortDirection], () => {
+  fetchRoles(0)
+})
 
 onMounted(async () => {
   // Load permissions

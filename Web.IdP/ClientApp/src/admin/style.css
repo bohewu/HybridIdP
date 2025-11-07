@@ -2,10 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-input[type='text'],
-input[type='email'],
-input[type='password'],
-input[type='tel'],
-input[type='search'] {
-    padding-left: 1rem;
+.main-container {
+    max-width: 100%;
+}
+
+@media (min-width: 1280px) {
+    .main-container {
+        max-width: 1280px;
+    }
+}
+
+.form-input {
+    @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3;
+}
+
+.form-input-padded {
+    @apply form-input pl-10;
 }
