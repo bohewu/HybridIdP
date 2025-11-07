@@ -156,25 +156,15 @@
       </div>
 
       <!-- Pagination -->
-      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-4 py-3 border-t border-gray-200">
-        <div class="text-sm text-gray-700">{{ $t('claims.pagination.total', { count: totalCount }) }}</div>
-        <div class="inline-flex gap-2">
-          <button 
-            class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10" 
-            :disabled="skip === 0 || loading" 
-            @click="prevPage"
-          >
-            {{ $t('claims.pagination.prev') }}
-          </button>
-          <button 
-            class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10" 
-            :disabled="skip + take >= totalCount || loading" 
-            @click="nextPage"
-          >
-            {{ $t('claims.pagination.next') }}
-          </button>
-        </div>
-      </div>
+      <Pagination
+        v-if="!loading && totalCount > 0"
+        :page="page"
+        :page-size="pageSize"
+        :total-count="totalCount"
+        :total-pages="totalPages"
+        @page-change="handlePageChange"
+        @page-size-change="handlePageSizeChange"
+      />
     </div>
 
     <!-- Create/Edit Modal -->
@@ -314,10 +304,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '@/components/common/PageHeader.vue'
 import SearchInput from '@/components/common/SearchInput.vue'
+import Pagination from '@/components/common/Pagination.vue'
 
 const { t } = useI18n()
 
@@ -332,9 +323,11 @@ const saving = ref(false)
 const search = ref('')
 const sortBy = ref('name')
 const sortDirection = ref('asc')
-const skip = ref(0)
-const take = ref(20)
+const page = ref(1)
+const pageSize = ref(20)
 const totalCount = ref(0)
+
+const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value))
 
 const formData = ref({
   name: '',
@@ -346,17 +339,13 @@ const formData = ref({
   isRequired: false
 })
 
-async function fetchClaims(newSkip = null) {
-  if (newSkip !== null) {
-    skip.value = newSkip
-  }
-  
+async function fetchClaims() {
   loading.value = true
   error.value = null
   try {
     const params = new URLSearchParams({
-      skip: skip.value.toString(),
-      take: take.value.toString(),
+      skip: ((page.value - 1) * pageSize.value).toString(),
+      take: pageSize.value.toString(),
       sortBy: sortBy.value,
       sortDirection: sortDirection.value
     })
@@ -380,16 +369,13 @@ async function fetchClaims(newSkip = null) {
   }
 }
 
-function prevPage() {
-  if (skip.value >= take.value) {
-    fetchClaims(skip.value - take.value)
-  }
+const handlePageChange = (newPage) => {
+  page.value = newPage
 }
 
-function nextPage() {
-  if (skip.value + take.value < totalCount.value) {
-    fetchClaims(skip.value + take.value)
-  }
+const handlePageSizeChange = (newSize) => {
+  pageSize.value = newSize
+  page.value = 1
 }
 
 function openCreateModal() {
@@ -477,8 +463,8 @@ async function deleteClaim(claim) {
   }
 }
 
-watch([search, sortBy, sortDirection], () => {
-  fetchClaims(0)
+watch([search, sortBy, sortDirection, page, pageSize], () => {
+  fetchClaims()
 })
 
 onMounted(() => {
