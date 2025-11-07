@@ -10,8 +10,6 @@ const props = defineProps({
   page: { type: Number, required: true },
   pageSize: { type: Number, required: true },
   totalCount: { type: Number, required: true },
-  search: { type: String, default: '' },
-  isActiveFilter: { type: String, default: '' },
   sort: { type: String, default: '' },
   canUpdate: { type: Boolean, default: false },
   canDelete: { type: Boolean, default: false }
@@ -25,23 +23,11 @@ const emit = defineEmits([
   'reactivate',
   'page-change',
   'page-size-change',
-  'search-change',
-  'filter-change',
   'sort-change'
 ])
 
 const totalPages = computed(() => {
   return Math.ceil(props.totalCount / props.pageSize)
-})
-
-const localSearch = computed({
-  get: () => props.search,
-  set: (value) => emit('search-change', value)
-})
-
-const localFilter = computed({
-  get: () => props.isActiveFilter,
-  set: (value) => emit('filter-change', value)
 })
 
 const formatDate = (dateString) => {
@@ -90,40 +76,6 @@ const getSortIcon = (field) => {
   <div class="user-list">
     <!-- Unified Card: Filters + Table + Pagination -->
     <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-      <!-- Filters Section -->
-      <div class="p-4 border-b border-gray-200">
-        <div class="flex flex-col md:flex-row md:items-center gap-3">
-          <!-- Search Input - Takes more space -->
-          <div class="flex-1">
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                </svg>
-              </div>
-              <input
-                v-model="localSearch"
-                type="text"
-                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10"
-                :placeholder="$t('searchPlaceholder')"
-              />
-            </div>
-          </div>
-          
-          <!-- Status Filter - Fixed width -->
-          <div class="w-full md:w-48">
-            <select
-              v-model="localFilter"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10"
-            >
-              <option value="">{{ $t('filterOptions.all') }}</option>
-              <option value="true">{{ $t('filterOptions.activeOnly') }}</option>
-              <option value="false">{{ $t('filterOptions.inactiveOnly') }}</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
       <!-- Loading State -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-12">
         <svg class="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

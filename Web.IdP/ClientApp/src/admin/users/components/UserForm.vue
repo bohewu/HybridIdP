@@ -230,9 +230,9 @@ onMounted(() => {
   <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50" @click.self="handleClose">
     <div class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full sm:max-w-3xl">
           <form @submit.prevent="handleSubmit">
-            <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+            <div class="bg-white px-4 pt-5 sm:p-6">
               <div class="sm:flex sm:items-start">
                 <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
                   <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
@@ -243,227 +243,240 @@ onMounted(() => {
                   <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
                     <p class="text-sm text-red-700">{{ error }}</p>
                   </div>
-
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
-                    <!-- Email -->
-                    <div>
-                      <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('admin.users.email') }} <span class="text-red-600">*</span>
-                      </label>
-                      <input
-                        id="email"
-                        v-model="form.email"
-                        type="email"
-                        :disabled="isEdit"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors h-10 px-3"
-                        :class="{ 'border-red-500': errors.email }"
-                        required
-                        :placeholder="$t('admin.users.email')"
-                      />
-                      <p v-if="errors.email" class="mt-1.5 text-sm text-red-600">{{ $t(errors.email) }}</p>
-                      <p v-if="isEdit" class="mt-1.5 text-xs text-gray-500">{{ $t('admin.users.emailCannotBeChanged') }}</p>
-                    </div>
-
-                    <!-- Username -->
-                    <div>
-                      <label for="userName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('admin.users.username') }} <span class="text-red-600">*</span>
-                      </label>
-                      <input
-                        id="userName"
-                        v-model="form.userName"
-                        type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                        :class="{ 'border-red-500': errors.userName }"
-                        required
-                        :placeholder="$t('admin.users.username')"
-                      />
-                      <p v-if="errors.userName" class="mt-1.5 text-sm text-red-600">{{ $t(errors.userName) }}</p>
-                    </div>
-
-                    <!-- First Name -->
-                    <div>
-                      <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('admin.users.firstName') }}
-                      </label>
-                      <input
-                        id="firstName"
-                        v-model="form.firstName"
-                        type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                        :placeholder="$t('admin.users.firstName')"
-                      />
-                    </div>
-
-                    <!-- Last Name -->
-                    <div>
-                      <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('admin.users.lastName') }}
-                      </label>
-                      <input
-                        id="lastName"
-                        v-model="form.lastName"
-                        type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                        :placeholder="$t('admin.users.lastName')"
-                      />
-                    </div>
-
-                    <!-- Phone Number -->
-                    <div>
-                      <label for="phoneNumber" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('admin.users.phoneNumber') }}
-                      </label>
-                      <input
-                        id="phoneNumber"
-                        v-model="form.phoneNumber"
-                        type="tel"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                        :placeholder="$t('admin.users.phoneNumber')"
-                      />
-                    </div>
-
-                    <!-- Employee ID -->
-                    <div>
-                      <label for="employeeId" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('admin.users.employeeId') }}
-                      </label>
-                      <input
-                        id="employeeId"
-                        v-model="form.employeeId"
-                        type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                        :placeholder="$t('admin.users.employeeId')"
-                      />
-                    </div>
-
-                    <!-- Department -->
-                    <div>
-                      <label for="department" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('admin.users.department') }}
-                      </label>
-                      <input
-                        id="department"
-                        v-model="form.department"
-                        type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                        :placeholder="$t('admin.users.department')"
-                      />
-                    </div>
-
-                    <!-- Job Title -->
-                    <div>
-                      <label for="jobTitle" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('admin.users.jobTitle') }}
-                      </label>
-                      <input
-                        id="jobTitle"
-                        v-model="form.jobTitle"
-                        type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                        :placeholder="$t('admin.users.jobTitle')"
-                      />
-                    </div>
-                  </div>
-
-                  <div class="mt-6 pt-6 border-t border-gray-200">
-                    <h4 class="text-md font-medium text-gray-900 mb-5">
-                      {{ isEdit ? $t('admin.users.changePasswordOptional') : $t('admin.users.password') }}
-                    </h4>
-                    
+                  <div class="max-h-[65vh] overflow-y-auto px-1">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
-                      <!-- Password -->
+                      <!-- Email -->
                       <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('admin.users.password') }}
-                          <span v-if="!isEdit" class="text-red-600">*</span>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('admin.users.email') }} <span class="text-red-600">*</span>
                         </label>
                         <input
-                          id="password"
-                          v-model="form.password"
-                          type="password"
-                          autocomplete="new-password"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                          :class="{ 'border-red-500': errors.password }"
-                          :required="!isEdit"
-                          :placeholder="$t('admin.users.password')"
+                            id="email"
+                            v-model="form.email"
+                            type="email"
+                            :disabled="isEdit"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors h-10 px-3"
+                            :class="{ 'border-red-500': errors.email }"
+                            required
+                            :placeholder="$t('admin.users.email')"
                         />
-                        <p v-if="errors.password" class="mt-1.5 text-sm text-red-600">{{ errors.password }}</p>
-                        <p v-if="isEdit" class="mt-1.5 text-xs text-gray-500">{{ $t('admin.users.leaveBlankToKeepCurrent') }}</p>
+                        <p v-if="errors.email" class="mt-1.5 text-sm text-red-600">{{ $t(errors.email) }}</p>
+                        <p v-if="isEdit" class="mt-1.5 text-xs text-gray-500">
+                          {{ $t('admin.users.emailCannotBeChanged') }}</p>
                       </div>
 
-                      <!-- Confirm Password -->
+                      <!-- Username -->
                       <div>
-                        <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('admin.users.confirmPassword') }}
-                          <span v-if="!isEdit" class="text-red-600">*</span>
+                        <label for="userName" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('admin.users.username') }} <span class="text-red-600">*</span>
                         </label>
                         <input
-                          id="confirmPassword"
-                          v-model="form.confirmPassword"
-                          type="password"
-                          autocomplete="new-password"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                          :class="{ 'border-red-500': errors.confirmPassword }"
-                          :required="!isEdit"
-                          :placeholder="$t('admin.users.confirmPassword')"
+                            id="userName"
+                            v-model="form.userName"
+                            type="text"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            :class="{ 'border-red-500': errors.userName }"
+                            required
+                            :placeholder="$t('admin.users.username')"
                         />
-                        <p v-if="errors.confirmPassword" class="mt-1.5 text-sm text-red-600">{{ $t(errors.confirmPassword) }}</p>
+                        <p v-if="errors.userName" class="mt-1.5 text-sm text-red-600">{{ $t(errors.userName) }}</p>
+                      </div>
+
+                      <!-- First Name -->
+                      <div>
+                        <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('admin.users.firstName') }}
+                        </label>
+                        <input
+                            id="firstName"
+                            v-model="form.firstName"
+                            type="text"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            :placeholder="$t('admin.users.firstName')"
+                        />
+                      </div>
+
+                      <!-- Last Name -->
+                      <div>
+                        <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('admin.users.lastName') }}
+                        </label>
+                        <input
+                            id="lastName"
+                            v-model="form.lastName"
+                            type="text"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            :placeholder="$t('admin.users.lastName')"
+                        />
+                      </div>
+
+                      <!-- Phone Number -->
+                      <div>
+                        <label for="phoneNumber" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('admin.users.phoneNumber') }}
+                        </label>
+                        <input
+                            id="phoneNumber"
+                            v-model="form.phoneNumber"
+                            type="tel"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            :placeholder="$t('admin.users.phoneNumber')"
+                        />
+                      </div>
+
+                      <!-- Employee ID -->
+                      <div>
+                        <label for="employeeId" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('admin.users.employeeId') }}
+                        </label>
+                        <input
+                            id="employeeId"
+                            v-model="form.employeeId"
+                            type="text"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            :placeholder="$t('admin.users.employeeId')"
+                        />
+                      </div>
+
+                      <!-- Department -->
+                      <div>
+                        <label for="department" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('admin.users.department') }}
+                        </label>
+                        <input
+                            id="department"
+                            v-model="form.department"
+                            type="text"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            :placeholder="$t('admin.users.department')"
+                        />
+                      </div>
+
+                      <!-- Job Title -->
+                      <div>
+                        <label for="jobTitle" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('admin.users.jobTitle') }}
+                        </label>
+                        <input
+                            id="jobTitle"
+                            v-model="form.jobTitle"
+                            type="text"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            :placeholder="$t('admin.users.jobTitle')"
+                        />
                       </div>
                     </div>
 
-                    <!-- Password Requirements Info Box -->
-                    <div v-if="form.password || !isEdit" class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                      <p class="text-sm font-medium text-blue-900 mb-2">{{ $t('admin.users.passwordMustContain') }}</p>
-                      <ul class="text-sm text-blue-800 space-y-1">
-                        <li class="flex items-center">
-                          <span :class="form.password && form.password.length >= 6 ? 'text-green-600 font-bold' : 'text-gray-500'">
-                            {{ form.password && form.password.length >= 6 ? '✓' : '○' }}
-                          </span>
-                          <span class="ml-2">{{ $t('admin.users.atLeast6Characters') }}</span>
-                        </li>
-                        <li class="flex items-center">
-                          <span :class="form.password && /[A-Z]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
-                            {{ form.password && /[A-Z]/.test(form.password) ? '✓' : '○' }}
-                          </span>
-                          <span class="ml-2">{{ $t('admin.users.atLeastOneUppercase') }}</span>
-                        </li>
-                        <li class="flex items-center">
-                          <span :class="form.password && /[a-z]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
-                            {{ form.password && /[a-z]/.test(form.password) ? '✓' : '○' }}
-                          </span>
-                          <span class="ml-2">{{ $t('admin.users.atLeastOneLowercase') }}</span>
-                        </li>
-                        <li class="flex items-center">
-                          <span :class="form.password && /[0-9]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
-                            {{ form.password && /[0-9]/.test(form.password) ? '✓' : '○' }}
-                          </span>
-                          <span class="ml-2">{{ $t('admin.users.atLeastOneDigit') }}</span>
-                        </li>
-                        <li class="flex items-center">
-                          <span :class="form.password && /[^A-Za-z0-9]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
-                            {{ form.password && /[^A-Za-z0-9]/.test(form.password) ? '✓' : '○' }}
-                          </span>
-                          <span class="ml-2">{{ $t('admin.users.atLeastOneSpecialChar') }}</span>
-                        </li>
-                      </ul>
-                      
-                      <!-- Password Strength Indicator -->
-                      <div v-if="form.password" class="mt-3">
-                        <div class="flex items-center justify-between mb-1">
-                          <span class="text-xs text-gray-600">{{ $t('admin.users.passwordStrength') }}:</span>
-                          <span :class="['text-xs font-semibold', passwordStrength.color]">{{ $t(passwordStrength.label) }}</span>
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                      <h4 class="text-md font-medium text-gray-900 mb-5">
+                        {{ isEdit ? $t('admin.users.changePasswordOptional') : $t('admin.users.password') }}
+                      </h4>
+
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
+                        <!-- Password -->
+                        <div>
+                          <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
+                            {{ $t('admin.users.password') }}
+                            <span v-if="!isEdit" class="text-red-600">*</span>
+                          </label>
+                          <input
+                              id="password"
+                              v-model="form.password"
+                              type="password"
+                              autocomplete="new-password"
+                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                              :class="{ 'border-red-500': errors.password }"
+                              :required="!isEdit"
+                              :placeholder="$t('admin.users.password')"
+                          />
+                          <p v-if="errors.password" class="mt-1.5 text-sm text-red-600">{{ errors.password }}</p>
+                          <p v-if="isEdit" class="mt-1.5 text-xs text-gray-500">
+                            {{ $t('admin.users.leaveBlankToKeepCurrent') }}</p>
                         </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            :class="[
-                              'h-2 rounded-full transition-all duration-300',
-                              passwordStrength.strength === 100 ? 'bg-green-600' :
-                              passwordStrength.strength >= 80 ? 'bg-blue-600' :
-                              passwordStrength.strength >= 60 ? 'bg-yellow-600' : 'bg-red-600'
-                            ]"
-                            :style="`width: ${passwordStrength.strength}%`"
-                          ></div>
+
+                        <!-- Confirm Password -->
+                        <div>
+                          <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1.5">
+                            {{ $t('admin.users.confirmPassword') }}
+                            <span v-if="!isEdit" class="text-red-600">*</span>
+                          </label>
+                          <input
+                              id="confirmPassword"
+                              v-model="form.confirmPassword"
+                              type="password"
+                              autocomplete="new-password"
+                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                              :class="{ 'border-red-500': errors.confirmPassword }"
+                              :required="!isEdit"
+                              :placeholder="$t('admin.users.confirmPassword')"
+                          />
+                          <p v-if="errors.confirmPassword" class="mt-1.5 text-sm text-red-600">
+                            {{ $t(errors.confirmPassword) }}</p>
+                        </div>
+                      </div>
+
+                      <!-- Password Requirements Info Box -->
+                      <div v-if="form.password || !isEdit"
+                           class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                        <p class="text-sm font-medium text-blue-900 mb-2">
+                          {{ $t('admin.users.passwordMustContain') }}</p>
+                        <ul class="text-sm text-blue-800 space-y-1">
+                          <li class="flex items-center">
+                            <span
+                                :class="form.password && form.password.length >= 6 ? 'text-green-600 font-bold' : 'text-gray-500'">
+                              {{ form.password && form.password.length >= 6 ? '✓' : '○' }}
+                            </span>
+                            <span class="ml-2">{{ $t('admin.users.atLeast6Characters') }}</span>
+                          </li>
+                          <li class="flex items-center">
+                            <span
+                                :class="form.password && /[A-Z]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
+                              {{ form.password && /[A-Z]/.test(form.password) ? '✓' : '○' }}
+                            </span>
+                            <span class="ml-2">{{ $t('admin.users.atLeastOneUppercase') }}</span>
+                          </li>
+                          <li class="flex items-center">
+                            <span
+                                :class="form.password && /[a-z]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
+                              {{ form.password && /[a-z]/.test(form.password) ? '✓' : '○' }}
+                            </span>
+                            <span class="ml-2">{{ $t('admin.users.atLeastOneLowercase') }}</span>
+                          </li>
+                          <li class="flex items-center">
+                            <span
+                                :class="form.password && /[0-9]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
+                              {{ form.password && /[0-9]/.test(form.password) ? '✓' : '○' }}
+                            </span>
+                            <span class="ml-2">{{ $t('admin.users.atLeastOneDigit') }}</span>
+                          </li>
+                          <li class="flex items-center">
+                            <span
+                                :class="form.password && /[^A-Za-z0-9]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
+                              {{ form.password && /[^A-Za-z0-9]/.test(form.password) ? '✓' : '○' }}
+                            </span>
+                            <span class="ml-2">{{ $t('admin.users.atLeastOneSpecialChar') }}</span>
+                          </li>
+                        </ul>
+
+                        <!-- Password Strength Indicator -->
+                        <div v-if="form.password" class="mt-3">
+                          <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs text-gray-600">{{ $t('admin.users.passwordStrength') }}:</span>
+                            <span :class="['text-xs font-semibold', passwordStrength.color]">{{
+                                $t(passwordStrength.label)
+                              }}</span>
+                          </div>
+                          <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                                :class="[
+                                'h-2 rounded-full transition-all duration-300',
+                                passwordStrength.strength === 100 ? 'bg-green-600' :
+                                passwordStrength.strength >= 80 ? 'bg-blue-600' :
+                                passwordStrength.strength >= 60 ? 'bg-yellow-600' : 'bg-red-600'
+                              ]"
+                                :style="`width: ${passwordStrength.strength}%`"
+                            ></div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -474,21 +487,25 @@ onMounted(() => {
 
             <div class="bg-gray-50 px-4 py-2.5 sm:flex sm:flex-row-reverse sm:px-6">
               <button
-                type="submit"
-                :disabled="saving"
-                class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="submit"
+                  :disabled="saving"
+                  class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                     xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <path class="opacity-75" fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ saving ? $t('admin.users.saving') : (isEdit ? $t('admin.users.updateUser') : $t('admin.users.createUser')) }}
+                {{
+                  saving ? $t('admin.users.saving') : (isEdit ? $t('admin.users.updateUser') : $t('admin.users.createUser'))
+                }}
               </button>
               <button
-                type="button"
-                @click="handleClose"
-                :disabled="saving"
-                class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  @click="handleClose"
+                  :disabled="saving"
+                  class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ $t('admin.users.cancel') }}
               </button>
