@@ -76,7 +76,7 @@ const fetchUsers = async () => {
     users.value = data.items || []
     totalCount.value = data.totalCount ?? users.value.length
   } catch (e) {
-    error.value = `Failed to load users: ${e.message}`
+    error.value = t('admin.users.errors.loadFailed', { message: e.message })
     console.error('Error fetching users:', e)
   } finally {
     loading.value = false
@@ -124,7 +124,7 @@ const handleDeactivate = async (user) => {
     return
   }
   
-  if (!confirm(`Are you sure you want to deactivate user ${user.email}?\n\nThis will disable their login but keep their data.`)) {
+  if (!confirm(t('admin.users.confirmations.deactivate', { email: user.email }))) {
     return
   }
   
@@ -138,9 +138,9 @@ const handleDeactivate = async (user) => {
     }
     
     await fetchUsers()
-    alert('User deactivated successfully')
+    alert(t('admin.users.alerts.deactivatedSuccess'))
   } catch (e) {
-    alert(`Failed to deactivate user: ${e.message}`)
+    alert(t('admin.users.errors.deactivateFailed', { message: e.message }))
     console.error('Error deactivating user:', e)
   }
 }
@@ -153,12 +153,12 @@ const handleDelete = async (user) => {
     return
   }
   
-  if (!confirm(`⚠️ WARNING: Are you sure you want to PERMANENTLY DELETE user ${user.email}?\n\nThis action cannot be undone!\nThe user will be completely removed from the system and will no longer appear in any lists.`)) {
+  if (!confirm(t('admin.users.confirmations.deleteWarning', { email: user.email }))) {
     return
   }
   
   // Second confirmation for safety
-  if (!confirm(`FINAL CONFIRMATION: Delete ${user.email} permanently?`)) {
+  if (!confirm(t('admin.users.confirmations.deleteFinal', { email: user.email }))) {
     return
   }
   
@@ -172,9 +172,9 @@ const handleDelete = async (user) => {
     }
     
     await fetchUsers()
-    alert('User deleted successfully')
+    alert(t('admin.users.alerts.deletedSuccess'))
   } catch (e) {
-    alert(`Failed to delete user: ${e.message}`)
+    alert(t('admin.users.errors.deleteFailed', { message: e.message }))
     console.error('Error deleting user:', e)
   }
 }
@@ -187,7 +187,7 @@ const handleReactivate = async (user) => {
     return
   }
   
-  if (!confirm(`Are you sure you want to reactivate user ${user.email}?`)) {
+  if (!confirm(t('admin.users.confirmations.reactivate', { email: user.email }))) {
     return
   }
   
@@ -201,9 +201,9 @@ const handleReactivate = async (user) => {
     }
     
     await fetchUsers()
-    alert('User reactivated successfully')
+    alert(t('admin.users.alerts.reactivatedSuccess'))
   } catch (e) {
-    alert(`Failed to reactivate user: ${e.message}`)
+    alert(t('admin.users.errors.reactivateFailed', { message: e.message }))
     console.error('Error reactivating user:', e)
   }
 }
