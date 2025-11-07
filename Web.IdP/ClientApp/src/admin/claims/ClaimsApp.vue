@@ -31,13 +31,7 @@
         <div class="flex flex-col md:flex-row md:items-center gap-3">
           <!-- Search Input -->
           <div class="flex-1">
-            <input 
-              v-model="search" 
-              @keyup.enter="fetchClaims(0)" 
-              type="text" 
-              class="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10" 
-              :placeholder="$t('claims.searchPlaceholder')" 
-            />
+            <SearchInput v-model="search" :placeholder="$t('claims.searchPlaceholder')" />
           </div>
           
           <!-- Sort and Apply -->
@@ -58,13 +52,6 @@
               <option value="asc">{{ $t('claims.sortDirection.asc') }}</option>
               <option value="desc">{{ $t('claims.sortDirection.desc') }}</option>
             </select>
-            <button 
-              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors h-10" 
-              @click="fetchClaims(0)" 
-              :disabled="loading"
-            >
-              {{ $t('claims.applyButton') }}
-            </button>
           </div>
         </div>
       </div>
@@ -327,9 +314,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '@/components/common/PageHeader.vue'
+import SearchInput from '@/components/common/SearchInput.vue'
 
 const { t } = useI18n()
 
@@ -488,6 +476,10 @@ async function deleteClaim(claim) {
     error.value = err.message
   }
 }
+
+watch([search, sortBy, sortDirection], () => {
+  fetchClaims(0)
+})
 
 onMounted(() => {
   fetchClaims()
