@@ -6,7 +6,6 @@ import UserForm from './components/UserForm.vue'
 import RoleAssignment from './components/RoleAssignment.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
-import SearchInput from '@/components/common/SearchInput.vue'
 
 const { t } = useI18n()
 
@@ -240,16 +239,6 @@ const handlePageSizeChange = (newSize) => {
   page.value = 1
 }
 
-const handleSearchChange = (newSearch) => {
-  search.value = newSearch
-  page.value = 1
-}
-
-const handleFilterChange = (filter) => {
-  isActiveFilter.value = filter
-  page.value = 1
-}
-
 const handleSortChange = (newSort) => {
   sort.value = newSort
 }
@@ -315,26 +304,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Search and Filter -->
-      <div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-4">
-        <!-- Search Input -->
-        <div class="flex-1">
-          <SearchInput v-model="search" :placeholder="t('admin.users.search')" />
-        </div>
-
-        <!-- Filter Options -->
-        <div>
-          <select
-            v-model="isActiveFilter"
-            class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
-          >
-            <option value="">{{ t('admin.users.all') }}</option>
-            <option value="true">{{ t('admin.users.active') }}</option>
-            <option value="false">{{ t('admin.users.inactive') }}</option>
-          </select>
-        </div>
-      </div>
-
       <UserList
         :users="users"
         :loading="loading"
@@ -344,6 +313,8 @@ onMounted(() => {
         :sort="sort"
         :can-update="canUpdate"
         :can-delete="canDelete"
+        v-model:search="search"
+        v-model:is-active-filter="isActiveFilter"
         @edit="handleEdit"
         @manage-roles="handleManageRoles"
         @deactivate="handleDeactivate"

@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import SearchInput from '@/components/common/SearchInput.vue'
 
 const { t } = useI18n()
 
@@ -12,7 +13,9 @@ const props = defineProps({
   totalCount: { type: Number, required: true },
   sort: { type: String, default: '' },
   canUpdate: { type: Boolean, default: false },
-  canDelete: { type: Boolean, default: false }
+  canDelete: { type: Boolean, default: false },
+  search: { type: String, default: '' },
+  isActiveFilter: { type: String, default: '' }
 })
 
 const emit = defineEmits([
@@ -23,7 +26,9 @@ const emit = defineEmits([
   'reactivate',
   'page-change',
   'page-size-change',
-  'sort-change'
+  'sort-change',
+  'update:search',
+  'update:isActiveFilter'
 ])
 
 const totalPages = computed(() => {
@@ -76,6 +81,29 @@ const getSortIcon = (field) => {
   <div class="user-list">
     <!-- Unified Card: Filters + Table + Pagination -->
     <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+      <!-- Filter Section -->
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex flex-col md:flex-row md:items-center gap-3">
+          <!-- Search Input -->
+          <div class="flex-1">
+            <SearchInput :model-value="search" @update:model-value="emit('update:search', $event)" :placeholder="t('admin.users.search')" />
+          </div>
+          
+          <!-- Filter Options -->
+          <div>
+            <select
+              :value="isActiveFilter"
+              @change="emit('update:isActiveFilter', $event.target.value)"
+              class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
+            >
+              <option value="">{{ t('admin.users.all') }}</option>
+              <option value="true">{{ t('admin.users.active') }}</option>
+              <option value="false">{{ t('admin.users.inactive') }}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <!-- Loading State -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-12">
         <svg class="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
