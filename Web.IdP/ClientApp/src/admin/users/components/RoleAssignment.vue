@@ -1,5 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   user: { type: Object, required: true }
@@ -69,7 +72,7 @@ const handleSave = async () => {
     
     emit('save')
   } catch (e) {
-    error.value = e.message || 'Failed to update roles'
+  error.value = e.message || t('admin.roles.updateFailed')
     console.error('Error updating roles:', e)
   } finally {
     saving.value = false
@@ -95,12 +98,12 @@ onMounted(() => {
             <div class="sm:flex sm:items-start">
               <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
                 <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                  Manage Roles
+                  {{ $t('admin.roles.manageRoles') }}
                 </h3>
 
                 <div class="mb-4 p-3 bg-gray-50 rounded-md">
                   <p class="text-sm text-gray-700">
-                    <span class="font-medium">User:</span> {{ user.email }}
+                    <span class="font-medium">{{ $t('admin.roles.user') }}:</span> {{ user.email }}
                   </p>
                 </div>
 
@@ -115,17 +118,17 @@ onMounted(() => {
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <p class="mt-2 text-sm text-gray-600">Loading roles...</p>
+                  <p class="mt-2 text-sm text-gray-600">{{ $t('admin.roles.loading') }}</p>
                 </div>
 
                 <!-- No Roles -->
                 <div v-else-if="availableRoles.length === 0" class="bg-blue-50 border-l-4 border-blue-400 p-4">
-                  <p class="text-sm text-blue-700">No roles available</p>
+                  <p class="text-sm text-blue-700">{{ $t('admin.roles.noRolesAvailable') }}</p>
                 </div>
 
                 <!-- Role List -->
                 <div v-else>
-                  <p class="text-sm font-medium text-gray-700 mb-3">Select Roles:</p>
+                  <p class="text-sm font-medium text-gray-700 mb-3">{{ $t('admin.roles.selectRoles') }}</p>
                   
                   <div class="max-h-96 overflow-y-auto space-y-2">
                     <div
@@ -156,16 +159,16 @@ onMounted(() => {
                       <span
                         v-if="role.isSystem"
                         class="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700"
-                        title="System role"
+                        :title="$t('admin.roles.systemRole')"
                       >
-                        System
+                        {{ $t('admin.roles.system') }}
                       </span>
                     </div>
                   </div>
 
                   <div v-if="selectedRoles.length > 0" class="mt-3">
                     <p class="text-xs text-gray-500">
-                      Selected {{ selectedRoles.length }} role{{ selectedRoles.length !== 1 ? 's' : '' }}
+                      {{ $t('admin.roles.selectedCount', { count: selectedRoles.length }) }}
                     </p>
                   </div>
                 </div>
@@ -184,7 +187,7 @@ onMounted(() => {
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              {{ saving ? 'Saving...' : 'Save Roles' }}
+              {{ saving ? $t('admin.roles.saving') : $t('admin.roles.saveRoles') }}
             </button>
             <button
               type="button"
@@ -192,7 +195,7 @@ onMounted(() => {
               :disabled="saving"
               class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              {{ $t('admin.roles.cancel') }}
             </button>
           </div>
         </div>
