@@ -78,7 +78,7 @@
           </a>
         </div>
 
-        <!-- Users Card (Phase 4) -->
+  <!-- Users Card -->
         <div class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6 opacity-60">
           <div class="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-4">
             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +87,6 @@
           </div>
           <h2 class="text-xl font-semibold text-gray-900 mb-2">
             {{ $t('admin.dashboard.cards.users.title') }}
-            <span class="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full">{{ $t('admin.dashboard.cards.users.badge') }}</span>
           </h2>
           <p class="text-sm text-gray-600 mb-4">{{ $t('admin.dashboard.cards.users.description') }}</p>
           <span class="inline-flex items-center text-gray-400 font-medium text-sm cursor-not-allowed">

@@ -87,7 +87,6 @@
                     <a href="/Admin/Users" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Users" ? "active" : "")">
                         <i class="bi bi-people"></i>
                         <span>@Localizer["Users"]</span>
-                        <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
                     </a>
                 }
                 @if (userPermissions.HasPermission(Permissions.Roles.Read))
@@ -95,7 +94,6 @@
                     <a href="/Admin/Roles" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Roles" ? "active" : "")">
                         <i class="bi bi-award"></i>
                         <span>@Localizer["Roles"]</span>
-                        <span class="badge bg-secondary badge-phase ms-auto">Phase 4</span>
                     </a>
                 }
                 
