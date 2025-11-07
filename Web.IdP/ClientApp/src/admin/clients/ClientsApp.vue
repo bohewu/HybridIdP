@@ -182,135 +182,125 @@ const setPage = (newPage) => {
     @close="showAccessDenied = false"
   />
 
-  <div class="min-h-screen bg-gray-50">
-    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <!-- Header -->
-      <div class="px-4 sm:px-0">
-        <div class="flex justify-between items-center mb-6">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900">{{ $t('clients.pageTitle') }}</h1>
-            <p class="mt-2 text-sm text-gray-600">
-              {{ $t('clients.pageSubtitle') }}
-            </p>
-          </div>
-          <button
-            v-if="canCreate"
-            @click="handleCreate"
-            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-            </svg>
-            {{ $t('clients.createButton') }}
-          </button>
-        </div>
+  <div class="px-4 py-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('clients.pageTitle') }}</h1>
+        <p class="mt-1 text-sm text-gray-600">
+          {{ $t('clients.pageSubtitle') }}
+        </p>
+      </div>
+      <button
+        v-if="canCreate"
+        @click="handleCreate"
+        class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
+        :disabled="loading"
+      >
+        <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        {{ $t('clients.createButton') }}
+      </button>
+    </div>
 
-        <!-- Filters & sorting -->
-        <div class="mb-5 grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('clients.searchButton') }}</label>
-            <div class="flex">
-              <input
-                v-model="search"
-                type="text"
-                :placeholder="$t('clients.searchPlaceholder')"
-                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
-                @keyup.enter="handleSearch"
-              />
-              <button
-                @click="handleSearch"
-                class="ml-2 inline-flex items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
-              >
-                {{ $t('clients.searchButton') }}
-              </button>
-            </div>
+    <!-- Error State -->
+    <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4" role="alert">
+      <p class="text-sm text-red-700">{{ error }}</p>
+    </div>
+
+    <!-- Main Content -->
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+      <!-- Filter Section -->
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex flex-col md:flex-row md:items-center gap-3">
+          <!-- Search Input -->
+          <div class="flex-1">
+            <input 
+              v-model="search" 
+              @keyup.enter="handleSearch" 
+              type="text" 
+              class="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10" 
+              :placeholder="$t('clients.searchPlaceholder')" 
+            />
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('clients.filterLabel') }}</label>
-            <select
-              v-model="typeFilter"
-              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+          
+          <!-- Type Filter and Sort -->
+          <div class="flex gap-2">
+            <select 
+              v-model="typeFilter" 
+              class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
             >
               <option value="">{{ $t('clients.filterOptions.all') }}</option>
               <option value="public">{{ $t('clients.filterOptions.public') }}</option>
               <option value="confidential">{{ $t('clients.filterOptions.confidential') }}</option>
             </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('clients.sortLabel') }}</label>
-            <select
-              v-model="sort"
-              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+            <select 
+              v-model="sort" 
+              class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
             >
               <option value="clientId:asc">{{ $t('clients.sortOptions.idAsc') }}</option>
               <option value="clientId:desc">{{ $t('clients.sortOptions.idDesc') }}</option>
               <option value="displayName:asc">{{ $t('clients.sortOptions.nameAsc') }}</option>
               <option value="displayName:desc">{{ $t('clients.sortOptions.nameDesc') }}</option>
-              <option value="redirectUriCount:asc">{{ $t('clients.sortOptions.uriCountAsc') }}</option>
-              <option value="redirectUriCount:desc">{{ $t('clients.sortOptions.uriCountDesc') }}</option>
-              <option value="type:asc">{{ $t('clients.sortOptions.typeAsc') }}</option>
-              <option value="type:desc">{{ $t('clients.sortOptions.typeDesc') }}</option>
             </select>
           </div>
         </div>
+      </div>
 
-        <!-- Error Alert -->
-        <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm text-red-700">{{ error }}</p>
-            </div>
-          </div>
-        </div>
+      <!-- Loading State -->
+      <div v-if="loading" class="px-6 py-12">
+        <div class="text-center text-gray-500">{{ $t('clients.loadingMessage') }}</div>
+      </div>
 
-        <!-- Loading State -->
-        <div v-if="loading" class="text-center py-12">
-          <svg class="animate-spin h-8 w-8 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <p class="mt-2 text-sm text-gray-600">{{ $t('clients.loadingMessage') }}</p>
-        </div>
+      <!-- Empty State -->
+      <div v-else-if="!loading && clients.length === 0" class="px-6 py-12">
+        <div class="text-center text-gray-500">{{ $t('clients.noClientsMessage') }}</div>
+      </div>
 
-        <!-- Client Form Modal -->
-        <ClientForm
-          v-if="showForm"
-          :client="selectedClient"
-          @submit="handleFormSubmit"
-          @cancel="handleFormCancel"
-        />
-
-        <!-- Client List -->
+      <!-- Client List -->
+      <template v-else>
         <ClientList
-          v-if="!loading && !showForm"
           :clients="clients"
           :can-update="canUpdate"
           :can-delete="canDelete"
           @edit="handleEdit"
           @delete="handleDelete"
         />
+      </template>
 
-        <!-- Pagination -->
-        <div v-if="!loading && !showForm && totalCount > 0" class="mt-4 flex items-center justify-between">
+      <!-- Pagination -->
+      <div v-if="!loading && totalCount > 0" class="px-6 py-4 border-t border-gray-200">
+        <div class="flex items-center justify-between">
           <div class="text-sm text-gray-600">
             {{ $t('pagination.showing', { from: (page - 1) * pageSize + 1, to: Math.min(page * pageSize, totalCount), total: totalCount }) }}
           </div>
-          <div class="inline-flex rounded-md shadow-sm" role="group">
-            <button @click="setPage(page - 1)" class="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-l-lg hover:bg-gray-50 disabled:opacity-50" :disabled="page === 1">{{ $t('pagination.previous') }}</button>
-            <button @click="setPage(page + 1)" class="px-3 py-2 text-sm font-medium bg-white border-t border-b border-gray-300 hover:bg-gray-50 disabled:opacity-50" :disabled="page * pageSize >= totalCount">{{ $t('pagination.next') }}</button>
-            <select v-model.number="pageSize" class="px-2 py-2 text-sm font-medium bg-white border border-gray-300 rounded-r-lg hover:bg-gray-50 ml-2">
-              <option :value="10">{{ $t('pagination.perPage', { count: 10 }) }}</option>
-              <option :value="25">{{ $t('pagination.perPage', { count: 25 }) }}</option>
-              <option :value="50">{{ $t('pagination.perPage', { count: 50 }) }}</option>
-            </select>
+          <div class="flex items-center gap-2">
+            <button 
+              @click="setPage(page - 1)" 
+              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors h-10"
+              :disabled="page === 1"
+            >
+              {{ $t('pagination.previous') }}
+            </button>
+            <button 
+              @click="setPage(page + 1)" 
+              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors h-10"
+              :disabled="page * pageSize >= totalCount"
+            >
+              {{ $t('pagination.next') }}
+            </button>
           </div>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Client Form Modal -->
+  <ClientForm
+    v-if="showForm"
+    :client="selectedClient"
+    @submit="handleFormSubmit"
+    @cancel="handleFormCancel"
+  />
 </template>
