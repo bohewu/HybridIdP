@@ -3,9 +3,9 @@
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">User Claims Management</h1>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('claims.pageTitle') }}</h1>
         <p class="mt-1 text-sm text-gray-600">
-          Manage OIDC user claims that can be included in ID tokens and access tokens
+          {{ $t('claims.pageSubtitle') }}
         </p>
       </div>
       <button
@@ -15,7 +15,7 @@
         <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        Create Claim
+        {{ $t('claims.createButton') }}
       </button>
     </div>
 
@@ -33,10 +33,10 @@
           </svg>
         </div>
         <div class="ml-3">
-          <h3 class="text-sm font-medium text-red-800">Error loading claims</h3>
+          <h3 class="text-sm font-medium text-red-800">{{ $t('claims.errorLoading') }}</h3>
           <div class="mt-2 text-sm text-red-700">{{ error }}</div>
           <button @click="fetchClaims" class="mt-3 text-sm font-medium text-red-800 hover:text-red-900">
-            Try again
+            {{ $t('claims.tryAgain') }}
           </button>
         </div>
       </div>
@@ -49,22 +49,22 @@
           <thead class="bg-gray-50">
             <tr>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
+                {{ $t('claims.table.name') }}
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Display Name
+                {{ $t('claims.table.displayName') }}
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Claim Type
+                {{ $t('claims.table.claimType') }}
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Type
+                {{ $t('claims.table.type') }}
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Scopes
+                {{ $t('claims.table.scopes') }}
               </th>
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
+                {{ $t('claims.table.actions') }}
               </th>
             </tr>
           </thead>
@@ -74,7 +74,7 @@
               <div class="flex items-center">
                 <div class="text-sm font-medium text-gray-900">{{ claim.name }}</div>
                 <span v-if="claim.isRequired" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                  Required
+                  {{ $t('claims.badges.required') }}
                 </span>
               </div>
             </td>
@@ -87,21 +87,21 @@
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
               <span v-if="claim.isStandard" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                Standard
+                {{ $t('claims.badges.standard') }}
               </span>
               <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                Custom
+                {{ $t('claims.badges.custom') }}
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ claim.scopeCount }} scope(s)
+              {{ $t('claims.scopeCount', { count: claim.scopeCount }) }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
               <button
                 @click="openEditModal(claim)"
                 class="text-indigo-600 hover:text-indigo-900 mr-3"
               >
-                Edit
+                {{ $t('claims.actions.edit') }}
               </button>
               <button
                 v-if="!claim.isStandard"
@@ -110,7 +110,7 @@
                 :disabled="claim.scopeCount > 0"
                 :class="{ 'opacity-50 cursor-not-allowed': claim.scopeCount > 0 }"
               >
-                Delete
+                {{ $t('claims.actions.delete') }}
               </button>
             </td>
           </tr>
@@ -122,8 +122,8 @@
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        <h3 class="mt-2 text-sm font-medium text-gray-900">No claims</h3>
-        <p class="mt-1 text-sm text-gray-500">Get started by creating a new claim.</p>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('claims.emptyState.title') }}</h3>
+        <p class="mt-1 text-sm text-gray-500">{{ $t('claims.emptyState.message') }}</p>
       </div>
       </div>
     </div>
@@ -137,86 +137,86 @@
           <form @submit.prevent="saveClaim">
             <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
               <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                {{ editingClaim ? 'Edit Claim' : 'Create Claim' }}
+                {{ editingClaim ? $t('claims.form.editTitle') : $t('claims.form.createTitle') }}
               </h3>
 
               <!-- Name -->
               <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Name *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.name') }} *</label>
                 <input
                   v-model="formData.name"
                   type="text"
                   required
                   :disabled="editingClaim?.isStandard"
                   class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
-                  placeholder="e.g., department"
+                  :placeholder="$t('claims.form.namePlaceholder')"
                 />
               </div>
 
               <!-- Display Name -->
               <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Display Name *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.displayName') }} *</label>
                 <input
                   v-model="formData.displayName"
                   type="text"
                   required
                   class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                  placeholder="e.g., Department"
+                  :placeholder="$t('claims.form.displayNamePlaceholder')"
                 />
               </div>
 
               <!-- Description -->
               <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.description') }}</label>
                 <textarea
                   v-model="formData.description"
                   rows="2"
                   class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors px-3 py-2"
-                  placeholder="Description of what this claim represents"
+                  :placeholder="$t('claims.form.descriptionPlaceholder')"
                 ></textarea>
               </div>
 
               <!-- Claim Type -->
               <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Claim Type *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.claimType') }} *</label>
                 <input
                   v-model="formData.claimType"
                   type="text"
                   required
                   :disabled="editingClaim?.isStandard"
                   class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
-                  placeholder="e.g., department"
+                  :placeholder="$t('claims.form.claimTypePlaceholder')"
                 />
-                <p class="mt-1.5 text-xs text-gray-500">The JWT claim name that appears in tokens</p>
+                <p class="mt-1.5 text-xs text-gray-500">{{ $t('claims.form.claimTypeHelp') }}</p>
               </div>
 
               <!-- User Property Path -->
               <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">User Property Path *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.userPropertyPath') }} *</label>
                 <input
                   v-model="formData.userPropertyPath"
                   type="text"
                   required
                   :disabled="editingClaim?.isStandard"
                   class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
-                  placeholder="e.g., Department"
+                  :placeholder="$t('claims.form.userPropertyPathPlaceholder')"
                 />
-                <p class="mt-1.5 text-xs text-gray-500">Property path on ApplicationUser entity</p>
+                <p class="mt-1.5 text-xs text-gray-500">{{ $t('claims.form.userPropertyPathHelp') }}</p>
               </div>
 
               <!-- Data Type -->
               <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Data Type *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.dataType') }} *</label>
                 <select
                   v-model="formData.dataType"
                   :disabled="editingClaim?.isStandard"
                   class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
                 >
-                  <option value="String">String</option>
-                  <option value="Boolean">Boolean</option>
-                  <option value="Integer">Integer</option>
-                  <option value="DateTime">DateTime</option>
-                  <option value="JSON">JSON</option>
+                  <option value="String">{{ $t('claims.form.dataTypes.string') }}</option>
+                  <option value="Boolean">{{ $t('claims.form.dataTypes.boolean') }}</option>
+                  <option value="Integer">{{ $t('claims.form.dataTypes.integer') }}</option>
+                  <option value="DateTime">{{ $t('claims.form.dataTypes.dateTime') }}</option>
+                  <option value="JSON">{{ $t('claims.form.dataTypes.json') }}</option>
                 </select>
               </div>
 
@@ -229,13 +229,13 @@
                     :disabled="editingClaim?.isStandard"
                     class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 disabled:bg-gray-100 h-4 w-4"
                   />
-                  <span class="ml-2 text-sm text-gray-700">Always include in tokens (Required)</span>
+                  <span class="ml-2 text-sm text-gray-700">{{ $t('claims.form.isRequired') }}</span>
                 </label>
               </div>
 
               <div v-if="editingClaim?.isStandard" class="mt-4 p-3 bg-blue-50 rounded-md">
                 <p class="text-sm text-blue-800">
-                  <strong>Note:</strong> Standard OIDC claims have limited editing. Only display name and description can be modified.
+                  {{ $t('claims.form.standardNote') }}
                 </p>
               </div>
             </div>
@@ -246,7 +246,7 @@
                 :disabled="saving"
                 class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
               >
-                {{ saving ? 'Saving...' : 'Save' }}
+                {{ saving ? $t('claims.form.saving') : $t('claims.form.save') }}
               </button>
               <button
                 type="button"
@@ -254,7 +254,7 @@
                 :disabled="saving"
                 class="mt-2.5 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
               >
-                Cancel
+                {{ $t('claims.form.cancel') }}
               </button>
             </div>
           </form>
@@ -266,6 +266,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const claims = ref([])
 const loading = ref(false)
@@ -350,7 +353,7 @@ async function saveClaim() {
 
     if (!response.ok) {
       const data = await response.json()
-      throw new Error(data.message || 'Failed to save claim')
+      throw new Error(data.message || t('claims.saveError'))
     }
 
     closeModal()
@@ -363,7 +366,7 @@ async function saveClaim() {
 }
 
 async function deleteClaim(claim) {
-  if (!confirm(`Are you sure you want to delete the claim "${claim.name}"?`)) {
+  if (!confirm(t('claims.confirmDelete', { name: claim.name }))) {
     return
   }
 
@@ -374,7 +377,7 @@ async function deleteClaim(claim) {
 
     if (!response.ok) {
       const data = await response.json()
-      throw new Error(data.message || 'Failed to delete claim')
+      throw new Error(data.message || t('claims.deleteError'))
     }
 
     await fetchClaims()

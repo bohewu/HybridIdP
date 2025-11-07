@@ -383,6 +383,68 @@
       "delete": "您沒有權限刪除範圍。"
     }
   },
+  "claims": {
+    "pageTitle": "使用者 Claims 管理",
+    "pageSubtitle": "管理可包含在 ID 權杖和存取權杖中的 OIDC 使用者 claims",
+    "createButton": "新增 Claim",
+    "loadingMessage": "載入 claims 中...",
+    "errorLoading": "載入 claims 時發生錯誤",
+    "tryAgain": "重試",
+    "table": {
+      "name": "名稱",
+      "displayName": "顯示名稱",
+      "claimType": "Claim 類型",
+      "type": "類型",
+      "scopes": "範圍",
+      "actions": "操作"
+    },
+    "badges": {
+      "required": "必填",
+      "standard": "標準",
+      "custom": "自訂"
+    },
+    "scopeCount": "{count} 個範圍",
+    "actions": {
+      "edit": "編輯",
+      "delete": "刪除"
+    },
+    "emptyState": {
+      "title": "無 claims",
+      "message": "建立一個新的 claim 以開始使用。"
+    },
+    "form": {
+      "createTitle": "新增 Claim",
+      "editTitle": "編輯 Claim",
+      "name": "名稱",
+      "namePlaceholder": "例如：department",
+      "displayName": "顯示名稱",
+      "displayNamePlaceholder": "例如：部門",
+      "description": "描述",
+      "descriptionPlaceholder": "此 claim 代表的內容描述",
+      "claimType": "Claim 類型",
+      "claimTypePlaceholder": "例如：department",
+      "claimTypeHelp": "出現在權杖中的 JWT claim 名稱",
+      "userPropertyPath": "使用者屬性路徑",
+      "userPropertyPathPlaceholder": "例如：Department",
+      "userPropertyPathHelp": "ApplicationUser 實體上的屬性路徑",
+      "dataType": "資料類型",
+      "dataTypes": {
+        "string": "字串",
+        "boolean": "布林值",
+        "integer": "整數",
+        "dateTime": "日期時間",
+        "json": "JSON"
+      },
+      "isRequired": "一律包含在權杖中（必填）",
+      "standardNote": "標準 OIDC claims 的編輯功能有限。只能修改顯示名稱和描述。",
+      "saving": "儲存中...",
+      "save": "儲存",
+      "cancel": "取消"
+    },
+    "confirmDelete": "確定要刪除 claim「{name}」嗎？",
+    "deleteError": "刪除 claim 失敗",
+    "saveError": "儲存 claim 失敗"
+  },
   "pagination": {
     "showing": "顯示 {from} 至 {to}，共 {total} 筆結果",
     "perPage": "每頁 {count} 筆",
