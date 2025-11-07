@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ScopeList from './components/ScopeList.vue'
 import ScopeForm from './components/ScopeForm.vue'
@@ -7,6 +7,7 @@ import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 import SearchInput from '@/components/common/SearchInput.vue'
+import Pagination from '@/components/common/Pagination.vue'
 
 const { t } = useI18n()
 
@@ -33,6 +34,8 @@ const pageSize = ref(10)
 const totalCount = ref(0)
 const search = ref('')
 const sort = ref('name:asc')
+
+const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value))
 
 const fetchScopes = async () => {
   loading.value = true
@@ -120,6 +123,15 @@ const handleFormCancel = () => {
   selectedScope.value = null
 }
 
+const handlePageChange = (newPage) => {
+  page.value = newPage
+}
+
+const handlePageSizeChange = (newSize) => {
+  pageSize.value = newSize
+  page.value = 1
+}
+
 onMounted(async () => {
   // Load permissions
   await permissionService.loadPermissions()
@@ -143,11 +155,6 @@ onMounted(async () => {
 watch([page, pageSize, search, sort], () => {
   fetchScopes()
 })
-
-const setPage = (newPage) => {
-  const maxPage = Math.max(1, Math.ceil(totalCount.value / pageSize.value))
-  page.value = Math.min(Math.max(newPage, 1), maxPage)
-}
 </script>
 
 <template>
@@ -232,29 +239,15 @@ const setPage = (newPage) => {
       </template>
 
       <!-- Pagination -->
-      <div v-if="!loading && totalCount > 0" class="px-6 py-4 border-t border-gray-200">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-600">
-            {{ $t('pagination.showing', { from: (page - 1) * pageSize + 1, to: Math.min(page * pageSize, totalCount), total: totalCount }) }}
-          </div>
-          <div class="flex items-center gap-2">
-            <button 
-              @click="setPage(page - 1)" 
-              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors h-10"
-              :disabled="page === 1"
-            >
-              {{ $t('pagination.previous') }}
-            </button>
-            <button 
-              @click="setPage(page + 1)" 
-              class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors h-10"
-              :disabled="page * pageSize >= totalCount"
-            >
-              {{ $t('pagination.next') }}
-            </button>
-          </div>
-        </div>
-      </div>
+      <Pagination
+        v-if="!loading && totalCount > 0"
+        :page="page"
+        :page-size="pageSize"
+        :total-count="totalCount"
+        :total-pages="totalPages"
+        @page-change="handlePageChange"
+        @page-size-change="handlePageSizeChange"
+      />
     </div>
   </div>
 
