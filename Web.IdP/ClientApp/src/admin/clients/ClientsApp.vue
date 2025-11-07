@@ -1,9 +1,12 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ClientList from './components/ClientList.vue'
 import ClientForm from './components/ClientForm.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
+
+const { t } = useI18n()
 
 // Permission state
 const canCreate = ref(false)
@@ -64,7 +67,7 @@ const fetchClients = async () => {
 
 const handleCreate = () => {
   if (!canCreate.value) {
-    deniedMessage.value = 'You do not have permission to create clients.'
+    deniedMessage.value = t('clients.accessDenied.create')
     deniedPermission.value = Permissions.Clients.CREATE
     showAccessDenied.value = true
     return
@@ -75,7 +78,7 @@ const handleCreate = () => {
 
 const handleEdit = async (client) => {
   if (!canUpdate.value) {
-    deniedMessage.value = 'You do not have permission to update clients.'
+    deniedMessage.value = t('clients.accessDenied.update')
     deniedPermission.value = Permissions.Clients.UPDATE
     showAccessDenied.value = true
     return
@@ -99,13 +102,13 @@ const handleEdit = async (client) => {
 
 const handleDelete = async (clientId) => {
   if (!canDelete.value) {
-    deniedMessage.value = 'You do not have permission to delete clients.'
+    deniedMessage.value = t('clients.accessDenied.delete')
     deniedPermission.value = Permissions.Clients.DELETE
     showAccessDenied.value = true
     return
   }
   
-  if (!confirm('Are you sure you want to delete this client?')) {
+  if (!confirm(t('clients.confirmDelete'))) {
     return
   }
 

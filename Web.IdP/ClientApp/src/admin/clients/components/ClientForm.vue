@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { z } from 'zod'
+
+const { t } = useI18n()
 
 const props = defineProps({
   client: {
@@ -24,32 +27,32 @@ const formData = ref({
 })
 
 // All available permissions from OpenIddict
-const availablePermissions = [
+const availablePermissions = computed(() => [
   // Endpoints
-  { value: 'ept:authorization', label: 'Authorization Endpoint', category: 'Endpoints' },
-  { value: 'ept:token', label: 'Token Endpoint', category: 'Endpoints' },
-  { value: 'ept:logout', label: 'Logout Endpoint', category: 'Endpoints' },
-  { value: 'ept:introspection', label: 'Introspection Endpoint', category: 'Endpoints' },
-  { value: 'ept:revocation', label: 'Revocation Endpoint', category: 'Endpoints' },
-  { value: 'ept:device', label: 'Device Authorization Endpoint', category: 'Endpoints' },
+  { value: 'ept:authorization', labelKey: 'authorizationEndpoint', category: 'endpoints' },
+  { value: 'ept:token', labelKey: 'tokenEndpoint', category: 'endpoints' },
+  { value: 'ept:logout', labelKey: 'logoutEndpoint', category: 'endpoints' },
+  { value: 'ept:introspection', labelKey: 'introspectionEndpoint', category: 'endpoints' },
+  { value: 'ept:revocation', labelKey: 'revocationEndpoint', category: 'endpoints' },
+  { value: 'ept:device', labelKey: 'deviceEndpoint', category: 'endpoints' },
   // Grant Types
-  { value: 'gt:authorization_code', label: 'Authorization Code', category: 'Grant Types' },
-  { value: 'gt:client_credentials', label: 'Client Credentials', category: 'Grant Types' },
-  { value: 'gt:refresh_token', label: 'Refresh Token', category: 'Grant Types' },
-  { value: 'gt:device_code', label: 'Device Code', category: 'Grant Types' },
-  { value: 'gt:password', label: 'Password (Resource Owner)', category: 'Grant Types' },
-  { value: 'gt:implicit', label: 'Implicit', category: 'Grant Types' },
+  { value: 'gt:authorization_code', labelKey: 'authorizationCode', category: 'grantTypes' },
+  { value: 'gt:client_credentials', labelKey: 'clientCredentials', category: 'grantTypes' },
+  { value: 'gt:refresh_token', labelKey: 'refreshToken', category: 'grantTypes' },
+  { value: 'gt:device_code', labelKey: 'deviceCode', category: 'grantTypes' },
+  { value: 'gt:password', labelKey: 'password', category: 'grantTypes' },
+  { value: 'gt:implicit', labelKey: 'implicit', category: 'grantTypes' },
   // Scopes
-  { value: 'scp:openid', label: 'OpenID', category: 'Scopes' },
-  { value: 'scp:profile', label: 'Profile', category: 'Scopes' },
-  { value: 'scp:email', label: 'Email', category: 'Scopes' },
-  { value: 'scp:roles', label: 'Roles', category: 'Scopes' }
-]
+  { value: 'scp:openid', labelKey: 'openid', category: 'scopes' },
+  { value: 'scp:profile', labelKey: 'profile', category: 'scopes' },
+  { value: 'scp:email', labelKey: 'email', category: 'scopes' },
+  { value: 'scp:roles', labelKey: 'roles', category: 'scopes' }
+])
 
 // Group permissions by category
 const permissionsByCategory = computed(() => {
   const grouped = {}
-  availablePermissions.forEach(perm => {
+  availablePermissions.value.forEach(perm => {
     if (!grouped[perm.category]) {
       grouped[perm.category] = []
     }
@@ -63,38 +66,38 @@ const error = ref(null)
 const fieldErrors = ref({}) // Per-field validation errors
 
 // Zod schema for client form validation
-const schema = z.object({
-  clientId: z.string().min(1, 'Client ID is required'),
+const schema = computed(() => z.object({
+  clientId: z.string().min(1, t('clients.form.clientIdRequired')),
   displayName: z.string().optional(),
   applicationType: z.enum(['web', 'native']),
   clientType: z.enum(['public', 'confidential']),
   clientSecret: z.string().optional(),
-  redirectUris: z.string().min(1, 'At least one Redirect URI is required'),
+  redirectUris: z.string().min(1, t('clients.form.redirectUrisRequired')),
   postLogoutRedirectUris: z.string().optional(),
-  permissions: z.array(z.string()).min(1, 'Select at least one permission')
+  permissions: z.array(z.string()).min(1, t('clients.form.permissionsRequired'))
 }).superRefine((val, ctx) => {
   // Confidential requires secret on create; on edit it's optional
   if (!isEdit.value && val.clientType === 'confidential' && (!val.clientSecret || val.clientSecret.trim() === '')) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['clientSecret'], message: 'Client Secret is required for confidential clients' })
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['clientSecret'], message: t('clients.form.clientSecretRequired') })
   }
   // Public must not have secret
   if (val.clientType === 'public' && val.clientSecret && val.clientSecret.trim() !== '') {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['clientSecret'], message: 'Public clients cannot have a Client Secret' })
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['clientSecret'], message: t('clients.form.clientSecretNotAllowed') })
   }
   // Validate Redirect URIs lines
   const redirectLines = (val.redirectUris || '').split('\n').map(x => x.trim()).filter(x => x.length > 0)
   if (redirectLines.length === 0) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['redirectUris'], message: 'At least one Redirect URI is required' })
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['redirectUris'], message: t('clients.form.redirectUrisRequired') })
   }
   redirectLines.forEach((u, i) => {
-    try { new URL(u) } catch { ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['redirectUris'], message: `Redirect URI line ${i + 1} is not a valid absolute URL` }) }
+    try { new URL(u) } catch { ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['redirectUris'], message: t('clients.form.redirectUrisInvalid', { line: i + 1 }) }) }
   })
   // Validate Post Logout Redirect URIs if present
   const postLines = (val.postLogoutRedirectUris || '').split('\n').map(x => x.trim()).filter(x => x.length > 0)
   postLines.forEach((u, i) => {
-    try { new URL(u) } catch { ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['postLogoutRedirectUris'], message: `Post Logout URI line ${i + 1} is not a valid absolute URL` }) }
+    try { new URL(u) } catch { ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['postLogoutRedirectUris'], message: t('clients.form.postLogoutRedirectUrisInvalid', { line: i + 1 }) }) }
   })
-})
+}))
 
 const resetForm = () => {
   formData.value = {
@@ -135,7 +138,7 @@ const handleSubmit = async () => {
 
   try {
     // Validate with Zod schema (mirrors backend rules)
-    const parsed = schema.safeParse(formData.value)
+    const parsed = schema.value.safeParse(formData.value)
     if (!parsed.success) {
       // Group errors by field path
       parsed.error.issues.forEach(issue => {
@@ -145,7 +148,7 @@ const handleSubmit = async () => {
         }
         fieldErrors.value[field].push(issue.message)
       })
-      throw new Error('Please correct the validation errors below.')
+      throw new Error(t('clients.form.validationError'))
     }
 
     const payload = {
@@ -213,7 +216,7 @@ const togglePermission = (permission) => {
               <div class="sm:flex sm:items-start">
                 <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
                   <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                    {{ isEdit ? 'Edit Client' : 'Create New Client' }}
+                    {{ $t(isEdit ? 'clients.form.editTitle' : 'clients.form.createTitle') }}
                   </h3>
 
                   <!-- Error Alert -->
@@ -234,7 +237,7 @@ const togglePermission = (permission) => {
                     <!-- Client ID -->
                     <div class="mb-5">
                       <label for="clientId" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        Client ID <span class="text-red-500">*</span>
+                        {{ $t('clients.form.clientId') }} <span class="text-red-500">*</span>
                       </label>
                       <input
                         id="clientId"
@@ -248,9 +251,9 @@ const togglePermission = (permission) => {
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500' 
                             : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
                         ]"
-                        placeholder="my-app-client"
+                        :placeholder="$t('clients.form.clientIdPlaceholder')"
                       />
-                      <p v-if="!fieldErrors.clientId" class="mt-1 text-xs text-gray-500">Unique identifier for this client</p>
+                      <p v-if="!fieldErrors.clientId" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.clientIdHelp') }}</p>
                       <div v-if="fieldErrors.clientId" class="mt-1">
                         <p v-for="(err, idx) in fieldErrors.clientId" :key="idx" class="text-sm text-red-600 flex items-start">
                           <svg class="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -264,21 +267,21 @@ const togglePermission = (permission) => {
                     <!-- Display Name -->
                     <div class="mb-5">
                       <label for="displayName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        Display Name
+                        {{ $t('clients.form.displayName') }}
                       </label>
                       <input
                         id="displayName"
                         v-model="formData.displayName"
                         type="text"
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
-                        placeholder="My Application"
+                        :placeholder="$t('clients.form.displayNamePlaceholder')"
                       />
                     </div>
 
                     <!-- Application Type -->
                     <div v-if="!isEdit">
                       <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Application Type <span class="text-red-500">*</span>
+                        {{ $t('clients.form.applicationType') }} <span class="text-red-500">*</span>
                       </label>
                       <div class="space-y-2">
                         <div class="flex items-center">
@@ -290,7 +293,7 @@ const togglePermission = (permission) => {
                             class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
                           />
                           <label for="app-type-web" class="ml-3 block text-sm text-gray-700">
-                            <span class="font-medium">Web</span> - Traditional web applications (default)
+                            <span class="font-medium">{{ $t('clients.form.applicationTypeWeb') }}</span> - {{ $t('clients.form.applicationTypeWebDesc') }}
                           </label>
                         </div>
                         <div class="flex items-center">
@@ -302,7 +305,7 @@ const togglePermission = (permission) => {
                             class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
                           />
                           <label for="app-type-native" class="ml-3 block text-sm text-gray-700">
-                            <span class="font-medium">Native</span> - Desktop/mobile apps with custom URI schemes
+                            <span class="font-medium">{{ $t('clients.form.applicationTypeNative') }}</span> - {{ $t('clients.form.applicationTypeNativeDesc') }}
                           </label>
                         </div>
                       </div>
@@ -311,7 +314,7 @@ const togglePermission = (permission) => {
                     <!-- Client Type -->
                     <div v-if="!isEdit">
                       <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Client Type <span class="text-red-500">*</span>
+                        {{ $t('clients.form.clientType') }} <span class="text-red-500">*</span>
                       </label>
                       <div class="space-y-2">
                         <div class="flex items-center">
@@ -323,7 +326,7 @@ const togglePermission = (permission) => {
                             class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
                           />
                           <label for="type-public" class="ml-3 block text-sm text-gray-700">
-                            <span class="font-medium">Public</span> - For SPAs, mobile apps, and desktop apps that cannot securely store secrets
+                            <span class="font-medium">{{ $t('clients.form.clientTypePublic') }}</span> - {{ $t('clients.form.clientTypePublicDesc') }}
                           </label>
                         </div>
                         <div class="flex items-center">
@@ -335,7 +338,7 @@ const togglePermission = (permission) => {
                             class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
                           />
                           <label for="type-confidential" class="ml-3 block text-sm text-gray-700">
-                            <span class="font-medium">Confidential</span> - For server-side apps that can securely store secrets (requires Client Secret)
+                            <span class="font-medium">{{ $t('clients.form.clientTypeConfidential') }}</span> - {{ $t('clients.form.clientTypeConfidentialDesc') }}
                           </label>
                         </div>
                       </div>
@@ -344,7 +347,7 @@ const togglePermission = (permission) => {
                     <!-- Client Secret -->
                     <div class="mb-5">
                       <label for="clientSecret" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        Client Secret {{ isEdit ? '(leave empty to keep current)' : formData.clientType === 'confidential' ? '' : '(not required for public clients)' }}
+                        {{ $t('clients.form.clientSecret') }} {{ isEdit ? $t('clients.form.clientSecretEdit') : formData.clientType === 'confidential' ? '' : $t('clients.form.clientSecretPublic') }}
                         <span v-if="!isEdit && formData.clientType === 'confidential'" class="text-red-500">*</span>
                       </label>
                       <input
@@ -359,10 +362,10 @@ const togglePermission = (permission) => {
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
                             : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
                         ]"
-                        :placeholder="formData.clientType === 'confidential' ? 'Enter a secure secret' : 'Not needed for public clients'"
+                        :placeholder="$t(formData.clientType === 'confidential' ? 'clients.form.clientSecretPlaceholder' : 'clients.form.clientSecretPublicPlaceholder')"
                       />
                       <p v-if="!fieldErrors.clientSecret" class="mt-1 text-xs text-gray-500">
-                        {{ formData.clientType === 'confidential' ? 'Required for confidential clients' : 'Public clients cannot have secrets' }}
+                        {{ $t(formData.clientType === 'confidential' ? 'clients.form.clientSecretHelp' : 'clients.form.clientSecretPublicHelp') }}
                       </p>
                       <div v-if="fieldErrors.clientSecret" class="mt-1">
                         <p v-for="(err, idx) in fieldErrors.clientSecret" :key="idx" class="text-sm text-red-600 flex items-start">
@@ -377,7 +380,7 @@ const togglePermission = (permission) => {
                     <!-- Redirect URIs -->
                     <div class="mb-5">
                       <label for="redirectUris" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        Redirect URIs <span class="text-red-500">*</span>
+                        {{ $t('clients.form.redirectUris') }} <span class="text-red-500">*</span>
                       </label>
                       <textarea
                         id="redirectUris"
@@ -390,9 +393,9 @@ const togglePermission = (permission) => {
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
                             : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
                         ]"
-                        placeholder="https://localhost:7001/signin-oidc&#10;https://myapp.com/callback"
+                        :placeholder="$t('clients.form.redirectUrisPlaceholder')"
                       ></textarea>
-                      <p v-if="!fieldErrors.redirectUris" class="mt-1 text-xs text-gray-500">One URI per line</p>
+                      <p v-if="!fieldErrors.redirectUris" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.redirectUrisHelp') }}</p>
                       <div v-if="fieldErrors.redirectUris" class="mt-1">
                         <p v-for="(err, idx) in fieldErrors.redirectUris" :key="idx" class="text-sm text-red-600 flex items-start">
                           <svg class="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -406,7 +409,7 @@ const togglePermission = (permission) => {
                     <!-- Post Logout Redirect URIs -->
                     <div class="mb-5">
                       <label for="postLogoutRedirectUris" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        Post Logout Redirect URIs
+                        {{ $t('clients.form.postLogoutRedirectUris') }}
                       </label>
                       <textarea
                         id="postLogoutRedirectUris"
@@ -418,9 +421,9 @@ const togglePermission = (permission) => {
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
                             : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
                         ]"
-                        placeholder="https://localhost:7001/signout-callback-oidc&#10;https://myapp.com/logout"
+                        :placeholder="$t('clients.form.postLogoutRedirectUrisPlaceholder')"
                       ></textarea>
-                      <p v-if="!fieldErrors.postLogoutRedirectUris" class="mt-1 text-xs text-gray-500">One URI per line</p>
+                      <p v-if="!fieldErrors.postLogoutRedirectUris" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.postLogoutRedirectUrisHelp') }}</p>
                       <div v-if="fieldErrors.postLogoutRedirectUris" class="mt-1">
                         <p v-for="(err, idx) in fieldErrors.postLogoutRedirectUris" :key="idx" class="text-sm text-red-600 flex items-start">
                           <svg class="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -434,7 +437,7 @@ const togglePermission = (permission) => {
                     <!-- Permissions -->
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Permissions <span class="text-red-500">*</span>
+                        {{ $t('clients.form.permissions') }} <span class="text-red-500">*</span>
                       </label>
                       <div v-if="fieldErrors.permissions" class="mb-2">
                         <p v-for="(err, idx) in fieldErrors.permissions" :key="idx" class="text-sm text-red-600 flex items-start">
@@ -449,7 +452,7 @@ const togglePermission = (permission) => {
                       <div class="space-y-4">
                         <div v-for="(permissions, category) in permissionsByCategory" :key="category">
                           <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                            {{ category }}
+                            {{ $t(`clients.form.categories.${category}`) }}
                           </h4>
                           <div class="grid grid-cols-2 gap-2">
                             <div
@@ -468,7 +471,7 @@ const togglePermission = (permission) => {
                               </div>
                               <div class="ml-3 text-sm">
                                 <label :for="permission.value" class="font-medium text-gray-700">
-                                  {{ permission.label }}
+                                  {{ $t(`clients.form.permissionLabels.${permission.labelKey}`) }}
                                 </label>
                               </div>
                             </div>
@@ -476,9 +479,7 @@ const togglePermission = (permission) => {
                         </div>
                       </div>
                       
-                      <p class="mt-3 text-xs text-gray-500 border-t pt-2">
-                        💡 <strong>Tip:</strong> Most OAuth/OIDC flows need at minimum: Authorization Endpoint, Token Endpoint, Authorization Code grant, and OpenID scope.
-                      </p>
+                      <p class="mt-3 text-xs text-gray-500 border-t pt-2" v-html="$t('clients.form.permissionsHelp')"></p>
                     </div>
                   </div>
                 </div>
@@ -495,7 +496,7 @@ const togglePermission = (permission) => {
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ submitting ? 'Saving...' : (isEdit ? 'Update Client' : 'Create Client') }}
+                {{ $t(submitting ? 'clients.form.saving' : (isEdit ? 'clients.form.updateButton' : 'clients.form.createButton')) }}
               </button>
               <button
                 type="button"
@@ -503,7 +504,7 @@ const togglePermission = (permission) => {
                 :disabled="submitting"
                 class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancel
+                {{ $t('clients.form.cancel') }}
               </button>
             </div>
           </form>
