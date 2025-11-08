@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import permissionService from '@/services/permissionService'
+import permissionService from '@/utils/permissionService'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import BrandingSettings from './components/BrandingSettings.vue'
 
