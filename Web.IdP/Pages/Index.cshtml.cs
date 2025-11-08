@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using System.Security.Claims;
 
 namespace Web.IdP.Pages;
 
+[Authorize]
 public class IndexModel : PageModel
 {
     private readonly ILogger<IndexModel> _logger;
@@ -26,13 +28,16 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        // Only show applications that:
+        // [Authorize] ensures user is authenticated
+        // Only show applications that user has consented to:
         // 1. Are public clients
         // 2. Have display name and redirect URIs
-        // 3. User is not authenticated OR user has given consent
+        // 3. User has given valid permanent authorization (consent)
         
-        var isAuthenticated = User.Identity?.IsAuthenticated == true;
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        
+        // First, collect all candidate applications (avoid concurrent DB operations)
+        var candidateApps = new List<(object App, string? ApplicationId, string? ClientId, string DisplayName, string LoginUrl)>();
         
         await foreach (var app in _applicationManager.ListAsync())
         {
@@ -51,40 +56,44 @@ public class IndexModel : PageModel
             }
             
             var clientId = await _applicationManager.GetClientIdAsync(app);
-            
-            // If user is authenticated, only show apps they've consented to
-            if (isAuthenticated && !string.IsNullOrEmpty(userId))
-            {
-                // Check if user has any valid authorization (consent) for this app
-                var authorizations = _authorizationManager.FindAsync(
-                    subject: userId,
-                    client: clientId,
-                    status: OpenIddictConstants.Statuses.Valid,
-                    type: OpenIddictConstants.AuthorizationTypes.Permanent,
-                    scopes: default);
-                
-                bool hasConsent = false;
-                await foreach (var auth in authorizations)
-                {
-                    hasConsent = true;
-                    break;
-                }
-                
-                if (!hasConsent)
-                {
-                    continue; // Skip apps without user consent
-                }
-            }
-            
-            // Use first redirect URI as login URL
+            var applicationId = await _applicationManager.GetIdAsync(app);
             var loginUrl = redirectUris.FirstOrDefault()?.ToString() ?? "#";
             
-            Applications.Add(new ApplicationInfo
+            candidateApps.Add((app, applicationId, clientId, displayName ?? clientId ?? "Unknown", loginUrl));
+        }
+        
+        // Filter by user consent
+        foreach (var (app, applicationId, clientId, displayName, loginUrl) in candidateApps)
+        {
+            if (applicationId == null)
             {
-                ClientId = clientId ?? "",
-                DisplayName = displayName ?? clientId ?? "Unknown",
-                LoginUrl = loginUrl
-            });
+                continue;
+            }
+            
+            // Check if user has any valid authorization (consent) for this app
+            var authorizations = _authorizationManager.FindAsync(
+                subject: userId,
+                client: applicationId,
+                status: OpenIddictConstants.Statuses.Valid,
+                type: OpenIddictConstants.AuthorizationTypes.Permanent,
+                scopes: default);
+            
+            bool hasConsent = false;
+            await foreach (var auth in authorizations)
+            {
+                hasConsent = true;
+                break;
+            }
+            
+            if (hasConsent)
+            {
+                Applications.Add(new ApplicationInfo
+                {
+                    ClientId = clientId ?? "",
+                    DisplayName = displayName,
+                    LoginUrl = loginUrl
+                });
+            }
         }
     }
 }
