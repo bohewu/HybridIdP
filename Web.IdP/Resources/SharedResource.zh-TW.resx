@@ -48,6 +48,9 @@
   <data name="WelcomeBack" xml:space="preserve">
     <value>歡迎回來！</value>
   </data>
+  <data name="BackToAppLauncher" xml:space="preserve">
+    <value>返回應用程式啟動器</value>
+  </data>
   <data name="PrivacyPolicy" xml:space="preserve">
     <value>隱私權政策</value>
   </data>
