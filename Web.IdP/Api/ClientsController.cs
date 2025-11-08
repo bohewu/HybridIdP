@@ -3,6 +3,8 @@ using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.WebUtilities;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using AuthConstants = Core.Domain.Constants.AuthConstants;
 using DomainPermissions = Core.Domain.Constants.Permissions;
@@ -170,6 +172,9 @@ public class ClientsController : ControllerBase
             return Conflict(new { message = $"Client with ID '{request.ClientId}' already exists." });
         }
 
+        string? generatedSecret = null;
+        var clientSecret = request.ClientSecret;
+
         // Determine client type - use provided or infer from secret
         var clientType = request.Type;
         if (string.IsNullOrEmpty(clientType))
@@ -183,7 +188,10 @@ public class ClientsController : ControllerBase
         {
             if (string.IsNullOrEmpty(request.ClientSecret))
             {
-                return BadRequest(new { message = "Confidential clients must have a ClientSecret." });
+                // Generate a new secret for confidential clients if not provided
+                var bytes = RandomNumberGenerator.GetBytes(32);
+                generatedSecret = Base64UrlTextEncoder.Encode(bytes);
+                clientSecret = generatedSecret;
             }
         }
         else if (clientType == ClientTypes.Public)
@@ -197,7 +205,7 @@ public class ClientsController : ControllerBase
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = request.ClientId,
-            ClientSecret = request.ClientSecret,
+            ClientSecret = clientSecret,
             DisplayName = request.DisplayName ?? request.ClientId,
             ConsentType = request.ConsentType ?? ConsentTypes.Explicit,
             ApplicationType = request.ApplicationType ?? ApplicationTypes.Web,  // Default to web if not specified
@@ -256,7 +264,8 @@ public class ClientsController : ControllerBase
             id,
             clientId = request.ClientId,
             displayName = descriptor.DisplayName,
-            message = "Client created successfully."
+            message = "Client created successfully.",
+            clientSecret = generatedSecret
         });
     }
 

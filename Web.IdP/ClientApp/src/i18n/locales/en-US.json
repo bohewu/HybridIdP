@@ -471,6 +471,13 @@
       "cancel": "Cancel",
       "validationError": "Please correct the validation errors below."
     },
+    "secretModal": {
+      "title": "Client Secret Generated",
+      "message": "The client secret has been generated successfully. This is the only time the secret will be displayed. Please copy and store it securely.",
+      "copy": "Copy Secret",
+      "copied": "Copied!",
+      "close": "Close"
+    },
     "accessDenied": {
       "create": "You do not have permission to create clients.",
       "update": "You do not have permission to update clients.",

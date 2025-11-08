@@ -20,11 +20,14 @@ const formData = ref({
   displayName: '',
   applicationType: 'web', // Default to web
   clientType: 'public', // Default to public
-  clientSecret: '',
   redirectUris: '',
   postLogoutRedirectUris: '',
   permissions: []
 })
+
+const generatedClientSecret = ref(null)
+const showSecretModal = ref(false)
+const secretCopied = ref(false)
 
 // All available permissions from OpenIddict
 const availablePermissions = computed(() => [
@@ -71,19 +74,10 @@ const schema = computed(() => z.object({
   displayName: z.string().optional(),
   applicationType: z.enum(['web', 'native']),
   clientType: z.enum(['public', 'confidential']),
-  clientSecret: z.string().optional(),
   redirectUris: z.string().min(1, t('clients.form.redirectUrisRequired')),
   postLogoutRedirectUris: z.string().optional(),
   permissions: z.array(z.string()).min(1, t('clients.form.permissionsRequired'))
 }).superRefine((val, ctx) => {
-  // Confidential requires secret on create; on edit it's optional
-  if (!isEdit.value && val.clientType === 'confidential' && (!val.clientSecret || val.clientSecret.trim() === '')) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['clientSecret'], message: t('clients.form.clientSecretRequired') })
-  }
-  // Public must not have secret
-  if (val.clientType === 'public' && val.clientSecret && val.clientSecret.trim() !== '') {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['clientSecret'], message: t('clients.form.clientSecretNotAllowed') })
-  }
   // Validate Redirect URIs lines
   const redirectLines = (val.redirectUris || '').split('\n').map(x => x.trim()).filter(x => x.length > 0)
   if (redirectLines.length === 0) {
@@ -105,13 +99,15 @@ const resetForm = () => {
     displayName: '',
     applicationType: 'web',
     clientType: 'public',
-    clientSecret: '',
     redirectUris: '',
     postLogoutRedirectUris: '',
     permissions: []
   }
   error.value = null
   fieldErrors.value = {}
+  generatedClientSecret.value = null
+  showSecretModal.value = false
+  secretCopied.value = false
 }
 
 watch(() => props.client, (newClient) => {
@@ -121,7 +117,6 @@ watch(() => props.client, (newClient) => {
       displayName: newClient.displayName || '',
       applicationType: newClient.applicationType || 'web',
       clientType: newClient.type === 'confidential' ? 'confidential' : 'public',
-      clientSecret: '',
       redirectUris: newClient.redirectUris?.join('\n') || '',
       postLogoutRedirectUris: newClient.postLogoutRedirectUris?.join('\n') || '',
       permissions: newClient.permissions || []
@@ -135,6 +130,8 @@ const handleSubmit = async () => {
   submitting.value = true
   error.value = null
   fieldErrors.value = {}
+  generatedClientSecret.value = null
+  secretCopied.value = false
 
   try {
     // Validate with Zod schema (mirrors backend rules)
@@ -156,7 +153,7 @@ const handleSubmit = async () => {
       displayName: formData.value.displayName || null,
       applicationType: formData.value.applicationType,
       type: formData.value.clientType,
-      clientSecret: formData.value.clientSecret || null,
+      clientSecret: null, // Always send null, backend will generate if needed
       redirectUris: formData.value.redirectUris
         .split('\n')
         .map(uri => uri.trim())
@@ -187,7 +184,14 @@ const handleSubmit = async () => {
       throw new Error(`HTTP error! status: ${response.status}, ${errorText}`)
     }
 
-    emit('submit')
+    const responseData = await response.json()
+
+    if (!isEdit.value && responseData.clientSecret) {
+      generatedClientSecret.value = responseData.clientSecret
+      showSecretModal.value = true
+    } else {
+      emit('submit')
+    }
   } catch (e) {
     error.value = `Failed to save client: ${e.message}`
     console.error('Error saving client:', e)
@@ -203,6 +207,21 @@ const togglePermission = (permission) => {
   } else {
     formData.value.permissions.push(permission)
   }
+}
+
+const copySecret = async () => {
+  if (generatedClientSecret.value) {
+    await navigator.clipboard.writeText(generatedClientSecret.value)
+    secretCopied.value = true
+    setTimeout(() => {
+      secretCopied.value = false
+    }, 2000)
+  }
+}
+
+const closeSecretModal = () => {
+  showSecretModal.value = false
+  emit('submit') // Signal to parent that form submission is complete
 }
 </script>
 
@@ -342,39 +361,9 @@ const togglePermission = (permission) => {
                           </label>
                         </div>
                       </div>
-                    </div>
-
-                    <!-- Client Secret -->
-                    <div class="mb-5">
-                      <label for="clientSecret" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('clients.form.clientSecret') }} {{ isEdit ? $t('clients.form.clientSecretEdit') : formData.clientType === 'confidential' ? '' : $t('clients.form.clientSecretPublic') }}
-                        <span v-if="!isEdit && formData.clientType === 'confidential'" class="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="clientSecret"
-                        v-model="formData.clientSecret"
-                        type="password"
-                        :required="!isEdit && formData.clientType === 'confidential'"
-                        :disabled="!isEdit && formData.clientType === 'public'"
-                        :class="[
-                          'block w-full rounded-md shadow-sm sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed',
-                          fieldErrors.clientSecret
-                            ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
-                            : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
-                        ]"
-                        :placeholder="$t(formData.clientType === 'confidential' ? 'clients.form.clientSecretPlaceholder' : 'clients.form.clientSecretPublicPlaceholder')"
-                      />
-                      <p v-if="!fieldErrors.clientSecret" class="mt-1 text-xs text-gray-500">
-                        {{ $t(formData.clientType === 'confidential' ? 'clients.form.clientSecretHelp' : 'clients.form.clientSecretPublicHelp') }}
+                       <p v-if="formData.clientType === 'confidential'" class="mt-2 text-xs text-gray-500">
+                        {{ $t('clients.form.clientSecretHelp') }}
                       </p>
-                      <div v-if="fieldErrors.clientSecret" class="mt-1">
-                        <p v-for="(err, idx) in fieldErrors.clientSecret" :key="idx" class="text-sm text-red-600 flex items-start">
-                          <svg class="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                          </svg>
-                          {{ err }}
-                        </p>
-                      </div>
                     </div>
 
                     <!-- Redirect URIs -->
@@ -508,6 +497,46 @@ const togglePermission = (permission) => {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Secret Display Modal -->
+  <div v-if="showSecretModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-[60]">
+    <div class="fixed inset-0 z-[60] overflow-y-auto">
+      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+        <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+          <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+              </div>
+              <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                <h3 class="text-base font-semibold leading-6 text-gray-900" id="modal-title">{{ $t('clients.secretModal.title') }}</h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500">{{ $t('clients.secretModal.message') }}</p>
+                  <div class="mt-4 relative">
+                    <input type="text" :value="generatedClientSecret" readonly
+                           class="block w-full rounded-md border-gray-300 bg-gray-50 py-2 pl-3 pr-24 text-gray-900 shadow-sm sm:text-sm font-mono" />
+                    <button type="button" @click="copySecret"
+                            class="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-indigo-600 hover:text-indigo-900">
+                      {{ secretCopied ? $t('clients.secretModal.copied') : $t('clients.secretModal.copy') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+            <button type="button"
+                    class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto"
+                    @click="closeSecretModal">
+              {{ $t('clients.secretModal.close') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>

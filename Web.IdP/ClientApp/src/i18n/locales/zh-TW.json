@@ -472,8 +472,15 @@
       "cancel": "取消",
       "validationError": "請修正以下驗證錯誤。"
     },
+    "secretModal": {
+      "title": "用戶端密鑰已產生",
+      "message": "用戶端密鑰已成功產生。這是唯一一次顯示此密鑰的機會，請立即複製並將其存放在安全的地方。",
+      "copy": "複製密鑰",
+      "copied": "已複製！",
+      "close": "關閉"
+    },
     "accessDenied": {
-      "create": "您沒有權限新增用戶端。",
+      "create": "您沒有權限建立用戶端。",
       "update": "您沒有權限更新用戶端。",
       "delete": "您沒有權限刪除用戶端。"
     }

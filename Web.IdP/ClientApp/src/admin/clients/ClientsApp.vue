@@ -252,7 +252,7 @@ watch([page, pageSize, search, typeFilter, sort], () => {
 
       <!-- Empty State -->
       <div v-else-if="!loading && clients.length === 0" class="px-6 py-12">
-        <div class="text-center text-gray-500">{{ $t('clients.noClientsMessage') }}</div>
+        <div class="text-center text-gray-500">{{ $t('clients.noClients') }}</div>
       </div>
 
       <!-- Client List -->
