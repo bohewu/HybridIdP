@@ -662,127 +662,7 @@ public class AdminController : ControllerBase
     #endregion
 
     #region Scope-to-Claims Mapping
-
-    /// <summary>
-    /// Get all claims associated with a specific scope.
-    /// </summary>
-    [HasPermission(DomainPermissions.Scopes.Read)]
-    [HttpGet("scopes/{scopeId}/claims")]
-    public async Task<IActionResult> GetScopeClaims(string scopeId)
-    {
-        // Verify scope exists
-        var scope = await _scopeManager.FindByIdAsync(scopeId);
-        if (scope == null)
-        {
-            return NotFound(new { message = $"Scope with ID '{scopeId}' not found." });
-        }
-
-        var scopeName = await _scopeManager.GetNameAsync(scope);
-
-        // Get all claims associated with this scope
-        var scopeClaims = await _context.Set<ScopeClaim>()
-            .Include(sc => sc.UserClaim)
-            .Where(sc => sc.ScopeId == scopeId)
-            .Select(sc => new ScopeClaimDto
-            {
-                Id = sc.Id,
-                ScopeId = sc.ScopeId,
-                ScopeName = sc.ScopeName,
-                ClaimId = sc.UserClaimId,
-                ClaimName = sc.UserClaim!.Name,
-                ClaimDisplayName = sc.UserClaim.DisplayName,
-                ClaimType = sc.UserClaim.ClaimType,
-                AlwaysInclude = sc.AlwaysInclude,
-                CustomMappingLogic = sc.CustomMappingLogic
-            })
-            .ToListAsync();
-
-        return Ok(new
-        {
-            scopeId,
-            scopeName,
-            claims = scopeClaims
-        });
-    }
-
-    /// <summary>
-    /// Update the claims associated with a specific scope.
-    /// </summary>
-    [HasPermission(DomainPermissions.Scopes.Update)]
-    [HttpPut("scopes/{scopeId}/claims")]
-    public async Task<IActionResult> UpdateScopeClaims(string scopeId, [FromBody] UpdateScopeClaimsRequest request)
-    {
-        // Verify scope exists
-        var scope = await _scopeManager.FindByIdAsync(scopeId);
-        if (scope == null)
-        {
-            return NotFound(new { message = $"Scope with ID '{scopeId}' not found." });
-        }
-
-        var scopeName = await _scopeManager.GetNameAsync(scope);
-
-        // Remove existing scope claims
-        var existingScopeClaims = await _context.Set<ScopeClaim>()
-            .Where(sc => sc.ScopeId == scopeId)
-            .ToListAsync();
-
-        _context.Set<ScopeClaim>().RemoveRange(existingScopeClaims);
-
-        // Add new scope claims
-        if (request.ClaimIds != null && request.ClaimIds.Any())
-        {
-            foreach (var claimId in request.ClaimIds)
-            {
-                // Verify claim exists
-                var claim = await _context.Set<UserClaim>()
-                    .FirstOrDefaultAsync(c => c.Id == claimId);
-
-                if (claim == null)
-                {
-                    return BadRequest(new { message = $"Claim with ID {claimId} not found." });
-                }
-
-                var scopeClaim = new ScopeClaim
-                {
-                    ScopeId = scopeId,
-                    ScopeName = scopeName ?? "",
-                    UserClaimId = claimId,
-                    AlwaysInclude = claim.IsRequired // Always include required claims
-                };
-
-                _context.Set<ScopeClaim>().Add(scopeClaim);
-            }
-        }
-
-        await _context.SaveChangesAsync();
-
-        // Return updated claims
-        var updatedClaims = await _context.Set<ScopeClaim>()
-            .Include(sc => sc.UserClaim)
-            .Where(sc => sc.ScopeId == scopeId)
-            .Select(sc => new ScopeClaimDto
-            {
-                Id = sc.Id,
-                ScopeId = sc.ScopeId,
-                ScopeName = sc.ScopeName,
-                ClaimId = sc.UserClaimId,
-                ClaimName = sc.UserClaim!.Name,
-                ClaimDisplayName = sc.UserClaim.DisplayName,
-                ClaimType = sc.UserClaim.ClaimType,
-                AlwaysInclude = sc.AlwaysInclude,
-                CustomMappingLogic = sc.CustomMappingLogic
-            })
-            .ToListAsync();
-
-        return Ok(new
-        {
-            scopeId,
-            scopeName,
-            claims = updatedClaims,
-            message = "Scope claims updated successfully."
-        });
-    }
-
+    // Moved to ScopeClaimsController: GET/PUT api/admin/scopes/{scopeId}/claims
     #endregion
 
     #region DTOs
@@ -848,22 +728,7 @@ public class AdminController : ControllerBase
 
     // ClaimDefinitionDto, CreateClaimRequest, UpdateClaimRequest moved to Core.Application.DTOs.ClaimDtos
 
-    public sealed class ScopeClaimDto
-    {
-        public int Id { get; set; }
-        public string ScopeId { get; set; } = string.Empty;
-        public string ScopeName { get; set; } = string.Empty;
-        public int ClaimId { get; set; }
-        public string ClaimName { get; set; } = string.Empty;
-        public string ClaimDisplayName { get; set; } = string.Empty;
-        public string ClaimType { get; set; } = string.Empty;
-        public bool AlwaysInclude { get; set; }
-        public string? CustomMappingLogic { get; set; }
-    }
-
-    public record UpdateScopeClaimsRequest(
-        List<int>? ClaimIds
-    );
+    // ScopeClaimDto, UpdateScopeClaimsRequest moved to Core.Application.DTOs.ScopeClaimDtos
 
     #endregion
 
