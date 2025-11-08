@@ -23,7 +23,7 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-end">
-                    <ul class="navbar-nav align-items-center">
+                    <ul class="navbar-nav align-items-sm-center">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             <li class="nav-item dropdown">
@@ -36,10 +36,21 @@
                                             }
                                             @initial
                                         </div>
-                                        <span class="d-none d-md-inline">@Localizer["Hello"], @User.Identity.Name</span>
+                                        <span class="user-name">@Localizer["Hello"], @User.Identity.Name</span>
                                     </div>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                    @if (User.HasClaim("permission", "users.read") || 
+                                         User.HasClaim("permission", "clients.read") || 
+                                         User.HasClaim("permission", "roles.read"))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item" href="/Admin">
+                                                <i class="bi bi-speedometer2"></i> @Localizer["AdminConsole"]
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                    }
                                     <li>
                                         <a class="dropdown-item" asp-page="/Account/Logout">
                                             <i class="bi bi-box-arrow-right"></i> @Localizer["Logout"]
@@ -61,14 +72,14 @@
                                 </a>
                             </li>
                         }
-                        <li class="nav-item dropdown ms-2">
+                        <li class="nav-item dropdown ms-sm-2">
                             <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 @{
                                     var currentCulture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
                                     var languageDisplay = currentCulture == "zh-TW" ? "繁體中文" : "English";
                                 }
                                 <i class="bi bi-translate"></i>
-                                <span id="current-language" class="d-none d-md-inline">@languageDisplay</span>
+                                <span id="current-language" class="lang-text">@languageDisplay</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
                                 <li><a class="dropdown-item" href="#" data-language="en-US">🇺🇸 English</a></li>

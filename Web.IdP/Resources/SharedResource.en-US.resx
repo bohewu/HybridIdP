@@ -153,6 +153,9 @@
   <data name="Language" xml:space="preserve">
     <value>Language</value>
   </data>
+  <data name="AdminConsole" xml:space="preserve">
+    <value>Admin Console</value>
+  </data>
   <!-- Footer -->
   <data name="FooterCopyright" xml:space="preserve">
     <value>© 2025 - HybridAuth IdP</value>

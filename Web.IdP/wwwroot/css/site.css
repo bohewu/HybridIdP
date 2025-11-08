@@ -86,6 +86,10 @@ body {
   background: #e8eaed;
 }
 
+.user-name {
+  display: none;
+}
+
 .user-avatar {
   width: 32px;
   height: 32px;
@@ -222,6 +226,37 @@ main {
 .empty-state-description {
   font-size: 0.875rem;
   color: #5f6368;
+}
+
+/* Responsive: Desktop and up */
+@media (min-width: 576px) {
+  .user-name {
+    display: inline;
+  }
+  
+  .lang-text {
+    display: inline;
+  }
+}
+
+/* Responsive: Mobile */
+@media (max-width: 575px) {
+  .google-navbar .navbar-nav {
+    padding: 0.5rem 0;
+  }
+  
+  .google-navbar .nav-item {
+    margin: 0.25rem 0;
+  }
+  
+  .user-profile {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  
+  .lang-text {
+    display: inline;
+  }
 }
 
 @media (max-width: 768px) {

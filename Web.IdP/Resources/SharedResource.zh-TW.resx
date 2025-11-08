@@ -153,6 +153,9 @@
   <data name="Language" xml:space="preserve">
     <value>語言</value>
   </data>
+  <data name="AdminConsole" xml:space="preserve">
+    <value>管理控制台</value>
+  </data>
   <!-- Footer -->
   <data name="FooterCopyright" xml:space="preserve">
     <value>© 2025 - HybridAuth IdP</value>
