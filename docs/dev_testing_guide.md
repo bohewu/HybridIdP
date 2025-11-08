@@ -6,6 +6,21 @@
 - 預設語系已設定為 **zh-TW（繁體中文）**
 - 可在 `Program.cs` 中修改支援的語系
 
+### 產品名稱 / 品牌設定（可配置）
+- 可在 `Web.IdP/appsettings*.json` 的 `Branding` 節點調整：
+  - `AppName`：短名稱（Sidebar/Logo）
+  - `ProductName`：完整產品名（頁面標題、登入卡片）
+- 例：
+  ```json
+  {
+    "Branding": {
+      "AppName": "Contoso IdP",
+      "ProductName": "Contoso Identity Provider"
+    }
+  }
+  ```
+- 目前為設定檔配置；未提供後台 UI 編輯（可作為後續增強）。
+
 ### Vite 開發伺服器設定
 - **Vite AutoRun 已關閉**（`appsettings.Development.json` → `Vite.Server.AutoRun: false`）
 - 原因：Vite.AspNetCore 的 AutoRun 有時會不穩定
@@ -126,6 +141,8 @@ Admin Portal
 **預期結果**：
 - ✅ 預設語系為 zh-TW
 - ✅ 可透過語系切換器切換到 en-US
+- ✅ 登入頁面顯示「電子郵件或使用者名稱 / 密碼 / 記住我？」
+- ✅ 頁面品牌顯示為 `Branding.ProductName`
 
 ---
 

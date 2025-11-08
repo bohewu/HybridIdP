@@ -268,6 +268,64 @@ Phase 4 全部子階段（4.4–4.7）已完成，後續開發將聚焦於 Phase
 - [ ] Policies apply consistently across all password change flows
 
 **預計完成時間：** 1 開發 session
+
+---
+
+### Phase 5.5a (Deferred / Stretch): Settings Key/Value Store & Dynamic Branding
+
+**狀態：** 記錄於此以便 Phase 5 後期或 Phase 6 早期納入。核心登入/使用者體驗優先，故暫緩。
+
+**目標：** 建立通用的系統設定儲存（Key/Value）機制，支援動態品牌名稱、後續 Email/Security 相關設定集中化。
+
+**資料庫 (提案)：** `Settings` 資料表
+
+| Column | Type | Notes |
+| ------ | ---- | ----- |
+| Id | uuid / bigint | 主鍵 |
+| Key | text (unique) | 命名建議：`branding.appName`, `branding.productName`, `security.password.minLength` |
+| Value | text | 原始字串；可 JSON 儲存複合結構 |
+| DataType | varchar(50) | string, int, bool, json |
+| UpdatedUtc | timestamp | 最後更新時間，用於快取失效 |
+| UpdatedBy | string | 管理員帳號/Id |
+
+**服務介面：**
+```csharp
+public interface ISettingsService {
+  Task<string?> GetValueAsync(string key, CancellationToken ct = default);
+  Task<T?> GetValueAsync<T>(string key, CancellationToken ct = default);
+  Task SetValueAsync(string key, object value, string? updatedBy = null, CancellationToken ct = default);
+  Task<IDictionary<string,string>> GetByPrefixAsync(string prefix, CancellationToken ct = default);
+}
+```
+
+**快取策略：**
+- MemoryCache + ETag/UpdatedUtc 比對
+- 讀取 Key 時若快取不存在或過期（超過 N 分鐘或 UpdatedUtc 變更）則回源 DB
+- 後續可升級 Redis（Phase 6+）
+
+**品牌整合：**
+- 目前 `BrandingOptions` 讀取 appsettings → 日後改為 SettingsService fallback 順序：DB > appsettings > 內建預設
+- UI 管理（未實作）：`/Admin/Settings` → Vue SPA (Phase 5.5a 或 6.1)
+
+**API（預留路由草稿）：**
+- `GET /api/admin/settings?prefix=branding.`
+- `PUT /api/admin/settings/branding.appName` (body: { value: "Contoso" })
+- `PUT /api/admin/settings/branding.productName`
+
+**權限需求：**
+- 新增 permissions: `settings.read`, `settings.update`
+
+**驗證 / 測試：**
+- 單元測試：設定 CRUD、類型轉換、快取失效
+- 整合測試：更新品牌後重新載入頁面顯示新名稱
+
+**風險 & 緩解：**
+- 過度抽象 → 先最小可行：字串/數值型支援，再擴充 JSON
+- 熱更新延遲 → 提供 `POST /api/admin/settings/invalidate-cache`
+
+**未來延伸：** Email SMTP、Token Lifetime、Password Policy 視覺化編輯、Turnstile 參數
+
+---
  
 ---
 

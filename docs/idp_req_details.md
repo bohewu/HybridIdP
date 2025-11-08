@@ -1103,6 +1103,12 @@ Phase 4 establishes comprehensive user and role management with a modern admin i
   - **Verification:** The system correctly enforces the configured password policies during login and password changes.
   - **Agent Question:** "Phase 5.5 is complete. **May I proceed to Phase 5.6?**"
 
+- **5.5a (Deferred): Settings Key/Value Store & Dynamic Branding**
+  - Goal: Introduce a general `Settings` store (Key/Value) to centralize runtime configuration like Branding (AppName/ProductName) and future Email/Security options.
+  - Storage: `Settings` table (Key unique, Value string/JSON, DataType, UpdatedUtc, UpdatedBy).
+  - Service: `ISettingsService` with typed read/write and prefix queries; MemoryCache with UpdatedUtc invalidation; optional Redis later.
+  - UI/API: Admin Settings UI and endpoints are planned but may land in Phase 6; in Phase 5 only the foundation is tracked.
+
 - **5.6: Consent Screen Management & API Resource Scopes** *(Moved from Phase 3.9B)*
   - Goal: Provide rich consent screen customization and support for API resource protection.
   - **Part 1: Consent Screen Customization**
