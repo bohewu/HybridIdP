@@ -105,6 +105,10 @@
                 @if (userPermissions.HasPermission(Permissions.Settings.Read))
                 {
                     <div class="nav-section-title">@Localizer["Settings"]</div>
+                    <a href="/Admin/Settings" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Settings" ? "active" : "")">
+                        <i class="bi bi-gear"></i>
+                        <span>@Localizer["Settings"]</span>
+                    </a>
                     <a href="/Admin/SecurityPolicies" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SecurityPolicies" ? "active" : "")">
                         <i class="bi bi-lock"></i>
                         <span>@Localizer["SecurityPolicies"]</span>

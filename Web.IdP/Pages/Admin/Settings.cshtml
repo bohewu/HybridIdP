@@ -1,0 +1,10 @@
+@page
+@model Web.IdP.Pages.Admin.SettingsModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["Settings"].Value;
+    ViewData["Breadcrumb"] = Localizer["Settings"].Value;
+}
+
+<div id="app" class="vue-app-container"></div>
+<script type="module" vite-src="~/src/admin/settings/main.js"></script>

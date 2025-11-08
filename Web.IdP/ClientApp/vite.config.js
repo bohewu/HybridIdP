@@ -24,7 +24,8 @@ export default defineConfig({
         'admin-scopes': './src/admin/scopes/main.js',
         'admin-claims': './src/admin/claims/main.js',
         'admin-users': './src/admin/users/main.js',
-        'admin-roles': './src/admin/roles/main.js'
+        'admin-roles': './src/admin/roles/main.js',
+        'admin-settings': './src/admin/settings/main.js'
       }
     }
   },

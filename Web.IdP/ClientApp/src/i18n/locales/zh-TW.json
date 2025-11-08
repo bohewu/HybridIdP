@@ -226,6 +226,27 @@
       "noClaims": "沒有找到 Claims",
       "loading": "載入中..."
     },
+    "settings": {
+      "pageTitle": "系統設定",
+      "pageSubtitle": "管理系統設定與品牌資訊",
+      "loading": "載入設定中...",
+      "loadingError": "載入設定失敗：{message}",
+      "saveSuccess": "設定已成功儲存。",
+      "saveError": "儲存設定失敗：{message}",
+      "brandingSection": "品牌設定",
+      "brandingSectionDesc": "自訂應用程式品牌與顯示名稱",
+      "appName": "應用程式名稱",
+      "appNamePlaceholder": "例如：HybridAuth",
+      "appNameHelp": "顯示於瀏覽器分頁標題與管理介面",
+      "productName": "產品名稱",
+      "productNamePlaceholder": "例如：HybridAuth IdP",
+      "productNameHelp": "顯示於頁面標題與品牌資訊",
+      "saveButton": "儲存變更",
+      "saving": "儲存中...",
+      "cancelButton": "取消",
+      "noChanges": "沒有變更需要儲存。",
+      "confirmCancel": "您有未儲存的變更，確定要取消嗎？"
+    },
     "common": {
       "yes": "是",
       "no": "否",
