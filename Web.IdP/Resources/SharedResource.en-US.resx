@@ -131,4 +131,33 @@
   <data name="DevelopmentDescription2" xml:space="preserve">
     <value><strong>The Development environment shouldn't be enabled for deployed applications.</strong> It can result in displaying sensitive information from exceptions to end users. For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong> and restarting the app.</value>
   </data>
+  <!-- Navbar -->
+  <data name="Home" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="Hello" xml:space="preserve">
+    <value>Hello</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>Logout</value>
+  </data>
+  <data name="Register" xml:space="preserve">
+    <value>Register</value>
+  </data>
+  <data name="Login" xml:space="preserve">
+    <value>Login</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <!-- Footer -->
+  <data name="FooterCopyright" xml:space="preserve">
+    <value>© 2025 - HybridAuth IdP</value>
+  </data>
+  <data name="AllRightsReserved" xml:space="preserve">
+    <value>All rights reserved</value>
+  </data>
 </root>

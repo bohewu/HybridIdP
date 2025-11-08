@@ -22,17 +22,23 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        // TODO: In the future, filter applications based on user permissions
-        // For now, show all public clients that have a valid redirect URI
+        // Only show public clients with redirect URIs
+        // Confidential clients (server-side apps) shouldn't appear in user app launcher
         
         await foreach (var app in _applicationManager.ListAsync())
         {
-            var clientId = await _applicationManager.GetClientIdAsync(app);
+            var clientType = await _applicationManager.GetClientTypeAsync(app);
             var displayName = await _applicationManager.GetDisplayNameAsync(app);
             var redirectUris = await _applicationManager.GetRedirectUrisAsync(app);
             
-            if (!string.IsNullOrEmpty(displayName) && redirectUris.Any())
+            // Filter: Only public clients with display name and redirect URIs
+            bool isPublicClient = clientType == OpenIddictConstants.ClientTypes.Public;
+            bool hasDisplayName = !string.IsNullOrEmpty(displayName);
+            bool hasRedirectUri = redirectUris.Any();
+            
+            if (isPublicClient && hasDisplayName && hasRedirectUri)
             {
+                var clientId = await _applicationManager.GetClientIdAsync(app);
                 // Use first redirect URI as login URL
                 var loginUrl = redirectUris.FirstOrDefault()?.ToString() ?? "#";
                 

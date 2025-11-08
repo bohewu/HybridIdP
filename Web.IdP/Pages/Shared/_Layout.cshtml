@@ -1,4 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Localization
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,14 +7,110 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - HybridAuth IdP</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Web.IdP.styles.css" asp-append-version="true" />
+    <style>
+        /* Google-style navbar */
+        .google-navbar {
+            background: #fff;
+            border-bottom: 1px solid #e8eaed;
+            padding: 0.5rem 1rem;
+            box-shadow: none;
+        }
+        
+        .google-navbar .navbar-brand {
+            font-size: 1.375rem;
+            font-weight: 400;
+            color: #5f6368;
+            letter-spacing: -0.5px;
+        }
+        
+        .google-navbar .nav-link {
+            color: #5f6368;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        
+        .google-navbar .nav-link:hover {
+            background: #f1f3f4;
+            color: #202124;
+        }
+        
+        .google-navbar .nav-link.active {
+            background: #e8f0fe;
+            color: #1967d2;
+        }
+        
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 20px;
+            background: #f1f3f4;
+            color: #202124;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        
+        .google-footer {
+            background: #f8f9fa;
+            border-top: 1px solid #e8eaed;
+            padding: 1.5rem 0;
+            margin-top: 4rem;
+        }
+        
+        .google-footer .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #5f6368;
+            font-size: 0.875rem;
+        }
+        
+        .google-footer a {
+            color: #5f6368;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .google-footer a:hover {
+            color: #202124;
+        }
+        
+        @@media (max-width: 768px) {
+            .google-footer .footer-content {
+                flex-direction: column;
+                gap: 0.5rem;
+                text-align: center;
+            }
+        }
+    </style>
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">HybridAuth IdP</a>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm google-navbar">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-page="/Index">
+                    <i class="bi bi-shield-lock"></i> HybridAuth IdP
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -21,42 +118,66 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
+                            <a class="nav-link" asp-area="" asp-page="/Index">
+                                <i class="bi bi-house-door"></i> @Localizer["Home"]
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Privacy">Privacy</a>
+                            <a class="nav-link" asp-area="" asp-page="/Privacy">
+                                <i class="bi bi-shield-check"></i> @Localizer["Privacy"]
+                            </a>
                         </li>
                     </ul>
-                    <ul class="navbar-nav">
+                    <ul class="navbar-nav align-items-center">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <li class="nav-item">
-                                <span class="nav-link text-dark">Hello, @User.Identity.Name!</span>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Account/Logout">Logout</a>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle p-0" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <div class="user-profile">
+                                        <div class="user-avatar">
+                                            @{
+                                                var userName = User.Identity.Name ?? "?";
+                                                var initial = string.IsNullOrEmpty(userName) ? "?" : userName.Substring(0, 1).ToUpper();
+                                            }
+                                            @initial
+                                        </div>
+                                        <span class="d-none d-md-inline">@Localizer["Hello"], @User.Identity.Name</span>
+                                    </div>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                    <li>
+                                        <a class="dropdown-item" asp-page="/Account/Logout">
+                                            <i class="bi bi-box-arrow-right"></i> @Localizer["Logout"]
+                                        </a>
+                                    </li>
+                                </ul>
                             </li>
                         }
                         else
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Account/Register">Register</a>
+                                <a class="nav-link" asp-page="/Account/Login">
+                                    <i class="bi bi-box-arrow-in-right"></i> @Localizer["Login"]
+                                </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Account/Login">Login</a>
+                                <a class="nav-link" asp-page="/Account/Register">
+                                    <i class="bi bi-person-plus"></i> @Localizer["Register"]
+                                </a>
                             </li>
                         }
-                        <li class="nav-item dropdown">
+                        <li class="nav-item dropdown ms-2">
                             <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 @{
                                     var currentCulture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
                                     var languageDisplay = currentCulture == "zh-TW" ? "繁體中文" : "English";
                                 }
-                                <span id="current-language">@languageDisplay</span>
+                                <i class="bi bi-translate"></i>
+                                <span id="current-language" class="d-none d-md-inline">@languageDisplay</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
-                                <li><a class="dropdown-item" href="#" data-language="en-US">English</a></li>
-                                <li><a class="dropdown-item" href="#" data-language="zh-TW">繁體中文</a></li>
+                                <li><a class="dropdown-item" href="#" data-language="en-US">🇺🇸 English</a></li>
+                                <li><a class="dropdown-item" href="#" data-language="zh-TW">🇹🇼 繁體中文</a></li>
                             </ul>
                         </li>
                     </ul>
@@ -70,9 +191,18 @@
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
+    <footer class="google-footer">
         <div class="container">
-            &copy; 2025 - HybridAuth IdP - <a asp-area="" asp-page="/Privacy">Privacy</a>
+            <div class="footer-content">
+                <div>
+                    @Localizer["FooterCopyright"] • @Localizer["AllRightsReserved"]
+                </div>
+                <div>
+                    <a asp-area="" asp-page="/Privacy">
+                        <i class="bi bi-shield-check"></i> @Localizer["Privacy"]
+                    </a>
+                </div>
+            </div>
         </div>
     </footer>
 

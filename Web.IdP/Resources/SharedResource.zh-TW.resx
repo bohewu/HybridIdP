@@ -131,4 +131,33 @@
   <data name="DevelopmentDescription2" xml:space="preserve">
     <value><strong>已部署的應用程式不應啟用 Development 環境。</strong>這可能會導致向終端使用者顯示例外狀況的敏感資訊。對於本地偵錯，請將 <strong>ASPNETCORE_ENVIRONMENT</strong> 環境變數設定為 <strong>Development</strong> 並重新啟動應用程式，以啟用 <strong>Development</strong> 環境。</value>
   </data>
+  <!-- Navbar -->
+  <data name="Home" xml:space="preserve">
+    <value>首頁</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>隱私權</value>
+  </data>
+  <data name="Hello" xml:space="preserve">
+    <value>您好</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>登出</value>
+  </data>
+  <data name="Register" xml:space="preserve">
+    <value>註冊</value>
+  </data>
+  <data name="Login" xml:space="preserve">
+    <value>登入</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>語言</value>
+  </data>
+  <!-- Footer -->
+  <data name="FooterCopyright" xml:space="preserve">
+    <value>© 2025 - HybridAuth IdP</value>
+  </data>
+  <data name="AllRightsReserved" xml:space="preserve">
+    <value>版權所有</value>
+  </data>
 </root>
