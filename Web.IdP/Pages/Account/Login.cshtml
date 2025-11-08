@@ -1,6 +1,7 @@
 @page
 @model Web.IdP.Pages.Account.LoginModel
 @using Microsoft.Extensions.Localization
+@using Web.IdP.Options
 @using Microsoft.AspNetCore.Localization
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
@@ -29,7 +30,8 @@
 
         <div class="auth-card">
             <div class="auth-logo">
-                <h1>HybridAuth IdP</h1>
+                @inject Microsoft.Extensions.Options.IOptions<BrandingOptions> Branding
+                <h1>@Branding.Value.ProductName</h1>
             </div>
 
             <h2 class="auth-title">@ViewData["Title"]</h2>

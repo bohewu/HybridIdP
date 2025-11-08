@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Razor;
 using OpenIddict.Abstractions;
 using Vite.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using Web.IdP.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -103,6 +104,9 @@ builder.Services.AddLocalization(options => options.ResourcesPath = "Resources")
 builder.Services.AddMvc()
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
     .AddDataAnnotationsLocalization();
+
+// Branding options
+builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
 
 // Configure authorization with permission-based policies
 builder.Services.AddAuthorization(options =>

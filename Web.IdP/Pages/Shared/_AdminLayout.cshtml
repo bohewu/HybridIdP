@@ -2,6 +2,7 @@
 @using Core.Domain.Constants
 @using Microsoft.AspNetCore.Identity
 @using Web.IdP.Helpers
+@using Web.IdP.Options
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<ApplicationRole> RoleManager
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
@@ -18,7 +19,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
     <meta name="locale" content="@currentCulture" />
-    <title>@ViewData["Title"] - HybridAuth IdP Admin</title>
+    @inject Microsoft.Extensions.Options.IOptions<BrandingOptions> Branding
+    <title>@ViewData["Title"] - @Branding.Value.ProductName Admin</title>
     
     @* Bootstrap 5 CSS *@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -37,7 +39,7 @@
                     <i class="bi bi-shield-check"></i>
                 </div>
                 <div class="sidebar-brand-text">
-                    <h1>HybridAuth</h1>
+                    <h1>@Branding.Value.AppName</h1>
                     <p>@Localizer["AdminPortal"]</p>
                 </div>
             </a>
@@ -181,7 +183,7 @@
             @* Footer *@
             <footer class="admin-footer">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-center text-muted small">
-                    <p class="mb-2 mb-md-0">© @DateTime.Now.Year HybridAuth IdP. All rights reserved.</p>
+                    <p class="mb-2 mb-md-0">© @DateTime.Now.Year @Branding.Value.ProductName. All rights reserved.</p>
                     <div class="d-flex gap-3">
                         <a href="/Privacy" class="text-decoration-none text-muted">@Localizer["PrivacyPolicy"]</a>
                         <span>|</span>
