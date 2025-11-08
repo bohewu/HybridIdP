@@ -134,6 +134,10 @@ builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, MyUserC
 // Identity management services
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
+// Settings + Branding services
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ISettingsService, SettingsService>();
+builder.Services.AddScoped<IBrandingService, BrandingService>();
 
 var app = builder.Build();
 

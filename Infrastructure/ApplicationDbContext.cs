@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Domain;
 using Core.Domain.Entities;
+using Core.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     // Custom claim definitions (different from IdentityUserClaim)
     DbSet<UserClaim> IApplicationDbContext.UserClaims => Set<UserClaim>();
     public DbSet<ScopeClaim> ScopeClaims => Set<ScopeClaim>();
+    public DbSet<Setting> Settings => Set<Setting>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -61,6 +63,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .WithMany(c => c.ScopeClaims)
                 .HasForeignKey(e => e.UserClaimId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure Setting entity
+        builder.Entity<Setting>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Key).IsUnique();
+            entity.Property(e => e.Key).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Value).HasColumnType("text");
+            // Store enum as string for readability
+            entity.Property(e => e.DataType)
+                .HasConversion<string>()
+                .HasMaxLength(50)
+                .IsRequired();
+            entity.Property(e => e.UpdatedUtc).IsRequired();
+            entity.Property(e => e.UpdatedBy).HasMaxLength(200);
         });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.
