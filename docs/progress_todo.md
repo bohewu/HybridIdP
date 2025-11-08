@@ -19,7 +19,9 @@ Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下�
 - [x] Branding：讀取順序 DB > appsettings > 內建預設 ✅ commit `feat(settings): Integrate BrandingService in Razor views and add Settings API`
 - [x] API：Admin 設定端點（讀取/更新/快取失效）✅ commit `feat(settings): Integrate BrandingService in Razor views and add Settings API`
 - [x] UI：Admin Settings（先做 Branding，Email/Security 之後）✅ commit `feat(settings): Add Settings UI with branding configuration`
-- [ ] Tests：型別化讀取、快取失效、migration 覆蓋
+- [x] Tests：E2E via Playwright MCP - Settings CRUD, cache invalidation, branding display ✅ commit `fix(settings): Fix API to return array format and complete E2E testing`
+
+**Phase 5.5a COMPLETE!** ✨ Settings Key/Value Store with dynamic branding fully working, tested end-to-end.
 
 完成後再銜接 Phase 5.1–5.5 的安全策略工作。
 

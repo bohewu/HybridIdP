@@ -30,8 +30,17 @@ public class SettingsController : ControllerBase
             return BadRequest(new { error = "Prefix parameter is required" });
         }
 
-        var settings = await _settings.GetByPrefixAsync(prefix);
-        return Ok(settings);
+        var settingsDict = await _settings.GetByPrefixAsync(prefix);
+        
+        // Convert dictionary to array of objects with key, value, dataType
+        var settingsArray = settingsDict.Select(kvp => new
+        {
+            key = kvp.Key,
+            value = kvp.Value,
+            dataType = "String" // For now, all settings are strings in the dict
+        }).ToArray();
+        
+        return Ok(settingsArray);
     }
 
     /// <summary>
