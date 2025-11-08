@@ -185,6 +185,30 @@
   <data name="InvalidLoginAttempt" xml:space="preserve">
     <value>Invalid login attempt.</value>
   </data>
+  <data name="EmailOrUsername" xml:space="preserve">
+    <value>Email or Username</value>
+  </data>
+  <data name="EmailOrUsernameLabel" xml:space="preserve">
+    <value>Email or Username</value>
+  </data>
+  <data name="SignInToContinue" xml:space="preserve">
+    <value>Sign in to continue</value>
+  </data>
+  <data name="CompleteCaptcha" xml:space="preserve">
+    <value>Please complete the CAPTCHA verification.</value>
+  </data>
+  <data name="CaptchaValidationFailed" xml:space="preserve">
+    <value>CAPTCHA validation failed. Please try again.</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="RememberMe" xml:space="preserve">
+    <value>Remember me?</value>
+  </data>
+  <data name="DontHaveAccountRegister" xml:space="preserve">
+    <value>Don't have an account? Register</value>
+  </data>
   <!-- Footer -->
   <data name="FooterCopyright" xml:space="preserve">
     <value>© 2025 - HybridAuth IdP</value>

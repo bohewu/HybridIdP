@@ -48,9 +48,8 @@ public class LoginModel : PageModel
     public class InputModel
     {
         [Required]
-        [EmailAddress]
-        [Display(Name = "Email")]
-        public string Email { get; set; } = default!;
+    [Display(Name = "EmailOrUsernameLabel")]
+    public string Login { get; set; } = default!;
 
         [Required]
         [DataType(DataType.Password)]
@@ -84,7 +83,7 @@ public class LoginModel : PageModel
                 var turnstileResponse = Request.Form["cf-turnstile-response"].ToString();
                 if (string.IsNullOrEmpty(turnstileResponse))
                 {
-                    ModelState.AddModelError(string.Empty, "Please complete the CAPTCHA verification.");
+                    ModelState.AddModelError(string.Empty, _localizer["CompleteCaptcha"]);
                     return Page();
                 }
 
@@ -94,7 +93,7 @@ public class LoginModel : PageModel
 
                 if (!isValid)
                 {
-                    ModelState.AddModelError(string.Empty, "CAPTCHA validation failed. Please try again.");
+                    ModelState.AddModelError(string.Empty, _localizer["CaptchaValidationFailed"]);
                     return Page();
                 }
             }
@@ -102,8 +101,8 @@ public class LoginModel : PageModel
             // Phase 2.3: Try local account first, then legacy auth with JIT provisioning
             // First, try local account authentication (for admin and other local users)
             // Try to find user by email first, then by username if not found
-            var localUser = await _signInManager.UserManager.FindByEmailAsync(Input.Email) 
-                         ?? await _signInManager.UserManager.FindByNameAsync(Input.Email);
+            var localUser = await _signInManager.UserManager.FindByEmailAsync(Input.Login) 
+                         ?? await _signInManager.UserManager.FindByNameAsync(Input.Login);
             if (localUser != null)
             {
                 // Use the actual username for sign-in (PasswordSignInAsync expects username, not email)
@@ -116,7 +115,7 @@ public class LoginModel : PageModel
             }
 
             // If local auth failed or user doesn't exist locally, try legacy auth + JIT
-            var legacyResult = await _legacyAuthService.ValidateAsync(Input.Email, Input.Password);
+            var legacyResult = await _legacyAuthService.ValidateAsync(Input.Login, Input.Password);
             if (!legacyResult.IsAuthenticated)
             {
                 ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);

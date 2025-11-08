@@ -114,10 +114,10 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center gap-2">
                         <div class="user-avatar">
-                            @(User.Identity?.Name?.Substring(0, 2).ToUpper() ?? "AD")
+                            @((User?.Identity?.Name ?? User?.FindFirst("preferred_username")?.Value ?? "AD").Substring(0, Math.Min(2, (User?.Identity?.Name ?? User?.FindFirst("preferred_username")?.Value ?? "AD").Length)).ToUpper())
                         </div>
                         <div class="flex-grow-1">
-                            <div class="fw-medium small text-truncate user-info-name">@User.Identity?.Name</div>
+                            <div class="fw-medium small text-truncate user-info-name">@(User?.FindFirst("preferred_username")?.Value ?? User?.Identity?.Name)</div>
                                 <div class="text-muted user-info-role">@Localizer["Administrator"]</div>
                         </div>
                     </div>

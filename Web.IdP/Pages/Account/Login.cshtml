@@ -1,8 +1,8 @@
 @page
 @model Web.IdP.Pages.Account.LoginModel
-@using Microsoft.AspNetCore.Mvc.Localization
+@using Microsoft.Extensions.Localization
 @using Microsoft.AspNetCore.Localization
-@inject IViewLocalizer Localizer
+@inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
     ViewData["Title"] = Localizer["Login"];
     Layout = null;
@@ -33,7 +33,7 @@
             </div>
 
             <h2 class="auth-title">@ViewData["Title"]</h2>
-            <p class="auth-subtitle">@Localizer["Sign in to continue"]</p>
+            <p class="auth-subtitle">@Localizer["SignInToContinue"]</p>
 
             <form method="post" class="auth-form">
                 <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
@@ -41,9 +41,9 @@
                 <input type="hidden" asp-for="ReturnUrl" />
                 
                 <div class="mb-3">
-                    <label for="Input_Email" class="form-label">@Localizer["Email"]</label>
-                    <input asp-for="Input.Email" class="form-control" placeholder="@Localizer["Email"]" autocomplete="username" autofocus />
-                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                    <label for="Input_Login" class="form-label">@Localizer["EmailOrUsername"]</label>
+                    <input asp-for="Input.Login" type="text" class="form-control" placeholder="@Localizer["EmailOrUsername"]" autocomplete="username" autofocus aria-label="@Localizer["EmailOrUsername"]" />
+                    <span asp-validation-for="Input.Login" class="text-danger"></span>
                 </div>
                 
                 <div class="mb-3">
@@ -54,7 +54,7 @@
                 
                 <div class="form-check">
                     <input asp-for="Input.RememberMe" class="form-check-input" />
-                    <label for="Input_RememberMe" class="form-check-label">@Localizer["Remember me?"]</label>
+                    <label for="Input_RememberMe" class="form-check-label">@Localizer["RememberMe"]</label>
                 </div>
                 
                 @if (Model.TurnstileEnabled)
@@ -69,7 +69,7 @@
                 </div>
                 
                 <div class="auth-footer">
-                    <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="auth-link">@Localizer["Don't have an account? Register"]</a>
+                    <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="auth-link">@Localizer["DontHaveAccountRegister"]</a>
                 </div>
             </form>
         </div>

@@ -162,7 +162,7 @@ public class UserManagementService : IUserManagementService
         var user = new ApplicationUser
         {
             Email = createDto.Email,
-            UserName = createDto.UserName ?? createDto.Email,
+            UserName = createDto.UserName,
             FirstName = createDto.FirstName,
             LastName = createDto.LastName,
             PhoneNumber = createDto.PhoneNumber,
@@ -209,7 +209,10 @@ public class UserManagementService : IUserManagementService
 
         // Update properties
         user.Email = updateDto.Email;
-        user.UserName = updateDto.UserName ?? updateDto.Email;
+        if (updateDto.UserName != null)
+        {
+            user.UserName = updateDto.UserName;
+        }
         user.FirstName = updateDto.FirstName;
         user.LastName = updateDto.LastName;
         user.MiddleName = updateDto.MiddleName;
