@@ -393,14 +393,16 @@
     "noDisplayName": "No display name",
     "redirectUris": "{count} redirect URI(s)",
     "confirmDelete": "Are you sure you want to delete this client?",
+    "actions": {
+      "edit": "Edit Client",
+      "delete": "Delete Client",
+      "regenerateSecret": "Regenerate Secret",
+      "regenerateSecretConfirm": "Are you sure you want to regenerate the secret for \"{clientId}\"? The old secret will stop working immediately.",
+      "noActions": "No actions available"
+    },
     "clientType": {
       "public": "Public",
       "confidential": "Confidential"
-    },
-    "actions": {
-      "edit": "Edit",
-      "delete": "Delete",
-      "noActions": "No actions available"
     },
     "form": {
       "createTitle": "Create New Client",

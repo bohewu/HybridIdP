@@ -379,4 +379,40 @@ public class ClientsController : ControllerBase
 
         return Ok(new { message = "Client deleted successfully." });
     }
+
+    /// <summary>
+    /// Regenerate the secret for a confidential client.
+    /// </summary>
+    [HttpPost("{id}/regenerate-secret")]
+    [HasPermission(DomainPermissions.Clients.Update)]
+    public async Task<IActionResult> RegenerateSecret(string id)
+    {
+        var application = await _applicationManager.FindByIdAsync(id);
+        if (application == null)
+        {
+            return NotFound(new { message = $"Client with ID '{id}' not found." });
+        }
+
+        var clientType = await _applicationManager.GetClientTypeAsync(application);
+        if (clientType != ClientTypes.Confidential)
+        {
+            return BadRequest(new { message = "Secret regeneration is only available for confidential clients." });
+        }
+
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        var newSecret = Base64UrlTextEncoder.Encode(bytes);
+
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await _applicationManager.PopulateAsync(descriptor, application);
+        descriptor.ClientSecret = newSecret;
+
+        await _applicationManager.PopulateAsync(application, descriptor);
+        await _applicationManager.UpdateAsync(application);
+
+        return Ok(new
+        {
+            message = "Client secret regenerated successfully.",
+            clientSecret = newSecret
+        });
+    }
 }

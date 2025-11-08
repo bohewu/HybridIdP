@@ -401,6 +401,8 @@
     "actions": {
       "edit": "編輯",
       "delete": "刪除",
+      "regenerateSecret": "重新產生密鑰",
+      "regenerateSecretConfirm": "您確定要為 \"{clientId}\" 重新產生密鑰嗎？舊密鑰將立即失效。",
       "noActions": "無可用操作"
     },
     "form": {
