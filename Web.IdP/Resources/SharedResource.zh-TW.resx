@@ -156,6 +156,16 @@
   <data name="AdminConsole" xml:space="preserve">
     <value>管理控制台</value>
   </data>
+  <!-- Index Page - App Launcher -->
+  <data name="DisconnectApp" xml:space="preserve">
+    <value>中斷連接</value>
+  </data>
+  <data name="DisconnectAppConfirm" xml:space="preserve">
+    <value>確定要中斷與此應用程式的連接嗎？下次登入時需要重新授權。</value>
+  </data>
+  <data name="AppDisconnected" xml:space="preserve">
+    <value>應用程式已成功中斷連接</value>
+  </data>
   <!-- Footer -->
   <data name="FooterCopyright" xml:space="preserve">
     <value>© 2025 - HybridAuth IdP</value>

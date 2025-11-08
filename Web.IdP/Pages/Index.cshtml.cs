@@ -91,10 +91,37 @@ public class IndexModel : PageModel
                 {
                     ClientId = clientId ?? "",
                     DisplayName = displayName,
-                    LoginUrl = loginUrl
+                    LoginUrl = loginUrl,
+                    ApplicationId = applicationId
                 });
             }
         }
+    }
+    
+    public async Task<IActionResult> OnPostDisconnectAsync(string applicationId)
+    {
+        if (string.IsNullOrEmpty(applicationId))
+        {
+            return BadRequest();
+        }
+        
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        
+        // Find and delete all authorizations for this user and application
+        var authorizations = _authorizationManager.FindAsync(
+            subject: userId,
+            client: applicationId,
+            status: OpenIddictConstants.Statuses.Valid,
+            type: OpenIddictConstants.AuthorizationTypes.Permanent,
+            scopes: default);
+        
+        await foreach (var authorization in authorizations)
+        {
+            await _authorizationManager.DeleteAsync(authorization);
+        }
+        
+        // Return success - page will reload via JavaScript
+        return new JsonResult(new { success = true });
     }
 }
 
@@ -103,4 +130,5 @@ public class ApplicationInfo
     public string ClientId { get; set; } = "";
     public string DisplayName { get; set; } = "";
     public string LoginUrl { get; set; } = "";
+    public string? ApplicationId { get; set; }
 }

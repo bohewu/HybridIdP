@@ -156,6 +156,16 @@
   <data name="AdminConsole" xml:space="preserve">
     <value>Admin Console</value>
   </data>
+  <!-- Index Page - App Launcher -->
+  <data name="DisconnectApp" xml:space="preserve">
+    <value>Disconnect</value>
+  </data>
+  <data name="DisconnectAppConfirm" xml:space="preserve">
+    <value>Are you sure you want to disconnect this application? You will need to authorize it again on next login.</value>
+  </data>
+  <data name="AppDisconnected" xml:space="preserve">
+    <value>Application disconnected successfully</value>
+  </data>
   <!-- Footer -->
   <data name="FooterCopyright" xml:space="preserve">
     <value>© 2025 - HybridAuth IdP</value>

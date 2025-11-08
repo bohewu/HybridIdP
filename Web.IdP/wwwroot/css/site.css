@@ -148,6 +148,11 @@ main {
   margin-top: 2rem;
 }
 
+.app-card-wrapper {
+  position: relative;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
 .app-card {
   display: flex;
   flex-direction: column;
@@ -167,6 +172,38 @@ main {
   box-shadow: 0 1px 3px rgba(60,64,67,0.3), 0 4px 8px rgba(60,64,67,0.15);
   transform: translateY(-2px);
   text-decoration: none;
+}
+
+.app-disconnect-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+  color: #5f6368;
+  font-size: 14px;
+  box-shadow: 0 1px 2px rgba(60,64,67,0.3);
+  z-index: 10;
+}
+
+.app-card-wrapper:hover .app-disconnect-btn {
+  opacity: 1;
+}
+
+.app-disconnect-btn:hover {
+  background: #fff;
+  color: #d93025;
+  box-shadow: 0 2px 4px rgba(60,64,67,0.3);
+  transform: scale(1.1);
 }
 
 .app-icon {

@@ -15,12 +15,21 @@
         <div class="app-grid">
             @foreach (var app in Model.Applications)
             {
-                <a href="@app.LoginUrl" class="app-card" title="@app.DisplayName">
-                    <div class="app-icon" style="@GetAppIconStyle(app)">
-                        @GetAppInitial(app)
-                    </div>
-                    <div class="app-name">@app.DisplayName</div>
-                </a>
+                <div class="app-card-wrapper">
+                    <a href="@app.LoginUrl" class="app-card" title="@app.DisplayName">
+                        <div class="app-icon" style="@GetAppIconStyle(app)">
+                            @GetAppInitial(app)
+                        </div>
+                        <div class="app-name">@app.DisplayName</div>
+                    </a>
+                    <button class="app-disconnect-btn" 
+                            data-app-id="@app.ApplicationId" 
+                            data-app-name="@app.DisplayName"
+                            title="@Localizer["DisconnectApp"]"
+                            type="button">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                </div>
             }
         </div>
     }
@@ -61,4 +70,58 @@
         int index = Math.Abs(hash) % colors.Length;
         return $"background: {colors[index]};";
     }
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle disconnect button clicks
+            document.querySelectorAll('.app-disconnect-btn').forEach(btn => {
+                btn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const appId = this.dataset.appId;
+                    const appName = this.dataset.appName;
+                    
+                    if (!confirm('@Localizer["DisconnectAppConfirm"]'.replace('{0}', appName))) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/?handler=Disconnect', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                            },
+                            body: `applicationId=${encodeURIComponent(appId)}`
+                        });
+                        
+                        if (response.ok) {
+                            // Remove the card with animation
+                            const wrapper = this.closest('.app-card-wrapper');
+                            wrapper.style.opacity = '0';
+                            wrapper.style.transform = 'scale(0.8)';
+                            
+                            setTimeout(() => {
+                                wrapper.remove();
+                                
+                                // Check if there are no more apps
+                                const appGrid = document.querySelector('.app-grid');
+                                if (appGrid && appGrid.children.length === 0) {
+                                    window.location.reload();
+                                }
+                            }, 300);
+                        } else {
+                            alert('Failed to disconnect application');
+                        }
+                    } catch (error) {
+                        console.error('Error disconnecting app:', error);
+                        alert('An error occurred');
+                    }
+                });
+            });
+        });
+    </script>
 }
