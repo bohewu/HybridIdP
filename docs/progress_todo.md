@@ -8,148 +8,24 @@
 
 ## 當前優先級
 
-### ✅ ~~Phase 4.6 - Permission System & Menu Filtering~~ (已完成)
+### 🎯 Next Up: Phase 5.5a - Settings Key/Value Store & Dynamic Branding
 
-**完成時間：** 2025-11-06
+Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下來專注於 Phase 5.5a，建立通用的設定服務與品牌動態化，為後續 Email/Security 設定鋪路。
 
-**實作內容：**
-- ✅ Permission-based authorization for all Admin API endpoints (24 endpoints)
-- ✅ Claims permissions added (claims.read/create/update/delete)
-- ✅ Pure backend menu filtering using PermissionHelper
-- ✅ Type-safe permission constants (Permissions.*)
-- ✅ Responsive layout fixes (z-index for modals)
+本階段重點：
 
-**詳細資訊：** 見 `progress_completed.md`
+- [ ] DB：新增 `Settings` entity 與 migration（Key 唯一、UpdatedUtc）
+- [ ] Service：`ISettingsService` + `SettingsService`（MemoryCache、快取失效）
+- [ ] Branding：讀取順序 DB > appsettings > 內建預設
+- [ ] API：Admin 設定端點（讀取/更新/快取失效）
+- [ ] UI：Admin Settings（先做 Branding，Email/Security 之後）
+- [ ] Tests：型別化讀取、快取失效、migration 覆蓋
 
----
-
-### ✅ ~~Phase 4.6.1 - Responsive Layout Enhancement~~ (已完成)
-
-**完成時間：** 2025-11-06
-
-**目標：** 確保 Razor Layout 和 Vue App 的完整響應式設計
-
-**實作內容：**
-
-#### Razor Layout 改進
-- ✅ 更新 `_AdminLayout.cshtml` viewport meta tag
-- ✅ 添加 `admin-layout` class 到 body
-- ✅ 改進 mobile overlay 和 sidebar 交互
-
-#### CSS 響應式改進
-- ✅ 添加全局 box-sizing reset 和防止水平滾動
-- ✅ Main content 使用 `calc(100vw - sidebar-width)` 確保正確寬度
-- ✅ 添加 `.vue-app-container` class 用於控制 Vue 應用最大寬度
-- ✅ 改進所有斷點的響應式設計：
-  - Mobile: < 576px (sidebar 隱藏)
-  - Tablet: 576px - 991px (sidebar 可切換)
-  - Small Desktop: 992px - 1199px (sidebar 220px)
-  - Desktop: 1200px - 1599px (sidebar 260px)
-  - Large Desktop: 1600px+ (content max-width 限制)
-- ✅ 添加 print styles
-
-#### Tailwind 配置同步
-- ✅ 更新 `tailwind.config.js` 斷點匹配 Bootstrap 5
-- ✅ 添加自定義 z-index 和 spacing 常量
-
-#### Vue App 容器
-- ✅ 所有 Admin pages 添加 `vue-app-container` class：
-  - Users.cshtml
-  - Clients.cshtml
-  - Scopes.cshtml
-  - Roles.cshtml
-  - Claims.cshtml
-
-**測試指南：** 見 `responsive_testing_checklist.md`
+完成後再銜接 Phase 5.1–5.5 的安全策略工作。
 
 ---
 
-### 🎯 Next Up: Phase 5.x - Dynamic Security Policies (開始於 5.1)
-
-Phase 4 全部子階段（4.4–4.7）已完成，後續開發將聚焦於 Phase 5 系列（密碼策略、多語言 Identity 錯誤、可配置安全政策）。請參考下方 Phase 5 區段。
-  - [ ] Add unit tests
-  - [ ] Commit: `feat(api): Implement DELETE /api/admin/roles/{id} with protections`
-  - [ ] Commit: `test(api): Add unit tests for role deletion`
-
-#### UI Implementation
-
-- [ ] **Step 7:** Razor Page & Vue Scaffolding
-  - [ ] Create `Pages/Admin/Roles.cshtml` with `[Authorize(Roles = "Admin")]`
-  - [ ] Create `ClientApp/src/admin/roles/style.css` (⚠️ Tailwind directives)
-  - [ ] Create `ClientApp/src/admin/roles/main.js` (⚠️ import './style.css')
-  - [ ] Create `ClientApp/src/admin/roles/RolesApp.vue` (basic structure)
-  - [ ] Commit: `feat(ui): Add Roles.cshtml with admin authorization`
-  - [ ] Commit: `feat(ui): Setup Vue SPA for role management with Tailwind`
-
-- [ ] **Step 8:** List Component
-  - [ ] Create `RoleList.vue` component
-  - [ ] Implement table with columns: Name, Description, Permissions Count, Actions
-  - [ ] Integrate with `GET /api/admin/roles` API
-  - [ ] Add loading state and error handling
-  - [ ] System roles marked with badge (Admin, User)
-  - [ ] Commit: `feat(ui): Implement RoleList component with table display`
-
-- [ ] **Step 9:** Create Role Form
-  - [ ] Create `CreateRoleModal.vue` component
-  - [ ] Form fields: Name, Description
-  - [ ] Permission selector (multi-select with categories)
-  - [ ] Validation: required name, unique name
-  - [ ] Integrate with `POST /api/admin/roles` API
-  - [ ] Commit: `feat(ui): Add role creation form with permission selector`
-
-- [ ] **Step 10:** Edit Role Form
-  - [ ] Create `EditRoleModal.vue` component
-  - [ ] Pre-fill form with existing role data
-  - [ ] Permission selector with current selections
-  - [ ] System roles: name read-only, permissions editable
-  - [ ] Integrate with `PUT /api/admin/roles/{id}` API
-  - [ ] Commit: `feat(ui): Add role edit form with permission management`
-
-- [ ] **Step 11:** Delete Confirmation
-  - [ ] Create `DeleteRoleModal.vue` component
-  - [ ] Warning message for system roles (cannot delete)
-  - [ ] Warning if users assigned (show count)
-  - [ ] Integrate with `DELETE /api/admin/roles/{id}` API
-  - [ ] Commit: `feat(ui): Add role deletion with protection warnings`
-
-- [ ] **Step 12:** E2E Testing & Verification
-  - [ ] Test role list loading (pagination)
-  - [ ] Test create role (e.g., "Content Editor" with permissions)
-  - [ ] Test edit role (add/remove permissions)
-  - [ ] Test delete custom role (successful)
-  - [ ] Test delete system role (rejected)
-  - [ ] Test delete role with users (rejected)
-  - [ ] Commit: `test(e2e): Add role management E2E tests`
-
-- [ ] **Step 13:** Documentation Update
-  - [ ] Update `progress_completed.md` - add Phase 4.5 summary
-  - [ ] Update `progress_todo.md` - mark Phase 4.5 as completed
-  - [ ] Commit: `docs: Update progress - Phase 4.5 completed`
-
-**預計完成時間：** 1-2 開發 sessions
-
----
-
-## Phase 4.6: Permission System
-
-### 目標
-實作細粒度權限系統，取代簡單的 Admin/User 角色檢查
-
-### 功能範圍
-- [ ] Permission 定義（例如：`clients.read`, `clients.write`, `users.manage`）
-- [ ] Permission 與 Role 關聯
-- [ ] Permission-based Authorization
-- [ ] Permission 檢查 UI（按鈕/功能基於權限顯示/隱藏）
-
-### 實作步驟
-- [ ] Define permission constants in `Core.Domain/Constants/Permissions.cs`
-- [ ] Implement `PermissionRequirement` and `PermissionHandler`
-- [ ] Update API Controllers to use `[Authorize(Policy = "RequirePermission")]`
-- [ ] Update UI to check permissions before showing actions
-- [ ] Add permission management to Role Management UI
-- [ ] E2E testing with different permission sets
-
-**預計完成時間：** 1-2 開發 sessions
+<!-- Phase 4.x 已全部完成，移至 progress_completed.md 保存記錄 -->
 
 ---
 
@@ -271,9 +147,7 @@ Phase 4 全部子階段（4.4–4.7）已完成，後續開發將聚焦於 Phase
 
 ---
 
-### Phase 5.5a (Deferred / Stretch): Settings Key/Value Store & Dynamic Branding
-
-**狀態：** 記錄於此以便 Phase 5 後期或 Phase 6 早期納入。核心登入/使用者體驗優先，故暫緩。
+### Phase 5.5a: Settings Key/Value Store & Dynamic Branding
 
 **目標：** 建立通用的系統設定儲存（Key/Value）機制，支援動態品牌名稱、後續 Email/Security 相關設定集中化。
 
@@ -329,32 +203,7 @@ public interface ISettingsService {
  
 ---
 
-## Phase 4.7: UI Spacing & Visual Consistency Review
-
-**目標：** 審視並統一 Admin Portal 的 spacing（padding / margin）、card / table / modal 間距與視覺風格，使各頁面看起來協調一致。
-
-### 實作步驟
-- [ ] Audit admin pages: Users, Roles, Clients, Scopes, Claims, Dashboard
-- [ ] For each page, identify inconsistent spacing issues (record selector, current value, desired value)
-- [ ] Propose a spacing scale (e.g., spacing-1..spacing-6) and preferred Tailwind/Bootstrap utility usage
-- [ ] Create shared spacing fragment `ClientApp/src/admin/_shared/_spacing.css` or update per-feature `style.css`
-- [ ] Apply small, incremental CSS fixes (atomic commits):
-  - normalize card padding
-  - unify table cell padding / row height
-  - standardize modal body/footer spacing
-  - align form field margins and label spacing
-- [ ] Update `docs/implementation_guidelines.md` UI section with spacing rules and code examples
-- [ ] Run Vite and perform visual verification (http://localhost:5173)
-- [ ] Commit each logical change with conventional commit messages (e.g., `fix(ui): normalize card padding in users list`)
-
-### 驗證（Acceptance criteria）
-- [ ] Card padding consistent across admin pages
-- [ ] Table cell padding and row heights are uniform
-- [ ] Modal spacing and form layouts are consistent
-- [ ] No visual regressions on mobile and desktop (quick responsive check)
-- [ ] `implementation_guidelines.md` updated with spacing conventions
-
-**預計完成時間：** 0.5-1 開發 session
+<!-- Phase 4.7 已完成，詳細紀錄請見 progress_completed.md -->
 
 ---
 
