@@ -64,37 +64,7 @@ public class AdminController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Get dashboard statistics including total counts of clients, scopes, and users.
-    /// </summary>
-    /// <returns>Dashboard stats DTO with total counts.</returns>
-    [HttpGet("dashboard/stats")]
-    public async Task<IActionResult> GetDashboardStats()
-    {
-        // Count total clients
-        var totalClients = 0;
-        await foreach (var _ in _applicationManager.ListAsync())
-        {
-            totalClients++;
-        }
-
-        // Count total scopes
-        var totalScopes = 0;
-        await foreach (var _ in _scopeManager.ListAsync())
-        {
-            totalScopes++;
-        }
-
-        // Count total users
-        var totalUsers = _userManager.Users.Count();
-
-        return Ok(new DashboardStatsDto
-        {
-            TotalClients = totalClients,
-            TotalScopes = totalScopes,
-            TotalUsers = totalUsers
-        });
-    }
+    // Moved to DashboardController: GET api/admin/dashboard/stats
 
     #region OIDC Clients
 
@@ -1129,12 +1099,7 @@ public class AdminController : ControllerBase
         List<string>? Resources
     );
 
-    public sealed class DashboardStatsDto
-    {
-        public int TotalClients { get; set; }
-        public int TotalScopes { get; set; }
-        public int TotalUsers { get; set; }
-    }
+    // DashboardStatsDto moved to Core.Application.DTOs.DashboardStatsDto
 
     public sealed class ClaimDefinitionDto
     {
