@@ -122,8 +122,9 @@ const handleModalClose = () => {
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2h6v-2h-1.5m1.5-11l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17V5.5A2.5 2.5 0 0014.5 3h-5A2.5 2.5 0 007 5.5v1.293l-2.293-2.293a1 1 0 00-1.414 1.414l16 16a1 1 0 001.414-1.414l-2.293-2.293A6 6 0 0118 9z"></path>
+                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
                   </svg>
                 </button>
                 <button
