@@ -14,11 +14,11 @@ Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下�
 
 本階段重點：
 
-- [ ] DB：新增 `Settings` entity 與 migration（Key 唯一、UpdatedUtc）
-- [ ] Service：`ISettingsService` + `SettingsService`（MemoryCache、快取失效）
-- [ ] Branding：讀取順序 DB > appsettings > 內建預設
-- [ ] API：Admin 設定端點（讀取/更新/快取失效）
-- [ ] UI：Admin Settings（先做 Branding，Email/Security 之後）
+- [x] DB：新增 `Settings` entity 與 migration（Key 唯一、UpdatedUtc）✅ commit `feat(settings): Add Settings entity, SettingsService with caching, and BrandingService`
+- [x] Service：`ISettingsService` + `SettingsService`（MemoryCache、快取失效）✅ commit `feat(settings): Add Settings entity, SettingsService with caching, and BrandingService`
+- [x] Branding：讀取順序 DB > appsettings > 內建預設 ✅ commit `feat(settings): Integrate BrandingService in Razor views and add Settings API`
+- [x] API：Admin 設定端點（讀取/更新/快取失效）✅ commit `feat(settings): Integrate BrandingService in Razor views and add Settings API`
+- [x] UI：Admin Settings（先做 Branding，Email/Security 之後）✅ commit `feat(settings): Add Settings UI with branding configuration`
 - [ ] Tests：型別化讀取、快取失效、migration 覆蓋
 
 完成後再銜接 Phase 5.1–5.5 的安全策略工作。
