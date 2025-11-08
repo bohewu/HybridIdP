@@ -1,11 +1,11 @@
 ﻿@page
 @model ErrorModel
-@inject IViewLocalizer Localizer
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
-    ViewData["Title"] = Localizer["Title"];
+    ViewData["Title"] = Localizer["ErrorTitle"];
 }
 
-<h1 class="text-danger">@Localizer["Title"].</h1>
+<h1 class="text-danger">@Localizer["ErrorTitle"].</h1>
 <h2 class="text-danger">@Localizer["ErrorOccurred"]</h2>
 
 @if (Model.ShowRequestId)

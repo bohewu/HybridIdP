@@ -1,11 +1,172 @@
 ﻿@page
 @model IndexModel
-@inject IViewLocalizer Localizer
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
-    ViewData["Title"] = Localizer["Title"];
+    ViewData["Title"] = Localizer["HomePage"];
 }
 
-<div class="text-center">
-    <h1 class="display-4">@Localizer["Welcome"]</h1>
-    <p>@Html.Raw(Localizer["LearnMore"])</p>
+<style>
+    .app-launcher {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .app-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .app-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1.25rem 0.75rem;
+        background: #fff;
+        border: 1px solid #e8eaed;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .app-card:hover {
+        background: #f8f9fa;
+        box-shadow: 0 1px 3px rgba(60,64,67,0.3), 0 4px 8px rgba(60,64,67,0.15);
+        transform: translateY(-2px);
+        text-decoration: none;
+    }
+
+    .app-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 28px;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        flex-shrink: 0;
+    }
+
+    .app-name {
+        font-size: 0.875rem;
+        color: #202124;
+        text-align: center;
+        font-weight: 500;
+        line-height: 1.25rem;
+        word-break: break-word;
+    }
+
+    .section-header {
+        margin-bottom: 1rem;
+    }
+
+    .section-title {
+        font-size: 1.125rem;
+        font-weight: 500;
+        color: #202124;
+        margin: 0;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #5f6368;
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        color: #dadce0;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state-title {
+        font-size: 1.25rem;
+        font-weight: 500;
+        color: #202124;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state-description {
+        font-size: 0.875rem;
+        color: #5f6368;
+    }
+
+    @@media (max-width: 768px) {
+        .app-grid {
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 1rem;
+        }
+        
+        .app-icon {
+            width: 56px;
+            height: 56px;
+            font-size: 24px;
+        }
+    }
+</style>
+
+<div class="app-launcher">
+    <div class="section-header">
+        <h1 class="section-title">@Localizer["MyApplications"]</h1>
+    </div>
+
+    @if (Model.Applications != null && Model.Applications.Any())
+    {
+        <div class="app-grid">
+            @foreach (var app in Model.Applications)
+            {
+                <a href="@app.LoginUrl" class="app-card" title="@app.DisplayName">
+                    <div class="app-icon" style="@GetAppIconStyle(app)">
+                        @GetAppInitial(app)
+                    </div>
+                    <div class="app-name">@app.DisplayName</div>
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="bi bi-grid-3x3-gap"></i>
+            </div>
+            <div class="empty-state-title">@Localizer["NoAppsAvailable"]</div>
+            <div class="empty-state-description">@Localizer["NoAppsDescription"]</div>
+        </div>
+    }
 </div>
+
+@functions {
+    private string GetAppInitial(dynamic app)
+    {
+        string name = app.DisplayName ?? "";
+        return string.IsNullOrEmpty(name) ? "?" : name.Substring(0, 1).ToUpper();
+    }
+
+    private string GetAppIconStyle(dynamic app)
+    {
+        // Generate color based on app name hash
+        string name = app.DisplayName ?? "";
+        int hash = name.GetHashCode();
+        var colors = new[] {
+            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+            "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+            "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+            "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+            "linear-gradient(135deg, #30cfd0 0%, #330867 100%)",
+            "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+            "linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%)"
+        };
+        int index = Math.Abs(hash) % colors.Length;
+        return $"background: {colors[index]};";
+    }
+}

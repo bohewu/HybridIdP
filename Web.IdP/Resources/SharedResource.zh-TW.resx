@@ -57,4 +57,78 @@
   <data name="Support" xml:space="preserve">
     <value>支援</value>
   </data>
+  <!-- Index Page -->
+  <data name="HomePage" xml:space="preserve">
+    <value>首頁</value>
+  </data>
+  <data name="MyApplications" xml:space="preserve">
+    <value>我的應用程式</value>
+  </data>
+  <data name="QuickAccess" xml:space="preserve">
+    <value>快速存取</value>
+  </data>
+  <data name="NoAppsAvailable" xml:space="preserve">
+    <value>尚無可用應用程式</value>
+  </data>
+  <data name="NoAppsDescription" xml:space="preserve">
+    <value>已連接的應用程式將顯示於此，方便您進行單一登入存取。</value>
+  </data>
+  <!-- Logout Page -->
+  <data name="LogoutTitle" xml:space="preserve">
+    <value>登出</value>
+  </data>
+  <data name="LogoutConfirmMessage" xml:space="preserve">
+    <value>確定要登出嗎？</value>
+  </data>
+  <data name="YesLogout" xml:space="preserve">
+    <value>是，登出</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="LogoutSuccessMessage" xml:space="preserve">
+    <value>您已成功登出。</value>
+  </data>
+  <data name="ReturnHome" xml:space="preserve">
+    <value>返回首頁</value>
+  </data>
+  <!-- AccessDenied Page -->
+  <data name="AccessDeniedTitle" xml:space="preserve">
+    <value>存取被拒</value>
+  </data>
+  <data name="AccessDeniedMessage" xml:space="preserve">
+    <value>您沒有權限存取此資源。</value>
+  </data>
+  <data name="AdminPrivilegesRequired" xml:space="preserve">
+    <value>此區域需要管理員權限。</value>
+  </data>
+  <data name="RequestedUrl" xml:space="preserve">
+    <value>請求的 URL：</value>
+  </data>
+  <data name="LogoutAndSwitch" xml:space="preserve">
+    <value>登出並切換帳戶</value>
+  </data>
+  <!-- Privacy Page -->
+  <data name="PrivacyDescription" xml:space="preserve">
+    <value>使用此頁面詳細說明您網站的隱私權政策。</value>
+  </data>
+  <!-- Error Page -->
+  <data name="ErrorTitle" xml:space="preserve">
+    <value>錯誤</value>
+  </data>
+  <data name="ErrorOccurred" xml:space="preserve">
+    <value>處理您的請求時發生錯誤。</value>
+  </data>
+  <data name="RequestId" xml:space="preserve">
+    <value>請求 ID：</value>
+  </data>
+  <data name="DevelopmentMode" xml:space="preserve">
+    <value>開發模式</value>
+  </data>
+  <data name="DevelopmentDescription1" xml:space="preserve">
+    <value>切換到 <strong>Development</strong> 環境會顯示有關所發生錯誤的詳細資訊。</value>
+  </data>
+  <data name="DevelopmentDescription2" xml:space="preserve">
+    <value><strong>已部署的應用程式不應啟用 Development 環境。</strong>這可能會導致向終端使用者顯示例外狀況的敏感資訊。對於本地偵錯，請將 <strong>ASPNETCORE_ENVIRONMENT</strong> 環境變數設定為 <strong>Development</strong> 並重新啟動應用程式，以啟用 <strong>Development</strong> 環境。</value>
+  </data>
 </root>

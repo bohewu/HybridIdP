@@ -1,9 +1,9 @@
 ﻿@page
 @model PrivacyModel
-@inject IViewLocalizer Localizer
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
-    ViewData["Title"] = Localizer["Title"];
+    ViewData["Title"] = Localizer["PrivacyPolicy"];
 }
 <h1>@ViewData["Title"]</h1>
 
-<p>@Localizer["Description"]</p>
+<p>@Localizer["PrivacyDescription"]</p>

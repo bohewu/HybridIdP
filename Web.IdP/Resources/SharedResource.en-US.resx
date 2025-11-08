@@ -57,4 +57,78 @@
   <data name="Support" xml:space="preserve">
     <value>Support</value>
   </data>
+  <!-- Index Page -->
+  <data name="HomePage" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="MyApplications" xml:space="preserve">
+    <value>My Applications</value>
+  </data>
+  <data name="QuickAccess" xml:space="preserve">
+    <value>Quick Access</value>
+  </data>
+  <data name="NoAppsAvailable" xml:space="preserve">
+    <value>No applications available yet</value>
+  </data>
+  <data name="NoAppsDescription" xml:space="preserve">
+    <value>Connected applications will appear here for easy single sign-on access.</value>
+  </data>
+  <!-- Logout Page -->
+  <data name="LogoutTitle" xml:space="preserve">
+    <value>Logout</value>
+  </data>
+  <data name="LogoutConfirmMessage" xml:space="preserve">
+    <value>Are you sure you want to log out?</value>
+  </data>
+  <data name="YesLogout" xml:space="preserve">
+    <value>Yes, Log out</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="LogoutSuccessMessage" xml:space="preserve">
+    <value>You have been successfully logged out.</value>
+  </data>
+  <data name="ReturnHome" xml:space="preserve">
+    <value>Return to Home</value>
+  </data>
+  <!-- AccessDenied Page -->
+  <data name="AccessDeniedTitle" xml:space="preserve">
+    <value>Access Denied</value>
+  </data>
+  <data name="AccessDeniedMessage" xml:space="preserve">
+    <value>You do not have permission to access this resource.</value>
+  </data>
+  <data name="AdminPrivilegesRequired" xml:space="preserve">
+    <value>This area requires administrator privileges.</value>
+  </data>
+  <data name="RequestedUrl" xml:space="preserve">
+    <value>Requested URL:</value>
+  </data>
+  <data name="LogoutAndSwitch" xml:space="preserve">
+    <value>Logout and Switch Account</value>
+  </data>
+  <!-- Privacy Page -->
+  <data name="PrivacyDescription" xml:space="preserve">
+    <value>Use this page to detail your site's privacy policy.</value>
+  </data>
+  <!-- Error Page -->
+  <data name="ErrorTitle" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="ErrorOccurred" xml:space="preserve">
+    <value>An error occurred while processing your request.</value>
+  </data>
+  <data name="RequestId" xml:space="preserve">
+    <value>Request ID:</value>
+  </data>
+  <data name="DevelopmentMode" xml:space="preserve">
+    <value>Development Mode</value>
+  </data>
+  <data name="DevelopmentDescription1" xml:space="preserve">
+    <value>Swapping to the <strong>Development</strong> environment displays detailed information about the error that occurred.</value>
+  </data>
+  <data name="DevelopmentDescription2" xml:space="preserve">
+    <value><strong>The Development environment shouldn't be enabled for deployed applications.</strong> It can result in displaying sensitive information from exceptions to end users. For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong> and restarting the app.</value>
+  </data>
 </root>

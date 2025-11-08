@@ -1,8 +1,8 @@
 @page
 @model Web.IdP.Pages.Account.AccessDeniedModel
-@inject IViewLocalizer Localizer
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
-    ViewData["Title"] = Localizer["Title"];
+    ViewData["Title"] = Localizer["AccessDeniedTitle"];
 }
 
 <div class="container mt-5">
@@ -11,11 +11,11 @@
             <div class="card border-danger">
                 <div class="card-header bg-danger text-white">
                     <h2 class="mb-0">
-                        <i class="bi bi-shield-exclamation"></i> @Localizer["Title"]
+                        <i class="bi bi-shield-exclamation"></i> @Localizer["AccessDeniedTitle"]
                     </h2>
                 </div>
                 <div class="card-body">
-                    <p class="lead">@Localizer["Message"]</p>
+                    <p class="lead">@Localizer["AccessDeniedMessage"]</p>
                     <p>@Localizer["AdminPrivilegesRequired"]</p>
                     
                     @if (!string.IsNullOrEmpty(Model.ReturnUrl))
