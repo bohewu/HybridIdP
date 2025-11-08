@@ -1554,72 +1554,7 @@ public class AdminController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get current user's permissions for UI authorization
-    /// </summary>
-    [HttpGet("permissions/current")]
-    public async Task<IActionResult> GetCurrentUserPermissions()
-    {
-        try
-        {
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized(new { message = "User not authenticated" });
-            }
-
-            // Check if user is admin
-            var isAdmin = User.IsInRole(AuthConstants.Roles.Admin);
-            
-            if (isAdmin)
-            {
-                // Admin has all permissions
-                return Ok(new
-                {
-                    isAdmin = true,
-                    permissions = DomainPermissions.GetAll()
-                });
-            }
-
-            // Get user's roles and their permissions
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                return NotFound(new { message = "User not found" });
-            }
-
-            var userRoles = await _userManager.GetRolesAsync(user);
-            var allPermissions = new HashSet<string>();
-
-            // Use RoleManager to get role details
-            var roleManager = HttpContext.RequestServices.GetRequiredService<RoleManager<ApplicationRole>>();
-            
-            foreach (var roleName in userRoles)
-            {
-                var role = await roleManager.FindByNameAsync(roleName);
-                if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
-                {
-                    var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(p => p.Trim());
-                    
-                    foreach (var permission in rolePermissions)
-                    {
-                        allPermissions.Add(permission);
-                    }
-                }
-            }
-
-            return Ok(new
-            {
-                isAdmin = false,
-                permissions = allPermissions.ToList()
-            });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = "An error occurred while retrieving user permissions", details = ex.Message });
-        }
-    }
+    // Moved to PermissionsController: GET api/admin/permissions/current
 
     #endregion
 }
