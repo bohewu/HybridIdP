@@ -57,8 +57,20 @@ body {
   color: #1967d2;
 }
 
+/* User dropdown menu fix */
+.google-navbar .dropdown-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.google-navbar .dropdown-toggle::after {
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
 .user-profile {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 0.75rem;
@@ -67,6 +79,11 @@ body {
   color: #202124;
   font-size: 0.875rem;
   font-weight: 500;
+  transition: background 0.2s;
+}
+
+.user-profile:hover {
+  background: #e8eaed;
 }
 
 .user-avatar {
