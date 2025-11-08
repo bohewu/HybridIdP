@@ -1,7 +1,8 @@
 @page
 @model Web.IdP.Pages.Account.LogoutModel
+@inject IViewLocalizer Localizer
 @{
-    ViewData["Title"] = "Log out";
+    ViewData["Title"] = Localizer["Title"];
 }
 
 <div class="container">
@@ -13,16 +14,16 @@
                     
                     @if (Model.ShowLogoutPrompt)
                     {
-                        <p class="mb-4">Are you sure you want to log out?</p>
+                        <p class="mb-4">@Localizer["ConfirmMessage"]</p>
                         <form method="post">
-                            <button type="submit" class="btn btn-danger">Yes, Log out</button>
-                            <a asp-page="/Index" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-danger">@Localizer["YesLogout"]</button>
+                            <a asp-page="/Index" class="btn btn-secondary">@Localizer["Cancel"]</a>
                         </form>
                     }
                     else
                     {
-                        <p class="text-success mb-4">You have been successfully logged out.</p>
-                        <a asp-page="/Index" class="btn btn-primary">Return to Home</a>
+                        <p class="text-success mb-4">@Localizer["SuccessMessage"]</p>
+                        <a asp-page="/Index" class="btn btn-primary">@Localizer["ReturnHome"]</a>
                     }
                 </div>
             </div>

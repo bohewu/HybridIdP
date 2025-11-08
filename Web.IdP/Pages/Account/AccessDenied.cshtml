@@ -1,7 +1,8 @@
 @page
 @model Web.IdP.Pages.Account.AccessDeniedModel
+@inject IViewLocalizer Localizer
 @{
-    ViewData["Title"] = "Access Denied";
+    ViewData["Title"] = Localizer["Title"];
 }
 
 <div class="container mt-5">
@@ -10,17 +11,17 @@
             <div class="card border-danger">
                 <div class="card-header bg-danger text-white">
                     <h2 class="mb-0">
-                        <i class="bi bi-shield-exclamation"></i> Access Denied
+                        <i class="bi bi-shield-exclamation"></i> @Localizer["Title"]
                     </h2>
                 </div>
                 <div class="card-body">
-                    <p class="lead">You do not have permission to access this resource.</p>
-                    <p>This area requires administrative privileges. If you believe you should have access, please contact your system administrator.</p>
+                    <p class="lead">@Localizer["Message"]</p>
+                    <p>@Localizer["AdminPrivilegesRequired"]</p>
                     
                     @if (!string.IsNullOrEmpty(Model.ReturnUrl))
                     {
                         <div class="alert alert-info">
-                            <strong>Requested URL:</strong> <code>@Model.ReturnUrl</code>
+                            <strong>@Localizer["RequestedUrl"]</strong> <code>@Model.ReturnUrl</code>
                         </div>
                     }
                     
@@ -28,10 +29,10 @@
                     
                     <div class="d-grid gap-2">
                         <a href="/" class="btn btn-primary">
-                            <i class="bi bi-house-door"></i> Return to Home
+                            <i class="bi bi-house-door"></i> @Localizer["ReturnHome"]
                         </a>
                         <a href="/Account/Logout" class="btn btn-outline-secondary">
-                            <i class="bi bi-box-arrow-right"></i> Logout and Login as Different User
+                            <i class="bi bi-box-arrow-right"></i> @Localizer["LogoutAndSwitch"]
                         </a>
                     </div>
                 </div>
