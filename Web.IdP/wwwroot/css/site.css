@@ -141,11 +141,145 @@ main {
   padding: 2rem 1rem;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  font-size: 1.75rem;
+  font-weight: 500;
+  color: #202124;
+  margin: 0;
+}
+
+.app-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box i {
+  position: absolute;
+  left: 12px;
+  color: #5f6368;
+  pointer-events: none;
+}
+
+.search-input {
+  padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+  border: 1px solid #dadce0;
+  border-radius: 24px;
+  font-size: 0.875rem;
+  width: 250px;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 1px 6px rgba(32,33,36,0.28);
+}
+
+.view-toggle {
+  display: flex;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  color: #5f6368;
+  transition: all 0.2s ease;
+  font-size: 1.125rem;
+}
+
+.toggle-btn:not(:last-child) {
+  border-right: 1px solid #dadce0;
+}
+
+.toggle-btn:hover {
+  background: #f8f9fa;
+}
+
+.toggle-btn.active {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.app-container {
+  border: 1px solid #dadce0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  background: #fff;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.app-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.app-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.app-container::-webkit-scrollbar-thumb {
+  background: #dadce0;
+  border-radius: 4px;
+}
+
+.app-container::-webkit-scrollbar-thumb:hover {
+  background: #bdc1c6;
+}
+
 .app-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 1.5rem;
-  margin-top: 2rem;
+}
+
+.app-grid.list-view {
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.app-grid.list-view .app-card {
+  flex-direction: row;
+  justify-content: flex-start;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.app-grid.list-view .app-icon {
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+  margin-bottom: 0;
+}
+
+.app-grid.list-view .app-name {
+  text-align: left;
+  font-size: 1rem;
+}
+
+.app-card-wrapper.hidden {
+  display: none;
 }
 
 .app-card-wrapper {

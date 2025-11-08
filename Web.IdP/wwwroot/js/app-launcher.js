@@ -1,4 +1,4 @@
-// App Launcher - Disconnect functionality
+// App Launcher - Disconnect, search, and view toggle functionality
 document.addEventListener('DOMContentLoaded', function() {
     const launcher = document.querySelector('.app-launcher');
     if (!launcher) return;
@@ -9,6 +9,47 @@ document.addEventListener('DOMContentLoaded', function() {
         failed: launcher.dataset.disconnectFailed || 'Failed to disconnect application',
         error: launcher.dataset.disconnectError || 'An error occurred'
     };
+    
+    // Search functionality
+    const searchInput = document.getElementById('appSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const appCards = document.querySelectorAll('.app-card-wrapper');
+            
+            appCards.forEach(card => {
+                const appName = card.dataset.appName || '';
+                if (appName.includes(searchTerm)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        });
+    }
+    
+    // View toggle functionality
+    const toggleBtns = document.querySelectorAll('.toggle-btn');
+    const appContainer = document.getElementById('appContainer');
+    
+    toggleBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const view = this.dataset.view;
+            
+            // Update active state
+            toggleBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Update grid layout
+            if (appContainer) {
+                if (view === 'list') {
+                    appContainer.classList.add('list-view');
+                } else {
+                    appContainer.classList.remove('list-view');
+                }
+            }
+        });
+    });
     
     // Handle disconnect button clicks
     document.querySelectorAll('.app-disconnect-btn').forEach(btn => {

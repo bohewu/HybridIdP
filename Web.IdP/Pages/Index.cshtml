@@ -11,29 +11,45 @@
      data-disconnect-error="@Localizer["DisconnectError"]">
     <div class="section-header">
         <h1 class="section-title">@Localizer["MyApplications"]</h1>
+        <div class="app-controls">
+            <div class="search-box">
+                <i class="bi bi-search"></i>
+                <input type="text" id="appSearch" class="search-input" placeholder="@Localizer["SearchApps"]">
+            </div>
+            <div class="view-toggle">
+                <button class="toggle-btn active" data-view="grid" title="@Localizer["GridView"]">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                </button>
+                <button class="toggle-btn" data-view="list" title="@Localizer["ListView"]">
+                    <i class="bi bi-list-ul"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
     @if (Model.Applications != null && Model.Applications.Any())
     {
-        <div class="app-grid">
-            @foreach (var app in Model.Applications)
-            {
-                <div class="app-card-wrapper">
-                    <a href="@app.LoginUrl" class="app-card" title="@app.DisplayName">
-                        <div class="app-icon" style="@GetAppIconStyle(app)">
-                            @GetAppInitial(app)
-                        </div>
-                        <div class="app-name">@app.DisplayName</div>
-                    </a>
-                    <button class="app-disconnect-btn" 
-                            data-app-id="@app.ApplicationId" 
-                            data-app-name="@app.DisplayName"
-                            title="@Localizer["DisconnectApp"]"
-                            type="button">
-                        <i class="bi bi-x-circle"></i>
-                    </button>
-                </div>
-            }
+        <div class="app-container">
+            <div class="app-grid" id="appContainer">
+                @foreach (var app in Model.Applications)
+                {
+                    <div class="app-card-wrapper" data-app-name="@app.DisplayName.ToLower()">
+                        <a href="@app.LoginUrl" class="app-card" title="@app.DisplayName">
+                            <div class="app-icon" style="@GetAppIconStyle(app)">
+                                @GetAppInitial(app)
+                            </div>
+                            <div class="app-name">@app.DisplayName</div>
+                        </a>
+                        <button class="app-disconnect-btn" 
+                                data-app-id="@app.ApplicationId" 
+                                data-app-name="@app.DisplayName"
+                                title="@Localizer["DisconnectApp"]"
+                                type="button">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                }
+            </div>
         </div>
     }
     else

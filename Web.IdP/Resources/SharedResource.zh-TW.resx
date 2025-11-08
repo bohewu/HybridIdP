@@ -172,6 +172,15 @@
   <data name="DisconnectError" xml:space="preserve">
     <value>發生錯誤</value>
   </data>
+  <data name="SearchApps" xml:space="preserve">
+    <value>搜尋應用程式...</value>
+  </data>
+  <data name="GridView" xml:space="preserve">
+    <value>網格檢視</value>
+  </data>
+  <data name="ListView" xml:space="preserve">
+    <value>清單檢視</value>
+  </data>
   <!-- Login -->
   <data name="InvalidLoginAttempt" xml:space="preserve">
     <value>無效的登入嘗試。</value>

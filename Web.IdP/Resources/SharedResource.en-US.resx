@@ -172,6 +172,15 @@
   <data name="DisconnectError" xml:space="preserve">
     <value>An error occurred</value>
   </data>
+  <data name="SearchApps" xml:space="preserve">
+    <value>Search applications...</value>
+  </data>
+  <data name="GridView" xml:space="preserve">
+    <value>Grid View</value>
+  </data>
+  <data name="ListView" xml:space="preserve">
+    <value>List View</value>
+  </data>
   <!-- Login -->
   <data name="InvalidLoginAttempt" xml:space="preserve">
     <value>Invalid login attempt.</value>
