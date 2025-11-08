@@ -5,7 +5,10 @@
     ViewData["Title"] = Localizer["HomePage"];
 }
 
-<div class="app-launcher">
+<div class="app-launcher" 
+     data-disconnect-confirm="@Localizer["DisconnectAppConfirm"]"
+     data-disconnect-failed="@Localizer["DisconnectFailed"]"
+     data-disconnect-error="@Localizer["DisconnectError"]">
     <div class="section-header">
         <h1 class="section-title">@Localizer["MyApplications"]</h1>
     </div>
@@ -73,55 +76,5 @@
 }
 
 @section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Handle disconnect button clicks
-            document.querySelectorAll('.app-disconnect-btn').forEach(btn => {
-                btn.addEventListener('click', async function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    const appId = this.dataset.appId;
-                    const appName = this.dataset.appName;
-                    
-                    if (!confirm('@Localizer["DisconnectAppConfirm"]'.replace('{0}', appName))) {
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch('/?handler=Disconnect', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                            },
-                            body: `applicationId=${encodeURIComponent(appId)}`
-                        });
-                        
-                        if (response.ok) {
-                            // Remove the card with animation
-                            const wrapper = this.closest('.app-card-wrapper');
-                            wrapper.style.opacity = '0';
-                            wrapper.style.transform = 'scale(0.8)';
-                            
-                            setTimeout(() => {
-                                wrapper.remove();
-                                
-                                // Check if there are no more apps
-                                const appGrid = document.querySelector('.app-grid');
-                                if (appGrid && appGrid.children.length === 0) {
-                                    window.location.reload();
-                                }
-                            }, 300);
-                        } else {
-                            alert('Failed to disconnect application');
-                        }
-                    } catch (error) {
-                        console.error('Error disconnecting app:', error);
-                        alert('An error occurred');
-                    }
-                });
-            });
-        });
-    </script>
+    <script src="~/js/app-launcher.js"></script>
 }

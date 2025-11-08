@@ -60,8 +60,8 @@ BEGIN
     -- Check if authorization already exists
     SELECT "Id" INTO authorization_id
     FROM "OpenIddictAuthorizations"
-    WHERE "Subject" = test_user_id
-    AND "ApplicationId" = demo_client_id;
+    WHERE "Subject"::uuid = test_user_id
+    AND "ApplicationId"::uuid = demo_client_id;
 
     IF authorization_id IS NULL THEN
         -- Create permanent authorization (consent)

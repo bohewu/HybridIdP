@@ -1,5 +1,6 @@
 ﻿@using Microsoft.AspNetCore.Localization
 @using Core.Domain.Constants
+@using static Core.Domain.Constants.AuthConstants
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 <!DOCTYPE html>
 <html lang="en">
@@ -41,7 +42,8 @@
                                     </div>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                    @if (User.HasClaim("permission", Permissions.Users.Read) || 
+                                    @if (User.IsInRole(Roles.Admin) ||
+                                         User.HasClaim("permission", Permissions.Users.Read) || 
                                          User.HasClaim("permission", Permissions.Clients.Read) || 
                                          User.HasClaim("permission", Permissions.Roles.Read))
                                     {

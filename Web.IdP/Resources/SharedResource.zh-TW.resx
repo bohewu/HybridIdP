@@ -166,6 +166,16 @@
   <data name="AppDisconnected" xml:space="preserve">
     <value>應用程式已成功中斷連接</value>
   </data>
+  <data name="DisconnectFailed" xml:space="preserve">
+    <value>中斷連接失敗</value>
+  </data>
+  <data name="DisconnectError" xml:space="preserve">
+    <value>發生錯誤</value>
+  </data>
+  <!-- Login -->
+  <data name="InvalidLoginAttempt" xml:space="preserve">
+    <value>無效的登入嘗試。</value>
+  </data>
   <!-- Footer -->
   <data name="FooterCopyright" xml:space="preserve">
     <value>© 2025 - HybridAuth IdP</value>

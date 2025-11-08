@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Localization;
 
 namespace Web.IdP.Pages.Account;
 
@@ -16,6 +17,7 @@ public class LoginModel : PageModel
     private readonly IJitProvisioningService _jitProvisioningService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<LoginModel> _logger;
+    private readonly IStringLocalizer<SharedResource> _localizer;
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
@@ -23,11 +25,13 @@ public class LoginModel : PageModel
         ILegacyAuthService legacyAuthService,
         IJitProvisioningService jitProvisioningService,
         IConfiguration configuration,
-        ILogger<LoginModel> logger)
+        ILogger<LoginModel> logger,
+        IStringLocalizer<SharedResource> localizer)
     {
         _signInManager = signInManager;
         _turnstileService = turnstileService;
         _legacyAuthService = legacyAuthService;
+        _localizer = localizer;
         _jitProvisioningService = jitProvisioningService;
         _configuration = configuration;
         _logger = logger;
@@ -115,7 +119,7 @@ public class LoginModel : PageModel
             var legacyResult = await _legacyAuthService.ValidateAsync(Input.Email, Input.Password);
             if (!legacyResult.IsAuthenticated)
             {
-                ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
                 return Page();
             }
 

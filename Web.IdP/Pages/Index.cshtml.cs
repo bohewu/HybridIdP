@@ -8,6 +8,7 @@ using System.Security.Claims;
 namespace Web.IdP.Pages;
 
 [Authorize]
+[IgnoreAntiforgeryToken]
 public class IndexModel : PageModel
 {
     private readonly ILogger<IndexModel> _logger;
@@ -107,15 +108,23 @@ public class IndexModel : PageModel
         
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         
-        // Find and delete all authorizations for this user and application
-        var authorizations = _authorizationManager.FindAsync(
+        // Find all authorizations for this user and application
+        var authorizationsQuery = _authorizationManager.FindAsync(
             subject: userId,
             client: applicationId,
             status: OpenIddictConstants.Statuses.Valid,
             type: OpenIddictConstants.AuthorizationTypes.Permanent,
             scopes: default);
         
-        await foreach (var authorization in authorizations)
+        // Materialize the list first to avoid "command already in progress" error
+        var authorizationsList = new List<object>();
+        await foreach (var authorization in authorizationsQuery)
+        {
+            authorizationsList.Add(authorization);
+        }
+        
+        // Now delete them
+        foreach (var authorization in authorizationsList)
         {
             await _authorizationManager.DeleteAsync(authorization);
         }
