@@ -239,7 +239,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("ScopeId", "UserClaimId")
                         .IsUnique();
 
-                    b.ToTable("ScopeClaims");
+                    b.ToTable("ScopeClaims", (string)null);
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.Setting", b =>
@@ -249,6 +249,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("DataType")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
@@ -272,7 +273,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("Settings");
+                    b.ToTable("Settings", (string)null);
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.UserClaim", b =>
@@ -325,7 +326,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Core.Application.IApplicationDbContext.UserClaims");
+                    b.ToTable("Core.Application.IApplicationDbContext.UserClaims", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
