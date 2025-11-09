@@ -112,14 +112,14 @@ Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下�
 - [x] Validation: Ensure policies are within reasonable bounds
 
 #### Frontend
-- [ ] Vue SPA: `ClientApp/src/admin/security/SecurityApp.vue`
-- [ ] Security Policy Editor with sections:
+- [x] Vue SPA: `ClientApp/src/admin/security/SecurityApp.vue`
+- [x] Security Policy Editor with sections:
   - Password Requirements (length, complexity)
   - Password History (history count)
   - Password Expiration (days, grace period)
   - Account Lockout (max attempts, lockout duration)
-- [ ] Real-time validation feedback
-- [ ] Save and apply policies
+- [x] Real-time validation feedback
+- [x] Save and apply policies
 
 #### 驗證
 - [ ] Admin can view current security policies

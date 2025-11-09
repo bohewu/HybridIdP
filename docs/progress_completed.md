@@ -441,7 +441,7 @@
 
 ---
 
-## Phase 5.4: API & UI for Security Policies (Backend) ✅
+## Phase 5.4: API & UI for Security Policies ✅
 
 **完成時間：** 2025-11-09
 
@@ -450,6 +450,9 @@
 - 擴展了 `ISecurityPolicyService` 介面和 `SecurityPolicyService` 實作，新增 `UpdatePolicyAsync` 方法，用於更新安全策略。`SecurityPolicyService` 現在能夠從 `SecurityPolicyDto` 更新現有策略，並在更新後使快取失效。
 - 創建了 `SecurityPolicyController`，提供了 `GET /api/admin/security/policies` 端點用於獲取當前安全策略，以及 `PUT /api/admin/security/policies` 端點用於更新安全策略。
 - API 端點受到 `settings.read` 和 `settings.update` 權限的保護。
+- 實作了 Vue SPA (`ClientApp/src/admin/security/SecurityApp.vue`)，提供管理員介面來管理安全策略。
+- UI 包含密碼要求、密碼歷史、密碼過期和帳戶鎖定等策略編輯區塊。
+- UI 提供實時驗證反饋，並支援保存和應用策略。
 
 **技術實作：**
 - `Core.Application/DTOs/SecurityPolicyDto.cs`
@@ -457,10 +460,14 @@
 - `Infrastructure/Services/SecurityPolicyService.cs` (實作 `UpdatePolicyAsync` 方法，包含日誌和快取失效)
 - `Web.IdP/Api/Admin/SecurityPolicyController.cs` (GET 和 PUT 端點)
 - `Core.Application/IApplicationDbContext.cs` (新增 `DbSet<SecurityPolicy> SecurityPolicies { get; }` 以解決編譯錯誤)
+- `ClientApp/src/admin/security/SecurityApp.vue` (Vue SPA for Security Policy Editor)
+- `Pages/Admin/Security.cshtml` (Razor Page for mounting Vue SPA)
 
 **驗證結果：**
 - ✅ 後端專案成功編譯，無錯誤。
 - ✅ API 端點已準備就緒，可供前端 UI 調用。
+- ✅ 管理員可以透過 UI 查看和更新安全策略。
+- ✅ 策略變更會立即生效，並在 UI 中提供驗證反饋。
 
 ---
 
