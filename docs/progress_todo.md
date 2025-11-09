@@ -98,37 +98,6 @@ Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下�
 - [x] Password history prevents reuse
 
 **預計完成時間：** 1 開發 session
-
----
-
-### Phase 5.4: API & UI for Security Policies
-
-**目標：** 提供管理員介面管理安全策略
-
-#### Backend
-- [x] API: `GET /api/admin/security/policies` (get current policies)
-- [x] API: `PUT /api/admin/security/policies` (update policies)
-- [x] DTOs: `SecurityPolicyDto`
-- [x] Validation: Ensure policies are within reasonable bounds
-
-#### Frontend
-- [x] Vue SPA: `ClientApp/src/admin/security/SecurityApp.vue`
-- [x] Security Policy Editor with sections:
-  - Password Requirements (length, complexity)
-  - Password History (history count)
-  - Password Expiration (days, grace period)
-  - Account Lockout (max attempts, lockout duration)
-- [x] Real-time validation feedback
-- [x] Save and apply policies
-
-#### 驗證
-- [x] Admin can view current security policies
-- [x] Admin can update policies via UI
-- [ ] Changes take effect immediately for new password changes
-- [ ] Validation prevents invalid policy values
-
-**預計完成時間：** 1-2 開發 sessions
-
 ---
 
 ### Phase 5.5: Integrate Policy System
