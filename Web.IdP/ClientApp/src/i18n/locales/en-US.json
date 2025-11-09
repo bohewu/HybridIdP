@@ -646,7 +646,7 @@
     "requireUppercase": "Require Uppercase (A-Z)",
     "requireLowercase": "Require Lowercase (a-z)",
     "requireDigit": "Require Digit (0-9)",
-    "requireNonAlphanumeric": "Require Special Character (!@#$%)",
+    "requireNonAlphanumeric": "Require Special Character {'(!@#$%)'}",
     "historyCount": "Remember Last N Passwords",
     "historyCountHelp": "Prevents users from reusing recent passwords. 0 to disable.",
     "expirationDays": "Password Expiration (Days)",

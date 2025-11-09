@@ -647,7 +647,7 @@
     "requireUppercase": "需要大寫字母 (A-Z)",
     "requireLowercase": "需要小寫字母 (a-z)",
     "requireDigit": "需要數字 (0-9)",
-    "requireNonAlphanumeric": "需要特殊字元 (!@#$%)",
+    "requireNonAlphanumeric": "需要特殊字元 {'(!@#$%)'}",
     "historyCount": "記住最近 N 組密碼",
     "historyCountHelp": "防止使用者重複使用最近的密碼。0 為停用。",
     "expirationDays": "密碼到期時間（天）",
