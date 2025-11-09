@@ -471,6 +471,23 @@
 
 ---
 
+## Phase 5.5: Integrate Policy System ✅
+
+**完成時間：** 2025-11-09
+
+**功能摘要：**
+- 成功將 `DynamicPasswordValidator<ApplicationUser>` 註冊到 ASP.NET Core Identity 的服務容器中，確保密碼驗證流程能夠使用動態策略。
+- 由於未來與 Active Directory 整合的規劃，使用者自助密碼變更、帳號管理顯示策略要求以及密碼過期檢查等相關任務已暫時移至待辦事項 (Backlog) 區塊。
+
+**技術實作：**
+- `Web.IdP/Program.cs` (註冊 `DynamicPasswordValidator<ApplicationUser>`)
+
+**驗證結果：**
+- ✅ `DynamicPasswordValidator` 已正確註冊並可被 Identity 系統使用。
+- ✅ 專案編譯成功，無相關錯誤。
+
+---
+
 ## 技術堆疊總結
 
 - **完成的 Phases:** 16
