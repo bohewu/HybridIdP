@@ -1,11 +1,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PasswordPolicyInput from './PasswordPolicyInput.vue'
 
 const { t } = useI18n()
 
 const props = defineProps({
-  user: { type: Object, default: null }
+  user: { type: Object, default: null },
+  policy: { type: Object, required: true }
 })
 
 const emit = defineEmits(['close', 'save'])
@@ -28,6 +30,7 @@ const form = ref({
 const errors = ref({})
 const saving = ref(false)
 const error = ref('')
+const passwordInputRef = ref(null)
 
 const initForm = () => {
   error.value = ''
@@ -74,88 +77,32 @@ const validate = () => {
     errors.value.userName = 'admin.users.usernameRequired'
   }
   
-  if (!isEdit.value) {
-    if (!form.value.password) {
-      errors.value.password = 'admin.users.passwordRequired'
-    } else {
-      // Validate password complexity for new users
-      const passwordErrors = validatePasswordComplexity(form.value.password)
-      if (passwordErrors.length > 0) {
-        // Translate each error and join them
-        errors.value.password = passwordErrors.map(key => t(key)).join('; ')
-      }
-    }
-    
-    if (form.value.password !== form.value.confirmPassword) {
-      errors.value.confirmPassword = 'admin.users.passwordsDoNotMatch'
-    }
-  } else {
-    // For edit, only validate password if it's provided
-    if (form.value.password) {
-      const passwordErrors = validatePasswordComplexity(form.value.password)
-      if (passwordErrors.length > 0) {
-        // Translate each error and join them
-        errors.value.password = passwordErrors.map(key => t(key)).join('; ')
-      }
-    }
-    
-    if (form.value.password && form.value.password !== form.value.confirmPassword) {
-      errors.value.confirmPassword = 'admin.users.passwordsDoNotMatch'
-    }
-  }
-  
+  // Let the child component handle its own validation, but we can trigger it.
+  passwordInputRef.value?.validate()
+
   return Object.keys(errors.value).length === 0
 }
 
-// Password complexity validation matching backend requirements
-const validatePasswordComplexity = (password) => {
-  const errors = []
-  
-  if (password.length < 6) {
-    errors.push('admin.users.passwordMinLength')
-  }
-  
-  if (!/[A-Z]/.test(password)) {
-    errors.push('admin.users.passwordUppercase')
-  }
-  
-  if (!/[a-z]/.test(password)) {
-    errors.push('admin.users.passwordLowercase')
-  }
-  
-  if (!/[0-9]/.test(password)) {
-    errors.push('admin.users.passwordDigit')
-  }
-  
-  if (!/[^A-Za-z0-9]/.test(password)) {
-    errors.push('admin.users.passwordSpecialChar')
-  }
-  
-  return errors
+const handlePasswordUpdate = (newPassword) => {
+  form.value.password = newPassword
 }
 
-// Real-time password strength indicator
-const passwordStrength = computed(() => {
-  const password = form.value.password
-  if (!password) return { label: '', color: '', strength: 0 }
-  
-  const errors = validatePasswordComplexity(password)
-  const requirements = 5
-  const met = requirements - errors.length
-  
-  if (met === requirements) {
-    return { label: 'admin.users.strong', color: 'text-green-600', strength: 100 }
-  } else if (met >= 4) {
-    return { label: 'admin.users.good', color: 'text-blue-600', strength: 80 }
-  } else if (met >= 3) {
-    return { label: 'admin.users.fair', color: 'text-yellow-600', strength: 60 }
+const handlePasswordErrors = (passwordErrors) => {
+  if (Object.keys(passwordErrors).length > 0) {
+    errors.value = { ...errors.value, ...passwordErrors }
   } else {
-    return { label: 'admin.users.weak', color: 'text-red-600', strength: 40 }
+    delete errors.value.password
+    delete errors.value.confirmPassword
   }
-})
+}
 
 const handleSubmit = async () => {
   if (!validate()) {
+    // Also trigger validation in child component
+    const passwordIsValid = passwordInputRef.value?.validate()
+    if (!passwordIsValid) {
+      return
+    }
     return
   }
   
@@ -372,113 +319,13 @@ onMounted(() => {
                         {{ isEdit ? $t('admin.users.changePasswordOptional') : $t('admin.users.password') }}
                       </h4>
 
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
-                        <!-- Password -->
-                        <div>
-                          <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
-                            {{ $t('admin.users.password') }}
-                            <span v-if="!isEdit" class="text-red-600">*</span>
-                          </label>
-                          <input
-                              id="password"
-                              v-model="form.password"
-                              type="password"
-                              autocomplete="new-password"
-                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                              :class="{ 'border-red-500': errors.password }"
-                              :required="!isEdit"
-                              :placeholder="$t('admin.users.password')"
-                          />
-                          <p v-if="errors.password" class="mt-1.5 text-sm text-red-600">{{ errors.password }}</p>
-                          <p v-if="isEdit" class="mt-1.5 text-xs text-gray-500">
-                            {{ $t('admin.users.leaveBlankToKeepCurrent') }}</p>
-                        </div>
-
-                        <!-- Confirm Password -->
-                        <div>
-                          <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1.5">
-                            {{ $t('admin.users.confirmPassword') }}
-                            <span v-if="!isEdit" class="text-red-600">*</span>
-                          </label>
-                          <input
-                              id="confirmPassword"
-                              v-model="form.confirmPassword"
-                              type="password"
-                              autocomplete="new-password"
-                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                              :class="{ 'border-red-500': errors.confirmPassword }"
-                              :required="!isEdit"
-                              :placeholder="$t('admin.users.confirmPassword')"
-                          />
-                          <p v-if="errors.confirmPassword" class="mt-1.5 text-sm text-red-600">
-                            {{ $t(errors.confirmPassword) }}</p>
-                        </div>
-                      </div>
-
-                      <!-- Password Requirements Info Box -->
-                      <div v-if="form.password || !isEdit"
-                           class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                        <p class="text-sm font-medium text-blue-900 mb-2">
-                          {{ $t('admin.users.passwordMustContain') }}</p>
-                        <ul class="text-sm text-blue-800 space-y-1">
-                          <li class="flex items-center">
-                            <span
-                                :class="form.password && form.password.length >= 6 ? 'text-green-600 font-bold' : 'text-gray-500'">
-                              {{ form.password && form.password.length >= 6 ? '✓' : '○' }}
-                            </span>
-                            <span class="ml-2">{{ $t('admin.users.atLeast6Characters') }}</span>
-                          </li>
-                          <li class="flex items-center">
-                            <span
-                                :class="form.password && /[A-Z]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
-                              {{ form.password && /[A-Z]/.test(form.password) ? '✓' : '○' }}
-                            </span>
-                            <span class="ml-2">{{ $t('admin.users.atLeastOneUppercase') }}</span>
-                          </li>
-                          <li class="flex items-center">
-                            <span
-                                :class="form.password && /[a-z]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
-                              {{ form.password && /[a-z]/.test(form.password) ? '✓' : '○' }}
-                            </span>
-                            <span class="ml-2">{{ $t('admin.users.atLeastOneLowercase') }}</span>
-                          </li>
-                          <li class="flex items-center">
-                            <span
-                                :class="form.password && /[0-9]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
-                              {{ form.password && /[0-9]/.test(form.password) ? '✓' : '○' }}
-                            </span>
-                            <span class="ml-2">{{ $t('admin.users.atLeastOneDigit') }}</span>
-                          </li>
-                          <li class="flex items-center">
-                            <span
-                                :class="form.password && /[^A-Za-z0-9]/.test(form.password) ? 'text-green-600 font-bold' : 'text-gray-500'">
-                              {{ form.password && /[^A-Za-z0-9]/.test(form.password) ? '✓' : '○' }}
-                            </span>
-                            <span class="ml-2">{{ $t('admin.users.atLeastOneSpecialChar') }}</span>
-                          </li>
-                        </ul>
-
-                        <!-- Password Strength Indicator -->
-                        <div v-if="form.password" class="mt-3">
-                          <div class="flex items-center justify-between mb-1">
-                            <span class="text-xs text-gray-600">{{ $t('admin.users.passwordStrength') }}:</span>
-                            <span :class="['text-xs font-semibold', passwordStrength.color]">{{
-                                $t(passwordStrength.label)
-                              }}</span>
-                          </div>
-                          <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                                :class="[
-                                'h-2 rounded-full transition-all duration-300',
-                                passwordStrength.strength === 100 ? 'bg-green-600' :
-                                passwordStrength.strength >= 80 ? 'bg-blue-600' :
-                                passwordStrength.strength >= 60 ? 'bg-yellow-600' : 'bg-red-600'
-                              ]"
-                                :style="`width: ${passwordStrength.strength}%`"
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
+                      <PasswordPolicyInput
+                        ref="passwordInputRef"
+                        :policy="policy"
+                        :is-edit-mode="isEdit"
+                        @update:password="handlePasswordUpdate"
+                        @update:errors="handlePasswordErrors"
+                      />
                     </div>
                   </div>
                 </div>

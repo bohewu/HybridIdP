@@ -122,8 +122,8 @@ Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下�
 - [x] Save and apply policies
 
 #### 驗證
-- [ ] Admin can view current security policies
-- [ ] Admin can update policies via UI
+- [x] Admin can view current security policies
+- [x] Admin can update policies via UI
 - [ ] Changes take effect immediately for new password changes
 - [ ] Validation prevents invalid policy values
 

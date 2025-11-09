@@ -18,6 +18,7 @@ const showRoleDialog = ref(false)
 const showAccessDenied = ref(false)
 const deniedMessage = ref('')
 const deniedPermission = ref('')
+const securityPolicy = ref(null)
 
 // Check permissions
 const canCreate = ref(false)
@@ -83,24 +84,41 @@ const fetchUsers = async () => {
   }
 }
 
-const handleCreate = () => {
+const fetchSecurityPolicy = async () => {
+  if (securityPolicy.value) return // Already fetched
+  try {
+    const response = await fetch('/api/admin/security/policies')
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    securityPolicy.value = await response.json()
+  } catch (e) {
+    console.error('Error fetching security policy:', e)
+    // We can still proceed, the form will use default/less strict validation
+    error.value = 'Could not load password policies. Please try again.'
+  }
+}
+
+const handleCreate = async () => {
   if (!canCreate.value) {
     showAccessDenied.value = true
     deniedMessage.value = t('deniedMessages.create')
     deniedPermission.value = Permissions.Users.Create
     return
   }
+  await fetchSecurityPolicy()
   selectedUser.value = null
   showForm.value = true
 }
 
-const handleEdit = (user) => {
+const handleEdit = async (user) => {
   if (!canUpdate.value) {
     showAccessDenied.value = true
     deniedMessage.value = t('deniedMessages.edit')
     deniedPermission.value = Permissions.Users.Update
     return
   }
+  await fetchSecurityPolicy()
   selectedUser.value = user
   showForm.value = true
 }
@@ -328,6 +346,7 @@ onMounted(() => {
       <UserForm
         v-if="showForm"
         :user="selectedUser"
+        :policy="securityPolicy"
         :labels="{
           firstName: t('admin.users.firstName'),
           lastName: t('admin.users.lastName'),

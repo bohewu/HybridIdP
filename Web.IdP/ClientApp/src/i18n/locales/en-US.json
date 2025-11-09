@@ -99,12 +99,22 @@
       "invalidEmail": "Please enter a valid email address.",
       "usernameRequired": "Username is required.",
       "passwordRequired": "Password is required.",
+      "confirmPasswordRequired": "Confirm Password is required.",
       "passwordsDoNotMatch": "Passwords do not match.",
-      "passwordMinLength": "Password must be at least 6 characters long.",
-      "passwordUppercase": "Password must contain an uppercase letter.",
-      "passwordLowercase": "Password must contain a lowercase letter.",
-      "passwordDigit": "Password must contain a digit.",
-      "passwordSpecialChar": "Password must contain a special character."
+      "passwordErrors": {
+        "minLength": "Password must be at least {n} characters long.",
+        "uppercase": "Password must contain an uppercase letter.",
+        "lowercase": "Password must contain a lowercase letter.",
+        "digit": "Password must contain a digit.",
+        "specialChar": "Password must contain a special character."
+      },
+      "passwordReqs": {
+        "minLength": "At least {n} characters",
+        "uppercase": "At least one uppercase letter (A-Z)",
+        "lowercase": "At least one lowercase letter (a-z)",
+        "digit": "At least one digit (0-9)",
+        "specialChar": "At least one special character (e.g., !@#$%)"
+      }
     },
     "roles": {
       "pageTitle": "Role Management",
