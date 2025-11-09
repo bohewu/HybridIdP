@@ -1,0 +1,12 @@
+@page
+@model Web.IdP.Pages.Admin.SecurityPoliciesModel
+@using Microsoft.Extensions.Localization
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["SecurityPolicies"];
+    ViewData["Breadcrumb"] = Localizer["SecurityPolicies"];
+}
+
+<div id="vue-app-container"></div>
+
+<script type="module" vite-src="~/src/admin/security/main.js"></script>
