@@ -167,22 +167,8 @@
                     <a href="/" class="btn btn-outline-primary btn-sm d-sm-none" title="@Localizer["BackToAppLauncher"]">
                         <i class="bi bi-grid-3x3-gap"></i>
                     </a>
-                    <div>
-                        <span class="text-muted small">@Localizer["WelcomeBack"]</span>
-                        <div class="d-inline-block ms-3">
-                            <select class="form-select form-select-sm language-select" style="width:140px; display:inline-block;">
-                                @if (currentCulture == "zh-TW") {
-                                    <option value="zh-TW" selected>中文 (繁體)</option>
-                                } else {
-                                    <option value="zh-TW">中文 (繁體)</option>
-                                }
-                                @if (currentCulture == "en-US") {
-                                    <option value="en-US" selected>English</option>
-                                } else {
-                                    <option value="en-US">English</option>
-                                }
-                            </select>
-                        </div>
+                    <div style="width: 140px;">
+                        <partial name="_LanguageSelector" />
                     </div>
                 </div>
             </div>

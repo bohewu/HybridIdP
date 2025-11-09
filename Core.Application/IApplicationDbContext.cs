@@ -10,6 +10,7 @@ public interface IApplicationDbContext
     DbSet<UserClaim> UserClaims { get; }
     DbSet<ScopeClaim> ScopeClaims { get; }
     DbSet<Setting> Settings { get; }
+    DbSet<SecurityPolicy> SecurityPolicies { get; }
     // Add other DbSet properties for your domain entities here
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

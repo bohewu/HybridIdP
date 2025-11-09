@@ -25,7 +25,8 @@ export default defineConfig({
         'admin-claims': './src/admin/claims/main.js',
         'admin-users': './src/admin/users/main.js',
         'admin-roles': './src/admin/roles/main.js',
-        'admin-settings': './src/admin/settings/main.js'
+        'admin-settings': './src/admin/settings/main.js',
+        'admin-security': './src/admin/security/main.js'
       }
     }
   },

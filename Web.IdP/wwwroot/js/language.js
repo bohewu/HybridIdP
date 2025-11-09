@@ -1,4 +1,3 @@
-// Language switcher functionality
 (function() {
     'use strict';
 
@@ -22,21 +21,12 @@
         }
     }
 
-    // Event delegation for language links
-    document.addEventListener('click', function(e) {
-        const target = e.target.closest('[data-language]');
-        if (target) {
-            e.preventDefault();
-            const culture = target.getAttribute('data-language');
-            setLanguage(culture);
-        }
-    });
-
-    // Handle language select dropdown
-    document.addEventListener('change', function(e) {
-        if (e.target.matches('.language-select')) {
-            const culture = e.target.value;
-            setLanguage(culture);
+    document.addEventListener('DOMContentLoaded', function() {
+        const languageSelector = document.getElementById('language-selector');
+        if (languageSelector) {
+            languageSelector.addEventListener('change', function(e) {
+                setLanguage(e.target.value ?? 'zh-TW');
+            });
         }
     });
 

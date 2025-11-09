@@ -17,9 +17,6 @@ using Web.IdP.Options;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers(); // Add controllers for API endpoints
-builder.Services.AddRazorPages();
-
 // Add Vite services for Vue.js integration
 builder.Services.AddViteServices();
 
@@ -106,29 +103,10 @@ builder.Services.AddOpenIddict()
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 
-builder.Services.Configure<RequestLocalizationOptions>(options =>
-{
-    var supportedCultures = new[]
-    {
-        new CultureInfo("en-US"),
-        new CultureInfo("zh-TW")
-    };
-
-    options.DefaultRequestCulture = new RequestCulture("zh-TW");
-    options.SupportedCultures = supportedCultures;
-    options.SupportedUICultures = supportedCultures;
-
-    // Add AcceptLanguageHeaderRequestCultureProvider to respect browser's language settings
-    options.RequestCultureProviders.Insert(0, new AcceptLanguageHeaderRequestCultureProvider());
-});
 
 builder.Services.AddMvc()
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
-    .AddDataAnnotationsLocalization(options =>
-    {
-        options.DataAnnotationLocalizerProvider = (type, factory) =>
-            factory.Create(typeof(SharedResource));
-    });
+    .AddDataAnnotationsLocalization();
 
 // Branding options
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
@@ -186,7 +164,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 
-app.UseRequestLocalization();
+var supportedCultures = new[] { "zh-TW", "en-US" };
+var localizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture(supportedCultures[0])  // 預設為 zh-TW
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+
+app.UseRequestLocalization(localizationOptions);
 
 app.UseAuthentication();
 app.UseAuthorization();

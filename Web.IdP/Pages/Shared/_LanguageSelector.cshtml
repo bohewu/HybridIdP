@@ -1,0 +1,11 @@
+@using Microsoft.AspNetCore.Localization
+
+@{
+    var cultureFeature = Context.Features.Get<IRequestCultureFeature>();
+    var currentCulture = cultureFeature?.RequestCulture.Culture.Name ?? "zh-TW";
+}
+
+<select id="language-selector" class="form-select form-select-sm" aria-label="Language selection">
+    <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文</option>
+    <option value="en-US" selected="@(currentCulture == "en-US")">English</option>
+</select>

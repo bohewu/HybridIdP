@@ -8,26 +8,32 @@ namespace Web.IdP.Api;
 public class LanguageController : ControllerBase
 {
     [HttpPost("set")]
-    public IActionResult SetLanguage([FromBody] SetLanguageRequest request)
+    public IActionResult Set([FromBody] SetLanguageRequest request)
     {
-        if (string.IsNullOrEmpty(request.Culture))
+        if (string.IsNullOrEmpty(request.Culture) || 
+            !IsCultureSupported(request.Culture))
         {
-            return BadRequest("Culture is required");
+            return BadRequest("Unsupported culture.");
         }
 
         Response.Cookies.Append(
             CookieRequestCultureProvider.DefaultCookieName,
             CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(request.Culture)),
-            new CookieOptions 
-            { 
-                Expires = DateTimeOffset.UtcNow.AddYears(1),
-                IsEssential = true,
-                SameSite = SameSiteMode.Lax
-            }
+            new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1) }
         );
 
-        return Ok(new { culture = request.Culture });
+        return Ok();
+    }
+
+    private bool IsCultureSupported(string culture)
+    {
+        // In a real app, you might get this from configuration or a service
+        var supportedCultures = new[] { "en-US", "zh-TW" };
+        return supportedCultures.Contains(culture, StringComparer.InvariantCultureIgnoreCase);
     }
 }
 
-public record SetLanguageRequest(string Culture);
+public class SetLanguageRequest
+{
+    public string Culture { get; set; } = string.Empty;
+}

@@ -441,34 +441,26 @@
 
 ---
 
-## Phase 5.3: Implement Dynamic Password Validator ✅
+## Phase 5.4: API & UI for Security Policies (Backend) ✅
 
 **完成時間：** 2025-11-09
 
 **功能摘要：**
-- 建立了 `SecurityPolicy` entity，用於在資料庫中存儲密碼策略，包含最小密碼年齡和帳戶鎖定設置。
-- 建立了 `ISecurityPolicyService` 介面和 `SecurityPolicyService` 實作，用於管理安全策略的讀取和更新，並包含快取機制。
-- 實作了 `DynamicPasswordValidator`，使其能夠從 `SecurityPolicyService` 獲取動態策略，並根據策略驗證密碼的複雜度、歷史記錄、過期時間和最小密碼年齡。
-- 為 `ApplicationUser` 新增了 `PasswordHistory` 和 `LastPasswordChangeDate` 欄位，並建立了相應的資料庫遷移。
-- 更新了 `DynamicPasswordValidatorTests` 單元測試，以涵蓋密碼歷史、過期和最小密碼年齡驗證，並確保所有測試均通過（TDD 的 Green 階段）。
-- 在登入流程中實作了帳戶鎖定機制，當用戶連續多次輸入錯誤密碼時，其帳戶將被暫時鎖定。
-- 將 JSON 處理庫從 `Newtonsoft.Json` 遷移到內建的 `System.Text.Json`。
+- 實作了 `SecurityPolicyDto`，用於在前端和後端之間傳輸安全策略數據，並包含數據驗證屬性。
+- 擴展了 `ISecurityPolicyService` 介面和 `SecurityPolicyService` 實作，新增 `UpdatePolicyAsync` 方法，用於更新安全策略。`SecurityPolicyService` 現在能夠從 `SecurityPolicyDto` 更新現有策略，並在更新後使快取失效。
+- 創建了 `SecurityPolicyController`，提供了 `GET /api/admin/security/policies` 端點用於獲取當前安全策略，以及 `PUT /api/admin/security/policies` 端點用於更新安全策略。
+- API 端點受到 `settings.read` 和 `settings.update` 權限的保護。
 
 **技術實作：**
-- `Core.Domain/Entities/SecurityPolicy.cs` (新增 `MinPasswordAgeDays`, `MaxFailedAccessAttempts`, `LockoutDurationMinutes`)
-- `Core.Application/ISecurityPolicyService.cs`
-- `Infrastructure/Services/SecurityPolicyService.cs`
-- `Infrastructure/Identity/DynamicPasswordValidator.cs` (包含歷史、過期和最小密碼年齡驗證邏輯)
-- `Core.Domain/ApplicationUser.cs` (新增 `PasswordHistory` 和 `LastPasswordChangeDate` 欄位)
-- `Web.IdP/Pages/Account/Login.cshtml.cs` (啟用 `lockoutOnFailure` 並處理鎖定結果)
-- `Web.IdP/Program.cs` (配置 Identity 的鎖定選項)
-- `Tests.Application.UnitTests/DynamicPasswordValidatorTests.cs` (新增並通過所有測試)
+- `Core.Application/DTOs/SecurityPolicyDto.cs`
+- `Core.Application/ISecurityPolicyService.cs` (新增 `UpdatePolicyAsync` 方法)
+- `Infrastructure/Services/SecurityPolicyService.cs` (實作 `UpdatePolicyAsync` 方法，包含日誌和快取失效)
+- `Web.IdP/Api/Admin/SecurityPolicyController.cs` (GET 和 PUT 端點)
+- `Core.Application/IApplicationDbContext.cs` (新增 `DbSet<SecurityPolicy> SecurityPolicies { get; }` 以解決編譯錯誤)
 
 **驗證結果：**
-- ✅ 所有 `DynamicPasswordValidatorTests` 單元測試均已通過。
-- ✅ 密碼驗證器現在能夠根據資料庫中配置的策略動態驗證密碼。
-- ✅ 帳戶鎖定功能已成功整合到登入流程中。
-- ✅ 專案成功編譯，無相關錯誤。
+- ✅ 後端專案成功編譯，無錯誤。
+- ✅ API 端點已準備就緒，可供前端 UI 調用。
 
 ---
 

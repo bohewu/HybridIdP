@@ -1,11 +1,11 @@
-using System.Threading.Tasks;
+using Core.Application.DTOs;
 using Core.Domain.Entities;
+using System.Threading.Tasks;
 
-namespace Core.Application
+namespace Core.Application;
+
+public interface ISecurityPolicyService
 {
-    public interface ISecurityPolicyService
-    {
-        Task<SecurityPolicy> GetCurrentPolicyAsync();
-        Task UpdatePolicyAsync(SecurityPolicy policy, string? updatedBy = null);
-    }
+    Task<SecurityPolicy> GetCurrentPolicyAsync();
+    Task UpdatePolicyAsync(SecurityPolicyDto policyDto, string updatedBy);
 }

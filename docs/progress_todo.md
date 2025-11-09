@@ -106,10 +106,10 @@ Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下�
 **目標：** 提供管理員介面管理安全策略
 
 #### Backend
-- [ ] API: `GET /api/admin/security/policies` (get current policies)
-- [ ] API: `PUT /api/admin/security/policies` (update policies)
-- [ ] DTOs: `SecurityPolicyDto`
-- [ ] Validation: Ensure policies are within reasonable bounds
+- [x] API: `GET /api/admin/security/policies` (get current policies)
+- [x] API: `PUT /api/admin/security/policies` (update policies)
+- [x] DTOs: `SecurityPolicyDto`
+- [x] Validation: Ensure policies are within reasonable bounds
 
 #### Frontend
 - [ ] Vue SPA: `ClientApp/src/admin/security/SecurityApp.vue`

@@ -1,92 +1,77 @@
-using System;
-using System.Threading.Tasks;
 using Core.Application;
+using Core.Application.DTOs;
 using Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
-namespace Infrastructure.Services
+namespace Infrastructure.Services;
+
+public class SecurityPolicyService : ISecurityPolicyService
 {
-    public class SecurityPolicyService : ISecurityPolicyService
+    private readonly IApplicationDbContext _db;
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<SecurityPolicyService> _logger;
+    private const string CurrentPolicyCacheKey = "SecurityPolicy:Current";
+
+    public SecurityPolicyService(IApplicationDbContext db, IMemoryCache cache, ILogger<SecurityPolicyService> logger)
     {
-        private readonly ApplicationDbContext _context;
-        private readonly IMemoryCache _cache;
-        private readonly ILogger<SecurityPolicyService> _logger;
-        private const string SecurityPolicyCacheKey = "SecurityPolicy";
+        _db = db;
+        _cache = cache;
+        _logger = logger;
+    }
 
-        public SecurityPolicyService(ApplicationDbContext context, IMemoryCache cache, ILogger<SecurityPolicyService> logger)
+    public async Task<SecurityPolicy> GetCurrentPolicyAsync()
+    {
+        if (_cache.TryGetValue(CurrentPolicyCacheKey, out SecurityPolicy? policy))
         {
-            _context = context;
-            _cache = cache;
-            _logger = logger;
+            return policy!;
         }
 
-        public async Task<SecurityPolicy> GetCurrentPolicyAsync()
+        policy = await _db.SecurityPolicies.FirstOrDefaultAsync();
+
+        if (policy == null)
         {
-            if (_cache.TryGetValue(SecurityPolicyCacheKey, out SecurityPolicy? policy))
-            {
-                _logger.LogDebug("Retrieving security policy from cache.");
-                return policy!;
-            }
+            _logger.LogInformation("No security policy found in database, creating a default one.");
+            policy = new SecurityPolicy();
+            await _db.SecurityPolicies.AddAsync(policy);
+            await _db.SaveChangesAsync(default);
+        }
+        
+        _cache.Set(CurrentPolicyCacheKey, policy, TimeSpan.FromHours(1));
+        return policy;
+    }
 
-            policy = await _context.SecurityPolicies.FirstOrDefaultAsync();
-
-            if (policy == null)
-            {
-                _logger.LogInformation("No security policy found in DB, creating default.");
-                policy = new SecurityPolicy
-                {
-                    Id = Guid.NewGuid(),
-                    MinPasswordLength = 6,
-                    RequireUppercase = true,
-                    RequireLowercase = true,
-                    RequireDigit = true,
-                    RequireNonAlphanumeric = true,
-                    PasswordHistoryCount = 0,
-                    PasswordExpirationDays = 0,
-                    UpdatedUtc = DateTime.UtcNow,
-                    UpdatedBy = "System"
-                };
-                _context.SecurityPolicies.Add(policy);
-                await _context.SaveChangesAsync();
-            }
-
-            _cache.Set(SecurityPolicyCacheKey, policy, TimeSpan.FromMinutes(30)); // Cache for 30 minutes
-            _logger.LogDebug("Security policy retrieved from DB and cached.");
-            return policy;
+    public async Task UpdatePolicyAsync(SecurityPolicyDto policyDto, string updatedBy)
+    {
+        var policy = await _db.SecurityPolicies.FirstOrDefaultAsync();
+        if (policy == null)
+        {
+            // This should not happen in practice after the first Get call, but as a safeguard:
+            policy = new SecurityPolicy();
+            await _db.SecurityPolicies.AddAsync(policy);
         }
 
-        public async Task UpdatePolicyAsync(SecurityPolicy policy, string? updatedBy = null)
-        {
-            var existingPolicy = await _context.SecurityPolicies.FirstOrDefaultAsync();
+        // Update properties from DTO
+        policy.MinPasswordLength = policyDto.MinPasswordLength;
+        policy.RequireUppercase = policyDto.RequireUppercase;
+        policy.RequireLowercase = policyDto.RequireLowercase;
+        policy.RequireDigit = policyDto.RequireDigit;
+        policy.RequireNonAlphanumeric = policyDto.RequireNonAlphanumeric;
+        policy.PasswordHistoryCount = policyDto.PasswordHistoryCount;
+        policy.PasswordExpirationDays = policyDto.PasswordExpirationDays;
+        policy.MinPasswordAgeDays = policyDto.MinPasswordAgeDays;
+        policy.MaxFailedAccessAttempts = policyDto.MaxFailedAccessAttempts;
+        policy.LockoutDurationMinutes = policyDto.LockoutDurationMinutes;
+        
+        // Update metadata
+        policy.UpdatedUtc = DateTime.UtcNow;
+        policy.UpdatedBy = updatedBy;
 
-            if (existingPolicy == null)
-            {
-                _logger.LogWarning("Attempted to update non-existent security policy. Creating new one.");
-                policy.Id = Guid.NewGuid();
-                policy.UpdatedUtc = DateTime.UtcNow;
-                policy.UpdatedBy = updatedBy ?? "System";
-                _context.SecurityPolicies.Add(policy);
-            }
-            else
-            {
-                _logger.LogInformation("Updating existing security policy.");
-                existingPolicy.MinPasswordLength = policy.MinPasswordLength;
-                existingPolicy.RequireUppercase = policy.RequireUppercase;
-                existingPolicy.RequireLowercase = policy.RequireLowercase;
-                existingPolicy.RequireDigit = policy.RequireDigit;
-                existingPolicy.RequireNonAlphanumeric = policy.RequireNonAlphanumeric;
-                existingPolicy.PasswordHistoryCount = policy.PasswordHistoryCount;
-                existingPolicy.PasswordExpirationDays = policy.PasswordExpirationDays;
-                existingPolicy.UpdatedUtc = DateTime.UtcNow;
-                existingPolicy.UpdatedBy = updatedBy ?? existingPolicy.UpdatedBy;
-                _context.SecurityPolicies.Update(existingPolicy);
-            }
-
-            await _context.SaveChangesAsync();
-            _cache.Remove(SecurityPolicyCacheKey); // Invalidate cache
-            _logger.LogInformation("Security policy updated and cache invalidated.");
-        }
+        await _db.SaveChangesAsync(default);
+        
+        // Invalidate cache
+        _cache.Remove(CurrentPolicyCacheKey);
+        _logger.LogInformation("Security policy updated by {UpdatedBy}", updatedBy);
     }
 }

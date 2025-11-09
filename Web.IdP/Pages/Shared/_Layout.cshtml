@@ -76,18 +76,7 @@
                             </li>
                         }
                         <li class="nav-item dropdown ms-sm-2">
-                            <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                @{
-                                    var currentCulture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
-                                    var languageDisplay = currentCulture == "zh-TW" ? "繁體中文" : "English";
-                                }
-                                <i class="bi bi-translate"></i>
-                                <span id="current-language" class="lang-text">@languageDisplay</span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
-                                <li><a class="dropdown-item" href="#" data-language="en-US">🇺🇸 English</a></li>
-                                <li><a class="dropdown-item" href="#" data-language="zh-TW">🇹🇼 繁體中文</a></li>
-                            </ul>
+                            <partial name="_LanguageSelector" />
                         </li>
                     </ul>
                 </div>

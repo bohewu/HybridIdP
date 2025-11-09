@@ -22,10 +22,7 @@
 <body>
     <div class="auth-container">
         <div class="language-selector">
-            <select class="language-select">
-                <option value="en-US" selected="@(currentCulture == "en-US")">English</option>
-                <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文</option>
-            </select>
+            <partial name="_LanguageSelector" />
         </div>
 
         <div class="auth-card">
@@ -83,7 +80,6 @@
     {
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     }
-    <partial name="_ValidationScriptsPartial" />
 </body>
 </html>
  
