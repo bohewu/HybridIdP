@@ -2,15 +2,13 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Constants;
 using Infrastructure.Authorization;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
-namespace Web.IdP.Api.Admin;
+namespace Web.IdP.Api;
 
 [ApiController]
 [Route("api/admin/security/policies")]
-[Authorize(Roles = "Admin")] // Overall admin protection
 public class SecurityPolicyController : ControllerBase
 {
     private readonly ISecurityPolicyService _securityPolicyService;

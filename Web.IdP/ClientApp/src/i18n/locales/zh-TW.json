@@ -632,6 +632,35 @@
       "prev": "上一頁",
       "next": "下一頁"
     }
+  },
+  "security": {
+    "pageTitle": "安全性原則",
+    "pageSubtitle": "管理身分提供者的動態安全性原則",
+    "loading": "正在載入原則...",
+    "loadingError": "載入安全性原則失敗：{message}",
+    "saveSuccess": "安全性原則已成功儲存。",
+    "saveError": "儲存安全性原則失敗：{message}",
+    "passwordRequirements": "密碼要求",
+    "passwordHistory": "密碼歷史與到期",
+    "accountLockout": "帳戶鎖定",
+    "minLength": "最小長度",
+    "requireUppercase": "需要大寫字母 (A-Z)",
+    "requireLowercase": "需要小寫字母 (a-z)",
+    "requireDigit": "需要數字 (0-9)",
+    "requireNonAlphanumeric": "需要特殊字元 (!@#$%)",
+    "historyCount": "記住最近 N 組密碼",
+    "historyCountHelp": "防止使用者重複使用最近的密碼。0 為停用。",
+    "expirationDays": "密碼到期時間（天）",
+    "expirationDaysHelp": "強制使用者在設定的期間後變更密碼。0 為停用。",
+    "minAgeDays": "密碼最小存在時間（天）",
+    "minAgeDaysHelp": "防止使用者過於頻繁地變更密碼。0 為停用。",
+    "maxFailedAttempts": "最大登入失敗次數",
+    "maxFailedAttemptsHelp": "帳戶被鎖定前的失敗嘗試次數。",
+    "lockoutDuration": "鎖定持續時間（分鐘）",
+    "lockoutDurationHelp": "多次登入失敗後帳戶保持鎖定的時間。",
+    "saveButton": "儲存變更",
+    "saving": "儲存中...",
+    "noChanges": "沒有變更需要儲存。"
   }
 }
 

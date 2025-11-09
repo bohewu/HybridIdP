@@ -625,12 +625,41 @@
     },
     "confirmDelete": "Are you sure you want to delete the claim \"{name}\"?",
     "deleteError": "Failed to delete claim",
-    "saveError": "Failed to save claim",
-    "pagination": {
-      "total": "Total: {count}",
-      "prev": "Prev",
-      "next": "Next"
-    }
+      "saveError": "Failed to save claim",
+      "pagination": {
+        "total": "Total: {count}",
+        "prev": "Prev",
+        "next": "Next"
+      }
+    },
+  "security": {
+    "pageTitle": "Security Policies",
+    "pageSubtitle": "Manage dynamic security policies for the identity provider",
+    "loading": "Loading policy...",
+    "loadingError": "Failed to load security policy: {message}",
+    "saveSuccess": "Security policy saved successfully.",
+    "saveError": "Failed to save security policy: {message}",
+    "passwordRequirements": "Password Requirements",
+    "passwordHistory": "Password History & Expiration",
+    "accountLockout": "Account Lockout",
+    "minLength": "Minimum Length",
+    "requireUppercase": "Require Uppercase (A-Z)",
+    "requireLowercase": "Require Lowercase (a-z)",
+    "requireDigit": "Require Digit (0-9)",
+    "requireNonAlphanumeric": "Require Special Character (!@#$%)",
+    "historyCount": "Remember Last N Passwords",
+    "historyCountHelp": "Prevents users from reusing recent passwords. 0 to disable.",
+    "expirationDays": "Password Expiration (Days)",
+    "expirationDaysHelp": "Forces users to change their password after a set period. 0 to disable.",
+    "minAgeDays": "Minimum Password Age (Days)",
+    "minAgeDaysHelp": "Prevents users from changing their password too frequently. 0 to disable.",
+    "maxFailedAttempts": "Max Failed Login Attempts",
+    "maxFailedAttemptsHelp": "Number of failed attempts before an account is locked.",
+    "lockoutDuration": "Lockout Duration (Minutes)",
+    "lockoutDurationHelp": "How long an account remains locked after too many failed attempts.",
+    "saveButton": "Save Changes",
+    "saving": "Saving...",
+    "noChanges": "No changes to save."
   }
 }
 

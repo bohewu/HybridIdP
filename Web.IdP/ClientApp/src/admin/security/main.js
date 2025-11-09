@@ -1,5 +1,8 @@
-import { createApp } from 'vue';
-import SecurityApp from './SecurityApp.vue';
-import './style.css';
+import { createApp } from 'vue'
+import './style.css'
+import SecurityApp from './SecurityApp.vue'
+import i18n from '@/i18n'
 
-createApp(SecurityApp).mount('#vue-app-container');
+const app = createApp(SecurityApp)
+app.use(i18n)
+app.mount('#admin-security-app')

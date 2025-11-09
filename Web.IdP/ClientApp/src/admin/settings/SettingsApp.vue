@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import permissionService from '@/utils/permissionService'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import BrandingSettings from './components/BrandingSettings.vue'
-
+import PageHeader from '@/components/common/PageHeader.vue'
 const { t } = useI18n()
 
 const hasReadPermission = ref(false)
@@ -30,14 +30,12 @@ onMounted(async () => {
   <div class="min-h-screen bg-gray-50 py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <!-- Header -->
-      <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">
-          {{ t('admin.settings.pageTitle') }}
-        </h1>
-        <p class="mt-2 text-sm text-gray-600">
-          {{ t('admin.settings.pageSubtitle') }}
-        </p>
-      </div>
+    <PageHeader 
+      :title="$t('admin.settings.pageTitle')" 
+      :subtitle="$t('admin.settings.pageSubtitle')"
+    >
+    </PageHeader>
+      
 
       <!-- Loading State -->
       <div v-if="loading" class="flex justify-center items-center py-12">
