@@ -1,26 +1,40 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Core.Application;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Caching.Memory;
-using Moq;
-using System.Linq.Expressions;
+using Xunit;
 
 namespace Tests.Application.UnitTests;
 
-public class SettingsServiceTests
+public class SettingsServiceTests : IDisposable
 {
-    private readonly Mock<IApplicationDbContext> _mockDbContext;
+    private readonly ApplicationDbContext _context;
     private readonly IMemoryCache _memoryCache;
     private readonly SettingsService _service;
 
     public SettingsServiceTests()
     {
-        _mockDbContext = new Mock<IApplicationDbContext>();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // Unique DB for each test
+            .Options;
+        
+        _context = new ApplicationDbContext(options);
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
-        _service = new SettingsService(_mockDbContext.Object, _memoryCache);
+        _service = new SettingsService(_context, _memoryCache);
+    }
+
+    private async Task SeedData(IEnumerable<Setting> settings)
+    {
+        await _context.Settings.AddRangeAsync(settings);
+        await _context.SaveChangesAsync();
     }
 
     #region GetValueAsync Tests
@@ -29,36 +43,19 @@ public class SettingsServiceTests
     public async Task GetValueAsync_WhenSettingExists_ReturnsValue()
     {
         // Arrange
-        var settings = new List<Setting>
-        {
-            new Setting
-            {
-                Key = SettingKeys.Branding.AppName,
-                Value = "TestApp",
-                DataType = SettingDataType.String,
-                UpdatedUtc = DateTime.UtcNow
-            }
-        };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
+        await SeedData(new[] { new Setting { Key = SettingKeys.Branding.AppName, Value = "TestApp", DataType = SettingDataType.String } });
 
         // Act
         var result = await _service.GetValueAsync(SettingKeys.Branding.AppName);
 
         // Assert
-        Assert.NotNull(result);
         Assert.Equal("TestApp", result);
     }
 
     [Fact]
     public async Task GetValueAsync_WhenSettingNotFound_ReturnsNull()
     {
-        // Arrange
-        var settings = new List<Setting>();
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
-
-        // Act
+        // Arrange & Act
         var result = await _service.GetValueAsync("nonexistent.key");
 
         // Assert
@@ -69,32 +66,23 @@ public class SettingsServiceTests
     public async Task GetValueAsync_UsesCacheOnSecondCall()
     {
         // Arrange
-        var settings = new List<Setting>
-        {
-            new Setting
-            {
-                Key = SettingKeys.Branding.AppName,
-                Value = "CachedApp",
-                DataType = SettingDataType.String,
-                UpdatedUtc = DateTime.UtcNow
-            }
-        };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
+        var key = SettingKeys.Branding.AppName;
+        await SeedData(new[] { new Setting { Key = key, Value = "CachedApp", DataType = SettingDataType.String } });
 
-        // Act - First call (should query DB)
-        var firstResult = await _service.GetValueAsync(SettingKeys.Branding.AppName);
+        // Act - First call (should query DB and cache the value)
+        var firstResult = await _service.GetValueAsync(key);
         
-        // Clear the mock to verify cache is used
-        _mockDbContext.Invocations.Clear();
+        // Tamper with DB to ensure cache is used on the second call
+        var settingInDb = await _context.Settings.FirstAsync();
+        settingInDb.Value = "TamperedValue";
+        await _context.SaveChangesAsync();
         
-        // Act - Second call (should use cache)
-        var secondResult = await _service.GetValueAsync(SettingKeys.Branding.AppName);
+        // Act - Second call (should return the original cached value)
+        var secondResult = await _service.GetValueAsync(key);
 
         // Assert
-        Assert.Equal(firstResult, secondResult);
-        // Verify DB was not queried on second call
-        _mockDbContext.Verify(x => x.Settings, Times.Never);
+        Assert.Equal("CachedApp", firstResult);
+        Assert.Equal("CachedApp", secondResult); // Should be the original value from cache, not "TamperedValue"
     }
 
     #endregion
@@ -105,18 +93,7 @@ public class SettingsServiceTests
     public async Task GetValueAsync_Int_ConvertsCorrectly()
     {
         // Arrange
-        var settings = new List<Setting>
-        {
-            new Setting
-            {
-                Key = SettingKeys.Security.PasswordMinLength,
-                Value = "8",
-                DataType = SettingDataType.Int,
-                UpdatedUtc = DateTime.UtcNow
-            }
-        };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
+        await SeedData(new[] { new Setting { Key = SettingKeys.Security.PasswordMinLength, Value = "8", DataType = SettingDataType.Int } });
 
         // Act
         var result = await _service.GetValueAsync<int>(SettingKeys.Security.PasswordMinLength);
@@ -129,18 +106,7 @@ public class SettingsServiceTests
     public async Task GetValueAsync_Bool_ConvertsCorrectly()
     {
         // Arrange
-        var settings = new List<Setting>
-        {
-            new Setting
-            {
-                Key = "test.boolSetting",
-                Value = "true",
-                DataType = SettingDataType.Bool,
-                UpdatedUtc = DateTime.UtcNow
-            }
-        };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
+        await SeedData(new[] { new Setting { Key = "test.boolSetting", Value = "true", DataType = SettingDataType.Bool } });
 
         // Act
         var result = await _service.GetValueAsync<bool>("test.boolSetting");
@@ -153,18 +119,7 @@ public class SettingsServiceTests
     public async Task GetValueAsync_String_ReturnsDirectly()
     {
         // Arrange
-        var settings = new List<Setting>
-        {
-            new Setting
-            {
-                Key = SettingKeys.Branding.ProductName,
-                Value = "TestProduct",
-                DataType = SettingDataType.String,
-                UpdatedUtc = DateTime.UtcNow
-            }
-        };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
+        await SeedData(new[] { new Setting { Key = SettingKeys.Branding.ProductName, Value = "TestProduct", DataType = SettingDataType.String } });
 
         // Act
         var result = await _service.GetValueAsync<string>(SettingKeys.Branding.ProductName);
@@ -178,34 +133,19 @@ public class SettingsServiceTests
     {
         // Arrange
         var testObject = new { Name = "Test", Count = 42 };
-        var settings = new List<Setting>
-        {
-            new Setting
-            {
-                Key = "test.json",
-                Value = System.Text.Json.JsonSerializer.Serialize(testObject),
-                DataType = SettingDataType.Json,
-                UpdatedUtc = DateTime.UtcNow
-            }
-        };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
+        await SeedData(new[] { new Setting { Key = "test.json", Value = JsonSerializer.Serialize(testObject), DataType = SettingDataType.Json } });
 
         // Act
-        var result = await _service.GetValueAsync<dynamic>("test.json");
+        var result = await _service.GetValueAsync<JsonElement>("test.json");
 
         // Assert
-        Assert.NotNull(result);
+        Assert.Equal("Test", result.GetProperty("Name").GetString());
+        Assert.Equal(42, result.GetProperty("Count").GetInt32());
     }
 
     [Fact]
     public async Task GetValueAsync_WhenNotFound_ReturnsDefault()
     {
-        // Arrange
-        var settings = new List<Setting>();
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
-
         // Act
         var intResult = await _service.GetValueAsync<int>("nonexistent.int");
         var boolResult = await _service.GetValueAsync<bool>("nonexistent.bool");
@@ -225,12 +165,6 @@ public class SettingsServiceTests
     public async Task SetValueAsync_WhenNewSetting_CreatesNew()
     {
         // Arrange
-        var settings = new List<Setting>();
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
-        _mockDbContext.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
         var newKey = "test.newkey";
         var newValue = "newvalue";
 
@@ -238,36 +172,27 @@ public class SettingsServiceTests
         await _service.SetValueAsync(newKey, newValue, "TestUser");
 
         // Assert
-        _mockDbContext.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var settingInDb = await _context.Settings.SingleOrDefaultAsync(s => s.Key == newKey);
+        Assert.NotNull(settingInDb);
+        Assert.Equal(newValue, settingInDb.Value);
+        Assert.Equal("TestUser", settingInDb.UpdatedBy);
     }
 
     [Fact]
     public async Task SetValueAsync_WhenExistingSetting_UpdatesValue()
     {
         // Arrange
-        var existingSetting = new Setting
-        {
-            Id = Guid.NewGuid(),
-            Key = SettingKeys.Branding.AppName,
-            Value = "OldValue",
-            DataType = SettingDataType.String,
-            UpdatedUtc = DateTime.UtcNow.AddDays(-1),
-            UpdatedBy = "OldUser"
-        };
-        var settings = new List<Setting> { existingSetting };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
-        _mockDbContext.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
+        var key = SettingKeys.Branding.AppName;
+        await SeedData(new[] { new Setting { Key = key, Value = "OldValue", DataType = SettingDataType.String, UpdatedBy = "OldUser" } });
 
         // Act
-        await _service.SetValueAsync(SettingKeys.Branding.AppName, "NewValue", "NewUser");
+        await _service.SetValueAsync(key, "NewValue", "NewUser");
 
         // Assert
-        Assert.Equal("NewValue", existingSetting.Value);
-        Assert.Equal("NewUser", existingSetting.UpdatedBy);
-        Assert.True(existingSetting.UpdatedUtc > DateTime.UtcNow.AddSeconds(-5));
-        _mockDbContext.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var settingInDb = await _context.Settings.SingleOrDefaultAsync(s => s.Key == key);
+        Assert.NotNull(settingInDb);
+        Assert.Equal("NewValue", settingInDb.Value);
+        Assert.Equal("NewUser", settingInDb.UpdatedBy);
     }
 
     #endregion
@@ -278,34 +203,31 @@ public class SettingsServiceTests
     public async Task GetByPrefixAsync_ReturnsMatchingSettings()
     {
         // Arrange
-        var settings = new List<Setting>
+        await SeedData(new[]
         {
-            new Setting { Key = "branding.appName", Value = "App", DataType = SettingDataType.String, UpdatedUtc = DateTime.UtcNow },
-            new Setting { Key = "branding.productName", Value = "Product", DataType = SettingDataType.String, UpdatedUtc = DateTime.UtcNow },
-            new Setting { Key = "security.minLength", Value = "6", DataType = SettingDataType.Int, UpdatedUtc = DateTime.UtcNow }
-        };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
+            new Setting { Key = "branding.appName", Value = "App" },
+            new Setting { Key = "branding.productName", Value = "Product" },
+            new Setting { Key = "security.minLength", Value = "6" }
+        });
 
         // Act
         var result = await _service.GetByPrefixAsync("branding.");
 
         // Assert
         Assert.Equal(2, result.Count);
-        Assert.All(result, s => Assert.StartsWith("branding.", s.Key));
+        Assert.True(result.ContainsKey("branding.appName"));
+        Assert.True(result.ContainsKey("branding.productName"));
     }
 
     [Fact]
     public async Task GetByPrefixAsync_WithoutPrefix_ReturnsAllSettings()
     {
         // Arrange
-        var settings = new List<Setting>
+        await SeedData(new[]
         {
-            new Setting { Key = "key1", Value = "value1", DataType = SettingDataType.String, UpdatedUtc = DateTime.UtcNow },
-            new Setting { Key = "key2", Value = "value2", DataType = SettingDataType.String, UpdatedUtc = DateTime.UtcNow }
-        };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
+            new Setting { Key = "key1", Value = "value1" },
+            new Setting { Key = "key2", Value = "value2" }
+        });
 
         // Act
         var result = await _service.GetByPrefixAsync("");
@@ -322,172 +244,68 @@ public class SettingsServiceTests
     public async Task InvalidateAsync_RemovesFromCache()
     {
         // Arrange
-        var settings = new List<Setting>
-        {
-            new Setting
-            {
-                Key = SettingKeys.Branding.AppName,
-                Value = "CachedValue",
-                DataType = SettingDataType.String,
-                UpdatedUtc = DateTime.UtcNow
-            }
-        };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
+        var key = SettingKeys.Branding.AppName;
+        await SeedData(new[] { new Setting { Key = key, Value = "CachedValue" } });
 
-        // Prime the cache
-        await _service.GetValueAsync(SettingKeys.Branding.AppName);
+        // 1. Prime the cache
+        var firstResult = await _service.GetValueAsync(key);
+        Assert.Equal("CachedValue", firstResult);
 
-        // Act - Invalidate cache
-        await _service.InvalidateAsync(SettingKeys.Branding.AppName);
+        // 2. Invalidate the cache
+        await _service.InvalidateAsync(key);
+        
+        // 3. Update the value in the database
+        var settingInDb = await _context.Settings.FirstAsync(s => s.Key == key);
+        settingInDb.Value = "NewValue";
+        await _context.SaveChangesAsync();
 
-        // Clear mock invocations to track new DB calls
-        _mockDbContext.Invocations.Clear();
+        // Act: 4. Get the value again
+        var secondResult = await _service.GetValueAsync(key);
 
-        // Act - Try to get value again (should query DB, not cache)
-        var result = await _service.GetValueAsync(SettingKeys.Branding.AppName);
-
-        // Assert
-        Assert.Equal("CachedValue", result);
-        // Verify DB was queried (cache was invalidated)
-        _mockDbContext.Verify(x => x.Settings, Times.Once);
+        // Assert: 5. The new value should be fetched from DB, proving cache was invalidated
+        Assert.Equal("NewValue", secondResult);
     }
 
     [Fact]
     public async Task InvalidateAsync_WithPrefix_RemovesMatchingKeysFromCache()
     {
         // Arrange
-        var settings = new List<Setting>
+        var key1 = "branding.key1";
+        var key2 = "branding.key2";
+        await SeedData(new[]
         {
-            new Setting { Key = "branding.key1", Value = "value1", DataType = SettingDataType.String, UpdatedUtc = DateTime.UtcNow },
-            new Setting { Key = "branding.key2", Value = "value2", DataType = SettingDataType.String, UpdatedUtc = DateTime.UtcNow }
-        };
-        var mockSet = CreateMockDbSet(settings);
-        _mockDbContext.Setup(x => x.Settings).Returns(mockSet.Object);
+            new Setting { Key = key1, Value = "value1" },
+            new Setting { Key = key2, Value = "value2" }
+        });
 
-        // Prime the cache
-        await _service.GetValueAsync("branding.key1");
-        await _service.GetValueAsync("branding.key2");
+        // 1. Prime the cache for both keys
+        Assert.Equal("value1", await _service.GetValueAsync(key1));
+        Assert.Equal("value2", await _service.GetValueAsync(key2));
 
-        // Act - Invalidate all keys with prefix
+        // 2. Invalidate the entire "branding." prefix
         await _service.InvalidateAsync("branding.");
+        
+        // 3. Update values in the database
+        var setting1 = await _context.Settings.FirstAsync(s => s.Key == key1);
+        var setting2 = await _context.Settings.FirstAsync(s => s.Key == key2);
+        setting1.Value = "newValue1";
+        setting2.Value = "newValue2";
+        await _context.SaveChangesAsync();
 
-        // Clear mock invocations
-        _mockDbContext.Invocations.Clear();
+        // Act: 4. Get both values again
+        var result1 = await _service.GetValueAsync(key1);
+        var result2 = await _service.GetValueAsync(key2);
 
-        // Act - Try to get both values (should query DB)
-        await _service.GetValueAsync("branding.key1");
-        await _service.GetValueAsync("branding.key2");
-
-        // Assert - DB was queried for both (cache was cleared)
-        _mockDbContext.Verify(x => x.Settings, Times.Exactly(2));
+        // Assert: 5. Both keys should have fetched the new values, proving prefix invalidation worked
+        Assert.Equal("newValue1", result1);
+        Assert.Equal("newValue2", result2);
     }
 
     #endregion
-
-    #region Helper Methods
-
-    private Mock<DbSet<Setting>> CreateMockDbSet(List<Setting> data)
+    
+    public void Dispose()
     {
-        var queryable = data.AsQueryable();
-        var mockSet = new Mock<DbSet<Setting>>();
-
-        mockSet.As<IQueryable<Setting>>().Setup(m => m.Provider).Returns(new TestAsyncQueryProvider<Setting>(queryable.Provider));
-        mockSet.As<IQueryable<Setting>>().Setup(m => m.Expression).Returns(queryable.Expression);
-        mockSet.As<IQueryable<Setting>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
-        mockSet.As<IQueryable<Setting>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
-        mockSet.As<IAsyncEnumerable<Setting>>().Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
-            .Returns(new TestAsyncEnumerator<Setting>(queryable.GetEnumerator()));
-
-        return mockSet;
-    }
-
-    #endregion
-}
-
-#region Test Helpers for Async Queryable
-
-// Helper classes for async LINQ testing
-internal class TestAsyncQueryProvider<TEntity> : IAsyncQueryProvider
-{
-    private readonly IQueryProvider _inner;
-
-    internal TestAsyncQueryProvider(IQueryProvider inner)
-    {
-        _inner = inner;
-    }
-
-    public IQueryable CreateQuery(Expression expression)
-    {
-        return new TestAsyncEnumerable<TEntity>(expression);
-    }
-
-    public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-    {
-        return new TestAsyncEnumerable<TElement>(expression);
-    }
-
-    public object? Execute(Expression expression)
-    {
-        return _inner.Execute(expression);
-    }
-
-    public TResult Execute<TResult>(Expression expression)
-    {
-        return _inner.Execute<TResult>(expression);
-    }
-
-    public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
-    {
-        return Execute<TResult>(expression);
+        _context.Dispose();
+        _memoryCache.Dispose();
     }
 }
-
-internal class TestAsyncEnumerable<T> : EnumerableQuery<T>, IAsyncEnumerable<T>, IQueryable<T>
-{
-    public TestAsyncEnumerable(IEnumerable<T> enumerable)
-        : base(enumerable)
-    { }
-
-    public TestAsyncEnumerable(Expression expression)
-        : base(expression)
-    { }
-
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return new TestAsyncEnumerator<T>(this.AsEnumerable().GetEnumerator());
-    }
-
-    IQueryProvider IQueryable.Provider
-    {
-        get { return new TestAsyncQueryProvider<T>(this); }
-    }
-}
-
-internal class TestAsyncEnumerator<T> : IAsyncEnumerator<T>
-{
-    private readonly IEnumerator<T> _inner;
-
-    public TestAsyncEnumerator(IEnumerator<T> inner)
-    {
-        _inner = inner;
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        _inner.Dispose();
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask<bool> MoveNextAsync()
-    {
-        return ValueTask.FromResult(_inner.MoveNext());
-    }
-
-    public T Current
-    {
-        get { return _inner.Current; }
-    }
-}
-
-#endregion

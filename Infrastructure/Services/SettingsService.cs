@@ -1,12 +1,14 @@
+using System.Collections.Concurrent;
 using Core.Application;
 using Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Primitives;
 
 namespace Infrastructure.Services;
 
 /// <summary>
-/// Implementation of ISettingsService with in-memory caching and UpdatedUtc-based invalidation.
+/// Implementation of ISettingsService with in-memory caching and CancellationToken-based invalidation for prefixes.
 /// </summary>
 public class SettingsService : ISettingsService
 {
@@ -14,6 +16,9 @@ public class SettingsService : ISettingsService
     private readonly IMemoryCache _cache;
     private static readonly string CachePrefix = "settings:";
     private static readonly TimeSpan DefaultCacheDuration = TimeSpan.FromMinutes(5);
+    
+    // Use a concurrent dictionary to manage cancellation tokens for prefix-based invalidation.
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _prefixCts = new();
 
     public SettingsService(IApplicationDbContext db, IMemoryCache cache)
     {
@@ -24,18 +29,25 @@ public class SettingsService : ISettingsService
     public async Task<string?> GetValueAsync(string key, CancellationToken ct = default)
     {
         var cacheKey = CachePrefix + key;
-        if (_cache.TryGetValue<(string? Value, DateTime UpdatedUtc)>(cacheKey, out var cached))
+        if (_cache.TryGetValue(cacheKey, out string? value))
         {
-            return cached.Value;
+            return value;
         }
 
         var setting = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Key == key, ct);
         if (setting == null) return null;
 
-        _cache.Set(cacheKey, (setting.Value, setting.UpdatedUtc), new MemoryCacheEntryOptions
+        var options = new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = DefaultCacheDuration };
+        
+        // Link entry to a prefix-based cancellation token if applicable
+        var prefix = GetPrefix(key);
+        if (prefix != null)
         {
-            AbsoluteExpirationRelativeToNow = DefaultCacheDuration
-        });
+            var cts = _prefixCts.GetOrAdd(prefix, _ => new CancellationTokenSource());
+            options.AddExpirationToken(new CancellationChangeToken(cts.Token));
+        }
+
+        _cache.Set(cacheKey, setting.Value, options);
         return setting.Value;
     }
 
@@ -63,13 +75,15 @@ public class SettingsService : ISettingsService
     public async Task SetValueAsync(string key, object value, string? updatedBy = null, CancellationToken ct = default)
     {
         var existing = await _db.Settings.FirstOrDefaultAsync(s => s.Key == key, ct);
+        var valueStr = value is string s ? s : System.Text.Json.JsonSerializer.Serialize(value);
+
         if (existing == null)
         {
             existing = new Setting
             {
                 Id = Guid.NewGuid(),
                 Key = key,
-                Value = value.ToString(),
+                Value = valueStr,
                 UpdatedUtc = DateTime.UtcNow,
                 UpdatedBy = updatedBy
             };
@@ -77,12 +91,19 @@ public class SettingsService : ISettingsService
         }
         else
         {
-            existing.Value = value.ToString();
+            existing.Value = valueStr;
             existing.UpdatedUtc = DateTime.UtcNow;
             existing.UpdatedBy = updatedBy;
         }
         await _db.SaveChangesAsync(ct);
+        
+        // Invalidate cache for the specific key and its prefix
         await InvalidateAsync(key);
+        var prefix = GetPrefix(key);
+        if (prefix != null)
+        {
+            await InvalidateAsync(prefix);
+        }
     }
 
     public async Task<IDictionary<string, string>> GetByPrefixAsync(string prefix, CancellationToken ct = default)
@@ -92,13 +113,16 @@ public class SettingsService : ISettingsService
             .ToListAsync(ct);
         var dict = results.ToDictionary(s => s.Key, s => s.Value ?? string.Empty);
 
+        // Add all items to cache and link them to the prefix cancellation token
+        var cts = _prefixCts.GetOrAdd(prefix, _ => new CancellationTokenSource());
+        var options = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(DefaultCacheDuration)
+            .AddExpirationToken(new CancellationChangeToken(cts.Token));
+
         foreach (var s in results)
         {
             var cacheKey = CachePrefix + s.Key;
-            _cache.Set(cacheKey, (s.Value, s.UpdatedUtc), new MemoryCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = DefaultCacheDuration
-            });
+            _cache.Set(cacheKey, s.Value, options);
         }
         return dict;
     }
@@ -107,10 +131,38 @@ public class SettingsService : ISettingsService
     {
         if (string.IsNullOrEmpty(keyOrPrefix))
         {
-            // Full invalidation strategy could track keys; leaving minimal implementation.
+            // To invalidate all, we'd need to cancel all tokens.
+            foreach (var key in _prefixCts.Keys)
+            {
+                if (_prefixCts.TryRemove(key, out var cts))
+                {
+                    cts.Cancel();
+                    cts.Dispose();
+                }
+            }
             return Task.CompletedTask;
         }
-        _cache.Remove(CachePrefix + keyOrPrefix);
+
+        // If it's a prefix, cancel the token for that prefix.
+        if (keyOrPrefix.EndsWith("."))
+        {
+            if (_prefixCts.TryRemove(keyOrPrefix, out var cts))
+            {
+                cts.Cancel();
+                cts.Dispose();
+            }
+        }
+        else // It's a single key
+        {
+            _cache.Remove(CachePrefix + keyOrPrefix);
+        }
+        
         return Task.CompletedTask;
+    }
+    
+    private string? GetPrefix(string key)
+    {
+        var parts = key.Split('.');
+        return parts.Length > 1 ? $"{parts[0]}." : null;
     }
 }
