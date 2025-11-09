@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Core.Application;
+using Core.Application.DTOs;
 using Core.Domain;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -12,35 +13,26 @@ namespace Web.IdP.Pages.Account;
 public class LoginModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ILoginService _loginService;
     private readonly ITurnstileService _turnstileService;
-    private readonly ILegacyAuthService _legacyAuthService;
-    private readonly IJitProvisioningService _jitProvisioningService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<LoginModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly ISecurityPolicyService _securityPolicyService;
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
-        UserManager<ApplicationUser> userManager,
+        ILoginService loginService,
         ITurnstileService turnstileService,
-        ILegacyAuthService legacyAuthService,
-        IJitProvisioningService jitProvisioningService,
         IConfiguration configuration,
         ILogger<LoginModel> logger,
-        IStringLocalizer<SharedResource> localizer,
-        ISecurityPolicyService securityPolicyService)
+        IStringLocalizer<SharedResource> localizer)
     {
         _signInManager = signInManager;
-        _userManager = userManager;
+        _loginService = loginService;
         _turnstileService = turnstileService;
-        _legacyAuthService = legacyAuthService;
-        _localizer = localizer;
-        _jitProvisioningService = jitProvisioningService;
         _configuration = configuration;
         _logger = logger;
-        _securityPolicyService = securityPolicyService;
+        _localizer = localizer;
     }
 
     [BindProperty]
@@ -81,96 +73,42 @@ public class LoginModel : PageModel
     {
         returnUrl ??= Url.Content("~/");
 
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
         {
-            // Validate Turnstile if enabled
-            if (TurnstileEnabled)
+            return Page();
+        }
+        
+        // Validate Turnstile if enabled
+        if (TurnstileEnabled)
+        {
+            var turnstileResponse = Request.Form["cf-turnstile-response"].ToString();
+            if (string.IsNullOrEmpty(turnstileResponse) || !await _turnstileService.ValidateTokenAsync(turnstileResponse, HttpContext.Connection.RemoteIpAddress?.ToString()))
             {
-                var turnstileResponse = Request.Form["cf-turnstile-response"].ToString();
-                if (string.IsNullOrEmpty(turnstileResponse))
-                {
-                    ModelState.AddModelError(string.Empty, _localizer["CompleteCaptcha"]);
-                    return Page();
-                }
-
-                var isValid = await _turnstileService.ValidateTokenAsync(
-                    turnstileResponse,
-                    HttpContext.Connection.RemoteIpAddress?.ToString());
-
-                if (!isValid)
-                {
-                    ModelState.AddModelError(string.Empty, _localizer["CaptchaValidationFailed"]);
-                    return Page();
-                }
-            }
-
-            // Try to find user by email first, then by username if not found
-            var user = await _userManager.FindByEmailAsync(Input.Login) 
-                         ?? await _userManager.FindByNameAsync(Input.Login);
-
-            if (user != null)
-            {
-                // User found locally, attempt local authentication ONLY.
-                
-                // Check if user is locked out
-                if (await _userManager.IsLockedOutAsync(user))
-                {
-                    _logger.LogWarning("User account '{username}' is locked out.", user.UserName);
-                    ModelState.AddModelError(string.Empty, _localizer["UserAccountLockedOut"]);
-                    return Page();
-                }
-
-                // Check password
-                if (await _userManager.CheckPasswordAsync(user, Input.Password))
-                {
-                    // Password is correct, reset failed attempts and sign in
-                    await _userManager.ResetAccessFailedCountAsync(user);
-                    await _signInManager.SignInAsync(user, Input.RememberMe);
-                    _logger.LogInformation("User '{username}' logged in with local account.", user.UserName);
-                    return LocalRedirect(returnUrl);
-                }
-                
-                // Password is incorrect, handle lockout logic
-                _logger.LogWarning("Invalid password attempt for user '{username}'.", user.UserName);
-                
-                // Get dynamic security policy
-                var policy = await _securityPolicyService.GetCurrentPolicyAsync();
-                
-                // Increment failed access count if lockout is enabled in the policy
-                if (policy.MaxFailedAccessAttempts > 0)
-                {
-                    await _userManager.AccessFailedAsync(user);
-                    var accessFailedCount = await _userManager.GetAccessFailedCountAsync(user);
-                    if (accessFailedCount >= policy.MaxFailedAccessAttempts)
-                    {
-                        _logger.LogWarning("User account '{username}' locked out due to too many failed login attempts.", user.UserName);
-                        await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddMinutes(policy.LockoutDurationMinutes));
-                        ModelState.AddModelError(string.Empty, _localizer["UserAccountLockedOut"]);
-                        return Page();
-                    }
-                }
-                
-                // After a failed local attempt, always show invalid login and stop. Do not fall through.
-                ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
+                ModelState.AddModelError(string.Empty, _localizer["CaptchaValidationFailed"]);
                 return Page();
             }
-
-            // User not found locally, now try legacy auth + JIT
-            var legacyResult = await _legacyAuthService.ValidateAsync(Input.Login, Input.Password);
-            if (!legacyResult.IsAuthenticated)
-            {
-                // Generic error for both non-existent user and legacy auth failure
-                ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
-                return Page();
-            }
-
-            var provisionedUser = await _jitProvisioningService.ProvisionUserAsync(legacyResult);
-            await _signInManager.SignInAsync(provisionedUser, isPersistent: Input.RememberMe);
-            _logger.LogInformation("User logged in via legacy auth and JIT provisioning.");
-            return LocalRedirect(returnUrl);
         }
 
-        // If we got this far, something failed, redisplay form
-        return Page();
+        var result = await _loginService.AuthenticateAsync(Input.Login, Input.Password);
+
+        switch (result.Status)
+        {
+            case LoginStatus.Success:
+            case LoginStatus.LegacySuccess:
+                await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
+                _logger.LogInformation("User '{UserName}' signed in successfully.", result.User!.UserName);
+                return LocalRedirect(returnUrl);
+
+            case LoginStatus.LockedOut:
+                _logger.LogWarning("Login failed for user '{Login}': Account is locked out.", Input.Login);
+                ModelState.AddModelError(string.Empty, _localizer["UserAccountLockedOut"]);
+                return Page();
+
+            case LoginStatus.InvalidCredentials:
+            default:
+                _logger.LogWarning("Login failed for user '{Login}': Invalid credentials.", Input.Login);
+                ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
+                return Page();
+        }
     }
 }

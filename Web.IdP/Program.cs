@@ -164,6 +164,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IBrandingService, BrandingService>();
 builder.Services.AddScoped<ISecurityPolicyService, SecurityPolicyService>();
+builder.Services.AddScoped<ILoginService, LoginService>();
 
 var app = builder.Build();
 
