@@ -101,6 +101,15 @@ namespace HybridIdP.Infrastructure.Identity
                 }
             }
 
+            // Minimum Password Age Check
+            if (policy.MinPasswordAgeDays > 0 && user.LastPasswordChangeDate.HasValue)
+            {
+                if (user.LastPasswordChangeDate.Value.AddDays(policy.MinPasswordAgeDays) > DateTime.UtcNow)
+                {
+                    errors.Add(new IdentityError { Code = "PasswordChangeTooSoon", Description = $"You cannot change your password again so soon. Please wait at least {policy.MinPasswordAgeDays} days." });
+                }
+            }
+
             // TODO: Implement common password blacklist (Phase 5.3) - This might require a separate service or configuration.
 
             return errors.Any() ? IdentityResult.Failed(errors.ToArray()) : IdentityResult.Success;

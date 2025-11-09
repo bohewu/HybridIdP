@@ -12,29 +12,35 @@ namespace Web.IdP.Pages.Account;
 public class LoginModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITurnstileService _turnstileService;
     private readonly ILegacyAuthService _legacyAuthService;
     private readonly IJitProvisioningService _jitProvisioningService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<LoginModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly ISecurityPolicyService _securityPolicyService;
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
+        UserManager<ApplicationUser> userManager,
         ITurnstileService turnstileService,
         ILegacyAuthService legacyAuthService,
         IJitProvisioningService jitProvisioningService,
         IConfiguration configuration,
         ILogger<LoginModel> logger,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        ISecurityPolicyService securityPolicyService)
     {
         _signInManager = signInManager;
+        _userManager = userManager;
         _turnstileService = turnstileService;
         _legacyAuthService = legacyAuthService;
         _localizer = localizer;
         _jitProvisioningService = jitProvisioningService;
         _configuration = configuration;
         _logger = logger;
+        _securityPolicyService = securityPolicyService;
     }
 
     [BindProperty]
@@ -48,8 +54,8 @@ public class LoginModel : PageModel
     public class InputModel
     {
         [Required]
-    [Display(Name = "EmailOrUsernameLabel")]
-    public string Login { get; set; } = default!;
+        [Display(Name = "EmailOrUsernameLabel")]
+        public string Login { get; set; } = default!;
 
         [Required]
         [DataType(DataType.Password)]
@@ -98,32 +104,68 @@ public class LoginModel : PageModel
                 }
             }
 
-            // Phase 2.3: Try local account first, then legacy auth with JIT provisioning
-            // First, try local account authentication (for admin and other local users)
             // Try to find user by email first, then by username if not found
-            var localUser = await _signInManager.UserManager.FindByEmailAsync(Input.Login) 
-                         ?? await _signInManager.UserManager.FindByNameAsync(Input.Login);
-            if (localUser != null)
+            var user = await _userManager.FindByEmailAsync(Input.Login) 
+                         ?? await _userManager.FindByNameAsync(Input.Login);
+
+            if (user != null)
             {
-                // Use the actual username for sign-in (PasswordSignInAsync expects username, not email)
-                var result = await _signInManager.PasswordSignInAsync(localUser.UserName!, Input.Password, Input.RememberMe, lockoutOnFailure: false);
-                if (result.Succeeded)
+                // User found locally, attempt local authentication ONLY.
+                
+                // Check if user is locked out
+                if (await _userManager.IsLockedOutAsync(user))
                 {
-                    _logger.LogInformation("User logged in with local account.");
+                    _logger.LogWarning("User account '{username}' is locked out.", user.UserName);
+                    ModelState.AddModelError(string.Empty, _localizer["UserAccountLockedOut"]);
+                    return Page();
+                }
+
+                // Check password
+                if (await _userManager.CheckPasswordAsync(user, Input.Password))
+                {
+                    // Password is correct, reset failed attempts and sign in
+                    await _userManager.ResetAccessFailedCountAsync(user);
+                    await _signInManager.SignInAsync(user, Input.RememberMe);
+                    _logger.LogInformation("User '{username}' logged in with local account.", user.UserName);
                     return LocalRedirect(returnUrl);
                 }
-            }
-
-            // If local auth failed or user doesn't exist locally, try legacy auth + JIT
-            var legacyResult = await _legacyAuthService.ValidateAsync(Input.Login, Input.Password);
-            if (!legacyResult.IsAuthenticated)
-            {
+                
+                // Password is incorrect, handle lockout logic
+                _logger.LogWarning("Invalid password attempt for user '{username}'.", user.UserName);
+                
+                // Get dynamic security policy
+                var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+                
+                // Increment failed access count if lockout is enabled in the policy
+                if (policy.MaxFailedAccessAttempts > 0)
+                {
+                    await _userManager.AccessFailedAsync(user);
+                    var accessFailedCount = await _userManager.GetAccessFailedCountAsync(user);
+                    if (accessFailedCount >= policy.MaxFailedAccessAttempts)
+                    {
+                        _logger.LogWarning("User account '{username}' locked out due to too many failed login attempts.", user.UserName);
+                        await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddMinutes(policy.LockoutDurationMinutes));
+                        ModelState.AddModelError(string.Empty, _localizer["UserAccountLockedOut"]);
+                        return Page();
+                    }
+                }
+                
+                // After a failed local attempt, always show invalid login and stop. Do not fall through.
                 ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
                 return Page();
             }
 
-            var user = await _jitProvisioningService.ProvisionUserAsync(legacyResult);
-            await _signInManager.SignInAsync(user, isPersistent: Input.RememberMe);
+            // User not found locally, now try legacy auth + JIT
+            var legacyResult = await _legacyAuthService.ValidateAsync(Input.Login, Input.Password);
+            if (!legacyResult.IsAuthenticated)
+            {
+                // Generic error for both non-existent user and legacy auth failure
+                ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
+                return Page();
+            }
+
+            var provisionedUser = await _jitProvisioningService.ProvisionUserAsync(legacyResult);
+            await _signInManager.SignInAsync(provisionedUser, isPersistent: Input.RememberMe);
             _logger.LogInformation("User logged in via legacy auth and JIT provisioning.");
             return LocalRedirect(returnUrl);
         }

@@ -446,25 +446,28 @@
 **完成時間：** 2025-11-09
 
 **功能摘要：**
-- 建立了 `SecurityPolicy` entity，用於在資料庫中存儲密碼策略。
+- 建立了 `SecurityPolicy` entity，用於在資料庫中存儲密碼策略，包含最小密碼年齡和帳戶鎖定設置。
 - 建立了 `ISecurityPolicyService` 介面和 `SecurityPolicyService` 實作，用於管理安全策略的讀取和更新，並包含快取機制。
-- 實作了 `DynamicPasswordValidator`，使其能夠從 `SecurityPolicyService` 獲取動態策略，並根據策略驗證密碼的複雜度、歷史記錄和過期時間。
+- 實作了 `DynamicPasswordValidator`，使其能夠從 `SecurityPolicyService` 獲取動態策略，並根據策略驗證密碼的複雜度、歷史記錄、過期時間和最小密碼年齡。
 - 為 `ApplicationUser` 新增了 `PasswordHistory` 和 `LastPasswordChangeDate` 欄位，並建立了相應的資料庫遷移。
-- 更新了 `DynamicPasswordValidatorTests` 單元測試，以涵蓋密碼歷史和過期驗證，並確保所有測試均通過（TDD 的 Green 階段）。
+- 更新了 `DynamicPasswordValidatorTests` 單元測試，以涵蓋密碼歷史、過期和最小密碼年齡驗證，並確保所有測試均通過（TDD 的 Green 階段）。
+- 在登入流程中實作了帳戶鎖定機制，當用戶連續多次輸入錯誤密碼時，其帳戶將被暫時鎖定。
 - 將 JSON 處理庫從 `Newtonsoft.Json` 遷移到內建的 `System.Text.Json`。
 
 **技術實作：**
-- `Core.Domain/Entities/SecurityPolicy.cs`
+- `Core.Domain/Entities/SecurityPolicy.cs` (新增 `MinPasswordAgeDays`, `MaxFailedAccessAttempts`, `LockoutDurationMinutes`)
 - `Core.Application/ISecurityPolicyService.cs`
 - `Infrastructure/Services/SecurityPolicyService.cs`
-- `Infrastructure/Identity/DynamicPasswordValidator.cs` (包含歷史和過期驗證邏輯)
+- `Infrastructure/Identity/DynamicPasswordValidator.cs` (包含歷史、過期和最小密碼年齡驗證邏輯)
 - `Core.Domain/ApplicationUser.cs` (新增 `PasswordHistory` 和 `LastPasswordChangeDate` 欄位)
+- `Web.IdP/Pages/Account/Login.cshtml.cs` (啟用 `lockoutOnFailure` 並處理鎖定結果)
+- `Web.IdP/Program.cs` (配置 Identity 的鎖定選項)
 - `Tests.Application.UnitTests/DynamicPasswordValidatorTests.cs` (新增並通過所有測試)
-- `Web.IdP/Program.cs` (註冊 `ISecurityPolicyService` 和 `DynamicPasswordValidator`)
 
 **驗證結果：**
 - ✅ 所有 `DynamicPasswordValidatorTests` 單元測試均已通過。
 - ✅ 密碼驗證器現在能夠根據資料庫中配置的策略動態驗證密碼。
+- ✅ 帳戶鎖定功能已成功整合到登入流程中。
 - ✅ 專案成功編譯，無相關錯誤。
 
 ---

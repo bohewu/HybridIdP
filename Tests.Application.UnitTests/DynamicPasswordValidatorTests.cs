@@ -248,5 +248,28 @@ namespace Tests.Application.UnitTests
             // Assert
             Assert.True(result.Succeeded);
         }
+
+        [Fact]
+        public async Task ValidateAsync_PasswordChangeTooSoon_ReturnsFailed()
+        {
+            // Arrange
+            _mockSecurityPolicyService.Setup(s => s.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy { MinPasswordAgeDays = 7, MinPasswordLength = 1 });
+
+            var validator = CreateValidator();
+            var user = new ApplicationUser
+            {
+                UserName = "testuser",
+                LastPasswordChangeDate = DateTime.UtcNow.AddDays(-1) // Changed password 1 day ago
+            };
+            var password = "NewValidPassword1!";
+
+            // Act
+            var result = await validator.ValidateAsync(_mockUserManager.Object, user, password);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Contains(result.Errors, e => e.Code == "PasswordChangeTooSoon");
+        }
     }
 }

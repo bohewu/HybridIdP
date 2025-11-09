@@ -12,6 +12,9 @@ namespace Core.Domain.Entities
         public bool RequireNonAlphanumeric { get; set; } = true;
         public int PasswordHistoryCount { get; set; } = 0; // 0 means no history check
         public int PasswordExpirationDays { get; set; } = 0; // 0 means no expiration
+        public int MinPasswordAgeDays { get; set; } = 0; // 0 means no minimum age
+        public int MaxFailedAccessAttempts { get; set; } = 5;
+        public int LockoutDurationMinutes { get; set; } = 15;
         public DateTime UpdatedUtc { get; set; }
         public string? UpdatedBy { get; set; }
     }

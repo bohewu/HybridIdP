@@ -83,10 +83,13 @@ Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下�
 - [x] Create `SecurityPolicy` entity (store policies in database)
   - [x] MinPasswordLength, RequireUppercase, RequireDigit, etc.
   - [x] PasswordHistoryCount, PasswordExpirationDays
+  - [x] MinPasswordAgeDays, MaxFailedAccessAttempts, LockoutDurationMinutes
 - [x] Create `ISecurityPolicyService` interface
 - [x] Implement `DynamicPasswordValidator` implementing `IPasswordValidator<ApplicationUser>`
 - [x] Implement password history tracking
 - [x] Implement password expiration logic
+- [x] Implement minimum password age logic
+- [x] Implement account lockout on failed attempts
 - [x] Make all TDD tests pass (Green phase)
 
 #### 驗證

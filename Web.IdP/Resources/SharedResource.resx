@@ -24,4 +24,22 @@
   <data name="PasswordRequiresUpper" xml:space="preserve">
     <value>Passwords must have at least one uppercase ('A'-'Z').</value>
   </data>
+  <data name="UserAccountLockedOut" xml:space="preserve">
+    <value>This account has been locked out, please try again later.</value>
+  </data>
+  <data name="PasswordExpired" xml:space="preserve">
+    <value>Your password has expired. It must be changed every {0} days.</value>
+  </data>
+  <data name="PasswordChangeTooSoon" xml:space="preserve">
+    <value>You cannot change your password again so soon. Please wait at least {0} days.</value>
+  </data>
+  <data name="InvalidLoginAttempt" xml:space="preserve">
+    <value>Invalid login attempt.</value>
+  </data>
+  <data name="CompleteCaptcha" xml:space="preserve">
+    <value>Please complete the CAPTCHA.</value>
+  </data>
+  <data name="CaptchaValidationFailed" xml:space="preserve">
+    <value>CAPTCHA validation failed, please try again.</value>
+  </data>
 </root>
