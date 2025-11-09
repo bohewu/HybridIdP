@@ -1,5 +1,210 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="AdminPortal" xml:space="preserve">
+    <value>管理後台</value>
+  </data>
+  <data name="Admin" xml:space="preserve">
+    <value>管理</value>
+  </data>
+  <data name="Dashboard" xml:space="preserve">
+    <value>儀表板</value>
+  </data>
+  <data name="OidcManagement" xml:space="preserve">
+    <value>OIDC 管理</value>
+  </data>
+  <data name="Clients" xml:space="preserve">
+    <value>用戶端</value>
+  </data>
+  <data name="Scopes" xml:space="preserve">
+    <value>範圍 (Scopes)</value>
+  </data>
+  <data name="Claims" xml:space="preserve">
+    <value>Claims</value>
+  </data>
+  <data name="IdentityManagement" xml:space="preserve">
+    <value>身分管理</value>
+  </data>
+  <data name="Users" xml:space="preserve">
+    <value>使用者</value>
+  </data>
+  <data name="Roles" xml:space="preserve">
+    <value>角色</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>設定</value>
+  </data>
+  <data name="SecurityPolicies" xml:space="preserve">
+    <value>安全政策</value>
+  </data>
+  <data name="Administrator" xml:space="preserve">
+    <value>管理者</value>
+  </data>
+  <data name="WelcomeBack" xml:space="preserve">
+    <value>歡迎回來！</value>
+  </data>
+  <data name="BackToAppLauncher" xml:space="preserve">
+    <value>返回應用程式啟動器</value>
+  </data>
+  <data name="PrivacyPolicy" xml:space="preserve">
+    <value>隱私權政策</value>
+  </data>
+  <data name="Documentation" xml:space="preserve">
+    <value>文件</value>
+  </data>
+  <data name="Support" xml:space="preserve">
+    <value>支援</value>
+  </data>
+  <!-- Index Page -->
+  <data name="HomePage" xml:space="preserve">
+    <value>首頁</value>
+  </data>
+  <data name="MyApplications" xml:space="preserve">
+    <value>我的應用程式</value>
+  </data>
+  <data name="QuickAccess" xml:space="preserve">
+    <value>快速存取</value>
+  </data>
+  <data name="NoAppsAvailable" xml:space="preserve">
+    <value>尚無可用應用程式</value>
+  </data>
+  <data name="NoAppsDescription" xml:space="preserve">
+    <value>已連接的應用程式將顯示於此，方便您進行單一登入存取。</value>
+  </data>
+  <!-- Logout Page -->
+  <data name="LogoutTitle" xml:space="preserve">
+    <value>登出</value>
+  </data>
+  <data name="LogoutConfirmMessage" xml:space="preserve">
+    <value>確定要登出嗎？</value>
+  </data>
+  <data name="YesLogout" xml:space="preserve">
+    <value>是，登出</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="LogoutSuccessMessage" xml:space="preserve">
+    <value>您已成功登出。</value>
+  </data>
+  <data name="ReturnHome" xml:space="preserve">
+    <value>返回首頁</value>
+  </data>
+  <!-- AccessDenied Page -->
+  <data name="AccessDeniedTitle" xml:space="preserve">
+    <value>存取被拒</value>
+  </data>
+  <data name="AccessDeniedMessage" xml:space="preserve">
+    <value>您沒有權限存取此資源。</value>
+  </data>
+  <data name="AdminPrivilegesRequired" xml:space="preserve">
+    <value>此區域需要管理員權限。</value>
+  </data>
+  <data name="RequestedUrl" xml:space="preserve">
+    <value>請求的 URL：</value>
+  </data>
+  <data name="LogoutAndSwitch" xml:space="preserve">
+    <value>登出並切換帳戶</value>
+  </data>
+  <!-- Privacy Page -->
+  <data name="PrivacyDescription" xml:space="preserve">
+    <value>使用此頁面詳細說明您網站的隱私權政策。</value>
+  </data>
+  <!-- Error Page -->
+  <data name="ErrorTitle" xml:space="preserve">
+    <value>錯誤</value>
+  </data>
+  <data name="ErrorOccurred" xml:space="preserve">
+    <value>處理您的請求時發生錯誤。</value>
+  </data>
+  <data name="RequestId" xml:space="preserve">
+    <value>請求 ID：</value>
+  </data>
+  <data name="DevelopmentMode" xml:space="preserve">
+    <value>開發模式</value>
+  </data>
+  <data name="DevelopmentDescription1" xml:space="preserve">
+    <value>切換到 <strong>Development</strong> 環境會顯示有關所發生錯誤的詳細資訊。</value>
+  </data>
+  <data name="DevelopmentDescription2" xml:space="preserve">
+    <value><strong>已部署的應用程式不應啟用 Development 環境。</strong>這可能會導致向終端使用者顯示例外狀況的敏感資訊。對於本地偵錯，請將 <strong>ASPNETCORE_ENVIRONMENT</strong> 環境變數設定為 <strong>Development</strong> 並重新啟動應用程式，以啟用 <strong>Development</strong> 環境。</value>
+  </data>
+  <!-- Navbar -->
+  <data name="Home" xml:space="preserve">
+    <value>首頁</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>隱私權</value>
+  </data>
+  <data name="Hello" xml:space="preserve">
+    <value>您好</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>登出</value>
+  </data>
+  <data name="Register" xml:space="preserve">
+    <value>註冊</value>
+  </data>
+  <data name="Login" xml:space="preserve">
+    <value>登入</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>語言</value>
+  </data>
+  <data name="AdminConsole" xml:space="preserve">
+    <value>管理控制台</value>
+  </data>
+  <!-- Index Page - App Launcher -->
+  <data name="DisconnectApp" xml:space="preserve">
+    <value>中斷連接</value>
+  </data>
+  <data name="DisconnectAppConfirm" xml:space="preserve">
+    <value>確定要中斷與此應用程式的連接嗎？下次登入時需要重新授權。</value>
+  </data>
+  <data name="AppDisconnected" xml:space="preserve">
+    <value>應用程式已成功中斷連接</value>
+  </data>
+  <data name="DisconnectFailed" xml:space="preserve">
+    <value>中斷連接失敗</value>
+  </data>
+  <data name="DisconnectError" xml:space="preserve">
+    <value>發生錯誤</value>
+  </data>
+  <data name="SearchApps" xml:space="preserve">
+    <value>搜尋應用程式...</value>
+  </data>
+  <data name="GridView" xml:space="preserve">
+    <value>網格檢視</value>
+  </data>
+  <data name="ListView" xml:space="preserve">
+    <value>清單檢視</value>
+  </data>
+  <!-- Login -->
+  <data name="EmailOrUsername" xml:space="preserve">
+    <value>電子郵件或使用者名稱</value>
+  </data>
+  <data name="EmailOrUsernameLabel" xml:space="preserve">
+    <value>電子郵件或使用者名稱</value>
+  </data>
+  <data name="SignInToContinue" xml:space="preserve">
+    <value>請登入以繼續</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>密碼</value>
+  </data>
+  <data name="RememberMe" xml:space="preserve">
+    <value>記住我？</value>
+  </data>
+  <data name="DontHaveAccountRegister" xml:space="preserve">
+    <value>還沒有帳號？立即註冊</value>
+  </data>
+  <!-- Footer -->
+  <data name="FooterCopyright" xml:space="preserve">
+    <value>© 2025 - HybridAuth IdP</value>
+  </data>
+  <data name="AllRightsReserved" xml:space="preserve">
+    <value>版權所有</value>
+  </data>
+
   <data name="DuplicateEmail" xml:space="preserve">
     <value>電子郵件 '{0}' 已被使用。</value>
   </data>
