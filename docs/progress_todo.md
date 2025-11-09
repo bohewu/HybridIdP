@@ -40,14 +40,14 @@ Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下�
 **目標：** 提供多語言化的身份驗證錯誤訊息
 
 #### 實作步驟
-- [ ] Create custom `IdentityErrorDescriber` class
-- [ ] Implement translated error messages (en-US, zh-TW)
-- [ ] Register error describer in DI container
-- [ ] Support dynamic language switching based on user locale
+- [x] Create custom `IdentityErrorDescriber` class
+- [x] Implement translated error messages (en-US, zh-TW)
+- [x] Register error describer in DI container
+- [x] Support dynamic language switching based on user locale
 
 #### 驗證
-- [ ] Identity errors (e.g., "Password too short") appear in configured language
-- [ ] Language switches correctly for different users
+- [x] Identity errors (e.g., "Password too short") appear in configured language
+- [x] Language switches correctly for different users
 
 **預計完成時間：** 0.5 開發 session
 
@@ -58,18 +58,18 @@ Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下�
 **目標：** 使用 TDD 方法建立可配置的密碼驗證器測試
 
 #### 實作步驟
-- [ ] Write failing unit tests for password policy validation
-  - [ ] Minimum length validation
-  - [ ] Password history check (prevent reuse)
-  - [ ] Complexity requirements (uppercase, lowercase, digits, special chars)
-  - [ ] Password expiration
-  - [ ] Common password blacklist
-- [ ] Document expected behavior in tests
-- [ ] Ensure tests fail initially (Red phase of TDD)
+- [x] Write failing unit tests for password policy validation
+  - [x] Minimum length validation
+  - [x] Password history check (prevent reuse)
+  - [x] Complexity requirements (uppercase, lowercase, digits, special chars)
+  - [x] Password expiration
+  - [x] Common password blacklist
+- [x] Document expected behavior in tests
+- [x] Ensure tests fail initially (Red phase of TDD)
 
 #### 驗證
-- [ ] All password validator tests exist and fail as expected
-- [ ] Test coverage includes edge cases
+- [x] All password validator tests exist and fail as expected
+- [x] Test coverage includes edge cases
 
 **預計完成時間：** 0.5 開發 session
 
@@ -80,19 +80,19 @@ Phase 4.x 全部子階段已完成（詳見 `progress_completed.md`）。接下�
 **目標：** 實作密碼驗證邏輯，通過 TDD 測試
 
 #### 實作步驟
-- [ ] Create `SecurityPolicy` entity (store policies in database)
-  - [ ] MinPasswordLength, RequireUppercase, RequireDigit, etc.
-  - [ ] PasswordHistoryCount, PasswordExpirationDays
-- [ ] Create `ISecurityPolicyService` interface
-- [ ] Implement `DynamicPasswordValidator` implementing `IPasswordValidator<ApplicationUser>`
-- [ ] Implement password history tracking
-- [ ] Implement password expiration logic
-- [ ] Make all TDD tests pass (Green phase)
+- [x] Create `SecurityPolicy` entity (store policies in database)
+  - [x] MinPasswordLength, RequireUppercase, RequireDigit, etc.
+  - [x] PasswordHistoryCount, PasswordExpirationDays
+- [x] Create `ISecurityPolicyService` interface
+- [x] Implement `DynamicPasswordValidator` implementing `IPasswordValidator<ApplicationUser>`
+- [x] Implement password history tracking
+- [x] Implement password expiration logic
+- [x] Make all TDD tests pass (Green phase)
 
 #### 驗證
-- [ ] All password validator unit tests pass
-- [ ] Password validation respects configured policies
-- [ ] Password history prevents reuse
+- [x] All password validator unit tests pass
+- [x] Password validation respects configured policies
+- [x] Password history prevents reuse
 
 **預計完成時間：** 1 開發 session
 

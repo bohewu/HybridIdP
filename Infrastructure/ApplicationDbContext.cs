@@ -22,6 +22,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     DbSet<UserClaim> IApplicationDbContext.UserClaims => Set<UserClaim>();
     public DbSet<ScopeClaim> ScopeClaims => Set<ScopeClaim>();
     public DbSet<Setting> Settings => Set<Setting>();
+    public DbSet<SecurityPolicy> SecurityPolicies { get; set; } = default!;
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {

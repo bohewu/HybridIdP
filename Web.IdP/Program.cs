@@ -1,3 +1,6 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
+using HybridIdP.Infrastructure.Identity;
 using Infrastructure;
 using Infrastructure.Identity;
 using Infrastructure.Services;
@@ -32,7 +35,9 @@ builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequir
 
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+    .AddPasswordValidator<DynamicPasswordValidator>() // Use custom dynamic password validator
+    .AddDefaultTokenProviders() // Keep default token providers for other identity operations
+    .AddErrorDescriber<LocalizedIdentityErrorDescriber>(); // Register your custom describer
 
 // Configure cookie authentication to return 401/403 for API endpoints instead of redirecting
 builder.Services.ConfigureApplicationCookie(options =>
@@ -101,9 +106,29 @@ builder.Services.AddOpenIddict()
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    var supportedCultures = new[]
+    {
+        new CultureInfo("en-US"),
+        new CultureInfo("zh-TW")
+    };
+
+    options.DefaultRequestCulture = new RequestCulture("zh-TW");
+    options.SupportedCultures = supportedCultures;
+    options.SupportedUICultures = supportedCultures;
+
+    // Add AcceptLanguageHeaderRequestCultureProvider to respect browser's language settings
+    options.RequestCultureProviders.Insert(0, new AcceptLanguageHeaderRequestCultureProvider());
+});
+
 builder.Services.AddMvc()
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
-    .AddDataAnnotationsLocalization();
+    .AddDataAnnotationsLocalization(options =>
+    {
+        options.DataAnnotationLocalizerProvider = (type, factory) =>
+            factory.Create(typeof(SharedResource));
+    });
 
 // Branding options
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
@@ -138,6 +163,7 @@ builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IBrandingService, BrandingService>();
+builder.Services.AddScoped<ISecurityPolicyService, SecurityPolicyService>();
 
 var app = builder.Build();
 
@@ -159,13 +185,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 
-var supportedCultures = new[] { "zh-TW", "en-US" };
-var localizationOptions = new RequestLocalizationOptions()
-    .SetDefaultCulture(supportedCultures[0])  // 預設為 zh-TW
-    .AddSupportedCultures(supportedCultures)
-    .AddSupportedUICultures(supportedCultures);
-
-app.UseRequestLocalization(localizationOptions);
+app.UseRequestLocalization();
 
 app.UseAuthentication();
 app.UseAuthorization();

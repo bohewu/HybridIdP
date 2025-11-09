@@ -395,7 +395,81 @@
 
 ---
 
-## 統計數據
+## Phase 5.1: Internationalized Identity Errors ✅
+
+**完成時間：** 2025-11-09
+
+**功能摘要：**
+- 實作多語言化的 ASP.NET Core Identity 錯誤訊息。
+- 建立 `SharedResource.resx` (英文) 和 `SharedResource.zh-TW.resx` (繁體中文) 資源檔。
+- 建立自訂 `LocalizedIdentityErrorDescriber` 類別，用於從資源檔中獲取翻譯後的錯誤訊息。
+- 在 `Web.IdP/Program.cs` 中配置應用程式的本地化服務，並將 `LocalizedIdentityErrorDescriber` 註冊到 Identity 服務中。
+- 支援根據瀏覽器 `Accept-Language` 標頭動態切換語言。
+
+**技術實作：**
+- `Web.IdP/Resources/SharedResource.resx`
+- `Web.IdP/Resources/SharedResource.zh-TW.resx`
+- `Infrastructure/Identity/LocalizedIdentityErrorDescriber.cs`
+- `Web.IdP/Program.cs` (配置 `AddLocalization`, `Configure<RequestLocalizationOptions>`, `AddErrorDescriber`)
+- `Infrastructure/Infrastructure.csproj` (新增 `Microsoft.Extensions.Localization` 參考)
+
+**驗證結果：**
+- ✅ 專案成功編譯，無相關錯誤。
+- ✅ `LocalizedIdentityErrorDescriber` 中的 `InvalidUserName` 參數 nullability 警告已解決。
+- ✅ 應用程式已準備好根據用戶語言設定顯示本地化的 Identity 錯誤訊息。
+
+---
+
+## Phase 5.2: TDD for Dynamic Password Validator ✅
+
+**完成時間：** 2025-11-09
+
+**功能摘要：**
+- 建立 `DynamicPasswordValidatorTests.cs` 測試檔案，包含針對密碼策略驗證的單元測試。
+- 測試涵蓋了最小長度、非英數字元、數字、小寫字母、大寫字母等基本複雜度要求。
+- 建立 `Infrastructure/Identity/DynamicPasswordValidator.cs` 類別的骨架，使其能夠編譯並被測試專案引用。
+- 驗證所有新撰寫的測試在 `DynamicPasswordValidator` 尚未實作實際驗證邏輯時，均按預期失敗（TDD 的 Red 階段）。
+
+**技術實作：**
+- `Tests.Application.UnitTests/DynamicPasswordValidatorTests.cs` (包含多個測試案例)
+- `Infrastructure/Identity/DynamicPasswordValidator.cs` (初始骨架，暫時返回 `IdentityResult.Success`)
+
+**驗證結果：**
+- ✅ `DynamicPasswordValidatorTests` 中的所有測試均已編譯成功。
+- ✅ 所有測試均按預期失敗，確認了 TDD 的 Red 階段已達成。
+- ⚠️ 注意：`SettingsServiceTests` 中存在與本任務無關的測試失敗，將在後續處理。
+
+---
+
+## Phase 5.3: Implement Dynamic Password Validator ✅
+
+**完成時間：** 2025-11-09
+
+**功能摘要：**
+- 建立了 `SecurityPolicy` entity，用於在資料庫中存儲密碼策略。
+- 建立了 `ISecurityPolicyService` 介面和 `SecurityPolicyService` 實作，用於管理安全策略的讀取和更新，並包含快取機制。
+- 實作了 `DynamicPasswordValidator`，使其能夠從 `SecurityPolicyService` 獲取動態策略，並根據策略驗證密碼的複雜度、歷史記錄和過期時間。
+- 為 `ApplicationUser` 新增了 `PasswordHistory` 和 `LastPasswordChangeDate` 欄位，並建立了相應的資料庫遷移。
+- 更新了 `DynamicPasswordValidatorTests` 單元測試，以涵蓋密碼歷史和過期驗證，並確保所有測試均通過（TDD 的 Green 階段）。
+- 將 JSON 處理庫從 `Newtonsoft.Json` 遷移到內建的 `System.Text.Json`。
+
+**技術實作：**
+- `Core.Domain/Entities/SecurityPolicy.cs`
+- `Core.Application/ISecurityPolicyService.cs`
+- `Infrastructure/Services/SecurityPolicyService.cs`
+- `Infrastructure/Identity/DynamicPasswordValidator.cs` (包含歷史和過期驗證邏輯)
+- `Core.Domain/ApplicationUser.cs` (新增 `PasswordHistory` 和 `LastPasswordChangeDate` 欄位)
+- `Tests.Application.UnitTests/DynamicPasswordValidatorTests.cs` (新增並通過所有測試)
+- `Web.IdP/Program.cs` (註冊 `ISecurityPolicyService` 和 `DynamicPasswordValidator`)
+
+**驗證結果：**
+- ✅ 所有 `DynamicPasswordValidatorTests` 單元測試均已通過。
+- ✅ 密碼驗證器現在能夠根據資料庫中配置的策略動態驗證密碼。
+- ✅ 專案成功編譯，無相關錯誤。
+
+---
+
+## 技術堆疊總結
 
 - **完成的 Phases:** 16
 - **API Endpoints:** 36+ (24 with permission-based auth)

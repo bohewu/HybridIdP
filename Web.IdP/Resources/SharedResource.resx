@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
   <data name="DuplicateEmail" xml:space="preserve">
-    <value>電子郵件 '{0}' 已被使用。</value>
+    <value>Email '{0}' is already taken.</value>
   </data>
   <data name="PasswordTooShort" xml:space="preserve">
-    <value>密碼長度至少為 {0} 個字元。</value>
+    <value>Passwords must be at least {0} characters.</value>
   </data>
   <data name="InvalidUserName" xml:space="preserve">
-    <value>使用者名稱 '{0}' 無效。</value>
+    <value>User name '{0}' is invalid.</value>
   </data>
   <data name="DefaultError" xml:space="preserve">
-    <value>發生未知錯誤。</value>
+    <value>An unknown failure has occurred.</value>
   </data>
   <data name="PasswordRequiresNonAlphanumeric" xml:space="preserve">
-    <value>密碼必須至少包含一個非英數字元。</value>
+    <value>Passwords must have at least one non alphanumeric character.</value>
   </data>
   <data name="PasswordRequiresDigit" xml:space="preserve">
-    <value>密碼必須至少包含一個數字 ('0'-'9')。</value>
+    <value>Passwords must have at least one digit ('0'-'9').</value>
   </data>
   <data name="PasswordRequiresLower" xml:space="preserve">
-    <value>密碼必須至少包含一個小寫字母 ('a'-'z')。</value>
+    <value>Passwords must have at least one lowercase ('a'-'z').</value>
   </data>
   <data name="PasswordRequiresUpper" xml:space="preserve">
-    <value>密碼必須至少包含一個大寫字母 ('A'-'Z')。</value>
+    <value>Passwords must have at least one uppercase ('A'-'Z').</value>
   </data>
 </root>

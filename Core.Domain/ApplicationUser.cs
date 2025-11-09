@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Identity;
+using System;
+using System.Collections.Generic;
 
 namespace Core.Domain;
 
@@ -31,6 +33,10 @@ public class ApplicationUser : IdentityUser<Guid>
     public bool IsActive { get; set; } = true;
     public DateTime? LastLoginDate { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    
+    // Password Policy Fields
+    public string PasswordHistory { get; set; } = "[]"; // Stores JSON array of hashed passwords
+    public DateTime? LastPasswordChangeDate { get; set; }
     
     // Soft Delete
     public bool IsDeleted { get; set; } = false;
