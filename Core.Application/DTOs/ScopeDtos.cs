@@ -10,6 +10,14 @@ public sealed class ScopeSummary
     public string? DisplayName { get; set; }
     public string? Description { get; set; }
     public List<string> Resources { get; set; } = new();
+    
+    // Consent screen customization fields
+    public string? ConsentDisplayName { get; set; }
+    public string? ConsentDescription { get; set; }
+    public string? IconUrl { get; set; }
+    public bool IsRequired { get; set; } = false;
+    public int DisplayOrder { get; set; } = 0;
+    public string? Category { get; set; }
 }
 
 /// <summary>
@@ -19,7 +27,14 @@ public record CreateScopeRequest(
     string Name,
     string? DisplayName,
     string? Description,
-    List<string>? Resources
+    List<string>? Resources,
+    // Consent screen customization
+    string? ConsentDisplayName = null,
+    string? ConsentDescription = null,
+    string? IconUrl = null,
+    bool IsRequired = false,
+    int DisplayOrder = 0,
+    string? Category = null
 );
 
 /// <summary>
@@ -29,5 +44,12 @@ public record UpdateScopeRequest(
     string? Name,
     string? DisplayName,
     string? Description,
-    List<string>? Resources
+    List<string>? Resources,
+    // Consent screen customization
+    string? ConsentDisplayName = null,
+    string? ConsentDescription = null,
+    string? IconUrl = null,
+    bool? IsRequired = null,
+    int? DisplayOrder = null,
+    string? Category = null
 );
