@@ -1,9 +1,12 @@
+using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
 using Core.Domain.Constants;
+using Core.Domain.Entities;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 
 namespace Web.IdP.Api;
@@ -19,13 +22,16 @@ public class ScopesController : ControllerBase
 {
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly IOpenIddictApplicationManager _applicationManager;
+    private readonly IApplicationDbContext _db;
 
     public ScopesController(
         IOpenIddictScopeManager scopeManager,
-        IOpenIddictApplicationManager applicationManager)
+        IOpenIddictApplicationManager applicationManager,
+        IApplicationDbContext db)
     {
         _scopeManager = scopeManager;
         _applicationManager = applicationManager;
+        _db = db;
     }
 
     /// <summary>
@@ -41,6 +47,9 @@ public class ScopesController : ControllerBase
     {
         var scopes = new List<ScopeSummary>();
         
+        // Load all scope extensions for efficient lookup
+        var scopeExtensions = await _db.ScopeExtensions.ToDictionaryAsync(se => se.ScopeId);
+        
         await foreach (var scope in _scopeManager.ListAsync())
         {
             var id = await _scopeManager.GetIdAsync(scope);
@@ -49,13 +58,22 @@ public class ScopesController : ControllerBase
             var description = await _scopeManager.GetDescriptionAsync(scope);
             var resources = await _scopeManager.GetResourcesAsync(scope);
 
+            // Get scope extension if exists
+            scopeExtensions.TryGetValue(id!, out var extension);
+
             scopes.Add(new ScopeSummary
             {
                 Id = id!,
                 Name = name!,
                 DisplayName = displayName,
                 Description = description,
-                Resources = resources.ToList()
+                Resources = resources.ToList(),
+                ConsentDisplayName = extension?.ConsentDisplayName,
+                ConsentDescription = extension?.ConsentDescription,
+                IconUrl = extension?.IconUrl,
+                IsRequired = extension?.IsRequired ?? false,
+                DisplayOrder = extension?.DisplayOrder ?? 0,
+                Category = extension?.Category
             });
         }
 
@@ -121,6 +139,7 @@ public class ScopesController : ControllerBase
         }
 
         var resources = await _scopeManager.GetResourcesAsync(scope);
+        var extension = await _db.ScopeExtensions.FirstOrDefaultAsync(se => se.ScopeId == id);
 
         return Ok(new
         {
@@ -128,7 +147,13 @@ public class ScopesController : ControllerBase
             name = await _scopeManager.GetNameAsync(scope),
             displayName = await _scopeManager.GetDisplayNameAsync(scope),
             description = await _scopeManager.GetDescriptionAsync(scope),
-            resources = resources.ToList()
+            resources = resources.ToList(),
+            consentDisplayName = extension?.ConsentDisplayName,
+            consentDescription = extension?.ConsentDescription,
+            iconUrl = extension?.IconUrl,
+            isRequired = extension?.IsRequired ?? false,
+            displayOrder = extension?.DisplayOrder ?? 0,
+            category = extension?.Category
         });
     }
 
@@ -175,6 +200,28 @@ public class ScopesController : ControllerBase
         var scope = await _scopeManager.CreateAsync(descriptor);
         var id = await _scopeManager.GetIdAsync(scope);
 
+        // Create ScopeExtension for consent customization if any fields are provided
+        if (!string.IsNullOrWhiteSpace(request.ConsentDisplayName) ||
+            !string.IsNullOrWhiteSpace(request.ConsentDescription) ||
+            !string.IsNullOrWhiteSpace(request.IconUrl) ||
+            request.IsRequired ||
+            request.DisplayOrder != 0 ||
+            !string.IsNullOrWhiteSpace(request.Category))
+        {
+            var extension = new ScopeExtension
+            {
+                ScopeId = id!,
+                ConsentDisplayName = request.ConsentDisplayName,
+                ConsentDescription = request.ConsentDescription,
+                IconUrl = request.IconUrl,
+                IsRequired = request.IsRequired,
+                DisplayOrder = request.DisplayOrder,
+                Category = request.Category
+            };
+            _db.ScopeExtensions.Add(extension);
+            await _db.SaveChangesAsync(CancellationToken.None);
+        }
+
         return CreatedAtAction(nameof(Get), new { id }, new
         {
             id,
@@ -214,6 +261,51 @@ public class ScopesController : ControllerBase
 
         await _scopeManager.PopulateAsync(scope, descriptor);
         await _scopeManager.UpdateAsync(scope);
+
+        // Update or create ScopeExtension
+        var extension = await _db.ScopeExtensions.FirstOrDefaultAsync(se => se.ScopeId == id);
+        
+        if (extension == null)
+        {
+            // Create new extension if any consent fields are provided
+            if (!string.IsNullOrWhiteSpace(request.ConsentDisplayName) ||
+                !string.IsNullOrWhiteSpace(request.ConsentDescription) ||
+                !string.IsNullOrWhiteSpace(request.IconUrl) ||
+                request.IsRequired == true ||
+                request.DisplayOrder != null ||
+                !string.IsNullOrWhiteSpace(request.Category))
+            {
+                extension = new ScopeExtension
+                {
+                    ScopeId = id!,
+                    ConsentDisplayName = request.ConsentDisplayName,
+                    ConsentDescription = request.ConsentDescription,
+                    IconUrl = request.IconUrl,
+                    IsRequired = request.IsRequired ?? false,
+                    DisplayOrder = request.DisplayOrder ?? 0,
+                    Category = request.Category
+                };
+                _db.ScopeExtensions.Add(extension);
+            }
+        }
+        else
+        {
+            // Update existing extension
+            if (request.ConsentDisplayName != null)
+                extension.ConsentDisplayName = request.ConsentDisplayName;
+            if (request.ConsentDescription != null)
+                extension.ConsentDescription = request.ConsentDescription;
+            if (request.IconUrl != null)
+                extension.IconUrl = request.IconUrl;
+            if (request.IsRequired.HasValue)
+                extension.IsRequired = request.IsRequired.Value;
+            if (request.DisplayOrder.HasValue)
+                extension.DisplayOrder = request.DisplayOrder.Value;
+            if (request.Category != null)
+                extension.Category = request.Category;
+        }
+        
+        await _db.SaveChangesAsync(CancellationToken.None);
 
         return Ok(new
         {
@@ -255,6 +347,17 @@ public class ScopesController : ControllerBase
 
         try
         {
+            // Get the actual scope ID for deletion
+            var scopeId = await _scopeManager.GetIdAsync(scope);
+            
+            // Delete scope extension if exists
+            var extension = await _db.ScopeExtensions.FirstOrDefaultAsync(se => se.ScopeId == scopeId);
+            if (extension != null)
+            {
+                _db.ScopeExtensions.Remove(extension);
+                await _db.SaveChangesAsync(CancellationToken.None);
+            }
+            
             await _scopeManager.DeleteAsync(scope);
             return Ok(new { message = "Scope deleted successfully." });
         }
