@@ -447,41 +447,122 @@
 
 最後更新：2025-11-06
 
-### 🎯 Next Up: Phase 5.6 - Consent Screen Management & API Resource Scopes
+### Phase 5.6 Part 1: Consent Screen Customization ✅
 
-**目標：** 提供豐富的同意畫面自訂功能和 API 資源保護支援
+**完成時間：** 2025-11-10
 
-#### Part 1: Consent Screen Customization
+**目標：** 提供豐富的同意畫面自訂功能，讓管理員可以為每個 scope 定義友善的顯示名稱、說明、圖示、類別和必要性標記
 
-**Backend:**
--   [ ] Add fields to `Scope` entity:
-    -   [ ] ConsentDisplayName (localized)
-    -   [ ] ConsentDescription (what permission allows)
-    -   [ ] IconUrl (optional icon)
-    -   [ ] IsRequired (cannot opt out)
-    -   [ ] DisplayOrder
--   [ ] Create `Resources` table for localization
-    -   [ ] Support multiple languages (en-US, zh-TW)
--   [ ] API: Update scope endpoints to include consent fields
+#### 實施內容
 
-**Frontend (Admin):**
--   [ ] Enhance `ScopeForm.vue` with consent customization
--   [ ] Multi-language editor for display name/description
--   [ ] Icon upload/selection
--   [ ] "Required" toggle
--   [ ] Preview consent screen appearance
+**Database Schema:**
+-   ✅ 建立 `ScopeExtension` 表格，包含以下欄位：
+    -   `ConsentDisplayName` (nvarchar(200), nullable) - 同意畫面顯示名稱
+    -   `ConsentDescription` (nvarchar(500), nullable) - 權限說明
+    -   `IconUrl` (nvarchar(200), nullable) - 圖示 URL 或 CSS 類別 (如 "bi bi-shield-check")
+    -   `IsRequired` (bool, default false) - 必要 scope，使用者無法取消勾選
+    -   `DisplayOrder` (int, default 0) - 顯示順序（數字越小越前面）
+    -   `Category` (nvarchar(100), nullable) - 類別分組 (如 "個人資料", "API 存取")
+    -   `ScopeId` (Guid, FK) - 關聯到 OpenIddict Scopes，具唯一索引
+-   ✅ 建立 `Resource` 表格（預備未來 i18n 支援）
+    -   Composite unique key on (Key, Culture)
+-   ✅ EF Core Migration: `20251110105526_AddScopeExtensionAndResourceTables`
 
-**Frontend (User-Facing):**
--   [ ] Update `Consent.cshtml` with localized descriptions
--   [ ] Group scopes by category (Profile, API Access, etc.)
--   [ ] Show icons next to scopes
--   [ ] Mark required scopes clearly
+**Backend API:**
+-   ✅ 擴展 `ScopeDtos.cs` (ScopeSummary, CreateScopeRequest, UpdateScopeRequest)
+    -   新增 6 個 consent 相關屬性（全部 nullable）
+-   ✅ 更新 `ScopesController.cs` 4 個端點：
+    -   `GetScopes`: 使用 `ToDictionaryAsync` 高效 join ScopeExtensions
+    -   `Create`: 若提供 consent 欄位則建立 ScopeExtension
+    -   `Update`: 更新或建立 ScopeExtension（nullable 欄位處理）
+    -   `Delete`: 級聯刪除關聯的 ScopeExtension
 
-**驗證:**
--   [ ] Admin can customize scope consent display
--   [ ] Users see localized consent screen with clear descriptions
--   [ ] Required scopes cannot be unchecked
--   [ ] Scopes grouped by category
+**Frontend (Admin UI):**
+-   ✅ 增強 `ScopeForm.vue` 新增「Consent Screen Customization」區塊
+    -   6 個輸入欄位：ConsentDisplayName, ConsentDescription, IconUrl, Category (select), DisplayOrder (number), IsRequired (checkbox)
+-   ✅ 完整 i18n 支援（16 個翻譯 keys，支援 en-US 和 zh-TW）
+    -   翻譯涵蓋：section title/help、所有欄位 label/placeholder/help、類別選項
+-   ✅ 表單驗證與 payload 構建（null fallback 處理）
+
+**Frontend (User-Facing Consent Screen):**
+-   ✅ 重構 `Authorize.cshtml.cs` PageModel：
+    -   新增 `ScopeInfo` nested class（8 個屬性）
+    -   實作 `LoadScopeInfosAsync` 方法：join OpenIddict scopes 與 ScopeExtensions，按 DisplayOrder 和 Name 排序
+-   ✅ 完全重寫 `Authorize.cshtml` Razor view：
+    -   Category 分組顯示（使用 LINQ `.GroupBy()`）
+    -   顯示 category 標題（當有多個類別時）
+    -   Bootstrap Icons 或自訂圖示渲染（fallback to standard icons）
+    -   ConsentDisplayName 或 DisplayName 顯示
+    -   IsRequired scope 顯示黃色 "Required" 徽章
+    -   ConsentDescription 以小字灰色文字顯示
+
+#### E2E 驗證結果（Playwright MCP）
+
+**測試場景：** 完整 consent customization 流程
+1.  ✅ 管理員登入 Admin Portal
+2.  ✅ 建立測試 scope "test_consent" with 完整 consent fields：
+    -   ConsentDisplayName: "Access Your Test Data"
+    -   ConsentDescription: "This allows the application to read your test data for E2E testing purposes"
+    -   IconUrl: "bi bi-shield-check"
+    -   Category: "個人資料" (Profile)
+    -   DisplayOrder: 10
+    -   IsRequired: true (勾選)
+3.  ✅ 編輯 scope 驗證資料持久化：所有欄位正確載入和顯示
+4.  ✅ 觸發 OIDC 授權流程（手動構建 authorize URL with test_consent scope）
+5.  ✅ 驗證 consent screen 顯示：
+    -   ✅ Category 分組：顯示 "General" 和 "Profile" 兩個群組
+    -   ✅ Custom icon：shield icon (bi bi-shield-check) 正確渲染
+    -   ✅ Custom display name："Access Your Test Data" 顯示
+    -   ✅ Required badge：黃色 "Required" 徽章顯示在 scope 旁
+    -   ✅ Custom description：說明文字以灰色小字顯示在下方
+    -   ✅ Display order：test_consent scope 顯示在 Profile 群組中
+
+**截圖證據：**
+-   Before: `consent-screen-before-customization.png` - 舊版簡單列表
+-   After: `consent-screen-with-customization.png` - 新版分類、圖示、說明、徽章完整顯示
+
+#### Git Commits（Small Steps 策略）
+
+```bash
+feat(db): Add ScopeExtension and Resource tables for consent customization
+feat(api): Extend Scope DTOs with 6 consent customization fields
+feat(api): Update ScopesController CRUD to handle ScopeExtension
+feat(ui): Add Consent Screen Customization section to ScopeForm with i18n
+feat(ui): Refactor user consent screen with grouping, icons, descriptions
+```
+
+#### 技術亮點
+
+-   **Efficient DB Query**: `ToDictionaryAsync` 避免 N+1 query 問題
+-   **Nullable Design**: 所有 consent 欄位為 optional，向後相容既有 scopes
+-   **i18n Ready**: Resource table 已準備好支援未來多語系 consent text
+-   **Bootstrap Icons**: 支援 CSS class (如 "bi bi-envelope") 或 image URL
+-   **Category Grouping**: LINQ `.GroupBy()` 動態分組，可擴展至任意類別
+-   **Required Badge**: 視覺化標記必要 scope，提升使用者理解
+
+#### 已知限制與未來增強
+
+-   ⚠️ 刪除有 client 使用的 scope 會失敗（400 error）- 需改善錯誤訊息
+-   📝 Resource table 尚未使用（預留給 Part 2 多語系 i18n）
+-   📝 Consent screen 未實作「取消勾選必要 scope」的 UI 禁用邏輯
+-   📝 Icon preview 功能尚未實作（admin 端只有文字輸入）
+
+#### 後續計劃
+
+**Phase 5.6 Part 2: API Resource Scopes**（待實作）
+-   API Resource 實體與管理介面
+-   Scope 分配到 API Resources
+-   Access token audience claim
+
+**Phase 5.6 Part 3: Scope Authorization Policies**（待實作）
+-   Client 允許的 scopes 白名單管理
+-   授權請求驗證與拒絕邏輯
+
+---
+
+### 🎯 Next Up: Phase 5.6 Part 2 - API Resource Scopes
+
+**目標：** 實作 API Resource 管理，將 scopes 分組至不同的 API 資源，並在 access token 中加入 audience claim
 
 #### Part 2: API Resource Scopes
 
