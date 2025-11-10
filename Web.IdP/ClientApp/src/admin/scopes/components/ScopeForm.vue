@@ -18,7 +18,14 @@ const formData = ref({
   name: '',
   displayName: '',
   description: '',
-  resources: ''
+  resources: '',
+  // Consent screen customization
+  consentDisplayName: '',
+  consentDescription: '',
+  iconUrl: '',
+  isRequired: false,
+  displayOrder: 0,
+  category: ''
 })
 
 // Claims management
@@ -34,7 +41,13 @@ const resetForm = () => {
     name: '',
     displayName: '',
     description: '',
-    resources: ''
+    resources: '',
+    consentDisplayName: '',
+    consentDescription: '',
+    iconUrl: '',
+    isRequired: false,
+    displayOrder: 0,
+    category: ''
   }
   selectedClaimIds.value = []
   error.value = null
@@ -73,7 +86,13 @@ watch(() => props.scope, async (newScope) => {
       name: newScope.name || '',
       displayName: newScope.displayName || '',
       description: newScope.description || '',
-      resources: newScope.resources?.join('\n') || ''
+      resources: newScope.resources?.join('\n') || '',
+      consentDisplayName: newScope.consentDisplayName || '',
+      consentDescription: newScope.consentDescription || '',
+      iconUrl: newScope.iconUrl || '',
+      isRequired: newScope.isRequired || false,
+      displayOrder: newScope.displayOrder || 0,
+      category: newScope.category || ''
     }
     // Load claims for this scope
     if (newScope.id) {
@@ -100,7 +119,14 @@ const handleSubmit = async () => {
       resources: formData.value.resources
         .split('\n')
         .map(r => r.trim())
-        .filter(r => r.length > 0)
+        .filter(r => r.length > 0),
+      // Consent screen customization
+      consentDisplayName: formData.value.consentDisplayName || null,
+      consentDescription: formData.value.consentDescription || null,
+      iconUrl: formData.value.iconUrl || null,
+      isRequired: formData.value.isRequired,
+      displayOrder: formData.value.displayOrder,
+      category: formData.value.category || null
     }
 
     const url = isEdit.value
@@ -238,6 +264,113 @@ const saveScopeClaims = async (scopeId) => {
                         :placeholder="$t('scopes.form.resourcesPlaceholder')"
                       ></textarea>
                       <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.resourcesHelp') }}</p>
+                    </div>
+
+                    <!-- Consent Screen Customization Section -->
+                    <div class="mb-5 border-t pt-4">
+                      <h4 class="text-sm font-semibold text-gray-900 mb-3">
+                        {{ $t('scopes.form.consentSectionTitle') }}
+                      </h4>
+                      <p class="text-xs text-gray-500 mb-3">
+                        {{ $t('scopes.form.consentSectionHelp') }}
+                      </p>
+
+                      <!-- Consent Display Name -->
+                      <div class="mb-4">
+                        <label for="consentDisplayName" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('scopes.form.consentDisplayName') }}
+                        </label>
+                        <input
+                          id="consentDisplayName"
+                          v-model="formData.consentDisplayName"
+                          type="text"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                          :placeholder="$t('scopes.form.consentDisplayNamePlaceholder')"
+                        />
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.consentDisplayNameHelp') }}</p>
+                      </div>
+
+                      <!-- Consent Description -->
+                      <div class="mb-4">
+                        <label for="consentDescription" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('scopes.form.consentDescription') }}
+                        </label>
+                        <textarea
+                          id="consentDescription"
+                          v-model="formData.consentDescription"
+                          rows="3"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
+                          :placeholder="$t('scopes.form.consentDescriptionPlaceholder')"
+                        ></textarea>
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.consentDescriptionHelp') }}</p>
+                      </div>
+
+                      <!-- Icon URL / Class -->
+                      <div class="mb-4">
+                        <label for="iconUrl" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('scopes.form.iconUrl') }}
+                        </label>
+                        <input
+                          id="iconUrl"
+                          v-model="formData.iconUrl"
+                          type="text"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                          :placeholder="$t('scopes.form.iconUrlPlaceholder')"
+                        />
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.iconUrlHelp') }}</p>
+                      </div>
+
+                      <!-- Category -->
+                      <div class="mb-4">
+                        <label for="category" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('scopes.form.category') }}
+                        </label>
+                        <select
+                          id="category"
+                          v-model="formData.category"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                        >
+                          <option value="">{{ $t('scopes.form.categoryNone') }}</option>
+                          <option value="Profile">{{ $t('scopes.form.categoryProfile') }}</option>
+                          <option value="API Access">{{ $t('scopes.form.categoryApiAccess') }}</option>
+                          <option value="Custom">{{ $t('scopes.form.categoryCustom') }}</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.categoryHelp') }}</p>
+                      </div>
+
+                      <!-- Display Order -->
+                      <div class="mb-4">
+                        <label for="displayOrder" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('scopes.form.displayOrder') }}
+                        </label>
+                        <input
+                          id="displayOrder"
+                          v-model.number="formData.displayOrder"
+                          type="number"
+                          min="0"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                          :placeholder="$t('scopes.form.displayOrderPlaceholder')"
+                        />
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.displayOrderHelp') }}</p>
+                      </div>
+
+                      <!-- Is Required -->
+                      <div class="mb-4">
+                        <label class="flex items-start cursor-pointer">
+                          <input
+                            id="isRequired"
+                            v-model="formData.isRequired"
+                            type="checkbox"
+                            class="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                          />
+                          <div class="ml-3">
+                            <span class="block text-sm font-medium text-gray-700">
+                              {{ $t('scopes.form.isRequired') }}
+                            </span>
+                            <p class="text-xs text-gray-500">{{ $t('scopes.form.isRequiredHelp') }}</p>
+                          </div>
+                        </label>
+                      </div>
                     </div>
 
                     <!-- Claims -->
