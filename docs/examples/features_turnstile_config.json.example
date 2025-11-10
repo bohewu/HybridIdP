@@ -1,0 +1,7 @@
+{
+  "Turnstile": {
+    "Enabled": false,
+    "SiteKey": "",
+    "SecretKey": ""
+  }
+}

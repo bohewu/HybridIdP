@@ -1,0 +1,20 @@
+// openid scope (required for OIDC)
+openid → [sub]
+
+// profile scope (OIDC Core spec section 5.4)
+profile → [name, family_name, given_name, middle_name, nickname, 
+           preferred_username, profile, picture, website, gender, 
+           birthdate, zoneinfo, locale, updated_at]
+
+// email scope
+email → [email, email_verified]
+
+// phone scope
+phone → [phone_number, phone_number_verified]
+
+// address scope
+address → [address]
+
+// Custom scopes (examples)
+department → [department, job_title]
+employee_info → [employee_id, department, job_title]

@@ -1,0 +1,7 @@
+<!-- _AdminLayout.cshtml - Bootstrap 5 -->
+<div class="container-fluid">
+  <div class="sidebar">...</div> <!-- Bootstrap -->
+  <main class="main-content">
+    @RenderBody() <!-- Vue.js mount point -->
+  </main>
+</div>

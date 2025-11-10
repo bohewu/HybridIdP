@@ -1,0 +1,3 @@
+public bool TwoFactorEnabled { get; set; }
+public string TwoFactorSecretKey { get; set; } // Encrypted
+// Add fields for recovery codes

@@ -1,0 +1,12 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-3">
+      <nav class="nav flex-column">
+        <a class="nav-link active">Dashboard</a>
+      </nav>
+    </div>
+    <div class="col-md-9">
+      <!-- Vue.js mount point -->
+    </div>
+  </div>
+</div>

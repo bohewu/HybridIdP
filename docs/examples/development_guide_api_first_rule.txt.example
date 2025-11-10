@@ -1,0 +1,5 @@
+❌ 錯誤順序：
+UI → API → 回頭修 UI
+
+✅ 正確順序：
+API + Tests → UI Layout → UI CRUD

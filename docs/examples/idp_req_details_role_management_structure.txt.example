@@ -1,0 +1,12 @@
+Web.IdP/Pages/Admin/
+└── Roles.cshtml                → Role Management
+└── Roles.cshtml.cs             → [Authorize(Policy = "roles.read")]
+
+ClientApp/src/admin/
+└── roles/
+    ├── main.js                 → Entry point
+    ├── RolesApp.vue            → Root component
+    └── components/
+        ├── RoleList.vue        → Roles table
+        ├── RoleForm.vue        → Create/edit modal
+        └── PermissionSelector.vue → Permission tree picker

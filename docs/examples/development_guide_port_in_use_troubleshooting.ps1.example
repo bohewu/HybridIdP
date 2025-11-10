@@ -1,0 +1,5 @@
+# 停止所有 dotnet 進程
+taskkill /F /IM dotnet.exe /T
+
+# 停止所有 node 進程
+taskkill /F /IM node.exe /T

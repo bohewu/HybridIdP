@@ -1,0 +1,14 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Core.Domain.Constants;
+
+namespace Web.IdP.Pages.Admin;
+
+[Authorize(Roles = AuthConstants.Roles.Admin)]
+public class UsersModel : PageModel
+{
+    public void OnGet()
+    {
+        // Optional: Pre-render data or setup
+    }
+}

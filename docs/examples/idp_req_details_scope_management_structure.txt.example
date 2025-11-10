@@ -1,0 +1,14 @@
+Web.IdP/Pages/Admin/
+└── Scopes.cshtml                 → Scope Management
+└── Scopes.cshtml.cs              → [Authorize(Roles = Admin)]
+
+Web.IdP/Api/
+└── AdminController.cs            → Add scopes CRUD endpoints
+
+ClientApp/src/admin/
+└── scopes/
+    ├── main.js                   → Entry point
+    ├── ScopesApp.vue             → Root component with list/form
+    └── components/
+        ├── ScopeList.vue         → Displays scopes table
+        └── ScopeForm.vue         → Create/edit modal (basic fields only)

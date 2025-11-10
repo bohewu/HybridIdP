@@ -1,0 +1,13 @@
+TestClient would like to:
+
+✓ Know who you are (openid) [Required]
+  Access your basic identity information
+
+☐ Read your profile (profile)
+  Access your name, picture, and other profile information
+
+☐ Access your email (email)
+  View your email address and verification status
+
+☐ Access your company data (api:company:read)
+  Read company records on your behalf

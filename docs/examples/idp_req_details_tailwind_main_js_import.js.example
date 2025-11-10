@@ -1,0 +1,5 @@
+import { createApp } from 'vue'
+import YourApp from './YourApp.vue'
+import './style.css'  // ← CRITICAL: Must import Tailwind
+
+createApp(YourApp).mount('#app')

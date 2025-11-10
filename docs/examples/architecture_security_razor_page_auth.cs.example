@@ -1,0 +1,10 @@
+// 每個 Razor Page 都有伺服器端授權
+[Authorize(Roles = AuthConstants.Roles.Admin)]
+public class ClientsModel : PageModel
+{
+    public void OnGet()
+    {
+        // ✅ 只有通過 [Authorize] 驗證才會執行到這裡
+        // ✅ 無法透過前端路由繞過授權檢查
+    }
+}

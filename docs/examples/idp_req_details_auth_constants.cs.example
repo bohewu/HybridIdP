@@ -1,0 +1,12 @@
+// ✅ CORRECT - Using constants
+[Authorize(Roles = AuthConstants.Roles.Admin)]
+public class AdminController : ControllerBase { }
+
+await userManager.AddToRoleAsync(user, AuthConstants.Roles.Admin);
+
+identity.AddClaim(new Claim(AuthConstants.Claims.Department, department));
+
+// ❌ WRONG - Magic strings (error-prone)
+[Authorize(Roles = "Admin")]  // Typo risk!
+await userManager.AddToRoleAsync(user, "admin");  // Case mismatch!
+identity.AddClaim(new Claim("deparment", department));  // Typo!

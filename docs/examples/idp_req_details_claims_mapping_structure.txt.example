@@ -1,0 +1,18 @@
+Core.Domain/
+└── Entities/
+    ├── UserClaim.cs              → Claim definition entity
+    └── ScopeClaim.cs             → Scope-to-claims mapping entity
+
+Web.IdP/Api/
+└── AdminController.cs            → Add claims CRUD + scope mapping endpoints
+
+ClientApp/src/admin/
+├── claims/
+│   ├── main.js
+│   ├── ClaimsApp.vue             → Claims list and CRUD
+│   └── components/
+│       ├── ClaimList.vue
+│       └── ClaimForm.vue
+└── scopes/
+    └── components/
+        └── ScopeClaimsMapper.vue → Claims mapping UI (embedded in ScopeForm)

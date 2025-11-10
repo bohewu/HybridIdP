@@ -1,0 +1,5 @@
+# 查看當前狀態
+git status
+
+# 查看最近提交
+git log --oneline -5

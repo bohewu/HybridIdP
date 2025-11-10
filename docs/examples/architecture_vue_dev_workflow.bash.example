@@ -1,0 +1,6 @@
+# 1. 手動啟動 Vite Dev Server
+cd Web.IdP/ClientApp
+npm run dev
+
+# 2. Vite 監聽 localhost:5173
+# 3. Razor Pages 透過 <script vite-src> 載入 Vue 組件

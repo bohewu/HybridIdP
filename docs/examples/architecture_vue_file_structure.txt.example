@@ -1,0 +1,10 @@
+ClientApp/src/admin/
+├── clients/
+│   ├── main.js           # Entry Point
+│   └── ClientsApp.vue    # Root Component (Tailwind CSS)
+├── scopes/
+│   ├── main.js
+│   └── ScopesApp.vue
+└── dashboard/
+    ├── main.js
+    └── DashboardApp.vue

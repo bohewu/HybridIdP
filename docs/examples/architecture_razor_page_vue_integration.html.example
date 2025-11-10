@@ -1,0 +1,12 @@
+@page
+@model Web.IdP.Pages.Admin.ClientsModel
+@{
+    ViewData["Title"] = "Client Management";
+    ViewData["Breadcrumb"] = "Clients";
+}
+
+<!-- Vue.js 掛載點 -->
+<div id="app"></div>
+
+<!-- Vite 載入 Vue SPA -->
+<script type="module" vite-src="~/src/admin/clients/main.js"></script>

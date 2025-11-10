@@ -1,0 +1,2 @@
+# 使用 Docker Compose 啟動資料庫
+docker compose up -d db-service

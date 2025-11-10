@@ -1,0 +1,20 @@
+<template>
+  <div class="space-card space-stack-md">
+    <h2 class="text-lg font-semibold">Role Detail</h2>
+    <div class="space-form-group">
+      <label class="block text-sm font-medium mb-1">Name</label>
+      <input type="text" class="form-control" />
+    </div>
+    <div class="space-form-group-wide">
+      <label class="block text-sm font-medium mb-1">Description</label>
+      <textarea class="form-control" rows="3"></textarea>
+    </div>
+    <div class="space-section">
+      <h3 class="text-sm font-semibold mb-2">Permissions</h3>
+      <div class="space-stack-sm">
+        <div class="space-card-tight bg-white rounded border">users.read</div>
+        <div class="space-card-tight bg-white rounded border">users.update</div>
+      </div>
+    </div>
+  </div>
+</template>

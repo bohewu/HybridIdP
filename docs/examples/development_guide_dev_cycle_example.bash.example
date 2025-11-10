@@ -1,0 +1,42 @@
+# 1. 確認任務
+# 讀取 progress_todo.md，確認 Phase 4.5 是下一步
+
+# 2. Step 1: DTOs
+# - 實作 RoleSummaryDto, RoleDetailDto
+# - Commit: feat(api): Add RoleSummaryDto and RoleDetailDto
+
+# 3. Step 2: GET endpoint
+# - 實作 GET /api/admin/roles
+# - 加 unit tests
+# - Commit: feat(api): Implement GET /api/admin/roles with pagination
+# - Commit: test(api): Add unit tests for role list endpoint
+
+# 4. Step 3-5: POST, PUT, DELETE endpoints
+# - 每個 endpoint 一個 commit
+# - 每個都包含 validation 和 tests
+
+# 5. Step 6: UI Scaffolding
+# - 創建 Roles.cshtml
+# - 創建 src/admin/roles/style.css ⚠️
+# - 創建 src/admin/roles/main.js (import style.css) ⚠️
+# - Commit: feat(ui): Add Roles.cshtml with admin authorization
+# - Commit: feat(ui): Setup Vue SPA for role management with Tailwind
+
+# 6. Step 7: List component
+# - 實作 RoleList.vue
+# - API integration
+# - Commit: feat(ui): Implement RoleList component with table display
+
+# 7. Step 8-10: CRUD components
+# - CreateRole.vue → commit
+# - EditRole.vue → commit
+# - DeleteRole confirmation → commit
+
+# 8. Step 11: E2E Testing
+# - Playwright MCP 測試
+# - Commit: test(e2e): Add role management E2E tests
+
+# 9. 更新文件
+# - progress_todo.md: [x] Phase 4.5
+# - progress_completed.md: 新增 Phase 4.5 摘要
+# - Commit: docs: Update progress - Phase 4.5 completed

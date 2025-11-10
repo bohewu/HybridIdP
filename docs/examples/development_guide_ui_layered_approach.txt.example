@@ -1,0 +1,14 @@
+第一層：Layout/Scaffolding
+  - Razor Page (.cshtml)
+  - Vue SPA mount point
+  - ⚠️ Tailwind CSS setup (style.css + import)
+
+第二層：Data Display
+  - List/Table components
+  - API integration
+  - Pagination, search, filters
+
+第三層：CRUD Operations (一次一個)
+  - Create form
+  - Edit form
+  - Delete confirmation

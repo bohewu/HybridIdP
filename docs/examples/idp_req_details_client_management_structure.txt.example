@@ -1,0 +1,37 @@
+Hybrid Architecture Layout:
+
+/Admin/Clients (Server-side Route)
+├── Clients.cshtml.cs
+│   └── [Authorize(Roles = AuthConstants.Roles.Admin)] ← Backend Security
+└── Clients.cshtml
+    ├── Bootstrap 5 Layout (_AdminLayout.cshtml)
+    │   ├── Sidebar (260px, fixed)
+    │   ├── Header (Breadcrumbs: "Admin / Clients")
+    │   └── Footer
+    └── Vue.js Mount Point
+        └── <div id="app"></div>
+            └── ClientsApp.vue (Tailwind CSS)
+                ├── Client List (Table)
+                ├── Create/Edit Modal
+                ├── Delete Confirmation
+                └── API Integration
+
+File Structure:
+Web.IdP/Pages/Admin/
+├── Index.cshtml              → Dashboard (Vue SPA with Tailwind)
+├── Index.cshtml.cs           → [Authorize(Roles = Admin)]
+├── Clients.cshtml            → Client Management mount point
+├── Clients.cshtml.cs         → [Authorize(Roles = Admin)]
+├── Scopes.cshtml             → Scope Management mount point
+├── Scopes.cshtml.cs          → [Authorize(Roles = Admin)]
+
+Web.IdP/ClientApp/src/admin/
+├── clients/
+│   ├── main.js               → Entry point for Clients SPA
+│   └── ClientsApp.vue        → Main component (Tailwind CSS)
+├── scopes/
+│   ├── main.js               → Entry point for Scopes SPA
+│   └── ScopesApp.vue         → Main component (Tailwind CSS)
+└── dashboard/
+    ├── main.js               → Entry point for Dashboard SPA (Phase 3.2)
+    └── DashboardApp.vue      → Main component (Tailwind CSS)

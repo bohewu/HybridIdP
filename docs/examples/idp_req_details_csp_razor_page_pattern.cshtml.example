@@ -1,0 +1,15 @@
+@page
+@model PageModel
+
+<head>
+    <!-- External CSS only -->
+    <link href="~/css/page-name.css" rel="stylesheet" asp-append-version="true">
+</head>
+
+<body>
+    <!-- Content with CSS classes only (no inline styles) -->
+    <div class="custom-class">Content</div>
+    
+    <!-- External JS at the end -->
+    <script src="~/js/page-name.js" asp-append-version="true"></script>
+</body>

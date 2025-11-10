@@ -1,0 +1,144 @@
+<template>
+  <div class="modal d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5)">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ isEdit ? 'Edit User' : 'Create User' }}</h5>
+          <button @click="$emit('close')" type="button" class="btn-close"></button>
+        </div>
+        <form @submit.prevent="handleSubmit">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Email *</label>
+              <input 
+                v-model="formData.email" 
+                type="email" 
+                class="form-control" 
+                required
+              >
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Password *</label>
+              <input 
+                v-model="formData.password" 
+                type="password" 
+                class="form-control" 
+                :required="!isEdit"
+                minlength="6"
+              >
+              <small v-if="isEdit" class="text-muted">
+                Leave blank to keep current password
+              </small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Name</label>
+              <input 
+                v-model="formData.name" 
+                type="text" 
+                class="form-control"
+              >
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Department</label>
+              <input 
+                v-model="formData.department" 
+                type="text" 
+                class="form-control"
+              >
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Roles</label>
+              <div class="form-check">
+                <input 
+                  v-model="formData.roles" 
+                  value="Admin" 
+                  type="checkbox" 
+                  class="form-check-input"
+                  id="roleAdmin"
+                >
+                <label class="form-check-label" for="roleAdmin">Admin</label>
+              </div>
+              <div class="form-check">
+                <input 
+                  v-model="formData.roles" 
+                  value="User" 
+                  type="checkbox" 
+                  class="form-check-input"
+                  id="roleUser"
+                >
+                <label class="form-check-label" for="roleUser">User</label>
+              </div>
+            </div>
+
+            <div v-if="error" class="alert alert-danger">{{ error }}</div>
+          </div>
+          <div class="modal-footer">
+            <button @click="$emit('close')" type="button" class="btn btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary" :disabled="saving">
+              <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
+              {{ isEdit ? 'Update' : 'Create' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive } from 'vue';
+
+const props = defineProps({
+  user: Object,
+  isEdit: Boolean
+});
+
+const emit = defineEmits(['close', 'save']);
+
+const formData = reactive({
+  email: props.user?.email || '',
+  password: '',
+  name: props.user?.name || '',
+  department: props.user?.department || '',
+  roles: props.user?.roles || []
+});
+
+const saving = ref(false);
+const error = ref('');
+
+const handleSubmit = async () => {
+  saving.value = true;
+  error.value = '';
+
+  try {
+    const url = props.isEdit 
+      ? `/api/admin/users/${props.user.id}` 
+      : '/api/admin/users';
+    
+    const method = props.isEdit ? 'PUT' : 'POST';
+
+    const response = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to save user');
+    }
+
+    emit('save');
+  } catch (err) {
+    error.value = err.message;
+  } finally {
+    saving.value = false;
+  }
+};
+</script>

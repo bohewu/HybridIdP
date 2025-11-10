@@ -1,0 +1,12 @@
+Phase X.Y: Feature Name
+├── Step 1: API - DTOs (commit)
+├── Step 2: API - GET endpoint + tests (commit)
+├── Step 3: API - POST endpoint + validation + tests (commit)
+├── Step 4: API - PUT endpoint + tests (commit)
+├── Step 5: API - DELETE endpoint + tests (commit)
+├── Step 6: UI - Razor Page + Vue scaffolding + Tailwind CSS (commit)
+├── Step 7: UI - List component with API integration (commit)
+├── Step 8: UI - Create form component (commit)
+├── Step 9: UI - Edit form component (commit)
+├── Step 10: UI - Delete confirmation (commit)
+└── Step 11: E2E Testing & Verification (commit)

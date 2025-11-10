@@ -1,0 +1,7 @@
+<template>
+  <div class="max-w-7xl mx-auto">
+    <div class="grid grid-cols-3 gap-6">
+      <!-- Tailwind 樣式由 Vite 處理 -->
+    </div>
+  </div>
+</template>

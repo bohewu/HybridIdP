@@ -1,0 +1,6 @@
+import { createApp } from 'vue';
+import './style.css';  // ⚠️ 關鍵！沒有這行樣式會跑掉
+import UsersApp from './UsersApp.vue';
+
+const app = createApp(UsersApp);
+app.mount('#app');

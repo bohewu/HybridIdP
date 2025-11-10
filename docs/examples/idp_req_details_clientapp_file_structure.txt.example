@@ -1,0 +1,11 @@
+ClientApp/src/admin/
+├── clients/
+│   ├── main.js              → Entry point for Clients page
+│   ├── style.css            → ⚠️ MUST include: @tailwind directives
+│   ├── ClientsApp.vue       → Root component
+│   └── components/          → ClientList, ClientForm (with type selection)
+└── scopes/
+    ├── main.js              → Entry point for Scopes page
+    ├── style.css            → ⚠️ MUST include: @tailwind directives
+    ├── ScopesApp.vue        → Root component
+    └── components/          → ScopeList, ScopeForm

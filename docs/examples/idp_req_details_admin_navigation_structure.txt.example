@@ -1,0 +1,14 @@
+Admin Portal (Server-side Routes)
+├── /Admin (Index.cshtml) → Dashboard Vue SPA
+├── /Admin/Clients (Clients.cshtml) → Clients Vue SPA
+├── /Admin/Scopes (Scopes.cshtml) → Scopes Vue SPA
+├── Identity Management (Phase 4)
+│   ├── /Admin/Users → Users Vue SPA
+│   └── /Admin/Roles → Roles Vue SPA
+└── Settings (Phase 5)
+    └── /Admin/Settings → Settings Vue SPA
+
+Each route:
+- Has its own Razor Page with [Authorize(Roles = "Admin")]
+- Loads Bootstrap 5 layout (_AdminLayout.cshtml)
+- Mounts a dedicated Vue.js SPA for content area

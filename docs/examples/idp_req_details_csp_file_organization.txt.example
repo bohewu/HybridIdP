@@ -1,0 +1,9 @@
+wwwroot/
+├── css/
+│   ├── site.css              # Global styles
+│   ├── admin-layout.css      # Admin layout specific styles
+│   └── [page-name].css       # Page-specific styles
+└── js/
+    ├── site.js               # Global scripts
+    ├── admin-layout.js       # Admin layout specific scripts
+    └── [page-name].js        # Page-specific scripts

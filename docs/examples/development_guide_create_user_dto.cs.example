@@ -1,0 +1,19 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace Core.Application.DTOs;
+
+public record CreateUserDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; init; } = string.Empty;
+
+    [Required]
+    [MinLength(6)]
+    public string Password { get; init; } = string.Empty;
+
+    public string? UserName { get; init; }
+    public string? Name { get; init; }
+    public string? Department { get; init; }
+    public List<string> Roles { get; init; } = new();
+}

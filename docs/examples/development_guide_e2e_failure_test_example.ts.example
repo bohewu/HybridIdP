@@ -1,0 +1,20 @@
+// e2e/tests/authorization-failures.spec.ts
+test('User denies consent', async () => {
+  // 1. Navigate to TestClient
+  await mcp_playwright_browser_navigate('https://localhost:7001')
+  
+  // 2. Click Profile to trigger login
+  await mcp_playwright_browser_click({ element: 'Profile', ref: 'e13' })
+  
+  // 3. Should redirect to IdP authorization page
+  await mcp_playwright_browser_snapshot()
+  // Verify: page contains "Allow Access" and "Deny" buttons
+  
+  // 4. Click Deny button
+  await mcp_playwright_browser_click({ element: 'Deny', ref: 'e41' })
+  
+  // 5. Verify error response
+  const snapshot = await mcp_playwright_browser_snapshot()
+  // Should contain error message
+  // URL should include error=access_denied
+})

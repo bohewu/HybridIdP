@@ -1,0 +1,2 @@
+// In _ViewImports.cshtml
+@addTagHelper *, Vite.AspNetCore

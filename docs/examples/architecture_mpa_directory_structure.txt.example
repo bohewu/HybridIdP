@@ -1,0 +1,15 @@
+Web.IdP/
+├── ClientApp/                # The value for 'PackageDirectory'
+│   ├── src/
+│   │   ├── admin/                # Admin Portal Application
+│   │   │   └── main.js           # Entry point for Admin app
+│   │   │
+│   │   ├── account-manage/       # User Self-Service Application
+│   │   │   └── main.js           # Entry point for Account app
+│   │   └── ...
+│   │
+│   └── package.json
+│
+├── appsettings.Development.json  # Vite server configuration
+├── vite.config.js                # Vite build configuration
+└── ...

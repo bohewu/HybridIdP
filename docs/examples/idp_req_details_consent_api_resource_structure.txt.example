@@ -1,0 +1,20 @@
+Core.Domain/
+└── Entities/
+    └── ApiResource.cs            → API resource entity
+
+Web.IdP/Api/
+└── AdminController.cs            → Add resources CRUD endpoints
+
+Web.IdP/Pages/
+└── Consent.cshtml                → Enhanced with localized descriptions, icons, grouping
+
+ClientApp/src/admin/
+├── resources/
+│   ├── main.js
+│   ├── ResourcesApp.vue          → API resources management
+│   └── components/
+│       ├── ResourceList.vue
+│       └── ResourceForm.vue
+└── scopes/
+    └── components/
+        └── ScopeConsentEditor.vue → Consent screen customization UI

@@ -1,0 +1,2 @@
+cd TestClient
+dotnet run --launch-profile https

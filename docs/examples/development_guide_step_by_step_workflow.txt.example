@@ -1,0 +1,17 @@
+1. 查看 progress_todo.md
+   ↓
+2. 確認當前任務（例如：Phase 4.5 - Role Management UI）
+   ↓
+3. 閱讀 implementation_guidelines.md 中的相關範本
+   ↓
+4. 開始實作第一個 atomic unit（例如：DTOs）
+   ↓
+5. 測試變更（unit tests / manual testing）
+   ↓
+6. Commit with conventional format
+   ↓
+7. 更新 progress_todo.md（勾選完成項目）
+   ↓
+8. 如果 sub-phase 完成，更新 progress_completed.md
+   ↓
+9. 請求批准 → 繼續下一個 unit

@@ -1,0 +1,5 @@
+# 確認 PostgreSQL 容器運行中
+docker ps
+
+# 如果未運行，啟動它
+docker compose up -d db-service

@@ -1,0 +1,24 @@
+// vite.config.js
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+  plugins: [vue()],
+  // The root of our frontend application, relative to the .NET project root.
+  root: 'ClientApp',
+  build: {
+    // The output directory, relative to the .NET project root.
+    outDir: '../wwwroot/dist',
+    emptyOutDir: true,
+    // Generate a manifest.json file for the Vite.AspNetCore tag helpers.
+    manifest: true,
+    rollupOptions: {
+      // Define the entry points for our MPA.
+      // The path is relative to the `root` directory.
+      input: {
+        admin: './src/admin/main.js',
+        accountManage: './src/account-manage/main.js',
+      },
+    },
+  },
+});

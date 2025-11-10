@@ -1,0 +1,12 @@
+1. Backend 測試：
+   - Unit tests: dotnet test
+   - API 測試：Swagger UI (https://localhost:7035/swagger)
+
+2. Frontend 測試：
+   - 手動測試：透過瀏覽器
+   - E2E 測試：Playwright MCP (browser_snapshot, browser_click, etc.)
+
+3. 整合測試：
+   - 完整 CRUD 流程
+   - 權限驗證
+   - 錯誤處理

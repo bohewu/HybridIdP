@@ -1,0 +1,9 @@
+# 1. 停止所有 node 進程
+taskkill /F /IM node.exe /T
+
+# 2. 重新啟動 Vite（只執行一次）
+cd Web.IdP\ClientApp
+npm run dev
+
+# 3. 確認終端機顯示 "VITE vX.X.X ready in XXX ms"
+# 4. 確認瀏覽器 console 顯示 "[vite] connected"

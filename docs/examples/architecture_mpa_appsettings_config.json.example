@@ -1,0 +1,11 @@
+// appsettings.Development.json
+{
+  "Vite": {
+    "Server": {
+      // Enable the automatic start of the Vite Development Server.
+      "AutoRun": true,
+      // The directory where the package.json file is located.
+      "PackageDirectory": "ClientApp"
+    }
+  }
+}

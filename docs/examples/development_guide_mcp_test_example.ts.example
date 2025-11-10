@@ -1,0 +1,19 @@
+// 使用 MCP 工具進行測試（透過 Copilot Agent）
+// 1. 導航到頁面
+mcp_playwright_browser_navigate({ url: 'https://localhost:7001' })
+
+// 2. 點擊元素
+mcp_playwright_browser_click({ 
+  element: 'Profile link', 
+  ref: 'e13' // 從 snapshot 獲取
+})
+
+// 3. 填寫表單
+mcp_playwright_browser_type({ 
+  element: 'Email input', 
+  ref: 'e5',
+  text: 'admin@hybridauth.local' 
+})
+
+// 4. 檢查頁面狀態
+mcp_playwright_browser_snapshot()

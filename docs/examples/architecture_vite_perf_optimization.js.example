@@ -1,0 +1,18 @@
+// vite.config.js - 生產環境優化
+export default defineConfig({
+  build: {
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // 移除 console.log
+      }
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['vue'], // Vue 單獨打包
+        }
+      }
+    }
+  }
+});

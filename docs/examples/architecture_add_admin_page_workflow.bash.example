@@ -1,0 +1,16 @@
+# 1. 建立 Razor Page
+Pages/Admin/MyFeature.cshtml
+Pages/Admin/MyFeature.cshtml.cs
+
+# 2. 建立 Vue SPA
+ClientApp/src/admin/myfeature/main.js
+ClientApp/src/admin/myfeature/MyFeatureApp.vue
+
+# 3. 更新 vite.config.js
+input: {
+  'admin-myfeature': './src/admin/myfeature/main.js'
+}
+
+# 4. 在 Razor Page 中載入
+<div id="app"></div>
+<script type="module" vite-src="~/src/admin/myfeature/main.js"></script>

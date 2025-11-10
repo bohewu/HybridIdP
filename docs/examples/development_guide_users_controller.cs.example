@@ -1,0 +1,116 @@
+using Core.Application;
+using Core.Application.DTOs;
+using Core.Domain.Constants;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Web.IdP.Api.Admin;
+
+[ApiController]
+[Route("api/admin/users")]
+[Authorize(Roles = AuthConstants.Roles.Admin)]
+public class UsersController : ControllerBase
+{
+    private readonly IUserManagementService _userService;
+    private readonly ILogger<UsersController> _logger;
+
+    public UsersController(
+        IUserManagementService userService,
+        ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<PagedUsersDto>> GetUsers(
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 10, 
+        [FromQuery] string? search = null)
+    {
+        try
+        {
+            var result = await _userService.GetUsersAsync(page, pageSize, search);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching users");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<UserDetailDto>> GetUser(string id)
+    {
+        var user = await _userService.GetUserByIdAsync(id);
+        if (user == null)
+            return NotFound();
+
+        return Ok(user);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<UserDetailDto>> CreateUser([FromBody] CreateUserDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var user = await _userService.CreateUserAsync(dto);
+            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPut("{id}")]
+    public async Task<ActionResult<UserDetailDto>> UpdateUser(
+        string id, 
+        [FromBody] UpdateUserDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var user = await _userService.UpdateUserAsync(id, dto);
+            return Ok(user);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteUser(string id)
+    {
+        try
+        {
+            await _userService.DeleteUserAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    [HttpPost("{id}/activate")]
+    public async Task<IActionResult> ActivateUser(string id)
+    {
+        var success = await _userService.ActivateUserAsync(id);
+        return success ? Ok() : NotFound();
+    }
+
+    [HttpPost("{id}/deactivate")]
+    public async Task<IActionResult> DeactivateUser(string id)
+    {
+        var success = await _userService.DeactivateUserAsync(id);
+        return success ? Ok() : NotFound();
+    }
+}

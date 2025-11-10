@@ -1,0 +1,6 @@
+feat(api): Add RoleSummaryDto for role list endpoint
+feat(api): Implement GET /api/admin/roles with pagination
+test(api): Add unit tests for role creation validation
+feat(ui): Add Roles.cshtml with admin authorization
+feat(ui): Implement RoleList component with table display
+feat(ui): Add role creation form with permission selector

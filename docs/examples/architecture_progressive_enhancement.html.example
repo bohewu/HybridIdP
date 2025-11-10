@@ -1,0 +1,14 @@
+<!-- 1. 基礎 HTML 由 Razor 渲染（Bootstrap 5） -->
+<div class="container-fluid">
+  <div class="sidebar">...</div>
+  <main class="main-content">
+    <!-- 2. Vue.js 掛載點 -->
+    <div id="app">
+      <!-- 3. 載入中顯示基礎內容 -->
+      <p>Loading...</p>
+    </div>
+  </main>
+</div>
+
+<!-- 4. Vue.js 接管並增強互動性 -->
+<script type="module" vite-src="~/src/admin/clients/main.js"></script>

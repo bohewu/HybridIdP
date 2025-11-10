@@ -1,0 +1,5 @@
+# 切換到 ClientApp 目錄
+cd Web.IdP\ClientApp
+
+# 啟動 Vite（只執行一次！）
+npm run dev

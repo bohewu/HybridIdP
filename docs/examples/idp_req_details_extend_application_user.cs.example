@@ -1,0 +1,22 @@
+public class ApplicationUser : IdentityUser
+{
+    // Existing properties...
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? MiddleName { get; set; }
+    public string? Nickname { get; set; }
+    public string? ProfileUrl { get; set; }
+    public string? PictureUrl { get; set; }
+    public string? Website { get; set; }
+    public string? Address { get; set; }  // JSON string
+    public string? Birthdate { get; set; }  // ISO 8601 format
+    public string? Gender { get; set; }
+    public string? TimeZone { get; set; }
+    public string? Locale { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    
+    // Custom enterprise claims
+    public string? Department { get; set; }
+    public string? JobTitle { get; set; }
+    public string? EmployeeId { get; set; }
+}

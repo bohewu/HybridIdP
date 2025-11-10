@@ -1,0 +1,20 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Core.Domain.Constants;
+
+namespace Web.IdP.Api
+{
+    [ApiController]
+    [Route("api/admin")]
+    [Authorize(Roles = AuthConstants.Roles.Admin)]
+    public class AdminController : ControllerBase
+    {
+        [HttpGet("clients")]
+        public async Task<IActionResult> GetClients()
+        {
+            // API 級別的授權驗證
+            // 即使前端被繞過，仍會檢查權限
+            return Ok(clients);
+        }
+    }
+}

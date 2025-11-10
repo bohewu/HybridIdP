@@ -1,0 +1,2 @@
+// main.js
+import './style.css';  // ⚠️ 加這行

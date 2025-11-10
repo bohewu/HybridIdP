@@ -1,0 +1,3 @@
+# 在專案根目錄執行
+cd Web.IdP
+dotnet run --launch-profile https

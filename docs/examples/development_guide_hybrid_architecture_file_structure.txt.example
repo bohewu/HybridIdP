@@ -1,0 +1,19 @@
+Web.IdP/
+├── Pages/
+│   └── Admin/
+│       └── Users.cshtml              # Razor Page (路由 + 授權)
+│           └── Users.cshtml.cs       # PageModel (可選)
+├── ClientApp/
+│   └── src/
+│       └── admin/
+│           └── users/
+│               ├── main.js           # Vue SPA 入口點
+│               ├── style.css         # ⚠️ Tailwind CSS 指令
+│               ├── UsersApp.vue      # 主組件
+│               └── components/       # 子組件
+│                   ├── UserList.vue
+│                   ├── UserForm.vue
+│                   └── ...
+└── Api/
+    └── Admin/
+        └── UsersController.cs        # API Controller

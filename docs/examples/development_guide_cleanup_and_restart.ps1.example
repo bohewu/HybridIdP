@@ -1,0 +1,20 @@
+# 完整清理所有進程
+taskkill /F /IM dotnet.exe /T 2>$null
+taskkill /F /IM node.exe /T 2>$null
+
+# 重新啟動（依序執行）
+# 1. 資料庫
+docker compose up -d db-service
+
+# 2. IdP 後端（在終端機 1 - 使用專用視窗）
+cd Web.IdP
+dotnet run --launch-profile https
+
+# 3. Vite（在終端機 2 - 使用專用視窗，只執行一次！）
+cd Web.IdP\ClientApp
+npm run dev
+# ⚠️ 看到 "VITE vX.X.X ready in XXX ms" 後就不要再動這個終端機
+
+# 4. TestClient（可選，在終端機 3 - 使用專用視窗）
+cd TestClient
+dotnet run --launch-profile https

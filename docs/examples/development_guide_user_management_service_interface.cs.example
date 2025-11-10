@@ -1,0 +1,14 @@
+using Core.Application.DTOs;
+
+namespace Core.Application;
+
+public interface IUserManagementService
+{
+    Task<PagedUsersDto> GetUsersAsync(int page = 1, int pageSize = 10, string? search = null);
+    Task<UserDetailDto?> GetUserByIdAsync(string userId);
+    Task<UserDetailDto> CreateUserAsync(CreateUserDto dto);
+    Task<UserDetailDto> UpdateUserAsync(string userId, UpdateUserDto dto);
+    Task DeleteUserAsync(string userId);
+    Task<bool> ActivateUserAsync(string userId);
+    Task<bool> DeactivateUserAsync(string userId);
+}

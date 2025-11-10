@@ -1,0 +1,11 @@
+// Template String
+full_name: "{FirstName} {LastName}"
+
+// JavaScript Expression
+is_vip: "user.Department === 'Executive' || user.JobTitle.includes('Director')"
+
+// Lookup Table
+department_name: { "IT": "Information Technology", "HR": "Human Resources", "FIN": "Finance" }
+
+// External API (cached)
+credit_score: "GET https://api.creditbureau.example.com/score?userId={Id}"

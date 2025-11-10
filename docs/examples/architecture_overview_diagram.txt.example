@@ -1,0 +1,30 @@
+┌─────────────────────────────────────────────────────────────┐
+│  ASP.NET Core Razor Pages (Server-side Rendering)          │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  _AdminLayout.cshtml (Bootstrap 5 from CDN)          │  │
+│  │  ├── Sidebar (260px fixed, responsive)               │  │
+│  │  ├── Header (Breadcrumbs, User menu)                 │  │
+│  │  └── Footer (Copyright, Links)                       │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                              │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  Admin Pages (Razor Pages with [Authorize])          │  │
+│  │  ├── /Admin/Index.cshtml                             │  │
+│  │  ├── /Admin/Clients.cshtml                           │  │
+│  │  └── /Admin/Scopes.cshtml                            │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                        ↓                                     │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  Vue.js 3 SPAs (Client-side Interactivity)          │  │
+│  │  ├── DashboardApp.vue (Tailwind CSS)                │  │
+│  │  ├── ClientsApp.vue (Tailwind CSS)                  │  │
+│  │  └── ScopesApp.vue (Tailwind CSS)                   │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                        ↓                                     │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  API Controllers (Backend Services)                  │  │
+│  │  ├── GET /api/admin/clients                          │  │
+│  │  ├── POST /api/admin/clients                         │  │
+│  │  └── GET /api/admin/dashboard/stats                  │  │
+│  └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘

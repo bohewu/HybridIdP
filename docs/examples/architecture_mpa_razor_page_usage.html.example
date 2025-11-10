@@ -1,0 +1,18 @@
+@page
+
+@{ 
+    ViewData["Title"] = "Client Management";
+}
+
+@* This div is the mount point for our Admin Vue app. *@
+<div id="app"></div>
+
+@section Scripts {
+    @*  
+      The vite-src attribute points to the script entry point.
+      The path is relative to the 'PackageDirectory' defined in appsettings.json (i.e., 'ClientApp').
+      The tag helper will resolve this to the Vite dev server URL in development,
+      or the compiled asset path from the manifest in production.
+    *@
+    <script type="module" vite-src="~/src/admin/main.js"></script>
+}

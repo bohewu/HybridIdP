@@ -1,0 +1,12 @@
+Web.IdP/Pages/Admin/
+└── Users.cshtml                → User Management
+└── Users.cshtml.cs             → [Authorize(Policy = "users.read")]
+
+ClientApp/src/admin/
+└── users/
+    ├── main.js                 → Entry point
+    ├── UsersApp.vue            → Root component
+    └── components/
+        ├── UserList.vue        → User table with filters
+        ├── UserForm.vue        → Create/edit modal
+        └── RoleAssignment.vue  → Multi-select role picker

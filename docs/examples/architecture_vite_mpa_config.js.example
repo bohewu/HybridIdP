@@ -1,0 +1,12 @@
+// vite.config.js
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      input: {
+        'admin-clients': resolve(__dirname, 'src/admin/clients/main.js'),
+        'admin-scopes': resolve(__dirname, 'src/admin/scopes/main.js'),
+        'admin-dashboard': resolve(__dirname, 'src/admin/dashboard/main.js'),
+      }
+    }
+  }
+});

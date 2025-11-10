@@ -29,18 +29,7 @@
 **Usage Example:**
 
 ```csharp
-// ✅ CORRECT - Using constants
-[Authorize(Roles = AuthConstants.Roles.Admin)]
-public class AdminController : ControllerBase { }
-
-await userManager.AddToRoleAsync(user, AuthConstants.Roles.Admin);
-
-identity.AddClaim(new Claim(AuthConstants.Claims.Department, department));
-
-// ❌ WRONG - Magic strings (error-prone)
-[Authorize(Roles = "Admin")]  // Typo risk!
-await userManager.AddToRoleAsync(user, "admin");  // Case mismatch!
-identity.AddClaim(new Claim("deparment", department));  // Typo!
+// See docs/examples/idp_req_details_auth_constants.cs.example
 ```
 
 **Benefits:**
@@ -78,36 +67,14 @@ identity.AddClaim(new Claim("deparment", department));  // Typo!
 
 **File Organization:**
 
-```
-wwwroot/
-├── css/
-│   ├── site.css              # Global styles
-│   ├── admin-layout.css      # Admin layout specific styles
-│   └── [page-name].css       # Page-specific styles
-└── js/
-    ├── site.js               # Global scripts
-    ├── admin-layout.js       # Admin layout specific scripts
-    └── [page-name].js        # Page-specific scripts
+```text
+// See docs/examples/idp_req_details_csp_file_organization.txt.example
 ```
 
 **Razor Page Pattern:**
 
 ```cshtml
-@page
-@model PageModel
-
-<head>
-    <!-- External CSS only -->
-    <link href="~/css/page-name.css" rel="stylesheet" asp-append-version="true">
-</head>
-
-<body>
-    <!-- Content with CSS classes only (no inline styles) -->
-    <div class="custom-class">Content</div>
-    
-    <!-- External JS at the end -->
-    <script src="~/js/page-name.js" asp-append-version="true"></script>
-</body>
+// See docs/examples/idp_req_details_csp_razor_page_pattern.cshtml.example
 ```
 
 **Benefits:**
@@ -139,27 +106,13 @@ wwwroot/
 **Implementation Order for Features:**
 
 ```text
-Phase X.Y: Feature Name
-├── Step 1: API - DTOs (commit)
-├── Step 2: API - GET endpoint + tests (commit)
-├── Step 3: API - POST endpoint + validation + tests (commit)
-├── Step 4: API - PUT endpoint + tests (commit)
-├── Step 5: API - DELETE endpoint + tests (commit)
-├── Step 6: UI - Razor Page + Vue scaffolding + Tailwind CSS (commit)
-├── Step 7: UI - List component with API integration (commit)
-├── Step 8: UI - Create form component (commit)
-├── Step 9: UI - Edit form component (commit)
-├── Step 10: UI - Delete confirmation (commit)
-└── Step 11: E2E Testing & Verification (commit)
+// See docs/examples/idp_req_details_git_commit_strategy_implementation_order.txt.example
 ```
 
 **Commit Message Format (Conventional Commits):**
 
 ```text
-<type>(<scope>): <subject>
-
-[optional body]
-[optional footer]
+// See docs/examples/idp_req_details_git_commit_message_format.txt.example
 ```
 
 **Types:**
@@ -183,12 +136,7 @@ Phase X.Y: Feature Name
 **Examples:**
 
 ```bash
-feat(api): Add RoleSummaryDto for role list endpoint
-feat(api): Implement GET /api/admin/roles with pagination
-test(api): Add unit tests for role creation validation
-feat(ui): Add Roles.cshtml with admin authorization
-feat(ui): Implement RoleList component with table display
-feat(ui): Add role creation form with permission selector
+// See docs/examples/idp_req_details_git_commit_examples.bash.example
 ```
 
 **Verification Checkpoint:** After each commit, verify:
@@ -310,22 +258,13 @@ Notes:
 Optional commands (PowerShell):
 
 ```powershell
-# Stop any prior dotnet processes
-taskkill /F /IM dotnet.exe /T
-
-# Start IdP (https)
-cd .\Web.IdP
-dotnet run --launch-profile https
-
-# In another terminal: start TestClient (https)
-cd ..\TestClient
-dotnet run --launch-profile https
+// See docs/examples/idp_req_details_e2e_jit_powershell_commands.ps1.example
 ```
 
 Cleanup after verification:
 
 ```powershell
-taskkill /F /IM dotnet.exe /T
+// See docs/examples/idp_req_details_e2e_jit_cleanup_powershell_command.ps1.example
 ```
 
 ### Negative E2E checks (deliberate failures)
@@ -405,22 +344,8 @@ Phase 3 establishes the complete admin portal with a secure hybrid architecture:
   - Navigation Structure:
 
     ```text
-    Admin Portal (Server-side Routes)
-    ├── /Admin (Index.cshtml) → Dashboard Vue SPA
-    ├── /Admin/Clients (Clients.cshtml) → Clients Vue SPA
-    ├── /Admin/Scopes (Scopes.cshtml) → Scopes Vue SPA
-    ├── Identity Management (Phase 4)
-    │   ├── /Admin/Users → Users Vue SPA
-    │   └── /Admin/Roles → Roles Vue SPA
-    └── Settings (Phase 5)
-        └── /Admin/Settings → Settings Vue SPA
-    
-    Each route:
-    - Has its own Razor Page with [Authorize(Roles = "Admin")]
-    - Loads Bootstrap 5 layout (_AdminLayout.cshtml)
-    - Mounts a dedicated Vue.js SPA for content area
+    // See docs/examples/idp_req_details_admin_navigation_structure.txt.example
     ```
-
   - **Verification (COMPLETED via Playwright MCP)**:
     - ✅ Admin user can access `/Admin` (authorized)
     - ✅ Non-admin users get 403 when accessing `/Admin/*` (server-side security)
@@ -531,76 +456,18 @@ Phase 3 establishes the complete admin portal with a secure hybrid architecture:
   - **Structure:**
 
     ```text
-    Hybrid Architecture Layout:
-    
-    /Admin/Clients (Server-side Route)
-    ├── Clients.cshtml.cs
-    │   └── [Authorize(Roles = AuthConstants.Roles.Admin)] ← Backend Security
-    └── Clients.cshtml
-        ├── Bootstrap 5 Layout (_AdminLayout.cshtml)
-        │   ├── Sidebar (260px, fixed)
-        │   ├── Header (Breadcrumbs: "Admin / Clients")
-        │   └── Footer
-        └── Vue.js Mount Point
-            └── <div id="app"></div>
-                └── ClientsApp.vue (Tailwind CSS)
-                    ├── Client List (Table)
-                    ├── Create/Edit Modal
-                    ├── Delete Confirmation
-                    └── API Integration
-    
-    File Structure:
-    Web.IdP/Pages/Admin/
-    ├── Index.cshtml              → Dashboard (Vue SPA with Tailwind)
-    ├── Index.cshtml.cs           → [Authorize(Roles = Admin)]
-    ├── Clients.cshtml            → Client Management mount point
-    ├── Clients.cshtml.cs         → [Authorize(Roles = Admin)]
-    ├── Scopes.cshtml             → Scope Management mount point
-    ├── Scopes.cshtml.cs          → [Authorize(Roles = Admin)]
-    
-    Web.IdP/ClientApp/src/admin/
-    ├── clients/
-    │   ├── main.js               → Entry point for Clients SPA
-    │   └── ClientsApp.vue        → Main component (Tailwind CSS)
-    ├── scopes/
-    │   ├── main.js               → Entry point for Scopes SPA
-    │   └── ScopesApp.vue         → Main component (Tailwind CSS)
-    └── dashboard/
-        ├── main.js               → Entry point for Dashboard SPA (Phase 3.2)
-        └── DashboardApp.vue      → Main component (Tailwind CSS)
-    ```
-    └── Scopes.cshtml.cs          → [Authorize(Roles = Admin)]
-
-    ClientApp/src/admin/
-    ├── clients/
-    │   ├── main.js              → Entry point for Clients page
-    │   ├── style.css            → ⚠️ MUST include: @tailwind directives
-    │   ├── ClientsApp.vue       → Root component
-    │   └── components/          → ClientList, ClientForm (with type selection)
-    └── scopes/
-        ├── main.js              → Entry point for Scopes page
-        ├── style.css            → ⚠️ MUST include: @tailwind directives
-        ├── ScopesApp.vue        → Root component
-        └── components/          → ScopeList, ScopeForm
+    // See docs/examples/idp_req_details_clientapp_file_structure.txt.example
     ```
 
   - **⚠️ CRITICAL - Tailwind CSS Setup for Each Vue SPA:**
     - **Pattern for ALL new Vue SPA entry points:**
-      1. Create `style.css` in the same directory as `main.js`:
-         ```css
-         @tailwind base;
-         @tailwind components;
-         @tailwind utilities;
-         ```
+```css
+// See docs/examples/idp_req_details_tailwind_style_css.css.example
+```
       2. Import in `main.js`:
          ```javascript
-         import { createApp } from 'vue'
-         import YourApp from './YourApp.vue'
-         import './style.css'  // ← CRITICAL: Must import Tailwind
-
-         createApp(YourApp).mount('#app')
-         ```
-    - **Why:** Vite needs explicit CSS imports to process Tailwind directives
+         // See docs/examples/idp_req_details_tailwind_main_js_import.js.example
+         ```    - **Why:** Vite needs explicit CSS imports to process Tailwind directives
     - **Consequence of missing:** Components render without Tailwind styling (layout breaks)
     - **Verification:** 
       - Browser console shows `[vite] connected`
@@ -680,22 +547,8 @@ Phase 3 establishes the complete admin portal with a secure hybrid architecture:
   - Structure:
 
     ```text
-    Web.IdP/Pages/Admin/
-    └── Scopes.cshtml                 → Scope Management
-    └── Scopes.cshtml.cs              → [Authorize(Roles = Admin)]
-
-    Web.IdP/Api/
-    └── AdminController.cs            → Add scopes CRUD endpoints
-
-    ClientApp/src/admin/
-    └── scopes/
-        ├── main.js                   → Entry point
-        ├── ScopesApp.vue             → Root component with list/form
-        └── components/
-            ├── ScopeList.vue         → Displays scopes table
-            └── ScopeForm.vue         → Create/edit modal (basic fields only)
+    // See docs/examples/idp_req_details_scope_management_structure.txt.example
     ```
-
   - Verification:
     - Admin can navigate to `/Admin/Scopes`
     - See standard OIDC scopes (openid, profile, email, phone, address)
@@ -726,34 +579,8 @@ Phase 3 establishes the complete admin portal with a secure hybrid architecture:
     - Seed standard OIDC claims:
 
       ```csharp
-      // OpenID Connect Standard Claims (from OIDC Core spec)
-      { Name = "sub", DisplayName = "Subject Identifier", ClaimType = "sub", UserPropertyPath = "Id", DataType = "String", IsStandard = true, IsRequired = true },
-      { Name = "name", DisplayName = "Full Name", ClaimType = "name", UserPropertyPath = "UserName", DataType = "String", IsStandard = true },
-      { Name = "given_name", DisplayName = "Given Name", ClaimType = "given_name", UserPropertyPath = "FirstName", DataType = "String", IsStandard = true },
-      { Name = "family_name", DisplayName = "Family Name", ClaimType = "family_name", UserPropertyPath = "LastName", DataType = "String", IsStandard = true },
-      { Name = "middle_name", DisplayName = "Middle Name", ClaimType = "middle_name", UserPropertyPath = "MiddleName", DataType = "String", IsStandard = true },
-      { Name = "nickname", DisplayName = "Nickname", ClaimType = "nickname", UserPropertyPath = "Nickname", DataType = "String", IsStandard = true },
-      { Name = "preferred_username", DisplayName = "Preferred Username", ClaimType = "preferred_username", UserPropertyPath = "UserName", DataType = "String", IsStandard = true },
-      { Name = "profile", DisplayName = "Profile URL", ClaimType = "profile", UserPropertyPath = "ProfileUrl", DataType = "String", IsStandard = true },
-      { Name = "picture", DisplayName = "Picture URL", ClaimType = "picture", UserPropertyPath = "PictureUrl", DataType = "String", IsStandard = true },
-      { Name = "website", DisplayName = "Website", ClaimType = "website", UserPropertyPath = "Website", DataType = "String", IsStandard = true },
-      { Name = "email", DisplayName = "Email Address", ClaimType = "email", UserPropertyPath = "Email", DataType = "String", IsStandard = true },
-      { Name = "email_verified", DisplayName = "Email Verified", ClaimType = "email_verified", UserPropertyPath = "EmailConfirmed", DataType = "Boolean", IsStandard = true },
-      { Name = "phone_number", DisplayName = "Phone Number", ClaimType = "phone_number", UserPropertyPath = "PhoneNumber", DataType = "String", IsStandard = true },
-      { Name = "phone_number_verified", DisplayName = "Phone Verified", ClaimType = "phone_number_verified", UserPropertyPath = "PhoneNumberConfirmed", DataType = "Boolean", IsStandard = true },
-      { Name = "address", DisplayName = "Address", ClaimType = "address", UserPropertyPath = "Address", DataType = "JSON", IsStandard = true },
-      { Name = "birthdate", DisplayName = "Birthdate", ClaimType = "birthdate", UserPropertyPath = "Birthdate", DataType = "String", IsStandard = true },
-      { Name = "gender", DisplayName = "Gender", ClaimType = "gender", UserPropertyPath = "Gender", DataType = "String", IsStandard = true },
-      { Name = "zoneinfo", DisplayName = "Time Zone", ClaimType = "zoneinfo", UserPropertyPath = "TimeZone", DataType = "String", IsStandard = true },
-      { Name = "locale", DisplayName = "Locale", ClaimType = "locale", UserPropertyPath = "Locale", DataType = "String", IsStandard = true },
-      { Name = "updated_at", DisplayName = "Updated At", ClaimType = "updated_at", UserPropertyPath = "UpdatedAt", DataType = "Integer", IsStandard = true },
-      
-      // Custom enterprise claims (examples)
-      { Name = "department", DisplayName = "Department", ClaimType = "department", UserPropertyPath = "Department", DataType = "String", IsStandard = false },
-      { Name = "job_title", DisplayName = "Job Title", ClaimType = "job_title", UserPropertyPath = "JobTitle", DataType = "String", IsStandard = false },
-      { Name = "employee_id", DisplayName = "Employee ID", ClaimType = "employee_id", UserPropertyPath = "EmployeeId", DataType = "String", IsStandard = false },
+      // See docs/examples/idp_req_details_seed_oidc_claims.cs.example
       ```
-
   - **Backend - Part 2: Scope-to-Claims Mapping**
     - Create `ScopeClaim` join table:
       - `ScopeId` (FK to Scope entity)
@@ -765,28 +592,8 @@ Phase 3 establishes the complete admin portal with a secure hybrid architecture:
     - Seed standard OIDC scope mappings:
 
       ```csharp
-      // openid scope (required for OIDC)
-      openid → [sub]
-
-      // profile scope (OIDC Core spec section 5.4)
-      profile → [name, family_name, given_name, middle_name, nickname, 
-                 preferred_username, profile, picture, website, gender, 
-                 birthdate, zoneinfo, locale, updated_at]
-
-      // email scope
-      email → [email, email_verified]
-
-      // phone scope
-      phone → [phone_number, phone_number_verified]
-
-      // address scope
-      address → [address]
-
-      // Custom scopes (examples)
-      department → [department, job_title]
-      employee_info → [employee_id, department, job_title]
+      // See docs/examples/idp_req_details_seed_oidc_scope_mappings.cs.example
       ```
-
   - **Backend - Part 3: MyUserClaimsPrincipalFactory Enhancement**
     - Update `Infrastructure/Identity/MyUserClaimsPrincipalFactory.cs`:
       - Query `ScopeClaim` mappings based on requested scopes from authorization request
@@ -818,70 +625,21 @@ Phase 3 establishes the complete admin portal with a secure hybrid architecture:
     - Show preview of ID token structure when scope is requested:
 
       ```json
-      // When client requests scopes: openid, profile, email
-      {
-        "sub": "user-id-123",
-        "name": "John Doe",
-        "given_name": "John",
-        "family_name": "Doe",
-        "email": "john.doe@example.com",
-        "email_verified": true
-      }
+      // See docs/examples/idp_req_details_id_token_preview.json.example
       ```
-
   - **Extend ApplicationUser Entity:**
     - Add properties to support standard OIDC claims:
 
       ```csharp
-      public class ApplicationUser : IdentityUser
-      {
-          // Existing properties...
-          public string? FirstName { get; set; }
-          public string? LastName { get; set; }
-          public string? MiddleName { get; set; }
-          public string? Nickname { get; set; }
-          public string? ProfileUrl { get; set; }
-          public string? PictureUrl { get; set; }
-          public string? Website { get; set; }
-          public string? Address { get; set; }  // JSON string
-          public string? Birthdate { get; set; }  // ISO 8601 format
-          public string? Gender { get; set; }
-          public string? TimeZone { get; set; }
-          public string? Locale { get; set; }
-          public DateTime? UpdatedAt { get; set; }
-          
-          // Custom enterprise claims
-          public string? Department { get; set; }
-          public string? JobTitle { get; set; }
-          public string? EmployeeId { get; set; }
-      }
+      // See docs/examples/idp_req_details_extend_application_user.cs.example
       ```
-
     - Create database migration for new columns
 
   - **Structure:**
 
     ```text
-    Core.Domain/
-    └── Entities/
-        ├── UserClaim.cs              → Claim definition entity
-        └── ScopeClaim.cs             → Scope-to-claims mapping entity
-
-    Web.IdP/Api/
-    └── AdminController.cs            → Add claims CRUD + scope mapping endpoints
-
-    ClientApp/src/admin/
-    ├── claims/
-    │   ├── main.js
-    │   ├── ClaimsApp.vue             → Claims list and CRUD
-    │   └── components/
-    │       ├── ClaimList.vue
-    │       └── ClaimForm.vue
-    └── scopes/
-        └── components/
-            └── ScopeClaimsMapper.vue → Claims mapping UI (embedded in ScopeForm)
+    // See docs/examples/idp_req_details_claims_mapping_structure.txt.example
     ```
-
   - **Verification:**
     - Admin navigates to `/Admin/Claims`
     - See list of standard OIDC claims (sub, name, email, etc.) and custom claims
@@ -990,11 +748,10 @@ Phase 4 establishes comprehensive user and role management with a modern admin i
   - **⚠️ CRITICAL - Tailwind CSS Setup:**
     - **MUST create** `ClientApp/src/admin/users/style.css` with Tailwind directives:
       ```css
-      @tailwind base;
-      @tailwind components;
-      @tailwind utilities;
-      ```
-    - **MUST import** in `main.js`: `import './style.css'`
+      // See docs/examples/idp_req_details_user_management_tailwind_style_css.css.example
+      ```    - **MUST import** in `main.js`: ```javascript
+// See docs/examples/idp_req_details_user_management_main_js_import.js.example
+```
     - **Pattern:** Every new Vue SPA entry point requires its own `style.css` import
     - **Reference:** Follow same pattern as `clients/main.js`, `scopes/main.js`, `claims/main.js`
     - **Verification:** Check browser console for `[vite] connected` and verify Tailwind classes render correctly
@@ -1017,20 +774,8 @@ Phase 4 establishes comprehensive user and role management with a modern admin i
   - Structure:
 
     ```text
-    Web.IdP/Pages/Admin/
-    └── Users.cshtml                → User Management
-    └── Users.cshtml.cs             → [Authorize(Policy = "users.read")]
-
-    ClientApp/src/admin/
-    └── users/
-        ├── main.js                 → Entry point
-        ├── UsersApp.vue            → Root component
-        └── components/
-            ├── UserList.vue        → User table with filters
-            ├── UserForm.vue        → Create/edit modal
-            └── RoleAssignment.vue  → Multi-select role picker
+    // See docs/examples/idp_req_details_user_management_structure.txt.example
     ```
-
   - Verification:
     - Navigate to `/Admin/Users`
     - Create new user with ApplicationRegistrar role
@@ -1059,20 +804,8 @@ Phase 4 establishes comprehensive user and role management with a modern admin i
   - Structure:
 
     ```text
-    Web.IdP/Pages/Admin/
-    └── Roles.cshtml                → Role Management
-    └── Roles.cshtml.cs             → [Authorize(Policy = "roles.read")]
-
-    ClientApp/src/admin/
-    └── roles/
-        ├── main.js                 → Entry point
-        ├── RolesApp.vue            → Root component
-        └── components/
-            ├── RoleList.vue        → Roles table
-            ├── RoleForm.vue        → Create/edit modal
-            └── PermissionSelector.vue → Permission tree picker
+    // See docs/examples/idp_req_details_role_management_structure.txt.example
     ```
-
   - Verification:
     - Navigate to `/Admin/Roles`
     - Create "ApplicationRegistrar" role with client.* permissions
@@ -1138,21 +871,8 @@ Phase 4 establishes comprehensive user and role management with a modern admin i
     - **Example Consent Screen:**
 
       ```text
-      TestClient would like to:
-      
-      ✓ Know who you are (openid) [Required]
-        Access your basic identity information
-      
-      ☐ Read your profile (profile)
-        Access your name, picture, and other profile information
-      
-      ☐ Access your email (email)
-        View your email address and verification status
-      
-      ☐ Access your company data (api:company:read)
-        Read company records on your behalf
+      // See docs/examples/idp_req_details_example_consent_screen.txt.example
       ```
-
   - **Part 2: API Resource Scopes**
     - **Concept:** Beyond identity scopes (profile, email), IdP must support **API resource scopes** for protecting backend APIs (e.g., `api:read`, `api:write`, `inventory:manage`).
     - Backend:
@@ -1197,28 +917,8 @@ Phase 4 establishes comprehensive user and role management with a modern admin i
   - **Structure:**
 
     ```text
-    Core.Domain/
-    └── Entities/
-        └── ApiResource.cs            → API resource entity
-
-    Web.IdP/Api/
-    └── AdminController.cs            → Add resources CRUD endpoints
-
-    Web.IdP/Pages/
-    └── Consent.cshtml                → Enhanced with localized descriptions, icons, grouping
-
-    ClientApp/src/admin/
-    ├── resources/
-    │   ├── main.js
-    │   ├── ResourcesApp.vue          → API resources management
-    │   └── components/
-    │       ├── ResourceList.vue
-    │       └── ResourceForm.vue
-    └── scopes/
-        └── components/
-            └── ScopeConsentEditor.vue → Consent screen customization UI
+    // See docs/examples/idp_req_details_consent_api_resource_structure.txt.example
     ```
-
   - **Verification:**
     - **Consent Screen:**
       - Admin edits scope "profile" to add localized description and icon

@@ -1,0 +1,9 @@
+// When client requests scopes: openid, profile, email
+{
+  "sub": "user-id-123",
+  "name": "John Doe",
+  "given_name": "John",
+  "family_name": "Doe",
+  "email": "john.doe@example.com",
+  "email_verified": true
+}

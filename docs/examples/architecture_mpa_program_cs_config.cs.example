@@ -1,0 +1,22 @@
+// In Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddRazorPages();
+
+// 1. Add Vite services.
+builder.Services.AddViteServices();
+
+var app = builder.Build();
+
+// ...
+
+// 2. Use the Vite Development Server in development.
+if (app.Environment.IsDevelopment())
+{
+    app.UseViteDevelopmentServer();
+}
+
+// ...
+
+app.Run();

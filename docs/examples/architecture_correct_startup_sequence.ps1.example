@@ -1,0 +1,16 @@
+# 1. 啟動資料庫
+docker compose up -d db-service
+
+# 2. 啟動 IdP（終端機 1）
+cd Web.IdP
+dotnet run --launch-profile https
+# ✅ IdP 啟動在 https://localhost:7035
+# ✅ Vite 不會自動啟動（AutoRun: false）
+
+# 3. 手動啟動 Vite（終端機 2）
+cd Web.IdP\ClientApp
+npm run dev
+# ✅ Vite 啟動在 http://localhost:5173
+
+# 4. 訪問 Admin Portal
+# https://localhost:7035/Admin

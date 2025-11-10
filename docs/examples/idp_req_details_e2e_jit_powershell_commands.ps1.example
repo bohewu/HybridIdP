@@ -1,0 +1,10 @@
+# Stop any prior dotnet processes
+taskkill /F /IM dotnet.exe /T
+
+# Start IdP (https)
+cd .\Web.IdP
+dotnet run --launch-profile https
+
+# In another terminal: start TestClient (https)
+cd ..\TestClient
+dotnet run --launch-profile https

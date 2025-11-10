@@ -1,0 +1,10 @@
+Admin Portal
+├── Razor Pages Layout (Bootstrap 5)
+│   ├── _AdminLayout.cshtml - 主要 layout（sidebar、header、footer）
+│   ├── Index.cshtml - Dashboard 頁面
+│   ├── Clients.cshtml - Clients 管理頁面（掛載 Vue.js）
+│   └── Scopes.cshtml - Scopes 管理頁面（掛載 Vue.js）
+│
+└── Vue.js Components (Tailwind CSS)
+    ├── ClientApp/src/admin/clients/ - Clients 管理 SPA
+    └── ClientApp/src/admin/scopes/ - Scopes 管理 SPA

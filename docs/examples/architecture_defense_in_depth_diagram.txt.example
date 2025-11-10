@@ -1,0 +1,26 @@
+User Request: https://localhost:7035/Admin/Clients
+         ↓
+┌────────────────────────────────────────────────┐
+│ Layer 1: ASP.NET Core Authentication           │
+│ └─ Cookie/JWT validation                       │
+└────────────────────────────────────────────────┘
+         ↓
+┌────────────────────────────────────────────────┐
+│ Layer 2: Razor Page Authorization              │
+│ └─ [Authorize(Roles = "Admin")]                │
+└────────────────────────────────────────────────┘
+         ↓ (Authorized)
+┌────────────────────────────────────────────────┐
+│ Layer 3: Render _AdminLayout + Clients.cshtml │
+│ └─ Bootstrap 5 Layout + Vue.js mount point    │
+└────────────────────────────────────────────────┘
+         ↓
+┌────────────────────────────────────────────────┐
+│ Layer 4: Vue.js loads and calls API            │
+│ └─ fetch('/api/admin/clients')                 │
+└────────────────────────────────────────────────┘
+         ↓
+┌────────────────────────────────────────────────┐
+│ Layer 5: API Controller Authorization          │
+│ └─ [Authorize(Roles = "Admin")]                │
+└────────────────────────────────────────────────┘

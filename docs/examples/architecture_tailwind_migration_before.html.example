@@ -1,0 +1,6 @@
+<!-- Index.cshtml - 純 Tailwind -->
+<div class="max-w-7xl mx-auto">
+  <div class="grid grid-cols-3 gap-6">
+    <!-- Tailwind 樣式需要 Vite 才能顯示 -->
+  </div>
+</div>

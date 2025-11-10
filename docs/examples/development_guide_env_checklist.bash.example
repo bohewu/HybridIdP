@@ -1,0 +1,7 @@
+# ✅ 檢查清單
+□ PostgreSQL 資料庫運行中 (docker compose up -d db-service)
+□ IdP Backend 運行中 (dotnet run --launch-profile https in Web.IdP/)
+□ Vite Dev Server 運行中 (npm run dev in Web.IdP/ClientApp/)
+  
+  ⚠️ 重要：Vite 只能啟動一次！不要重複執行 npm run dev
+  ⚠️ 開發時絕對不要執行 npm run build

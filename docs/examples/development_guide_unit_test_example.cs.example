@@ -1,0 +1,21 @@
+// Tests.Application.UnitTests/PropertyResolverTests.cs
+[Fact]
+public void ResolveUserProperty_NonExistentPath_ReturnsNull()
+{
+    var user = new ApplicationUser { Email = "test@example.com" };
+    
+    var result = ResolveUserProperty(user, "NonExistent.Property");
+    
+    Assert.Null(result);
+    // 應記錄警告日誌
+}
+
+[Fact]
+public void ResolveUserProperty_NullValue_ReturnsNull()
+{
+    var user = new ApplicationUser { PhoneNumber = null };
+    
+    var result = ResolveUserProperty(user, "PhoneNumber");
+    
+    Assert.Null(result);
+}

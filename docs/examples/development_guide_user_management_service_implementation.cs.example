@@ -1,0 +1,103 @@
+using Core.Application;
+using Core.Application.DTOs;
+using Core.Domain;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+namespace Infrastructure.Services;
+
+public class UserManagementService : IUserManagementService
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
+
+    public UserManagementService(
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager)
+    {
+        _userManager = userManager;
+        _roleManager = roleManager;
+    }
+
+    public async Task<PagedUsersDto> GetUsersAsync(int page = 1, int pageSize = 10, string? search = null)
+    {
+        var query = _userManager.Users.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(u => 
+                u.Email!.Contains(search) || 
+                (u.UserName != null && u.UserName.Contains(search)));
+        }
+
+        var totalCount = await query.CountAsync();
+        var users = await query
+            .OrderBy(u => u.Email)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var userDtos = new List<UserSummaryDto>();
+        foreach (var user in users)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            userDtos.Add(new UserSummaryDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                UserName = user.UserName,
+                IsActive = user.IsActive,
+                Roles = roles.ToList(),
+                CreatedAt = user.CreatedAt
+            });
+        }
+
+        return new PagedUsersDto
+        {
+            Users = userDtos,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<UserDetailDto> CreateUserAsync(CreateUserDto dto)
+    {
+        var user = new ApplicationUser
+        {
+            Email = dto.Email,
+            UserName = dto.UserName ?? dto.Email,
+            Name = dto.Name,
+            Department = dto.Department,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var result = await _userManager.CreateAsync(user, dto.Password);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(
+                string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+
+        if (dto.Roles.Any())
+        {
+            await _userManager.AddToRolesAsync(user, dto.Roles);
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return new UserDetailDto
+        {
+            Id = user.Id,
+            Email = user.Email!,
+            UserName = user.UserName,
+            Name = user.Name,
+            Department = user.Department,
+            IsActive = user.IsActive,
+            Roles = roles.ToList(),
+            CreatedAt = user.CreatedAt
+        };
+    }
+
+    // ... 其他方法實作
+}

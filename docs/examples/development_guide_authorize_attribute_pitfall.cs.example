@@ -1,0 +1,2 @@
+[Authorize(Roles = AuthConstants.Roles.Admin)]
+public class UsersController : ControllerBase { }

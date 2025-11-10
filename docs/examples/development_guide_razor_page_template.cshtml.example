@@ -1,0 +1,13 @@
+@page
+@model Web.IdP.Pages.Admin.UsersModel
+@{
+    ViewData["Title"] = "User Management";
+    ViewData["Breadcrumb"] = "Users";
+    Layout = "_AdminLayout";
+}
+
+<div id="app"></div>
+
+@section Scripts {
+    <script type="module" src="~/src/admin/users/main.js" asp-append-version="true"></script>
+}

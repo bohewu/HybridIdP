@@ -1,0 +1,11 @@
+# 1. 構建 Vue.js 應用
+cd Web.IdP/ClientApp
+npm run build
+
+# 2. 發佈 ASP.NET Core 應用
+cd ..
+dotnet publish -c Release
+
+# 3. Vite 構建輸出會自動包含在發佈目錄
+# wwwroot/dist/admin-clients.js
+# wwwroot/dist/admin-scopes.js

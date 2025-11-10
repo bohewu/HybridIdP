@@ -1,0 +1,3 @@
+<!-- Index.cshtml - Vue mount point -->
+<div id="dashboard-app"></div>
+<script type="module" vite-src="~/src/admin/dashboard/main.js"></script>
