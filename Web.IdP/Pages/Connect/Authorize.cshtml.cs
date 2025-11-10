@@ -42,6 +42,19 @@ public class AuthorizeModel : PageModel
 
     public string? ApplicationName { get; set; }
     public string? Scope { get; set; }
+    public List<ScopeInfo> ScopeInfos { get; set; } = new();
+
+    public class ScopeInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string? ConsentDisplayName { get; set; }
+        public string? ConsentDescription { get; set; }
+        public string? IconUrl { get; set; }
+        public bool IsRequired { get; set; }
+        public int DisplayOrder { get; set; }
+        public string? Category { get; set; }
+    }
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -69,6 +82,9 @@ public class AuthorizeModel : PageModel
 
         ApplicationName = await _applicationManager.GetDisplayNameAsync(application);
         Scope = request.Scope;
+
+        // Fetch scope information with extensions for consent screen
+        await LoadScopeInfosAsync(request.GetScopes());
 
         // Retrieve the permanent authorizations associated with the user and the calling client application
         var userId = result.Principal.GetClaim(Claims.Subject)!;
@@ -282,5 +298,43 @@ public class AuthorizeModel : PageModel
         }
 
         return current?.ToString();
+    }
+
+    private async Task LoadScopeInfosAsync(ImmutableArray<string> scopeNames)
+    {
+        ScopeInfos.Clear();
+        
+        if (scopeNames.IsDefaultOrEmpty)
+            return;
+
+        // Load all scope extensions for efficient lookup
+        var scopeExtensions = await _db.ScopeExtensions.ToDictionaryAsync(se => se.ScopeId);
+
+        foreach (var scopeName in scopeNames)
+        {
+            var scope = await _scopeManager.FindByNameAsync(scopeName);
+            if (scope == null) continue;
+
+            var scopeId = await _scopeManager.GetIdAsync(scope);
+            var displayName = await _scopeManager.GetDisplayNameAsync(scope);
+
+            // Get scope extension if exists
+            scopeExtensions.TryGetValue(scopeId!, out var extension);
+
+            ScopeInfos.Add(new ScopeInfo
+            {
+                Name = scopeName,
+                DisplayName = displayName ?? scopeName,
+                ConsentDisplayName = extension?.ConsentDisplayName,
+                ConsentDescription = extension?.ConsentDescription,
+                IconUrl = extension?.IconUrl,
+                IsRequired = extension?.IsRequired ?? false,
+                DisplayOrder = extension?.DisplayOrder ?? 0,
+                Category = extension?.Category
+            });
+        }
+
+        // Sort by DisplayOrder, then by Name
+        ScopeInfos = ScopeInfos.OrderBy(s => s.DisplayOrder).ThenBy(s => s.Name).ToList();
     }
 }
