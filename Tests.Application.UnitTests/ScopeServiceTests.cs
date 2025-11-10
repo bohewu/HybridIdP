@@ -2,6 +2,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -16,35 +17,31 @@ using Xunit;
 
 namespace Tests.Application.UnitTests;
 
-public class ScopeServiceTests
+public class ScopeServiceTests : IDisposable
 {
     private readonly Mock<IOpenIddictScopeManager> _mockScopeManager;
     private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
-    private readonly Mock<IApplicationDbContext> _mockDbContext;
+    private readonly ApplicationDbContext _dbContext;
     private readonly ScopeService _scopeService;
 
     public ScopeServiceTests()
     {
         _mockScopeManager = new Mock<IOpenIddictScopeManager>();
         _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
-        _mockDbContext = new Mock<IApplicationDbContext>();
         
-        // Setup in-memory DbSet for ScopeExtensions
-        var scopeExtensions = new List<ScopeExtension>().AsQueryable();
-        var mockSet = CreateMockDbSet(scopeExtensions);
-        _mockDbContext.Setup(db => db.ScopeExtensions).Returns(mockSet.Object);
+        // Setup in-memory database
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
         
-        _scopeService = new ScopeService(_mockScopeManager.Object, _mockApplicationManager.Object, _mockDbContext.Object);
+        _dbContext = new ApplicationDbContext(options);
+        
+        _scopeService = new ScopeService(_mockScopeManager.Object, _mockApplicationManager.Object, _dbContext);
     }
 
-    private Mock<DbSet<T>> CreateMockDbSet<T>(IQueryable<T> data) where T : class
+    public void Dispose()
     {
-        var mockSet = new Mock<DbSet<T>>();
-        mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(data.Provider);
-        mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(data.Expression);
-        mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(data.ElementType);
-        mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(data.GetEnumerator());
-        return mockSet;
+        _dbContext?.Dispose();
     }
 
     #region GetScopesAsync Tests
@@ -53,12 +50,13 @@ public class ScopeServiceTests
     public async Task GetScopesAsync_ShouldReturnAllScopes_WhenNoFiltersApplied()
     {
         // Arrange
-        var scopeExtensions = new List<ScopeExtension>
-        {
-            new ScopeExtension { ScopeId = "scope1", ConsentDisplayName = "Consent 1", DisplayOrder = 1 }
-        }.AsQueryable();
-        var mockSet = CreateMockDbSet(scopeExtensions);
-        _mockDbContext.Setup(db => db.ScopeExtensions).Returns(mockSet.Object);
+        _dbContext.ScopeExtensions.Add(new ScopeExtension 
+        { 
+            ScopeId = "scope1", 
+            ConsentDisplayName = "Consent 1", 
+            DisplayOrder = 1 
+        });
+        await _dbContext.SaveChangesAsync();
 
         var scopes = new List<object>
         {
@@ -93,9 +91,7 @@ public class ScopeServiceTests
     public async Task GetScopesAsync_ShouldFilterBySearch_WhenSearchProvided()
     {
         // Arrange
-        var scopeExtensions = new List<ScopeExtension>().AsQueryable();
-        var mockSet = CreateMockDbSet(scopeExtensions);
-        _mockDbContext.Setup(db => db.ScopeExtensions).Returns(mockSet.Object);
+        // No ScopeExtensions needed for this test
 
         var scopes = new List<object>
         {
@@ -131,9 +127,7 @@ public class ScopeServiceTests
     public async Task GetScopesAsync_ShouldApplyPagination_WhenSkipAndTakeProvided()
     {
         // Arrange
-        var scopeExtensions = new List<ScopeExtension>().AsQueryable();
-        var mockSet = CreateMockDbSet(scopeExtensions);
-        _mockDbContext.Setup(db => db.ScopeExtensions).Returns(mockSet.Object);
+        // No ScopeExtensions needed for this test
 
         var scopes = Enumerable.Range(1, 30).Select(i => new { Id = $"scope{i}", Name = $"scope{i}" }).ToList();
         
@@ -163,9 +157,7 @@ public class ScopeServiceTests
     public async Task GetScopesAsync_ShouldSortAscending_WhenSortParameterIsNameAsc()
     {
         // Arrange
-        var scopeExtensions = new List<ScopeExtension>().AsQueryable();
-        var mockSet = CreateMockDbSet(scopeExtensions);
-        _mockDbContext.Setup(db => db.ScopeExtensions).Returns(mockSet.Object);
+        // No ScopeExtensions needed for this test
 
         var scopes = new List<object>
         {
@@ -204,12 +196,12 @@ public class ScopeServiceTests
     public async Task GetScopeByIdAsync_ShouldReturnScope_WhenScopeExists()
     {
         // Arrange
-        var scopeExtensions = new List<ScopeExtension>
-        {
-            new ScopeExtension { ScopeId = "scope1", ConsentDisplayName = "Consent Name" }
-        }.AsQueryable();
-        var mockSet = CreateMockDbSet(scopeExtensions);
-        _mockDbContext.Setup(db => db.ScopeExtensions).Returns(mockSet.Object);
+        _dbContext.ScopeExtensions.Add(new ScopeExtension 
+        { 
+            ScopeId = "scope1", 
+            ConsentDisplayName = "Consent Name" 
+        });
+        await _dbContext.SaveChangesAsync();
 
         var scope = new { Id = "scope1" };
         _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
@@ -269,11 +261,6 @@ public class ScopeServiceTests
             .ReturnsAsync(scope);
         _mockScopeManager.Setup(m => m.GetIdAsync(scope, It.IsAny<CancellationToken>()))
             .ReturnsAsync("newscope");
-        
-        var scopeExtensions = new List<ScopeExtension>();
-        var mockSet = CreateMockDbSet(scopeExtensions.AsQueryable());
-        mockSet.Setup(m => m.Add(It.IsAny<ScopeExtension>())).Callback<ScopeExtension>(scopeExtensions.Add);
-        _mockDbContext.Setup(db => db.ScopeExtensions).Returns(mockSet.Object);
 
         // Act
         var result = await _scopeService.CreateScopeAsync(request);
@@ -311,23 +298,20 @@ public class ScopeServiceTests
             .ReturnsAsync(scope);
         _mockScopeManager.Setup(m => m.GetIdAsync(scope, It.IsAny<CancellationToken>()))
             .ReturnsAsync("newscope");
-        
-        var scopeExtensions = new List<ScopeExtension>();
-        var mockSet = CreateMockDbSet(scopeExtensions.AsQueryable());
-        mockSet.Setup(m => m.Add(It.IsAny<ScopeExtension>())).Callback<ScopeExtension>(scopeExtensions.Add);
-        _mockDbContext.Setup(db => db.ScopeExtensions).Returns(mockSet.Object);
-        _mockDbContext.Setup(db => db.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
         var result = await _scopeService.CreateScopeAsync(request);
 
         // Assert
         Assert.NotNull(result);
-        mockSet.Verify(m => m.Add(It.Is<ScopeExtension>(e => 
-            e.ScopeId == "newscope" && 
-            e.ConsentDisplayName == "Consent Display" &&
-            e.IsRequired == true)), Times.Once);
-        _mockDbContext.Verify(db => db.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var extension = await _dbContext.ScopeExtensions.FirstOrDefaultAsync(e => e.ScopeId == "newscope");
+        Assert.NotNull(extension);
+        Assert.Equal("Consent Display", extension.ConsentDisplayName);
+        Assert.Equal("Consent Description", extension.ConsentDescription);
+        Assert.Equal("icon.png", extension.IconUrl);
+        Assert.True(extension.IsRequired);
+        Assert.Equal(5, extension.DisplayOrder);
+        Assert.Equal("Custom", extension.Category);
     }
 
     #endregion
@@ -354,6 +338,13 @@ public class ScopeServiceTests
     public async Task UpdateScopeAsync_ShouldUpdateScope_WhenScopeExists()
     {
         // Arrange
+        _dbContext.ScopeExtensions.Add(new ScopeExtension 
+        { 
+            ScopeId = "scope1", 
+            ConsentDisplayName = "Old Consent" 
+        });
+        await _dbContext.SaveChangesAsync();
+
         var scope = new { Id = "scope1" };
         _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(scope);
@@ -365,14 +356,6 @@ public class ScopeServiceTests
             .ReturnsAsync("Old Description");
         _mockScopeManager.Setup(m => m.GetResourcesAsync(scope, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ImmutableArray.Create("resource1"));
-
-        var scopeExtensions = new List<ScopeExtension>
-        {
-            new ScopeExtension { ScopeId = "scope1", ConsentDisplayName = "Old Consent" }
-        }.AsQueryable();
-        var mockSet = CreateMockDbSet(scopeExtensions);
-        _mockDbContext.Setup(db => db.ScopeExtensions).Returns(mockSet.Object);
-        _mockDbContext.Setup(db => db.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var request = new UpdateScopeRequest(
             Name: "newname",
@@ -393,7 +376,9 @@ public class ScopeServiceTests
         // Assert
         Assert.True(result);
         _mockScopeManager.Verify(m => m.UpdateAsync(scope, It.IsAny<CancellationToken>()), Times.Once);
-        _mockDbContext.Verify(db => db.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var extension = await _dbContext.ScopeExtensions.FirstOrDefaultAsync(e => e.ScopeId == "scope1");
+        Assert.NotNull(extension);
+        Assert.Equal("New Consent", extension.ConsentDisplayName);
     }
 
     #endregion
@@ -440,6 +425,9 @@ public class ScopeServiceTests
     public async Task DeleteScopeAsync_ShouldDeleteScope_WhenNotInUse()
     {
         // Arrange
+        _dbContext.ScopeExtensions.Add(new ScopeExtension { ScopeId = "scope1" });
+        await _dbContext.SaveChangesAsync();
+
         var scope = new { Id = "scope1" };
         _mockScopeManager.Setup(m => m.FindByNameAsync("scope1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(scope);
@@ -450,22 +438,14 @@ public class ScopeServiceTests
         _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .Returns(CreateAsyncEnumerable(apps));
 
-        var scopeExtensions = new List<ScopeExtension>
-        {
-            new ScopeExtension { ScopeId = "scope1" }
-        }.AsQueryable();
-        var mockSet = CreateMockDbSet(scopeExtensions);
-        mockSet.Setup(m => m.Remove(It.IsAny<ScopeExtension>()));
-        _mockDbContext.Setup(db => db.ScopeExtensions).Returns(mockSet.Object);
-        _mockDbContext.Setup(db => db.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
-
         // Act
         var result = await _scopeService.DeleteScopeAsync("scope1");
 
         // Assert
         Assert.True(result);
         _mockScopeManager.Verify(m => m.DeleteAsync(scope, It.IsAny<CancellationToken>()), Times.Once);
-        mockSet.Verify(m => m.Remove(It.IsAny<ScopeExtension>()), Times.Once);
+        var extension = await _dbContext.ScopeExtensions.FirstOrDefaultAsync(e => e.ScopeId == "scope1");
+        Assert.Null(extension);
     }
 
     #endregion
