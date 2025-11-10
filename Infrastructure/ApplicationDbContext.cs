@@ -23,6 +23,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<ScopeClaim> ScopeClaims => Set<ScopeClaim>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<SecurityPolicy> SecurityPolicies { get; set; } = default!;
+    public DbSet<ScopeExtension> ScopeExtensions => Set<ScopeExtension>();
+    public DbSet<Resource> Resources => Set<Resource>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -80,6 +82,33 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .IsRequired();
             entity.Property(e => e.UpdatedUtc).IsRequired();
             entity.Property(e => e.UpdatedBy).HasMaxLength(200);
+        });
+
+        // Configure ScopeExtension entity
+        builder.Entity<ScopeExtension>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ScopeId).IsUnique();
+            entity.Property(e => e.ScopeId).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.ConsentDisplayName).HasMaxLength(200);
+            entity.Property(e => e.ConsentDescription).HasMaxLength(1000);
+            entity.Property(e => e.IconUrl).HasMaxLength(500);
+            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.IsRequired).IsRequired();
+            entity.Property(e => e.DisplayOrder).IsRequired();
+        });
+
+        // Configure Resource entity
+        builder.Entity<Resource>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.Key, e.Culture }).IsUnique();
+            entity.Property(e => e.Key).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Culture).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Value).HasColumnType("text").IsRequired();
+            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.CreatedUtc).IsRequired();
+            entity.Property(e => e.UpdatedUtc).IsRequired();
         });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.
