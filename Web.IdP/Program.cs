@@ -137,6 +137,7 @@ builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, MyUserC
 // Identity management services
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
+builder.Services.AddScoped<IScopeService, ScopeService>();
 // Settings + Branding services
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
