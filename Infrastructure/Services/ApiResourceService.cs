@@ -134,7 +134,7 @@ public class ApiResourceService : IApiResourceService
         };
 
         _context.ApiResources.Add(resource);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(default);
 
         // Add scope associations if provided
         if (request.ScopeIds != null && request.ScopeIds.Any())
@@ -152,7 +152,7 @@ public class ApiResourceService : IApiResourceService
                     });
                 }
             }
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(default);
         }
 
         _logger.LogInformation("API resource created: {ResourceName} (ID: {ResourceId})", resource.Name, resource.Id);
@@ -219,7 +219,7 @@ public class ApiResourceService : IApiResourceService
             }
         }
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(default);
 
         _logger.LogInformation("API resource updated: {ResourceName} (ID: {ResourceId})", resource.Name, resource.Id);
 
@@ -239,7 +239,7 @@ public class ApiResourceService : IApiResourceService
 
         // Scopes will be automatically removed due to cascade delete
         _context.ApiResources.Remove(resource);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(default);
 
         _logger.LogInformation("API resource deleted: {ResourceName} (ID: {ResourceId})", resource.Name, resource.Id);
 
