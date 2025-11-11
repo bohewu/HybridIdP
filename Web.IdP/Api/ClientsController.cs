@@ -1,3 +1,4 @@
+using Core.Application;
 using Core.Application.DTOs;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
@@ -20,10 +21,14 @@ namespace Web.IdP.Api;
 public class ClientsController : ControllerBase
 {
     private readonly IOpenIddictApplicationManager _applicationManager;
+    private readonly IClientAllowedScopesService _allowedScopesService;
 
-    public ClientsController(IOpenIddictApplicationManager applicationManager)
+    public ClientsController(
+        IOpenIddictApplicationManager applicationManager,
+        IClientAllowedScopesService allowedScopesService)
     {
         _applicationManager = applicationManager;
+        _allowedScopesService = allowedScopesService;
     }
 
     /// <summary>
@@ -415,4 +420,79 @@ public class ClientsController : ControllerBase
             clientSecret = newSecret
         });
     }
+
+    /// <summary>
+    /// Get allowed scopes for a specific client.
+    /// </summary>
+    [HttpGet("{id}/scopes")]
+    [HasPermission(DomainPermissions.Clients.Read)]
+    public async Task<IActionResult> GetAllowedScopes(string id)
+    {
+        if (!Guid.TryParse(id, out var clientId))
+        {
+            return BadRequest(new { message = "Invalid client ID format." });
+        }
+
+        var scopes = await _allowedScopesService.GetAllowedScopesAsync(clientId);
+        return Ok(new { scopes });
+    }
+
+    /// <summary>
+    /// Set allowed scopes for a specific client.
+    /// </summary>
+    [HttpPut("{id}/scopes")]
+    [HasPermission(DomainPermissions.Clients.Update)]
+    public async Task<IActionResult> SetAllowedScopes(string id, [FromBody] SetAllowedScopesRequest request)
+    {
+        if (!Guid.TryParse(id, out var clientId))
+        {
+            return BadRequest(new { message = "Invalid client ID format." });
+        }
+
+        if (request.Scopes == null)
+        {
+            return BadRequest(new { message = "Scopes are required." });
+        }
+
+        try
+        {
+            await _allowedScopesService.SetAllowedScopesAsync(clientId, request.Scopes);
+            return Ok(new { message = "Allowed scopes updated successfully." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Validate requested scopes against client's allowed scopes.
+    /// </summary>
+    [HttpPost("{id}/scopes/validate")]
+    [HasPermission(DomainPermissions.Clients.Read)]
+    public async Task<IActionResult> ValidateScopes(string id, [FromBody] ValidateScopesRequest request)
+    {
+        if (!Guid.TryParse(id, out var clientId))
+        {
+            return BadRequest(new { message = "Invalid client ID format." });
+        }
+
+        if (request.RequestedScopes == null)
+        {
+            return BadRequest(new { message = "RequestedScopes are required." });
+        }
+
+        var allowedScopes = await _allowedScopesService.ValidateRequestedScopesAsync(clientId, request.RequestedScopes);
+        return Ok(new { allowedScopes });
+    }
+}
+
+public class SetAllowedScopesRequest
+{
+    public List<string>? Scopes { get; set; }
+}
+
+public class ValidateScopesRequest
+{
+    public List<string>? RequestedScopes { get; set; }
 }
