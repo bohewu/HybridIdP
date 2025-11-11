@@ -25,6 +25,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<SecurityPolicy> SecurityPolicies { get; set; } = default!;
     public DbSet<ScopeExtension> ScopeExtensions => Set<ScopeExtension>();
     public DbSet<Resource> Resources => Set<Resource>();
+    public DbSet<ApiResource> ApiResources => Set<ApiResource>();
+    public DbSet<ApiResourceScope> ApiResourceScopes => Set<ApiResourceScope>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -109,6 +111,32 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.Property(e => e.Category).HasMaxLength(100);
             entity.Property(e => e.CreatedUtc).IsRequired();
             entity.Property(e => e.UpdatedUtc).IsRequired();
+        });
+
+        // Configure ApiResource entity
+        builder.Entity<ApiResource>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.DisplayName).HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.BaseUrl).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        // Configure ApiResourceScope entity
+        builder.Entity<ApiResourceScope>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ApiResourceId, e.ScopeId }).IsUnique();
+            entity.Property(e => e.ScopeId).HasMaxLength(200).IsRequired();
+            
+            // Configure relationship with ApiResource
+            entity.HasOne(e => e.ApiResource)
+                .WithMany(r => r.Scopes)
+                .HasForeignKey(e => e.ApiResourceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.
