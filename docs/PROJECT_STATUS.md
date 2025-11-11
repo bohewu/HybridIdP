@@ -560,34 +560,207 @@ feat(ui): Refactor user consent screen with grouping, icons, descriptions
 
 ---
 
-### 🎯 Next Up: Phase 5.6 Part 2 - API Resource Scopes
+### Phase 5.6 Part 2: API Resource Scopes ✅
 
-**目標：** 實作 API Resource 管理，將 scopes 分組至不同的 API 資源，並在 access token 中加入 audience claim
+**完成時間：** 2025-11-11
 
-#### Part 2: API Resource Scopes
+**目標：** 實作 API Resource 管理，將 scopes 分組至不同的 API 資源，組織和管理 OAuth2 授權範圍
 
-**Backend:**
--   [ ] Create `ApiResource` entity
-    -   [ ] Name, DisplayName, Description, BaseUrl
-    -   [ ] Associated Scopes collection
--   [ ] API: `GET /api/admin/resources`
--   [ ] API: `POST /api/admin/resources`
--   [ ] API: `PUT /api/admin/resources/{id}`
--   [ ] API: `DELETE /api/admin/resources/{id}`
--   [ ] API: `GET /api/admin/resources/{id}/scopes`
--   [ ] OpenIddict integration (register resources, audience claim)
+#### 實施內容
 
-**Frontend:**
--   [ ] Vue SPA: `ClientApp/src/admin/resources/ResourcesApp.vue`
--   [ ] Create API resources (Company API, Inventory API, etc.)
--   [ ] Assign scopes to resources
--   [ ] Visual grouping in client configuration
+**Database Schema:**
+-   ✅ 建立 `ApiResource` entity 與 migration
+    -   Id, Name (unique), DisplayName, Description, BaseUrl
+    -   CreatedAt, UpdatedAt timestamps
+    -   Scopes collection (One-to-Many)
+-   ✅ 建立 `ApiResourceScope` entity（Join table）
+    -   ApiResourceId (FK), ScopeId (FK to OpenIddict)
+    -   Many-to-Many relationship
+-   ✅ EF Core Migration: `20251111113128_AddApiResourceAndApiResourceScopeTables`
+    -   Unique index on ApiResource.Name
+    -   Cascade delete configured
 
-**驗證:**
--   [ ] Admin can create API resources
--   [ ] Scopes can be assigned to resources
--   [ ] Client configuration shows scopes grouped by resource
--   [ ] Access tokens include audience claim
+**Backend API:**
+-   ✅ DTOs (`Core.Application/DTOs/ApiResourceDtos.cs`):
+    -   `ApiResourceSummary` (list view with ScopeCount)
+    -   `ApiResourceDetail` (with Scopes array)
+    -   `ResourceScopeInfo` (ScopeId, Name, DisplayName)
+    -   `CreateApiResourceRequest` ([Required] Name, validation attributes)
+    -   `UpdateApiResourceRequest` (nullable fields)
+-   ✅ Service Layer (`Infrastructure/Services/ApiResourceService.cs`):
+    -   `IApiResourceService` interface with 6 methods
+    -   `ApiResourceService` implementation with:
+        -   Pagination & sorting (name/displayName)
+        -   Search filtering
+        -   Scope management (add/remove)
+        -   Duplicate name validation
+        -   Cascade delete with scope cleanup
+        -   Comprehensive logging
+-   ✅ Thin Controller (`Web.IdP/Api/ApiResourcesController.cs`):
+    -   6 endpoints with `[HasPermission(Permissions.Scopes.*)]`
+    -   GET /api/admin/resources (list with pagination)
+    -   GET /api/admin/resources/{id} (detail with scopes)
+    -   POST /api/admin/resources (create, returns 201)
+    -   PUT /api/admin/resources/{id} (update)
+    -   DELETE /api/admin/resources/{id} (delete)
+    -   GET /api/admin/resources/{id}/scopes (scopes only)
+-   ✅ Service registration in `Program.cs`
+
+**Frontend (Admin UI):**
+-   ✅ Vue SPA (`ClientApp/src/admin/resources/`):
+    -   `ResourcesApp.vue` (269 lines) - Main app with CRUD handlers
+    -   `components/ResourceList.vue` - Table with formatting
+    -   `components/ResourceForm.vue` - Modal form with scope multi-select
+    -   `main.js` - Vue 3 app initialization
+    -   `style.css` - Tailwind CSS imports
+-   ✅ Razor Page (`Pages/Admin/Resources.cshtml`):
+    -   `[Authorize(Policy = Permissions.Scopes.Read)]`
+    -   Mounts Vue SPA at `#resources-app`
+-   ✅ Navigation Update (`_AdminLayout.cshtml`):
+    -   Added "Resources" menu item in OIDC Management section
+-   ✅ i18n Support:
+    -   Frontend translations in `ClientApp/src/i18n/locales/en-US.json`
+    -   Chinese translations in `zh-TW.json`
+    -   50+ translation keys for resources section
+    -   Backend translations in `Web.IdP/Resources/*.resx`
+
+**Unit Tests:**
+-   ✅ Comprehensive test suite (`Tests.Application.UnitTests/ApiResourceServiceTests.cs`):
+    -   19 unit tests covering all service methods
+    -   In-memory database provider (EF Core)
+    -   Moq for ApplicationDbContext
+    -   Test coverage:
+        -   GetResourcesAsync: All/Filter/Sort/Pagination (4 tests)
+        -   GetResourceByIdAsync: Found/NotFound/WithScopes (3 tests)
+        -   CreateResourceAsync: Success/Duplicate/WithScopes (3 tests)
+        -   UpdateResourceAsync: Success/NotFound/UpdateScopes/RemoveScopes (4 tests)
+        -   DeleteResourceAsync: Success/NotFound/CascadeDeleteScopes (3 tests)
+        -   GetResourceScopesAsync: Success/NotFound (2 tests)
+    -   ✅ All 19 tests passing (execution time: 2.45s)
+
+#### E2E 驗證結果
+
+**API Endpoint Tests (Playwright MCP):**
+-   ✅ GET /api/admin/resources - 200 OK, returned 2 resources
+-   ✅ POST /api/admin/resources - 201 Created, resource "test-api" created
+-   ✅ GET /api/admin/resources/{id} - 200 OK, returned resource with scopes
+-   ✅ PUT /api/admin/resources/{id} - 200 OK, updated description and scopes
+-   ✅ DELETE /api/admin/resources/{id} - 200 OK, resource deleted
+-   ✅ GET /api/admin/resources/{id}/scopes - 200 OK, returned scope list
+-   ✅ Unauthorized test - 401 when token missing
+
+**UI Tests (Playwright MCP):**
+1.  ✅ **CREATE Test:**
+    -   Logged in as admin@hybridauth.local
+    -   Navigated to /Admin/Resources
+    -   Clicked "建立新資源" button
+    -   Filled form: name="payment-api", displayName="Payment API"
+    -   Description: "API for payment processing and transactions"
+    -   BaseUrl: "https://api.payment.example.com"
+    -   Selected scopes: email ✓, openid ✓
+    -   Submitted → Resource created successfully
+    -   List shows 2 resources (payment-api, test-api)
+
+2.  ✅ **READ Test:**
+    -   List displays resources with proper formatting
+    -   Scope count badges: "2 個範圍" displayed correctly
+    -   Clickable base URL shown
+    -   Last updated timestamp formatted in Chinese locale
+
+3.  ✅ **UPDATE Test:**
+    -   Clicked "編輯" button for payment-api
+    -   Modal loaded with existing data
+    -   Added "profile" scope (3 scopes total)
+    -   Updated description
+    -   Saved → Success message displayed
+    -   List refreshed showing "3 個範圍"
+    -   Timestamp updated to reflect change
+
+4.  ✅ **DELETE Test:**
+    -   Clicked "刪除" button for test-api
+    -   Confirmation dialog: "您確定要刪除此 API 資源嗎？所有範圍關聯都將被移除。"
+    -   Accepted → Resource deleted
+    -   List refreshed showing only payment-api
+    -   Pagination updated: "顯示第 1 至 1 項結果，共 1 項"
+
+5.  ✅ **i18n Validation:**
+    -   All labels properly translated in Chinese
+    -   Page title: "API 資源管理"
+    -   Buttons: "建立新資源", "編輯", "刪除"
+    -   Form labels and placeholders all in Chinese
+    -   Validation messages in Chinese
+
+#### Git Commits（Small Steps 策略）
+
+```bash
+feat(db): Add ApiResource and ApiResourceScope entities with migration
+feat(api): Add ApiResource DTOs with validation
+feat(api): Implement IApiResourceService and ApiResourceService with CRUD operations
+feat(api): Add ApiResourcesController with thin controller pattern
+feat(api): Add DbSets to IApplicationDbContext for API resources
+feat(api): Add backend i18n translations for API resources
+test(api): Add comprehensive unit tests for ApiResourceService (19 tests)
+docs(api): Add API resource endpoint test results documentation
+feat(ui): Add Vue SPA for API resource management (CRUD UI)
+feat(ui): Add Resources Razor page to mount Vue SPA
+feat(ui): Add frontend i18n translations for resources
+```
+
+**Total Commits:** 10 (following small step strategy)
+
+#### 技術亮點
+
+-   **Service-Repository Pattern**: Thin controller delegates all logic to service layer
+-   **Pagination & Sorting**: Efficient database queries with LINQ
+-   **Scope Management**: Many-to-Many relationship with join entity pattern
+-   **Cascade Delete**: Automatically removes ApiResourceScope entries
+-   **Duplicate Prevention**: Unique constraint and validation on Name field
+-   **Comprehensive Testing**: 19 unit tests + 7 API endpoint tests + full UI E2E testing
+-   **i18n Support**: Separate frontend (vue-i18n) and backend (Resources) translations
+-   **Authorization**: Permission-based access control (Permissions.Scopes.*)
+-   **Vue 3 Composition API**: Modern reactive patterns with `<script setup>`
+-   **Tailwind CSS**: Utility-first styling with consistent design system
+
+#### 架構說明
+
+**API Resources 用途:**
+API Resources 用於組織相關的 scopes，將它們歸類到特定的 API 服務中。例如：
+-   **Payment API** (payment-api): payment:read, payment:write, payment:refund
+-   **User API** (user-api): user.profile:read, user.profile:update
+
+**OAuth2 驗證流程:**
+1.  Client 向 IdP 請求 token，指定需要的 scopes
+2.  IdP 發行 token 時，在 JWT 的 `aud` (audience) claim 中包含相關的 API Resource names
+3.  Client 使用 token 呼叫 API
+4.  API Server 驗證 token 的 `aud` claim 是否包含自己的 resource name
+5.  若 `aud` 不符，拒絕請求（403 Forbidden）
+
+**Token 範例:**
+```json
+{
+  "aud": ["payment-api", "user-api"],
+  "scope": "payment:read user.profile:read",
+  "client_id": "mobile-app"
+}
+```
+
+**關鍵欄位:**
+-   **Name**: 唯一識別符，用於 JWT `aud` claim
+-   **BaseUrl**: API 的基礎 URL（僅用於文件說明，不參與驗證）
+-   **Scopes**: 與此 resource 關聯的權限列表
+
+#### 已知限制與未來增強
+
+-   ⚠️ 目前僅實作 CRUD 管理，尚未整合至 OpenIddict token 發行流程
+-   📝 BaseUrl 欄位僅供文件參考，實際驗證使用 JWT `aud` claim
+-   📝 未實作 Client 選擇 API Resources 的 UI（需在 Phase 5.6 Part 3 實作）
+-   📝 Access token 中的 `aud` claim 需額外配置 OpenIddict
+
+---
+
+### 🎯 Next Up: Phase 5.6 Part 3 - Scope Authorization Policies
+
+**目標：** 實作 Client 允許的 scopes 白名單管理，防止未授權的 scope 請求
 
 #### Part 3: Scope Authorization Policies (Whitelisting)
 
