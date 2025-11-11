@@ -459,6 +459,17 @@
         "grantTypes": "Grant Types",
         "scopes": "Scopes"
       },
+      "allowedScopes": "Allowed Scopes",
+      "allowedScopesHelp": "Select which scopes this client is allowed to request. This acts as a whitelist - the client can only receive tokens with these scopes.",
+      "allowedScopesRequired": "At least one scope must be selected",
+      "allowedScopesOpenidRequired": "OIDC clients must include the 'openid' scope",
+      "allowedScopesLoading": "Loading available scopes...",
+      "allowedScopesNone": "No scopes available. Please create scopes first.",
+      "scopeCategories": {
+        "identity": "Identity Scopes",
+        "apiResource": "API Resource Scopes",
+        "custom": "Custom Scopes"
+      },
       "permissionLabels": {
         "authorizationEndpoint": "Authorization Endpoint",
         "tokenEndpoint": "Token Endpoint",

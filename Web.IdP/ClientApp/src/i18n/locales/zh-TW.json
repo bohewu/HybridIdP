@@ -460,6 +460,17 @@
         "grantTypes": "授予類型",
         "scopes": "範圍"
       },
+      "allowedScopes": "允許的範圍",
+      "allowedScopesHelp": "選擇此用戶端允許請求的範圍。這是一個白名單 - 用戶端只能獲得包含這些範圍的權杖。",
+      "allowedScopesRequired": "至少需要選擇一個範圍",
+      "allowedScopesOpenidRequired": "OIDC 用戶端必須包含 'openid' 範圍",
+      "allowedScopesLoading": "載入可用範圍中...",
+      "allowedScopesNone": "沒有可用的範圍。請先建立範圍。",
+      "scopeCategories": {
+        "identity": "身分範圍",
+        "apiResource": "API 資源範圍",
+        "custom": "自訂範圍"
+      },
       "permissionLabels": {
         "authorizationEndpoint": "授權端點",
         "tokenEndpoint": "權杖端點",
