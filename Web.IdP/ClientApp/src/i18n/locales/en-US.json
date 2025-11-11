@@ -692,6 +692,54 @@
     "saveButton": "Save Changes",
     "saving": "Saving...",
     "noChanges": "No changes to save."
+  },
+  "resources": {
+    "title": "API Resource Management",
+    "createResource": "Create API Resource",
+    "search": "Search API resources by name or description...",
+    "loading": "Loading API resources...",
+    "noResources": "No API resources found matching your criteria.",
+    "noPermission": "You do not have permission to view API resources.",
+    "name": "Resource Name",
+    "nameRequired": "Resource name is required.",
+    "nameHelp": "Unique identifier for the API resource (e.g., company_api)",
+    "namePlaceholder": "company_api",
+    "displayName": "Display Name",
+    "displayNameHelp": "Human-readable name displayed in admin interfaces",
+    "displayNamePlaceholder": "Company Management API",
+    "description": "Description",
+    "descriptionHelp": "Detailed description of what this API resource provides",
+    "descriptionPlaceholder": "API for managing company data",
+    "baseUrl": "Base URL",
+    "baseUrlHelp": "Base URL of the API for documentation purposes",
+    "baseUrlPlaceholder": "https://api.company.com",
+    "scopeCount": "Scope Count",
+    "createdAt": "Created At",
+    "updatedAt": "Updated At",
+    "scopes": "Associated Scopes",
+    "scopesHelp": "Select the scopes that belong to this API resource",
+    "noScopes": "No scopes assigned to this API resource yet.",
+    "selectScopes": "Select Scopes",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save Resource",
+    "update": "Update Resource",
+    "saving": "Saving...",
+    "deleting": "Deleting...",
+    "createSuccess": "API resource created successfully.",
+    "updateSuccess": "API resource updated successfully.",
+    "deleteSuccess": "API resource deleted successfully.",
+    "errors": {
+      "loadFailed": "Failed to load API resources: {message}",
+      "createFailed": "Failed to create API resource: {message}",
+      "updateFailed": "Failed to update API resource: {message}",
+      "deleteFailed": "Failed to delete API resource: {message}"
+    },
+    "confirmations": {
+      "deleteWarning": "Are you sure you want to delete API resource '{name}'?",
+      "deleteFinal": "This action cannot be undone. All scope associations will be removed."
+    }
   }
 }
 

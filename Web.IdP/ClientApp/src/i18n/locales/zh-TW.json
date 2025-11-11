@@ -693,6 +693,54 @@
     "saveButton": "儲存變更",
     "saving": "儲存中...",
     "noChanges": "沒有變更需要儲存。"
+  },
+  "resources": {
+    "title": "API 資源管理",
+    "createResource": "建立 API 資源",
+    "search": "搜尋 API 資源名稱或描述...",
+    "loading": "載入 API 資源中...",
+    "noResources": "找不到符合條件的 API 資源。",
+    "noPermission": "您沒有權限查看 API 資源。",
+    "name": "資源名稱",
+    "nameRequired": "資源名稱為必填欄位。",
+    "nameHelp": "API 資源的唯一識別碼（例如：company_api）",
+    "namePlaceholder": "company_api",
+    "displayName": "顯示名稱",
+    "displayNameHelp": "在管理介面中顯示的易讀名稱",
+    "displayNamePlaceholder": "公司管理 API",
+    "description": "描述",
+    "descriptionHelp": "此 API 資源提供功能的詳細描述",
+    "descriptionPlaceholder": "用於管理公司資料的 API",
+    "baseUrl": "基礎 URL",
+    "baseUrlHelp": "API 的基礎 URL，用於文件說明",
+    "baseUrlPlaceholder": "https://api.company.com",
+    "scopeCount": "Scope 數量",
+    "createdAt": "建立時間",
+    "updatedAt": "更新時間",
+    "scopes": "關聯的 Scopes",
+    "scopesHelp": "選擇屬於此 API 資源的 scopes",
+    "noScopes": "此 API 資源尚未分配任何 scopes。",
+    "selectScopes": "選擇 Scopes",
+    "edit": "編輯",
+    "delete": "刪除",
+    "cancel": "取消",
+    "save": "儲存資源",
+    "update": "更新資源",
+    "saving": "儲存中...",
+    "deleting": "刪除中...",
+    "createSuccess": "API 資源建立成功。",
+    "updateSuccess": "API 資源更新成功。",
+    "deleteSuccess": "API 資源刪除成功。",
+    "errors": {
+      "loadFailed": "載入 API 資源失敗：{message}",
+      "createFailed": "建立 API 資源失敗：{message}",
+      "updateFailed": "更新 API 資源失敗：{message}",
+      "deleteFailed": "刪除 API 資源失敗：{message}"
+    },
+    "confirmations": {
+      "deleteWarning": "您確定要刪除 API 資源「{name}」嗎？",
+      "deleteFinal": "此操作無法復原。所有 scope 關聯都將被移除。"
+    }
   }
 }
 
