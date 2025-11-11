@@ -73,6 +73,13 @@
                         <span>@Localizer["Scopes"]</span>
                     </a>
                 }
+                @if (userPermissions.HasPermission(Permissions.Scopes.Read))
+                {
+                    <a href="/Admin/Resources" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Resources" ? "active" : "")">
+                        <i class="bi bi-boxes"></i>
+                        <span>@Localizer["Resources"]</span>
+                    </a>
+                }
                 @if (userPermissions.HasPermission(Permissions.Claims.Read))
                 {
                     <a href="/Admin/Claims" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Claims" ? "active" : "")">
