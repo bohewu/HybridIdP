@@ -758,28 +758,149 @@ API Resources 用於組織相關的 scopes，將它們歸類到特定的 API 服
 
 ---
 
-### 🎯 Next Up: Phase 5.6 Part 3 - Scope Authorization Policies
+### Phase 5.6 Part 3: Scope Authorization Policies (Whitelisting) - Backend ✅
+
+**完成時間：** 2025-11-11
 
 **目標：** 實作 Client 允許的 scopes 白名單管理，防止未授權的 scope 請求
 
-#### Part 3: Scope Authorization Policies (Whitelisting)
+#### 實施內容（後端）
 
-**Backend:**
--   [ ] Manage `ClientAllowedScopes` (OpenIddict)
--   [ ] Validation: Verify requested scopes against whitelist
--   [ ] Update client APIs to manage allowed scopes
+**Backend Service & API:**
+-   ✅ Service Interface (`Core.Application/IClientAllowedScopesService.cs`):
+    -   `GetAllowedScopesAsync(Guid clientId)` - 取得允許的 scopes
+    -   `SetAllowedScopesAsync(Guid clientId, IEnumerable<string> scopes)` - 設定允許的 scopes
+    -   `IsScopeAllowedAsync(Guid clientId, string scope)` - 檢查單一 scope 是否允許
+    -   `ValidateRequestedScopesAsync(Guid clientId, IEnumerable<string> requestedScopes)` - 驗證並過濾請求的 scopes
+-   ✅ Service Implementation (`Infrastructure/Services/ClientAllowedScopesService.cs`):
+    -   使用 `IOpenIddictApplicationManager` 管理 client permissions
+    -   過濾 `scp:` prefix 的 permissions（OpenIddict scope 格式）
+    -   更新時保留非 scope permissions（endpoints, grant types）
+    -   Client 不存在時拋出 `InvalidOperationException`
+-   ✅ Thin Controller (`Web.IdP/Api/ClientsController.cs`):
+    -   GET `/api/admin/clients/{id}/scopes` - 回傳 `{ scopes: string[] }`
+    -   PUT `/api/admin/clients/{id}/scopes` - 請求 body: `{ scopes: string[] }`
+    -   POST `/api/admin/clients/{id}/scopes/validate` - 請求 body: `{ requestedScopes: string[] }`，回傳 `{ allowedScopes: string[] }`
+    -   Authorization: `[HasPermission(DomainPermissions.Clients.*)]`
+-   ✅ Service registration in `Program.cs` (line 142)
+
+**Unit Tests:**
+-   ✅ Comprehensive test suite (`Tests.Application.UnitTests/ClientAllowedScopesServiceTests.cs`):
+    -   14 unit tests covering all service methods
+    -   Moq for `IOpenIddictApplicationManager`
+    -   Test coverage:
+        -   GetAllowedScopesAsync: 3 tests (found, not found, no scope permissions)
+        -   SetAllowedScopesAsync: 3 tests (success, not found, preserve non-scope)
+        -   IsScopeAllowedAsync: 3 tests (allowed, not allowed, client not found)
+        -   ValidateRequestedScopesAsync: 5 tests (all allowed, partial, none, not found, empty)
+    -   ✅ All 14 tests passing (execution time: 1.1s)
+
+#### E2E 驗證結果（Backend API）
+
+**API Endpoint Tests (Playwright MCP):**
+-   ✅ GET `/api/admin/clients/{id}/scopes` - 200 OK, returned `["openid", "profile", "email", "roles", "test_consent"]`
+-   ✅ PUT `/api/admin/clients/{id}/scopes` - 200 OK, updated scopes to `["openid", "profile", "email"]`, persistence verified
+-   ✅ POST `/api/admin/clients/{id}/scopes/validate` - 200 OK, correctly filtered requested scopes (removed "notallowed")
+    -   Request: `["openid", "profile", "notallowed", "email"]`
+    -   Response: `["openid", "profile", "email"]`
+
+**Test Client ID:** `e33bdff0-2367-4d60-858c-e324f11f8583`
+
+#### Git Commits（Small Steps 策略）
+
+```bash
+5c55b7c - feat(api): Add IClientAllowedScopesService interface
+1d56d88 - test(api): Add comprehensive unit tests for ClientAllowedScopesService (14 tests)
+832550d - feat(api): Implement ClientAllowedScopesService with OpenIddict integration
+cf7fe4e - feat(api): Add thin controller endpoints for client allowed scopes
+```
+
+**Total Commits:** 4 (following small step strategy)
+
+#### 技術亮點
+
+-   **OpenIddict Integration**: 直接使用 OpenIddict 的 Permission 系統管理 scopes
+-   **Permission Prefix**: 使用 `scp:` prefix 區分 scopes 與其他 permissions
+-   **Preserve Non-Scope Permissions**: 更新 scopes 時自動保留 endpoints 和 grant types
+-   **Comprehensive Testing**: 14 unit tests + 3 API endpoint E2E tests
+-   **Service Pattern**: Thin controller 完全委派業務邏輯給 service layer
+-   **Validation**: 內建 scope 驗證與過濾機制
+-   **Error Handling**: Client 不存在時明確拋出例外
+
+#### 架構說明
+
+**OpenIddict Permission 格式:**
+-   Endpoints: `ept:authorization`, `ept:token`, `ept:userinfo`
+-   Grant Types: `gt:authorization_code`, `gt:client_credentials`
+-   Scopes: `scp:openid`, `scp:profile`, `scp:email`, `scp:custom_scope`
+
+**Scope Whitelisting 驗證流程:**
+1.  Client 向 IdP 請求 token，指定需要的 scopes（如 `openid profile email custom_scope`）
+2.  IdP 呼叫 `ValidateRequestedScopesAsync` 驗證並過濾
+3.  只有在 whitelist 中的 scopes 會被包含在 token 中
+4.  未授權的 scopes 被靜默移除（不會拋出錯誤）
+
+**API 使用範例:**
+```bash
+# 取得允許的 scopes
+GET /api/admin/clients/{id}/scopes
+Response: { "scopes": ["openid", "profile", "email"] }
+
+# 更新允許的 scopes
+PUT /api/admin/clients/{id}/scopes
+Request: { "scopes": ["openid", "profile", "email", "roles"] }
+
+# 驗證請求的 scopes
+POST /api/admin/clients/{id}/scopes/validate
+Request: { "requestedScopes": ["openid", "profile", "invalid_scope"] }
+Response: { "allowedScopes": ["openid", "profile"] }
+```
+
+---
+
+### 🎯 Next Up: Phase 5.6 Part 3 Frontend & Phase 5.7 Client Refactoring
+
+**Phase 5.6 Part 3 - Frontend UI（待完成）:**
+
+**目標：** 在 ClientForm.vue 中實作 Allowed Scopes UI
 
 **Frontend:**
 -   [ ] Add "Allowed Scopes" multi-select in `ClientForm.vue`
--   [ ] Group scopes by: Identity, API Resources, Custom
--   [ ] Validation: `openid` required for OIDC clients
+-   [ ] Fetch available scopes from `/api/admin/scopes` endpoint
+-   [ ] Group scopes by category:
+    -   **Identity Scopes**: openid, profile, email, address, phone
+    -   **API Resource Scopes**: 從 ApiResource entities 取得的 scopes
+    -   **Custom Scopes**: 其他未分類的 scopes
+-   [ ] Call new API endpoints:
+    -   GET/PUT `/api/admin/clients/{id}/scopes`
+-   [ ] Add i18n translations (en-US, zh-TW)
+-   [ ] Validation: Require `openid` for OIDC clients
+-   [ ] Multi-select UI component (checkboxes or multi-select dropdown)
 
-**驗證:**
--   [ ] Client can only request whitelisted scopes
--   [ ] Authorization denied for non-whitelisted scopes
--   [ ] Scope selection grouped and easy to manage
+**E2E Testing:**
+-   [ ] Test scope selection UI interaction
+-   [ ] Test saving allowed scopes
+-   [ ] Test scope validation (allowed vs not allowed)
+-   [ ] Test category grouping display
+-   [ ] Test i18n translations
 
-**預計完成時間：** 3-4 開發 sessions
+**預計工作量：** 大型工程，需完整規劃（包含 scope 分類邏輯、UI 設計、i18n）
+
+---
+
+**Phase 5.7 - ClientController Refactoring（後續階段）:**
+
+**目標：** 重構 ClientController 的舊程式碼
+
+**待重構項目:**
+-   [ ] 舊的 "Create Normal Clients" 程式碼
+-   [ ] 統一 Client CRUD API patterns
+-   [ ] 改善錯誤處理和驗證
+-   [ ] 更新相關單元測試
+
+**注意：** 此項工作在 Phase 5.6 Part 3 Frontend 完成後進行
+
+---
 
 ## Backlog (功能增強和技術債務)
 
