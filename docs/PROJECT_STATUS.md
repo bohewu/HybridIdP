@@ -858,33 +858,132 @@ Response: { "allowedScopes": ["openid", "profile"] }
 
 ---
 
-### 🎯 Next Up: Phase 5.6 Part 3 Frontend & Phase 5.7 Client Refactoring
+### Phase 5.6 Part 3: Scope Authorization Policies (Whitelisting) - Frontend ✅
 
-**Phase 5.6 Part 3 - Frontend UI（待完成）:**
+**完成時間：** 2025-11-11
 
 **目標：** 在 ClientForm.vue 中實作 Allowed Scopes UI
 
-**Frontend:**
--   [ ] Add "Allowed Scopes" multi-select in `ClientForm.vue`
--   [ ] Fetch available scopes from `/api/admin/scopes` endpoint
--   [ ] Group scopes by category:
-    -   **Identity Scopes**: openid, profile, email, address, phone
-    -   **API Resource Scopes**: 從 ApiResource entities 取得的 scopes
-    -   **Custom Scopes**: 其他未分類的 scopes
--   [ ] Call new API endpoints:
-    -   GET/PUT `/api/admin/clients/{id}/scopes`
--   [ ] Add i18n translations (en-US, zh-TW)
--   [ ] Validation: Require `openid` for OIDC clients
--   [ ] Multi-select UI component (checkboxes or multi-select dropdown)
+#### 實施內容（前端）
 
-**E2E Testing:**
--   [ ] Test scope selection UI interaction
--   [ ] Test saving allowed scopes
--   [ ] Test scope validation (allowed vs not allowed)
--   [ ] Test category grouping display
--   [ ] Test i18n translations
+**Frontend Implementation:**
+-   ✅ Added "Allowed Scopes" multi-select section in `ClientForm.vue`
+-   ✅ Fetch available scopes from `/api/admin/scopes` endpoint (take=1000 to get all)
+-   ✅ Group scopes by category with computed property:
+    -   **Identity Scopes**: openid, profile, email, address, phone, offline_access
+    -   **API Resource Scopes**: Scopes with `resources` array (detected from scope entity)
+    -   **Custom Scopes**: Other uncategorized scopes
+-   ✅ Integrated API endpoints:
+    -   GET `/api/admin/clients/{id}/scopes` - Load existing allowed scopes
+    -   PUT `/api/admin/clients/{id}/scopes` - Save allowed scopes
+-   ✅ i18n translations added (en-US, zh-TW):
+    -   `allowedScopes`, `allowedScopesHelp`, `allowedScopesRequired`
+    -   `allowedScopesOpenidRequired`, `allowedScopesLoading`, `allowedScopesNone`
+    -   `scopeCategories.identity`, `scopeCategories.apiResource`, `scopeCategories.custom`
+-   ✅ Validation: Zod schema validates `openid` scope is included
+-   ✅ UI: Checkbox multi-select grouped by category, with scope descriptions
 
-**預計工作量：** 大型工程，需完整規劃（包含 scope 分類邏輯、UI 設計、i18n）
+**State Management:**
+-   Reactive state: `availableScopes`, `scopesLoading`, `scopesError`
+-   Computed property: `categorizedScopes` for grouping logic
+-   Form data: Added `allowedScopes` array to `formData`
+-   Auto-fetch scopes on component mount
+-   Load client allowed scopes when editing (watch for `props.client`)
+
+**UX Features:**
+-   Loading indicator while fetching scopes
+-   Error display if scope loading fails
+-   Empty state message if no scopes available
+-   Display scope name, display name, and description
+-   Field-level validation error display
+
+#### E2E 驗證結果（Frontend UI）
+
+**Playwright MCP Tests (手動執行):**
+-   ✅ Scope selection UI interaction - Toggled "Roles" checkbox successfully
+-   ✅ Saving allowed scopes - Saved "Roles" scope, verified persistence on reload
+-   ✅ Scope validation - Unchecked "openid" scope triggered error: "OIDC 用戶端必須包含 'openid' 範圍"
+-   ✅ Category grouping display - Three categories displayed correctly:
+    -   身分範圍 (Identity Scopes): Email, OpenID, Profile
+    -   API 資源範圍 (API Resource Scopes): Roles
+    -   自訂範圍 (Custom Scopes): Test Consent
+-   ✅ i18n translations - Switched language, verified English translations:
+    -   "Allowed Scopes", "Identity Scopes", "API Resource Scopes", "Custom Scopes"
+    -   Help text displayed correctly in both languages
+
+**Test Client:** test_client (e33bdff0-2367-4d60-858c-e324f11f8583)
+
+#### Git Commits（Small Steps 策略）
+
+```bash
+# 將在下一步執行 git add/commit
+feat(ui): Add i18n translations for Allowed Scopes UI
+feat(ui): Add Allowed Scopes section to ClientForm.vue with category grouping
+feat(ui): Implement scope fetching and state management
+feat(ui): Add openid scope validation
+feat(ui): Integrate GET/PUT allowed scopes API endpoints
+```
+
+**Total Commits:** 預計 4-5 個 (following small step strategy)
+
+#### 技術亮點
+
+-   **Category Auto-Detection**: Scopes automatically grouped by identity standards vs API resources
+-   **Computed Property Pattern**: Efficient reactive grouping with Vue 3 composition API
+-   **Async Loading**: Non-blocking scope fetch with loading/error states
+-   **Zod Validation**: Client-side validation ensures `openid` scope requirement
+-   **i18n Complete**: Full bilingual support (en-US, zh-TW)
+-   **UX Polish**: Loading indicators, error messages, empty states, help text
+-   **Persistence**: Seamless load/save via dedicated API endpoints
+
+#### 架構說明
+
+**Scope Categorization Logic:**
+```javascript
+const identityScopes = ['openid', 'profile', 'email', 'address', 'phone', 'offline_access']
+- If scope.name in identityScopes → Identity Scopes
+- Else if scope.resources.length > 0 → API Resource Scopes  
+- Else → Custom Scopes
+```
+
+**Component Lifecycle:**
+1. Component mounts → Fetch all scopes from `/api/admin/scopes?skip=0&take=1000`
+2. Watch `props.client` → If editing, fetch client's allowed scopes
+3. User selects scopes → Update `formData.allowedScopes` array
+4. User submits → Validate (require `openid`), then:
+   - Save client basic info
+   - Call PUT `/api/admin/clients/{id}/scopes` with selected scopes
+5. Success → Close modal, refresh client list
+
+**UI Component Structure:**
+```
+ClientForm.vue
+├── Permissions Section (existing)
+└── Allowed Scopes Section (new)
+    ├── Loading State (spinner + text)
+    ├── Error State (error message)
+    ├── Empty State ("no scopes available")
+    └── Scope Categories (if scopes loaded)
+        ├── Identity Scopes (heading + checkboxes)
+        ├── API Resource Scopes (heading + checkboxes)
+        └── Custom Scopes (heading + checkboxes)
+```
+
+---
+
+### 🎯 Next Up: Phase 5.7 Client Refactoring
+
+**Phase 5.7 - ClientController Refactoring（後續階段）:**
+
+**目標：** 重構 ClientController 的舊程式碼
+
+**待重構項目:**
+-   [ ] 舊的 "Create Normal Clients" 程式碼
+-   [ ] 統一 Client CRUD API patterns
+-   [ ] 改善錯誤處理和驗證
+-   [ ] 更新相關單元測試
+
+**注意：** Phase 5.6 Part 3 Frontend 已完成
 
 ---
 
