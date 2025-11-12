@@ -69,12 +69,13 @@ public class UserManagementService : IUserManagementService
                 : query.OrderBy(u => u.Email)
         };
 
-        var totalCount = await query.CountAsync();
-
-        var users = await query
+        // Use synchronous enumeration to support both EF Core and in-memory LINQ providers in tests.
+        // (Async 'CountAsync/ToListAsync' requires an EF Core IAsyncQueryProvider; mocked IQueryable lacks it.)
+        var totalCount = query.Count();
+        var users = query
             .Skip(skip)
             .Take(take)
-            .ToListAsync();
+            .ToList();
 
         var userSummaries = new List<UserSummaryDto>();
 
