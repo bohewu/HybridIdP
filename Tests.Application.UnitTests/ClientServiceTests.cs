@@ -317,6 +317,79 @@ public class ClientServiceTests
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task GetClientsAsync_ShouldFallbackToClientIdDesc_WhenSortFieldUnknownWithDesc()
+    {
+        // Arrange
+        var clients = new List<object>
+        {
+            new { Id = Guid.NewGuid(), Cid = "alpha-client" },
+            new { Id = Guid.NewGuid(), Cid = "zeta-client" },
+            new { Id = Guid.NewGuid(), Cid = "beta-client" }
+        };
+
+        var queue = new Queue<string>(new[] { "alpha-client", "zeta-client", "beta-client" });
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => queue.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Test");
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OpenIddictConstants.ClientTypes.Confidential);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OpenIddictConstants.ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OpenIddictConstants.ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        // Act
+        var (items, totalCount) = await _clientService.GetClientsAsync(0, 25, null, null, "unknown:desc");
+
+        // Assert
+        Assert.Equal(3, totalCount);
+        var ordered = items.Select(i => i.ClientId).ToList();
+        Assert.Equal(new[] { "zeta-client", "beta-client", "alpha-client" }, ordered);
+    }
+
+    [Fact]
+    public async Task GetClientsAsync_ShouldFilterByType_WhenUnknownTypeProvided_ReturnsEmpty()
+    {
+        // Arrange
+        var clients = new List<object>
+        {
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() }
+        };
+
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("some-client");
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Some");
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OpenIddictConstants.ClientTypes.Confidential);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OpenIddictConstants.ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OpenIddictConstants.ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        // Act
+        var (items, totalCount) = await _clientService.GetClientsAsync(0, 25, null, "unknown-type", null);
+
+        // Assert
+        Assert.Empty(items);
+        Assert.Equal(0, totalCount);
+    }
+
     #endregion
 
     #region CreateClientAsync Tests
