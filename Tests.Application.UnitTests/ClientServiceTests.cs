@@ -255,6 +255,46 @@ public class ClientServiceTests
         Assert.Contains("TeSt Name", items2.Select(i => i.DisplayName));
     }
 
+    [Fact]
+    public async Task GetClientsAsync_ShouldSortByDisplayNameAsc()
+    {
+        // Arrange
+        var clients = new List<object>
+        {
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() }
+        };
+
+    var displayNames = new Queue<string>(new[] { "zeta app", "alpha app", "bravo app" });
+        var clientIds = new Queue<string>(new[] { "c1", "c2", "c3" });
+
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => clientIds.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => displayNames.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ClientTypes.Public);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        // Act
+        var (items, totalCount) = await _clientService.GetClientsAsync(0, 25, null, null, "displayName:asc");
+
+        // Assert
+        Assert.Equal(3, totalCount);
+        var ordered = items.Select(i => i.DisplayName).ToList();
+        Assert.Equal(new[] { "alpha app", "bravo app", "zeta app" }, ordered);
+    }
+
         [Fact]
         public async Task GetClientsAsync_ShouldReturnEmpty_WhenNoClientsExist()
         {
