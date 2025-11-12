@@ -223,6 +223,41 @@ public class ClientServiceTests
             Assert.Equal(0, totalCount);
         }
 
+        [Fact]
+        public async Task GetClientsAsync_ShouldReturnEmpty_WhenSkipExceedsTotalCount()
+        {
+            // Arrange
+            var clients = new List<object>
+            {
+                new { Id = Guid.NewGuid() },
+                new { Id = Guid.NewGuid() }
+            };
+        
+            _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+                .Returns(CreateAsyncEnumerable(clients));
+            _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Guid.NewGuid().ToString());
+            _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync("test-client");
+            _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync("Test Client");
+            _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ClientTypes.Confidential);
+            _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ApplicationTypes.Web);
+            _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ConsentTypes.Explicit);
+            _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableArray<string>.Empty);
+
+            // Act
+            var (items, totalCount) = await _clientService.GetClientsAsync(100, 25, null, null, null);
+
+            // Assert
+            Assert.Empty(items);
+            Assert.Equal(2, totalCount); // Total count should still be correct
+        }
+
     #endregion
 
     #region GetClientByIdAsync Tests
