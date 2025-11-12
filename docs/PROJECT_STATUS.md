@@ -4,13 +4,37 @@
 
 本文件整合了 HybridAuth IdP 專案的已完成功能摘要和待辦事項，提供一個清晰的專案進度概覽。
 
+**當前狀態（2025-11-12）：**
+- ✅ **Phase 1-5：核心功能已完成** (OIDC Flow, Admin UI, User/Role/Client/Scope Management, Security Policies, MFA, API Resources)
+- 🚧 **Phase 6：程式碼品質提升進行中** (重構 fat controllers, 提升測試覆蓋率至 80%+)
+- 📋 **Backlog：功能增強與技術債務待處理** (Session Management, Audit Logging, Performance Optimization 等)
+
+**架構狀態分析：**
+- ✅ 已重構完成（Thin Controller + Service Pattern）：
+  - ClientsController → ClientService (240 行，已有 60+ 單元測試)
+  - UsersController → UserManagementService (250 行，已有單元測試)
+  - RolesController → RoleManagementService (156 行，已有單元測試)
+  - ScopesController → ScopeService (109 行，已有單元測試)
+  - ApiResourcesController → ApiResourceService (130 行，已有 19 單元測試) ✅
+  - SettingsController → SettingsService (89 行，已有單元測試)
+  - SecurityPolicyController → SecurityPolicyService (52 行，已有單元測試)
+  
+- ⚠️ 待重構（Fat Controller，直接存取 DbContext）：
+  - ClaimsController (252 行) - **優先級最高**
+  - ScopeClaimsController (135 行) - 可整合至 ScopeService
+
+**測試覆蓋率現況：**
+- 總單元測試：144 tests (125 passing + 19 ApiResourceService)
+- 估計覆蓋率：~60-65%
+- 目標覆蓋率：80%+
+
 ---
 
 ## ✅ 已完成功能
 
 > 本節記錄所有已完成的 Phases，採用摘要格式以節省 token
 
-最後更新：2025-11-04
+最後更新：2025-11-12
 
 ### Phase 1: PostgreSQL & Entity Framework Core ✅
 
@@ -1051,6 +1075,69 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 
 ---
 
+## 🚧 Phase 6: Code Quality & Technical Debt Reduction (進行中)
+
+**目標：** 重構 fat controllers，提升測試覆蓋率至 80%+，建立可維護的程式碼基礎
+
+**完成時間：** 預計 2025-11-18
+
+### Phase 6.1: 補充現有 Services 的 Unit Tests (規劃中)
+
+**優先級：** ⭐⭐⭐ 最高
+
+**目標：**
+- 檢查現有 Services 的測試覆蓋率（ClientService, UserManagementService, RoleManagementService, ScopeService, SettingsService, SecurityPolicyService）
+- 補充缺失的測試案例（edge cases, error handling, validation）
+- 確保每個 Service 都有完整的單元測試
+- 目標測試覆蓋率：80%+
+
+**預估時間：** 2-3 天
+
+**為什麼優先？**
+- 核心功能已完成，確保品質才能安心前進
+- 防止未來修改時引入 regression
+- 為後續重構提供安全網
+
+---
+
+### Phase 6.2: 重構 ClaimsController → ClaimsService (規劃中)
+
+**優先級：** ⭐⭐⭐ 高
+
+**目標：**
+- 創建 `IClaimsService` interface 和 `ClaimsService` implementation
+- 將 ClaimsController (252 行) 的業務邏輯搬移至 Service layer
+- 重構 ClaimsController 成為 thin controller（僅處理 HTTP 請求/響應）
+- 撰寫完整的 unit tests（參考 ClientServiceTests 的模式）
+- E2E 測試驗證功能無 regression
+
+**預估時間：** 1-2 天
+
+**技術細節：**
+- Service 方法：GetClaimsAsync, GetClaimByIdAsync, CreateClaimAsync, UpdateClaimAsync, DeleteClaimAsync
+- 包含搜尋、排序、分頁邏輯
+- 保留 HasPermission 授權於 Controller layer
+
+---
+
+### Phase 6.3: 重構 ScopeClaimsController → 整合至 ScopeService (規劃中)
+
+**優先級：** ⭐⭐ 中
+
+**目標：**
+- 在 `IScopeService` 中添加 `GetScopeClaimsAsync`, `UpdateScopeClaimsAsync` 方法
+- 將 ScopeClaimsController (135 行) 的邏輯整合至 ScopeService
+- 重構 ScopeClaimsController 成為 thin controller（或考慮合併至 ScopesController）
+- 補充 unit tests
+
+**預估時間：** 1 天
+
+**技術理由：**
+- Scope claims 是 scope 管理的一部分，應統一管理
+- 減少 controller 數量，簡化架構
+
+---
+
 ## Backlog (功能增強和技術債務)
 
 ### 功能增強
@@ -1131,7 +1218,7 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 ### Technical Debt
 
 **程式碼品質：**
--   [ ] Refactor large controllers into smaller handlers/services
+-   [x] Refactor large controllers into smaller handlers/services (Phase 6 進行中)
 -   [ ] Code style consistency (ESLint, Prettier)
 -   [ ] Dead code removal
 -   [ ] Magic number/string extraction to constants
