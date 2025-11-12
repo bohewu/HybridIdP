@@ -206,6 +206,23 @@ public class ClientServiceTests
         Assert.Equal("zeta-client", itemList[1].ClientId);
     }
 
+        [Fact]
+        public async Task GetClientsAsync_ShouldReturnEmpty_WhenNoClientsExist()
+        {
+            // Arrange
+            var clients = new List<object>();
+        
+            _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+                .Returns(CreateAsyncEnumerable(clients));
+
+            // Act
+            var (items, totalCount) = await _clientService.GetClientsAsync(0, 25, null, null, null);
+
+            // Assert
+            Assert.Empty(items);
+            Assert.Equal(0, totalCount);
+        }
+
     #endregion
 
     #region GetClientByIdAsync Tests
