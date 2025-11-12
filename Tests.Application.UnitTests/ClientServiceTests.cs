@@ -206,6 +206,55 @@ public class ClientServiceTests
         Assert.Equal("zeta-client", itemList[1].ClientId);
     }
 
+    [Fact]
+    public async Task GetClientsAsync_SearchShouldBeCaseInsensitive_AcrossClientIdAndDisplayName()
+    {
+        // Arrange shared list of applications
+        var clients = new List<object>
+        {
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() }
+        };
+
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ClientTypes.Public);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        // Phase 1: search by clientId (alpha-CLIENT)
+        var ids1 = new Queue<string>(new[] { "alpha-CLIENT", "bravo", "charlie" });
+        var names1 = new Queue<string>(new[] { "Display One", "TeSt Name", "Other" });
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ids1.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => names1.Dequeue());
+
+        var (items1, _) = await _clientService.GetClientsAsync(0, 25, "client", null, null);
+        Assert.Single(items1);
+        Assert.Contains("alpha-CLIENT", items1.Select(i => i.ClientId));
+
+        // Phase 2: re-setup for displayName search (TeSt Name)
+        var ids2 = new Queue<string>(new[] { "alpha-CLIENT", "bravo", "charlie" });
+        var names2 = new Queue<string>(new[] { "Display One", "TeSt Name", "Other" });
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ids2.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => names2.Dequeue());
+
+        var (items2, _) = await _clientService.GetClientsAsync(0, 25, "test", null, null);
+        Assert.Single(items2);
+        Assert.Contains("TeSt Name", items2.Select(i => i.DisplayName));
+    }
+
         [Fact]
         public async Task GetClientsAsync_ShouldReturnEmpty_WhenNoClientsExist()
         {
