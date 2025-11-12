@@ -479,6 +479,270 @@ public class ClientServiceTests
         Assert.Equal(0, totalCount);
     }
 
+    [Fact]
+    public async Task GetClientsAsync_ShouldSortByDisplayNameDesc()
+    {
+        // Arrange
+        var clients = new List<object>
+        {
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() }
+        };
+
+        var displayNames = new Queue<string>(new[] { "Alpha", "bravo", "Zulu" }); // initial unsorted sequence
+        var clientIds = new Queue<string>(new[] { "c1", "c2", "c3" });
+
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => clientIds.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => displayNames.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ClientTypes.Public);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        // Act
+        var (items, total) = await _clientService.GetClientsAsync(0, 25, null, null, "displayName:desc");
+
+        // Assert
+        Assert.Equal(3, total);
+        var ordered = items.Select(i => i.DisplayName).ToList();
+        Assert.Equal(new[] { "Zulu", "bravo", "Alpha" }, ordered); // case-insensitive descending
+    }
+
+    [Fact]
+    public async Task GetClientsAsync_ShouldSortByClientIdDesc()
+    {
+        // Arrange
+        var clients = new List<object>
+        {
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() }
+        };
+
+        var clientIds = new Queue<string>(new[] { "client-a", "client-z", "client-m" });
+
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => clientIds.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Display");
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ClientTypes.Public);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        // Act
+        var (items, _) = await _clientService.GetClientsAsync(0, 10, null, null, "clientId:desc");
+
+        // Assert
+        var list = items.Select(i => i.ClientId).ToList();
+        Assert.Equal(new[] { "client-z", "client-m", "client-a" }, list);
+    }
+
+    [Fact]
+    public async Task GetClientsAsync_ShouldSortByRedirectUrisCountAsc()
+    {
+        // Arrange
+        var clients = new List<object>
+        {
+            new { Id = Guid.NewGuid() }, // 2 uris
+            new { Id = Guid.NewGuid() }, // 0 uris
+            new { Id = Guid.NewGuid() }  // 5 uris
+        };
+
+        var redirectUrisQueue = new Queue<ImmutableArray<string>>(
+            new[]
+            {
+                ImmutableArray.Create("https://a", "https://b"),
+                ImmutableArray<string>.Empty,
+                ImmutableArray.Create("https://1","https://2","https://3","https://4","https://5")
+            });
+        var clientIds = new Queue<string>(new[] { "cid1", "cid2", "cid3" });
+
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => clientIds.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Display");
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ClientTypes.Public);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => redirectUrisQueue.Dequeue());
+
+        // Act
+        var (items, total) = await _clientService.GetClientsAsync(0, 25, null, null, "redirectUrisCnt:asc");
+
+        // Assert
+        Assert.Equal(3, total);
+        var counts = items.Select(i => i.RedirectUrisCount).ToList();
+        Assert.Equal(new[] { 0, 2, 5 }, counts);
+    }
+
+    [Fact]
+    public async Task GetClientsAsync_ShouldApplyDefaultPaging_WhenTakeNonPositiveOrSkipNegative()
+    {
+        // Arrange
+        var clients = Enumerable.Range(1, 40).Select(_ => new { Id = Guid.NewGuid() }).ToList();
+        var idx = 0;
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => $"client{++idx:000}");
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Display");
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ClientTypes.Public);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        // Act: skip negative, take <= 0 should default to 25 & skip fixed to 0
+        var (items, total) = await _clientService.GetClientsAsync(-5, 0, null, null, null);
+
+        // Assert
+        Assert.Equal(40, total);
+        Assert.Equal(25, items.Count());
+        Assert.Equal("client001", items.First().ClientId);
+    }
+
+    [Fact]
+    public async Task GetClientsAsync_ShouldReturnAllClients_WhenSearchIsWhitespace()
+    {
+        // Arrange
+        var clients = new List<object>
+        {
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() }
+        };
+        var ids = new Queue<string>(new[] { "id1", "id2" });
+
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ids.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Name");
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ClientTypes.Public);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        // Act
+        var (items, total) = await _clientService.GetClientsAsync(0, 10, "   ", null, null);
+
+        // Assert
+        Assert.Equal(2, total);
+        Assert.Equal(2, items.Count());
+    }
+
+    [Fact]
+    public async Task GetClientsAsync_ShouldFallbackToClientIdAsc_WhenUnknownSortFieldAsc()
+    {
+        // Arrange
+        var clients = new List<object>
+        {
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() },
+            new { Id = Guid.NewGuid() }
+        };
+        var clientIds = new Queue<string>(new[] { "zeta", "alpha", "beta" });
+
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => clientIds.Dequeue());
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Name");
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ClientTypes.Public);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        // Act
+        var (items, _) = await _clientService.GetClientsAsync(0, 25, null, null, "unknown:asc");
+
+        // Assert
+        var ordered = items.Select(i => i.ClientId).ToList();
+        Assert.Equal(new[] { "alpha", "beta", "zeta" }, ordered);
+    }
+
+    [Fact]
+    public async Task GetClientsAsync_ShouldHandleLargeNumberOfClientsEfficiently()
+    {
+        // Arrange
+        var clients = Enumerable.Range(1, 1200).Select(_ => new { Id = Guid.NewGuid() }).ToList();
+        var index = 0;
+
+        _mockApplicationManager.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(clients));
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => $"client{++index:0000}");
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Name");
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ClientTypes.Public);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApplicationTypes.Web);
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        // Act - skip 100, take 50
+        var (items, total) = await _clientService.GetClientsAsync(100, 50, null, null, "clientId:asc");
+
+        // Assert
+        Assert.Equal(1200, total);
+        Assert.Equal(50, items.Count());
+        // First item after skipping 100 should be client0101 (1-based sequence)
+        Assert.Equal("client0101", items.First().ClientId);
+        Assert.Equal("client0150", items.Last().ClientId);
+    }
+
     #endregion
 
     #region CreateClientAsync Tests
