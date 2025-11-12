@@ -845,6 +845,204 @@ public class ClientServiceTests
         _mockApplicationManager.Verify(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task CreateClientAsync_ShouldUseProvidedSecret_ForConfidential_AndNotReturnSecretInResponse()
+    {
+        // Arrange
+        var request = new CreateClientRequest(
+            "conf-client",
+            "provided-secret",
+            "Conf Client",
+            ApplicationTypes.Web,
+            ClientTypes.Confidential,
+            ConsentTypes.Explicit,
+            null,
+            null,
+            new List<string> { Permissions.Endpoints.Token }
+        );
+
+        var createdClient = new { Id = Guid.NewGuid() };
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync("conf-client", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((descriptor, _) =>
+            {
+                Assert.Equal("conf-client", descriptor.ClientId);
+                Assert.Equal(ClientTypes.Confidential, descriptor.ClientType);
+                Assert.Equal("provided-secret", descriptor.ClientSecret);
+                Assert.Equal("Conf Client", descriptor.DisplayName);
+            })
+            .ReturnsAsync(createdClient);
+        _mockApplicationManager.Setup(m => m.GetIdAsync(createdClient, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(createdClient, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("conf-client");
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(createdClient, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Conf Client");
+
+        // Act
+        var result = await _clientService.CreateClientAsync(request);
+
+        // Assert: provided secret should not be echoed back
+        Assert.NotNull(result);
+        Assert.Equal("conf-client", result.ClientId);
+        Assert.Null(result.ClientSecret);
+    }
+
+    [Fact]
+    public async Task CreateClientAsync_ShouldInferClientType_FromSecretPresence()
+    {
+        // Arrange 1: Type null + has secret => Confidential
+        var req1 = new CreateClientRequest("c1", "s1", null, null, null, null, null, null, null);
+        var created1 = new { Id = Guid.NewGuid() };
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync("c1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+        var createCall = 0;
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((d, _) =>
+            {
+                createCall++;
+                if (createCall == 1)
+                {
+                    Assert.Equal(ClientTypes.Confidential, d.ClientType);
+                }
+                else if (createCall == 2)
+                {
+                    Assert.Equal(ClientTypes.Public, d.ClientType);
+                }
+            })
+            .ReturnsAsync(() => createCall == 1 ? (object)created1 : new { Id = Guid.NewGuid() });
+
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("c1");
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("c1");
+
+        // Act 1
+        var r1 = await _clientService.CreateClientAsync(req1);
+        // Act 2
+        var r2 = await _clientService.CreateClientAsync(new CreateClientRequest("c2", null, null, null, null, null, null, null, null));
+
+        // Assert
+        Assert.Null(r1.ClientSecret); // provided secret should not be echoed
+        Assert.Null(r2.ClientSecret); // public no secret
+    }
+
+    [Fact]
+    public async Task CreateClientAsync_ShouldFallbackDisplayNameToClientId_WhenNull()
+    {
+        // Arrange
+        var req = new CreateClientRequest("cid-fallback", null, null, null, ClientTypes.Public, null, null, null, null);
+        var created = new { Id = Guid.NewGuid() };
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync("cid-fallback", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((d, _) =>
+            {
+                Assert.Equal("cid-fallback", d.DisplayName);
+            })
+            .ReturnsAsync(created);
+        _mockApplicationManager.Setup(m => m.GetIdAsync(created, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(created, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("cid-fallback");
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(created, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("cid-fallback");
+
+        // Act
+        var result = await _clientService.CreateClientAsync(req);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("cid-fallback", result.DisplayName);
+    }
+
+    [Fact]
+    public async Task CreateClientAsync_ShouldIgnoreInvalidRedirectUris()
+    {
+        // Arrange
+        var req = new CreateClientRequest(
+            "cid-urls",
+            null,
+            "Name",
+            null,
+            ClientTypes.Public,
+            null,
+            new List<string> { "https://valid", "not a url" },
+            new List<string> { "http://valid-pl", "not a url" },
+            null
+        );
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync("cid-urls", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((d, _) =>
+            {
+                Assert.Single(d.RedirectUris);
+                Assert.Contains(d.RedirectUris, u => u.ToString() == "https://valid/");
+                Assert.Single(d.PostLogoutRedirectUris);
+                Assert.Contains(d.PostLogoutRedirectUris, u => u.ToString() == "http://valid-pl/");
+            })
+            .ReturnsAsync(new { Id = Guid.NewGuid() });
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("cid-urls");
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Name");
+
+        // Act
+        var result = await _clientService.CreateClientAsync(req);
+
+        // Assert
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task CreateClientAsync_ShouldRespectProvidedPermissions_WhenPermissionsGiven()
+    {
+        // Arrange
+        var req = new CreateClientRequest(
+            "cid-perm",
+            null,
+            "Name",
+            null,
+            ClientTypes.Public,
+            null,
+            null,
+            null,
+            new List<string> { "p1", "p2" }
+        );
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync("cid-perm", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((d, _) =>
+            {
+                Assert.Equal(2, d.Permissions.Count);
+                Assert.Contains("p1", d.Permissions);
+                Assert.Contains("p2", d.Permissions);
+            })
+            .ReturnsAsync(new { Id = Guid.NewGuid() });
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid().ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("cid-perm");
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Name");
+
+        // Act
+        var result = await _clientService.CreateClientAsync(req);
+
+        // Assert
+        Assert.NotNull(result);
+    }
+
     #endregion
 
     #region UpdateClientAsync Tests
@@ -913,6 +1111,118 @@ public class ClientServiceTests
 
         // Act
         await _clientService.UpdateClientAsync(clientId, request);
+
+        // Assert
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateClientAsync_ShouldReplaceCollections_WhenProvided()
+    {
+        // Arrange
+        var clientId = Guid.NewGuid();
+        var client = new { Id = clientId };
+        var req = new UpdateClientRequest(null, null, null, null, null,
+            new List<string> { "https://a", "https://b" },
+            new List<string> { "https://c" },
+            new List<string> { "perm1", "perm2" });
+
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(client);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((d, _, __) =>
+            {
+                d.ClientSecret = "keep"; // pre-existing secret
+                d.RedirectUris.Add(new Uri("https://old"));
+                d.PostLogoutRedirectUris.Add(new Uri("https://old-pl"));
+                d.Permissions.Add("old-perm");
+            })
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, __) =>
+            {
+                Assert.Equal(new[] { "https://a/", "https://b/" }, d.RedirectUris.Select(u => u.ToString()));
+                Assert.Equal(new[] { "https://c/" }, d.PostLogoutRedirectUris.Select(u => u.ToString()));
+                Assert.Equal(new[] { "perm1", "perm2" }, d.Permissions);
+                Assert.Equal("keep", d.ClientSecret); // unchanged
+            })
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await _clientService.UpdateClientAsync(clientId, req);
+
+        // Assert
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateClientAsync_ShouldDefaultTypes_WhenMissing()
+    {
+        // Arrange
+        var clientId = Guid.NewGuid();
+        var client = new { Id = clientId };
+        var req = new UpdateClientRequest(null, null, null, null, null, null, null, null);
+
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(client);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((d, _, __) =>
+            {
+                // Simulate missing types but with existing secret
+                d.ApplicationType = null;
+                d.ClientType = null;
+                d.ClientSecret = "existing";
+            })
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, __) =>
+            {
+                Assert.Equal(ApplicationTypes.Web, d.ApplicationType);
+                Assert.Equal(ClientTypes.Confidential, d.ClientType); // inferred from having a secret
+            })
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await _clientService.UpdateClientAsync(clientId, req);
+
+        // Assert
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateClientAsync_ShouldUpdateBasicFields_WithoutChangingSecret()
+    {
+        // Arrange
+        var clientId = Guid.NewGuid();
+        var client = new { Id = clientId };
+        var req = new UpdateClientRequest("new-id", null, "new-name", null, ConsentTypes.Implicit, null, null, null);
+
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(client);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((d, _, __) =>
+            {
+                d.ClientSecret = "keepme";
+            })
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, __) =>
+            {
+                Assert.Equal("new-id", d.ClientId);
+                Assert.Equal("new-name", d.DisplayName);
+                Assert.Equal(ConsentTypes.Implicit, d.ConsentType);
+                Assert.Equal("keepme", d.ClientSecret);
+            })
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await _clientService.UpdateClientAsync(clientId, req);
 
         // Assert
         _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
