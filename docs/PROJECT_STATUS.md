@@ -1243,7 +1243,8 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 -   [x] Display active sessions (device, location, last active)
 -   [x] Revoke session (logout from specific device)
 -   [x] Revoke all sessions (logout everywhere)
--   [ ] Suspicious login detection and alerts
+-   [x] **Suspicious login detection and alerts** (configurable IP-based abnormal login detection)
+-   [ ] Admin unblock blocked login attempts (manual override for false positives)
 -   [x] **BUG: UI does not refresh session list after revoke operations**
 -   [x] **BUG: Some sessions fail to revoke (authorizations without associated clients)**
 
