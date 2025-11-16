@@ -77,7 +77,7 @@ builder.Services.AddOpenIddict()
         // Enable the authorization and token endpoints
         options.SetAuthorizationEndpointUris("/connect/authorize")
                .SetTokenEndpointUris("/connect/token")
-               .SetUserinfoEndpointUris("/connect/userinfo");
+               .SetUserInfoEndpointUris("/connect/userinfo");
 
         // Enable the authorization code flow
         options.AllowAuthorizationCodeFlow()
@@ -90,7 +90,7 @@ builder.Services.AddOpenIddict()
         // Register the ASP.NET Core host and configure the ASP.NET Core-specific options
         options.UseAspNetCore()
                .EnableAuthorizationEndpointPassthrough()
-               .EnableUserinfoEndpointPassthrough()
+               .EnableUserInfoEndpointPassthrough()
                .EnableStatusCodePagesIntegration();
     })
     // Register the OpenIddict validation components
