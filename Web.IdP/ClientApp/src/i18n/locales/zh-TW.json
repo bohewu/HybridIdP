@@ -48,6 +48,7 @@
       "noActions": "無可用操作",
       "edit": "編輯",
       "manageRoles": "管理角色",
+      "manageSessions": "管理工作階段",
       "errors": {
         "loadFailed": "載入使用者失敗：{message}",
         "deactivateFailed": "停用使用者失敗：{message}",
@@ -311,6 +312,42 @@
     "errors": {
       "loadFailed": "載入角色失敗。",
       "updateFailed": "更新使用者角色失敗。"
+    }
+  },
+  "sessions": {
+    "title": "管理使用者工作階段",
+    "userLabel": "使用者",
+    "loading": "正在載入工作階段...",
+    "empty": "找不到此使用者的活動工作階段。",
+    "never": "從未",
+    "noClient": "未知",
+    "headers": {
+      "authorizationId": "授權 ID",
+      "client": "用戶端",
+      "created": "建立時間",
+      "expires": "到期時間",
+      "status": "狀態",
+      "actions": "操作"
+    },
+    "status": {
+      "active": "活動中",
+      "revoked": "已撤銷"
+    },
+    "buttons": {
+      "revokeAll": "撤銷所有工作階段",
+      "revoking": "撤銷中..."
+    },
+    "confirm": {
+      "revokeOne": "您確定要撤銷此工作階段嗎？",
+      "revokeAll": "您確定要撤銷此使用者的所有工作階段嗎？他們將從所有裝置登出。"
+    },
+    "alerts": {
+      "revokedAll": "已成功撤銷 {count} 個工作階段。"
+    },
+    "errors": {
+      "loadFailed": "無法載入使用者工作階段。",
+      "revokeFailed": "無法撤銷工作階段。",
+      "revokeAllFailed": "無法撤銷所有工作階段。"
     }
   },
   "buttons": {

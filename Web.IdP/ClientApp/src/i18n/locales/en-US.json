@@ -47,6 +47,7 @@
       "noActions": "No actions available",
       "edit": "Edit",
       "manageRoles": "Manage Roles",
+      "manageSessions": "Manage Sessions",
       "errors": {
         "loadFailed": "Failed to load users: {message}",
         "deactivateFailed": "Failed to deactivate user: {message}",
@@ -310,6 +311,42 @@
     "errors": {
       "loadFailed": "Failed to load roles.",
       "updateFailed": "Failed to update user roles."
+    }
+  },
+  "sessions": {
+    "title": "Manage User Sessions",
+    "userLabel": "User",
+    "loading": "Loading sessions...",
+    "empty": "No active sessions found for this user.",
+    "never": "Never",
+    "noClient": "Unknown",
+    "headers": {
+      "authorizationId": "Authorization ID",
+      "client": "Client",
+      "created": "Created",
+      "expires": "Expires",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked"
+    },
+    "buttons": {
+      "revokeAll": "Revoke All Sessions",
+      "revoking": "Revoking..."
+    },
+    "confirm": {
+      "revokeOne": "Are you sure you want to revoke this session?",
+      "revokeAll": "Are you sure you want to revoke ALL sessions for this user? They will be logged out from all devices."
+    },
+    "alerts": {
+      "revokedAll": "Revoked {count} session(s) successfully."
+    },
+    "errors": {
+      "loadFailed": "Failed to load user sessions.",
+      "revokeFailed": "Failed to revoke session.",
+      "revokeAllFailed": "Failed to revoke all sessions."
     }
   },
   "buttons": {
