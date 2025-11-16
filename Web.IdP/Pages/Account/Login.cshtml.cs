@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,6 +16,8 @@ public class LoginModel : PageModel
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ILoginService _loginService;
     private readonly ITurnstileService _turnstileService;
+    private readonly ILoginHistoryService _loginHistoryService;
+    private readonly INotificationService _notificationService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<LoginModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -23,6 +26,8 @@ public class LoginModel : PageModel
         SignInManager<ApplicationUser> signInManager,
         ILoginService loginService,
         ITurnstileService turnstileService,
+        ILoginHistoryService loginHistoryService,
+        INotificationService notificationService,
         IConfiguration configuration,
         ILogger<LoginModel> logger,
         IStringLocalizer<SharedResource> localizer)
@@ -30,6 +35,8 @@ public class LoginModel : PageModel
         _signInManager = signInManager;
         _loginService = loginService;
         _turnstileService = turnstileService;
+        _loginHistoryService = loginHistoryService;
+        _notificationService = notificationService;
         _configuration = configuration;
         _logger = logger;
         _localizer = localizer;
@@ -97,6 +104,29 @@ public class LoginModel : PageModel
             case LoginStatus.LegacySuccess:
                 await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
                 _logger.LogInformation("User '{UserName}' signed in successfully.", result.User!.UserName);
+
+                // Record login for abnormal detection
+                var loginHistory = new LoginHistory
+                {
+                    UserId = result.User!.Id,
+                    LoginTime = DateTime.UtcNow,
+                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent = Request.Headers["User-Agent"].ToString(),
+                    IsSuccessful = true,
+                    RiskScore = 0,
+                    IsFlaggedAbnormal = false
+                };
+
+                await _loginHistoryService.RecordLoginAsync(loginHistory);
+
+                // Check for abnormal login
+                var isAbnormal = await _loginHistoryService.DetectAbnormalLoginAsync(loginHistory);
+                if (isAbnormal)
+                {
+                    loginHistory.IsFlaggedAbnormal = true;
+                    await _notificationService.NotifyAbnormalLoginAsync(result.User!.Id.ToString(), loginHistory);
+                }
+
                 return LocalRedirect(returnUrl);
 
             case LoginStatus.LockedOut:

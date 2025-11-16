@@ -23,11 +23,13 @@ public class UsersController : ControllerBase
     private readonly IUserManagementService _userManagementService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ISessionService _sessionService;
+    private readonly ILoginHistoryService _loginHistoryService;
 
     public UsersController(
         IUserManagementService userManagementService,
         UserManager<ApplicationUser> userManager,
-        ISessionService sessionService)
+        ISessionService sessionService,
+        ILoginHistoryService loginHistoryService)
     {
         _userManagementService = userManagementService;
         _userManager = userManager;
@@ -374,6 +376,26 @@ public class UsersController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { error = "An error occurred while revoking all sessions", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get login history for a user.
+    /// </summary>
+    /// <param name="id">The user ID</param>
+    /// <param name="count">Number of recent logins to retrieve</param>
+    [HttpGet("{id}/login-history")]
+    [HasPermission(Permissions.Users.Read)]
+    public async Task<IActionResult> GetLoginHistory(Guid id, [FromQuery] int count = 10)
+    {
+        try
+        {
+            var history = await _loginHistoryService.GetLoginHistoryAsync(id, count);
+            return Ok(history);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while retrieving login history", details = ex.Message });
         }
     }
 }

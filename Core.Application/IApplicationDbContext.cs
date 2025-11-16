@@ -15,6 +15,7 @@ public interface IApplicationDbContext
     DbSet<Resource> Resources { get; }
     DbSet<ApiResource> ApiResources { get; }
     DbSet<ApiResourceScope> ApiResourceScopes { get; }
+    DbSet<LoginHistory> LoginHistories { get; }
     // Add other DbSet properties for your domain entities here
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

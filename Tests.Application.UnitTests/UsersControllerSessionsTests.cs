@@ -45,8 +45,9 @@ public class UsersControllerSessionsTests
             new Mock<ILogger<UserManager<ApplicationUser>>>().Object);
 
         sessionServiceMock = new Mock<ISessionService>();
+        var loginHistoryMock = new Mock<ILoginHistoryService>();
 
-        return new UsersController(userMgmt.Object, userManager, sessionServiceMock.Object);
+        return new UsersController(userMgmt.Object, userManager, sessionServiceMock.Object, loginHistoryMock.Object);
     }
 
     [Fact]

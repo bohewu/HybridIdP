@@ -23,6 +23,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<ScopeClaim> ScopeClaims => Set<ScopeClaim>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<SecurityPolicy> SecurityPolicies { get; set; } = default!;
+    public DbSet<LoginHistory> LoginHistories { get; set; } = default!;
     public DbSet<ScopeExtension> ScopeExtensions => Set<ScopeExtension>();
     public DbSet<Resource> Resources => Set<Resource>();
     public DbSet<ApiResource> ApiResources => Set<ApiResource>();
@@ -136,6 +137,25 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.HasOne(e => e.ApiResource)
                 .WithMany(r => r.Scopes)
                 .HasForeignKey(e => e.ApiResourceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        
+        // Configure LoginHistory entity
+        builder.Entity<LoginHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UserId).IsRequired();
+            entity.Property(e => e.IpAddress).HasMaxLength(45); // IPv6 max
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+            entity.Property(e => e.LoginTime).IsRequired();
+            entity.Property(e => e.IsSuccessful).IsRequired();
+            entity.Property(e => e.RiskScore).IsRequired();
+            entity.Property(e => e.IsFlaggedAbnormal).IsRequired();
+
+            // Configure relationship with ApplicationUser
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
         
