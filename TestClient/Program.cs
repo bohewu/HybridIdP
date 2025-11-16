@@ -12,8 +12,8 @@ builder.Services.AddAuthentication(options =>
 .AddOpenIdConnect(AuthenticationSchemes.OpenIdConnect, options =>
 {
     options.Authority = "https://localhost:7035";
-    options.ClientId = "test_client";
-    options.ClientSecret = "test_secret";
+    // Align with seeded demo client (public client, no secret)
+    options.ClientId = "demo-client-1";
     options.ResponseType = "code";
     options.UsePkce = true;
     options.SaveTokens = true;
@@ -22,7 +22,6 @@ builder.Services.AddAuthentication(options =>
     options.Scope.Add("openid");
     options.Scope.Add("profile");
     options.Scope.Add("email");
-    options.Scope.Add("roles");
     
     options.RequireHttpsMetadata = true; // Using trusted dev cert
     options.GetClaimsFromUserInfoEndpoint = false; // OpenIddict doesn't require userinfo endpoint
@@ -30,15 +29,7 @@ builder.Services.AddAuthentication(options =>
     // Keep original JWT claim types (don't remap to WS-* URIs)
     options.MapInboundClaims = false;
 
-    // Ensure client_secret is sent when redeeming the authorization code
-    options.Events.OnAuthorizationCodeReceived = context =>
-    {
-        if (context.TokenEndpointRequest is not null)
-        {
-            context.TokenEndpointRequest.ClientSecret = "test_secret";
-        }
-        return Task.CompletedTask;
-    };
+    // Public client: no client secret injection needed
 
     // Handle remote authentication failures (e.g., user denies consent)
     options.Events.OnRemoteFailure = context =>

@@ -102,4 +102,276 @@ public class SessionServiceTests
         var count = await _service.RevokeAllSessionsAsync(userId);
         Assert.Equal(2, count);
     }
+
+    #region ListSessionsAsync - Additional Tests
+
+    [Fact]
+    public async Task ListSessionsAsync_ReturnsEmptyList_WhenUserHasNoSessions()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(Array.Empty<object>()));
+
+        // Act
+        var sessions = await _service.ListSessionsAsync(userId);
+
+        // Assert
+        Assert.Empty(sessions);
+    }
+
+    [Fact]
+    public async Task ListSessionsAsync_ReturnsMultipleSessions_WhenUserHasManySessions()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var authorizations = Enumerable.Range(1, 5).Select(_ => new object()).ToList();
+        var authIds = new Queue<string>(new[] { "auth-1", "auth-2", "auth-3", "auth-4", "auth-5" });
+
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(authorizations));
+        _authz.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => authIds.Dequeue());
+
+        // Act
+        var sessions = (await _service.ListSessionsAsync(userId)).ToList();
+
+        // Assert
+        Assert.Equal(5, sessions.Count);
+        Assert.Contains(sessions, s => s.AuthorizationId == "auth-1");
+        Assert.Contains(sessions, s => s.AuthorizationId == "auth-5");
+    }
+
+    [Fact]
+    public async Task ListSessionsAsync_HandlesNullAuthorizationId_Gracefully()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var auth = new object();
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(new[] { auth }));
+        _authz.Setup(m => m.GetIdAsync(auth, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        // Act
+        var sessions = (await _service.ListSessionsAsync(userId)).ToList();
+
+        // Assert
+        Assert.Single(sessions);
+        Assert.Equal(string.Empty, sessions[0].AuthorizationId);
+    }
+
+    #endregion
+
+    #region RevokeSessionAsync - Additional Tests
+
+    [Fact]
+    public async Task RevokeSessionAsync_ReturnsTrue_WhenSessionRevokedSuccessfully()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var auth = new object();
+        _authz.Setup(m => m.FindByIdAsync("auth-123", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(auth);
+        _authz.Setup(m => m.GetSubjectAsync(auth, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(userId.ToString());
+        _authz.Setup(m => m.TryRevokeAsync(auth, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _service.RevokeSessionAsync(userId, "auth-123");
+
+        // Assert
+        Assert.True(result);
+        _authz.Verify(m => m.TryRevokeAsync(auth, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RevokeSessionAsync_ReturnsFalse_WhenAuthorizationNotFound()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _authz.Setup(m => m.FindByIdAsync("non-existent", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+
+        // Act
+        var result = await _service.RevokeSessionAsync(userId, "non-existent");
+
+        // Assert
+        Assert.False(result);
+        _authz.Verify(m => m.TryRevokeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RevokeSessionAsync_ReturnsFalse_WhenRevocationFails()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var auth = new object();
+        _authz.Setup(m => m.FindByIdAsync("auth-456", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(auth);
+        _authz.Setup(m => m.GetSubjectAsync(auth, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(userId.ToString());
+        _authz.Setup(m => m.TryRevokeAsync(auth, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        // Act
+        var result = await _service.RevokeSessionAsync(userId, "auth-456");
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task RevokeSessionAsync_IsCaseInsensitive_ForSubjectComparison()
+    {
+        // Arrange
+        var userId = Guid.Parse("12345678-1234-1234-1234-123456789ABC");
+        var auth = new object();
+        _authz.Setup(m => m.FindByIdAsync("auth-789", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(auth);
+        _authz.Setup(m => m.GetSubjectAsync(auth, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("12345678-1234-1234-1234-123456789abc"); // lowercase
+        _authz.Setup(m => m.TryRevokeAsync(auth, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _service.RevokeSessionAsync(userId, "auth-789");
+
+        // Assert
+        Assert.True(result);
+    }
+
+    #endregion
+
+    #region RevokeAllSessionsAsync - Additional Tests
+
+    [Fact]
+    public async Task RevokeAllSessionsAsync_ReturnsZero_WhenUserHasNoSessions()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(Array.Empty<object>()));
+
+        // Act
+        var count = await _service.RevokeAllSessionsAsync(userId);
+
+        // Assert
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task RevokeAllSessionsAsync_ReturnsCorrectCount_WhenSomeRevocationsFail()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var a1 = new object();
+        var a2 = new object();
+        var a3 = new object();
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(new[] { a1, a2, a3 }));
+        _authz.Setup(m => m.TryRevokeAsync(a1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _authz.Setup(m => m.TryRevokeAsync(a2, It.IsAny<CancellationToken>())).ReturnsAsync(false); // Fails
+        _authz.Setup(m => m.TryRevokeAsync(a3, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        // Act
+        var count = await _service.RevokeAllSessionsAsync(userId);
+
+        // Assert
+        Assert.Equal(2, count); // Only 2 successful revocations
+    }
+
+    [Fact]
+    public async Task RevokeAllSessionsAsync_RevokesAllSessions_WhenMultipleSessions()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var authorizations = Enumerable.Range(1, 10).Select(_ => new object()).ToList();
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(authorizations));
+        _authz.Setup(m => m.TryRevokeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act
+        var count = await _service.RevokeAllSessionsAsync(userId);
+
+        // Assert
+        Assert.Equal(10, count);
+        _authz.Verify(m => m.TryRevokeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Exactly(10));
+    }
+
+    #endregion
+
+    #region Error Handling Tests
+
+    [Fact]
+    public async Task RevokeSessionAsync_ThrowsException_WhenAuthorizationManagerThrows()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _authz.Setup(m => m.FindByIdAsync("auth-error", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Database error"));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.RevokeSessionAsync(userId, "auth-error"));
+    }
+
+    [Fact]
+    public async Task ListSessionsAsync_ThrowsException_WhenAuthorizationManagerThrows()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Throws(new InvalidOperationException("Database connection failed"));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.ListSessionsAsync(userId));
+    }
+
+    #endregion
 }

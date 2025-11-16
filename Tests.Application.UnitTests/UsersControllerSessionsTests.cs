@@ -97,4 +97,144 @@ public class UsersControllerSessionsTests
         Assert.NotNull(revokedProp);
         Assert.Equal(3, (int)revokedProp!.GetValue(anon)!);
     }
+
+    #region Additional Controller Tests
+
+    [Fact]
+    public async Task ListSessions_ReturnsOk_WithEmptyList_WhenUserHasNoSessions()
+    {
+        // Arrange
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        sessMock.Setup(s => s.ListSessionsAsync(userId))
+            .ReturnsAsync(Array.Empty<SessionDto>());
+
+        // Act
+        var result = await controller.ListSessions(userId);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsAssignableFrom<IEnumerable<SessionDto>>(ok.Value);
+        Assert.Empty(payload);
+    }
+
+    [Fact]
+    public async Task ListSessions_Returns500_WhenServiceThrows()
+    {
+        // Arrange
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        sessMock.Setup(s => s.ListSessionsAsync(userId))
+            .ThrowsAsync(new InvalidOperationException("Database error"));
+
+        // Act
+        var result = await controller.ListSessions(userId);
+
+        // Assert
+        var statusResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(500, statusResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task RevokeSession_ReturnsNotFound_WhenAuthorizationIdIsNull()
+    {
+        // Arrange
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        sessMock.Setup(s => s.RevokeSessionAsync(userId, It.IsAny<string>()))
+            .ReturnsAsync(false);
+
+        // Act
+        var result = await controller.RevokeSession(userId, string.Empty);
+
+        // Assert
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task RevokeSession_Returns500_WhenServiceThrows()
+    {
+        // Arrange
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        sessMock.Setup(s => s.RevokeSessionAsync(userId, "auth-error"))
+            .ThrowsAsync(new InvalidOperationException("Revocation failed"));
+
+        // Act
+        var result = await controller.RevokeSession(userId, "auth-error");
+
+        // Assert
+        var statusResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(500, statusResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task RevokeAllSessions_ReturnsZeroCount_WhenNoSessionsExist()
+    {
+        // Arrange
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        sessMock.Setup(s => s.RevokeAllSessionsAsync(userId)).ReturnsAsync(0);
+
+        // Act
+        var result = await controller.RevokeAllSessions(userId);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var anon = ok.Value!;
+        var revokedProp = anon.GetType().GetProperty("revoked");
+        Assert.NotNull(revokedProp);
+        Assert.Equal(0, (int)revokedProp!.GetValue(anon)!);
+    }
+
+    [Fact]
+    public async Task RevokeAllSessions_Returns500_WhenServiceThrows()
+    {
+        // Arrange
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        sessMock.Setup(s => s.RevokeAllSessionsAsync(userId))
+            .ThrowsAsync(new InvalidOperationException("Batch revocation failed"));
+
+        // Act
+        var result = await controller.RevokeAllSessions(userId);
+
+        // Assert
+        var statusResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(500, statusResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task RevokeSession_VerifiesCorrectUserId_WhenCalled()
+    {
+        // Arrange
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        var authId = "auth-123";
+        sessMock.Setup(s => s.RevokeSessionAsync(userId, authId)).ReturnsAsync(true);
+
+        // Act
+        await controller.RevokeSession(userId, authId);
+
+        // Assert
+        sessMock.Verify(s => s.RevokeSessionAsync(userId, authId), Times.Once);
+    }
+
+    [Fact]
+    public async Task ListSessions_VerifiesCorrectUserId_WhenCalled()
+    {
+        // Arrange
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        sessMock.Setup(s => s.ListSessionsAsync(userId))
+            .ReturnsAsync(Array.Empty<SessionDto>());
+
+        // Act
+        await controller.ListSessions(userId);
+
+        // Assert
+        sessMock.Verify(s => s.ListSessionsAsync(userId), Times.Once);
+    }
+
+    #endregion
 }
