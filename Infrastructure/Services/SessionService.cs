@@ -105,8 +105,13 @@ public class SessionService : ISessionService
     public async Task<int> RevokeAllSessionsAsync(Guid userId)
     {
         var count = 0;
+        // Query only Valid authorizations to avoid processing already-revoked ones
         await foreach (var authorization in _authorizations.FindAsync(
-            subject: userId.ToString(), client: null, status: null, type: null, scopes: System.Collections.Immutable.ImmutableArray<string>.Empty))
+            subject: userId.ToString(), 
+            client: null, 
+            status: OpenIddictConstants.Statuses.Valid, 
+            type: null, 
+            scopes: System.Collections.Immutable.ImmutableArray<string>.Empty))
         {
             if (await _authorizations.TryRevokeAsync(authorization, CancellationToken.None))
             {

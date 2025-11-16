@@ -21,6 +21,7 @@ const formData = ref({
   displayName: '',
   applicationType: 'web', // Default to web
   clientType: 'public', // Default to public
+  consentType: 'explicit', // Default to explicit
   redirectUris: '',
   postLogoutRedirectUris: '',
   permissions: [],
@@ -80,6 +81,7 @@ const schema = computed(() => z.object({
   displayName: z.string().optional(),
   applicationType: z.enum(['web', 'native']),
   clientType: z.enum(['public', 'confidential']),
+  consentType: z.enum(['explicit', 'implicit']).optional(),
   redirectUris: z.string().min(1, t('clients.form.redirectUrisRequired')),
   postLogoutRedirectUris: z.string().optional(),
   permissions: z.array(z.string()).min(1, t('clients.form.permissionsRequired')),
@@ -128,6 +130,7 @@ watch(() => props.client, async (newClient) => {
       displayName: newClient.displayName || '',
       applicationType: newClient.applicationType || 'web',
       clientType: newClient.type === 'confidential' ? 'confidential' : 'public',
+      consentType: newClient.consentType || 'explicit',
       redirectUris: newClient.redirectUris?.join('\n') || '',
       postLogoutRedirectUris: newClient.postLogoutRedirectUris?.join('\n') || '',
       permissions: newClient.permissions || [],
@@ -177,6 +180,7 @@ const handleSubmit = async () => {
       displayName: formData.value.displayName || null,
       applicationType: formData.value.applicationType,
       type: formData.value.clientType,
+      consentType: formData.value.consentType,
       clientSecret: null, // Always send null, backend will generate if needed
       redirectUris: formData.value.redirectUris
         .split('\n')
@@ -456,6 +460,42 @@ const toggleAllowedScope = (scopeName) => {
                       </div>
                        <p v-if="formData.clientType === 'confidential'" class="mt-2 text-xs text-gray-500">
                         {{ $t('clients.form.clientSecretHelp') }}
+                      </p>
+                    </div>
+
+                    <!-- Consent Type -->
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-2">
+                        {{ $t('clients.form.consentType') }}
+                      </label>
+                      <div class="space-y-2">
+                        <div class="flex items-center">
+                          <input
+                            id="consent-explicit"
+                            v-model="formData.consentType"
+                            type="radio"
+                            value="explicit"
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                          />
+                          <label for="consent-explicit" class="ml-3 block text-sm text-gray-700">
+                            <span class="font-medium">{{ $t('clients.form.consentTypeExplicit') }}</span> - {{ $t('clients.form.consentTypeExplicitDesc') }}
+                          </label>
+                        </div>
+                        <div class="flex items-center">
+                          <input
+                            id="consent-implicit"
+                            v-model="formData.consentType"
+                            type="radio"
+                            value="implicit"
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                          />
+                          <label for="consent-implicit" class="ml-3 block text-sm text-gray-700">
+                            <span class="font-medium">{{ $t('clients.form.consentTypeImplicit') }}</span> - {{ $t('clients.form.consentTypeImplicitDesc') }}
+                          </label>
+                        </div>
+                      </div>
+                      <p class="mt-2 text-xs text-gray-500">
+                        {{ $t('clients.form.consentTypeHelp') }}
                       </p>
                     </div>
 
