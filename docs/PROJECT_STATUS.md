@@ -50,7 +50,7 @@
 
 > 本節記錄所有已完成的 Phases，採用摘要格式以節省 token
 
-最後更新：2025-11-12
+最後更新：2025-11-16
 
 ### Phase 1: PostgreSQL & Entity Framework Core ✅
 
@@ -1223,6 +1223,43 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 
 ---
 
+### Phase 6.4: 異常登入偵測 - 管理者解除封鎖 ✅
+
+**完成時間：** 2025-11-16
+
+**功能摘要：**
+- 實作管理者手動解除異常登入封鎖功能
+- 允許管理員批准可疑登入嘗試，信任特定 IP 位址
+- 遵循 TDD 開發流程：單元測試 → 實作 → E2E 測試
+
+**API Endpoints:**
+- `GET /api/admin/users/{id}/login-history` - 取得使用者登入歷史
+- `POST /api/admin/users/{id}/login-history/{loginHistoryId}/approve` - 批准異常登入
+
+**技術實現：**
+- 新增 `IsApprovedByAdmin` 欄位至 `LoginHistory` 實體
+- 擴展 `ILoginHistoryService.ApproveAbnormalLoginAsync` 方法
+- 更新 `DetectAbnormalLoginAsync` 邏輯，考慮已批准的 IP
+- 新增 EF Core 遷移 `AddIsApprovedByAdminToLoginHistory`
+- 單元測試覆蓋率：3 個新測試 (100% passing)
+- E2E 測試：Playwright API 端點驗證
+
+**安全考量：**
+- 僅限具有 `users.update` 權限的管理員可批准異常登入
+- 批准後該 IP 將被視為信任來源，不再觸發異常偵測
+- 保留完整稽核記錄
+
+**Commits:**
+1. `feat: Add IsApprovedByAdmin field to LoginHistory entity`
+2. `feat: Extend ILoginHistoryService with ApproveAbnormalLoginAsync`
+3. `feat: Implement abnormal login approval in LoginHistoryService`
+4. `test: Add unit tests for ApproveAbnormalLoginAsync (3 tests)`
+5. `feat: Add approve abnormal login API endpoint`
+6. `db: Add migration for IsApprovedByAdmin field`
+7. `test: Add E2E test for approve endpoint`
+
+---
+
 ## Backlog (功能增強和技術債務)
 
 ### 功能增強
@@ -1244,7 +1281,7 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 -   [x] Revoke session (logout from specific device)
 -   [x] Revoke all sessions (logout everywhere)
 -   [x] **Suspicious login detection and alerts** (configurable IP-based abnormal login detection)
--   [ ] Admin unblock blocked login attempts (manual override for false positives)
+-   [x] Admin unblock blocked login attempts (manual override for false positives)
 -   [x] **BUG: UI does not refresh session list after revoke operations**
 -   [x] **BUG: Some sessions fail to revoke (authorizations without associated clients)**
 
