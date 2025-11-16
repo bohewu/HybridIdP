@@ -12,24 +12,24 @@ builder.Services.AddAuthentication(options =>
 .AddOpenIdConnect(AuthenticationSchemes.OpenIdConnect, options =>
 {
     options.Authority = "https://localhost:7035";
-    // Align with seeded demo client (public client, no secret)
-    options.ClientId = "demo-client-1";
+    // Public client (no client secret)
+    options.ClientId = "testclient-public";
     options.ResponseType = "code";
-    options.UsePkce = true;
+    options.ResponseMode = "query"; // Use query instead of form_post for public clients
+    options.UsePkce = true; // REQUIRED for public clients
     options.SaveTokens = true;
     
     options.Scope.Clear();
     options.Scope.Add("openid");
     options.Scope.Add("profile");
     options.Scope.Add("email");
+    options.Scope.Add("roles");
     
     options.RequireHttpsMetadata = true; // Using trusted dev cert
     options.GetClaimsFromUserInfoEndpoint = false; // OpenIddict doesn't require userinfo endpoint
 
     // Keep original JWT claim types (don't remap to WS-* URIs)
     options.MapInboundClaims = false;
-
-    // Public client: no client secret injection needed
 
     // Handle remote authentication failures (e.g., user denies consent)
     options.Events.OnRemoteFailure = context =>

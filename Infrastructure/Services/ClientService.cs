@@ -231,6 +231,30 @@ public class ClientService : IClientService
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Scopes.Profile);
             descriptor.Permissions.Add($"{OpenIddictConstants.Permissions.Prefixes.Scope}{AuthConstants.Scopes.OpenId}");
         }
+        
+        // Auto-add response_type permissions based on grant types
+        if (descriptor.Permissions.Contains(Permissions.GrantTypes.AuthorizationCode) ||
+            descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit))
+        {
+            // Authorization code and implicit flows need response_type:code
+            if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.Code))
+            {
+                descriptor.Permissions.Add(Permissions.ResponseTypes.Code);
+            }
+        }
+        
+        if (descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit))
+        {
+            // Implicit flow also needs response_type:token and id_token
+            if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.Token))
+            {
+                descriptor.Permissions.Add(Permissions.ResponseTypes.Token);
+            }
+            if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.IdToken))
+            {
+                descriptor.Permissions.Add(Permissions.ResponseTypes.IdToken);
+            }
+        }
 
         var application = await _applicationManager.CreateAsync(descriptor);
         var id = await _applicationManager.GetIdAsync(application);
@@ -319,6 +343,30 @@ public class ClientService : IClientService
             foreach (var permission in request.Permissions)
             {
                 descriptor.Permissions.Add(permission);
+            }
+            
+            // Auto-add response_type permissions based on grant types
+            if (descriptor.Permissions.Contains(Permissions.GrantTypes.AuthorizationCode) ||
+                descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit))
+            {
+                // Authorization code and implicit flows need response_type:code
+                if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.Code))
+                {
+                    descriptor.Permissions.Add(Permissions.ResponseTypes.Code);
+                }
+            }
+            
+            if (descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit))
+            {
+                // Implicit flow also needs response_type:token and id_token
+                if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.Token))
+                {
+                    descriptor.Permissions.Add(Permissions.ResponseTypes.Token);
+                }
+                if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.IdToken))
+                {
+                    descriptor.Permissions.Add(Permissions.ResponseTypes.IdToken);
+                }
             }
         }
 

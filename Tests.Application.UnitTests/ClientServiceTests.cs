@@ -1043,6 +1043,129 @@ public class ClientServiceTests
         Assert.NotNull(result);
     }
 
+    [Fact]
+    public async Task CreateClientAsync_ShouldAutoAddResponseTypeCode_WhenAuthorizationCodeGrantProvided()
+    {
+        // Arrange
+        var req = new CreateClientRequest(
+            "test-client",
+            null,
+            "Test Client",
+            null,
+            ClientTypes.Public,
+            null,
+            null,
+            null,
+            new List<string> 
+            { 
+                Permissions.Endpoints.Authorization,
+                Permissions.Endpoints.Token,
+                Permissions.GrantTypes.AuthorizationCode
+            }
+        );
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((d, _) =>
+            {
+                // Should auto-add response_type:code when authorization_code grant is present
+                Assert.Contains(Permissions.ResponseTypes.Code, d.Permissions);
+            })
+            .ReturnsAsync(new { Id = Guid.NewGuid() });
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid().ToString());
+
+        // Act
+        var result = await _clientService.CreateClientAsync(req);
+
+        // Assert
+        Assert.NotNull(result);
+        _mockApplicationManager.Verify(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateClientAsync_ShouldAutoAddImplicitResponseTypes_WhenImplicitGrantProvided()
+    {
+        // Arrange
+        var req = new CreateClientRequest(
+            "implicit-client",
+            null,
+            "Implicit Client",
+            null,
+            ClientTypes.Public,
+            null,
+            null,
+            null,
+            new List<string> 
+            { 
+                Permissions.Endpoints.Authorization,
+                Permissions.GrantTypes.Implicit
+            }
+        );
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync("implicit-client", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((d, _) =>
+            {
+                // Should auto-add response_type:code, token, and id_token for implicit flow
+                Assert.Contains(Permissions.ResponseTypes.Code, d.Permissions);
+                Assert.Contains(Permissions.ResponseTypes.Token, d.Permissions);
+                Assert.Contains(Permissions.ResponseTypes.IdToken, d.Permissions);
+            })
+            .ReturnsAsync(new { Id = Guid.NewGuid() });
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid().ToString());
+
+        // Act
+        var result = await _clientService.CreateClientAsync(req);
+
+        // Assert
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task CreateClientAsync_ShouldNotDuplicateResponseTypes_WhenAlreadyProvided()
+    {
+        // Arrange
+        var req = new CreateClientRequest(
+            "test-client",
+            null,
+            "Test Client",
+            null,
+            ClientTypes.Public,
+            null,
+            null,
+            null,
+            new List<string> 
+            { 
+                Permissions.Endpoints.Authorization,
+                Permissions.GrantTypes.AuthorizationCode,
+                Permissions.ResponseTypes.Code  // Already provided
+            }
+        );
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((d, _) =>
+            {
+                // Should contain response_type:code only once
+                var codePermissions = d.Permissions.Where(p => p == Permissions.ResponseTypes.Code).ToList();
+                Assert.Single(codePermissions);
+            })
+            .ReturnsAsync(new { Id = Guid.NewGuid() });
+        _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid().ToString());
+
+        // Act
+        var result = await _clientService.CreateClientAsync(req);
+
+        // Assert
+        Assert.NotNull(result);
+    }
+
     #endregion
 
     #region UpdateClientAsync Tests
@@ -1223,6 +1346,93 @@ public class ClientServiceTests
 
         // Act
         await _clientService.UpdateClientAsync(clientId, req);
+
+        // Assert
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateClientAsync_ShouldAutoAddResponseTypeCode_WhenAuthorizationCodeGrantProvided()
+    {
+        // Arrange
+        var clientId = Guid.NewGuid();
+        var client = new { Id = clientId };
+        var request = new UpdateClientRequest(
+            null, 
+            null, 
+            null, 
+            null, 
+            null, 
+            null, 
+            null, 
+            new List<string> 
+            { 
+                Permissions.Endpoints.Authorization,
+                Permissions.Endpoints.Token,
+                Permissions.GrantTypes.AuthorizationCode
+            }
+        );
+        
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(client);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, _) =>
+            {
+                // Should auto-add response_type:code when authorization_code grant is present
+                Assert.Contains(Permissions.ResponseTypes.Code, d.Permissions);
+            })
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await _clientService.UpdateClientAsync(clientId, request);
+
+        // Assert
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateClientAsync_ShouldAutoAddImplicitResponseTypes_WhenImplicitGrantProvided()
+    {
+        // Arrange
+        var clientId = Guid.NewGuid();
+        var client = new { Id = clientId };
+        var request = new UpdateClientRequest(
+            null, 
+            null, 
+            null, 
+            null, 
+            null, 
+            null, 
+            null, 
+            new List<string> 
+            { 
+                Permissions.Endpoints.Authorization,
+                Permissions.GrantTypes.Implicit
+            }
+        );
+        
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(client);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, _) =>
+            {
+                // Should auto-add response_type:code, token, and id_token for implicit flow
+                Assert.Contains(Permissions.ResponseTypes.Code, d.Permissions);
+                Assert.Contains(Permissions.ResponseTypes.Token, d.Permissions);
+                Assert.Contains(Permissions.ResponseTypes.IdToken, d.Permissions);
+            })
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await _clientService.UpdateClientAsync(clientId, request);
 
         // Assert
         _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
