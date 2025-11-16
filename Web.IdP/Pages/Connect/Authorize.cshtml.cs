@@ -192,12 +192,19 @@ public class AuthorizeModel : PageModel
 
         identity.SetDestinations(GetDestinations);
 
-        // Create a permanent authorization to avoid requiring explicit consent for future requests
+        // Determine authorization type based on client's consent type
+        // If ConsentType is Explicit, create AdHoc (temporary) authorization that requires consent each time
+        // Otherwise, create Permanent authorization that persists across sessions
+        var consentType = await _applicationManager.GetConsentTypeAsync(application);
+        var authorizationType = consentType == ConsentTypes.Explicit 
+            ? AuthorizationTypes.AdHoc 
+            : AuthorizationTypes.Permanent;
+
         var authorization = await _authorizationManager.CreateAsync(
             identity: identity,
             subject: await _userManager.GetUserIdAsync(user),
             client: applicationId,
-            type: AuthorizationTypes.Permanent,
+            type: authorizationType,
             scopes: identity.GetScopes());
 
         identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
