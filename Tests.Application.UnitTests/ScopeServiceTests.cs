@@ -793,6 +793,270 @@ public class ScopeServiceTests : IDisposable
 
     #endregion
 
+    #region Scope Claims Tests (GetScopeClaimsAsync & UpdateScopeClaimsAsync)
+
+    [Fact]
+    public async Task GetScopeClaimsAsync_ShouldThrowKeyNotFoundException_WhenScopeNotFound()
+    {
+        // Arrange
+        _mockScopeManager.Setup(m => m.FindByIdAsync("nonexistent", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => _scopeService.GetScopeClaimsAsync("nonexistent"));
+    }
+
+    [Fact]
+    public async Task GetScopeClaimsAsync_ShouldReturnEmptyList_WhenScopeHasNoClaims()
+    {
+        // Arrange
+        var scopeObj = new { Id = "scope1", Name = "openid" };
+        _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeObj);
+        _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("openid");
+
+        // Act
+        var result = await _scopeService.GetScopeClaimsAsync("scope1");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("scope1", result.scopeId);
+        Assert.Equal("openid", result.scopeName);
+        Assert.Empty(result.claims);
+    }
+
+    [Fact]
+    public async Task GetScopeClaimsAsync_ShouldReturnClaims_WithCorrectDtoMapping()
+    {
+        // Arrange
+        var scopeObj = new { Id = "scope1", Name = "profile" };
+        _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeObj);
+        _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("profile");
+
+        var claim = new UserClaim
+        {
+            Id = 1,
+            Name = "name",
+            DisplayName = "Full Name",
+            ClaimType = "name",
+            UserPropertyPath = "name",
+            DataType = "String",
+            IsRequired = false
+        };
+        _dbContext.Set<UserClaim>().Add(claim);
+
+        var scopeClaim = new ScopeClaim
+        {
+            Id = 1,
+            ScopeId = "scope1",
+            ScopeName = "profile",
+            UserClaimId = 1,
+            AlwaysInclude = true,
+            CustomMappingLogic = null
+        };
+        _dbContext.ScopeClaims.Add(scopeClaim);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _scopeService.GetScopeClaimsAsync("scope1");
+
+        // Assert
+        Assert.Single(result.claims);
+        var dto = result.claims.First();
+        Assert.Equal(1, dto.Id);
+        Assert.Equal("scope1", dto.ScopeId);
+        Assert.Equal("profile", dto.ScopeName);
+        Assert.Equal(1, dto.ClaimId);
+        Assert.Equal("name", dto.ClaimName);
+        Assert.Equal("Full Name", dto.ClaimDisplayName);
+        Assert.Equal("name", dto.ClaimType);
+        Assert.True(dto.AlwaysInclude);
+        Assert.Null(dto.CustomMappingLogic);
+    }
+
+    #endregion
+
+    #region UpdateScopeClaimsAsync Tests
+
+    [Fact]
+    public async Task UpdateScopeClaimsAsync_ShouldThrowKeyNotFoundException_WhenScopeNotFound()
+    {
+        // Arrange
+        _mockScopeManager.Setup(m => m.FindByIdAsync("nonexistent", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+
+        var request = new UpdateScopeClaimsRequest(new List<int> { 1 });
+
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => _scopeService.UpdateScopeClaimsAsync("nonexistent", request));
+    }
+
+    [Fact]
+    public async Task UpdateScopeClaimsAsync_ShouldThrowArgumentException_WhenClaimNotFound()
+    {
+        // Arrange
+        var scopeObj = new { Id = "scope1", Name = "profile" };
+        _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeObj);
+        _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("profile");
+
+        var request = new UpdateScopeClaimsRequest(new List<int> { 999 });
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ArgumentException>(
+            () => _scopeService.UpdateScopeClaimsAsync("scope1", request));
+        Assert.Contains("Claim with ID 999 not found", ex.Message);
+    }
+
+    [Fact]
+    public async Task UpdateScopeClaimsAsync_ShouldRemoveOldClaims_AndAddNewOnes()
+    {
+        // Arrange
+        var scopeObj = new { Id = "scope1", Name = "profile" };
+        _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeObj);
+        _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("profile");
+
+        // Add existing claim
+        var oldClaim = new UserClaim
+        {
+            Id = 1,
+            Name = "old_claim",
+            DisplayName = "Old Claim",
+            ClaimType = "old_claim",
+            UserPropertyPath = "old_claim",
+            DataType = "String",
+            IsRequired = false
+        };
+        _dbContext.Set<UserClaim>().Add(oldClaim);
+
+        var oldScopeClaim = new ScopeClaim
+        {
+            ScopeId = "scope1",
+            ScopeName = "profile",
+            UserClaimId = 1,
+            AlwaysInclude = false
+        };
+        _dbContext.ScopeClaims.Add(oldScopeClaim);
+
+        // Add new claim
+        var newClaim = new UserClaim
+        {
+            Id = 2,
+            Name = "new_claim",
+            DisplayName = "New Claim",
+            ClaimType = "new_claim",
+            UserPropertyPath = "new_claim",
+            DataType = "String",
+            IsRequired = true
+        };
+        _dbContext.Set<UserClaim>().Add(newClaim);
+        await _dbContext.SaveChangesAsync();
+
+        var request = new UpdateScopeClaimsRequest(new List<int> { 2 });
+
+        // Act
+        var result = await _scopeService.UpdateScopeClaimsAsync("scope1", request);
+
+        // Assert
+        Assert.Single(result.claims);
+        Assert.Equal(2, result.claims.First().ClaimId);
+        Assert.Equal("new_claim", result.claims.First().ClaimName);
+        
+        // Verify old claim removed
+        var remainingClaims = _dbContext.ScopeClaims.Where(sc => sc.ScopeId == "scope1").ToList();
+        Assert.Single(remainingClaims);
+        Assert.Equal(2, remainingClaims.First().UserClaimId);
+    }
+
+    [Fact]
+    public async Task UpdateScopeClaimsAsync_ShouldSetAlwaysInclude_FromClaimIsRequired()
+    {
+        // Arrange
+        var scopeObj = new { Id = "scope1", Name = "openid" };
+        _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeObj);
+        _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("openid");
+
+        var requiredClaim = new UserClaim
+        {
+            Id = 1,
+            Name = "sub",
+            DisplayName = "Subject",
+            ClaimType = "sub",
+            UserPropertyPath = "sub",
+            DataType = "String",
+            IsRequired = true  // Required claim
+        };
+        _dbContext.Set<UserClaim>().Add(requiredClaim);
+        await _dbContext.SaveChangesAsync();
+
+        var request = new UpdateScopeClaimsRequest(new List<int> { 1 });
+
+        // Act
+        var result = await _scopeService.UpdateScopeClaimsAsync("scope1", request);
+
+        // Assert
+        Assert.Single(result.claims);
+        Assert.True(result.claims.First().AlwaysInclude); // Should be true because IsRequired is true
+    }
+
+    [Fact]
+    public async Task UpdateScopeClaimsAsync_ShouldAllowEmptyClaimsList()
+    {
+        // Arrange
+        var scopeObj = new { Id = "scope1", Name = "profile" };
+        _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeObj);
+        _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("profile");
+
+        // Add existing claim
+        var claim = new UserClaim
+        {
+            Id = 1,
+            Name = "name",
+            DisplayName = "Name",
+            ClaimType = "name",
+            UserPropertyPath = "name",
+            DataType = "String",
+            IsRequired = false
+        };
+        _dbContext.Set<UserClaim>().Add(claim);
+
+        var scopeClaim = new ScopeClaim
+        {
+            ScopeId = "scope1",
+            ScopeName = "profile",
+            UserClaimId = 1,
+            AlwaysInclude = false
+        };
+        _dbContext.ScopeClaims.Add(scopeClaim);
+        await _dbContext.SaveChangesAsync();
+
+        var request = new UpdateScopeClaimsRequest(null); // Empty list
+
+        // Act
+        var result = await _scopeService.UpdateScopeClaimsAsync("scope1", request);
+
+        // Assert
+        Assert.Empty(result.claims);
+        
+        // Verify all claims removed
+        var remainingClaims = _dbContext.ScopeClaims.Where(sc => sc.ScopeId == "scope1").ToList();
+        Assert.Empty(remainingClaims);
+    }
+
+    #endregion
+
     // Helper method to create async enumerable for mocking
     private IAsyncEnumerable<object> CreateAsyncEnumerable(IEnumerable<object> items)
     {
