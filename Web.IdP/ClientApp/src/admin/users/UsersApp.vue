@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import UserList from './components/UserList.vue'
 import UserForm from './components/UserForm.vue'
 import RoleAssignment from './components/RoleAssignment.vue'
+import UserSessions from './components/UserSessions.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 
@@ -15,6 +16,7 @@ const error = ref(null)
 const selectedUser = ref(null)
 const showForm = ref(false)
 const showRoleDialog = ref(false)
+const showSessionsDialog = ref(false)
 const showAccessDenied = ref(false)
 const deniedMessage = ref('')
 const deniedPermission = ref('')
@@ -134,6 +136,17 @@ const handleManageRoles = (user) => {
   showRoleDialog.value = true
 }
 
+const handleManageSessions = (user) => {
+  if (!canRead.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = t('admin.users.noPermission')
+    deniedPermission.value = Permissions.Users.Read
+    return
+  }
+  selectedUser.value = user
+  showSessionsDialog.value = true
+}
+
 const handleDeactivate = async (user) => {
   if (!canDelete.value) {
     showAccessDenied.value = true
@@ -242,6 +255,11 @@ const handleRoleDialogClose = () => {
   selectedUser.value = null
 }
 
+const handleSessionsClose = () => {
+  showSessionsDialog.value = false
+  selectedUser.value = null
+}
+
 const handleRolesSaved = async () => {
   showRoleDialog.value = false
   selectedUser.value = null
@@ -335,6 +353,7 @@ onMounted(() => {
         v-model:is-active-filter="isActiveFilter"
         @edit="handleEdit"
         @manage-roles="handleManageRoles"
+        @manage-sessions="handleManageSessions"
         @deactivate="handleDeactivate"
         @delete="handleDelete"
         @reactivate="handleReactivate"
@@ -374,6 +393,13 @@ onMounted(() => {
         :user="selectedUser"
         @close="handleRoleDialogClose"
         @save="handleRolesSaved"
+      />
+
+      <UserSessions
+        v-if="showSessionsDialog"
+        :user="selectedUser"
+        :can-update="canUpdate"
+        @close="handleSessionsClose"
       />
     </div>
   </div>
