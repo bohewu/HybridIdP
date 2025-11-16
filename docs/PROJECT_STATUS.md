@@ -8,7 +8,7 @@
 - ✅ **Phase 1-5：核心功能已完成** (OIDC Flow, Admin UI, User/Role/Client/Scope Management, Security Policies, MFA, API Resources)
 - ✅ **Phase 6.1：單元測試覆蓋率已達標** (158 tests passing, 80%+ coverage achieved)
 - ✅ **Phase 6.2：ClaimsController 重構已完成** (23 unit tests, thin controller pattern)
-- 🚧 **Phase 6.3：ScopeClaimsController 整合進行中** (整合至 ScopeService)
+- ✅ **Phase 6.3：ScopeClaimsController 整合已完成** (8 unit tests, integrated into ScopeService)
 - 📋 **Backlog：功能增強與技術債務待處理** (Session Management, Audit Logging, Performance Optimization 等)
 
 **架構狀態分析：**
@@ -24,24 +24,24 @@
   - JitProvisioningService (2 單元測試 ✅)
   - ClientAllowedScopesService (12 單元測試 ✅)
   
-- ⚠️ 待重構（Fat Controller，直接存取 DbContext）：
-  - ClaimsController (252 行) - ~~**Phase 6.2 優先級最高**~~ ✅ **已完成**
-  - ScopeClaimsController (135 行) - **Phase 6.3 整合至 ScopeService（進行中）**
+- ✅ 所有 Controllers 已重構完成（Thin Controller + Service Pattern）
+  - ClaimsController (252→80 行) - ~~**Phase 6.2 優先級最高**~~ ✅ **Phase 6.2 已完成**
+  - ScopeClaimsController (154 行) - ~~**Phase 6.3 整合至 ScopeService**~~ ✅ **Phase 6.3 已完成，已刪除**
 
 **測試覆蓋率現況：**
-- 總單元測試：**181 tests (100% passing)** ✅
-- 覆蓋率：**~86%** (已達標！)
+- 總單元測試：**189 tests (100% passing)** ✅
+- 覆蓋率：**~87%** (已達標！)
 - 測試分布：
   - ClientService: 41 tests (sorting, paging, search, CRUD validation)
-  - ScopeService: 24 tests (list/create/update/delete with resources & consent)
-  - ClaimsService: 23 tests (list/filter/sort/pagination, CRUD with standard claim protection) ✅ **New!**
+  - ScopeService: 32 tests (list/create/update/delete with resources & consent + scope claims GET/PUT) ✅ **Updated!**
+  - ClaimsService: 23 tests (list/filter/sort/pagination, CRUD with standard claim protection)
   - ApiResourceService: 23 tests (full CRUD with scope associations)
   - UserManagementService: 14 tests (list/filter/search, roles, audit)
   - RoleManagementService: 14 tests (CRUD with permissions validation)
   - SettingsService: 14 tests (get/set, type conversion, caching)
   - ClientAllowedScopesService: 12 tests (scope validation)
-  - LoginService: 6 tests (auth with lockout)
   - DynamicPasswordValidator: 8 tests
+  - LoginService: 6 tests (auth with lockout)
   - JitProvisioningService: 2 tests
 
 ---
@@ -1193,21 +1193,33 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 
 ---
 
-### Phase 6.3: 重構 ScopeClaimsController → 整合至 ScopeService (規劃中)
+### Phase 6.3: 重構 ScopeClaimsController → 整合至 ScopeService ✅
 
-**優先級：** ⭐⭐ 中
+**完成時間：** 2025-01-22
 
-**目標：**
-- 在 `IScopeService` 中添加 `GetScopeClaimsAsync`, `UpdateScopeClaimsAsync` 方法
-- 將 ScopeClaimsController (135 行) 的邏輯整合至 ScopeService
-- 重構 ScopeClaimsController 成為 thin controller（或考慮合併至 ScopesController）
-- 補充 unit tests
+**成果：**
+- ✅ 在 `IScopeService` 中添加 `GetScopeClaimsAsync`, `UpdateScopeClaimsAsync` 方法
+- ✅ 撰寫 8 個單元測試 (100% passing)：
+  - GetScopeClaimsAsync: 3 tests (scope not found/empty list/correct DTO mapping)
+  - UpdateScopeClaimsAsync: 5 tests (scope not found/claim not found/remove old and add new/AlwaysInclude from IsRequired/allow empty list)
+- ✅ 實作 ScopeService 的 scope claims 方法 (97 行新增)
+- ✅ 整合至 ScopesController，添加 GET/PUT /api/admin/scopes/{scopeId}/claims endpoints
+- ✅ 刪除 ScopeClaimsController.cs (154 行移除)
 
-**預估時間：** 1 天
+**技術實現：**
+- 使用 EF Core projection 直接映射到 ScopeClaimDto
+- UpdateScopeClaimsAsync 使用 RemoveRange + Add 模式
+- AlwaysInclude 自動從 UserClaim.IsRequired 設定
+- 保留路由結構 `/api/admin/scopes/{scopeId}/claims`
+- 異常映射：KeyNotFoundException→404, ArgumentException→400
+- 保留 HasPermission 授權於 Controller layer
 
-**技術理由：**
-- Scope claims 是 scope 管理的一部分，應統一管理
-- 減少 controller 數量，簡化架構
+**Commits:**
+1. `test: Add ScopeService scope claims tests (8 new tests)`
+2. `feat: Extend IScopeService with scope claims methods`
+3. `feat: Implement scope claims methods in ScopeService`
+4. `feat: Add scope claims endpoints to ScopesController`
+5. `refactor: Remove ScopeClaimsController after integration`
 
 ---
 
