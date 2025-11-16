@@ -1,0 +1,58 @@
+@{
+    ViewData["Title"] = "Test API Call";
+}
+
+<div class="container mt-5">
+    <h1 class="mb-4">Test API Call to IdP</h1>
+    
+    @if (ViewData["Success"] != null)
+    {
+        if ((bool)ViewData["Success"]!)
+        {
+            <div class="alert alert-success" role="alert">
+                <h4 class="alert-heading">✅ API Call Successful!</h4>
+                <p>Your session is valid. The access token successfully authenticated with the IdP.</p>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>UserInfo Response</h5>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded"><code>@ViewData["UserInfo"]</code></pre>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5>Access Token</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small" style="word-break: break-all;">@ViewData["AccessToken"]</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading">❌ API Call Failed</h4>
+                <p>@ViewData["ErrorMessage"]</p>
+                <hr>
+                <p class="mb-0">This likely means your session has been revoked or the access token is invalid.</p>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-info" role="alert">
+            <h4 class="alert-heading">📡 Test Your Session</h4>
+            <p>Click the button below to call the IdP's UserInfo endpoint with your current access token.</p>
+            <p class="mb-0">If your session has been revoked in the admin panel, this call will fail with 401 Unauthorized.</p>
+        </div>
+    }
+    
+    <div class="mt-4">
+        <a href="/Account/TestApiCall" class="btn btn-primary">Test API Call</a>
+        <a href="/Account/Profile" class="btn btn-secondary">Back to Profile</a>
+    </div>
+</div>
