@@ -1240,7 +1240,7 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 -   [ ] User export (CSV/Excel)
 
 #### Session Management
--   [ ] Display active sessions (device, location, last active)
+-   [x] Display active sessions (device, location, last active)
 -   [ ] Revoke session (logout from specific device)
 -   [ ] Revoke all sessions (logout everywhere)
 -   [ ] Suspicious login detection and alerts
