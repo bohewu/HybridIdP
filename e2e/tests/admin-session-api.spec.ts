@@ -40,6 +40,15 @@ test.describe('Admin Session Management API', () => {
     expect(listResp.status()).toBe(200);
     const sessions = await listResp.json();
     expect(Array.isArray(sessions)).toBe(true);
+    // Each session is expected to include an authorization identifier
+    if (sessions.length > 0) {
+      expect(sessions[0].authorizationId).toBeTruthy();
+      // Client info is best-effort: either clientDisplayName or null is acceptable
+      expect(typeof sessions[0]).toBe('object');
+      expect(Object.prototype.hasOwnProperty.call(sessions[0], 'clientDisplayName')).toBe(true);
+      expect(Object.prototype.hasOwnProperty.call(sessions[0], 'clientId')).toBe(true);
+      expect(Object.prototype.hasOwnProperty.call(sessions[0], 'status')).toBe(true);
+    }
 
     // 3. If there is at least one session, revoke the first
     if (sessions.length > 0) {

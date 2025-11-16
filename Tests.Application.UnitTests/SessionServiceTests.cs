@@ -98,9 +98,17 @@ public class SessionServiceTests
             .Returns(new AsyncEnumerable<object>(new[] { a1, a2 }));
         _authz.Setup(m => m.TryRevokeAsync(a1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _authz.Setup(m => m.TryRevokeAsync(a2, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _authz.Setup(m => m.GetIdAsync(a1, It.IsAny<CancellationToken>())).ReturnsAsync("auth-1");
+        _authz.Setup(m => m.GetIdAsync(a2, It.IsAny<CancellationToken>())).ReturnsAsync("auth-2");
+        _tokens.Setup(m => m.RevokeByAuthorizationIdAsync("auth-1", It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<long>(1));
+        _tokens.Setup(m => m.RevokeByAuthorizationIdAsync("auth-2", It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<long>(1));
 
         var count = await _service.RevokeAllSessionsAsync(userId);
         Assert.Equal(2, count);
+        _tokens.Verify(m => m.RevokeByAuthorizationIdAsync("auth-1", It.IsAny<CancellationToken>()), Times.Once);
+        _tokens.Verify(m => m.RevokeByAuthorizationIdAsync("auth-2", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #region ListSessionsAsync - Additional Tests
@@ -195,6 +203,8 @@ public class SessionServiceTests
             .ReturnsAsync(userId.ToString());
         _authz.Setup(m => m.TryRevokeAsync(auth, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+        _tokens.Setup(m => m.RevokeByAuthorizationIdAsync("auth-123", It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<long>(1));
 
         // Act
         var result = await _service.RevokeSessionAsync(userId, "auth-123");
@@ -202,6 +212,7 @@ public class SessionServiceTests
         // Assert
         Assert.True(result);
         _authz.Verify(m => m.TryRevokeAsync(auth, It.IsAny<CancellationToken>()), Times.Once);
+        _tokens.Verify(m => m.RevokeByAuthorizationIdAsync("auth-123", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -336,6 +347,46 @@ public class SessionServiceTests
         Assert.Equal(10, count);
         _authz.Verify(m => m.TryRevokeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Exactly(10));
     }
+
+    [Fact]
+    public async Task ListSessionsAsync_PopulatesClientInfoAndDates()
+    {
+        var userId = Guid.NewGuid();
+        var auth = new object();
+        var app = new object();
+
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(new[] { auth }));
+
+        _authz.Setup(m => m.GetIdAsync(auth, It.IsAny<CancellationToken>())).ReturnsAsync("auth-42");
+        _authz.Setup(m => m.GetApplicationIdAsync(auth, It.IsAny<CancellationToken>())).ReturnsAsync("app-42");
+        // Not all OpenIddict versions expose creation/expiration via manager; skip in unit tests
+        _authz.Setup(m => m.GetStatusAsync(auth, It.IsAny<CancellationToken>())).ReturnsAsync(OpenIddict.Abstractions.OpenIddictConstants.Statuses.Valid);
+
+        _apps.Setup(m => m.FindByIdAsync("app-42", It.IsAny<CancellationToken>())).ReturnsAsync(app);
+        _apps.Setup(m => m.GetClientIdAsync(app, It.IsAny<CancellationToken>())).ReturnsAsync("test-client");
+        _apps.Setup(m => m.GetDisplayNameAsync(app, It.IsAny<CancellationToken>())).ReturnsAsync("Test Client");
+
+        var list = (await _service.ListSessionsAsync(userId)).ToList();
+
+        Assert.Single(list);
+        var s = list[0];
+        Assert.Equal("auth-42", s.AuthorizationId);
+        Assert.Equal("test-client", s.ClientId);
+        Assert.Equal("Test Client", s.ClientDisplayName);
+        Assert.Null(s.CreatedAt);
+        Assert.Null(s.ExpiresAt);
+        Assert.Equal("valid", s.Status);
+    }
+
+    // Token revocation for linked tokens is out-of-scope for current OpenIddict surface in this repo
+    // and will be implemented in a later step if the token manager exposes a compatible API.
 
     #endregion
 

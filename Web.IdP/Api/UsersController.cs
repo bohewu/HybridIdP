@@ -4,8 +4,11 @@ using Core.Domain;
 using Core.Domain.Constants;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
+using System;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Web.IdP.Api;
 
@@ -315,6 +318,29 @@ public class UsersController : ControllerBase
             if (!success)
             {
                 return NotFound(new { error = "Authorization not found or not owned by user" });
+            }
+
+            // If the current user revoked their own current authorization, sign them out so the cookie is invalidated
+            try
+            {
+                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.Equals(currentUserId, id.ToString(), StringComparison.OrdinalIgnoreCase))
+                {
+                    // Look for a claim that contains the authorization id - OpenIddict sets an authorization claim when signing in
+                    var currentAuth = User.Claims.FirstOrDefault(c =>
+                        c.Type.IndexOf("authorization", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        c.Type.IndexOf("authorization_id", StringComparison.OrdinalIgnoreCase) >= 0)?.Value;
+
+                    if (!string.IsNullOrEmpty(currentAuth) && currentAuth == authorizationId)
+                    {
+                        // Sign-out current HTTP context - best-effort
+                        await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                    }
+                }
+            }
+            catch
+            {
+                // ignore sign-out errors - revocation already succeeded
             }
             return NoContent();
         }

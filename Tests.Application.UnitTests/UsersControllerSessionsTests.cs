@@ -6,12 +6,14 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Web.IdP.Api;
 using Xunit;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Tests.Application.UnitTests;
 
@@ -68,6 +70,46 @@ public class UsersControllerSessionsTests
         var result = await controller.RevokeSession(userId, "auth-1");
 
         Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task RevokeSession_SignsOutCurrentUser_WhenRevokedIsCurrentSession()
+    {
+        // Arrange
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        var authId = "auth-current";
+        sessMock.Setup(s => s.RevokeSessionAsync(userId, authId)).ReturnsAsync(true);
+
+        // Create HttpContext with user claims including the matching authorization id
+        var httpContext = new DefaultHttpContext();
+        var claims = new List<System.Security.Claims.Claim>
+        {
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, userId.ToString()),
+            // Simulate OpenIddict authorization id claim - we accept any claim that contains 'auth'
+            new System.Security.Claims.Claim("authorization", authId)
+        };
+        var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+        httpContext.User = new System.Security.Claims.ClaimsPrincipal(identity);
+
+        // Mock the authentication service so SignOutAsync can be verified
+        var authServiceMock = new Mock<Microsoft.AspNetCore.Authentication.IAuthenticationService>();
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddSingleton(authServiceMock.Object);
+        httpContext.RequestServices = services.BuildServiceProvider();
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = httpContext
+        };
+
+        // Act
+        var result = await controller.RevokeSession(userId, authId);
+
+        // Assert
+        Assert.IsType<NoContentResult>(result);
+        // Verify SignOutAsync was called for the application scheme
+        authServiceMock.Verify(a => a.SignOutAsync(httpContext, Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme, It.IsAny<Microsoft.AspNetCore.Authentication.AuthenticationProperties>()), Times.Once);
     }
 
     [Fact]

@@ -38,15 +38,38 @@ public class SessionService : ISessionService
         {
             var id = await _authorizations.GetIdAsync(authorization, CancellationToken.None) ?? string.Empty;
 
-            // Best-effort: not all providers expose creation/expiry/status via abstractions consistently.
-            // v1 surfaces only stable fields; can be enriched later if needed.
+            // Best-effort: enrich session output with application information and status where available
+            string? clientId = null;
+            string? clientDisplayName = null;
+            string? status = null;
+
+            try
+            {
+                var appId = await _authorizations.GetApplicationIdAsync(authorization, CancellationToken.None);
+                if (!string.IsNullOrEmpty(appId))
+                {
+                    var app = await _applications.FindByIdAsync(appId, CancellationToken.None);
+                    if (app is object)
+                    {
+                        clientId = await _applications.GetClientIdAsync(app, CancellationToken.None);
+                        clientDisplayName = await _applications.GetDisplayNameAsync(app, CancellationToken.None);
+                    }
+                }
+
+                status = await _authorizations.GetStatusAsync(authorization, CancellationToken.None);
+            }
+            catch
+            {
+                // Swallow enrichment failures - listing sessions should be best-effort
+            }
+
             items.Add(new SessionDto(
                 AuthorizationId: id,
-                ClientId: null,
-                ClientDisplayName: null,
+                ClientId: clientId,
+                ClientDisplayName: clientDisplayName,
                 CreatedAt: null,
                 ExpiresAt: null,
-                Status: null));
+                Status: status));
         }
 
         return items;
@@ -63,6 +86,19 @@ public class SessionService : ISessionService
             return false;
 
         var ok = await _authorizations.TryRevokeAsync(authorization, CancellationToken.None);
+        if (ok)
+        {
+            try
+            {
+                // Best-effort: revoke tokens associated with the authorization (OpenIddict supports this)
+                // If token manager exposes RevokeByAuthorizationIdAsync, use it to remove tokens.
+                await _tokens.RevokeByAuthorizationIdAsync(authorizationId, CancellationToken.None);
+            }
+            catch
+            {
+                // ignore token-revocation failures; authorization revocation is primary
+            }
+        }
         return ok;
     }
 
@@ -73,7 +109,18 @@ public class SessionService : ISessionService
             subject: userId.ToString(), client: null, status: null, type: null, scopes: System.Collections.Immutable.ImmutableArray<string>.Empty))
         {
             if (await _authorizations.TryRevokeAsync(authorization, CancellationToken.None))
+            {
+                try
+                {
+                    var id = await _authorizations.GetIdAsync(authorization, CancellationToken.None) ?? string.Empty;
+                    await _tokens.RevokeByAuthorizationIdAsync(id, CancellationToken.None);
+                }
+                catch
+                {
+                    // best-effort only
+                }
                 count++;
+            }
         }
         return count;
     }
