@@ -347,6 +347,13 @@
       "loadFailed": "Failed to load user sessions.",
       "revokeFailed": "Failed to revoke session.",
       "revokeAllFailed": "Failed to revoke all sessions."
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageInfo": "Page {page} of {pages}",
+      "total": "Total: {total}",
+      "pageSize": "Page size"
     }
   },
   "buttons": {

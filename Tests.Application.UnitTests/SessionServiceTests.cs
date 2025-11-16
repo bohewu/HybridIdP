@@ -349,6 +349,48 @@ public class SessionServiceTests
     }
 
     [Fact]
+    public async Task RevokeAllSessionsAsync_FallbackSearch_WhenNoValidSessionsReturned()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var b1 = new object();
+        var b2 = new object();
+
+        // First call (status=valid) returns empty
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.Is<string?>(st => st == OpenIddictConstants.Statuses.Valid),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(Array.Empty<object>()));
+
+        // Second broader search (status=null) returns two items
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.Is<string?>(st => st == null),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(new[] { b1, b2 }));
+
+        _authz.Setup(m => m.TryRevokeAsync(b1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _authz.Setup(m => m.TryRevokeAsync(b2, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _authz.Setup(m => m.GetIdAsync(b1, It.IsAny<CancellationToken>())).ReturnsAsync("b1");
+        _authz.Setup(m => m.GetIdAsync(b2, It.IsAny<CancellationToken>())).ReturnsAsync("b2");
+        _tokens.Setup(m => m.RevokeByAuthorizationIdAsync("b1", It.IsAny<CancellationToken>())).Returns(new ValueTask<long>(1));
+        _tokens.Setup(m => m.RevokeByAuthorizationIdAsync("b2", It.IsAny<CancellationToken>())).Returns(new ValueTask<long>(1));
+
+        // Act
+        var count = await _service.RevokeAllSessionsAsync(userId);
+
+        // Assert
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
     public async Task ListSessionsAsync_PopulatesClientInfoAndDates()
     {
         var userId = Guid.NewGuid();

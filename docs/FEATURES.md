@@ -242,6 +242,9 @@ Turnstile 驗證服務實作於：
     -   追蹤用戶登入到哪些客戶端
     -   Session 超時和閒置超時配置
     -   管理員 UI 以查看和撤銷用戶 Session
+    - 已實作：管理員使用者 Session 檢視支援分頁 (page/pageSize/total/pages) 與基礎 Session 清單
+    - 已實作：每筆 Session 現在包含 `CreatedAt` (授權建立時間) 與 `ExpiresAt` (來自最新有效 Token 過期時間，若可推導)
+    - 已實作：撤銷單一 Session 與「全部撤銷」邏輯（包含授權與其關聯 Token）
     
 -   **單點登出:**
     -   支援 OIDC RP-Initiated Logout (前台通道和後台通道)
@@ -255,6 +258,9 @@ Turnstile 驗證服務實作於：
     -   查看每個用戶的活動 Session
     -   強制登出特定 Session 或用戶的所有 Session
     -   Session 活動日誌（登入時間、IP 位址、用戶代理、客戶端應用程式）
+    - 已實作：分頁列表 (`/api/users/{id}/sessions`) 回傳結構含 `items`, `page`, `pageSize`, `pages`, `total`
+    - 已實作：前端 Vue 組件支援切換每頁筆數與顯示總數
+    - 已實作：最佳努力時間戳：`CreatedAt` 為授權建立 UTC 時間；`ExpiresAt` 取關聯有效 Token 中最大過期 UTC 時間
     
 -   **用戶功能:**
     -   「在這些設備上登入」視圖

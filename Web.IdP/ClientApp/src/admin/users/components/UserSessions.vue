@@ -12,6 +12,11 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const sessions = ref([])
+const page = ref(1)
+const pageSize = ref(10)
+const pageSizeOptions = [5, 10, 20, 50]
+const total = ref(0)
+const pages = ref(1)
 const loading = ref(true)
 const error = ref('')
 const revoking = ref(false)
@@ -20,11 +25,23 @@ const fetchSessions = async () => {
   loading.value = true
   error.value = ''
   try {
-    const response = await fetch(`/api/admin/users/${props.user.id}/sessions`)
+    const response = await fetch(`/api/admin/users/${props.user.id}/sessions?page=${page.value}&pageSize=${pageSize.value}`)
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
     }
-    sessions.value = await response.json()
+    const data = await response.json()
+    // Support both legacy array and new paginated shape
+    if (Array.isArray(data)) {
+      sessions.value = data
+      total.value = data.length
+      pages.value = 1
+    } else {
+      sessions.value = data.items || []
+      page.value = data.page || 1
+      pageSize.value = data.pageSize || sessions.value.length || 10
+      total.value = data.total || sessions.value.length
+      pages.value = data.pages || 1
+    }
   } catch (e) {
     error.value = t('sessions.errors.loadFailed')
     console.error('Error loading sessions:', e)
@@ -68,6 +85,20 @@ const revokeAll = async () => {
     console.error('Error revoking all sessions:', e)
   } finally {
     revoking.value = false
+  }
+}
+
+const nextPage = () => {
+  if (page.value < pages.value) {
+    page.value++
+    fetchSessions()
+  }
+}
+
+const prevPage = () => {
+  if (page.value > 1) {
+    page.value--
+    fetchSessions()
   }
 }
 
@@ -152,6 +183,28 @@ onMounted(() => fetchSessions())
                   </tr>
                 </tbody>
               </table>
+              <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-t text-sm" v-if="pages > 0">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 text-gray-600">
+                  <span>{{ t('sessions.pagination.pageInfo', { page, pages }) }}</span>
+                  <span class="text-gray-500">{{ t('sessions.pagination.total', { total }) }}</span>
+                  <label class="flex items-center gap-1">
+                    <span class="text-gray-500">{{ t('sessions.pagination.pageSize') }}</span>
+                    <select v-model.number="pageSize" @change="page=1; fetchSessions()" class="border rounded px-2 py-1 text-xs">
+                      <option v-for="opt in pageSizeOptions" :key="opt" :value="opt">{{ opt }}</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button @click="prevPage" :disabled="page === 1 || revoking" class="px-3 py-1.5 rounded-md border text-xs font-medium"
+                    :class="page === 1 ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'">
+                    {{ t('sessions.pagination.previous') }}
+                  </button>
+                  <button @click="nextPage" :disabled="page === pages || revoking" class="px-3 py-1.5 rounded-md border text-xs font-medium"
+                    :class="page === pages ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'">
+                    {{ t('sessions.pagination.next') }}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           <div class="bg-gray-50 px-4 py-2.5 sm:flex sm:flex-row-reverse sm:px-6">

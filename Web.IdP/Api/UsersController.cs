@@ -285,17 +285,25 @@ public class UsersController : ControllerBase
     public record AssignRolesRequest(List<string> Roles);
 
     /// <summary>
-    /// List active sessions (authorizations) for a user.
+    /// List sessions (authorizations) for a user with optional paging.
     /// </summary>
     /// <param name="id">User ID</param>
+    /// <param name="page">1-based page index (default: 1)</param>
+    /// <param name="pageSize">Items per page (default: 10)</param>
     [HttpGet("{id}/sessions")]
     [HasPermission(Permissions.Users.Read)]
-    public async Task<IActionResult> ListSessions(Guid id)
+    public async Task<IActionResult> ListSessions(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         try
         {
-            var sessions = await _sessionService.ListSessionsAsync(id);
-            return Ok(sessions);
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+            var all = (await _sessionService.ListSessionsAsync(id)).ToList();
+            var total = all.Count;
+            var pages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)pageSize);
+            if (page > pages) page = pages;
+            var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            return Ok(new { items, page, pageSize, total, pages });
         }
         catch (Exception ex)
         {
