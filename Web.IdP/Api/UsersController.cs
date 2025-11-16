@@ -19,13 +19,16 @@ public class UsersController : ControllerBase
 {
     private readonly IUserManagementService _userManagementService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ISessionService _sessionService;
 
     public UsersController(
         IUserManagementService userManagementService,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        ISessionService sessionService)
     {
         _userManagementService = userManagementService;
         _userManager = userManager;
+        _sessionService = sessionService;
     }
 
     /// <summary>
@@ -277,4 +280,66 @@ public class UsersController : ControllerBase
     /// Request model for assigning roles to a user.
     /// </summary>
     public record AssignRolesRequest(List<string> Roles);
+
+    /// <summary>
+    /// List active sessions (authorizations) for a user.
+    /// </summary>
+    /// <param name="id">User ID</param>
+    [HttpGet("{id}/sessions")]
+    [HasPermission(Permissions.Users.Read)]
+    public async Task<IActionResult> ListSessions(Guid id)
+    {
+        try
+        {
+            var sessions = await _sessionService.ListSessionsAsync(id);
+            return Ok(sessions);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while retrieving sessions", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Revoke a specific session for a user.
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="authorizationId">Authorization ID</param>
+    [HttpPost("{id}/sessions/{authorizationId}/revoke")]
+    [HasPermission(Permissions.Users.Update)]
+    public async Task<IActionResult> RevokeSession(Guid id, string authorizationId)
+    {
+        try
+        {
+            var success = await _sessionService.RevokeSessionAsync(id, authorizationId);
+            if (!success)
+            {
+                return NotFound(new { error = "Authorization not found or not owned by user" });
+            }
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while revoking the session", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Revoke all sessions for a user.
+    /// </summary>
+    /// <param name="id">User ID</param>
+    [HttpPost("{id}/sessions/revoke-all")]
+    [HasPermission(Permissions.Users.Update)]
+    public async Task<IActionResult> RevokeAllSessions(Guid id)
+    {
+        try
+        {
+            var count = await _sessionService.RevokeAllSessionsAsync(id);
+            return Ok(new { revoked = count });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while revoking all sessions", details = ex.Message });
+        }
+    }
 }
