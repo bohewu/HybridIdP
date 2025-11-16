@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="AbnormalLoginBlocked" xml:space="preserve">
+    <value>Abnormal login detected and blocked. Please contact administrator if this is unexpected.</value>
+  </data>
 </root>

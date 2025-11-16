@@ -91,6 +91,23 @@
           </dl>
         </div>
       </div>
+
+      <!-- Abnormal Login Detection -->
+      <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+        <div class="px-4 py-5 sm:px-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('security.abnormalLoginDetection') }}</h3>
+        </div>
+        <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <dl class="sm:divide-y sm:divide-gray-200">
+            <FormRow :label="$t('security.abnormalLoginHistoryCount')" for-id="abnormalLoginHistoryCount" :help-text="$t('security.abnormalLoginHistoryCountHelp')">
+              <input type="number" id="abnormalLoginHistoryCount" v-model.number="policy.abnormalLoginHistoryCount" min="1" max="100" class="form-input-sm">
+            </FormRow>
+            <FormRow :label="$t('security.blockAbnormalLogin')" :help-text="$t('security.blockAbnormalLoginHelp')">
+              <ToggleSwitch v-model="policy.blockAbnormalLogin" />
+            </FormRow>
+          </dl>
+        </div>
+      </div>
     </div>
   </div>
 </template>

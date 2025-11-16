@@ -36,7 +36,9 @@ public class SecurityPolicyController : ControllerBase
             PasswordExpirationDays = policy.PasswordExpirationDays,
             MinPasswordAgeDays = policy.MinPasswordAgeDays,
             MaxFailedAccessAttempts = policy.MaxFailedAccessAttempts,
-            LockoutDurationMinutes = policy.LockoutDurationMinutes
+            LockoutDurationMinutes = policy.LockoutDurationMinutes,
+            AbnormalLoginHistoryCount = policy.AbnormalLoginHistoryCount,
+            BlockAbnormalLogin = policy.BlockAbnormalLogin
         };
         
         return Ok(dto);

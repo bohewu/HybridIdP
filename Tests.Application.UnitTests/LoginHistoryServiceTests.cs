@@ -3,6 +3,7 @@ using Core.Domain.Entities;
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +16,7 @@ namespace Tests.Application.UnitTests;
 public class LoginHistoryServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly Mock<ISecurityPolicyService> _securityPolicyServiceMock;
     private readonly LoginHistoryService _loginHistoryService;
 
     public LoginHistoryServiceTests()
@@ -26,7 +28,15 @@ public class LoginHistoryServiceTests : IDisposable
         
         _dbContext = new ApplicationDbContext(options);
         
-        _loginHistoryService = new LoginHistoryService(_dbContext);
+        _securityPolicyServiceMock = new Mock<ISecurityPolicyService>();
+        _securityPolicyServiceMock.Setup(s => s.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicy
+            {
+                AbnormalLoginHistoryCount = 10,
+                BlockAbnormalLogin = false
+            });
+        
+        _loginHistoryService = new LoginHistoryService(_dbContext, _securityPolicyServiceMock.Object);
     }
 
     public void Dispose()

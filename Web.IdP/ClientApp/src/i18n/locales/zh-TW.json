@@ -751,6 +751,11 @@
     "maxFailedAttemptsHelp": "帳戶被鎖定前的失敗嘗試次數。",
     "lockoutDuration": "鎖定持續時間（分鐘）",
     "lockoutDurationHelp": "多次登入失敗後帳戶保持鎖定的時間。",
+    "abnormalLoginDetection": "異常登入偵測",
+    "abnormalLoginHistoryCount": "用於偵測的登入歷史計數",
+    "abnormalLoginHistoryCountHelp": "檢查異常 IP 位址的最近登入次數。",
+    "blockAbnormalLogin": "封鎖異常登入",
+    "blockAbnormalLoginHelp": "防止來自最近歷史中未見過 IP 位址的登入嘗試。",
     "saveButton": "儲存變更",
     "saving": "儲存中...",
     "noChanges": "沒有變更需要儲存。"

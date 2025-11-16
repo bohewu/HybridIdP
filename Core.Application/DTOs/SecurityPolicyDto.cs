@@ -26,4 +26,9 @@ public class SecurityPolicyDto
 
     [Range(1, 1440)] // 1 minute to 24 hours
     public int LockoutDurationMinutes { get; set; }
+
+    [Range(1, 100)]
+    public int AbnormalLoginHistoryCount { get; set; } = 10;
+
+    public bool BlockAbnormalLogin { get; set; } = false;
 }

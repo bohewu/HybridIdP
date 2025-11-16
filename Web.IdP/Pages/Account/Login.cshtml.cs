@@ -18,6 +18,7 @@ public class LoginModel : PageModel
     private readonly ITurnstileService _turnstileService;
     private readonly ILoginHistoryService _loginHistoryService;
     private readonly INotificationService _notificationService;
+    private readonly ISecurityPolicyService _securityPolicyService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<LoginModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -28,6 +29,7 @@ public class LoginModel : PageModel
         ITurnstileService turnstileService,
         ILoginHistoryService loginHistoryService,
         INotificationService notificationService,
+        ISecurityPolicyService securityPolicyService,
         IConfiguration configuration,
         ILogger<LoginModel> logger,
         IStringLocalizer<SharedResource> localizer)
@@ -37,6 +39,7 @@ public class LoginModel : PageModel
         _turnstileService = turnstileService;
         _loginHistoryService = loginHistoryService;
         _notificationService = notificationService;
+        _securityPolicyService = securityPolicyService;
         _configuration = configuration;
         _logger = logger;
         _localizer = localizer;
@@ -102,9 +105,6 @@ public class LoginModel : PageModel
         {
             case LoginStatus.Success:
             case LoginStatus.LegacySuccess:
-                await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
-                _logger.LogInformation("User '{UserName}' signed in successfully.", result.User!.UserName);
-
                 // Record login for abnormal detection
                 var loginHistory = new LoginHistory
                 {
@@ -125,8 +125,19 @@ public class LoginModel : PageModel
                 {
                     loginHistory.IsFlaggedAbnormal = true;
                     await _notificationService.NotifyAbnormalLoginAsync(result.User!.Id.ToString(), loginHistory);
+
+                    // Check if we should block abnormal logins
+                    var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+                    if (policy.BlockAbnormalLogin)
+                    {
+                        _logger.LogWarning("Abnormal login blocked for user '{UserName}' from IP {IpAddress}", result.User!.UserName, loginHistory.IpAddress);
+                        ModelState.AddModelError(string.Empty, _localizer["AbnormalLoginBlocked"]);
+                        return Page();
+                    }
                 }
 
+                await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
+                _logger.LogInformation("User '{UserName}' signed in successfully.", result.User!.UserName);
                 return LocalRedirect(returnUrl);
 
             case LoginStatus.LockedOut:

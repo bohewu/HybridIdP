@@ -750,6 +750,11 @@
     "maxFailedAttemptsHelp": "Number of failed attempts before an account is locked.",
     "lockoutDuration": "Lockout Duration (Minutes)",
     "lockoutDurationHelp": "How long an account remains locked after too many failed attempts.",
+    "abnormalLoginDetection": "Abnormal Login Detection",
+    "abnormalLoginHistoryCount": "Login History Count for Detection",
+    "abnormalLoginHistoryCountHelp": "Number of recent logins to check for abnormal IP addresses.",
+    "blockAbnormalLogin": "Block Abnormal Logins",
+    "blockAbnormalLoginHelp": "Prevent login attempts from IP addresses not seen in recent history.",
     "saveButton": "Save Changes",
     "saving": "Saving...",
     "noChanges": "No changes to save."

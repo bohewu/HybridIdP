@@ -63,6 +63,8 @@ public class SecurityPolicyService : ISecurityPolicyService
         policy.MinPasswordAgeDays = policyDto.MinPasswordAgeDays;
         policy.MaxFailedAccessAttempts = policyDto.MaxFailedAccessAttempts;
         policy.LockoutDurationMinutes = policyDto.LockoutDurationMinutes;
+        policy.AbnormalLoginHistoryCount = policyDto.AbnormalLoginHistoryCount;
+        policy.BlockAbnormalLogin = policyDto.BlockAbnormalLogin;
         
         // Update metadata
         policy.UpdatedUtc = DateTime.UtcNow;

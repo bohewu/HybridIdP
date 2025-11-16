@@ -15,6 +15,8 @@ namespace Core.Domain.Entities
         public int MinPasswordAgeDays { get; set; } = 0; // 0 means no minimum age
         public int MaxFailedAccessAttempts { get; set; } = 5;
         public int LockoutDurationMinutes { get; set; } = 15;
+        public int AbnormalLoginHistoryCount { get; set; } = 10; // Number of recent logins to check for abnormalities
+        public bool BlockAbnormalLogin { get; set; } = false; // Whether to block login if abnormal
         public DateTime UpdatedUtc { get; set; }
         public string? UpdatedBy { get; set; }
     }

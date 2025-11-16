@@ -247,4 +247,7 @@
   <data name="CaptchaValidationFailed" xml:space="preserve">
     <value>CAPTCHA 驗證失敗，請重試。</value>
   </data>
+  <data name="AbnormalLoginBlocked" xml:space="preserve">
+    <value>偵測到異常登入，已被阻擋。如有疑問，請聯繫管理員。</value>
+  </data>
 </root>

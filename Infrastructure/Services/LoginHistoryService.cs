@@ -11,10 +11,12 @@ namespace Infrastructure.Services
     public class LoginHistoryService : ILoginHistoryService
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly ISecurityPolicyService _securityPolicyService;
 
-        public LoginHistoryService(ApplicationDbContext dbContext)
+        public LoginHistoryService(ApplicationDbContext dbContext, ISecurityPolicyService securityPolicyService)
         {
             _dbContext = dbContext;
+            _securityPolicyService = securityPolicyService;
         }
 
         public async Task RecordLoginAsync(LoginHistory login)
@@ -34,8 +36,11 @@ namespace Infrastructure.Services
 
         public async Task<bool> DetectAbnormalLoginAsync(LoginHistory currentLogin)
         {
-            // Get recent login history (last 10 successful logins)
-            var recentLogins = await GetLoginHistoryAsync(currentLogin.UserId, 10);
+            var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+            var historyCount = policy.AbnormalLoginHistoryCount;
+
+            // Get recent login history
+            var recentLogins = await GetLoginHistoryAsync(currentLogin.UserId, historyCount);
 
             if (!recentLogins.Any())
             {
