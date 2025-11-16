@@ -169,15 +169,24 @@ public class LoginHistoryServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DetectAbnormalLoginAsync_ShouldReturnFalse_ForFirstLogin()
+    public async Task DetectAbnormalLoginAsync_ShouldReturnFalse_ForApprovedAbnormalIp()
     {
         // Arrange
         var userId = Guid.NewGuid();
+        var existingLogins = new List<LoginHistory>
+        {
+            new() { UserId = userId, LoginTime = DateTime.UtcNow.AddHours(-1), IpAddress = "192.168.1.1", UserAgent = "Mozilla/5.0", IsSuccessful = true, RiskScore = 0, IsFlaggedAbnormal = false },
+            new() { UserId = userId, LoginTime = DateTime.UtcNow.AddHours(-2), IpAddress = "10.0.0.1", UserAgent = "Mozilla/5.0", IsSuccessful = true, RiskScore = 0, IsFlaggedAbnormal = true, IsApprovedByAdmin = true }
+        };
+
+        await _dbContext.LoginHistories.AddRangeAsync(existingLogins);
+        await _dbContext.SaveChangesAsync();
+
         var currentLogin = new LoginHistory
         {
             UserId = userId,
             LoginTime = DateTime.UtcNow,
-            IpAddress = "192.168.1.1",
+            IpAddress = "10.0.0.1", // Same as approved abnormal IP
             UserAgent = "Mozilla/5.0",
             IsSuccessful = true,
             RiskScore = 0,
@@ -189,6 +198,76 @@ public class LoginHistoryServiceTests : IDisposable
 
         // Assert
         Assert.False(isAbnormal);
+    }
+
+    #endregion
+
+    #region ApproveAbnormalLoginAsync Tests
+
+    [Fact]
+    public async Task ApproveAbnormalLoginAsync_ShouldReturnTrue_WhenAbnormalLoginIsApproved()
+    {
+        // Arrange
+        var login = new LoginHistory
+        {
+            UserId = Guid.NewGuid(),
+            LoginTime = DateTime.UtcNow,
+            IpAddress = "192.168.1.1",
+            UserAgent = "Mozilla/5.0",
+            IsSuccessful = true,
+            RiskScore = 0,
+            IsFlaggedAbnormal = true,
+            IsApprovedByAdmin = false
+        };
+
+        await _dbContext.LoginHistories.AddAsync(login);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _loginHistoryService.ApproveAbnormalLoginAsync(login.Id);
+
+        // Assert
+        Assert.True(result);
+        var updatedLogin = await _dbContext.LoginHistories.FindAsync(login.Id);
+        Assert.True(updatedLogin.IsApprovedByAdmin);
+    }
+
+    [Fact]
+    public async Task ApproveAbnormalLoginAsync_ShouldReturnFalse_WhenLoginNotFound()
+    {
+        // Act
+        var result = await _loginHistoryService.ApproveAbnormalLoginAsync(999);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task ApproveAbnormalLoginAsync_ShouldReturnFalse_WhenLoginNotAbnormal()
+    {
+        // Arrange
+        var login = new LoginHistory
+        {
+            UserId = Guid.NewGuid(),
+            LoginTime = DateTime.UtcNow,
+            IpAddress = "192.168.1.1",
+            UserAgent = "Mozilla/5.0",
+            IsSuccessful = true,
+            RiskScore = 0,
+            IsFlaggedAbnormal = false, // Not abnormal
+            IsApprovedByAdmin = false
+        };
+
+        await _dbContext.LoginHistories.AddAsync(login);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _loginHistoryService.ApproveAbnormalLoginAsync(login.Id);
+
+        // Assert
+        Assert.False(result);
+        var updatedLogin = await _dbContext.LoginHistories.FindAsync(login.Id);
+        Assert.False(updatedLogin.IsApprovedByAdmin);
     }
 
     #endregion

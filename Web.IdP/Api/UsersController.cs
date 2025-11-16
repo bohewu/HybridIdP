@@ -398,4 +398,28 @@ public class UsersController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while retrieving login history", details = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Approve an abnormal login attempt, allowing the IP address for future logins.
+    /// </summary>
+    /// <param name="id">The user ID</param>
+    /// <param name="loginHistoryId">The login history entry ID to approve</param>
+    [HttpPost("{id}/login-history/{loginHistoryId}/approve")]
+    [HasPermission(Permissions.Users.Update)]
+    public async Task<IActionResult> ApproveAbnormalLogin(Guid id, int loginHistoryId)
+    {
+        try
+        {
+            var result = await _loginHistoryService.ApproveAbnormalLoginAsync(loginHistoryId);
+            if (!result)
+            {
+                return NotFound(new { error = "Login history entry not found or not abnormal" });
+            }
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while approving the abnormal login", details = ex.Message });
+        }
+    }
 }

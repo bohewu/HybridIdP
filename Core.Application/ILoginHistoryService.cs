@@ -21,6 +21,13 @@ namespace Core.Application
         Task<IEnumerable<LoginHistory>> GetLoginHistoryAsync(Guid userId, int count = 10);
 
         /// <summary>
+        /// Approves an abnormal login, allowing the IP address for future logins.
+        /// </summary>
+        /// <param name="loginHistoryId">The ID of the login history entry to approve</param>
+        /// <returns>True if approved, false if not found or not abnormal</returns>
+        Task<bool> ApproveAbnormalLoginAsync(int loginHistoryId);
+
+        /// <summary>
         /// Detects if the current login is abnormal based on history.
         /// </summary>
         /// <param name="currentLogin">The current login attempt</param>

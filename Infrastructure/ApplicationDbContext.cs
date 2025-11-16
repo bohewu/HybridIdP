@@ -151,6 +151,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.Property(e => e.IsSuccessful).IsRequired();
             entity.Property(e => e.RiskScore).IsRequired();
             entity.Property(e => e.IsFlaggedAbnormal).IsRequired();
+            entity.Property(e => e.IsApprovedByAdmin).IsRequired();
 
             // Configure relationship with ApplicationUser
             entity.HasOne(e => e.User)

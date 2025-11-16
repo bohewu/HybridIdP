@@ -45,6 +45,11 @@ public class LoginHistory
     /// </summary>
     public bool IsFlaggedAbnormal { get; set; }
 
+    /// <summary>
+    /// Whether this abnormal login was approved by an admin
+    /// </summary>
+    public bool IsApprovedByAdmin { get; set; }
+
     // Navigation property to ApplicationUser
     public ApplicationUser? User { get; set; }
 }

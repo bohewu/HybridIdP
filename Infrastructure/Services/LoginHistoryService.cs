@@ -48,8 +48,23 @@ namespace Infrastructure.Services
                 return false;
             }
 
-            // Check if IP address is new
-            var knownIps = recentLogins.Select(l => l.IpAddress).Distinct().ToList();
+            // Check if IP address is new and not approved
+            var knownIps = recentLogins
+                .Where(l => !string.IsNullOrEmpty(l.IpAddress))
+                .Select(l => l.IpAddress!)
+                .Distinct()
+                .ToList();
+            
+            // Also include IPs from approved abnormal logins
+            var approvedAbnormalIps = await _dbContext.LoginHistories
+                .Where(l => l.UserId == currentLogin.UserId && l.IsFlaggedAbnormal && l.IsApprovedByAdmin && !string.IsNullOrEmpty(l.IpAddress))
+                .Select(l => l.IpAddress!)
+                .Distinct()
+                .ToListAsync();
+            
+            knownIps.AddRange(approvedAbnormalIps);
+            knownIps = knownIps.Distinct().ToList();
+
             if (!string.IsNullOrEmpty(currentLogin.IpAddress) && !knownIps.Contains(currentLogin.IpAddress))
             {
                 return true;
@@ -58,6 +73,19 @@ namespace Infrastructure.Services
             // Could add more checks here: user agent, time of day, etc.
 
             return false;
+        }
+
+        public async Task<bool> ApproveAbnormalLoginAsync(int loginHistoryId)
+        {
+            var loginHistory = await _dbContext.LoginHistories.FindAsync(loginHistoryId);
+            if (loginHistory == null || !loginHistory.IsFlaggedAbnormal)
+            {
+                return false;
+            }
+
+            loginHistory.IsApprovedByAdmin = true;
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
     }
 }

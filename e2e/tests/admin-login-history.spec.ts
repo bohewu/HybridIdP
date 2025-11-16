@@ -47,4 +47,31 @@ test.describe('Admin Login History API', () => {
     expect(latestLogin).toHaveProperty('isFlaggedAbnormal');
     expect(latestLogin.isSuccessful).toBe(true);
   });
+
+  test('Approve abnormal login returns 404 for non-abnormal login', async ({ page, request }) => {
+    // Login to establish session
+    await adminLogin(page);
+
+    // Fetch users to get admin user ID
+    const usersResponse = await page.request.get(`${IDP_BASE}/api/admin/users?take=1`);
+    expect(usersResponse.status()).toBe(200);
+    const usersJson = await usersResponse.json();
+    const adminUser = usersJson.items?.[0] || usersJson[0] || usersJson;
+    const userId = adminUser.id || adminUser.userId || adminUser.Id;
+    expect(userId).toBeTruthy();
+
+    // Retrieve login history
+    const historyResponse = await page.request.get(`${IDP_BASE}/api/admin/users/${userId}/login-history?count=1`);
+    expect(historyResponse.status()).toBe(200);
+    const history = await historyResponse.json();
+    expect(Array.isArray(history)).toBe(true);
+    expect(history.length).toBeGreaterThan(0);
+
+    const latestLogin = history[0];
+    const loginHistoryId = latestLogin.id;
+
+    // Try to approve a non-abnormal login (should return 404)
+    const approveResponse = await page.request.post(`${IDP_BASE}/api/admin/users/${userId}/login-history/${loginHistoryId}/approve`);
+    expect(approveResponse.status()).toBe(404);
+  });
 });
