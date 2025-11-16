@@ -141,6 +141,7 @@ builder.Services.AddScoped<IScopeService, ScopeService>();
 builder.Services.AddScoped<IApiResourceService, ApiResourceService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IClientAllowedScopesService, ClientAllowedScopesService>();
+builder.Services.AddScoped<IClaimsService, ClaimsService>();
 // Settings + Branding services
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
