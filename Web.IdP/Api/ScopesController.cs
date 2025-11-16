@@ -115,4 +115,55 @@ public class ScopesController : ControllerBase
         }
         return Ok(new { message = "Scope deleted successfully." });
     }
+
+    /// <summary>
+    /// Get all claims associated with a specific scope.
+    /// </summary>
+    [HttpGet("{scopeId}/claims")]
+    [HasPermission(Permissions.Scopes.Read)]
+    public async Task<ActionResult> GetScopeClaims(string scopeId)
+    {
+        try
+        {
+            var result = await _scopeService.GetScopeClaimsAsync(scopeId);
+            return Ok(new
+            {
+                scopeId = result.scopeId,
+                scopeName = result.scopeName,
+                claims = result.claims
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Update the claims associated with a specific scope.
+    /// </summary>
+    [HttpPut("{scopeId}/claims")]
+    [HasPermission(Permissions.Scopes.Update)]
+    public async Task<ActionResult> UpdateScopeClaims(string scopeId, [FromBody] UpdateScopeClaimsRequest request)
+    {
+        try
+        {
+            var result = await _scopeService.UpdateScopeClaimsAsync(scopeId, request);
+            return Ok(new
+            {
+                scopeId = result.scopeId,
+                scopeName = result.scopeName,
+                claims = result.claims,
+                message = "Scope claims updated successfully."
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }
