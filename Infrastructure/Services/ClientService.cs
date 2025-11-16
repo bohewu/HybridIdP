@@ -178,18 +178,12 @@ public class ClientService : IClientService
             }
         }
 
-        // For public clients, default to implicit consent (no consent prompt) if not specified
-        // For confidential clients, default to explicit consent (prompt user) if not specified
-        var defaultConsentType = clientType == ClientTypes.Public 
-            ? ConsentTypes.Implicit 
-            : ConsentTypes.Explicit;
-
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = request.ClientId,
             ClientSecret = clientSecret,
             DisplayName = request.DisplayName ?? request.ClientId,
-            ConsentType = request.ConsentType ?? defaultConsentType,
+            ConsentType = request.ConsentType ?? ConsentTypes.Explicit,
             ApplicationType = request.ApplicationType ?? ApplicationTypes.Web,  // Default to web if not specified
             ClientType = clientType
         };
