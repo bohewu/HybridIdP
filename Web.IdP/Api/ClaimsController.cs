@@ -1,15 +1,15 @@
+using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Constants;
-using Infrastructure;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Web.IdP.Api;
 
 /// <summary>
-/// Claims management endpoints split from AdminController.
+/// Claims management endpoints (thin controller pattern).
+/// All business logic is in IClaimsService.
 /// Routes preserved: api/admin/claims/*
 /// </summary>
 [ApiController]
@@ -17,11 +17,11 @@ namespace Web.IdP.Api;
 [Authorize]
 public class ClaimsController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IClaimsService _claimsService;
 
-    public ClaimsController(ApplicationDbContext context)
+    public ClaimsController(IClaimsService claimsService)
     {
-        _context = context;
+        _claimsService = claimsService;
     }
 
     /// <summary>
@@ -36,66 +36,14 @@ public class ClaimsController : ControllerBase
         [FromQuery] string sortBy = "name",
         [FromQuery] string sortDirection = "asc")
     {
-        var query = _context.Set<Core.Domain.Entities.UserClaim>()
-            .Include(c => c.ScopeClaims)
-            .AsQueryable();
-
-        // Apply search filter
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var searchLower = search.ToLower();
-            query = query.Where(c =>
-                c.Name.ToLower().Contains(searchLower) ||
-                c.DisplayName.ToLower().Contains(searchLower) ||
-                (c.Description != null && c.Description.ToLower().Contains(searchLower)) ||
-                c.ClaimType.ToLower().Contains(searchLower));
-        }
-
-        // Get total count before pagination
-        var totalCount = await query.CountAsync();
-
-        // Apply sorting
-        query = sortBy.ToLower() switch
-        {
-            "displayname" => sortDirection.ToLower() == "desc"
-                ? query.OrderByDescending(c => c.DisplayName)
-                : query.OrderBy(c => c.DisplayName),
-            "claimtype" => sortDirection.ToLower() == "desc"
-                ? query.OrderByDescending(c => c.ClaimType)
-                : query.OrderBy(c => c.ClaimType),
-            "type" => sortDirection.ToLower() == "desc"
-                ? query.OrderByDescending(c => c.IsStandard)
-                : query.OrderBy(c => c.IsStandard),
-            _ => sortDirection.ToLower() == "desc"
-                ? query.OrderByDescending(c => c.Name)
-                : query.OrderBy(c => c.Name)
-        };
-
-        // Apply pagination
-        var claims = await query
-            .Skip(skip)
-            .Take(take)
-            .Select(c => new ClaimDefinitionDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                DisplayName = c.DisplayName,
-                Description = c.Description,
-                ClaimType = c.ClaimType,
-                UserPropertyPath = c.UserPropertyPath,
-                DataType = c.DataType,
-                IsStandard = c.IsStandard,
-                IsRequired = c.IsRequired,
-                ScopeCount = c.ScopeClaims.Count
-            })
-            .ToListAsync();
+        var (items, totalCount) = await _claimsService.GetClaimsAsync(skip, take, search, sortBy, sortDirection);
 
         return Ok(new
         {
-            items = claims,
-            totalCount = totalCount,
-            skip = skip,
-            take = take
+            items,
+            totalCount,
+            skip,
+            take
         });
     }
 
@@ -106,23 +54,7 @@ public class ClaimsController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ClaimDefinitionDto>> Get(int id)
     {
-        var claim = await _context.Set<Core.Domain.Entities.UserClaim>()
-            .Include(c => c.ScopeClaims)
-            .Where(c => c.Id == id)
-            .Select(c => new ClaimDefinitionDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                DisplayName = c.DisplayName,
-                Description = c.Description,
-                ClaimType = c.ClaimType,
-                UserPropertyPath = c.UserPropertyPath,
-                DataType = c.DataType,
-                IsStandard = c.IsStandard,
-                IsRequired = c.IsRequired,
-                ScopeCount = c.ScopeClaims.Count
-            })
-            .FirstOrDefaultAsync();
+        var claim = await _claimsService.GetClaimByIdAsync(id);
 
         if (claim == null)
         {
@@ -139,52 +71,19 @@ public class ClaimsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ClaimDefinitionDto>> Create([FromBody] CreateClaimRequest request)
     {
-        // Validate request
-        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.ClaimType))
+        try
         {
-            return BadRequest(new { message = "Name and ClaimType are required." });
+            var dto = await _claimsService.CreateClaimAsync(request);
+            return CreatedAtAction(nameof(Get), new { id = dto.Id }, dto);
         }
-
-        // Check if claim name already exists
-        var existingClaim = await _context.Set<Core.Domain.Entities.UserClaim>()
-            .FirstOrDefaultAsync(c => c.Name == request.Name);
-
-        if (existingClaim != null)
+        catch (ArgumentException ex)
         {
-            return BadRequest(new { message = $"A claim with name '{request.Name}' already exists." });
+            return BadRequest(new { message = ex.Message });
         }
-
-        // Create new claim
-        var claim = new Core.Domain.Entities.UserClaim
+        catch (InvalidOperationException ex)
         {
-            Name = request.Name,
-            DisplayName = request.DisplayName ?? request.Name,
-            Description = request.Description,
-            ClaimType = request.ClaimType,
-            UserPropertyPath = request.UserPropertyPath ?? request.Name,
-            DataType = request.DataType ?? "String",
-            IsStandard = false, // Custom claims are always non-standard
-            IsRequired = request.IsRequired ?? false
-        };
-
-        _context.Set<Core.Domain.Entities.UserClaim>().Add(claim);
-        await _context.SaveChangesAsync();
-
-        var dto = new ClaimDefinitionDto
-        {
-            Id = claim.Id,
-            Name = claim.Name,
-            DisplayName = claim.DisplayName,
-            Description = claim.Description,
-            ClaimType = claim.ClaimType,
-            UserPropertyPath = claim.UserPropertyPath,
-            DataType = claim.DataType,
-            IsStandard = claim.IsStandard,
-            IsRequired = claim.IsRequired,
-            ScopeCount = 0
-        };
-
-        return CreatedAtAction(nameof(Get), new { id = claim.Id }, dto);
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -194,58 +93,19 @@ public class ClaimsController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ClaimDefinitionDto>> Update(int id, [FromBody] UpdateClaimRequest request)
     {
-        var claim = await _context.Set<Core.Domain.Entities.UserClaim>()
-            .Include(c => c.ScopeClaims)
-            .FirstOrDefaultAsync(c => c.Id == id);
-
-        if (claim == null)
+        try
         {
-            return NotFound(new { message = $"Claim with ID {id} not found." });
+            var dto = await _claimsService.UpdateClaimAsync(id, request);
+            return Ok(dto);
         }
-
-        // Prevent modification of standard claims' core properties
-        if (claim.IsStandard)
+        catch (KeyNotFoundException ex)
         {
-            return BadRequest(new { message = "Cannot modify standard OIDC claims. Only DisplayName and Description can be updated." });
+            return NotFound(new { message = ex.Message });
         }
-
-        // Update properties
-        if (!string.IsNullOrWhiteSpace(request.DisplayName))
-            claim.DisplayName = request.DisplayName;
-        
-        if (request.Description != null)
-            claim.Description = request.Description;
-
-        if (!claim.IsStandard)
+        catch (InvalidOperationException ex)
         {
-            if (!string.IsNullOrWhiteSpace(request.ClaimType))
-                claim.ClaimType = request.ClaimType;
-            
-            if (!string.IsNullOrWhiteSpace(request.UserPropertyPath))
-                claim.UserPropertyPath = request.UserPropertyPath;
-            
-            if (!string.IsNullOrWhiteSpace(request.DataType))
-                claim.DataType = request.DataType;
-            
-            if (request.IsRequired.HasValue)
-                claim.IsRequired = request.IsRequired.Value;
+            return BadRequest(new { message = ex.Message });
         }
-
-        await _context.SaveChangesAsync();
-
-        return Ok(new ClaimDefinitionDto
-        {
-            Id = claim.Id,
-            Name = claim.Name,
-            DisplayName = claim.DisplayName,
-            Description = claim.Description,
-            ClaimType = claim.ClaimType,
-            UserPropertyPath = claim.UserPropertyPath,
-            DataType = claim.DataType,
-            IsStandard = claim.IsStandard,
-            IsRequired = claim.IsRequired,
-            ScopeCount = claim.ScopeClaims.Count
-        });
     }
 
     /// <summary>
@@ -255,30 +115,18 @@ public class ClaimsController : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> Delete(int id)
     {
-        var claim = await _context.Set<Core.Domain.Entities.UserClaim>()
-            .Include(c => c.ScopeClaims)
-            .FirstOrDefaultAsync(c => c.Id == id);
-
-        if (claim == null)
+        try
         {
-            return NotFound(new { message = $"Claim with ID {id} not found." });
+            await _claimsService.DeleteClaimAsync(id);
+            return Ok(new { message = "Claim deleted successfully." });
         }
-
-        // Prevent deletion of standard claims
-        if (claim.IsStandard)
+        catch (KeyNotFoundException ex)
         {
-            return BadRequest(new { message = "Cannot delete standard OIDC claims." });
+            return NotFound(new { message = ex.Message });
         }
-
-        // Check if claim is used by any scopes
-        if (claim.ScopeClaims.Any())
+        catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = $"Cannot delete claim '{claim.Name}' because it is used by {claim.ScopeClaims.Count} scope(s)." });
+            return BadRequest(new { message = ex.Message });
         }
-
-        _context.Set<Core.Domain.Entities.UserClaim>().Remove(claim);
-        await _context.SaveChangesAsync();
-
-        return Ok(new { message = "Claim deleted successfully." });
     }
 }
