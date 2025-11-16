@@ -4,10 +4,11 @@
 
 本文件整合了 HybridAuth IdP 專案的已完成功能摘要和待辦事項，提供一個清晰的專案進度概覽。
 
-**當前狀態（2025-11-12）：**
+**當前狀態（2025-01-22）：**
 - ✅ **Phase 1-5：核心功能已完成** (OIDC Flow, Admin UI, User/Role/Client/Scope Management, Security Policies, MFA, API Resources)
 - ✅ **Phase 6.1：單元測試覆蓋率已達標** (158 tests passing, 80%+ coverage achieved)
-- 🚧 **Phase 6.2-6.3：Controller 重構進行中** (重構 ClaimsController & ScopeClaimsController)
+- ✅ **Phase 6.2：ClaimsController 重構已完成** (23 unit tests, thin controller pattern)
+- 🚧 **Phase 6.3：ScopeClaimsController 整合進行中** (整合至 ScopeService)
 - 📋 **Backlog：功能增強與技術債務待處理** (Session Management, Audit Logging, Performance Optimization 等)
 
 **架構狀態分析：**
@@ -24,23 +25,24 @@
   - ClientAllowedScopesService (12 單元測試 ✅)
   
 - ⚠️ 待重構（Fat Controller，直接存取 DbContext）：
-  - ClaimsController (252 行) - **Phase 6.2 優先級最高**
-  - ScopeClaimsController (135 行) - **Phase 6.3 整合至 ScopeService**
+  - ClaimsController (252 行) - ~~**Phase 6.2 優先級最高**~~ ✅ **已完成**
+  - ScopeClaimsController (135 行) - **Phase 6.3 整合至 ScopeService（進行中）**
 
 **測試覆蓋率現況：**
-- 總單元測試：**158 tests (100% passing)** ✅
-- 覆蓋率：**~85%** (已達標！)
+- 總單元測試：**181 tests (100% passing)** ✅
+- 覆蓋率：**~86%** (已達標！)
 - 測試分布：
   - ClientService: 41 tests (sorting, paging, search, CRUD validation)
   - ScopeService: 24 tests (list/create/update/delete with resources & consent)
+  - ClaimsService: 23 tests (list/filter/sort/pagination, CRUD with standard claim protection) ✅ **New!**
   - ApiResourceService: 23 tests (full CRUD with scope associations)
   - UserManagementService: 14 tests (list/filter/search, roles, audit)
   - RoleManagementService: 14 tests (CRUD with permissions validation)
   - SettingsService: 14 tests (get/set, type conversion, caching)
   - ClientAllowedScopesService: 12 tests (scope validation)
   - LoginService: 6 tests (auth with lockout)
-  - JitProvisioningService: 2 tests
   - DynamicPasswordValidator: 8 tests
+  - JitProvisioningService: 2 tests
 
 ---
 
@@ -1158,23 +1160,36 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 
 ---
 
-### Phase 6.2: 重構 ClaimsController → ClaimsService (規劃中)
+### Phase 6.2: 重構 ClaimsController → ClaimsService ✅
 
-**優先級：** ⭐⭐⭐ 高
+**完成時間：** 2025-01-22
 
-**目標：**
-- 創建 `IClaimsService` interface 和 `ClaimsService` implementation
-- 將 ClaimsController (252 行) 的業務邏輯搬移至 Service layer
-- 重構 ClaimsController 成為 thin controller（僅處理 HTTP 請求/響應）
-- 撰寫完整的 unit tests（參考 ClientServiceTests 的模式）
-- E2E 測試驗證功能無 regression
+**成果：**
+- ✅ 創建 `IClaimsService` interface 和 `ClaimsService` implementation (288 行)
+- ✅ 將 ClaimsController 從 252 行重構為 ~80 行 thin controller
+- ✅ 撰寫 23 個單元測試 (100% passing)：
+  - GetClaimsAsync: 6 tests (all/filter/sort/pagination/scope count)
+  - GetClaimByIdAsync: 3 tests (found/not found/includes scope claims)
+  - CreateClaimAsync: 5 tests (success/defaults/duplicate/validation)
+  - UpdateClaimAsync: 5 tests (success/standard protection/partial update)
+  - DeleteClaimAsync: 4 tests (success/not found/standard claim/in use)
+- ✅ E2E 測試通過 (Playwright MCP): LIST/CREATE/UPDATE/DELETE 無 regression
+- ✅ 註冊服務至 DI 容器 (Program.cs line 144)
 
-**預估時間：** 1-2 天
-
-**技術細節：**
+**技術實現：**
 - Service 方法：GetClaimsAsync, GetClaimByIdAsync, CreateClaimAsync, UpdateClaimAsync, DeleteClaimAsync
 - 包含搜尋、排序、分頁邏輯
+- 標準 claim 保護：禁止修改 ClaimType/UserPropertyPath/DataType/IsRequired
+- 欄位預設值：DisplayName→Name, UserPropertyPath→Name, DataType→"String", IsStandard→false
+- TODO 註解：行 24-29 標記 Include 優化考量（deferred loading, projection, aggregation）
 - 保留 HasPermission 授權於 Controller layer
+
+**Commits:**
+1. `test: Add ClaimsServiceTests with 23 comprehensive unit tests`
+2. `feat: Create IClaimsService interface`
+3. `feat: Implement ClaimsService with business logic extraction`
+4. `feat: Register IClaimsService in DI container`
+5. `refactor: Convert ClaimsController to thin controller pattern`
 
 ---
 
