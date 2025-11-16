@@ -291,4 +291,101 @@ public class ScopeService : IScopeService
             return false;
         }
     }
+
+    public async Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> GetScopeClaimsAsync(string scopeId)
+    {
+        // Verify scope exists
+        var scope = await _scopeManager.FindByIdAsync(scopeId);
+        if (scope == null)
+        {
+            throw new KeyNotFoundException($"Scope with ID '{scopeId}' not found.");
+        }
+
+        var scopeName = await _scopeManager.GetNameAsync(scope);
+
+        // Get all claims associated with this scope
+        var scopeClaims = await _db.ScopeClaims
+            .Where(sc => sc.ScopeId == scopeId)
+            .Select(sc => new ScopeClaimDto
+            {
+                Id = sc.Id,
+                ScopeId = sc.ScopeId,
+                ScopeName = sc.ScopeName,
+                ClaimId = sc.UserClaimId,
+                ClaimName = sc.UserClaim!.Name,
+                ClaimDisplayName = sc.UserClaim.DisplayName,
+                ClaimType = sc.UserClaim.ClaimType,
+                AlwaysInclude = sc.AlwaysInclude,
+                CustomMappingLogic = sc.CustomMappingLogic
+            })
+            .ToListAsync();
+
+        return (scopeId, scopeName ?? "", scopeClaims);
+    }
+
+    public async Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> UpdateScopeClaimsAsync(string scopeId, UpdateScopeClaimsRequest request)
+    {
+        // Verify scope exists
+        var scope = await _scopeManager.FindByIdAsync(scopeId);
+        if (scope == null)
+        {
+            throw new KeyNotFoundException($"Scope with ID '{scopeId}' not found.");
+        }
+
+        var scopeName = await _scopeManager.GetNameAsync(scope);
+
+        // Remove existing scope claims
+        var existingScopeClaims = await _db.ScopeClaims
+            .Where(sc => sc.ScopeId == scopeId)
+            .ToListAsync();
+
+        _db.ScopeClaims.RemoveRange(existingScopeClaims);
+
+        // Add new scope claims
+        if (request.ClaimIds != null && request.ClaimIds.Any())
+        {
+            foreach (var claimId in request.ClaimIds)
+            {
+                // Verify claim exists
+                var claim = await _db.UserClaims
+                    .FirstOrDefaultAsync(c => c.Id == claimId);
+
+                if (claim == null)
+                {
+                    throw new ArgumentException($"Claim with ID {claimId} not found.");
+                }
+
+                var scopeClaim = new ScopeClaim
+                {
+                    ScopeId = scopeId,
+                    ScopeName = scopeName ?? "",
+                    UserClaimId = claimId,
+                    AlwaysInclude = claim.IsRequired // Always include required claims
+                };
+
+                _db.ScopeClaims.Add(scopeClaim);
+            }
+        }
+
+        await _db.SaveChangesAsync(CancellationToken.None);
+
+        // Return updated claims
+        var updatedClaims = await _db.ScopeClaims
+            .Where(sc => sc.ScopeId == scopeId)
+            .Select(sc => new ScopeClaimDto
+            {
+                Id = sc.Id,
+                ScopeId = sc.ScopeId,
+                ScopeName = sc.ScopeName,
+                ClaimId = sc.UserClaimId,
+                ClaimName = sc.UserClaim!.Name,
+                ClaimDisplayName = sc.UserClaim.DisplayName,
+                ClaimType = sc.UserClaim.ClaimType,
+                AlwaysInclude = sc.AlwaysInclude,
+                CustomMappingLogic = sc.CustomMappingLogic
+            })
+            .ToListAsync();
+
+        return (scopeId, scopeName ?? "", updatedClaims);
+    }
 }
