@@ -160,6 +160,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        // Configure AuditEvent entity
+        builder.Entity<AuditEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EventType).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.UserId).HasMaxLength(450); // Match ASP.NET Identity User ID length
+            entity.Property(e => e.Timestamp).IsRequired();
+            entity.Property(e => e.IPAddress).HasMaxLength(45); // IPv6 max
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.
         // For example, you can rename the ASP.NET Identity table names and more.

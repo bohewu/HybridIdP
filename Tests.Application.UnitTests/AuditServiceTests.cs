@@ -1,9 +1,11 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
+using Core.Domain.Events;
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +17,7 @@ namespace Tests.Application.UnitTests;
 public class AuditServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly Mock<IDomainEventPublisher> _eventPublisherMock;
     private readonly AuditService _auditService;
 
     public AuditServiceTests()
@@ -25,7 +28,8 @@ public class AuditServiceTests : IDisposable
             .Options;
 
         _dbContext = new ApplicationDbContext(options);
-        _auditService = new AuditService(_dbContext);
+        _eventPublisherMock = new Mock<IDomainEventPublisher>();
+        _auditService = new AuditService(_dbContext, _eventPublisherMock.Object);
     }
 
     public void Dispose()
@@ -57,6 +61,10 @@ public class AuditServiceTests : IDisposable
         Assert.Equal(ipAddress, auditEvent.IPAddress);
         Assert.Equal(userAgent, auditEvent.UserAgent);
         Assert.True(auditEvent.Timestamp <= DateTime.UtcNow);
+
+        // Verify domain event was published
+        _eventPublisherMock.Verify(p => p.PublishAsync(It.Is<AuditEventLoggedEvent>(
+            e => e.EventType == eventType && e.UserId == userId && e.AuditEventId == auditEvent.Id)), Times.Once);
     }
 
     [Fact]
@@ -76,6 +84,10 @@ public class AuditServiceTests : IDisposable
         Assert.Null(auditEvent.Details);
         Assert.Null(auditEvent.IPAddress);
         Assert.Null(auditEvent.UserAgent);
+
+        // Verify domain event was published
+        _eventPublisherMock.Verify(p => p.PublishAsync(It.Is<AuditEventLoggedEvent>(
+            e => e.EventType == eventType && e.UserId == null && e.AuditEventId == auditEvent.Id)), Times.Once);
     }
 
     #endregion
@@ -226,6 +238,34 @@ public class AuditServiceTests : IDisposable
         Assert.Equal(auditEvent.Details, result.Details);
         Assert.Equal(auditEvent.IPAddress, result.IPAddress);
         Assert.Equal(auditEvent.UserAgent, result.UserAgent);
+        // Username will be null in in-memory test since no Users table
+        Assert.Null(result.Username);
+    }
+
+    [Fact]
+    public async Task ExportEventAsync_ShouldReturnExportDto_ForSystemEvent()
+    {
+        // Arrange
+        var auditEvent = new AuditEvent
+        {
+            EventType = "SystemRestart",
+            UserId = null,
+            Details = "{\"action\":\"restart\"}",
+            IPAddress = "127.0.0.1",
+            UserAgent = null
+        };
+        _dbContext.AuditEvents.Add(auditEvent);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _auditService.ExportEventAsync(auditEvent.Id);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(auditEvent.Id, result.Id);
+        Assert.Equal(auditEvent.EventType, result.EventType);
+        Assert.Null(auditEvent.UserId);
+        Assert.Null(result.Username);
     }
 
     [Fact]

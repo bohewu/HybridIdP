@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
+using Core.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,10 +13,12 @@ namespace Infrastructure.Services;
 public class AuditService : IAuditService
 {
     private readonly IApplicationDbContext _db;
+    private readonly IDomainEventPublisher _eventPublisher;
 
-    public AuditService(IApplicationDbContext db)
+    public AuditService(IApplicationDbContext db, IDomainEventPublisher eventPublisher)
     {
         _db = db;
+        _eventPublisher = eventPublisher;
     }
 
     public async Task LogEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent)
@@ -32,6 +35,10 @@ public class AuditService : IAuditService
 
         _db.AuditEvents.Add(auditEvent);
         await _db.SaveChangesAsync(CancellationToken.None);
+
+        // Publish domain event
+        var domainEvent = new AuditEventLoggedEvent(auditEvent.Id, eventType, userId);
+        await _eventPublisher.PublishAsync(domainEvent);
     }
 
     public async Task<(IEnumerable<AuditEventDto> items, int totalCount)> GetEventsAsync(AuditEventFilterDto filter)
@@ -86,21 +93,22 @@ public class AuditService : IAuditService
 
     public async Task<AuditEventExportDto?> ExportEventAsync(int eventId)
     {
-        var auditEvent = await _db.AuditEvents
-            .Where(e => e.Id == eventId)
-            .Select(e => new AuditEventExportDto
-            {
-                Id = e.Id,
-                EventType = e.EventType,
-                UserId = e.UserId,
-                Timestamp = e.Timestamp,
-                Details = e.Details,
-                IPAddress = e.IPAddress,
-                UserAgent = e.UserAgent,
-                Username = null // TODO: Join with Users table if needed
-            })
-            .FirstOrDefaultAsync();
+        var result = await (from e in _db.AuditEvents
+                           where e.Id == eventId
+                           join u in _db.Users on e.UserId equals u.Id.ToString() into userGroup
+                           from u in userGroup.DefaultIfEmpty()
+                           select new AuditEventExportDto
+                           {
+                               Id = e.Id,
+                               EventType = e.EventType,
+                               UserId = e.UserId,
+                               Timestamp = e.Timestamp,
+                               Details = e.Details,
+                               IPAddress = e.IPAddress,
+                               UserAgent = e.UserAgent,
+                               Username = u.UserName
+                           }).FirstOrDefaultAsync();
 
-        return auditEvent;
+        return result;
     }
 }

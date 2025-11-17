@@ -10,7 +10,7 @@
 - ✅ **Phase 6.2：ClaimsController 重構已完成** (23 unit tests, thin controller pattern)
 - ✅ **Phase 6.3：ScopeClaimsController 整合已完成** (8 unit tests, integrated into ScopeService)
 - ✅ **Phase 6.4：異常登入偵測-管理者解除封鎖已完成** (3 unit tests, admin unblock functionality)
-- 📋 **Phase 7：Audit & Monitoring System 規劃中** (基礎稽核日誌架構, 稽核日誌檢視器UI, 異常登入管理UI, 即時活動儀表板, 進階安全警報系統)
+- ✅ **Phase 7.1：Audit Logging Infrastructure 已完成** (AuditEvent entity, service layer, domain events, EF migration, 10 unit tests, API endpoints)
 
 **架構狀態分析：**
 - ✅ 已重構完成（Thin Controller + Service Pattern）：

@@ -6,6 +6,7 @@ using Infrastructure.Identity;
 using Infrastructure.Services;
 using Core.Application;
 using Core.Domain;
+using Core.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Razor;
@@ -154,6 +155,7 @@ builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<ILoginHistoryService, LoginHistoryService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<INotificationService, FakeNotificationService>();
+builder.Services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
 
 var app = builder.Build();
 
