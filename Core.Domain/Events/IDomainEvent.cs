@@ -15,3 +15,11 @@ public interface IDomainEventPublisher
 {
     Task PublishAsync<TEvent>(TEvent domainEvent) where TEvent : IDomainEvent;
 }
+
+/// <summary>
+/// Interface for domain event handlers.
+/// </summary>
+public interface IDomainEventHandler<TEvent> where TEvent : IDomainEvent
+{
+    Task HandleAsync(TEvent @event);
+}

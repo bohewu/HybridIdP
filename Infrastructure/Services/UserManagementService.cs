@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Events;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,13 +11,16 @@ public class UserManagementService : IUserManagementService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly IDomainEventPublisher _eventPublisher;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
-        RoleManager<ApplicationRole> roleManager)
+        RoleManager<ApplicationRole> roleManager,
+        IDomainEventPublisher eventPublisher)
     {
         _userManager = userManager;
         _roleManager = roleManager;
+        _eventPublisher = eventPublisher;
     }
 
     public async Task<PagedUsersDto> GetUsersAsync(
@@ -194,6 +198,9 @@ public class UserManagementService : IUserManagementService
             }
         }
 
+        // Publish domain event
+        await _eventPublisher.PublishAsync(new UserCreatedEvent(user.Id.ToString(), user.UserName!, user.Email!));
+
         return (true, user.Id, Array.Empty<string>());
     }
 
@@ -267,6 +274,10 @@ public class UserManagementService : IUserManagementService
             }
         }
 
+        // Publish domain event
+        var changes = $"Updated user details and roles";
+        await _eventPublisher.PublishAsync(new UserUpdatedEvent(user.Id.ToString(), user.UserName!, changes));
+
         return (true, Array.Empty<string>());
     }
 
@@ -285,6 +296,12 @@ public class UserManagementService : IUserManagementService
         user.ModifiedAt = DateTime.UtcNow;
 
         var result = await _userManager.UpdateAsync(user);
+
+        if (result.Succeeded)
+        {
+            // Publish domain event
+            await _eventPublisher.PublishAsync(new UserAccountStatusChangedEvent(user.Id.ToString(), user.UserName!, "Active", "Inactive"));
+        }
 
         return result.Succeeded
             ? (true, Array.Empty<string>())
@@ -306,6 +323,12 @@ public class UserManagementService : IUserManagementService
         user.ModifiedAt = DateTime.UtcNow;
 
         var result = await _userManager.UpdateAsync(user);
+
+        if (result.Succeeded)
+        {
+            // Publish domain event
+            await _eventPublisher.PublishAsync(new UserAccountStatusChangedEvent(user.Id.ToString(), user.UserName!, "Inactive", "Active"));
+        }
 
         return result.Succeeded
             ? (true, Array.Empty<string>())
@@ -352,6 +375,18 @@ public class UserManagementService : IUserManagementService
             {
                 return (false, addResult.Errors.Select(e => e.Description));
             }
+
+            // Publish events for added roles
+            foreach (var role in rolesToAdd)
+            {
+                await _eventPublisher.PublishAsync(new UserRoleAssignedEvent(user.Id.ToString(), user.UserName!, role, true));
+            }
+        }
+
+        // Publish events for removed roles
+        foreach (var role in rolesToRemove)
+        {
+            await _eventPublisher.PublishAsync(new UserRoleAssignedEvent(user.Id.ToString(), user.UserName!, role, false));
         }
 
         return (true, Array.Empty<string>());

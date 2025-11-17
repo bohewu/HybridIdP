@@ -1,5 +1,6 @@
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Events;
 using Infrastructure.Services;
 using System.Linq;
 using System.Linq.Expressions;
@@ -14,6 +15,7 @@ public class UserManagementTests
 {
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
+    private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
 
     public UserManagementTests()
     {
@@ -38,6 +40,9 @@ public class UserManagementTests
             Mock.Of<ILookupNormalizer>(),
             new IdentityErrorDescriber(),
             Mock.Of<Microsoft.Extensions.Logging.ILogger<RoleManager<ApplicationRole>>>());
+
+        // Setup EventPublisher mock
+        _mockEventPublisher = new Mock<IDomainEventPublisher>();
     }
 
     [Fact]
@@ -66,7 +71,7 @@ public class UserManagementTests
             .Setup(x => x.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
         var adminId = Guid.NewGuid();
 
         // Act
@@ -83,6 +88,12 @@ public class UserManagementTests
         Assert.True(createdUser.EmailConfirmed);
         Assert.Equal(adminId, createdUser.CreatedBy);
         Assert.True((DateTime.UtcNow - createdUser.CreatedAt).TotalMinutes < 5);
+
+        // Verify domain event was published
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserCreatedEvent>(e =>
+            e.UserId == result.UserId.ToString() &&
+            e.UserName == createDto.UserName &&
+            e.Email == createDto.Email)), Times.Once);
     }
 
     [Fact]
@@ -104,7 +115,7 @@ public class UserManagementTests
                 Description = "Email already exists"
             }));
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var result = await sut.CreateUserAsync(createDto);
@@ -113,6 +124,9 @@ public class UserManagementTests
         Assert.False(result.Success);
         Assert.Null(result.UserId);
         Assert.Contains("Email already exists", result.Errors);
+
+        // Verify domain event was not published
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.IsAny<UserCreatedEvent>()), Times.Never);
     }
 
     [Fact]
@@ -161,7 +175,7 @@ public class UserManagementTests
             .Setup(x => x.AddToRolesAsync(existingUser, It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var (success, errors) = await sut.UpdateUserAsync(userId, updateDto);
@@ -190,7 +204,7 @@ public class UserManagementTests
             .Setup(x => x.FindByIdAsync(userId.ToString()))
             .ReturnsAsync((ApplicationUser?)null);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var (success, errors) = await sut.UpdateUserAsync(userId, updateDto);
@@ -225,7 +239,7 @@ public class UserManagementTests
             .Setup(x => x.GetRolesAsync(user))
             .ReturnsAsync(new List<string> { "User" });
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var detail = await sut.GetUserByIdAsync(userId);
@@ -277,7 +291,7 @@ public class UserManagementTests
             .Setup(x => x.GetRolesAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(new List<string> { "User" });
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var page = await sut.GetUsersAsync(skip: 1, take: 1, sortBy: "email", sortDirection: "asc");
@@ -300,7 +314,7 @@ public class UserManagementTests
         _mockUserManager.Setup(x => x.GetRolesAsync(u1)).ReturnsAsync(new List<string> { role });
         _mockUserManager.Setup(x => x.GetRolesAsync(u2)).ReturnsAsync(new List<string> { "User" });
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var page = await sut.GetUsersAsync(role: role, take: 10);
@@ -321,7 +335,7 @@ public class UserManagementTests
     _mockUserManager.SetupGet(x => x.Users).Returns(new List<ApplicationUser> { u1, u2 }.AsQueryable());
         _mockUserManager.Setup(x => x.GetRolesAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(new List<string>());
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var page = await sut.GetUsersAsync(search: searchTerm, take: 10);
@@ -353,7 +367,7 @@ public class UserManagementTests
             .Setup(x => x.UpdateAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var (success, errors) = await sut.DeactivateUserAsync(userId);
@@ -394,7 +408,7 @@ public class UserManagementTests
             .Setup(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var (success, errors) = await sut.AssignRolesAsync(userId, roles);
@@ -422,7 +436,7 @@ public class UserManagementTests
             .Setup(x => x.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .ReturnsAsync(IdentityResult.Failed(new IdentityError { Code = "PasswordTooShort", Description = "Password too short" }));
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var result = await sut.CreateUserAsync(createDto);
@@ -452,7 +466,7 @@ public class UserManagementTests
             .Setup(x => x.UpdateAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         await sut.UpdateLastLoginAsync(userId);
@@ -481,7 +495,7 @@ public class UserManagementTests
             .Callback<ApplicationUser, string>((u, p) => createdUser = u)
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var result = await sut.CreateUserAsync(createDto, adminUserId);
@@ -502,7 +516,7 @@ public class UserManagementTests
         _mockUserManager.Setup(x => x.FindByIdAsync(userId.ToString())).ReturnsAsync(user);
         _mockUserManager.Setup(x => x.UpdateAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
 
         // Act
         var (success, errors) = await sut.ReactivateUserAsync(userId);
