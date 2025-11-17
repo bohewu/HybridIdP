@@ -5,14 +5,26 @@ last-updated: 2025-11-16
 percent-complete: 100
 ---
 
-# Phase 2: OpenIddict Integration & OIDC Flow
+# Phase 2: OpenIddict Integration & OIDC Flow ✅
 
-簡短摘要：Phase 2 已完成，整合 OpenIddict 以支援標準 OIDC 授權流程（Authorization Code + PKCE）。
+**完成時間：** Phase 2 完成
 
-- 完成內容：OpenIddict 6.x 整合、Authorization Code Flow with PKCE、ASP.NET Core Identity 整合
-- 實作：TestClient (MVC)、Custom Claims Factory、JIT Provisioning Service
-- 主要 Endpoints：`/connect/authorize`, `/connect/token`, `/connect/userinfo`
+**功能摘要：**
+- OpenIddict 6.x 整合（Authorization Code Flow with PKCE）
+- ASP.NET Core Identity 整合
+- TestClient 應用程式實作（MVC 客戶端）
+- Custom Claims Factory (preferred_username, department)
+- JIT Provisioning Service (OIDC 使用者自動建立)
 
-驗證結果：完整 OIDC 登入流程、Consent 頁面、Claims 正確傳遞。
+**API Endpoints:**
+- `/connect/authorize` - OIDC Authorization endpoint
+- `/connect/token` - Token endpoint
+- `/connect/userinfo` - UserInfo endpoint
 
-詳細資訊請參見 `docs/PROJECT_PROGRESS.md` 或本檔案相應連結。
+**驗證結果：**
+- ✅ 完整 OIDC 登入流程
+- ✅ Consent 頁面正常運作
+- ✅ Claims 正確傳遞至 TestClient
+- ✅ Department claim 顯示於 Profile 頁面
+
+更多歷史與驗證細節請參見 `docs/archive/PROJECT_STATUS_FULL.md`。
