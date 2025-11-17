@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Domain.Events;
 using Infrastructure.Services;
 using Moq;
 using OpenIddict.Abstractions;
@@ -17,12 +18,14 @@ namespace Tests.Application.UnitTests;
 public class ClientServiceTests
 {
     private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
+    private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
     private readonly ClientService _clientService;
 
     public ClientServiceTests()
     {
         _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
-        _clientService = new ClientService(_mockApplicationManager.Object);
+        _mockEventPublisher = new Mock<IDomainEventPublisher>();
+        _clientService = new ClientService(_mockApplicationManager.Object, _mockEventPublisher.Object);
     }
 
     #region GetClientsAsync Tests
@@ -797,6 +800,10 @@ public class ClientServiceTests
         Assert.NotNull(result);
         Assert.NotNull(result.ClientSecret);
         Assert.NotEmpty(result.ClientSecret);
+
+        // Verify domain event was published
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<ClientCreatedEvent>(e =>
+            e.ClientName == "test-client")), Times.Once);
     }
 
     [Fact]

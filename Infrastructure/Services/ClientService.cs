@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Domain.Events;
 using Microsoft.AspNetCore.WebUtilities;
 using OpenIddict.Abstractions;
 using System.Security.Cryptography;
@@ -11,10 +12,12 @@ namespace Infrastructure.Services;
 public class ClientService : IClientService
 {
     private readonly IOpenIddictApplicationManager _applicationManager;
+    private readonly IDomainEventPublisher _eventPublisher;
 
-    public ClientService(IOpenIddictApplicationManager applicationManager)
+    public ClientService(IOpenIddictApplicationManager applicationManager, IDomainEventPublisher eventPublisher)
     {
         _applicationManager = applicationManager;
+        _eventPublisher = eventPublisher;
     }
 
     public async Task<(IEnumerable<ClientSummary> items, int totalCount)> GetClientsAsync(
@@ -259,6 +262,9 @@ public class ClientService : IClientService
         var application = await _applicationManager.CreateAsync(descriptor);
         var id = await _applicationManager.GetIdAsync(application);
 
+        // Publish domain event
+        await _eventPublisher.PublishAsync(new ClientCreatedEvent(id!, request.ClientId));
+
         return new CreateClientResponse
         {
             Id = id ?? string.Empty,
@@ -368,10 +374,27 @@ public class ClientService : IClientService
                     descriptor.Permissions.Add(Permissions.ResponseTypes.IdToken);
                 }
             }
+
+            // Publish scope change event if permissions include scopes
+            var scopeChanges = string.Join(", ", request.Permissions.Where(p => p.StartsWith(Permissions.Prefixes.Scope)));
+            if (!string.IsNullOrEmpty(scopeChanges))
+            {
+                await _eventPublisher.PublishAsync(new ClientScopeChangedEvent(id.ToString(), descriptor.ClientId!, scopeChanges));
+            }
         }
 
         await _applicationManager.PopulateAsync(application, descriptor);
         await _applicationManager.UpdateAsync(application);
+
+        // Publish domain event
+        var changes = "Updated client details";
+        await _eventPublisher.PublishAsync(new ClientUpdatedEvent(id.ToString(), descriptor.ClientId!, changes));
+
+        // If secret was changed, publish separate event
+        if (!string.IsNullOrEmpty(request.ClientSecret))
+        {
+            await _eventPublisher.PublishAsync(new ClientSecretChangedEvent(id.ToString(), descriptor.ClientId!));
+        }
     }
 
     public async Task DeleteClientAsync(Guid id)
@@ -382,7 +405,12 @@ public class ClientService : IClientService
             throw new KeyNotFoundException($"Client with ID '{id}' not found.");
         }
 
+        var clientId = await _applicationManager.GetClientIdAsync(application);
+
         await _applicationManager.DeleteAsync(application);
+
+        // Publish domain event
+        await _eventPublisher.PublishAsync(new ClientDeletedEvent(id.ToString(), clientId!));
     }
 
     public async Task<string> RegenerateSecretAsync(Guid id)
@@ -408,6 +436,10 @@ public class ClientService : IClientService
 
         await _applicationManager.PopulateAsync(application, descriptor);
         await _applicationManager.UpdateAsync(application);
+
+        // Publish domain event
+        var clientId = await _applicationManager.GetClientIdAsync(application);
+        await _eventPublisher.PublishAsync(new ClientSecretChangedEvent(id.ToString(), clientId!));
 
         return newSecret;
     }
