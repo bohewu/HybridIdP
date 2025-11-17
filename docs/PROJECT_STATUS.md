@@ -11,7 +11,7 @@
 - ✅ **Phase 6.3：ScopeClaimsController 整合已完成** (8 unit tests, integrated into ScopeService)
 - ✅ **Phase 6.4：異常登入偵測-管理者解除封鎖已完成** (3 unit tests, admin unblock functionality)
 - ✅ **Phase 7.1：Audit Logging Infrastructure 已完成** (AuditEvent entity, service layer, domain events, EF migration, 10 unit tests, API endpoints)
-- 📋 **Phase 7.1a：AuditService 整合至重點系統** (Domain Events 解耦整合, User/Role/Client/Scope 服務稽核, TDD 測試驅動)
+- 📋 **Phase 7.1a：AuditService 整合至重點系統** (Domain Events 解耦整合, User/Role/Client/Scope 服務稽核, TDD 測試驅動) - UserManagementService ✅, ClientService ✅
 
 **架構狀態分析：**
 - ✅ 已重構完成（Thin Controller + Service Pattern）：
@@ -1279,20 +1279,23 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 - TDD 測試驅動開發 (每個整合點的單元測試)
 
 **整合服務清單：**
-- **UserManagementService**: 用戶 CRUD、角色分配、密碼變更、帳戶狀態變更
-- **ClientService**: Client 建立/更新/刪除、Secret 管理、Scope 權限變更
-- **RoleManagementService**: 角色 CRUD、權限分配變更
-- **ScopeService**: Scope 管理、Claim 關聯變更
-- **LoginService**: 登入/登出事件、失敗嘗試追蹤
-- **SecurityPolicyService**: 安全策略更新、密碼政策變更
+
+- ✅ **UserManagementService**: 用戶 CRUD、角色分配、密碼變更、帳戶狀態變更 (已完成，14 單元測試通過)
+- ✅ **ClientService**: Client 建立/更新/刪除、Secret 管理、Scope 權限變更 (已完成，46 單元測試通過)
+- 📋 **RoleManagementService**: 角色 CRUD、權限分配變更
+- 📋 **ScopeService**: Scope 管理、Claim 關聯變更
+- 📋 **LoginService**: 登入/登出事件、失敗嘗試追蹤
+- 📋 **SecurityPolicyService**: 安全策略更新、密碼政策變更
 
 **技術實現重點：**
+
 - **解耦合設計**: 業務邏輯不直接依賴 AuditService，使用 Domain Events
 - **Event Types**: UserCreated, UserUpdated, UserDeleted, ClientModified, RoleChanged, ScopeUpdated, LoginAttempt, SecurityPolicyChanged
 - **Audit Fields**: 符合台灣資安法 (用戶ID、動作、時間戳、IP位址、詳細資訊)
 - **測試覆蓋**: 每個整合點的單元測試 + Domain Event 發佈驗證
 
 **Domain Events 架構：**
+
 ```csharp
 // 業務服務觸發事件
 await _domainEventPublisher.PublishAsync(new UserCreatedEvent(user.Id, user.UserName));
@@ -1312,6 +1315,7 @@ public class AuditService : IDomainEventHandler<UserCreatedEvent>
 ```
 
 **開發策略：**
+
 - 每個服務單獨 commit (API → Tests → Integration)
 - 先實作 Domain Events 架構，再逐一整合服務
 - 確保所有業務邏輯保持解耦合
@@ -1324,11 +1328,13 @@ public class AuditService : IDomainEventHandler<UserCreatedEvent>
 > Phase 7 將實作完整的稽核與監控系統，分為多個子階段以控制開發複雜度與 token 消耗
 
 ### Phase 7.1: 基礎稽核日誌架構 (Audit Logging Infrastructure)
+
 **目標：** 建立事件驅動的稽核日誌系統
 **預估 token：** ~3000
 **預估時間：** 2-3 天
 
 **功能範圍：**
+
 - 定義 AuditEvent 實體與相關 DTOs
 - 實作 IAuditService 介面與 AuditService
 - 建立 Domain Events 系統
@@ -1336,15 +1342,18 @@ public class AuditService : IDomainEventHandler<UserCreatedEvent>
 - 單元測試覆蓋 (100% passing)
 
 **API Endpoints:**
+
 - `GET /api/admin/audit/events` - 查詢稽核事件
 - `POST /api/admin/audit/events/{id}/export` - 匯出特定事件
 
 ### Phase 7.2: 稽核日誌檢視器 UI (Audit Log Viewer UI)
+
 **目標：** 建立管理員稽核日誌檢視介面
 **預估 token：** ~2500
 **預估時間：** 2 天
 
 **功能範圍：**
+
 - Vue.js 稽核日誌列表元件
 - 進階篩選功能 (日期範圍、事件類型、使用者)
 - 分頁與排序
@@ -1352,16 +1361,19 @@ public class AuditService : IDomainEventHandler<UserCreatedEvent>
 - 即時更新機制
 
 **UI 組件：**
+
 - AuditLogViewer.vue
 - AuditLogFilters.vue
 - AuditLogExport.vue
 
 ### Phase 7.3: 異常登入管理 UI (Abnormal Login Management UI)
+
 **目標：** 實作異常登入的手動管理介面
 **預估 token：** ~2000
 **預估時間：** 1-2 天
 
 **功能範圍：**
+
 - 顯示被標記為異常的登入記錄
 - 管理員批准/拒絕異常登入
 - IP 白名單管理
@@ -1369,16 +1381,19 @@ public class AuditService : IDomainEventHandler<UserCreatedEvent>
 - 整合至現有使用者管理介面
 
 **UI 組件：**
+
 - AbnormalLoginManager.vue
 - LoginHistoryViewer.vue
 - SecurityAlerts.vue
 
 ### Phase 7.4: 即時活動儀表板 (Real-time Activity Dashboard)
+
 **目標：** 建立即時安全監控儀表板
 **預估 token：** ~3000
 **預估時間：** 3 天
 
 **功能範圍：**
+
 - WebSocket/SignalR 即時更新
 - 安全指標視覺化 (圖表與統計)
 - 活躍工作階段監控
@@ -1386,16 +1401,19 @@ public class AuditService : IDomainEventHandler<UserCreatedEvent>
 - 異常活動警報
 
 **UI 組件：**
+
 - ActivityDashboard.vue
 - SecurityMetrics.vue
 - RealTimeAlerts.vue
 
 ### Phase 7.5: 進階安全警報系統 (Advanced Security Alerts)
+
 **目標：** 實作智慧型安全警報機制
 **預估 token：** ~2500
 **預估時間：** 2 天
 
 **功能範圍：**
+
 - 可配置警報規則
 - 多通道通知 (Email, Webhook)
 - 警報升級機制
@@ -1403,6 +1421,7 @@ public class AuditService : IDomainEventHandler<UserCreatedEvent>
 - 整合第三方安全工具
 
 **功能模組：**
+
 - AlertRuleEngine
 - NotificationService 擴展
 - AlertDashboard
@@ -1414,150 +1433,165 @@ public class AuditService : IDomainEventHandler<UserCreatedEvent>
 ### 功能增強
 
 #### User Self-Service (Deferred for AD Integration)
--   [ ] Implement user self-service password change flow
--   [ ] Add password expiration check during login
--   [ ] Prompt user to change password if expired
--   [ ] Update user account management UI to show policy requirements
+
+- [ ] Implement user self-service password change flow
+- [ ] Add password expiration check during login
+- [ ] Prompt user to change password if expired
+- [ ] Update user account management UI to show policy requirements
 
 #### User Management
--   [ ] Bulk user import (CSV)
--   [ ] User profile picture upload
--   [ ] Advanced user search (by department, role, creation date)
--   [ ] User export (CSV/Excel)
+
+- [ ] Bulk user import (CSV)
+- [ ] User profile picture upload
+- [ ] Advanced user search (by department, role, creation date)
+- [ ] User export (CSV/Excel)
 
 #### Session Management
--   [x] Display active sessions (device, location, last active)
--   [x] Revoke session (logout from specific device)
--   [x] Revoke all sessions (logout everywhere)
--   [x] **Suspicious login detection and alerts** (configurable IP-based abnormal login detection)
--   [x] Admin unblock blocked login attempts (manual override for false positives)
--   [x] **BUG: UI does not refresh session list after revoke operations**
--   [x] **BUG: Some sessions fail to revoke (authorizations without associated clients)**
+
+- [x] Display active sessions (device, location, last active)
+- [x] Revoke session (logout from specific device)
+- [x] Revoke all sessions (logout everywhere)
+- [x] **Suspicious login detection and alerts** (configurable IP-based abnormal login detection)
+- [x] Admin unblock blocked login attempts (manual override for false positives)
+- [x] **BUG: UI does not refresh session list after revoke operations**
+- [x] **BUG: Some sessions fail to revoke (authorizations without associated clients)**
 
 #### Audit & Monitoring
--   [ ] Advanced audit logging
--   [ ] Audit log viewer with filters
--   [ ] Export audit logs (CSV/Excel)
--   [ ] Real-time activity dashboard
--   [ ] Security alerts (failed login attempts, permission changes)
--   [ ] **Abnormal login management UI** (view flagged logins, approve/reject suspicious attempts)
+
+- [ ] Advanced audit logging
+- [ ] Audit log viewer with filters
+- [ ] Export audit logs (CSV/Excel)
+- [ ] Real-time activity dashboard
+- [ ] Security alerts (failed login attempts, permission changes)
+- [ ] **Abnormal login management UI** (view flagged logins, approve/reject suspicious attempts)
 
 #### UI/UX Improvements
--   [ ] Dark mode support
--   [ ] Customizable admin dashboard
--   [ ] Remember Me 功能改進
--   [ ] Password strength indicator
--   [ ] Keyboard shortcuts
--   [ ] Accessibility improvements (WCAG 2.1 AA compliance)
+
+- [ ] Dark mode support
+- [ ] Customizable admin dashboard
+- [ ] Remember Me 功能改進
+- [ ] Password strength indicator
+- [ ] Keyboard shortcuts
+- [ ] Accessibility improvements (WCAG 2.1 AA compliance)
 
 #### API Improvements
--   [ ] API documentation (Swagger UI 改進)
--   [ ] API versioning
--   [ ] Rate limiting per endpoint
--   [ ] GraphQL support (optional)
+
+- [ ] API documentation (Swagger UI 改進)
+- [ ] API versioning
+- [ ] Rate limiting per endpoint
+- [ ] GraphQL support (optional)
 
 ### Security Hardening
 
 **檢查清單：**
--   [ ] HTTPS enforcement in production
--   [ ] HSTS headers
--   [ ] Rate limiting (login, API endpoints)
--   [ ] Input validation comprehensive review
--   [ ] SQL injection prevention audit
--   [ ] XSS prevention audit
--   [ ] CSRF protection verification
--   [ ] Dependency vulnerability scanning
--   [ ] Security headers review (X-Frame-Options, X-Content-Type-Options, etc.)
+
+- [ ] HTTPS enforcement in production
+- [ ] HSTS headers
+- [ ] Rate limiting (login, API endpoints)
+- [ ] Input validation comprehensive review
+- [ ] SQL injection prevention audit
+- [ ] XSS prevention audit
+- [ ] CSRF protection verification
+- [ ] Dependency vulnerability scanning
+- [ ] Security headers review (X-Frame-Options, X-Content-Type-Options, etc.)
 
 ### Performance Optimization
 
 **待優化：**
--   [ ] Database indexing review and optimization
--   [ ] Query optimization (N+1 problem check)
--   [ ] API response caching strategy
--   [ ] Frontend bundle optimization (Vite build analysis)
--   [ ] Image optimization and lazy loading
--   [ ] CDN configuration for static assets
--   [ ] Database connection pooling tuning
+
+- [ ] Database indexing review and optimization
+- [ ] Query optimization (N+1 problem check)
+- [ ] API response caching strategy
+- [ ] Frontend bundle optimization (Vite build analysis)
+- [ ] Image optimization and lazy loading
+- [ ] CDN configuration for static assets
+- [ ] Database connection pooling tuning
 
 ### Testing
 
 **測試涵蓋率提升：**
--   [x] Unit test coverage to 80%+ ✅ (Phase 6.1 完成：158 tests, ~85% coverage)
--   [ ] E2E tests for all critical user flows (Phase 6.4 待執行)
--   [ ] Integration tests for all API endpoints
--   [ ] Frontend component unit tests (Vitest)
--   [ ] Load testing (Apache JMeter / k6)
--   [ ] Security testing (OWASP ZAP)
--   [ ] Accessibility testing
+
+- [x] Unit test coverage to 80%+ ✅ (Phase 6.1 完成：158 tests, ~85% coverage)
+- [ ] E2E tests for all critical user flows (Phase 6.4 待執行)
+- [ ] Integration tests for all API endpoints
+- [ ] Frontend component unit tests (Vitest)
+- [ ] Load testing (Apache JMeter / k6)
+- [ ] Security testing (OWASP ZAP)
+- [ ] Accessibility testing
 
 ### Technical Debt
 
 **程式碼品質：**
--   [x] Refactor large controllers into smaller handlers/services (Phase 6 進行中)
--   [ ] Code style consistency (ESLint, Prettier)
--   [ ] Dead code removal
--   [ ] Magic number/string extraction to constants
--   [ ] Comprehensive code comments and documentation
+
+- [x] Refactor large controllers into smaller handlers/services (Phase 6 進行中)
+- [ ] Code style consistency (ESLint, Prettier)
+- [ ] Dead code removal
+- [ ] Magic number/string extraction to constants
+- [ ] Comprehensive code comments and documentation
 
 **Architecture:**
--   [ ] Event-driven architecture for audit logging
--   [ ] CQRS pattern for complex operations (optional)
--   [ ] Domain events for loosely coupled features
+
+- [ ] Event-driven architecture for audit logging
+- [ ] CQRS pattern for complex operations (optional)
+- [ ] Domain events for loosely coupled features
 
 ### DevOps & Deployment
 
 **CI/CD Pipeline:**
--   [ ] GitHub Actions workflow for build/test
--   [ ] Automated deployment to staging
--   [ ] Automated deployment to production (with approval)
--   [ ] Automated database migrations
--   [ ] Rollback automation
+
+- [ ] GitHub Actions workflow for build/test
+- [ ] Automated deployment to staging
+- [ ] Automated deployment to production (with approval)
+- [ ] Automated database migrations
+- [ ] Rollback automation
 
 **Containerization:**
--   [ ] Multi-stage Docker build optimization
--   [ ] Docker Compose for full stack (local development)
--   [ ] Kubernetes deployment manifests (optional)
--   [ ] Helm charts (optional)
+
+- [ ] Multi-stage Docker build optimization
+- [ ] Docker Compose for full stack (local development)
+- [ ] Kubernetes deployment manifests (optional)
+- [ ] Helm charts (optional)
 
 **Monitoring & Observability:**
--   [ ] Application Performance Monitoring (APM)
--   [ ] Error tracking (Sentry / Application Insights)
--   [ ] Metrics collection (Prometheus)
--   [ ] Distributed tracing (Jaeger / Zipkin)
--   [ ] Centralized logging (ELK stack / Seq)
+
+- [ ] Application Performance Monitoring (APM)
+- [ ] Error tracking (Sentry / Application Insights)
+- [ ] Metrics collection (Prometheus)
+- [ ] Distributed tracing (Jaeger / Zipkin)
+- [ ] Centralized logging (ELK stack / Seq)
 
 **Database:**
--   [ ] Database backup automation
--   [ ] Database restore procedures
--   [ ] Migration rollback strategy
--   [ ] Database replication (read replicas)
--   [ ] Database monitoring and alerting
+
+- [ ] Database backup automation
+- [ ] Database restore procedures
+- [ ] Migration rollback strategy
+- [ ] Database replication (read replicas)
+- [ ] Database monitoring and alerting
 
 ---
 
 ## 注意事項
 
-### ⚠️ 每個新功能必須：
+### ⚠️ 每個新功能必須
 
-1.  **遵循 Small Steps Git 策略**
-    -   API → Tests → UI 分別 commit
-    -   每個 endpoint/component 獨立 commit
+1. **遵循 Small Steps Git 策略**
+   - API → Tests → UI 分別 commit
+   - 每個 endpoint/component 獨立 commit
 
-2.  **更新文件**
-    -   完成後更新 `PROJECT_STATUS.md`
-    -   標記 `PROJECT_STATUS.md` 完成項目
-    -   必要時更新 `DEVELOPMENT_GUIDE.md`
+2. **更新文件**
+   - 完成後更新 `PROJECT_STATUS.md`
+   - 標記 `PROJECT_STATUS.md` 完成項目
+   - 必要時更新 `DEVELOPMENT_GUIDE.md`
 
-3.  **測試**
-    -   Unit tests for services
-    -   API tests (Swagger UI 手動測試或 E2E)
-    -   E2E tests for critical flows (Playwright MCP)
+3. **測試**
+   - Unit tests for services
+   - API tests (Swagger UI 手動測試或 E2E)
+   - E2E tests for critical flows (Playwright MCP)
 
-4.  **Tailwind CSS 設定**
-    -   新 Vue SPA 必須建立 `style.css`
-    -   `main.js` 必須 `import './style.css'`
+4. **Tailwind CSS 設定**
+   - 新 Vue SPA 必須建立 `style.css`
+   - `main.js` 必須 `import './style.css'`
 
-5.  **Authorization 檢查**
-    -   Razor Page: `[Authorize(Roles = "Admin")]`
-    -   API Controller: `[Authorize(Roles = "Admin")]` or Permission-based
+5. **Authorization 檢查**
+   - Razor Page: `[Authorize(Roles = "Admin")]`
+   - API Controller: `[Authorize(Roles = "Admin")]` or Permission-based
