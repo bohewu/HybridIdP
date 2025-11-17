@@ -152,6 +152,7 @@ builder.Services.AddScoped<IBrandingService, BrandingService>();
 builder.Services.AddScoped<ISecurityPolicyService, SecurityPolicyService>();
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<ILoginHistoryService, LoginHistoryService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<INotificationService, FakeNotificationService>();
 
 var app = builder.Build();

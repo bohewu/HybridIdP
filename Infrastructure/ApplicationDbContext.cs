@@ -28,6 +28,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Resource> Resources => Set<Resource>();
     public DbSet<ApiResource> ApiResources => Set<ApiResource>();
     public DbSet<ApiResourceScope> ApiResourceScopes => Set<ApiResourceScope>();
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
