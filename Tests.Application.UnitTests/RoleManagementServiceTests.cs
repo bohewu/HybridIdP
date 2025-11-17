@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Events;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Moq;
@@ -14,7 +15,8 @@ public class RoleManagementServiceTests
     private static RoleManagementService CreateService(
         IEnumerable<ApplicationRole> roles,
         out Mock<RoleManager<ApplicationRole>> roleManagerMock,
-        out Mock<UserManager<ApplicationUser>> userManagerMock)
+        out Mock<UserManager<ApplicationUser>> userManagerMock,
+        out Mock<IDomainEventPublisher> eventPublisherMock)
     {
         // Mock RoleStore and support IQueryable
         var roleStore = new Mock<IRoleStore<ApplicationRole>>();
@@ -49,14 +51,17 @@ public class RoleManagementServiceTests
             .Setup(x => x.GetUsersInRoleAsync(It.IsAny<string>()))
             .ReturnsAsync(new List<ApplicationUser>());
 
-        return new RoleManagementService(roleManagerMock.Object, userManagerMock.Object);
+        // Mock event publisher
+        eventPublisherMock = new Mock<IDomainEventPublisher>();
+
+        return new RoleManagementService(roleManagerMock.Object, userManagerMock.Object, eventPublisherMock.Object);
     }
 
     [Fact]
     public async Task GetRoleById_NotFound_ReturnsNull()
     {
         // Arrange
-        var service = CreateService(Array.Empty<ApplicationRole>(), out var roleMgr, out _);
+        var service = CreateService(Array.Empty<ApplicationRole>(), out var roleMgr, out _, out _);
         var missingId = Guid.NewGuid();
         roleMgr.Setup(x => x.FindByIdAsync(missingId.ToString())).ReturnsAsync((ApplicationRole?)null);
 
@@ -83,7 +88,7 @@ public class RoleManagementServiceTests
             CreatedAt = DateTime.UtcNow.AddDays(-2)
         };
 
-        var service = CreateService(new[] { role }, out var roleMgr, out var userMgr);
+        var service = CreateService(new[] { role }, out var roleMgr, out var userMgr, out _);
 
         roleMgr.Setup(x => x.FindByIdAsync(roleId.ToString())).ReturnsAsync(role);
         userMgr.Setup(x => x.GetUsersInRoleAsync("Editors")).ReturnsAsync(new List<ApplicationUser>
@@ -113,7 +118,7 @@ public class RoleManagementServiceTests
     {
         // Arrange
         var existing = new ApplicationRole { Id = Guid.NewGuid(), Name = "Admins" };
-        var service = CreateService(new[] { existing }, out var roleMgr, out _);
+        var service = CreateService(new[] { existing }, out var roleMgr, out _, out _);
         roleMgr.Setup(x => x.FindByNameAsync("Admins")).ReturnsAsync(existing);
 
         var dto = new CreateRoleDto
@@ -135,7 +140,7 @@ public class RoleManagementServiceTests
     public async Task CreateRole_InvalidPermission_ShouldFail()
     {
         // Arrange
-        var service = CreateService(Array.Empty<ApplicationRole>(), out var roleMgr, out _);
+        var service = CreateService(Array.Empty<ApplicationRole>(), out var roleMgr, out _, out _);
         roleMgr.Setup(x => x.FindByNameAsync(It.IsAny<string>())).ReturnsAsync((ApplicationRole?)null);
         var dto = new CreateRoleDto
         {
@@ -156,9 +161,14 @@ public class RoleManagementServiceTests
     public async Task CreateRole_Valid_ShouldSucceed()
     {
         // Arrange
-        var service = CreateService(Array.Empty<ApplicationRole>(), out var roleMgr, out _);
+        var service = CreateService(Array.Empty<ApplicationRole>(), out var roleMgr, out _, out var eventPublisher);
         roleMgr.Setup(x => x.FindByNameAsync(It.IsAny<string>())).ReturnsAsync((ApplicationRole?)null);
-        roleMgr.Setup(x => x.CreateAsync(It.IsAny<ApplicationRole>())).ReturnsAsync(IdentityResult.Success);
+        roleMgr.Setup(x => x.CreateAsync(It.IsAny<ApplicationRole>()))
+            .ReturnsAsync(IdentityResult.Success)
+            .Callback<ApplicationRole>(r => {
+                r.Id = Guid.NewGuid();
+                r.Name = "ContentEditor"; // Ensure name is set for event
+            });
 
         var dto = new CreateRoleDto
         {
@@ -172,12 +182,13 @@ public class RoleManagementServiceTests
         };
 
         // Act
-    var (success, roleId, errors) = await service.CreateRoleAsync(dto);
+        var (success, roleId, errors) = await service.CreateRoleAsync(dto);
 
         // Assert
         Assert.True(success);
         Assert.NotNull(roleId);
         Assert.Empty(errors);
+        eventPublisher.Verify(x => x.PublishAsync(It.Is<RoleCreatedEvent>(e => e.RoleName == "ContentEditor")), Times.Once);
     }
 
     [Fact]
@@ -186,7 +197,7 @@ public class RoleManagementServiceTests
         // Arrange
         var existing = new ApplicationRole { Id = Guid.NewGuid(), Name = "Admins" };
         var target = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors" };
-        var service = CreateService(new[] { existing, target }, out var roleMgr, out _);
+        var service = CreateService(new[] { existing, target }, out var roleMgr, out _, out _);
         roleMgr.Setup(x => x.FindByIdAsync(target.Id.ToString())).ReturnsAsync(target);
         roleMgr.Setup(x => x.FindByNameAsync("Admins")).ReturnsAsync(existing);
 
@@ -210,7 +221,7 @@ public class RoleManagementServiceTests
     {
         // Arrange
         var systemRole = new ApplicationRole { Id = Guid.NewGuid(), Name = "Admin", IsSystem = true };
-        var service = CreateService(new[] { systemRole }, out var roleMgr, out _);
+        var service = CreateService(new[] { systemRole }, out var roleMgr, out _, out _);
         roleMgr.Setup(x => x.FindByIdAsync(systemRole.Id.ToString())).ReturnsAsync(systemRole);
 
         var dto = new UpdateRoleDto
@@ -233,7 +244,7 @@ public class RoleManagementServiceTests
     {
         // Arrange
         var role = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors" };
-        var service = CreateService(new[] { role }, out var roleMgr, out _);
+        var service = CreateService(new[] { role }, out var roleMgr, out _, out _);
         roleMgr.Setup(x => x.FindByIdAsync(role.Id.ToString())).ReturnsAsync(role);
 
         var dto = new UpdateRoleDto
@@ -256,7 +267,7 @@ public class RoleManagementServiceTests
     {
         // Arrange
         var systemRole = new ApplicationRole { Id = Guid.NewGuid(), Name = "Admin", IsSystem = true };
-        var service = CreateService(new[] { systemRole }, out var roleMgr, out _);
+        var service = CreateService(new[] { systemRole }, out var roleMgr, out _, out _);
         roleMgr.Setup(x => x.FindByIdAsync(systemRole.Id.ToString())).ReturnsAsync(systemRole);
 
         // Act
@@ -272,7 +283,7 @@ public class RoleManagementServiceTests
     {
         // Arrange
         var role = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors" };
-        var service = CreateService(new[] { role }, out var roleMgr, out var userMgr);
+        var service = CreateService(new[] { role }, out var roleMgr, out var userMgr, out _);
         roleMgr.Setup(x => x.FindByIdAsync(role.Id.ToString())).ReturnsAsync(role);
         userMgr.Setup(x => x.GetUsersInRoleAsync("Editors")).ReturnsAsync(new List<ApplicationUser>
         {
@@ -292,7 +303,7 @@ public class RoleManagementServiceTests
     {
         // Arrange
         var role = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors" };
-        var service = CreateService(new[] { role }, out var roleMgr, out var userMgr);
+        var service = CreateService(new[] { role }, out var roleMgr, out var userMgr, out var eventPublisher);
         roleMgr.Setup(x => x.FindByIdAsync(role.Id.ToString())).ReturnsAsync(role);
         userMgr.Setup(x => x.GetUsersInRoleAsync("Editors")).ReturnsAsync(new List<ApplicationUser>());
         roleMgr.Setup(x => x.DeleteAsync(role)).ReturnsAsync(IdentityResult.Success);
@@ -303,6 +314,7 @@ public class RoleManagementServiceTests
         // Assert
         Assert.True(success);
         Assert.Empty(errors);
+        eventPublisher.Verify(x => x.PublishAsync(It.Is<RoleDeletedEvent>(e => e.RoleName == "Editors")), Times.Once);
     }
 
     [Fact]
@@ -321,7 +333,7 @@ public class RoleManagementServiceTests
             });
         }
 
-        var service = CreateService(roles, out _, out _);
+        var service = CreateService(roles, out _, out _, out _);
 
         // Act
         var page = await service.GetRolesAsync(skip: 5, take: 10);
@@ -344,7 +356,7 @@ public class RoleManagementServiceTests
             new() { Id = Guid.NewGuid(), Name = "Guests", Description = "Read only", CreatedAt = DateTime.UtcNow.AddDays(-3) }
         };
 
-        var service = CreateService(roles, out _, out _);
+        var service = CreateService(roles, out _, out _, out _);
 
         // Act
         var byName = await service.GetRolesAsync(skip: 0, take: 10, search: "admin");
@@ -368,7 +380,7 @@ public class RoleManagementServiceTests
             new() { Id = Guid.NewGuid(), Name = "Beta",  CreatedAt = new DateTime(2023, 1, 1) }
         };
 
-        var service = CreateService(roles, out _, out _);
+        var service = CreateService(roles, out _, out _, out _);
 
         // Act
         var page = await service.GetRolesAsync(skip: 0, take: 10, search: null, sortBy: "createdat", sortDirection: "desc");
@@ -376,5 +388,59 @@ public class RoleManagementServiceTests
         // Assert
         Assert.Equal(3, page.Items.Count);
         Assert.Equal("Alpha", page.Items[0].Name); // newest first
+    }
+
+    [Fact]
+    public async Task UpdateRole_Valid_ShouldPublishRoleUpdatedEvent()
+    {
+        // Arrange
+        var role = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors", Permissions = "users.read" };
+        var service = CreateService(new[] { role }, out var roleMgr, out _, out var eventPublisher);
+        roleMgr.Setup(x => x.FindByIdAsync(role.Id.ToString())).ReturnsAsync(role);
+        roleMgr.Setup(x => x.UpdateAsync(role)).ReturnsAsync(IdentityResult.Success);
+
+        var dto = new UpdateRoleDto
+        {
+            Name = "Editors",
+            Description = "Updated description",
+            Permissions = new List<string> { Core.Domain.Constants.Permissions.Users.Read }
+        };
+
+        // Act
+        var (success, errors) = await service.UpdateRoleAsync(role.Id, dto);
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        eventPublisher.Verify(x => x.PublishAsync(It.Is<RoleUpdatedEvent>(e => e.RoleName == "Editors")), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateRole_PermissionsChanged_ShouldPublishRolePermissionChangedEvent()
+    {
+        // Arrange
+        var role = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors", Permissions = "users.read" };
+        var service = CreateService(new[] { role }, out var roleMgr, out _, out var eventPublisher);
+        roleMgr.Setup(x => x.FindByIdAsync(role.Id.ToString())).ReturnsAsync(role);
+        roleMgr.Setup(x => x.UpdateAsync(role)).ReturnsAsync(IdentityResult.Success);
+
+        var dto = new UpdateRoleDto
+        {
+            Name = "Editors",
+            Description = "Updated description",
+            Permissions = new List<string> { Core.Domain.Constants.Permissions.Users.Read, Core.Domain.Constants.Permissions.Roles.Read }
+        };
+
+        // Act
+        var (success, errors) = await service.UpdateRoleAsync(role.Id, dto);
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        eventPublisher.Verify(x => x.PublishAsync(It.Is<RoleUpdatedEvent>(e => e.RoleName == "Editors")), Times.Once);
+        eventPublisher.Verify(x => x.PublishAsync(It.Is<RolePermissionChangedEvent>(e => 
+            e.RoleName == "Editors" && 
+            e.PermissionChanges.Contains("users.read") && 
+            e.PermissionChanges.Contains("roles.read"))), Times.Once);
     }
 }

@@ -2,6 +2,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Core.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using System;
@@ -17,12 +18,14 @@ public class ScopeService : IScopeService
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IApplicationDbContext _db;
+    private readonly IDomainEventPublisher _eventPublisher;
 
-    public ScopeService(IOpenIddictScopeManager scopeManager, IOpenIddictApplicationManager applicationManager, IApplicationDbContext db)
+    public ScopeService(IOpenIddictScopeManager scopeManager, IOpenIddictApplicationManager applicationManager, IApplicationDbContext db, IDomainEventPublisher eventPublisher)
     {
         _scopeManager = scopeManager;
         _applicationManager = applicationManager;
         _db = db;
+        _eventPublisher = eventPublisher;
     }
 
     public async Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort)
@@ -170,7 +173,7 @@ public class ScopeService : IScopeService
             await _db.SaveChangesAsync(CancellationToken.None);
         }
         
-        return new ScopeSummary
+        var summary = new ScopeSummary
         {
             Id = id!,
             Name = request.Name,
@@ -184,6 +187,10 @@ public class ScopeService : IScopeService
             DisplayOrder = request.DisplayOrder,
             Category = request.Category
         };
+
+        await _eventPublisher.PublishAsync(new ScopeCreatedEvent(id!, request.Name));
+
+        return summary;
     }
 
     public async Task<bool> UpdateScopeAsync(string id, UpdateScopeRequest request)
@@ -250,6 +257,9 @@ public class ScopeService : IScopeService
         }
         
         await _db.SaveChangesAsync(CancellationToken.None);
+
+        await _eventPublisher.PublishAsync(new ScopeUpdatedEvent(id, await _scopeManager.GetNameAsync(scope) ?? "", "Scope updated"));
+
         return true;
     }
 
@@ -284,6 +294,9 @@ public class ScopeService : IScopeService
             }
             
             await _scopeManager.DeleteAsync(scope);
+
+            await _eventPublisher.PublishAsync(new ScopeDeletedEvent(scopeId!, id));
+
             return true;
         }
         catch
@@ -385,6 +398,8 @@ public class ScopeService : IScopeService
                 CustomMappingLogic = sc.CustomMappingLogic
             })
             .ToListAsync();
+
+        await _eventPublisher.PublishAsync(new ScopeClaimChangedEvent(scopeId, scopeName ?? "", "Scope claims updated"));
 
         return (scopeId, scopeName ?? "", updatedClaims);
     }

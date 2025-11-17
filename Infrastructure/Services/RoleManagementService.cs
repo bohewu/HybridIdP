@@ -2,6 +2,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
 using Core.Domain.Constants;
+using Core.Domain.Events;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
@@ -12,13 +13,16 @@ public class RoleManagementService : IRoleManagementService
 {
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IDomainEventPublisher _eventPublisher;
 
     public RoleManagementService(
         RoleManager<ApplicationRole> roleManager,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IDomainEventPublisher eventPublisher)
     {
         _roleManager = roleManager;
         _userManager = userManager;
+        _eventPublisher = eventPublisher;
     }
 
     public async Task<List<RoleSummaryDto>> GetRolesAsync()
@@ -184,6 +188,8 @@ public class RoleManagementService : IRoleManagementService
             return (false, null, result.Errors.Select(e => e.Description));
         }
 
+        await _eventPublisher.PublishAsync(new RoleCreatedEvent(role.Id.ToString(), role.Name!));
+
         return (true, role.Id, Array.Empty<string>());
     }
 
@@ -221,12 +227,27 @@ public class RoleManagementService : IRoleManagementService
             return (false, new[] { $"Invalid permissions: {string.Join(", ", invalidPermissions)}" });
         }
 
+        var oldPermissions = ParsePermissions(role.Permissions);
+        var newPermissions = updateDto.Permissions ?? new List<string>();
+
         role.Name = updateDto.Name;
         role.Description = updateDto.Description;
-    role.Permissions = SerializePermissions(updateDto.Permissions ?? new List<string>());
+        role.Permissions = SerializePermissions(newPermissions);
         role.ModifiedAt = DateTime.UtcNow;
 
         var result = await _roleManager.UpdateAsync(role);
+
+        if (result.Succeeded)
+        {
+            await _eventPublisher.PublishAsync(new RoleUpdatedEvent(role.Id.ToString(), role.Name!, "Role updated"));
+
+            // Check if permissions changed
+            if (!oldPermissions.SequenceEqual(newPermissions))
+            {
+                var changes = $"Permissions changed from [{string.Join(", ", oldPermissions)}] to [{string.Join(", ", newPermissions)}]";
+                await _eventPublisher.PublishAsync(new RolePermissionChangedEvent(role.Id.ToString(), role.Name!, changes));
+            }
+        }
 
         return result.Succeeded
             ? (true, Array.Empty<string>())
@@ -254,6 +275,11 @@ public class RoleManagementService : IRoleManagementService
         }
 
         var result = await _roleManager.DeleteAsync(role);
+
+        if (result.Succeeded)
+        {
+            await _eventPublisher.PublishAsync(new RoleDeletedEvent(role.Id.ToString(), role.Name!));
+        }
 
         return result.Succeeded
             ? (true, Array.Empty<string>())

@@ -2,6 +2,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Core.Domain.Events;
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -22,12 +23,14 @@ public class ScopeServiceTests : IDisposable
     private readonly Mock<IOpenIddictScopeManager> _mockScopeManager;
     private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
     private readonly ApplicationDbContext _dbContext;
+    private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
     private readonly ScopeService _scopeService;
 
     public ScopeServiceTests()
     {
         _mockScopeManager = new Mock<IOpenIddictScopeManager>();
         _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
+        _mockEventPublisher = new Mock<IDomainEventPublisher>();
         
         // Setup in-memory database
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -36,7 +39,7 @@ public class ScopeServiceTests : IDisposable
         
         _dbContext = new ApplicationDbContext(options);
         
-        _scopeService = new ScopeService(_mockScopeManager.Object, _mockApplicationManager.Object, _dbContext);
+        _scopeService = new ScopeService(_mockScopeManager.Object, _mockApplicationManager.Object, _dbContext, _mockEventPublisher.Object);
     }
 
     public void Dispose()
@@ -483,6 +486,7 @@ public class ScopeServiceTests : IDisposable
                 d.Name == "newscope" && 
                 d.Resources.Contains(AuthConstants.Resources.ResourceServer)), 
             It.IsAny<CancellationToken>()), Times.Once);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<ScopeCreatedEvent>(e => e.ScopeName == "newscope")), Times.Once);
     }
 
     [Fact]
@@ -521,6 +525,7 @@ public class ScopeServiceTests : IDisposable
         Assert.True(extension.IsRequired);
         Assert.Equal(5, extension.DisplayOrder);
         Assert.Equal("Custom", extension.Category);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<ScopeCreatedEvent>(e => e.ScopeName == "newscope")), Times.Once);
     }
 
     [Fact]
@@ -628,6 +633,7 @@ public class ScopeServiceTests : IDisposable
         var extension = await _dbContext.ScopeExtensions.FirstOrDefaultAsync(e => e.ScopeId == "scope1");
         Assert.NotNull(extension);
         Assert.Equal("New Consent", extension.ConsentDisplayName);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<ScopeUpdatedEvent>(e => e.ScopeName == "oldname")), Times.Once);
     }
 
     [Fact]
@@ -767,6 +773,7 @@ public class ScopeServiceTests : IDisposable
         _mockScopeManager.Verify(m => m.DeleteAsync(scope, It.IsAny<CancellationToken>()), Times.Once);
         var extension = await _dbContext.ScopeExtensions.FirstOrDefaultAsync(e => e.ScopeId == "scope1");
         Assert.Null(extension);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<ScopeDeletedEvent>(e => e.ScopeName == "scope1")), Times.Once);
     }
 
     [Fact]
@@ -974,6 +981,7 @@ public class ScopeServiceTests : IDisposable
         var remainingClaims = _dbContext.ScopeClaims.Where(sc => sc.ScopeId == "scope1").ToList();
         Assert.Single(remainingClaims);
         Assert.Equal(2, remainingClaims.First().UserClaimId);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<ScopeClaimChangedEvent>(e => e.ScopeName == "profile")), Times.Once);
     }
 
     [Fact]
