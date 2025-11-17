@@ -20,6 +20,8 @@
 - ⏱️ **閱讀時間：** 3-5 分鐘
 - 📌 **更新頻率：** 每完成一個 Phase 更新一次
 
+注意：專案已將大檔拆分以利維護與查閱。最新進度摘要請參見 `docs/PROJECT_PROGRESS.md`，各 Phase 的詳細說明已拆分至 `docs/phase-*.md`（例如 `docs/phase-5-security-i18n-consent.md`）。如需深入內容，請由 `PROJECT_PROGRESS.md` 點入對應 Phase 的檔案查閱。
+
 **第三步：參考 [`ARCHITECTURE.md`](./ARCHITECTURE.md)**
 - 📖 **用途：** 架構決策、技術棧詳解、安全考量
 - 🎯 **適合：** 實作 API、UI、理解系統設計時查閱
