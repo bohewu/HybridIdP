@@ -11,7 +11,7 @@
 - ✅ **Phase 6.3：ScopeClaimsController 整合已完成** (8 unit tests, integrated into ScopeService)
 - ✅ **Phase 6.4：異常登入偵測-管理者解除封鎖已完成** (3 unit tests, admin unblock functionality)
 - ✅ **Phase 7.1：Audit Logging Infrastructure 已完成** (AuditEvent entity, service layer, domain events, EF migration, 10 unit tests, API endpoints)
-- 📋 **Phase 7.1a：AuditService 整合至重點系統** (Domain Events 解耦整合, User/Role/Client/Scope 服務稽核, TDD 測試驅動) - UserManagementService ✅, ClientService ✅
+- ✅ **Phase 7.1a：AuditService 整合至重點系統** (Domain Events 解耦整合, User/Role/Client/Scope 服務稽核, TDD 測試驅動) - UserManagementService ✅, ClientService ✅, RoleManagementService ✅, ScopeService ✅
 
 **架構狀態分析：**
 - ✅ 已重構完成（Thin Controller + Service Pattern）：
@@ -1264,7 +1264,7 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 
 ---
 
-### Phase 7.1a: AuditService 整合至重點系統 (Domain Events 解耦整合) 📋
+### Phase 7.1a: AuditService 整合至重點系統 (Domain Events 解耦整合) ✅ 已完成
 
 **目標：** 將 AuditService 整合至 UserManagementService、ClientService、RoleManagementService、ScopeService 等重點業務服務，使用 Domain Events 實現解耦合設計。
 
@@ -1282,8 +1282,8 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 
 - ✅ **UserManagementService**: 用戶 CRUD、角色分配、密碼變更、帳戶狀態變更 (已完成，14 單元測試通過)
 - ✅ **ClientService**: Client 建立/更新/刪除、Secret 管理、Scope 權限變更 (已完成，46 單元測試通過)
-- 📋 **RoleManagementService**: 角色 CRUD、權限分配變更
-- 📋 **ScopeService**: Scope 管理、Claim 關聯變更
+- ✅ **RoleManagementService**: 角色 CRUD、權限分配變更 (已完成，16 單元測試通過)
+- ✅ **ScopeService**: Scope 管理、Claim 關聯變更 (已完成，32 單元測試通過)
 - 📋 **LoginService**: 登入/登出事件、失敗嘗試追蹤
 - 📋 **SecurityPolicyService**: 安全策略更新、密碼政策變更
 
