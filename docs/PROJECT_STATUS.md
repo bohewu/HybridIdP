@@ -11,6 +11,7 @@
 - ✅ **Phase 6.3：ScopeClaimsController 整合已完成** (8 unit tests, integrated into ScopeService)
 - ✅ **Phase 6.4：異常登入偵測-管理者解除封鎖已完成** (3 unit tests, admin unblock functionality)
 - ✅ **Phase 7.1：Audit Logging Infrastructure 已完成** (AuditEvent entity, service layer, domain events, EF migration, 10 unit tests, API endpoints)
+- 📋 **Phase 7.1a：AuditService 整合至重點系統** (Domain Events 解耦整合, User/Role/Client/Scope 服務稽核, TDD 測試驅動)
 
 **架構狀態分析：**
 - ✅ 已重構完成（Thin Controller + Service Pattern）：
@@ -1260,6 +1261,61 @@ Phase 5.7 refactoring is **production ready**. All tests passing, no regressions
 5. `feat: Add approve abnormal login API endpoint`
 6. `db: Add migration for IsApprovedByAdmin field`
 7. `test: Add E2E test for approve endpoint`
+
+---
+
+### Phase 7.1a: AuditService 整合至重點系統 (Domain Events 解耦整合) 📋
+
+**目標：** 將 AuditService 整合至 UserManagementService、ClientService、RoleManagementService、ScopeService 等重點業務服務，使用 Domain Events 實現解耦合設計。
+
+**預估 token：** ~2000  
+**預估時間：** 3-4 天
+
+**功能範圍：**
+- Domain Events 架構擴展 (IDomainEventHandler 介面)
+- 業務服務 Domain Event 觸發
+- AuditService 作為 Event Handler 訂閱並記錄稽核事件
+- 關鍵業務操作稽核記錄 (CRUD 操作、權限變更、安全策略更新)
+- TDD 測試驅動開發 (每個整合點的單元測試)
+
+**整合服務清單：**
+- **UserManagementService**: 用戶 CRUD、角色分配、密碼變更、帳戶狀態變更
+- **ClientService**: Client 建立/更新/刪除、Secret 管理、Scope 權限變更
+- **RoleManagementService**: 角色 CRUD、權限分配變更
+- **ScopeService**: Scope 管理、Claim 關聯變更
+- **LoginService**: 登入/登出事件、失敗嘗試追蹤
+- **SecurityPolicyService**: 安全策略更新、密碼政策變更
+
+**技術實現重點：**
+- **解耦合設計**: 業務邏輯不直接依賴 AuditService，使用 Domain Events
+- **Event Types**: UserCreated, UserUpdated, UserDeleted, ClientModified, RoleChanged, ScopeUpdated, LoginAttempt, SecurityPolicyChanged
+- **Audit Fields**: 符合台灣資安法 (用戶ID、動作、時間戳、IP位址、詳細資訊)
+- **測試覆蓋**: 每個整合點的單元測試 + Domain Event 發佈驗證
+
+**Domain Events 架構：**
+```csharp
+// 業務服務觸發事件
+await _domainEventPublisher.PublishAsync(new UserCreatedEvent(user.Id, user.UserName));
+
+// AuditService 訂閱處理
+public class AuditService : IDomainEventHandler<UserCreatedEvent>
+{
+    public async Task HandleAsync(UserCreatedEvent @event)
+    {
+        await LogEventAsync(AuditEventTypes.UserCreated, 
+            @event.UserId, 
+            $"User '{@event.UserName}' created", 
+            GetClientIP(), 
+            GetUserAgent());
+    }
+}
+```
+
+**開發策略：**
+- 每個服務單獨 commit (API → Tests → Integration)
+- 先實作 Domain Events 架構，再逐一整合服務
+- 確保所有業務邏輯保持解耦合
+- 完整單元測試覆蓋 (Event 發佈 + Handler 處理)
 
 ---
 
