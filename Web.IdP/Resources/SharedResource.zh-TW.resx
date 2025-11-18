@@ -18,8 +18,11 @@
   <data name="Scopes" xml:space="preserve">
     <value>範圍 (Scopes)</value>
   </data>
+  <data name="Resources" xml:space="preserve">
+    <value>API 資源</value>
+  </data>
   <data name="Claims" xml:space="preserve">
-    <value>Claims</value>
+    <value>使用者宣告</value>
   </data>
   <data name="IdentityManagement" xml:space="preserve">
     <value>身分管理</value>

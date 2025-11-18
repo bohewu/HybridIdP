@@ -116,6 +116,50 @@
         "lowercase": "At least one lowercase letter (a-z)",
         "digit": "At least one digit (0-9)",
         "specialChar": "At least one special character (e.g., !@#$%)"
+      },
+      "loginHistory": {
+        "title": "Login History",
+        "userLabel": "User",
+        "loading": "Loading login history...",
+        "empty": "No login history found for this user.",
+        "showAbnormalOnly": "Show Abnormal Only",
+        "tableHeaders": {
+          "loginTime": "Login Time",
+          "ipAddress": "IP Address",
+          "userAgent": "User Agent",
+          "status": "Status",
+          "riskScore": "Risk Score",
+          "actions": "Actions"
+        },
+        "status": {
+          "success": "Success",
+          "failed": "Failed",
+          "abnormal": "Abnormal",
+          "approved": "Approved",
+          "normal": "Normal"
+        },
+        "buttons": {
+          "approve": "Approve",
+          "approving": "Approving...",
+          "close": "Close"
+        },
+        "confirm": {
+          "approve": "Are you sure you want to approve this login from IP {ip}? This will add the IP to the whitelist for this user."
+        },
+        "alerts": {
+          "approveSuccess": "Login approved successfully. IP address added to whitelist.",
+          "approveFailed": "Failed to approve login: {message}"
+        },
+        "errors": {
+          "loadFailed": "Failed to load login history."
+        },
+        "pagination": {
+          "previous": "Previous",
+          "next": "Next",
+          "pageInfo": "Page {page} / {pages}",
+          "total": "Total: {total}",
+          "pageSize": "Per page"
+        }
       }
     },
     "roles": {
@@ -286,50 +330,6 @@
       "deactivate": "You don't have permission to deactivate users.",
       "delete": "You don't have permission to delete users.",
       "reactivate": "You don't have permission to reactivate users."
-    },
-    "loginHistory": {
-      "title": "Login History",
-      "userLabel": "User",
-      "loading": "Loading login history...",
-      "empty": "No login history found for this user.",
-      "showAbnormalOnly": "Show Abnormal Only",
-      "tableHeaders": {
-        "loginTime": "Login Time",
-        "ipAddress": "IP Address",
-        "userAgent": "User Agent",
-        "status": "Status",
-        "riskScore": "Risk Score",
-        "actions": "Actions"
-      },
-      "status": {
-        "success": "Success",
-        "failed": "Failed",
-        "abnormal": "Abnormal",
-        "approved": "Approved",
-        "normal": "Normal"
-      },
-      "buttons": {
-        "approve": "Approve",
-        "approving": "Approving...",
-        "close": "Close"
-      },
-      "confirm": {
-        "approve": "Are you sure you want to approve this login from IP {ip}? This will add the IP to the whitelist for this user."
-      },
-      "alerts": {
-        "approveSuccess": "Login approved successfully. IP address added to whitelist.",
-        "approveFailed": "Failed to approve login: {message}"
-      },
-      "errors": {
-        "loadFailed": "Failed to load login history."
-      },
-      "pagination": {
-        "previous": "Previous",
-        "next": "Next",
-        "pageInfo": "Page {page} / {pages}",
-        "total": "Total: {total}",
-        "pageSize": "Per page"
-      }
     },
     "audit": {
       "pageTitle": "Audit Log Viewer",
