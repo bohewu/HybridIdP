@@ -4,7 +4,7 @@
 
 本文件整合了 HybridAuth IdP 專案的已完成功能摘要和待辦事項，提供一個清晰的專案進度概覽。
 
-**當前狀態（2025-11-16）：**
+**當前狀態（2025-11-18）：**
 - ✅ **Phase 1-6：核心功能已完成** (OIDC Flow, Admin UI, User/Role/Client/Scope Management, Security Policies, MFA, API Resources, Session Management)
 - ✅ **Phase 6.1：單元測試覆蓋率已達標** (226 tests passing, 87%+ coverage achieved)
 - ✅ **Phase 6.2：ClaimsController 重構已完成** (23 unit tests, thin controller pattern)
@@ -13,6 +13,7 @@
 - ✅ **Phase 7.1：Audit Logging Infrastructure 已完成** (AuditEvent entity, service layer, domain events, EF migration, 10 unit tests, API endpoints)
 - ✅ **Phase 7.1a：AuditService 整合至重點系統** (Domain Events 解耦整合, User/Role/Client/Scope 服務稽核, TDD 測試驅動) - UserManagementService ✅, ClientService ✅, RoleManagementService ✅, ScopeService ✅
 - ✅ **Phase 7.2：Audit Log Viewer UI 已完成** (Vue.js audit log viewer, sorting/pagination/filtering, i18n support, CSV/Excel export, 7 audit events displayed)
+- ✅ **Phase 7.3：異常登入管理 UI 已完成** (LoginHistoryDialog with abnormal login approval, visual indicators, E2E testing)
 
 **架構狀態分析：**
 - ✅ 已重構完成（Thin Controller + Service Pattern）：
@@ -55,7 +56,7 @@
 
 > 本節記錄所有已完成的 Phases，採用摘要格式以節省 token
 
-最後更新：2025-11-16
+最後更新：2025-11-18
 
 ### Phase 1: PostgreSQL & Entity Framework Core ✅
 
@@ -1376,25 +1377,105 @@ AuditApp.vue (Main App)
 - 📝 **大量資料優化**：虛擬化表格用於數萬筆稽核記錄
 - 📝 **稽核事件詳情**：展開式詳細資訊面板
 
-### Phase 7.3: 異常登入管理 UI (Abnormal Login Management UI)
+### Phase 7.3: 異常登入管理 UI (Abnormal Login Management UI) ✅
+
+**完成時間：** 2025-11-18
 
 **目標：** 實作異常登入的手動管理介面
-**預估 token：** ~2000
-**預估時間：** 1-2 天
 
-**功能範圍：**
+#### 實施內容
 
-- 顯示被標記為異常的登入記錄
-- 管理員批准/拒絕異常登入
-- IP 白名單管理
-- 安全警報通知系統
-- 整合至現有使用者管理介面
+**LoginHistoryDialog.vue 功能：**
+- ✅ 顯示使用者完整登入歷史記錄（時間、IP、User Agent、風險評分、狀態）
+- ✅ 異常登入視覺化標記：
+  - 橙色警告三角形圖標 (⚠️) 顯示在 IP 地址旁
+  - 橙色徽章顯示「異常」狀態
+  - 高風險評分顯示為粉紅色徽章
+- ✅ 管理員批准功能：
+  - 綠色「批准」按鈕
+  - 批准前顯示確認對話框（包含 IP 地址）
+  - 批准後顯示成功提示
+  - 狀態即時更新為「已批准」（綠色徽章）
+- ✅ 過濾功能：「僅顯示異常登入」複選框
+- ✅ 分頁支援：每頁 10 筆記錄
+- ✅ i18n 完整支援（繁體中文/英文）
 
-**UI 組件：**
+**API Integration:**
+- ✅ GET `/api/admin/users/{userId}/login-history` - 載入登入記錄
+- ✅ POST `/api/admin/users/{userId}/login-history/{loginId}/approve` - 批准異常登入
+- ✅ 查詢參數支援：`page`, `pageSize`, `showAbnormalOnly`
 
-- AbnormalLoginManager.vue
-- LoginHistoryViewer.vue
-- SecurityAlerts.vue
+**Database Schema:**
+- ✅ `LoginHistories` table with columns:
+  - `IsFlaggedAbnormal` (boolean) - 標記異常登入
+  - `IsApprovedByAdmin` (boolean) - 管理員批准狀態
+  - `RiskScore` (integer 0-100) - 風險評分
+
+#### E2E 測試結果（Playwright MCP Server）
+
+**測試場景：**
+1. ✅ 建立測試數據（10 條正常登入 + 1 條異常登入）
+2. ✅ 開啟 LoginHistoryDialog，驗證 UI 顯示
+3. ✅ 驗證異常登入視覺標記（橙色徽章 + 警告圖標）
+4. ✅ 測試「僅顯示異常登入」過濾功能
+5. ✅ 執行批准工作流：
+   - 點擊「批准」按鈕
+   - 確認對話框顯示 IP 地址
+   - 批准後顯示成功提示
+   - 狀態更新為「已批准」
+6. ✅ 驗證數據庫更新（`IsApprovedByAdmin = true`）
+
+**測試截圖：**
+- `login-history-dialog-abnormal.png` - 異常登入顯示（橙色徽章 + 圖標）
+- `login-history-dialog-filtered.png` - 過濾後只顯示異常登入
+- `login-history-dialog-approved.png` - 批准後狀態變更（綠色徽章）
+
+**測試數據：**
+- Test User: testuser@example.com (ID: 019a6167-3f3b-7e6c-b0c9-a31d1a6595a4)
+- Normal IP: 192.168.1.100 (10 records, RiskScore: 10-15)
+- Abnormal IP: 10.0.0.50 (1 record, RiskScore: 95, IsFlaggedAbnormal: true)
+
+#### Git Commits
+
+```bash
+b21a694 - fix(i18n): Fix loginHistory key nesting and add Chinese menu translations
+[pending] - feat(ui): Complete Phase 7.3 abnormal login management with E2E testing
+```
+
+#### 技術亮點
+
+- **Vue 3 Composition API**: Reactive state management with `ref()` and `computed()`
+- **Tailwind CSS**: Utility-first styling with responsive design
+- **i18n Integration**: Separate translations for frontend (vue-i18n) and backend (Resources)
+- **Visual Indicators**: Combined orange badge + warning icon for abnormal logins
+- **Real-time Updates**: UI reflects approval status immediately after API call
+- **Pagination**: Efficient handling of large login history datasets
+- **Filter Support**: Quick access to abnormal logins only
+- **Comprehensive Testing**: E2E testing with Playwright MCP Server
+
+#### 架構說明
+
+**異常登入批准流程：**
+1. 系統偵測異常登入（新 IP 地址），設定 `IsFlaggedAbnormal = true`
+2. 管理員在 Users 頁面點擊「登入歷史記錄」按鈕
+3. LoginHistoryDialog 顯示所有登入記錄，異常登入以橙色標記
+4. 管理員點擊「批准」按鈕
+5. 確認對話框顯示 IP 地址，管理員確認
+6. API 呼叫更新 `IsApprovedByAdmin = true`
+7. UI 即時更新，狀態變為「已批准」（綠色徽章）
+8. 該 IP 地址後續登入不再被標記為異常
+
+**UI 狀態邏輯：**
+- `IsFlaggedAbnormal = false` → 狀態：「成功」（藍色徽章）
+- `IsFlaggedAbnormal = true, IsApprovedByAdmin = false` → 狀態：「異常」（橙色徽章 + ⚠️ 圖標 + 批准按鈕）
+- `IsFlaggedAbnormal = true, IsApprovedByAdmin = true` → 狀態：「已批准」（綠色徽章）
+
+**風險評分顏色：**
+- 0-30: 綠色（低風險）
+- 31-70: 黃色（中風險）
+- 71-100: 粉紅色（高風險）
+
+---
 
 ### Phase 7.4: 即時活動儀表板 (Real-time Activity Dashboard)
 

@@ -14,7 +14,7 @@ last-updated: 2025-11-18
 - Phase 4 — User/Role/Client & Permissions: 100% — `docs/phase-4-user-role-client.md`
 - Phase 5 — Security / i18n / Consent / API Resources: 95% — `docs/phase-5-security-i18n-consent.md`
 - Phase 6 — Code Quality & Tests: 90% — `docs/phase-6-code-quality-tests.md`
-- Phase 7 — Audit & Monitoring: 80% — `docs/phase-7-audit-monitoring.md`
+- Phase 7 — Audit & Monitoring: 85% — `docs/phase-7-audit-monitoring.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
 
