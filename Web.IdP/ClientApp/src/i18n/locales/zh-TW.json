@@ -36,7 +36,8 @@
       }
     },
     "users": {
-      "title": "使用者管理",
+      "pageTitle": "使用者管理",
+      "pageSubtitle": "管理使用者帳號、角色和權限",
       "createUser": "建立使用者",
       "search": "依電子郵件、姓名或 ID 搜尋使用者...",
       "all": "所有使用者",
@@ -120,6 +121,7 @@
     },
     "roles": {
       "pageTitle": "角色管理",
+      "pageSubtitle": "管理使用者的角色和權限",
       "createButton": "新增角色",
       "searchPlaceholder": "搜尋名稱/描述",
       "sortBy": "排序方式",
@@ -287,8 +289,8 @@
       "reactivate": "您沒有重新啟用使用者的權限。"
     },
     "audit": {
-      "title": "稽核日誌檢視器",
-      "description": "檢視和監控系統稽核事件以確保合規性和安全性。",
+      "pageTitle": "稽核日誌檢視器",
+      "pageSubtitle": "檢視和監控系統稽核事件以確保合規性和安全性",
       "noPermission": "您沒有權限檢視稽核日誌。",
       "loading": "載入稽核事件中...",
       "errorLoading": "載入稽核事件時發生錯誤",

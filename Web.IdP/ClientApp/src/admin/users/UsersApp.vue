@@ -6,6 +6,7 @@ import UserForm from './components/UserForm.vue'
 import RoleAssignment from './components/RoleAssignment.vue'
 import UserSessions from './components/UserSessions.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 
 const { t } = useI18n()
@@ -301,21 +302,24 @@ onMounted(() => {
   <div class="users-app">
     <div class="px-4 py-6">
       <!-- Page Header -->
-      <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h1 class="text-2xl font-bold text-gray-900">{{ t('admin.users.title') }}</h1>
-        
-        <!-- Create button - only show if user has create permission -->
-        <button
-          v-if="canCreate"
-          @click="handleCreate"
-          class="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors h-10"
-        >
-          <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-          </svg>
-          {{ t('admin.users.createUser') }}
-        </button>
-      </div>
+      <PageHeader 
+        :title="$t('admin.users.pageTitle')" 
+        :subtitle="$t('admin.users.pageSubtitle')"
+      >
+        <template #actions>
+          <button
+            v-if="canCreate"
+            @click="handleCreate"
+            class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
+            :disabled="loading"
+          >
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            {{ t('admin.users.createUser') }}
+          </button>
+        </template>
+      </PageHeader>
 
       <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
         <div class="flex">

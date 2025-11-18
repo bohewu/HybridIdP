@@ -35,7 +35,8 @@
       }
     },
     "users": {
-      "title": "User Management",
+      "pageTitle": "User Management",
+      "pageSubtitle": "Manage user accounts, roles, and permissions",
       "createUser": "Create User",
       "search": "Search users by email, name, or ID...",
       "all": "All Users",
@@ -119,6 +120,7 @@
     },
     "roles": {
       "pageTitle": "Role Management",
+      "pageSubtitle": "Manage roles and permissions for users",
       "createButton": "Create Role",
       "searchPlaceholder": "Search name/description",
       "sortBy": "Sort By",
@@ -286,8 +288,8 @@
       "reactivate": "You don't have permission to reactivate users."
     },
     "audit": {
-      "title": "Audit Log Viewer",
-      "description": "View and monitor system audit events for compliance and security.",
+      "pageTitle": "Audit Log Viewer",
+      "pageSubtitle": "View and monitor system audit events for compliance and security",
       "noPermission": "You do not have permission to view audit logs.",
       "loading": "Loading audit events...",
       "errorLoading": "Error loading audit events",

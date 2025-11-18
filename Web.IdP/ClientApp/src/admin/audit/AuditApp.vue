@@ -5,7 +5,9 @@ import AuditLogViewer from './components/AuditLogViewer.vue'
 import AuditLogFilters from './components/AuditLogFilters.vue'
 import AuditLogExport from './components/AuditLogExport.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
+import { exportToCsv as exportToCsvUtil, downloadFile } from '@/utils/exportUtils'
 
 const { t } = useI18n()
 
@@ -134,39 +136,19 @@ const exportToCsv = () => {
     event.ipAddress || t('audit.unknown')
   ])
 
-  const csvContent = [headers, ...rows]
-    .map(row => row.map(field => `"${field}"`).join(','))
-    .join('\n')
-
-  downloadFile(csvContent, 'audit-events.csv', 'text/csv')
+  // Use shared export utility
+  exportToCsvUtil(headers, rows, 'audit-events.csv')
 }
 
 const exportToExcel = () => {
-  // For now, export as CSV since Excel requires additional libraries
-  // In production, would use a library like xlsx or sheetjs
+  // Excel export uses CSV format (can be opened in Excel)
+  // To support true .xlsx format, install a library like 'xlsx'
   exportToCsv()
-}
-
-const downloadFile = (content, filename, mimeType) => {
-  const blob = new Blob([content], { type: mimeType })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
 }
 </script>
 
 <template>
-  <div class="audit-app">
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">{{ t('admin.audit.title') }}</h1>
-      <p class="mt-1 text-sm text-gray-600">{{ t('admin.audit.description') }}</p>
-    </div>
-
+  <div class="audit-app px-4 py-6">
     <AccessDeniedDialog
       v-if="showAccessDenied"
       :message="deniedMessage"
@@ -175,6 +157,11 @@ const downloadFile = (content, filename, mimeType) => {
     />
 
     <div v-else>
+      <PageHeader 
+        :title="$t('admin.audit.pageTitle')" 
+        :subtitle="$t('admin.audit.pageSubtitle')"
+      />
+
       <AuditLogFilters
         :filters="filters"
         @filters-change="handleFiltersChange"

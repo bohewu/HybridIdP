@@ -9,7 +9,10 @@
 
   <div class="px-4 py-6">
     <!-- Page Header -->
-    <PageHeader :title="$t('admin.roles.pageTitle')">
+    <PageHeader 
+      :title="$t('admin.roles.pageTitle')"
+      :subtitle="$t('admin.roles.pageSubtitle')"
+    >
       <template #actions>
         <button
           v-if="canCreate"
