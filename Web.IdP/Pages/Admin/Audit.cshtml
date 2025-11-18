@@ -1,0 +1,10 @@
+@page
+@model Web.IdP.Pages.Admin.AuditModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["Audit"].Value;
+    ViewData["Breadcrumb"] = Localizer["Audit"].Value;
+}
+
+<div id="app" class="vue-app-container"></div>
+<script type="module" vite-src="~/src/admin/audit/main.js"></script>

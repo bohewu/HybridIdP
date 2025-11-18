@@ -36,6 +36,9 @@
   <data name="SecurityPolicies" xml:space="preserve">
     <value>安全政策</value>
   </data>
+  <data name="Audit" xml:space="preserve">
+    <value>稽核</value>
+  </data>
   <data name="Administrator" xml:space="preserve">
     <value>管理者</value>
   </data>

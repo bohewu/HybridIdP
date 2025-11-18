@@ -42,6 +42,9 @@
   <data name="SecurityPolicies" xml:space="preserve">
     <value>Security Policies</value>
   </data>
+  <data name="Audit" xml:space="preserve">
+    <value>Audit</value>
+  </data>
   <data name="Administrator" xml:space="preserve">
     <value>Administrator</value>
   </data>
