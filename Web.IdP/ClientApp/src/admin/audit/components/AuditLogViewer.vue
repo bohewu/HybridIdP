@@ -18,8 +18,7 @@ const props = defineProps({
 const emit = defineEmits([
   'page-change',
   'page-size-change',
-  'sort-change',
-  'refresh'
+  'sort-change'
 ])
 
 const totalPages = computed(() => {
@@ -27,7 +26,7 @@ const totalPages = computed(() => {
 })
 
 const formatDate = (dateString) => {
-  if (!dateString) return t('audit.never')
+  if (!dateString) return t('admin.audit.never')
   return new Date(dateString).toLocaleString()
 }
 
@@ -133,8 +132,8 @@ const getSortIcon = (field) => {
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>{{ t('tableHeaders.timestamp') }}</span>
-                  <span v-html="getSortIcon('timestamp')"></span>
+                  <span>{{ t('admin.audit.tableHeaders.timestamp') }}</span>
+                  <span>^</span>
                 </div>
               </th>
               <th
@@ -142,8 +141,8 @@ const getSortIcon = (field) => {
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>{{ t('tableHeaders.eventType') }}</span>
-                  <span v-html="getSortIcon('eventType')"></span>
+                  <span>{{ t('admin.audit.tableHeaders.eventType') }}</span>
+                  <span>^</span>
                 </div>
               </th>
               <th
@@ -151,15 +150,15 @@ const getSortIcon = (field) => {
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>{{ t('tableHeaders.user') }}</span>
-                  <span v-html="getSortIcon('user')"></span>
+                  <span>{{ t('admin.audit.tableHeaders.user') }}</span>
+                  <span>^</span>
                 </div>
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ t('tableHeaders.details') }}
+                {{ t('admin.audit.tableHeaders.details') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ t('tableHeaders.ipAddress') }}
+                {{ t('admin.audit.tableHeaders.ipAddress') }}
               </th>
             </tr>
           </thead>
@@ -176,18 +175,17 @@ const getSortIcon = (field) => {
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ event.user || t('audit.system') }}
+                {{ event.user || t('admin.audit.system') }}
               </td>
               <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" :title="event.details">
                 {{ event.details }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ event.ipAddress || t('audit.unknown') }}
+                {{ event.ipAddress || t('admin.audit.unknown') }}
               </td>
             </tr>
           </tbody>
         </table>
-        </div>
       </div>
 
       <Pagination

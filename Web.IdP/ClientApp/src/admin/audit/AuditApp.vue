@@ -100,9 +100,11 @@ const handleRefresh = () => {
 }
 
 const formatDate = (dateString) => {
-  if (!dateString) return t('audit.never')
+  if (!dateString) return t('admin.audit.never')
   return new Date(dateString).toLocaleString()
 }
+
+const handleExport = (format) => {
   if (auditEvents.value.length === 0) {
     alert(t('admin.audit.export.noData'))
     return

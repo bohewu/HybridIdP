@@ -284,6 +284,46 @@
       "deactivate": "You don't have permission to deactivate users.",
       "delete": "You don't have permission to delete users.",
       "reactivate": "You don't have permission to reactivate users."
+    },
+    "audit": {
+      "title": "Audit Log Viewer",
+      "description": "View and monitor system audit events for compliance and security.",
+      "noPermission": "You do not have permission to view audit logs.",
+      "loading": "Loading audit events...",
+      "errorLoading": "Error loading audit events",
+      "noEvents": "No audit events found.",
+      "events": "Audit Events ({count})",
+      "refresh": "Refresh",
+      "never": "Never",
+      "system": "System",
+      "unknown": "Unknown",
+      "filters": {
+        "title": "Filters",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "user": "User",
+        "userPlaceholder": "Search by user ID or email...",
+        "eventType": "Event Type",
+        "allEventTypes": "All Event Types",
+        "ipAddress": "IP Address",
+        "ipPlaceholder": "Filter by IP address...",
+        "search": "General Search",
+        "searchPlaceholder": "Search in details...",
+        "clear": "Clear Filters"
+      },
+      "export": {
+        "title": "Export Audit Logs",
+        "csv": "Export as CSV",
+        "excel": "Export as Excel",
+        "noData": "No data to export"
+      },
+      "tableHeaders": {
+        "timestamp": "Timestamp",
+        "eventType": "Event Type",
+        "user": "User",
+        "details": "Details",
+        "ipAddress": "IP Address"
+      }
     }
   },
   "deniedMessages": {
@@ -386,7 +426,12 @@
     "email": "Email",
     "department": "Department",
     "roles": "Roles",
-    "lastLogin": "Last Login"
+    "lastLogin": "Last Login",
+    "timestamp": "Timestamp",
+    "eventType": "Event Type",
+    "user": "User",
+    "details": "Details",
+    "ipAddress": "IP Address"
   },
   "clientDetails": {
     "active": "Active",
@@ -758,39 +803,6 @@
     "saveButton": "Save Changes",
     "saving": "Saving...",
     "noChanges": "No changes to save."
-  },
-  "audit": {
-    "title": "Audit Log Viewer",
-    "description": "View and monitor system audit events for compliance and security.",
-    "noPermission": "You do not have permission to view audit logs.",
-    "loading": "Loading audit events...",
-    "errorLoading": "Error loading audit events",
-    "noEvents": "No audit events found.",
-    "events": "Audit Events ({count})",
-    "refresh": "Refresh",
-    "never": "Never",
-    "system": "System",
-    "unknown": "Unknown",
-    "filters": {
-      "title": "Filters",
-      "startDate": "Start Date",
-      "endDate": "End Date",
-      "user": "User",
-      "userPlaceholder": "Search by user ID or email...",
-      "eventType": "Event Type",
-      "allEventTypes": "All Event Types",
-      "ipAddress": "IP Address",
-      "ipPlaceholder": "Filter by IP address...",
-      "search": "General Search",
-      "searchPlaceholder": "Search in details...",
-      "clear": "Clear Filters"
-    },
-    "export": {
-      "title": "Export Audit Logs",
-      "csv": "Export as CSV",
-      "excel": "Export as Excel",
-      "noData": "No data to export"
-    }
   },
   "resources": {
     "pageTitle": "API Resource Management",
