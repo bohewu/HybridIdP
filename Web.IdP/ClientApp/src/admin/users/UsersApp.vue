@@ -5,6 +5,7 @@ import UserList from './components/UserList.vue'
 import UserForm from './components/UserForm.vue'
 import RoleAssignment from './components/RoleAssignment.vue'
 import UserSessions from './components/UserSessions.vue'
+import LoginHistoryDialog from './components/LoginHistoryDialog.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
@@ -18,6 +19,7 @@ const selectedUser = ref(null)
 const showForm = ref(false)
 const showRoleDialog = ref(false)
 const showSessionsDialog = ref(false)
+const showLoginHistoryDialog = ref(false)
 const showAccessDenied = ref(false)
 const deniedMessage = ref('')
 const deniedPermission = ref('')
@@ -148,6 +150,17 @@ const handleManageSessions = (user) => {
   showSessionsDialog.value = true
 }
 
+const handleViewLoginHistory = (user) => {
+  if (!canRead.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = t('admin.users.noPermission')
+    deniedPermission.value = Permissions.Users.Read
+    return
+  }
+  selectedUser.value = user
+  showLoginHistoryDialog.value = true
+}
+
 const handleDeactivate = async (user) => {
   if (!canDelete.value) {
     showAccessDenied.value = true
@@ -261,6 +274,11 @@ const handleSessionsClose = () => {
   selectedUser.value = null
 }
 
+const handleLoginHistoryClose = () => {
+  showLoginHistoryDialog.value = false
+  selectedUser.value = null
+}
+
 const handleRolesSaved = async () => {
   showRoleDialog.value = false
   selectedUser.value = null
@@ -358,6 +376,7 @@ onMounted(() => {
         @edit="handleEdit"
         @manage-roles="handleManageRoles"
         @manage-sessions="handleManageSessions"
+        @view-login-history="handleViewLoginHistory"
         @deactivate="handleDeactivate"
         @delete="handleDelete"
         @reactivate="handleReactivate"
@@ -404,6 +423,13 @@ onMounted(() => {
         :user="selectedUser"
         :can-update="canUpdate"
         @close="handleSessionsClose"
+      />
+
+      <LoginHistoryDialog
+        v-if="showLoginHistoryDialog"
+        :user="selectedUser"
+        :can-update="canUpdate"
+        @close="handleLoginHistoryClose"
       />
     </div>
   </div>

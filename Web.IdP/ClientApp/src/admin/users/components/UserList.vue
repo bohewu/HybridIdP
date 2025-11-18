@@ -23,6 +23,7 @@ const emit = defineEmits([
   'edit',
   'manage-roles',
   'manage-sessions',
+  'view-login-history',
   'deactivate',
   'delete',
   'reactivate',
@@ -236,6 +237,17 @@ const getSortIcon = (field) => {
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.5 8.5l5.5 5.5 5.5-5.5" />
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16v12H4z" />
+                    </svg>
+                  </button>
+
+                  <!-- View Login History button - show for all users -->
+                  <button
+                    @click="emit('view-login-history', user)"
+                    class="inline-flex items-center px-3 py-1.5 border border-cyan-300 text-cyan-700 text-sm font-medium rounded-md hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+                    :title="$t('admin.users.loginHistory.title')"
+                  >
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </button>
                   

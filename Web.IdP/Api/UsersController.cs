@@ -34,6 +34,7 @@ public class UsersController : ControllerBase
         _userManagementService = userManagementService;
         _userManager = userManager;
         _sessionService = sessionService;
+        _loginHistoryService = loginHistoryService;
     }
 
     /// <summary>

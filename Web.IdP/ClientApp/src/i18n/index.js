@@ -28,5 +28,6 @@ const i18n = createI18n({
     'en-US': enUS
   }
 })
+// Phase 7.3: Added login history i18n keys
 
 export default i18n
