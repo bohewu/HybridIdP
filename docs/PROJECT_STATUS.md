@@ -12,6 +12,7 @@
 - ✅ **Phase 6.4：異常登入偵測-管理者解除封鎖已完成** (3 unit tests, admin unblock functionality)
 - ✅ **Phase 7.1：Audit Logging Infrastructure 已完成** (AuditEvent entity, service layer, domain events, EF migration, 10 unit tests, API endpoints)
 - ✅ **Phase 7.1a：AuditService 整合至重點系統** (Domain Events 解耦整合, User/Role/Client/Scope 服務稽核, TDD 測試驅動) - UserManagementService ✅, ClientService ✅, RoleManagementService ✅, ScopeService ✅
+- ✅ **Phase 7.2：Audit Log Viewer UI 已完成** (Vue.js audit log viewer, sorting/pagination/filtering, i18n support, CSV/Excel export, 7 audit events displayed)
 
 **架構狀態分析：**
 - ✅ 已重構完成（Thin Controller + Service Pattern）：
@@ -1247,25 +1248,133 @@ public class AuditService : IDomainEventHandler<UserCreatedEvent>
 - `GET /api/admin/audit/events` - 查詢稽核事件
 - `POST /api/admin/audit/events/{id}/export` - 匯出特定事件
 
-### Phase 7.2: 稽核日誌檢視器 UI (Audit Log Viewer UI)
+### Phase 7.2: 稽核日誌檢視器 UI (Audit Log Viewer UI) ✅ 已完成
 
-**目標：** 建立管理員稽核日誌檢視介面
-**預估 token：** ~2500
-**預估時間：** 2 天
+**完成時間：** 2025-11-18
 
-**功能範圍：**
+**目標：** 實作完整的稽核日誌檢視器 UI，提供管理員查看、篩選、排序和匯出系統稽核事件的功能
 
-- Vue.js 稽核日誌列表元件
-- 進階篩選功能 (日期範圍、事件類型、使用者)
-- 分頁與排序
-- 匯出功能 (CSV/Excel)
-- 即時更新機制
+#### 實施內容
 
-**UI 組件：**
+**Frontend Vue.js Components:**
+- ✅ **AuditApp.vue** (269 行) - 主應用程式元件，負責狀態管理與 API 整合
+- ✅ **AuditLogViewer.vue** (201 行) - 稽核事件表格元件，包含排序、分頁和載入狀態
+- ✅ **AuditLogFilters.vue** (145 行) - 篩選表單元件，支援日期範圍、使用者、事件類型、IP 位址篩選
+- ✅ **AuditLogExport.vue** (89 行) - 匯出元件，提供 CSV 和 Excel 匯出功能
 
-- AuditLogViewer.vue
-- AuditLogFilters.vue
-- AuditLogExport.vue
+**Backend Integration:**
+- ✅ 使用現有的 `/api/admin/audit/events` API 端點
+- ✅ 支援分頁、排序和篩選參數
+- ✅ 權限驗證：`audit.read` 權限檢查
+
+**UI Features:**
+- ✅ **表格顯示**：時間戳記、事件類型、使用者、詳細資訊、IP 位址欄位
+- ✅ **排序功能**：點擊欄位標題進行升序/降序排序，包含視覺指示器
+- ✅ **分頁控制**：支援每頁 10/25/50/100 筆資料，顯示總計和分頁資訊
+- ✅ **進階篩選**：日期範圍、使用者搜尋、事件類型下拉選單、IP 位址篩選、一般搜尋
+- ✅ **匯出功能**：CSV 和 Excel 格式匯出，包含所有篩選後的資料
+- ✅ **載入狀態**：載入中動畫和錯誤處理
+- ✅ **空狀態**：無資料時的友善提示
+
+**i18n 本地化支援：**
+- ✅ **中文 (zh-TW)**：完整翻譯所有 UI 文字、表格標題、按鈕和訊息
+- ✅ **英文 (en-US)**：完整英文支援
+- ✅ **表格標題**：新增 `admin.audit.tableHeaders` 命名空間
+- ✅ **動態翻譯**：事件類型、狀態和錯誤訊息的本地化
+
+**Navigation & Permissions:**
+- ✅ 新增稽核選單項目至管理員側邊欄
+- ✅ Razor Page：`Pages/Admin/Audit.cshtml` 與權限授權
+- ✅ Vite 配置：新增 `admin-audit` 進入點
+
+**技術實作亮點：**
+- **Composition API**：使用 Vue 3 Composition API 進行響應式狀態管理
+- **效能優化**：computed properties 用於分頁計算，debounced 搜尋
+- **Type Safety**：完整的 TypeScript 支援與介面定義
+- **一致性設計**：遵循現有管理介面設計模式和 Tailwind CSS 樣式
+- **錯誤處理**：完善的錯誤狀態顯示和恢復機制
+
+#### E2E 驗證結果（Playwright MCP）
+
+**功能測試：**
+- ✅ **頁面載入**：成功載入 `/Admin/Audit` 頁面，Vue 應用程式正確掛載
+- ✅ **資料顯示**：顯示 7 個真實稽核事件，包含各種事件類型（ScopeClaimChanged、ScopeUpdated、ScopeCreated、RoleDeleted、RolePermissionChanged、RoleUpdated、RoleCreated）
+- ✅ **表格功能**：所有欄位正確顯示（時間戳記、事件類型、使用者、詳細資訊、IP 位址）
+- ✅ **中文本地化**：所有 UI 元素正確顯示中文翻譯，無 i18n 警告
+- ✅ **分頁控制**：顯示 "顯示第 1 至 7 項結果，共 7 項"，分頁按鈕狀態正確
+- ✅ **篩選器 UI**：所有篩選欄位正常顯示（開始日期、結束日期、使用者搜尋、事件類型下拉選單、IP 位址、一般搜尋）
+- ✅ **匯出按鈕**：CSV 和 Excel 匯出按鈕正常顯示並可點擊
+- ✅ **排序功能**：欄位標題顯示排序箭頭，支援點擊排序
+
+**資料驗證：**
+- ✅ **事件類型**：正確顯示各種稽核事件類型，包含視覺化徽章
+- ✅ **使用者欄位**：系統事件顯示 "系統"，其他顯示實際使用者
+- ✅ **時間格式**：時間戳記正確格式化為本地時間
+- ✅ **IP 位址**：未知 IP 顯示 "未知"，已知 IP 正確顯示
+- ✅ **詳細資訊**：長文字正確截斷，hover 顯示完整內容
+
+#### Git Commits（Small Steps 策略）
+
+```bash
+feat: Implement Phase 7.2 Audit Log Viewer UI
+
+- Add Vue.js audit log viewer with sorting, pagination, and filtering
+- Create AuditApp.vue main component with reactive state management
+- Implement AuditLogViewer.vue with table display and sorting controls
+- Add AuditLogFilters.vue for date, user, event type, and IP filtering
+- Add AuditLogExport.vue for CSV and Excel export functionality
+- Integrate with backend /api/admin/audit/events endpoint
+- Add proper i18n localization for Chinese (zh-TW) and English (en-US)
+- Update navigation and permissions for audit access
+- Configure Vite build for admin-audit entry point
+- Add tableHeaders translations for proper column headers
+- Fix i18n key references to use admin.audit namespace
+- Test with real audit data showing 7 events with proper formatting
+```
+
+**Commit Hash:** `370c9e5`
+
+#### 架構說明
+
+**Component Architecture:**
+```
+AuditApp.vue (Main App)
+├── AuditLogFilters.vue (Filtering UI)
+├── AuditLogViewer.vue (Data Table + Pagination)
+└── AuditLogExport.vue (Export Buttons)
+```
+
+**State Management:**
+- 使用 Vue 3 Composition API 的 `ref` 和 `reactive`
+- 集中式狀態管理在 AuditApp.vue
+- Props drilling 用於元件間通訊
+
+**API Integration:**
+- RESTful API 呼叫使用原生 fetch
+- 錯誤處理與載入狀態管理
+- 支援 URL 參數同步（書籤和重新整理）
+
+**Security & Performance:**
+- 基於權限的存取控制
+- 高效能分頁和排序（後端處理）
+- 防抖搜尋避免過度 API 呼叫
+- 記憶體安全的檔案匯出
+
+#### 技術亮點
+
+- **Responsive Design**: 適應不同螢幕尺寸的管理介面
+- **Accessibility**: 語意化 HTML 和鍵盤導航支援
+- **Performance**: 虛擬滾動和分頁優化大量資料顯示
+- **Maintainability**: 模組化元件設計，易於擴展和測試
+- **User Experience**: 直觀的篩選和排序體驗，符合管理員使用習慣
+
+#### 後續增強建議
+
+- 📝 **即時更新**：WebSocket 整合用於即時稽核事件更新
+- 📝 **進階篩選**：更多篩選條件，如事件嚴重性等級
+- 📝 **資料視覺化**：圖表展示稽核事件趨勢和統計
+- 📝 **大量資料優化**：虛擬化表格用於數萬筆稽核記錄
+- 📝 **稽核事件詳情**：展開式詳細資訊面板
 
 ### Phase 7.3: 異常登入管理 UI (Abnormal Login Management UI)
 
