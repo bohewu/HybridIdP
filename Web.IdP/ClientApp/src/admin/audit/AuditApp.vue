@@ -7,7 +7,7 @@ import AuditLogExport from './components/AuditLogExport.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
-import { exportToCsv as exportToCsvUtil, downloadFile } from '@/utils/exportUtils'
+import { exportToCsv as exportToCsvUtil, exportToExcel as exportToExcelUtil } from '@/utils/exportUtils'
 
 const { t } = useI18n()
 
@@ -141,9 +141,24 @@ const exportToCsv = () => {
 }
 
 const exportToExcel = () => {
-  // Excel export uses CSV format (can be opened in Excel)
-  // To support true .xlsx format, install a library like 'xlsx'
-  exportToCsv()
+  const headers = [
+    t('tableHeaders.timestamp'),
+    t('tableHeaders.eventType'),
+    t('tableHeaders.user'),
+    t('tableHeaders.details'),
+    t('tableHeaders.ipAddress')
+  ]
+
+  const rows = auditEvents.value.map(event => [
+    formatDate(event.timestamp),
+    event.eventType,
+    event.user || t('audit.system'),
+    event.details,
+    event.ipAddress || t('audit.unknown')
+  ])
+
+  // Use shared export utility with true Excel format
+  exportToExcelUtil(headers, rows, 'audit-events.xlsx', 'Audit Events')
 }
 </script>
 
