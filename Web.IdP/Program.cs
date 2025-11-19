@@ -14,6 +14,10 @@ using OpenIddict.Abstractions;
 using Vite.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using Web.IdP.Options;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Exporter.Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -180,6 +184,41 @@ builder.Services.AddScoped<IDomainEventHandler<SecurityPolicyUpdatedEvent>, Audi
 builder.Services.AddScoped<INotificationService, FakeNotificationService>();
 builder.Services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
 
+// Configure OpenTelemetry
+var serviceName = "HybridAuthIdP";
+var serviceVersion = "1.0.0";
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(serviceName: serviceName, serviceVersion: serviceVersion))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation(options =>
+        {
+            options.RecordException = true;
+            options.Filter = httpContext =>
+            {
+                // Don't trace static assets and Vite HMR
+                var path = httpContext.Request.Path.Value ?? string.Empty;
+                return !path.StartsWith("/@") && !path.StartsWith("/node_modules");
+            };
+        })
+        .AddHttpClientInstrumentation(options =>
+        {
+            options.RecordException = true;
+        })
+        .AddEntityFrameworkCoreInstrumentation(options =>
+        {
+            options.SetDbStatementForText = true;
+            options.SetDbStatementForStoredProcedure = true;
+        })
+        .AddConsoleExporter())
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddProcessInstrumentation()
+        .AddPrometheusExporter());
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -210,6 +249,9 @@ app.UseRequestLocalization(localizationOptions);
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// OpenTelemetry Prometheus metrics endpoint
+app.MapPrometheusScrapingEndpoint();
 
 app.MapStaticAssets();
 app.MapControllers(); // Map API controller endpoints
