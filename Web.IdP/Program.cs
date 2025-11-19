@@ -135,10 +135,8 @@ builder.Services.AddAuthorization(options =>
     }
 
     // Register Prometheus metrics IP whitelist policy
-    // Use RequireAssertion to allow anonymous users through to our custom requirement handler
     options.AddPolicy("PrometheusMetrics", policy =>
     {
-        policy.RequireAssertion(context => true); // Always pass assertion check
         policy.Requirements.Add(new Infrastructure.Authorization.IpWhitelistRequirement());
     });
 });
