@@ -6,26 +6,26 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="OpenIddict.AspNetCore" Version="7.1.0" />
+    <PackageReference Include="OpenIddict.AspNetCore" Version="7.2.0" />
     <PackageReference Include="Vite.AspNetCore" Version="2.4.1" />
     
     <!-- OpenTelemetry packages for observability -->
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.9.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.9.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.14.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.14.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.0.0-beta.12" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.9.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.14.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Process" Version="0.5.0-beta.6" />
-    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.9.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.14.0" />
     <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.9.0-beta.2" />
   </ItemGroup>
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
