@@ -27,6 +27,7 @@ public class AuthorizeModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ApplicationDbContext _db;
     private readonly IApiResourceService _apiResourceService;
+    private readonly ILogger<AuthorizeModel> _logger;
 
     public AuthorizeModel(
         IOpenIddictApplicationManager applicationManager,
@@ -34,7 +35,8 @@ public class AuthorizeModel : PageModel
         IOpenIddictScopeManager scopeManager,
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext db,
-        IApiResourceService apiResourceService)
+        IApiResourceService apiResourceService,
+        ILogger<AuthorizeModel> logger)
     {
         _applicationManager = applicationManager;
         _authorizationManager = authorizationManager;
@@ -42,6 +44,7 @@ public class AuthorizeModel : PageModel
         _userManager = userManager;
         _db = db;
         _apiResourceService = apiResourceService;
+        _logger = logger;
     }
 
     public string? ApplicationName { get; set; }
