@@ -46,7 +46,8 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Events.OnRedirectToLogin = context =>
     {
-        if (context.Request.Path.StartsWithSegments("/api"))
+        if (context.Request.Path.StartsWithSegments("/api") || 
+            context.Request.Path.StartsWithSegments("/metrics"))
         {
             context.Response.StatusCode = 401;
             return Task.CompletedTask;
@@ -56,7 +57,8 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
     options.Events.OnRedirectToAccessDenied = context =>
     {
-        if (context.Request.Path.StartsWithSegments("/api"))
+        if (context.Request.Path.StartsWithSegments("/api") || 
+            context.Request.Path.StartsWithSegments("/metrics"))
         {
             context.Response.StatusCode = 403;
             return Task.CompletedTask;
@@ -133,9 +135,10 @@ builder.Services.AddAuthorization(options =>
     }
 
     // Register Prometheus metrics IP whitelist policy
+    // Use RequireAssertion to allow anonymous users through to our custom requirement handler
     options.AddPolicy("PrometheusMetrics", policy =>
     {
-        policy.RequireAssertion(_ => true); // Allow unauthenticated access, handler will validate IP
+        policy.RequireAssertion(context => true); // Always pass assertion check
         policy.Requirements.Add(new Infrastructure.Authorization.IpWhitelistRequirement());
     });
 });
