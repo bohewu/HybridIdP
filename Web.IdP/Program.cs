@@ -133,9 +133,11 @@ builder.Services.AddAuthorization(options =>
     }
 
     // Register Prometheus metrics IP whitelist policy
-    var allowedIPs = builder.Configuration.GetSection("Observability:AllowedIPs").Get<string[]>() ?? Array.Empty<string>();
     options.AddPolicy("PrometheusMetrics", policy =>
-        policy.Requirements.Add(new Infrastructure.Authorization.IpWhitelistRequirement(allowedIPs)));
+    {
+        policy.RequireAssertion(_ => true); // Allow unauthenticated access, handler will validate IP
+        policy.Requirements.Add(new Infrastructure.Authorization.IpWhitelistRequirement());
+    });
 });
 
 // Register permission authorization handler

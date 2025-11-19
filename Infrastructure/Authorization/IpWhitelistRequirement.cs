@@ -3,14 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 namespace Infrastructure.Authorization;
 
 /// <summary>
-/// Requirement for IP whitelist-based authorization
+/// Authorization requirement for IP whitelist validation
 /// </summary>
 public class IpWhitelistRequirement : IAuthorizationRequirement
 {
-    public IReadOnlyCollection<string> AllowedIPs { get; }
-
-    public IpWhitelistRequirement(IEnumerable<string> allowedIPs)
-    {
-        AllowedIPs = allowedIPs.ToList().AsReadOnly();
-    }
+    // Empty marker requirement - actual IPs are read from configuration in the handler
 }

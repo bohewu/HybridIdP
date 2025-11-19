@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Net;
 
@@ -8,17 +9,21 @@ namespace Infrastructure.Authorization;
 /// <summary>
 /// Authorization handler for IP whitelist-based access control
 /// Supports IPv4, IPv6, and CIDR notation
+/// Reads allowed IPs from configuration dynamically on each request
 /// </summary>
 public class IpWhitelistAuthorizationHandler : AuthorizationHandler<IpWhitelistRequirement>
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<IpWhitelistAuthorizationHandler> _logger;
 
     public IpWhitelistAuthorizationHandler(
         IHttpContextAccessor httpContextAccessor,
+        IConfiguration configuration,
         ILogger<IpWhitelistAuthorizationHandler> logger)
     {
         _httpContextAccessor = httpContextAccessor;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -40,14 +45,21 @@ public class IpWhitelistAuthorizationHandler : AuthorizationHandler<IpWhitelistR
             return Task.CompletedTask;
         }
 
-        if (IsIpAllowed(remoteIp, requirement.AllowedIPs))
+        // Read allowed IPs from configuration dynamically
+        var allowedIPs = _configuration.GetSection("Observability:AllowedIPs").Get<string[]>() ?? Array.Empty<string>();
+
+        _logger.LogInformation("Checking IP whitelist: RemoteIP={RemoteIp}, AllowedIPs={AllowedIPs}", 
+            remoteIp, string.Join(", ", allowedIPs));
+
+        if (IsIpAllowed(remoteIp, allowedIPs))
         {
-            _logger.LogDebug("IP {RemoteIp} is allowed", remoteIp);
+            _logger.LogInformation("IP {RemoteIp} is allowed, granting access", remoteIp);
             context.Succeed(requirement);
         }
         else
         {
-            _logger.LogWarning("IP {RemoteIp} is not in whitelist, denying access", remoteIp);
+            _logger.LogWarning("IP {RemoteIp} is not in whitelist (configured: {AllowedIPs}), denying access", 
+                remoteIp, string.Join(", ", allowedIPs));
         }
 
         return Task.CompletedTask;
