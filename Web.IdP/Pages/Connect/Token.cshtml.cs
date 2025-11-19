@@ -10,6 +10,7 @@ using OpenIddict.Server.AspNetCore;
 using System.Collections.Immutable;
 using System.Security.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using Core.Application;
 
 namespace Web.IdP.Pages.Connect;
 
@@ -17,13 +18,16 @@ public class TokenModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly IApiResourceService _apiResourceService;
 
     public TokenModel(
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager)
+        SignInManager<ApplicationUser> signInManager,
+        IApiResourceService apiResourceService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _apiResourceService = apiResourceService;
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -79,6 +83,14 @@ public class TokenModel : PageModel
 
             var roles = await _userManager.GetRolesAsync(user);
             identity.SetClaims(Claims.Role, roles.ToImmutableArray());
+
+            // Add audience (aud) claims from API Resources associated with requested scopes
+            var requestedScopes = request.GetScopes();
+            var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
+            if (audiences.Any())
+            {
+                identity.SetAudiences(audiences.ToImmutableArray());
+            }
 
             identity.SetDestinations(GetDestinations);
 

@@ -275,4 +275,44 @@ public class ApiResourceService : IApiResourceService
 
         return scopeInfos;
     }
+
+    public async Task<IEnumerable<string>> GetAudiencesByScopesAsync(IEnumerable<string> scopeNames)
+    {
+        if (scopeNames == null || !scopeNames.Any())
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        var scopeNamesList = scopeNames.ToList();
+        
+        // First, resolve scope names to scope IDs via OpenIddict
+        var scopeIds = new List<string>();
+        foreach (var scopeName in scopeNamesList)
+        {
+            var scope = await _scopeManager.FindByNameAsync(scopeName);
+            if (scope != null)
+            {
+                var scopeId = await _scopeManager.GetIdAsync(scope);
+                if (!string.IsNullOrEmpty(scopeId))
+                {
+                    scopeIds.Add(scopeId);
+                }
+            }
+        }
+
+        if (!scopeIds.Any())
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        // Query API resources that contain these scope IDs
+        var audiences = await _context.ApiResourceScopes
+            .Where(ars => scopeIds.Contains(ars.ScopeId))
+            .Include(ars => ars.ApiResource)
+            .Select(ars => ars.ApiResource!.Name)
+            .Distinct()
+            .ToListAsync();
+
+        return audiences;
+    }
 }

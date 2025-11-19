@@ -24,6 +24,8 @@ builder.Services.AddAuthentication(options =>
     options.Scope.Add("profile");
     options.Scope.Add("email");
     options.Scope.Add("roles");
+    options.Scope.Add("api:company:read");
+    options.Scope.Add("api:inventory:read");
     
     options.RequireHttpsMetadata = true; // Using trusted dev cert
     options.GetClaimsFromUserInfoEndpoint = false; // OpenIddict doesn't require userinfo endpoint

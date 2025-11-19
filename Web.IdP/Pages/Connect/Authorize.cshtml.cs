@@ -14,6 +14,7 @@ using System.Security.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using Infrastructure;
 using Core.Domain.Entities;
+using Core.Application;
 
 namespace Web.IdP.Pages.Connect;
 
@@ -25,19 +26,22 @@ public class AuthorizeModel : PageModel
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ApplicationDbContext _db;
+    private readonly IApiResourceService _apiResourceService;
 
     public AuthorizeModel(
         IOpenIddictApplicationManager applicationManager,
         IOpenIddictAuthorizationManager authorizationManager,
         IOpenIddictScopeManager scopeManager,
         UserManager<ApplicationUser> userManager,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        IApiResourceService apiResourceService)
     {
         _applicationManager = applicationManager;
         _authorizationManager = authorizationManager;
         _scopeManager = scopeManager;
         _userManager = userManager;
         _db = db;
+        _apiResourceService = apiResourceService;
     }
 
     public string? ApplicationName { get; set; }
@@ -127,6 +131,18 @@ public class AuthorizeModel : PageModel
                 await AddScopeMappedClaimsAsync(identity, user, scopes.ToImmutableArray());
             }
 
+            // Add audience (aud) claims from API Resources associated with requested scopes
+            var audiences = await _apiResourceService.GetAudiencesByScopesAsync(scopes);
+            if (audiences.Any())
+            {
+                identity.SetAudiences(audiences.ToImmutableArray());
+                _logger.LogInformation("Setting audiences for existing authorization: {Audiences}", string.Join(", ", audiences));
+            }
+            else
+            {
+                _logger.LogInformation("No audiences found for existing authorization with scopes: {Scopes}", string.Join(", ", scopes));
+            }
+
             identity.SetDestinations(GetDestinations);
 
             return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -188,7 +204,20 @@ public class AuthorizeModel : PageModel
         identity.SetClaims(Claims.Role, roles.ToImmutableArray());
 
         // Enrich with scope-mapped claims from DB based on requested scopes
-        await AddScopeMappedClaimsAsync(identity, user, request.GetScopes().ToImmutableArray());
+        var requestedScopes = request.GetScopes().ToImmutableArray();
+        await AddScopeMappedClaimsAsync(identity, user, requestedScopes);
+
+        // Add audience (aud) claims from API Resources associated with requested scopes
+        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
+        if (audiences.Any())
+        {
+            identity.SetAudiences(audiences.ToImmutableArray());
+            _logger.LogInformation("Setting audiences for authorization: {Audiences}", string.Join(", ", audiences));
+        }
+        else
+        {
+            _logger.LogInformation("No audiences found for requested scopes: {Scopes}", string.Join(", ", requestedScopes));
+        }
 
         identity.SetDestinations(GetDestinations);
 

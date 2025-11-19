@@ -582,4 +582,154 @@ public class ApiResourceServiceTests : IDisposable
     }
 
     #endregion
+
+    #region GetAudiencesByScopesAsync Tests
+
+    [Fact]
+    public async Task GetAudiencesByScopesAsync_ShouldReturnAudiences_WhenScopesAreAssociatedWithApiResources()
+    {
+        // Arrange
+        var resource1 = new ApiResource
+        {
+            Name = "company_api",
+            DisplayName = "Company API",
+            CreatedAt = DateTime.UtcNow
+        };
+        var resource2 = new ApiResource
+        {
+            Name = "inventory_api",
+            DisplayName = "Inventory API",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.ApiResources.AddRange(resource1, resource2);
+        await _dbContext.SaveChangesAsync(default);
+
+        var scopeId1 = "scope_id_1";
+        var scopeId2 = "scope_id_2";
+
+        _dbContext.ApiResourceScopes.AddRange(
+            new ApiResourceScope { ApiResourceId = resource1.Id, ScopeId = scopeId1 },
+            new ApiResourceScope { ApiResourceId = resource2.Id, ScopeId = scopeId2 }
+        );
+        await _dbContext.SaveChangesAsync(default);
+
+        var mockScope1 = new object();
+        var mockScope2 = new object();
+
+        _mockScopeManager.Setup(m => m.FindByNameAsync("api:company:read", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockScope1);
+        _mockScopeManager.Setup(m => m.GetIdAsync(mockScope1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeId1);
+
+        _mockScopeManager.Setup(m => m.FindByNameAsync("api:inventory:read", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockScope2);
+        _mockScopeManager.Setup(m => m.GetIdAsync(mockScope2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeId2);
+
+        // Act
+        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(new[] { "api:company:read", "api:inventory:read" });
+
+        // Assert
+        Assert.Equal(2, audiences.Count());
+        Assert.Contains("company_api", audiences);
+        Assert.Contains("inventory_api", audiences);
+    }
+
+    [Fact]
+    public async Task GetAudiencesByScopesAsync_ShouldReturnDistinctAudiences_WhenMultipleScopesBelongToSameResource()
+    {
+        // Arrange
+        var resource = new ApiResource
+        {
+            Name = "company_api",
+            DisplayName = "Company API",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.ApiResources.Add(resource);
+        await _dbContext.SaveChangesAsync(default);
+
+        var scopeId1 = "scope_id_1";
+        var scopeId2 = "scope_id_2";
+
+        _dbContext.ApiResourceScopes.AddRange(
+            new ApiResourceScope { ApiResourceId = resource.Id, ScopeId = scopeId1 },
+            new ApiResourceScope { ApiResourceId = resource.Id, ScopeId = scopeId2 }
+        );
+        await _dbContext.SaveChangesAsync(default);
+
+        var mockScope1 = new object();
+        var mockScope2 = new object();
+
+        _mockScopeManager.Setup(m => m.FindByNameAsync("api:company:read", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockScope1);
+        _mockScopeManager.Setup(m => m.GetIdAsync(mockScope1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeId1);
+
+        _mockScopeManager.Setup(m => m.FindByNameAsync("api:company:write", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockScope2);
+        _mockScopeManager.Setup(m => m.GetIdAsync(mockScope2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeId2);
+
+        // Act
+        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(new[] { "api:company:read", "api:company:write" });
+
+        // Assert
+        Assert.Single(audiences);
+        Assert.Contains("company_api", audiences);
+    }
+
+    [Fact]
+    public async Task GetAudiencesByScopesAsync_ShouldReturnEmpty_WhenScopesNotAssociatedWithResources()
+    {
+        // Arrange
+        var mockScope = new object();
+        _mockScopeManager.Setup(m => m.FindByNameAsync("unassociated_scope", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockScope);
+        _mockScopeManager.Setup(m => m.GetIdAsync(mockScope, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("scope_id_999");
+
+        // Act
+        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(new[] { "unassociated_scope" });
+
+        // Assert
+        Assert.Empty(audiences);
+    }
+
+    [Fact]
+    public async Task GetAudiencesByScopesAsync_ShouldReturnEmpty_WhenScopeNamesAreNull()
+    {
+        // Act
+        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(null!);
+
+        // Assert
+        Assert.Empty(audiences);
+    }
+
+    [Fact]
+    public async Task GetAudiencesByScopesAsync_ShouldReturnEmpty_WhenScopeNamesAreEmpty()
+    {
+        // Act
+        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(Array.Empty<string>());
+
+        // Assert
+        Assert.Empty(audiences);
+    }
+
+    [Fact]
+    public async Task GetAudiencesByScopesAsync_ShouldReturnEmpty_WhenScopeNamesNotFoundInOpenIddict()
+    {
+        // Arrange
+        _mockScopeManager.Setup(m => m.FindByNameAsync("nonexistent_scope", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+
+        // Act
+        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(new[] { "nonexistent_scope" });
+
+        // Assert
+        Assert.Empty(audiences);
+    }
+
+    #endregion
 }
