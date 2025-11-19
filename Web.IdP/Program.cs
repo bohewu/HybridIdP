@@ -18,7 +18,6 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Exporter.Prometheus;
-using Web.IdP.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -119,6 +118,9 @@ builder.Services.AddMvc()
 // Branding options
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
 
+// Register HttpContextAccessor for IP-based authorization
+builder.Services.AddHttpContextAccessor();
+
 // Configure authorization with permission-based policies
 builder.Services.AddAuthorization(options =>
 {
@@ -129,11 +131,20 @@ builder.Services.AddAuthorization(options =>
         options.AddPolicy(permission, policy =>
             policy.Requirements.Add(new Infrastructure.Authorization.PermissionRequirement(permission)));
     }
+
+    // Register Prometheus metrics IP whitelist policy
+    var allowedIPs = builder.Configuration.GetSection("Observability:AllowedIPs").Get<string[]>() ?? Array.Empty<string>();
+    options.AddPolicy("PrometheusMetrics", policy =>
+        policy.Requirements.Add(new Infrastructure.Authorization.IpWhitelistRequirement(allowedIPs)));
 });
 
 // Register permission authorization handler
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, 
     Infrastructure.Authorization.PermissionAuthorizationHandler>();
+
+// Register IP whitelist authorization handler
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+    Infrastructure.Authorization.IpWhitelistAuthorizationHandler>();
 
 // Register Turnstile service and HttpClient
 builder.Services.AddHttpClient();
@@ -251,11 +262,11 @@ app.UseRequestLocalization(localizationOptions);
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Protect Prometheus metrics endpoint with IP whitelist
+// Protect Prometheus metrics endpoint with IP whitelist authorization
 if (builder.Configuration.GetValue<bool>("Observability:PrometheusEnabled"))
 {
-    app.UseMiddleware<PrometheusIpWhitelistMiddleware>();
-    app.MapPrometheusScrapingEndpoint();
+    app.MapPrometheusScrapingEndpoint()
+        .RequireAuthorization("PrometheusMetrics");
 }
 
 app.MapStaticAssets();
