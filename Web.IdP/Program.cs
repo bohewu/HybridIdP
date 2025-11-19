@@ -18,6 +18,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Exporter.Prometheus;
+using Web.IdP.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -250,8 +251,12 @@ app.UseRequestLocalization(localizationOptions);
 app.UseAuthentication();
 app.UseAuthorization();
 
-// OpenTelemetry Prometheus metrics endpoint
-app.MapPrometheusScrapingEndpoint();
+// Protect Prometheus metrics endpoint with IP whitelist
+if (builder.Configuration.GetValue<bool>("Observability:PrometheusEnabled"))
+{
+    app.UseMiddleware<PrometheusIpWhitelistMiddleware>();
+    app.MapPrometheusScrapingEndpoint();
+}
 
 app.MapStaticAssets();
 app.MapControllers(); // Map API controller endpoints
