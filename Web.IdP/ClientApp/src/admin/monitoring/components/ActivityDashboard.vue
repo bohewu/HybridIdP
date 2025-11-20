@@ -11,17 +11,36 @@ const stats = ref({
   riskScore: 0
 })
 const loading = ref(true)
+const error = ref(null)
 
-onMounted(async () => {
-  // TODO: Fetch real-time stats from API
-  // For now, mock data
-  stats.value = {
-    activeSessions: 42,
-    totalLogins: 1250,
-    failedLogins: 15,
-    riskScore: 2.3
+const fetchStats = async () => {
+  try {
+    loading.value = true
+    error.value = null
+
+    const response = await fetch('/api/admin/monitoring/stats', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    stats.value = data
+  } catch (err) {
+    console.error('Failed to fetch activity stats:', err)
+    error.value = err.message || 'Failed to load activity statistics'
+  } finally {
+    loading.value = false
   }
-  loading.value = false
+}
+
+onMounted(() => {
+  fetchStats()
 })
 </script>
 

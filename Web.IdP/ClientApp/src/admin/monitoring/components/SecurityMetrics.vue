@@ -10,16 +10,36 @@ const metrics = ref({
   failedLogins: []
 })
 const loading = ref(true)
+const error = ref(null)
 
-onMounted(async () => {
-  // TODO: Fetch metrics data from API, possibly /metrics
-  // For now, mock data
-  metrics.value = {
-    loginAttempts: [120, 135, 142, 158, 145, 162, 178],
-    activeSessions: [25, 32, 28, 45, 38, 42, 50],
-    failedLogins: [2, 3, 1, 5, 2, 4, 3]
+const fetchMetrics = async () => {
+  try {
+    loading.value = true
+    error.value = null
+
+    const response = await fetch('/api/admin/monitoring/metrics', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    metrics.value = data
+  } catch (err) {
+    console.error('Failed to fetch security metrics:', err)
+    error.value = err.message || 'Failed to load security metrics'
+  } finally {
+    loading.value = false
   }
-  loading.value = false
+}
+
+onMounted(() => {
+  fetchMetrics()
 })
 </script>
 

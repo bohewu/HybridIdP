@@ -6,27 +6,36 @@ const { t } = useI18n()
 
 const alerts = ref([])
 const loading = ref(true)
+const error = ref(null)
 
-onMounted(async () => {
-  // TODO: Fetch real-time alerts from API
-  // For now, mock data
-  alerts.value = [
-    {
-      id: 1,
-      type: 'warning',
-      message: 'Multiple failed login attempts from IP 192.168.1.100',
-      timestamp: new Date().toISOString(),
-      severity: 'medium'
-    },
-    {
-      id: 2,
-      type: 'danger',
-      message: 'Suspicious activity detected for user admin@hybridauth.local',
-      timestamp: new Date(Date.now() - 300000).toISOString(),
-      severity: 'high'
+const fetchAlerts = async () => {
+  try {
+    loading.value = true
+    error.value = null
+
+    const response = await fetch('/api/admin/monitoring/alerts', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
     }
-  ]
-  loading.value = false
+
+    const data = await response.json()
+    alerts.value = data
+  } catch (err) {
+    console.error('Failed to fetch real-time alerts:', err)
+    error.value = err.message || 'Failed to load alerts'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchAlerts()
 })
 
 const getAlertClass = (type) => {

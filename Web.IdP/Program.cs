@@ -173,6 +173,7 @@ builder.Services.AddScoped<ISecurityPolicyService, SecurityPolicyService>();
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<ILoginHistoryService, LoginHistoryService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IMonitoringService, MonitoringService>();
 // Domain Event Handlers
 builder.Services.AddScoped<IDomainEventHandler<UserCreatedEvent>, AuditService>();
 builder.Services.AddScoped<IDomainEventHandler<UserUpdatedEvent>, AuditService>();

@@ -5,6 +5,7 @@ using Core.Domain.Events;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services;
 
@@ -21,52 +22,141 @@ public class MonitoringService : IMonitoringService
 
     public async Task<ActivityStatsDto> GetActivityStatsAsync()
     {
-        // TODO: Implement real logic to calculate activity stats
-        // For now, return mock data
+        // Get real data from database
+        var now = DateTime.UtcNow;
+        var last24Hours = now.AddHours(-24);
+
+        // Active sessions - count of successful logins in last 24 hours
+        var activeSessions = await _db.LoginHistories
+            .Where(l => l.IsSuccessful && l.LoginTime >= last24Hours)
+            .CountAsync();
+
+        // Total logins in last 24 hours
+        var totalLogins = await _db.LoginHistories
+            .Where(l => l.IsSuccessful && l.LoginTime >= last24Hours)
+            .CountAsync();
+
+        // Failed logins in last 24 hours
+        var failedLogins = await _db.LoginHistories
+            .Where(l => !l.IsSuccessful && l.LoginTime >= last24Hours)
+            .CountAsync();
+
+        // Average risk score from recent logins
+        var riskScores = await _db.LoginHistories
+            .Where(l => l.LoginTime >= last24Hours)
+            .Select(l => (decimal)l.RiskScore)
+            .ToListAsync();
+        var avgRiskScore = riskScores.Any() ? riskScores.Average() : 0;
+
         return new ActivityStatsDto
         {
-            ActiveSessions = 42,
-            TotalLogins = 1250,
-            FailedLogins = 15,
-            RiskScore = 2.3m
+            ActiveSessions = activeSessions,
+            TotalLogins = totalLogins,
+            FailedLogins = failedLogins,
+            RiskScore = Math.Round(avgRiskScore, 2)
         };
     }
 
     public async Task<SecurityMetricsDto> GetSecurityMetricsAsync()
     {
-        // TODO: Implement real logic to gather security metrics
-        // For now, return mock data
-        return new SecurityMetricsDto
+        var now = DateTime.UtcNow;
+        var metrics = new SecurityMetricsDto();
+
+        // Get data for last 7 days
+        for (int i = 6; i >= 0; i--)
         {
-            LoginAttempts = new List<int> { 120, 135, 142, 158, 145, 162, 178 },
-            ActiveSessions = new List<int> { 25, 32, 28, 45, 38, 42, 50 },
-            FailedLogins = new List<int> { 2, 3, 1, 5, 2, 4, 3 }
-        };
+            var date = now.AddDays(-i).Date;
+            var nextDate = date.AddDays(1);
+
+            // Login attempts (all login events)
+            var loginAttempts = await _db.LoginHistories
+                .Where(l => l.LoginTime >= date && l.LoginTime < nextDate)
+                .CountAsync();
+
+            // Active sessions (successful logins)
+            var activeSessions = await _db.LoginHistories
+                .Where(l => l.IsSuccessful && l.LoginTime >= date && l.LoginTime < nextDate)
+                .CountAsync();
+
+            // Failed logins
+            var failedLogins = await _db.LoginHistories
+                .Where(l => !l.IsSuccessful && l.LoginTime >= date && l.LoginTime < nextDate)
+                .CountAsync();
+
+            metrics.LoginAttempts.Add(loginAttempts);
+            metrics.ActiveSessions.Add(activeSessions);
+            metrics.FailedLogins.Add(failedLogins);
+        }
+
+        return metrics;
     }
 
     public async Task<IEnumerable<SecurityAlertDto>> GetRealTimeAlertsAsync()
     {
-        // TODO: Implement real logic to fetch real-time alerts
-        // For now, return mock alerts
-        return new List<SecurityAlertDto>
+        var alerts = new List<SecurityAlertDto>();
+        var now = DateTime.UtcNow;
+        var lastHour = now.AddHours(-1);
+
+        // Get recent abnormal logins
+        var abnormalLogins = await _db.LoginHistories
+            .Where(l => l.IsFlaggedAbnormal && l.LoginTime >= lastHour)
+            .OrderByDescending(l => l.LoginTime)
+            .Take(5)
+            .ToListAsync();
+
+        foreach (var login in abnormalLogins)
         {
-            new SecurityAlertDto
+            alerts.Add(new SecurityAlertDto
             {
-                Id = 1,
-                Type = "warning",
-                Message = "Multiple failed login attempts from IP 192.168.1.100",
-                Timestamp = DateTime.UtcNow,
-                Severity = "medium"
-            },
-            new SecurityAlertDto
-            {
-                Id = 2,
+                Id = login.Id,
                 Type = "danger",
-                Message = "Suspicious activity detected for user admin@hybridauth.local",
-                Timestamp = DateTime.UtcNow.AddMinutes(-5),
-                Severity = "high"
-            }
-        };
+                Message = $"Suspicious login activity detected for user {login.UserId} from IP {login.IpAddress}",
+                Timestamp = login.LoginTime,
+                Severity = login.RiskScore > 70 ? "high" : "medium"
+            });
+        }
+
+        // Get recent failed login attempts from same IP (potential brute force)
+        var failedLoginGroups = await _db.LoginHistories
+            .Where(l => !l.IsSuccessful && l.LoginTime >= lastHour && l.IpAddress != null)
+            .GroupBy(l => l.IpAddress)
+            .Where(g => g.Count() >= 3)
+            .Select(g => new { IpAddress = g.Key, Count = g.Count(), LatestTime = g.Max(l => l.LoginTime) })
+            .ToListAsync();
+
+        foreach (var group in failedLoginGroups)
+        {
+            alerts.Add(new SecurityAlertDto
+            {
+                Id = Math.Abs(group.IpAddress!.GetHashCode()), // Simple ID generation
+                Type = "warning",
+                Message = $"Multiple failed login attempts from IP {group.IpAddress} ({group.Count} attempts)",
+                Timestamp = group.LatestTime,
+                Severity = group.Count >= 5 ? "high" : "medium"
+            });
+        }
+
+        // Get recent security-related audit events
+        var securityEvents = await _db.AuditEvents
+            .Where(e => e.Timestamp >= lastHour && 
+                       (e.EventType.Contains("Security") || e.EventType.Contains("Policy") || e.EventType.Contains("Failed")))
+            .OrderByDescending(e => e.Timestamp)
+            .Take(3)
+            .ToListAsync();
+
+        foreach (var auditEvent in securityEvents)
+        {
+            alerts.Add(new SecurityAlertDto
+            {
+                Id = auditEvent.Id,
+                Type = "info",
+                Message = $"{auditEvent.EventType}: {auditEvent.Details}",
+                Timestamp = auditEvent.Timestamp,
+                Severity = "low"
+            });
+        }
+
+        return alerts.OrderByDescending(a => a.Timestamp).Take(10);
     }
 
     public async Task<PrometheusMetricsDto> ParsePrometheusMetricsAsync(string metricsText)
