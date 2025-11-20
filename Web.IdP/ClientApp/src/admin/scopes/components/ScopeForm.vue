@@ -20,8 +20,8 @@ const formData = ref({
   description: '',
   resources: '',
   // Consent screen customization
-  consentDisplayName: '',
-  consentDescription: '',
+  consentDisplayNameKey: '',
+  consentDescriptionKey: '',
   iconUrl: '',
   isRequired: false,
   displayOrder: 0,
@@ -42,8 +42,8 @@ const resetForm = () => {
     displayName: '',
     description: '',
     resources: '',
-    consentDisplayName: '',
-    consentDescription: '',
+    consentDisplayNameKey: '',
+    consentDescriptionKey: '',
     iconUrl: '',
     isRequired: false,
     displayOrder: 0,
@@ -87,8 +87,8 @@ watch(() => props.scope, async (newScope) => {
       displayName: newScope.displayName || '',
       description: newScope.description || '',
       resources: newScope.resources?.join('\n') || '',
-      consentDisplayName: newScope.consentDisplayName || '',
-      consentDescription: newScope.consentDescription || '',
+      consentDisplayNameKey: newScope.consentDisplayNameKey || '',
+      consentDescriptionKey: newScope.consentDescriptionKey || '',
       iconUrl: newScope.iconUrl || '',
       isRequired: newScope.isRequired || false,
       displayOrder: newScope.displayOrder || 0,
@@ -277,32 +277,32 @@ const saveScopeClaims = async (scopeId) => {
 
                       <!-- Consent Display Name -->
                       <div class="mb-4">
-                        <label for="consentDisplayName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('scopes.form.consentDisplayName') }}
+                        <label for="consentDisplayNameKey" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('scopes.form.consentDisplayNameKey') }}
                         </label>
                         <input
-                          id="consentDisplayName"
-                          v-model="formData.consentDisplayName"
+                          id="consentDisplayNameKey"
+                          v-model="formData.consentDisplayNameKey"
                           type="text"
                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
-                          :placeholder="$t('scopes.form.consentDisplayNamePlaceholder')"
+                          :placeholder="$t('scopes.form.consentDisplayNameKeyPlaceholder')"
                         />
-                        <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.consentDisplayNameHelp') }}</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.consentDisplayNameKeyHelp') }}</p>
                       </div>
 
                       <!-- Consent Description -->
                       <div class="mb-4">
-                        <label for="consentDescription" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('scopes.form.consentDescription') }}
+                        <label for="consentDescriptionKey" class="block text-sm font-medium text-gray-700 mb-1.5">
+                          {{ $t('scopes.form.consentDescriptionKey') }}
                         </label>
                         <textarea
-                          id="consentDescription"
-                          v-model="formData.consentDescription"
+                          id="consentDescriptionKey"
+                          v-model="formData.consentDescriptionKey"
                           rows="3"
                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
-                          :placeholder="$t('scopes.form.consentDescriptionPlaceholder')"
+                          :placeholder="$t('scopes.form.consentDescriptionKeyPlaceholder')"
                         ></textarea>
-                        <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.consentDescriptionHelp') }}</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.consentDescriptionKeyHelp') }}</p>
                       </div>
 
                       <!-- Icon URL / Class -->
@@ -318,6 +318,12 @@ const saveScopeClaims = async (scopeId) => {
                           :placeholder="$t('scopes.form.iconUrlPlaceholder')"
                         />
                         <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.iconUrlHelp') }}</p>
+                        <!-- Icon Preview -->
+                        <div v-if="formData.iconUrl" class="mt-2 flex items-center space-x-2">
+                          <span class="text-sm text-gray-600">{{ $t('scopes.form.iconPreview') }}:</span>
+                          <i v-if="formData.iconUrl.startsWith('bi')" :class="formData.iconUrl" class="text-lg"></i>
+                          <img v-else :src="formData.iconUrl" :alt="$t('scopes.form.iconPreviewAlt')" class="w-6 h-6 object-contain" />
+                        </div>
                       </div>
 
                       <!-- Category -->

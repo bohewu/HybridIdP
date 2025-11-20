@@ -1,5 +1,7 @@
 using Core.Domain;
 using Core.Domain.Constants;
+using Core.Application;
+using Infrastructure;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -12,9 +14,7 @@ using OpenIddict.Server.AspNetCore;
 using System.Collections.Immutable;
 using System.Security.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
-using Infrastructure;
-using Core.Domain.Entities;
-using Core.Application;
+using System.Globalization;
 
 namespace Web.IdP.Pages.Connect;
 
@@ -27,6 +27,7 @@ public class AuthorizeModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ApplicationDbContext _db;
     private readonly IApiResourceService _apiResourceService;
+    private readonly ILocalizationService _localizationService;
     private readonly ILogger<AuthorizeModel> _logger;
 
     public AuthorizeModel(
@@ -36,6 +37,7 @@ public class AuthorizeModel : PageModel
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext db,
         IApiResourceService apiResourceService,
+        ILocalizationService localizationService,
         ILogger<AuthorizeModel> logger)
     {
         _applicationManager = applicationManager;
@@ -44,6 +46,7 @@ public class AuthorizeModel : PageModel
         _userManager = userManager;
         _db = db;
         _apiResourceService = apiResourceService;
+        _localizationService = localizationService;
         _logger = logger;
     }
 
@@ -155,7 +158,7 @@ public class AuthorizeModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync(string? submit)
+    public async Task<IActionResult> OnPostAsync(string? submit, string[]? granted_scopes)
     {
         var request = HttpContext.GetOpenIddictServerRequest() ??
             throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
@@ -206,12 +209,16 @@ public class AuthorizeModel : PageModel
         var roles = await _userManager.GetRolesAsync(user);
         identity.SetClaims(Claims.Role, roles.ToImmutableArray());
 
-        // Enrich with scope-mapped claims from DB based on requested scopes
+        // Enrich with scope-mapped claims from DB based on granted scopes
         var requestedScopes = request.GetScopes().ToImmutableArray();
-        await AddScopeMappedClaimsAsync(identity, user, requestedScopes);
+        
+        // Filter scopes based on user consent (partial grant support)
+        var grantedScopes = FilterGrantedScopes(requestedScopes, granted_scopes, ScopeInfos);
+        
+        await AddScopeMappedClaimsAsync(identity, user, grantedScopes);
 
-        // Add audience (aud) claims from API Resources associated with requested scopes
-        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
+        // Add audience (aud) claims from API Resources associated with granted scopes
+        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(grantedScopes);
         if (audiences.Any())
         {
             identity.SetAudiences(audiences.ToImmutableArray());
@@ -219,9 +226,10 @@ public class AuthorizeModel : PageModel
         }
         else
         {
-            _logger.LogInformation("No audiences found for requested scopes: {Scopes}", string.Join(", ", requestedScopes));
+            _logger.LogInformation("No audiences found for granted scopes: {Scopes}", string.Join(", ", grantedScopes));
         }
 
+        identity.SetScopes(grantedScopes);
         identity.SetDestinations(GetDestinations);
 
         // Determine authorization type based on client's consent type
@@ -237,7 +245,7 @@ public class AuthorizeModel : PageModel
             subject: await _userManager.GetUserIdAsync(user),
             client: applicationId,
             type: authorizationType,
-            scopes: identity.GetScopes());
+            scopes: grantedScopes);
 
         identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
 
@@ -346,6 +354,9 @@ public class AuthorizeModel : PageModel
         if (scopeNames.IsDefaultOrEmpty)
             return;
 
+        // Get user's culture for localization
+        var culture = CultureInfo.CurrentCulture.Name;
+
         // Load all scope extensions for efficient lookup
         var scopeExtensions = await _db.ScopeExtensions.ToDictionaryAsync(se => se.ScopeId);
 
@@ -360,12 +371,27 @@ public class AuthorizeModel : PageModel
             // Get scope extension if exists
             scopeExtensions.TryGetValue(scopeId!, out var extension);
 
+            // Get localized consent text
+            string? consentDisplayName = null;
+            string? consentDescription = null;
+            if (extension != null)
+            {
+                if (!string.IsNullOrEmpty(extension.ConsentDisplayNameKey))
+                {
+                    consentDisplayName = await _localizationService.GetLocalizedStringAsync(extension.ConsentDisplayNameKey, culture);
+                }
+                if (!string.IsNullOrEmpty(extension.ConsentDescriptionKey))
+                {
+                    consentDescription = await _localizationService.GetLocalizedStringAsync(extension.ConsentDescriptionKey, culture);
+                }
+            }
+
             ScopeInfos.Add(new ScopeInfo
             {
                 Name = scopeName,
                 DisplayName = displayName ?? scopeName,
-                ConsentDisplayName = extension?.ConsentDisplayName,
-                ConsentDescription = extension?.ConsentDescription,
+                ConsentDisplayName = consentDisplayName,
+                ConsentDescription = consentDescription,
                 IconUrl = extension?.IconUrl,
                 IsRequired = extension?.IsRequired ?? false,
                 DisplayOrder = extension?.DisplayOrder ?? 0,
@@ -375,5 +401,35 @@ public class AuthorizeModel : PageModel
 
         // Sort by DisplayOrder, then by Name
         ScopeInfos = ScopeInfos.OrderBy(s => s.DisplayOrder).ThenBy(s => s.Name).ToList();
+    }
+
+    private ImmutableArray<string> FilterGrantedScopes(ImmutableArray<string> requestedScopes, string[]? grantedScopes, List<ScopeInfo> scopeInfos)
+    {
+        if (grantedScopes == null || grantedScopes.Length == 0)
+        {
+            // If no scopes were granted, only include required scopes
+            return scopeInfos
+                .Where(s => s.IsRequired && requestedScopes.Contains(s.Name))
+                .Select(s => s.Name)
+                .ToImmutableArray();
+        }
+
+        // Start with granted scopes
+        var result = grantedScopes.ToHashSet();
+
+        // Always include required scopes, even if not explicitly granted
+        var requiredScopes = scopeInfos
+            .Where(s => s.IsRequired && requestedScopes.Contains(s.Name))
+            .Select(s => s.Name);
+
+        foreach (var requiredScope in requiredScopes)
+        {
+            result.Add(requiredScope);
+        }
+
+        // Filter to only include scopes that were actually requested
+        return result
+            .Where(scope => requestedScopes.Contains(scope))
+            .ToImmutableArray();
     }
 }

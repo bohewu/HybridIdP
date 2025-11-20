@@ -49,8 +49,8 @@ public class ScopeService : IScopeService
                 DisplayName = displayName,
                 Description = description,
                 Resources = resources.ToList(),
-                ConsentDisplayName = extension?.ConsentDisplayName,
-                ConsentDescription = extension?.ConsentDescription,
+                ConsentDisplayNameKey = extension?.ConsentDisplayNameKey,
+                ConsentDescriptionKey = extension?.ConsentDescriptionKey,
                 IconUrl = extension?.IconUrl,
                 IsRequired = extension?.IsRequired ?? false,
                 DisplayOrder = extension?.DisplayOrder ?? 0,
@@ -112,8 +112,8 @@ public class ScopeService : IScopeService
             DisplayName = await _scopeManager.GetDisplayNameAsync(scope),
             Description = await _scopeManager.GetDescriptionAsync(scope),
             Resources = resources.ToList(),
-            ConsentDisplayName = extension?.ConsentDisplayName,
-            ConsentDescription = extension?.ConsentDescription,
+            ConsentDisplayNameKey = extension?.ConsentDisplayNameKey,
+            ConsentDescriptionKey = extension?.ConsentDescriptionKey,
             IconUrl = extension?.IconUrl,
             IsRequired = extension?.IsRequired ?? false,
             DisplayOrder = extension?.DisplayOrder ?? 0,
@@ -154,8 +154,8 @@ public class ScopeService : IScopeService
         var id = await _scopeManager.GetIdAsync(scope);
         
         // Create ScopeExtension for consent customization if any fields are provided
-        if (!string.IsNullOrWhiteSpace(request.ConsentDisplayName) ||
-            !string.IsNullOrWhiteSpace(request.ConsentDescription) ||
+        if (!string.IsNullOrWhiteSpace(request.ConsentDisplayNameKey) ||
+            !string.IsNullOrWhiteSpace(request.ConsentDescriptionKey) ||
             !string.IsNullOrWhiteSpace(request.IconUrl) ||
             request.IsRequired ||
             request.DisplayOrder != 0 ||
@@ -164,8 +164,8 @@ public class ScopeService : IScopeService
             var extension = new ScopeExtension
             {
                 ScopeId = id!,
-                ConsentDisplayName = request.ConsentDisplayName,
-                ConsentDescription = request.ConsentDescription,
+                ConsentDisplayNameKey = request.ConsentDisplayNameKey,
+                ConsentDescriptionKey = request.ConsentDescriptionKey,
                 IconUrl = request.IconUrl,
                 IsRequired = request.IsRequired,
                 DisplayOrder = request.DisplayOrder,
@@ -182,8 +182,8 @@ public class ScopeService : IScopeService
             DisplayName = descriptor.DisplayName,
             Description = descriptor.Description,
             Resources = descriptor.Resources.ToList(),
-            ConsentDisplayName = request.ConsentDisplayName,
-            ConsentDescription = request.ConsentDescription,
+            ConsentDisplayNameKey = request.ConsentDisplayNameKey,
+            ConsentDescriptionKey = request.ConsentDescriptionKey,
             IconUrl = request.IconUrl,
             IsRequired = request.IsRequired,
             DisplayOrder = request.DisplayOrder,
@@ -222,8 +222,8 @@ public class ScopeService : IScopeService
         
         if (extension == null)
         {
-            if (!string.IsNullOrWhiteSpace(request.ConsentDisplayName) ||
-                !string.IsNullOrWhiteSpace(request.ConsentDescription) ||
+            if (!string.IsNullOrWhiteSpace(request.ConsentDisplayNameKey) ||
+                !string.IsNullOrWhiteSpace(request.ConsentDescriptionKey) ||
                 !string.IsNullOrWhiteSpace(request.IconUrl) ||
                 request.IsRequired == true ||
                 request.DisplayOrder != null ||
@@ -232,8 +232,8 @@ public class ScopeService : IScopeService
                 extension = new ScopeExtension
                 {
                     ScopeId = id!,
-                    ConsentDisplayName = request.ConsentDisplayName,
-                    ConsentDescription = request.ConsentDescription,
+                    ConsentDisplayNameKey = request.ConsentDisplayNameKey,
+                    ConsentDescriptionKey = request.ConsentDescriptionKey,
                     IconUrl = request.IconUrl,
                     IsRequired = request.IsRequired ?? false,
                     DisplayOrder = request.DisplayOrder ?? 0,
@@ -244,10 +244,10 @@ public class ScopeService : IScopeService
         }
         else
         {
-            if (request.ConsentDisplayName != null)
-                extension.ConsentDisplayName = request.ConsentDisplayName;
-            if (request.ConsentDescription != null)
-                extension.ConsentDescription = request.ConsentDescription;
+            if (request.ConsentDisplayNameKey != null)
+                extension.ConsentDisplayNameKey = request.ConsentDisplayNameKey;
+            if (request.ConsentDescriptionKey != null)
+                extension.ConsentDescriptionKey = request.ConsentDescriptionKey;
             if (request.IconUrl != null)
                 extension.IconUrl = request.IconUrl;
             if (request.IsRequired.HasValue)

@@ -12,8 +12,8 @@ public sealed class ScopeSummary
     public List<string> Resources { get; set; } = new();
     
     // Consent screen customization fields
-    public string? ConsentDisplayName { get; set; }
-    public string? ConsentDescription { get; set; }
+    public string? ConsentDisplayNameKey { get; set; }
+    public string? ConsentDescriptionKey { get; set; }
     public string? IconUrl { get; set; }
     public bool IsRequired { get; set; } = false;
     public int DisplayOrder { get; set; } = 0;
@@ -29,8 +29,8 @@ public record CreateScopeRequest(
     string? Description,
     List<string>? Resources,
     // Consent screen customization
-    string? ConsentDisplayName = null,
-    string? ConsentDescription = null,
+    string? ConsentDisplayNameKey = null,
+    string? ConsentDescriptionKey = null,
     string? IconUrl = null,
     bool IsRequired = false,
     int DisplayOrder = 0,
@@ -46,8 +46,8 @@ public record UpdateScopeRequest(
     string? Description,
     List<string>? Resources,
     // Consent screen customization
-    string? ConsentDisplayName = null,
-    string? ConsentDescription = null,
+    string? ConsentDisplayNameKey = null,
+    string? ConsentDescriptionKey = null,
     string? IconUrl = null,
     bool? IsRequired = null,
     int? DisplayOrder = null,

@@ -17,15 +17,15 @@ public class ScopeExtension
     public required string ScopeId { get; set; }
 
     /// <summary>
-    /// Localized display name for consent screen (e.g., "Access your email")
-    /// Falls back to OpenIddict DisplayName if null
+    /// Localized display name key for consent screen (e.g., "scope.email.consentDisplayName")
+    /// Falls back to OpenIddict DisplayName if null or no localized value found
     /// </summary>
-    public string? ConsentDisplayName { get; set; }
+    public string? ConsentDisplayNameKey { get; set; }
 
     /// <summary>
-    /// Detailed description of what this permission allows (for consent screen)
+    /// Detailed description key of what this permission allows (for consent screen)
     /// </summary>
-    public string? ConsentDescription { get; set; }
+    public string? ConsentDescriptionKey { get; set; }
 
     /// <summary>
     /// Optional icon URL or icon class (e.g., "bi bi-envelope" for Bootstrap Icons)

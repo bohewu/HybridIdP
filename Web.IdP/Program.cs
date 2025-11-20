@@ -160,6 +160,7 @@ builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, MyUserC
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
 builder.Services.AddScoped<IScopeService, ScopeService>();
+builder.Services.AddScoped<ILocalizationService, LocalizationService>();
 builder.Services.AddScoped<IApiResourceService, ApiResourceService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IClientAllowedScopesService, ClientAllowedScopesService>();

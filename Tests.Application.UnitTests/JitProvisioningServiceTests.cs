@@ -2,6 +2,8 @@ using Core.Application.DTOs;
 using Core.Domain;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using System.Security.Claims;
 

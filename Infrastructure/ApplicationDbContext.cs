@@ -94,8 +94,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.ScopeId).IsUnique();
             entity.Property(e => e.ScopeId).HasMaxLength(200).IsRequired();
-            entity.Property(e => e.ConsentDisplayName).HasMaxLength(200);
-            entity.Property(e => e.ConsentDescription).HasMaxLength(1000);
+            entity.Property(e => e.ConsentDisplayNameKey).HasMaxLength(200);
+            entity.Property(e => e.ConsentDescriptionKey).HasMaxLength(1000);
             entity.Property(e => e.IconUrl).HasMaxLength(500);
             entity.Property(e => e.Category).HasMaxLength(100);
             entity.Property(e => e.IsRequired).IsRequired();

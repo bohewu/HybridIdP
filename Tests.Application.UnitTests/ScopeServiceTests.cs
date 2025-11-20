@@ -56,7 +56,7 @@ public class ScopeServiceTests : IDisposable
         _dbContext.ScopeExtensions.Add(new ScopeExtension 
         { 
             ScopeId = "scope1", 
-            ConsentDisplayName = "Consent 1", 
+            ConsentDisplayNameKey = "Consent 1", 
             DisplayOrder = 1 
         });
         await _dbContext.SaveChangesAsync();
@@ -411,7 +411,7 @@ public class ScopeServiceTests : IDisposable
         _dbContext.ScopeExtensions.Add(new ScopeExtension 
         { 
             ScopeId = "scope1", 
-            ConsentDisplayName = "Consent Name" 
+            ConsentDisplayNameKey = "Consent Name" 
         });
         await _dbContext.SaveChangesAsync();
 
@@ -436,7 +436,7 @@ public class ScopeServiceTests : IDisposable
         Assert.NotNull(result);
         Assert.Equal("scope1", result.Id);
         Assert.Equal("openid", result.Name);
-        Assert.Equal("Consent Name", result.ConsentDisplayName);
+        Assert.Equal("Consent Name", result.ConsentDisplayNameKey);
     }
 
     [Fact]
@@ -498,8 +498,8 @@ public class ScopeServiceTests : IDisposable
             DisplayName: "New Scope",
             Description: null,
             Resources: null,
-            ConsentDisplayName: "Consent Display",
-            ConsentDescription: "Consent Description",
+            ConsentDisplayNameKey: "Consent Display",
+            ConsentDescriptionKey: "Consent Description",
             IconUrl: "icon.png",
             IsRequired: true,
             DisplayOrder: 5,
@@ -519,8 +519,8 @@ public class ScopeServiceTests : IDisposable
         Assert.NotNull(result);
         var extension = await _dbContext.ScopeExtensions.FirstOrDefaultAsync(e => e.ScopeId == "newscope");
         Assert.NotNull(extension);
-        Assert.Equal("Consent Display", extension.ConsentDisplayName);
-        Assert.Equal("Consent Description", extension.ConsentDescription);
+        Assert.Equal("Consent Display", extension.ConsentDisplayNameKey);
+        Assert.Equal("Consent Description", extension.ConsentDescriptionKey);
         Assert.Equal("icon.png", extension.IconUrl);
         Assert.True(extension.IsRequired);
         Assert.Equal(5, extension.DisplayOrder);
@@ -595,7 +595,7 @@ public class ScopeServiceTests : IDisposable
         _dbContext.ScopeExtensions.Add(new ScopeExtension 
         { 
             ScopeId = "scope1", 
-            ConsentDisplayName = "Old Consent" 
+            ConsentDisplayNameKey = "Old Consent" 
         });
         await _dbContext.SaveChangesAsync();
 
@@ -616,8 +616,8 @@ public class ScopeServiceTests : IDisposable
             DisplayName: "New Display",
             Description: null,
             Resources: null,
-            ConsentDisplayName: "New Consent",
-            ConsentDescription: null,
+            ConsentDisplayNameKey: "New Consent",
+            ConsentDescriptionKey: null,
             IconUrl: null,
             IsRequired: null,
             DisplayOrder: null,
@@ -632,7 +632,7 @@ public class ScopeServiceTests : IDisposable
         _mockScopeManager.Verify(m => m.UpdateAsync(scope, It.IsAny<CancellationToken>()), Times.Once);
         var extension = await _dbContext.ScopeExtensions.FirstOrDefaultAsync(e => e.ScopeId == "scope1");
         Assert.NotNull(extension);
-        Assert.Equal("New Consent", extension.ConsentDisplayName);
+        Assert.Equal("New Consent", extension.ConsentDisplayNameKey);
         _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<ScopeUpdatedEvent>(e => e.ScopeName == "oldname")), Times.Once);
     }
 
@@ -676,7 +676,7 @@ public class ScopeServiceTests : IDisposable
     public async Task UpdateScopeAsync_ShouldPartiallyUpdateConsentFields()
     {
         // Arrange
-        _dbContext.ScopeExtensions.Add(new ScopeExtension { ScopeId = "scopeY", ConsentDisplayName = "Orig", IconUrl = "orig.png", DisplayOrder = 1, Category = "CatA" });
+        _dbContext.ScopeExtensions.Add(new ScopeExtension { ScopeId = "scopeY", ConsentDisplayNameKey = "Orig", IconUrl = "orig.png", DisplayOrder = 1, Category = "CatA" });
         await _dbContext.SaveChangesAsync();
         var scope = new { Id = "scopeY" };
         _mockScopeManager.Setup(m => m.FindByIdAsync("scopeY", It.IsAny<CancellationToken>()))
@@ -705,7 +705,7 @@ public class ScopeServiceTests : IDisposable
         Assert.Equal("new.png", ext.IconUrl);
         Assert.Equal(9, ext.DisplayOrder);
         Assert.Equal("CatB", ext.Category);
-        Assert.Equal("Orig", ext.ConsentDisplayName); // unchanged
+        Assert.Equal("Orig", ext.ConsentDisplayNameKey); // unchanged
     }
 
     #endregion

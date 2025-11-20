@@ -4,6 +4,7 @@ using Core.Domain.Entities;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using System.Threading.Tasks;
 using Xunit;
