@@ -30,5 +30,11 @@ namespace Core.Application
         /// <param name="metricsText">Raw Prometheus metrics text</param>
         /// <returns>Parsed metrics</returns>
         Task<PrometheusMetricsDto> ParsePrometheusMetricsAsync(string metricsText);
+
+        /// <summary>
+        /// Gets system metrics from Prometheus /metrics endpoint.
+        /// </summary>
+        /// <returns>Parsed system metrics</returns>
+        Task<PrometheusMetricsDto> GetSystemMetricsAsync();
     }
 }

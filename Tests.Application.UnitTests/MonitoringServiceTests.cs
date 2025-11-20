@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
+using Moq;
+using System.Net.Http;
 
 namespace Tests.Application.UnitTests;
 
@@ -14,6 +16,7 @@ public class MonitoringServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly MonitoringService _monitoringService;
+    private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
 
     public MonitoringServiceTests()
     {
@@ -23,7 +26,13 @@ public class MonitoringServiceTests : IDisposable
             .Options;
 
         _dbContext = new ApplicationDbContext(options);
-        _monitoringService = new MonitoringService(_dbContext, null!); // Not used in current implementation
+        
+        // Mock HttpClientFactory
+        _httpClientFactoryMock = new Mock<IHttpClientFactory>();
+        var httpClient = new HttpClient();
+        _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+        
+        _monitoringService = new MonitoringService(_dbContext, null!, _httpClientFactoryMock.Object);
     }
 
     public void Dispose()

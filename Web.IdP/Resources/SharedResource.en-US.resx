@@ -259,4 +259,14 @@
   <data name="CaptchaValidationFailed" xml:space="preserve">
     <value>CAPTCHA validation failed, please try again.</value>
   </data>
+  <!-- Monitoring -->
+  <data name="admin.monitoring.securityMetrics.gauges" xml:space="preserve">
+    <value>System Gauges</value>
+  </data>
+  <data name="admin.monitoring.securityMetrics.counters" xml:space="preserve">
+    <value>System Counters</value>
+  </data>
+  <data name="admin.monitoring.securityMetrics.histograms" xml:space="preserve">
+    <value>System Histograms</value>
+  </data>
 </root>

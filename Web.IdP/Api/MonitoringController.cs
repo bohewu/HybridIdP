@@ -65,6 +65,17 @@ public class MonitoringController : ControllerBase
         var parsed = await _monitoringService.ParsePrometheusMetricsAsync(request.MetricsText);
         return Ok(parsed);
     }
+
+    /// <summary>
+    /// Get system metrics from Prometheus /metrics endpoint.
+    /// </summary>
+    [HttpGet("system-metrics")]
+    [HasPermission(Permissions.Monitoring.Read)]
+    public async Task<ActionResult<PrometheusMetricsDto>> GetSystemMetrics()
+    {
+        var metrics = await _monitoringService.GetSystemMetricsAsync();
+        return Ok(metrics);
+    }
 }
 
 /// <summary>

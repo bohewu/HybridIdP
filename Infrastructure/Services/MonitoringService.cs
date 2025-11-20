@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http;
+using System;
 
 namespace Infrastructure.Services;
 
@@ -13,11 +15,13 @@ public class MonitoringService : IMonitoringService
 {
     private readonly IApplicationDbContext _db;
     private readonly IDomainEventPublisher _eventPublisher;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public MonitoringService(IApplicationDbContext db, IDomainEventPublisher eventPublisher)
+    public MonitoringService(IApplicationDbContext db, IDomainEventPublisher eventPublisher, IHttpClientFactory httpClientFactory)
     {
         _db = db;
         _eventPublisher = eventPublisher;
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<ActivityStatsDto> GetActivityStatsAsync()
@@ -220,5 +224,24 @@ public class MonitoringService : IMonitoringService
         }
 
         return result;
+    }
+
+    public async Task<PrometheusMetricsDto> GetSystemMetricsAsync()
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            // Use localhost since we're calling from within the same application
+            var response = await client.GetAsync("http://localhost:5186/metrics");
+            response.EnsureSuccessStatusCode();
+            
+            var metricsText = await response.Content.ReadAsStringAsync();
+            return await ParsePrometheusMetricsAsync(metricsText);
+        }
+        catch (Exception)
+        {
+            // If metrics endpoint is not available, return empty metrics
+            return new PrometheusMetricsDto();
+        }
     }
 }

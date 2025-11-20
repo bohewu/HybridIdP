@@ -5,9 +5,9 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 
 const metrics = ref({
-  loginAttempts: [],
-  activeSessions: [],
-  failedLogins: []
+  gauges: {},
+  counters: {},
+  histograms: {}
 })
 const loading = ref(true)
 const error = ref(null)
@@ -17,7 +17,7 @@ const fetchMetrics = async () => {
     loading.value = true
     error.value = null
 
-    const response = await fetch('/api/admin/monitoring/metrics', {
+    const response = await fetch('/api/admin/monitoring/system-metrics', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -52,30 +52,41 @@ onMounted(() => {
     </div>
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Gauges -->
       <div class="metric-chart">
-        <h4 class="text-md font-medium mb-2">{{ t('admin.monitoring.securityMetrics.loginAttempts') }}</h4>
-        <div class="chart-placeholder">
-          <!-- TODO: Implement chart with Chart.js or similar -->
-          <div class="text-center text-gray-500">
-            Chart: {{ metrics.loginAttempts.join(', ') }}
+        <h4 class="text-md font-medium mb-2">{{ t('admin.monitoring.securityMetrics.gauges') }}</h4>
+        <div class="space-y-2">
+          <div v-for="(value, key) in metrics.gauges" :key="key" class="flex justify-between">
+            <span class="text-sm text-gray-600">{{ key }}</span>
+            <span class="text-sm font-medium">{{ value.toFixed(2) }}</span>
+          </div>
+          <div v-if="Object.keys(metrics.gauges).length === 0" class="text-center text-gray-500 text-sm">
+            No gauge metrics available
           </div>
         </div>
       </div>
 
+      <!-- Counters -->
       <div class="metric-chart">
-        <h4 class="text-md font-medium mb-2">{{ t('admin.monitoring.securityMetrics.activeSessions') }}</h4>
-        <div class="chart-placeholder">
-          <div class="text-center text-gray-500">
-            Chart: {{ metrics.activeSessions.join(', ') }}
+        <h4 class="text-md font-medium mb-2">{{ t('admin.monitoring.securityMetrics.counters') }}</h4>
+        <div class="space-y-2">
+          <div v-for="(value, key) in metrics.counters" :key="key" class="flex justify-between">
+            <span class="text-sm text-gray-600">{{ key }}</span>
+            <span class="text-sm font-medium">{{ value }}</span>
+          </div>
+          <div v-if="Object.keys(metrics.counters).length === 0" class="text-center text-gray-500 text-sm">
+            No counter metrics available
           </div>
         </div>
       </div>
 
-      <div class="metric-chart">
-        <h4 class="text-md font-medium mb-2">{{ t('admin.monitoring.securityMetrics.failedLogins') }}</h4>
-        <div class="chart-placeholder">
-          <div class="text-center text-gray-500">
-            Chart: {{ metrics.failedLogins.join(', ') }}
+      <!-- Histograms -->
+      <div class="metric-chart" v-if="Object.keys(metrics.histograms).length > 0">
+        <h4 class="text-md font-medium mb-2">{{ t('admin.monitoring.securityMetrics.histograms') }}</h4>
+        <div class="space-y-2">
+          <div v-for="(values, key) in metrics.histograms" :key="key">
+            <div class="text-sm text-gray-600 mb-1">{{ key }}</div>
+            <div class="text-xs text-gray-500">Values: {{ values.join(', ') }}</div>
           </div>
         </div>
       </div>
