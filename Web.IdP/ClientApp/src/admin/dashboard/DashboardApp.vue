@@ -42,8 +42,29 @@
         </div>
       </div>
 
+      <!-- Monitoring Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Activity Dashboard Card -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('admin.monitoring.activity.title') }}</h3>
+          <ActivityDashboard />
+        </div>
+
+        <!-- Security Metrics Card -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('admin.monitoring.securityMetrics.title') }}</h3>
+          <SecurityMetrics />
+        </div>
+      </div>
+
+      <!-- Real-time Alerts Card -->
+      <div class="mt-6 bg-white rounded-lg shadow-sm p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('admin.monitoring.alerts.title') }}</h3>
+        <RealTimeAlerts />
+      </div>
+
       <!-- Navigation Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+      <div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
         <!-- OIDC Clients Card -->
         <div class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6 h-full flex flex-col">
           <div class="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
@@ -101,8 +122,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { HubConnectionBuilder } from '@microsoft/signalr'
+import ActivityDashboard from '../monitoring/components/ActivityDashboard.vue'
+import SecurityMetrics from '../monitoring/components/SecurityMetrics.vue'
+import RealTimeAlerts from '../monitoring/components/RealTimeAlerts.vue'
 
 const { t } = useI18n()
 
@@ -113,6 +138,8 @@ const stats = ref({
   totalScopes: 0,
   totalUsers: 0
 })
+
+const hubConnection = ref(null)
 
 const fetchStats = async () => {
   try {
@@ -141,7 +168,45 @@ const fetchStats = async () => {
   }
 }
 
-onMounted(() => {
-  fetchStats()
+const setupSignalR = async () => {
+  try {
+    hubConnection.value = new HubConnectionBuilder()
+      .withUrl('/monitoringHub')
+      .build()
+
+    await hubConnection.value.start()
+    console.log('SignalR connected')
+
+    // Listen for updates
+    hubConnection.value.on('ActivityStatsUpdated', () => {
+      console.log('Activity stats updated')
+      // Could refresh data here
+    })
+
+    hubConnection.value.on('SecurityAlertsUpdated', () => {
+      console.log('Security alerts updated')
+    })
+
+    hubConnection.value.on('SystemMetricsUpdated', () => {
+      console.log('System metrics updated')
+    })
+  } catch (err) {
+    console.error('SignalR connection failed:', err)
+  }
+}
+
+const cleanupSignalR = () => {
+  if (hubConnection.value) {
+    hubConnection.value.stop()
+  }
+}
+
+onMounted(async () => {
+  await fetchStats()
+  await setupSignalR()
+})
+
+onUnmounted(() => {
+  cleanupSignalR()
 })
 </script>

@@ -174,6 +174,7 @@ builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<ILoginHistoryService, LoginHistoryService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IMonitoringService, MonitoringService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 // Domain Event Handlers
 builder.Services.AddScoped<IDomainEventHandler<UserCreatedEvent>, AuditService>();
 builder.Services.AddScoped<IDomainEventHandler<UserUpdatedEvent>, AuditService>();

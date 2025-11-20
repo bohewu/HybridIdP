@@ -16,10 +16,12 @@ namespace Web.IdP.Api;
 public class MonitoringController : ControllerBase
 {
     private readonly IMonitoringService _monitoringService;
+    private readonly IDashboardService _dashboardService;
 
-    public MonitoringController(IMonitoringService monitoringService)
+    public MonitoringController(IMonitoringService monitoringService, IDashboardService dashboardService)
     {
         _monitoringService = monitoringService;
+        _dashboardService = dashboardService;
     }
 
     /// <summary>
@@ -87,6 +89,61 @@ public class MonitoringController : ControllerBase
         await _monitoringService.BroadcastSystemMetricsUpdateAsync();
         
         return Ok(metrics);
+    }
+
+    /// <summary>
+    /// Get dashboard activity stats.
+    /// </summary>
+    [HttpGet("dashboard/activity-stats")]
+    [HasPermission(Permissions.Monitoring.Read)]
+    public async Task<ActionResult<ActivityStatsDto>> GetDashboardActivityStats()
+    {
+        var stats = await _dashboardService.GetActivityStatsAsync();
+        return Ok(stats);
+    }
+
+    /// <summary>
+    /// Get dashboard security metrics.
+    /// </summary>
+    [HttpGet("dashboard/security-metrics")]
+    [HasPermission(Permissions.Monitoring.Read)]
+    public async Task<ActionResult<SecurityMetricsDto>> GetDashboardSecurityMetrics()
+    {
+        var metrics = await _dashboardService.GetSecurityMetricsAsync();
+        return Ok(metrics);
+    }
+
+    /// <summary>
+    /// Get active sessions for dashboard.
+    /// </summary>
+    [HttpGet("dashboard/active-sessions")]
+    [HasPermission(Permissions.Monitoring.Read)]
+    public async Task<ActionResult<IEnumerable<SessionDto>>> GetActiveSessions()
+    {
+        var sessions = await _dashboardService.GetActiveSessionsAsync();
+        return Ok(sessions);
+    }
+
+    /// <summary>
+    /// Get failed login attempts for dashboard.
+    /// </summary>
+    [HttpGet("dashboard/failed-logins")]
+    [HasPermission(Permissions.Monitoring.Read)]
+    public async Task<ActionResult<IEnumerable<FailedLoginDto>>> GetFailedLoginAttempts([FromQuery] int limit = 50)
+    {
+        var failedLogins = await _dashboardService.GetFailedLoginAttemptsAsync(limit);
+        return Ok(failedLogins);
+    }
+
+    /// <summary>
+    /// Terminate a user session.
+    /// </summary>
+    [HttpPost("dashboard/terminate-session/{sessionId}")]
+    [HasPermission(Permissions.Monitoring.Read)]
+    public async Task<IActionResult> TerminateSession(string sessionId)
+    {
+        await _dashboardService.TerminateSessionAsync(sessionId);
+        return Ok();
     }
 }
 
