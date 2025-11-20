@@ -36,5 +36,23 @@ namespace Core.Application
         /// </summary>
         /// <returns>Parsed system metrics</returns>
         Task<PrometheusMetricsDto> GetSystemMetricsAsync();
+
+        /// <summary>
+        /// Broadcasts activity statistics update to connected clients.
+        /// </summary>
+        /// <returns>Task</returns>
+        Task BroadcastActivityStatsUpdateAsync();
+
+        /// <summary>
+        /// Broadcasts security alerts update to connected clients.
+        /// </summary>
+        /// <returns>Task</returns>
+        Task BroadcastSecurityAlertsUpdateAsync();
+
+        /// <summary>
+        /// Broadcasts system metrics update to connected clients.
+        /// </summary>
+        /// <returns>Task</returns>
+        Task BroadcastSystemMetricsUpdateAsync();
     }
 }

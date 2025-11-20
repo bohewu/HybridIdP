@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http;
 using System;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Infrastructure.Services;
 
@@ -16,12 +17,14 @@ public class MonitoringService : IMonitoringService
     private readonly IApplicationDbContext _db;
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IHubContext<Infrastructure.Hubs.MonitoringHub> _hubContext;
 
-    public MonitoringService(IApplicationDbContext db, IDomainEventPublisher eventPublisher, IHttpClientFactory httpClientFactory)
+    public MonitoringService(IApplicationDbContext db, IDomainEventPublisher eventPublisher, IHttpClientFactory httpClientFactory, IHubContext<Infrastructure.Hubs.MonitoringHub> hubContext)
     {
         _db = db;
         _eventPublisher = eventPublisher;
         _httpClientFactory = httpClientFactory;
+        _hubContext = hubContext;
     }
 
     public async Task<ActivityStatsDto> GetActivityStatsAsync()
@@ -243,5 +246,23 @@ public class MonitoringService : IMonitoringService
             // If metrics endpoint is not available, return empty metrics
             return new PrometheusMetricsDto();
         }
+    }
+
+    public async Task BroadcastActivityStatsUpdateAsync()
+    {
+        var stats = await GetActivityStatsAsync();
+        await _hubContext.Clients.Group("monitoring").SendAsync("ActivityStatsUpdated", stats);
+    }
+
+    public async Task BroadcastSecurityAlertsUpdateAsync()
+    {
+        var alerts = await GetRealTimeAlertsAsync();
+        await _hubContext.Clients.Group("monitoring").SendAsync("SecurityAlertsUpdated", alerts);
+    }
+
+    public async Task BroadcastSystemMetricsUpdateAsync()
+    {
+        var metrics = await GetSystemMetricsAsync();
+        await _hubContext.Clients.Group("monitoring").SendAsync("SystemMetricsUpdated", metrics);
     }
 }

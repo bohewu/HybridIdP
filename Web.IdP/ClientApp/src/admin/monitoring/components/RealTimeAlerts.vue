@@ -1,12 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import * as signalR from '@microsoft/signalr'
 
 const { t } = useI18n()
 
 const alerts = ref([])
 const loading = ref(true)
 const error = ref(null)
+const connection = ref(null)
 
 const fetchAlerts = async () => {
   try {
@@ -34,8 +36,39 @@ const fetchAlerts = async () => {
   }
 }
 
-onMounted(() => {
-  fetchAlerts()
+const startSignalRConnection = async () => {
+  try {
+    connection.value = new signalR.HubConnectionBuilder()
+      .withUrl('/monitoringHub')
+      .withAutomaticReconnect()
+      .build()
+
+    connection.value.on('SecurityAlertsUpdated', (updatedAlerts) => {
+      console.log('Received security alerts update:', updatedAlerts)
+      alerts.value = updatedAlerts
+    })
+
+    await connection.value.start()
+    console.log('SignalR connection started for monitoring')
+  } catch (err) {
+    console.error('SignalR connection failed:', err)
+  }
+}
+
+const stopSignalRConnection = async () => {
+  if (connection.value) {
+    await connection.value.stop()
+    console.log('SignalR connection stopped')
+  }
+}
+
+onMounted(async () => {
+  await fetchAlerts()
+  await startSignalRConnection()
+})
+
+onUnmounted(() => {
+  stopSignalRConnection()
 })
 
 const getAlertClass = (type) => {

@@ -1,6 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import * as signalR from '@microsoft/signalr'
 
 const { t } = useI18n()
 
@@ -12,6 +13,7 @@ const stats = ref({
 })
 const loading = ref(true)
 const error = ref(null)
+const connection = ref(null)
 
 const fetchStats = async () => {
   try {
@@ -39,8 +41,39 @@ const fetchStats = async () => {
   }
 }
 
-onMounted(() => {
-  fetchStats()
+const startSignalRConnection = async () => {
+  try {
+    connection.value = new signalR.HubConnectionBuilder()
+      .withUrl('/monitoringHub')
+      .withAutomaticReconnect()
+      .build()
+
+    connection.value.on('ActivityStatsUpdated', (updatedStats) => {
+      console.log('Received activity stats update:', updatedStats)
+      stats.value = updatedStats
+    })
+
+    await connection.value.start()
+    console.log('SignalR connection started for monitoring')
+  } catch (err) {
+    console.error('SignalR connection failed:', err)
+  }
+}
+
+const stopSignalRConnection = async () => {
+  if (connection.value) {
+    await connection.value.stop()
+    console.log('SignalR connection stopped')
+  }
+}
+
+onMounted(async () => {
+  await fetchStats()
+  await startSignalRConnection()
+})
+
+onUnmounted(() => {
+  stopSignalRConnection()
 })
 </script>
 

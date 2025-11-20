@@ -30,6 +30,10 @@ public class MonitoringController : ControllerBase
     public async Task<ActionResult<ActivityStatsDto>> GetActivityStats()
     {
         var stats = await _monitoringService.GetActivityStatsAsync();
+        
+        // Broadcast update to all connected clients
+        await _monitoringService.BroadcastActivityStatsUpdateAsync();
+        
         return Ok(stats);
     }
 
@@ -52,6 +56,10 @@ public class MonitoringController : ControllerBase
     public async Task<ActionResult<IEnumerable<SecurityAlertDto>>> GetRealTimeAlerts()
     {
         var alerts = await _monitoringService.GetRealTimeAlertsAsync();
+        
+        // Broadcast update to all connected clients
+        await _monitoringService.BroadcastSecurityAlertsUpdateAsync();
+        
         return Ok(alerts);
     }
 
@@ -74,6 +82,10 @@ public class MonitoringController : ControllerBase
     public async Task<ActionResult<PrometheusMetricsDto>> GetSystemMetrics()
     {
         var metrics = await _monitoringService.GetSystemMetricsAsync();
+        
+        // Broadcast update to all connected clients
+        await _monitoringService.BroadcastSystemMetricsUpdateAsync();
+        
         return Ok(metrics);
     }
 }

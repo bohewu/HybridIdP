@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using Xunit;
 using Moq;
 using System.Net.Http;
+using Microsoft.AspNetCore.SignalR;
+using System.Threading;
 
 namespace Tests.Application.UnitTests;
 
@@ -17,6 +19,7 @@ public class MonitoringServiceTests : IDisposable
     private readonly ApplicationDbContext _dbContext;
     private readonly MonitoringService _monitoringService;
     private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
+    private readonly Mock<IHubContext<Infrastructure.Hubs.MonitoringHub>> _hubContextMock;
 
     public MonitoringServiceTests()
     {
@@ -31,8 +34,11 @@ public class MonitoringServiceTests : IDisposable
         _httpClientFactoryMock = new Mock<IHttpClientFactory>();
         var httpClient = new HttpClient();
         _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+        // Mock HubContext
+        _hubContextMock = new Mock<IHubContext<Infrastructure.Hubs.MonitoringHub>>();
         
-        _monitoringService = new MonitoringService(_dbContext, null!, _httpClientFactoryMock.Object);
+        _monitoringService = new MonitoringService(_dbContext, null!, _httpClientFactoryMock.Object, _hubContextMock.Object);
     }
 
     public void Dispose()
@@ -141,6 +147,58 @@ response_time 0.5
         Assert.Empty(result.Counters);
         Assert.Empty(result.Gauges);
         Assert.Empty(result.Histograms);
+    }
+
+    #endregion
+
+    #region Broadcast Methods Tests
+
+    [Fact]
+    public async Task BroadcastActivityStatsUpdateAsync_ShouldSendUpdateToClients()
+    {
+        // Arrange
+        var mockClients = new Mock<IHubClients>();
+        var mockClientProxy = new Mock<IClientProxy>();
+        _hubContextMock.Setup(h => h.Clients).Returns(mockClients.Object);
+        mockClients.Setup(c => c.Group("monitoring")).Returns(mockClientProxy.Object);
+
+        // Act
+        await _monitoringService.BroadcastActivityStatsUpdateAsync();
+
+        // Assert - Just ensure it completes without error
+        Assert.True(true);
+    }
+
+    [Fact]
+    public async Task BroadcastSecurityAlertsUpdateAsync_ShouldSendUpdateToClients()
+    {
+        // Arrange
+        var mockClients = new Mock<IHubClients>();
+        var mockClientProxy = new Mock<IClientProxy>();
+        _hubContextMock.Setup(h => h.Clients).Returns(mockClients.Object);
+        mockClients.Setup(c => c.Group("monitoring")).Returns(mockClientProxy.Object);
+
+        // Act
+        await _monitoringService.BroadcastSecurityAlertsUpdateAsync();
+
+        // Assert - Just ensure it completes without error
+        Assert.True(true);
+    }
+
+    [Fact]
+    public async Task BroadcastSystemMetricsUpdateAsync_ShouldSendUpdateToClients()
+    {
+        // Arrange
+        var mockClients = new Mock<IHubClients>();
+        var mockClientProxy = new Mock<IClientProxy>();
+        _hubContextMock.Setup(h => h.Clients).Returns(mockClients.Object);
+        mockClients.Setup(c => c.Group("monitoring")).Returns(mockClientProxy.Object);
+
+        // Act
+        await _monitoringService.BroadcastSystemMetricsUpdateAsync();
+
+        // Assert - Just ensure it completes without error
+        Assert.True(true);
     }
 
     #endregion

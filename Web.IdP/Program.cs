@@ -200,6 +200,9 @@ builder.Services.AddScoped<IDomainEventHandler<SecurityPolicyUpdatedEvent>, Audi
 builder.Services.AddScoped<INotificationService, FakeNotificationService>();
 builder.Services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
 
+// Add SignalR services
+builder.Services.AddSignalR();
+
 // Configure OpenTelemetry
 var serviceName = "HybridAuthIdP";
 var serviceVersion = "1.0.0";
@@ -275,6 +278,7 @@ if (builder.Configuration.GetValue<bool>("Observability:PrometheusEnabled"))
 
 app.MapStaticAssets();
 app.MapControllers(); // Map API controller endpoints
+app.MapHub<Infrastructure.Hubs.MonitoringHub>("/monitoringHub");
 app.MapRazorPages()
    .WithStaticAssets();
 
