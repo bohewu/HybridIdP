@@ -370,6 +370,29 @@
         "details": "Details",
         "ipAddress": "IP Address"
       }
+    },
+    "monitoring": {
+      "title": "Security Monitoring Dashboard",
+      "subtitle": "Real-time security monitoring and activity dashboard",
+      "loading": "Loading monitoring data...",
+      "noPermission": "You do not have permission to view monitoring data.",
+      "activityDashboard": {
+        "title": "Activity Dashboard",
+        "activeSessions": "Active Sessions",
+        "totalLogins": "Total Logins",
+        "failedLogins": "Failed Logins",
+        "riskScore": "Risk Score"
+      },
+      "securityMetrics": {
+        "title": "Security Metrics",
+        "loginAttempts": "Login Attempts",
+        "activeSessions": "Active Sessions",
+        "failedLogins": "Failed Logins"
+      },
+      "realTimeAlerts": {
+        "title": "Real-time Alerts",
+        "noAlerts": "No active alerts"
+      }
     }
   },
   "deniedMessages": {

@@ -69,6 +69,14 @@ public static class Permissions
     }
 
     /// <summary>
+    /// Monitoring permissions
+    /// </summary>
+    public static class Monitoring
+    {
+        public const string Read = "monitoring.read";
+    }
+
+    /// <summary>
     /// Settings management permissions
     /// </summary>
     public static class Settings
@@ -90,6 +98,7 @@ public static class Permissions
             Roles.Read, Roles.Create, Roles.Update, Roles.Delete,
             Claims.Read, Claims.Create, Claims.Update, Claims.Delete,
             Audit.Read,
+            Monitoring.Read,
             Settings.Read, Settings.Update
         };
     }

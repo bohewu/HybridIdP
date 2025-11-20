@@ -42,6 +42,9 @@
   <data name="Audit" xml:space="preserve">
     <value>稽核</value>
   </data>
+  <data name="Monitoring" xml:space="preserve">
+    <value>監控</value>
+  </data>
   <data name="Administrator" xml:space="preserve">
     <value>管理者</value>
   </data>

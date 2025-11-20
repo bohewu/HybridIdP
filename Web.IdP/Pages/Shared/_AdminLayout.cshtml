@@ -127,6 +127,13 @@
                             <span>@Localizer["Audit"]</span>
                         </a>
                     }
+                    @if (userPermissions.HasPermission(Permissions.Monitoring.Read))
+                    {
+                        <a href="/Admin/Monitoring" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Monitoring" ? "active" : "")">
+                            <i class="bi bi-graph-up"></i>
+                            <span>@Localizer["Monitoring"]</span>
+                        </a>
+                    }
                 }
             </nav>
             

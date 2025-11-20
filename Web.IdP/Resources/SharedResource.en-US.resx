@@ -45,6 +45,9 @@
   <data name="Audit" xml:space="preserve">
     <value>Audit</value>
   </data>
+  <data name="Monitoring" xml:space="preserve">
+    <value>Monitoring</value>
+  </data>
   <data name="Administrator" xml:space="preserve">
     <value>Administrator</value>
   </data>
