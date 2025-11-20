@@ -963,6 +963,104 @@ ClientForm.vue
 
 ---
 
+### Phase 5.6 Part 4: Consent Screen Multi-language & Interactive Controls ✅
+
+**完成時間：** 2025-11-20
+
+**目標：** 實作同意畫面多語言支援、圖示預覽、以及必要範圍的取消/停用邏輯
+
+#### 實施內容
+
+**Localization Service:**
+-   ✅ `ILocalizationService` interface with `GetLocalizedStringAsync(string key, string culture)`
+-   ✅ `LocalizationService` implementation querying Resource table with fallback to "en-US"
+-   ✅ Unit tests: 5 comprehensive tests covering success, fallback, and error cases
+
+**Database Schema Updates:**
+-   ✅ Updated `ScopeExtension` entity:
+    -   Renamed `ConsentDisplayName` → `ConsentDisplayNameKey`
+    -   Renamed `ConsentDescription` → `ConsentDescriptionKey`
+    -   Both fields now store localization keys instead of direct text
+-   ✅ Updated EF Core configuration and migrations
+
+**Backend API Updates:**
+-   ✅ Modified `Authorize.cshtml.cs`:
+    -   Added `ILocalizationService` dependency injection
+    -   Updated `LoadScopeInfosAsync` to fetch localized text from Resource table
+    -   Added `FilterGrantedScopes` method for partial grant support
+    -   Modified `OnPostAsync` to handle `granted_scopes[]` form parameter
+    -   Required scopes are always included regardless of user selection
+-   ✅ Updated `ScopeService` and DTOs to handle key-based fields
+-   ✅ Updated all unit tests to use new property names
+
+**Frontend Updates:**
+-   ✅ Updated `ScopeForm.vue`:
+    -   Changed form fields from `consentDisplayName`/`consentDescription` to `consentDisplayNameKey`/`consentDescriptionKey`
+    -   Added icon preview component showing Bootstrap icons or images
+    -   Updated form validation and submission
+-   ✅ Updated i18n files (en-US, zh-TW):
+    -   Added form labels and help text for localization keys
+    -   Added icon preview and category labels
+    -   Added placeholder text and validation messages
+
+**Consent Screen Interactive Controls:**
+-   ✅ Transformed static scope list to interactive checkboxes
+-   ✅ Required scopes are pre-checked and disabled (cannot be unchecked)
+-   ✅ Backend supports partial grants while enforcing required scopes
+-   ✅ Improved UX with better visual hierarchy and accessibility
+
+**Sample Data:**
+-   ✅ Created `setup-test-localization.sql` with sample Resource entries:
+    -   English: scope.profile.display, scope.profile.description, etc.
+    -   Traditional Chinese: 存取您的個人資料, 此範圍允許應用程式存取您的基本個人資料...
+
+#### 測試覆蓋率
+
+**Unit Tests:**
+-   ✅ `LocalizationServiceTests`: 5 tests (100% passing)
+-   ✅ `ScopeServiceTests`: Updated 32 tests for new property names
+-   ✅ All existing tests: 263 tests passing (0 regressions)
+
+**Integration Tests:**
+-   ✅ Build verification: All projects compile successfully
+-   ✅ Database schema: EF Core migrations applied correctly
+
+#### Git Commits
+
+```bash
+eff4a68 - feat: Implement Phase 5.6 Part 3 - Multi-language consent text, icon preview, and scope consent controls
+```
+
+#### 技術亮點
+
+-   **Localization Architecture**: Resource table with key-culture-value pattern
+-   **Fallback Strategy**: Automatic fallback to default culture ("en-US")
+-   **Partial Grants**: Support for users to decline optional scopes
+-   **Required Scope Enforcement**: Backend ensures required scopes are always granted
+-   **Interactive Consent**: Checkbox-based UI with proper accessibility
+-   **Icon Preview**: Live preview for Bootstrap icons and custom images
+-   **i18n Complete**: Full bilingual support for all new UI elements
+
+#### TODO: 待實作項目
+
+**E2E Playwright Tests:**
+-   Consent page interaction tests (checkbox selection, required scope disable)
+-   Multi-language text display verification
+-   Icon rendering validation
+-   Partial grant flow testing
+
+**TestClient Integration Tests:**
+-   Consent flow automation with TestClient
+-   Multi-language consent verification
+-   Required scope enforcement testing
+-   Partial grant API validation
+
+**Scope Authorization Policies 前端連動:**
+-   Verify client allowed scopes validation in authorization flow
+-   Ensure ClientForm.vue properly manages allowed scopes enforcement
+
+---
+
 ### Phase 5.7: Client Service Refactoring & Secret Management ✅
 
 **完成時間：** 2025-11-11
