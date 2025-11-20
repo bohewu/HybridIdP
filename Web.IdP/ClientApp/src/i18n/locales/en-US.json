@@ -385,6 +385,9 @@
       },
       "securityMetrics": {
         "title": "Security Metrics",
+        "gauges": "Gauge Metrics",
+        "counters": "Counter Metrics",
+        "histograms": "Histogram Metrics",
         "loginAttempts": "Login Attempts",
         "activeSessions": "Active Sessions",
         "failedLogins": "Failed Logins"

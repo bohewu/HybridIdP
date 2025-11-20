@@ -386,6 +386,9 @@
       },
       "securityMetrics": {
         "title": "安全指標",
+        "gauges": "儀表指標",
+        "counters": "計數器指標",
+        "histograms": "直方圖指標",
         "loginAttempts": "登入嘗試",
         "activeSessions": "活躍工作階段",
         "failedLogins": "失敗登入"
