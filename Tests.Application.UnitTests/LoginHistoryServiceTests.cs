@@ -229,6 +229,7 @@ public class LoginHistoryServiceTests : IDisposable
         // Assert
         Assert.True(result);
         var updatedLogin = await _dbContext.LoginHistories.FindAsync(login.Id);
+        Assert.NotNull(updatedLogin);
         Assert.True(updatedLogin.IsApprovedByAdmin);
     }
 
@@ -267,6 +268,7 @@ public class LoginHistoryServiceTests : IDisposable
         // Assert
         Assert.False(result);
         var updatedLogin = await _dbContext.LoginHistories.FindAsync(login.Id);
+        Assert.NotNull(updatedLogin);
         Assert.False(updatedLogin.IsApprovedByAdmin);
     }
 

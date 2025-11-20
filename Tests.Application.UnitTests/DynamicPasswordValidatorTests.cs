@@ -22,7 +22,16 @@ namespace Tests.Application.UnitTests
         {
             // Mock UserManager
             var store = new Mock<IUserStore<ApplicationUser>>();
-            _mockUserManager = new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
+            var options = new Mock<IOptions<IdentityOptions>>();
+            var hasher = new Mock<IPasswordHasher<ApplicationUser>>();
+            var userValidators = new List<IUserValidator<ApplicationUser>>();
+            var passwordValidators = new List<IPasswordValidator<ApplicationUser>>();
+            var normalizer = new Mock<ILookupNormalizer>();
+            var errors = new IdentityErrorDescriber();
+            var services = new Mock<IServiceProvider>();
+            var logger = new Mock<ILogger<UserManager<ApplicationUser>>>();
+            _mockUserManager = new Mock<UserManager<ApplicationUser>>(
+                store.Object, options.Object, hasher.Object, userValidators, passwordValidators, normalizer.Object, errors, services.Object, logger.Object);
 
             // Mock ILogger
             _mockLogger = new Mock<ILogger<DynamicPasswordValidator>>();

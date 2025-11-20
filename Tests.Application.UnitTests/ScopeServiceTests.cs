@@ -828,7 +828,6 @@ public class ScopeServiceTests : IDisposable
         var result = await _scopeService.GetScopeClaimsAsync("scope1");
 
         // Assert
-        Assert.NotNull(result);
         Assert.Equal("scope1", result.scopeId);
         Assert.Equal("openid", result.scopeName);
         Assert.Empty(result.claims);

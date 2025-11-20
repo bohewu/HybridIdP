@@ -106,6 +106,7 @@ public class ScopeService : IScopeService
         
         return new ScopeSummary
         {
+#pragma warning disable CS8601
             Id = await _scopeManager.GetIdAsync(scope),
             Name = await _scopeManager.GetNameAsync(scope),
             DisplayName = await _scopeManager.GetDisplayNameAsync(scope),
@@ -117,6 +118,7 @@ public class ScopeService : IScopeService
             IsRequired = extension?.IsRequired ?? false,
             DisplayOrder = extension?.DisplayOrder ?? 0,
             Category = extension?.Category
+#pragma warning restore CS8601
         };
     }
 
