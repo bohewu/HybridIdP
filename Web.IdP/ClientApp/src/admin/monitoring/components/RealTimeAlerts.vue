@@ -87,7 +87,6 @@ const formatTimestamp = (timestamp) => {
 
 <template>
   <div class="real-time-alerts">
-    <h3 class="text-lg font-semibold mb-4">{{ t('admin.monitoring.realTimeAlerts.title') }}</h3>
 
     <div v-if="loading" class="text-center py-4">
       <div class="spinner-border spinner-border-sm" role="status"></div>

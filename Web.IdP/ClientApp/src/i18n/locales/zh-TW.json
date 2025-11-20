@@ -391,7 +391,9 @@
         "histograms": "直方圖指標",
         "loginAttempts": "登入嘗試",
         "activeSessions": "活躍工作階段",
-        "failedLogins": "失敗登入"
+        "failedLogins": "失敗登入",
+        "noGauges": "沒有可用的儀表指標",
+        "noCounters": "沒有可用的計數器指標"
       },
       "realTimeAlerts": {
         "title": "即時警報",

@@ -390,7 +390,9 @@
         "histograms": "Histogram Metrics",
         "loginAttempts": "Login Attempts",
         "activeSessions": "Active Sessions",
-        "failedLogins": "Failed Logins"
+        "failedLogins": "Failed Logins",
+        "noGauges": "No gauge metrics available",
+        "noCounters": "No counter metrics available"
       },
       "realTimeAlerts": {
         "title": "Real-time Alerts",

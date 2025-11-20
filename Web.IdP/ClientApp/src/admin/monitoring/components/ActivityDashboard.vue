@@ -79,7 +79,6 @@ onUnmounted(() => {
 
 <template>
   <div class="activity-dashboard">
-    <h3 class="text-lg font-semibold mb-4">{{ t('admin.monitoring.activityDashboard.title') }}</h3>
 
     <div v-if="loading" class="text-center py-4">
       <div class="spinner-border spinner-border-sm" role="status"></div>

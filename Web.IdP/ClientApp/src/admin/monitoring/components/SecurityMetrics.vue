@@ -78,7 +78,6 @@ onUnmounted(() => {
 
 <template>
   <div class="security-metrics">
-    <h3 class="text-lg font-semibold mb-4">{{ t('admin.monitoring.securityMetrics.title') }}</h3>
 
     <div v-if="loading" class="text-center py-4">
       <div class="spinner-border spinner-border-sm" role="status"></div>
@@ -94,7 +93,7 @@ onUnmounted(() => {
             <span class="text-sm font-medium">{{ value.toFixed(2) }}</span>
           </div>
           <div v-if="Object.keys(metrics.gauges).length === 0" class="text-center text-gray-500 text-sm">
-            No gauge metrics available
+            {{ t('admin.monitoring.securityMetrics.noGauges') }}
           </div>
         </div>
       </div>
@@ -108,7 +107,7 @@ onUnmounted(() => {
             <span class="text-sm font-medium">{{ value }}</span>
           </div>
           <div v-if="Object.keys(metrics.counters).length === 0" class="text-center text-gray-500 text-sm">
-            No counter metrics available
+            {{ t('admin.monitoring.securityMetrics.noCounters') }}
           </div>
         </div>
       </div>
