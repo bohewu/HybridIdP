@@ -4,7 +4,7 @@
 
 本文件整合了 HybridAuth IdP 專案的已完成功能摘要和待辦事項，提供一個清晰的專案進度概覽。
 
-**當前狀態（2025-11-18）：**
+**當前狀態（2025-11-20）：**
 - ✅ **Phase 1-6：核心功能已完成** (OIDC Flow, Admin UI, User/Role/Client/Scope Management, Security Policies, MFA, API Resources, Session Management)
 - ✅ **Phase 6.1：單元測試覆蓋率已達標** (226 tests passing, 87%+ coverage achieved)
 - ✅ **Phase 6.2：ClaimsController 重構已完成** (23 unit tests, thin controller pattern)
@@ -14,6 +14,7 @@
 - ✅ **Phase 7.1a：AuditService 整合至重點系統** (Domain Events 解耦整合, User/Role/Client/Scope 服務稽核, TDD 測試驅動) - UserManagementService ✅, ClientService ✅, RoleManagementService ✅, ScopeService ✅
 - ✅ **Phase 7.2：Audit Log Viewer UI 已完成** (Vue.js audit log viewer, sorting/pagination/filtering, i18n support, CSV/Excel export, 7 audit events displayed)
 - ✅ **Phase 7.3：異常登入管理 UI 已完成** (LoginHistoryDialog with abnormal login approval, visual indicators, E2E testing)
+- ✅ **Phase 7.4：即時活動儀表板已完成** (SignalR real-time dashboard, monitoring cards, security metrics, activity stats, E2E tested)
 
 **架構狀態分析：**
 - ✅ 已重構完成（Thin Controller + Service Pattern）：
@@ -1477,25 +1478,36 @@ b21a694 - fix(i18n): Fix loginHistory key nesting and add Chinese menu translati
 
 ---
 
-### Phase 7.4: 即時活動儀表板 (Real-time Activity Dashboard)
+### Phase 7.4: 即時活動儀表板 (Real-time Activity Dashboard) ✅ 已完成
 
-**目標：** 建立即時安全監控儀表板
-**預估 token：** ~3000
-**預估時間：** 3 天
+**完成時間：** 2025-11-20
+**實際 token：** ~4500
+**實際時間：** 1 天
 
-**功能範圍：**
+**功能摘要：**
+- ✅ SignalR 即時更新架構 (MonitoringHub)
+- ✅ 統一儀表板 UI (移除獨立監控選單，整合至 Dashboard)
+- ✅ 活動統計卡片 (活躍工作階段、登入次數、失敗登入、風險評分)
+- ✅ 安全指標視覺化 (儀表板與計數器，OpenTelemetry 整合)
+- ✅ 即時警報系統 (無活躍警報時顯示)
+- ✅ TDD 實作 (IDashboardService, DashboardService, 6 單元測試)
+- ✅ API 端點 (/api/admin/monitoring/dashboard/*)
+- ✅ 前端整合 (DashboardApp.vue with SignalR)
+- ✅ E2E 測試驗證 (Playwright 登入與儀表板載入)
 
-- WebSocket/SignalR 即時更新
-- 安全指標視覺化 (圖表與統計)
-- 活躍工作階段監控
-- 失敗登入嘗試追蹤
-- 異常活動警報
+**技術細節：**
+- Service Layer: DashboardService (聚合監控資料)
+- Real-time: SignalR Hub 推送更新
+- UI: Card-based 設計，Chart.js 圖表支援
+- Testing: 6 單元測試 (100% 通過)
+- Security: IP 白名單授權，管理員角色限制
 
-**UI 組件：**
-
-- ActivityDashboard.vue
-- SecurityMetrics.vue
-- RealTimeAlerts.vue
+**驗證結果：**
+- ✅ SignalR 連線成功 (WebSocket wss://localhost:7035/monitoringHub)
+- ✅ API 端點正常 (stats, alerts, system-metrics)
+- ✅ 即時更新運作 (活動統計、安全警報、系統指標)
+- ✅ UI 載入正常 (快速統計、活動儀表板、安全指標、即時警報)
+- ✅ E2E 測試通過 (登入流程 + 儀表板存取)
 
 ### Phase 7.5: 進階安全警報系統 (Advanced Security Alerts)
 

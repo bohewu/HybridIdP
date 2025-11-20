@@ -1,0 +1,20 @@
+@page "/Admin/Dashboard"
+@model Web.IdP.Pages.Admin.DashboardModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["Dashboard"].Value;
+    ViewData["Breadcrumb"] = Localizer["Dashboard"].Value;
+}
+
+@section Scripts {
+    @if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+    {
+        <script type="module" src="http://localhost:5173/src/admin/dashboard/main.js"></script>
+    }
+    else
+    {
+        <script type="module" src="~/dist/assets/admin-dashboard.js" asp-append-version="true"></script>
+    }
+}
+
+<div id="app"></div>
