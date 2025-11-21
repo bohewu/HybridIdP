@@ -14,7 +14,7 @@ test('Admin - API Resources CRUD (create, update, delete resource)', async ({ pa
   await page.waitForURL(/\/Admin\/Resources/);
 
   // Wait for the Vue app to load
-  await page.waitForSelector('button:has-text("Create New Resource"), ul[role="list"]', { timeout: 15000 });
+  await page.waitForSelector('button:has-text("Create New Resource"), table', { timeout: 15000 });
 
   // Click the Create New Resource button
   await page.click('button:has-text("Create New Resource")');
@@ -33,15 +33,15 @@ test('Admin - API Resources CRUD (create, update, delete resource)', async ({ pa
   // Submit the form (Create Resource)
   await page.click('button[type="submit"]');
 
-  // Wait for the resource to appear in the list
-  const resourcesList = page.locator('ul[role="list"]');
+  // Wait for the resource to appear in the list (table tbody)
+  const resourcesList = page.locator('table tbody');
   await expect(resourcesList).toContainText(resourceName, { timeout: 20000 });
 
-  // Edit the resource: find the list item and click the Edit button
-  const listItem = resourcesList.locator('li', { hasText: resourceName });
+  // Edit the resource: find the table row and click the Edit button
+  const listItem = resourcesList.locator('tr', { hasText: resourceName });
   await expect(listItem).toBeVisible();
 
-  // Click the edit button inside the list item
+  // Click the edit button inside the row
   await listItem.locator('button[title*="Edit"]').click();
 
   // Update the display name

@@ -14,7 +14,7 @@ test('Admin - Scopes CRUD (create, update, delete scope)', async ({ page }) => {
   await page.waitForURL(/\/Admin\/Scopes/);
 
   // Wait for the Vue app to load by checking for the scopes list or create button
-  await page.waitForSelector('button:has-text("Create New Scope"), ul[role="list"]', { timeout: 15000 });
+  await page.waitForSelector('button:has-text("Create New Scope"), table', { timeout: 15000 });
 
   // Click the Create New Scope button
   await page.click('button:has-text("Create New Scope")');
@@ -32,15 +32,30 @@ test('Admin - Scopes CRUD (create, update, delete scope)', async ({ page }) => {
   // Submit the form (Create Scope)
   await page.click('button[type="submit"]');
 
-  // Wait for the scope to appear in the list
-  const scopesList = page.locator('ul[role="list"]');
-  await expect(scopesList).toContainText(scopeName, { timeout: 20000 });
+  // Wait for modal to close and API to complete
+  await page.waitForTimeout(2000);
 
-  // Edit the scope: find the list item and click the Edit button
-  const listItem = scopesList.locator('li', { hasText: scopeName });
+  // Verify scope was created via API (table might be paginated)
+  const scopeCreated = await page.evaluate(async (name) => {
+    const resp = await fetch(`/api/admin/scopes?search=${encodeURIComponent(name)}`);
+    const data = await resp.json();
+    return data.items && data.items.length > 0 && data.items[0].name === name;
+  }, scopeName);
+  
+  expect(scopeCreated).toBeTruthy();
+
+  // Search to find the scope in the table
+  await page.fill('input[placeholder*="Search"]', scopeName);
+  await page.waitForTimeout(1000);
+
+  const scopesList = page.locator('table tbody');
+  await expect(scopesList).toContainText(scopeName, { timeout: 10000 });
+
+  // Edit the scope: find the table row and click the Edit button
+  const listItem = scopesList.locator('tr', { hasText: scopeName });
   await expect(listItem).toBeVisible();
 
-  // Click the edit button inside the list item (match by title attribute to support icon-only buttons)
+  // Click the edit button inside the row (match by title attribute to support icon-only buttons)
   await listItem.locator('button[title*="Edit"]').click();
 
   // Update the display name
