@@ -77,6 +77,15 @@ Run tests (headed):
 npm run test:headed
 ```
 
+Run a single test file (useful for debugging):
+
+```powershell
+# from the e2e directory
+npx playwright test tests/login.spec.ts
+npx playwright test tests/testclient-login-consent.spec.ts
+npx playwright test tests/logout.spec.ts
+```
+
 Notes:
 
 - Self-signed HTTPS is accepted via `ignoreHTTPSErrors` in config.
