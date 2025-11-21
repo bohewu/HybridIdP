@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Net.Http;
 using System;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Configuration;
 
 namespace Infrastructure.Services;
 
@@ -18,13 +19,15 @@ public class MonitoringService : IMonitoringService
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IHubContext<Infrastructure.Hubs.MonitoringHub> _hubContext;
+    private readonly IConfiguration _configuration;
 
-    public MonitoringService(IApplicationDbContext db, IDomainEventPublisher eventPublisher, IHttpClientFactory httpClientFactory, IHubContext<Infrastructure.Hubs.MonitoringHub> hubContext)
+    public MonitoringService(IApplicationDbContext db, IDomainEventPublisher eventPublisher, IHttpClientFactory httpClientFactory, IHubContext<Infrastructure.Hubs.MonitoringHub> hubContext, IConfiguration configuration)
     {
         _db = db;
         _eventPublisher = eventPublisher;
         _httpClientFactory = httpClientFactory;
         _hubContext = hubContext;
+        _configuration = configuration;
     }
 
     public async Task<ActivityStatsDto> GetActivityStatsAsync()
@@ -234,8 +237,8 @@ public class MonitoringService : IMonitoringService
         try
         {
             var client = _httpClientFactory.CreateClient();
-            // Use localhost since we're calling from within the same application
-            var response = await client.GetAsync("http://localhost:5186/metrics");
+            var baseUrl = _configuration["Monitoring:MetricsBaseUrl"] ?? _configuration["Observability:MetricsBaseUrl"] ?? "https://localhost:7035";
+            var response = await client.GetAsync($"{baseUrl.TrimEnd('/')}/metrics");
             response.EnsureSuccessStatusCode();
             
             var metricsText = await response.Content.ReadAsStringAsync();
