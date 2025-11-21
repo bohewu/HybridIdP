@@ -40,10 +40,22 @@
   <data name="Authorize Application" xml:space="preserve">
     <value>Authorize Application</value>
   </data>
+  <data name="is requesting access to your account" xml:space="preserve">
+    <value>is requesting access to your account</value>
+  </data>
+  <data name="This application will be able to:" xml:space="preserve">
+    <value>This application will be able to:</value>
+  </data>
+  <data name="Required" xml:space="preserve">
+    <value>Required</value>
+  </data>
   <data name="Allow Access" xml:space="preserve">
     <value>Allow Access</value>
   </data>
   <data name="Deny" xml:space="preserve">
     <value>Deny</value>
+  </data>
+  <data name="By allowing access, you agree to share the requested information with this application." xml:space="preserve">
+    <value>By allowing access, you agree to share the requested information with this application.</value>
   </data>
 </root>
