@@ -30,5 +30,15 @@ namespace Core.Application
         /// <exception cref="KeyNotFoundException">Thrown when the scope is not found</exception>
         /// <exception cref="ArgumentException">Thrown when a claim ID is not found</exception>
         Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> UpdateScopeClaimsAsync(string scopeId, UpdateScopeClaimsRequest request);
+
+        /// <summary>
+        /// Classifies requested scopes into allowed (including required), required and rejected sets.
+        /// Granted scopes are those explicitly consented by the user; required scopes are added regardless.
+        /// </summary>
+        /// <param name="requestedScopes">Scopes requested by the client.</param>
+        /// <param name="availableScopes">Scopes available in the system (with IsRequired metadata).</param>
+        /// <param name="grantedScopes">Scopes explicitly granted/consented by the user (may be null/empty).</param>
+        /// <returns>Classification result including partial grant indicator.</returns>
+        ScopeClassificationResult ClassifyScopes(IEnumerable<string> requestedScopes, IEnumerable<ScopeSummary> availableScopes, IEnumerable<string>? grantedScopes);
     }
 }

@@ -405,4 +405,56 @@ public class ScopeService : IScopeService
 
         return (scopeId, scopeName ?? "", updatedClaims);
     }
+
+    public ScopeClassificationResult ClassifyScopes(IEnumerable<string> requestedScopes, IEnumerable<ScopeSummary> availableScopes, IEnumerable<string>? grantedScopes)
+    {
+        var requestedSet = requestedScopes?.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase)
+                           ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var requiredSet = availableScopes
+            .Where(s => s.IsRequired && requestedSet.Contains(s.Name))
+            .Select(s => s.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        HashSet<string> allowedSet;
+        if (grantedScopes == null || !grantedScopes.Any())
+        {
+            // Only required scopes are allowed when nothing explicitly granted
+            allowedSet = requiredSet.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        else
+        {
+            var grantedSet = grantedScopes
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // Start with granted scopes that were actually requested
+            allowedSet = requestedSet.Where(grantedSet.Contains)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // Always include required ones
+            foreach (var req in requiredSet)
+            {
+                allowedSet.Add(req);
+            }
+        }
+
+        // Final allowed limited to requested scopes only (already enforced above)
+        var rejectedSet = requestedSet.Where(r => !allowedSet.Contains(r)).ToList();
+
+        // Preserve original requested order for deterministic output
+        var allowedOrdered = requestedScopes.Where(s => allowedSet.Contains(s)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var requiredOrdered = requestedScopes.Where(s => requiredSet.Contains(s)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var rejectedOrdered = requestedScopes.Where(s => rejectedSet.Contains(s)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        return new ScopeClassificationResult
+        {
+            Allowed = allowedOrdered,
+            Required = requiredOrdered,
+            Rejected = rejectedOrdered,
+            IsPartialGrant = rejectedOrdered.Count > 0
+        };
+    }
 }
