@@ -34,3 +34,7 @@ Notes:
 
 - Self-signed HTTPS is accepted via `ignoreHTTPSErrors` in config.
 - Tests assume IdP and TestClient are already started.
+
+Test user credentials:
+
+- 基本測試用戶：`admin@hybridauth.local` / `Admin@123` (Admin 角色)
