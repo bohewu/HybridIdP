@@ -9,6 +9,8 @@ using Infrastructure.Services;
 using Moq;
 using OpenIddict.Abstractions;
 using Xunit;
+using Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace Tests.Application.UnitTests;
 

@@ -86,6 +86,82 @@ public class SessionRefreshLifecycleTests
     }
 
     [Fact]
+    public async Task RefreshAsync_DoesNotExtendBeyondAbsoluteExpiry()
+    {
+        var userId = Guid.NewGuid();
+        var authId = "auth-abs-1";
+        var absolute = DateTime.UtcNow.AddMinutes(10);
+        var sliding = DateTime.UtcNow.AddMinutes(2);
+        _db.UserSessions.Add(new UserSession
+        {
+            UserId = userId,
+            AuthorizationId = authId,
+            CurrentRefreshTokenHash = "hash_old",
+            AbsoluteExpiresUtc = absolute,
+            SlidingExpiresUtc = sliding,
+            SlidingExtensionCount = 0
+        });
+        await _db.SaveChangesAsync(CancellationToken.None);
+
+        var result = await _service.RefreshAsync(userId, authId, "raw-new-token", null, null);
+
+        Assert.Equal(authId, result.AuthorizationId);
+        Assert.True(result.SlidingExtended);
+        Assert.NotNull(result.RefreshTokenExpiresAt);
+        // Should be capped at absolute expiry
+        Assert.Equal(new DateTimeOffset(absolute), result.RefreshTokenExpiresAt);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_OnRevokedSession_ReturnsNullAndNoRotation()
+    {
+        var userId = Guid.NewGuid();
+        var authId = "auth-revoked-1";
+        _db.UserSessions.Add(new UserSession
+        {
+            UserId = userId,
+            AuthorizationId = authId,
+            CurrentRefreshTokenHash = "hash_current",
+            RevokedUtc = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync(CancellationToken.None);
+
+        var result = await _service.RefreshAsync(userId, authId, "raw-any", null, null);
+
+        Assert.Equal(authId, result.AuthorizationId);
+        Assert.False(result.ReuseDetected);
+        Assert.False(result.SlidingExtended);
+        Assert.Null(result.AccessTokenExpiresAt);
+        Assert.Null(result.RefreshTokenExpiresAt);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_EmitsAuditEvents_ForRotationAndSlidingExtension()
+    {
+        var userId = Guid.NewGuid();
+        var authId = "auth-audit-1";
+        var sliding = DateTime.UtcNow.AddMinutes(2);
+        _db.UserSessions.Add(new UserSession
+        {
+            UserId = userId,
+            AuthorizationId = authId,
+            CurrentRefreshTokenHash = "hash_old",
+            AbsoluteExpiresUtc = DateTime.UtcNow.AddHours(1),
+            SlidingExpiresUtc = sliding,
+            SlidingExtensionCount = 0
+        });
+        await _db.SaveChangesAsync(CancellationToken.None);
+
+        var before = _db.AuditEvents.Count();
+        var result = await _service.RefreshAsync(userId, authId, "raw-new-token", "127.0.0.1", "UA");
+        var after = _db.AuditEvents.Count();
+
+        Assert.Equal(authId, result.AuthorizationId);
+        Assert.True(after >= before + 1); // At least rotation event
+        Assert.Contains(_db.AuditEvents.Select(a => a.EventType), t => t.Contains("RefreshTokenRotated") || t.Contains("SlidingExpirationExtended"));
+    }
+
+    [Fact]
     public async Task RevokeChainAsync_RevokesSessionAndReturnsCounts()
     {
         var userId = Guid.NewGuid();

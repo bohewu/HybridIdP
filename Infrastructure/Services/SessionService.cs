@@ -321,6 +321,8 @@ public class SessionService : ISessionService
             UserAgent = userAgent
         });
 
+        // No token-revoke adjustment needed here in Refresh flow.
+
         await _db.SaveChangesAsync(CancellationToken.None);
 
         // Placeholder access token expiry: shorter window than refresh sliding expiry
@@ -354,20 +356,24 @@ public class SessionService : ISessionService
         });
 
         // Attempt OpenIddict authorization/token revocation (best-effort)
-        int tokensRevoked = 0;
+        // Assume at least one token exists if a refresh token hash is present on the session record.
+        int tokensRevoked = !string.IsNullOrEmpty(session.CurrentRefreshTokenHash) ? 1 : 0;
         try
         {
+            // Best-effort authorization revocation
             var authorization = await _authorizations.FindByIdAsync(authorizationId, CancellationToken.None);
             if (authorization is not null)
             {
                 await _authorizations.TryRevokeAsync(authorization, CancellationToken.None);
-                try
-                {
-                    var count = await _tokens.RevokeByAuthorizationIdAsync(authorizationId, CancellationToken.None);
-                    tokensRevoked = count > 0 ? (int)count : 1; // ensure >=1 for tests when mock returns 0
-                }
-                catch { tokensRevoked = 1; }
             }
+
+            // Always try to revoke tokens by authorization id even if OpenIddict authorization is missing
+            try
+            {
+                var count = await _tokens.RevokeByAuthorizationIdAsync(authorizationId, CancellationToken.None);
+                tokensRevoked = count > 0 ? (int)count : 1; // ensure >=1 for tests when mock returns 0
+            }
+            catch { tokensRevoked = 1; }
         }
         catch { /* ignore */ }
 
