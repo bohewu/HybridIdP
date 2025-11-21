@@ -84,6 +84,7 @@ Run a single test file (useful for debugging):
 npx playwright test tests/login.spec.ts
 npx playwright test tests/testclient-login-consent.spec.ts
 npx playwright test tests/logout.spec.ts
+npx playwright test tests/admin-clients-crud.spec.ts
 ```
 
 Notes:
