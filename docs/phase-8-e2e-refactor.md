@@ -127,7 +127,7 @@ npx playwright test e2e/tests/helpers/admin.spec.ts e2e/tests/admin-clients-perm
 
 ## Test Coverage Summary
 
-### E2E Tests (`e2e/tests/admin-users-role-assignment.spec.ts`)
+### E2E Tests for Role Assignment (`e2e/tests/admin-users-role-assignment.spec.ts`)
 
 **9 comprehensive tests covering:**
 
@@ -145,6 +145,24 @@ npx playwright test e2e/tests/helpers/admin.spec.ts e2e/tests/admin-clients-perm
 - Return 404 for mixed valid and invalid role IDs
 - Successfully remove all roles with empty array
 - Handle duplicate role IDs gracefully
+
+### E2E Tests for Permission Claims Integration (`e2e/tests/role-permissions-claims.spec.ts`)
+
+**2 comprehensive integration tests covering:**
+
+- **Test 1:** Verify permissions appear in user claims after OIDC login
+  - Creates role with specific permissions (users.read, clients.read)
+  - Creates test user and assigns role via API
+  - Logs in via TestClient OIDC flow
+  - Verifies permission claims appear in User.Claims table on Profile page
+  - Validates access token is present
+  
+- **Test 2:** Verify permission changes after role reassignment
+  - Creates two roles with different permission sets
+  - Tests initial login with role1 permissions
+  - Reassigns user to role2 via API
+  - Uses fresh browser context for second login (avoids session caching)
+  - Verifies claims reflect updated permissions and old permissions are removed
 
 ### Unit Tests (`Tests.Application.UnitTests/UserManagementTests.cs`)
 
