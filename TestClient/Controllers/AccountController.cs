@@ -86,4 +86,14 @@ public class AccountController : Controller
         ViewData["ErrorMessage"] = error ?? "An authentication error occurred.";
         return View();
     }
+
+    [Authorize]
+    public async Task<IActionResult> InvalidScopes()
+    {
+        // This action triggers the OpenIdConnect redirect with an injected invalid scope.
+        var accessToken = await HttpContext.GetTokenAsync("access_token");
+        ViewData["AccessToken"] = accessToken;
+        // Reuse the profile view for simplicity.
+        return View("Profile");
+    }
 }

@@ -58,6 +58,21 @@ builder.Services.AddAuthentication(options =>
         context.HandleResponse();
         return Task.CompletedTask;
     };
+
+    // Inject an intentionally invalid scope when navigating to /Account/InvalidScopes
+    options.Events.OnRedirectToIdentityProvider = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/Account/InvalidScopes"))
+        {
+            var currentScope = context.ProtocolMessage.Scope ?? string.Empty;
+            // Append invalid scope token (will be filtered or produce invalid_scope error)
+            if (!currentScope.Contains("api:invalid:read"))
+            {
+                context.ProtocolMessage.Scope = (currentScope + " api:invalid:read").Trim();
+            }
+        }
+        return Task.CompletedTask;
+    };
 });
 
 builder.Services.AddHttpClient();

@@ -29,6 +29,9 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Profile">Profile</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="InvalidScopes">Invalid Scope Test</a>
+                            </li>
                     </ul>
                         <ul class="navbar-nav">
                             @if (User.Identity?.IsAuthenticated == true)
