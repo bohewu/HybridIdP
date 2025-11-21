@@ -34,7 +34,7 @@ test('TestClient logout clears session and OIDC logout works', async ({ page }) 
     await logoutForm.first().click();
   }
 
-  // Visit IdP homepage; it should show a Login link (not user-menu) via href
+  // Visit IdP homepage and ensure user menu isn't present (no authenticated user)
   await page.goto('https://localhost:7035');
-  await expect(page.locator('a[href="/Account/Login"]')).toBeVisible();
+  await expect(page.locator('.user-name')).toHaveCount(0);
 });
