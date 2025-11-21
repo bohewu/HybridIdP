@@ -2,6 +2,7 @@ using Core.Domain;
 using Core.Domain.Constants;
 using Core.Application;
 using Core.Application.DTOs;
+using Infrastructure.Services;
 using Infrastructure;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
@@ -33,6 +34,8 @@ public class AuthorizeModel : PageModel
     private readonly ILogger<AuthorizeModel> _logger;
     private readonly IScopeService _scopeService;
     private readonly IAuditService _auditService;
+    private readonly IClientAllowedScopesService _clientAllowedScopesService;
+    private readonly ClientScopeRequestProcessor _clientScopeProcessor;
 
     public AuthorizeModel(
         IOpenIddictApplicationManager applicationManager,
@@ -44,6 +47,8 @@ public class AuthorizeModel : PageModel
         ILocalizationService localizationService,
         IScopeService scopeService,
         IAuditService auditService,
+        IClientAllowedScopesService clientAllowedScopesService,
+        ClientScopeRequestProcessor clientScopeProcessor,
         ILogger<AuthorizeModel> logger)
     {
         _applicationManager = applicationManager;
@@ -56,6 +61,8 @@ public class AuthorizeModel : PageModel
         _logger = logger;
         _scopeService = scopeService;
         _auditService = auditService;
+        _clientAllowedScopesService = clientAllowedScopesService;
+        _clientScopeProcessor = clientScopeProcessor;
     }
 
     public string? ApplicationName { get; set; }
@@ -101,8 +108,13 @@ public class AuthorizeModel : PageModel
         ApplicationName = await _applicationManager.GetDisplayNameAsync(application);
         Scope = request.Scope;
 
-        // Fetch scope information with extensions for consent screen
-        await LoadScopeInfosAsync(request.GetScopes());
+        var requestedScopes = request.GetScopes();
+        var clientGuid = Guid.Parse(applicationId);
+        var eval = await _clientScopeProcessor.EnforceAsync(clientGuid, requestedScopes, logAuditIfRestricted: true);
+        var effectiveRequestedScopes = eval.AllowedScopes.ToImmutableArray();
+
+        // Fetch scope information only for allowed scopes
+        await LoadScopeInfosAsync(effectiveRequestedScopes);
 
         // Retrieve the permanent authorizations associated with the user and the calling client application
         var userId = result.Principal.GetClaim(Claims.Subject)!;
@@ -229,7 +241,11 @@ public class AuthorizeModel : PageModel
         identity.SetClaims(Claims.Role, roles.ToImmutableArray());
 
         // Requested scopes
-        var requestedScopes = request.GetScopes().ToImmutableArray();
+        // Enforce client scope policy again to guard against tampering
+        var clientGuid = Guid.Parse(applicationId);
+        var requestedScopesOriginal = request.GetScopes().ToImmutableArray();
+        var eval = await _clientScopeProcessor.EnforceAsync(clientGuid, requestedScopesOriginal, logAuditIfRestricted: false);
+        var requestedScopes = eval.AllowedScopes.ToImmutableArray();
 
         // Build minimal available scope summaries from loaded consent info
         var availableSummaries = ScopeInfos.Select(s => new ScopeSummary

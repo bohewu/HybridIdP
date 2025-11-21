@@ -164,6 +164,7 @@ builder.Services.AddScoped<ILocalizationService, LocalizationService>();
 builder.Services.AddScoped<IApiResourceService, ApiResourceService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IClientAllowedScopesService, ClientAllowedScopesService>();
+builder.Services.AddScoped<ClientScopeRequestProcessor>();
 builder.Services.AddScoped<IClaimsService, ClaimsService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
 // Settings + Branding services
