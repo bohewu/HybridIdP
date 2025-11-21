@@ -49,7 +49,10 @@ export async function createRole(page: Page, roleName: string, permissions: stri
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(p)
     });
-    if (!r.ok) throw new Error(`Failed to create role: ${r.status}`);
+    if (!r.ok) {
+      const errorText = await r.text();
+      throw new Error(`Failed to create role: ${r.status} - ${errorText}`);
+    }
     return r.json();
   }, payload);
   return result;

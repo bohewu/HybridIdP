@@ -18,15 +18,18 @@ public class TokenModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly IApiResourceService _apiResourceService;
 
     public TokenModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
+        RoleManager<ApplicationRole> roleManager,
         IApiResourceService apiResourceService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _roleManager = roleManager;
         _apiResourceService = apiResourceService;
     }
 
@@ -84,6 +87,9 @@ public class TokenModel : PageModel
             var roles = await _userManager.GetRolesAsync(user);
             identity.SetClaims(Claims.Role, roles.ToImmutableArray());
 
+            // Add permission claims from user's roles
+            await AddPermissionClaimsAsync(identity, user);
+
             // Add audience (aud) claims from API Resources associated with requested scopes
             var requestedScopes = request.GetScopes();
             var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
@@ -105,6 +111,35 @@ public class TokenModel : PageModel
         return SignIn(claimsPrincipal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
+    private async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user)
+    {
+        var userRoles = await _userManager.GetRolesAsync(user);
+        var permissions = new HashSet<string>();
+
+        foreach (var roleName in userRoles)
+        {
+            var role = await _roleManager.FindByNameAsync(roleName);
+            if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
+            {
+                // Parse permissions from the role's Permissions property (comma-separated string)
+                var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(p => p.Trim())
+                    .Where(p => !string.IsNullOrEmpty(p));
+                
+                foreach (var permission in rolePermissions)
+                {
+                    permissions.Add(permission);
+                }
+            }
+        }
+
+        // Add permission claims to identity
+        foreach (var permission in permissions)
+        {
+            identity.AddClaim(new Claim("permission", permission));
+        }
+    }
+
     private static IEnumerable<string> GetDestinations(Claim claim)
     {
         switch (claim.Type)
@@ -116,6 +151,12 @@ public class TokenModel : PageModel
                 yield break;
 
             case Claims.Role:
+                yield return Destinations.AccessToken;
+                yield return Destinations.IdentityToken;
+                yield break;
+
+            // Permission claims for authorization
+            case "permission":
                 yield return Destinations.AccessToken;
                 yield return Destinations.IdentityToken;
                 yield break;

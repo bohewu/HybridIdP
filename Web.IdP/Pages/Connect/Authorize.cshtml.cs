@@ -28,6 +28,7 @@ public class AuthorizeModel : PageModel
     private readonly IOpenIddictAuthorizationManager _authorizationManager;
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly ApplicationDbContext _db;
     private readonly IApiResourceService _apiResourceService;
     private readonly ILocalizationService _localizationService;
@@ -42,6 +43,7 @@ public class AuthorizeModel : PageModel
         IOpenIddictAuthorizationManager authorizationManager,
         IOpenIddictScopeManager scopeManager,
         UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
         ApplicationDbContext db,
         IApiResourceService apiResourceService,
         ILocalizationService localizationService,
@@ -55,6 +57,7 @@ public class AuthorizeModel : PageModel
         _authorizationManager = authorizationManager;
         _scopeManager = scopeManager;
         _userManager = userManager;
+        _roleManager = roleManager;
         _db = db;
         _apiResourceService = apiResourceService;
         _localizationService = localizationService;
@@ -153,6 +156,9 @@ public class AuthorizeModel : PageModel
                 var roles = await _userManager.GetRolesAsync(user);
                 identity.SetClaims(Claims.Role, roles.ToImmutableArray());
 
+                // Add permission claims from user's roles
+                await AddPermissionClaimsAsync(identity, user);
+
                 // Enrich with scope-mapped claims from DB based on requested scopes
                 await AddScopeMappedClaimsAsync(identity, user, scopes.ToImmutableArray());
             }
@@ -239,6 +245,9 @@ public class AuthorizeModel : PageModel
 
         var roles = await _userManager.GetRolesAsync(user);
         identity.SetClaims(Claims.Role, roles.ToImmutableArray());
+
+        // Add permission claims from user's roles
+        await AddPermissionClaimsAsync(identity, user);
 
         // Requested scopes
         // Enforce client scope policy again to guard against tampering
@@ -332,6 +341,12 @@ public class AuthorizeModel : PageModel
                 yield break;
 
             case Claims.Role:
+                yield return Destinations.AccessToken;
+                yield return Destinations.IdentityToken;
+                yield break;
+
+            // Permission claims for authorization
+            case "permission":
                 yield return Destinations.AccessToken;
                 yield return Destinations.IdentityToken;
                 yield break;
@@ -466,6 +481,35 @@ public class AuthorizeModel : PageModel
 
         // Sort by DisplayOrder, then by Name
         ScopeInfos = ScopeInfos.OrderBy(s => s.DisplayOrder).ThenBy(s => s.Name).ToList();
+    }
+
+    private async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user)
+    {
+        var userRoles = await _userManager.GetRolesAsync(user);
+        var permissions = new HashSet<string>();
+
+        foreach (var roleName in userRoles)
+        {
+            var role = await _roleManager.FindByNameAsync(roleName);
+            if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
+            {
+                // Parse permissions from the role's Permissions property (comma-separated string)
+                var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(p => p.Trim())
+                    .Where(p => !string.IsNullOrEmpty(p));
+                
+                foreach (var permission in rolePermissions)
+                {
+                    permissions.Add(permission);
+                }
+            }
+        }
+
+        // Add permission claims to identity
+        foreach (var permission in permissions)
+        {
+            identity.AddClaim(new Claim("permission", permission));
+        }
     }
 
 }

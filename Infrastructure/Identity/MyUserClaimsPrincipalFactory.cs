@@ -34,12 +34,16 @@ public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Applicati
         foreach (var roleName in userRoles)
         {
             var role = await RoleManager.FindByNameAsync(roleName);
-            if (role != null)
+            if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
             {
-                var roleClaims = await RoleManager.GetClaimsAsync(role);
-                foreach (var claim in roleClaims.Where(c => c.Type == "permission"))
+                // Parse permissions from the role's Permissions property (comma-separated string)
+                var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(p => p.Trim())
+                    .Where(p => !string.IsNullOrEmpty(p));
+                
+                foreach (var permission in rolePermissions)
                 {
-                    permissions.Add(claim.Value);
+                    permissions.Add(permission);
                 }
             }
         }
