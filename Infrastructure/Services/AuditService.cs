@@ -36,11 +36,13 @@ public class AuditService : IAuditService,
 {
     private readonly IApplicationDbContext _db;
     private readonly IDomainEventPublisher _eventPublisher;
+    private readonly ISettingsService _settingsService;
 
-    public AuditService(IApplicationDbContext db, IDomainEventPublisher eventPublisher)
+    public AuditService(IApplicationDbContext db, IDomainEventPublisher eventPublisher, ISettingsService settingsService)
     {
         _db = db;
         _eventPublisher = eventPublisher;
+        _settingsService = settingsService;
     }
 
     public async Task LogEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent)
@@ -57,6 +59,19 @@ public class AuditService : IAuditService,
 
         _db.AuditEvents.Add(auditEvent);
         await _db.SaveChangesAsync(CancellationToken.None);
+
+        // Retention policy purge (config key: Audit.RetentionDays)
+        var retentionDays = await _settingsService.GetValueAsync<int>("Audit.RetentionDays", CancellationToken.None);
+        if (retentionDays > 0)
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
+            var oldEvents = _db.AuditEvents.Where(e => e.Timestamp < cutoff).ToList();
+            if (oldEvents.Count > 0)
+            {
+                _db.AuditEvents.RemoveRange(oldEvents);
+                await _db.SaveChangesAsync(CancellationToken.None);
+            }
+        }
 
         // Publish domain event
         var domainEvent = new AuditEventLoggedEvent(auditEvent.Id, eventType, userId);

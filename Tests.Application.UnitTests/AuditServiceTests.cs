@@ -18,6 +18,7 @@ public class AuditServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly Mock<IDomainEventPublisher> _eventPublisherMock;
+    private readonly Mock<ISettingsService> _settingsServiceMock;
     private readonly AuditService _auditService;
 
     public AuditServiceTests()
@@ -29,7 +30,9 @@ public class AuditServiceTests : IDisposable
 
         _dbContext = new ApplicationDbContext(options);
         _eventPublisherMock = new Mock<IDomainEventPublisher>();
-        _auditService = new AuditService(_dbContext, _eventPublisherMock.Object);
+        _settingsServiceMock = new Mock<ISettingsService>();
+        _settingsServiceMock.Setup(s => s.GetValueAsync<int>("Audit.RetentionDays", It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        _auditService = new AuditService(_dbContext, _eventPublisherMock.Object, _settingsServiceMock.Object);
     }
 
     public void Dispose()
