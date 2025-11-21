@@ -689,6 +689,7 @@
       "allowedScopesHelp": "選擇此用戶端允許請求的範圍。這是一個白名單 - 用戶端只能獲得包含這些範圍的權杖。",
       "allowedScopesRequired": "至少需要選擇一個範圍",
       "allowedScopesOpenidRequired": "OIDC 用戶端必須包含 'openid' 範圍",
+      "allowedScopesCount": "已選擇：{count} 個範圍",
       "allowedScopesLoading": "載入可用範圍中...",
       "allowedScopesNone": "沒有可用的範圍。請先建立範圍。",
       "scopeCategories": {
@@ -996,20 +997,3 @@
     }
   }
 }
-
- ,"clients": {
-    "form": {
-      "allowedScopes": "允許的範圍",
-      "allowedScopesHelp": "選取此用戶端在授權流程中可請求的範圍。",
-      "allowedScopesLoading": "載入範圍中...",
-      "allowedScopesNone": "沒有可用的範圍。",
-      "allowedScopesRequired": "至少必須選擇一個範圍。",
-      "allowedScopesOpenidRequired": "必須包含 'openid' 範圍才能使用 OIDC 驗證。",
-      "allowedScopesCount": "已選擇：{count} 個範圍",
-      "scopeCategories": {
-        "identity": "身分",
-        "apiResource": "API 資源",
-        "custom": "自訂"
-      }
-    }
- }

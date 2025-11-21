@@ -162,11 +162,86 @@ git commit -m "docs: Update progress - Phase 4.5 completed"
 
 ---
 
+## 🧪 Remote Browser (MCP Playwright) 測試流程
+
+> 針對登入、同意(Consent) 與 invalid_scope 等互動式流程的遠端瀏覽器自動化說明。此流程假設你使用外部 MCP Playwright 代理（或等效的遠端瀏覽器服務）。
+
+### 前置環境
+
+- 已安裝 .NET 8 SDK
+- 已啟動必要容器：PostgreSQL、Redis
+- 管理端與 IdP 資料表已遷移（如需：`dotnet ef database update` 對相關專案執行）
+
+### 啟動基礎服務順序
+
+```powershell
+# 1. 啟動資料庫與快取
+docker compose up -d db-service redis-service
+
+# 2. 啟動 Identity Provider (HTTPS)
+dotnet run --project .\Web.IdP\Web.IdP.csproj --launch-profile https
+
+# 3. 啟動 TestClient（用於授權與 invalid_scope 測試）
+dotnet run --project .\TestClient\TestClient.csproj
+```
+
+### 常用服務 URL
+
+- IdP 授權端點（OpenIddict）：`https://localhost:7035/connect/authorize`
+- Consent 頁面：授權流程中自動重導（`/Account/Consent` 之類路徑）
+- TestClient 起始頁：`https://localhost:xxxx/`（執行後主控台會列出實際埠）
+
+### Invalid Scope 測試
+
+- 啟動 TestClient 後使用提供的 "Invalid Scopes" 導覽連結（或特定測試路由）
+- 流程：在 authorization request 中注入不存在的 scope → IdP 返回 `invalid_scope` 錯誤 → MCP 代理截取結果
+
+### 遠端 MCP Playwright 測試要點
+
+- 等待頁面載入後再執行語言切換（避免 i18n lazy load race）
+- 登入流程：填入測試帳號（依專案 `setup-test-user.ps1` 建立）後提交 → 截取同意頁 scopes & icon 標記
+- 語言切換：在登入頁與同意頁各執行一次（驗證 zh-TW / en-US JSON 均可解析）
+- 捕捉錯誤：若遇到 locale JSON parse error，記錄 `console.error` 與 network 請求回應 body 以利追蹤
+
+### 建議的 MCP 腳本步驟摘要
+
+1. `goto(TestClient start URL)`
+2. `click('Login / Authorize')`
+3. 等待重導至 IdP 授權/登入頁
+4. 切換語言（繁中 → 英文）並擷取標題文字
+5. 輸入使用者名稱/密碼並登入
+6. 在同意頁擷取 scope 列表（文字、圖示、已選狀態）
+7. 切換語言再次擷取 scope 區塊（驗證 i18n）
+8. 針對 invalid scope 路由重複 1-7 以取得 `invalid_scope` 錯誤視覺化/JSON 回應
+
+### 可能的環境變數（視自動化服務需求）
+
+| 名稱 | 用途 | 範例值 |
+|------|------|--------|
+| `IDP_BASE_URL` | 指向 IdP 基礎 URL | `https://localhost:7035` |
+| `TESTCLIENT_BASE_URL` | 指向 TestClient URL | `https://localhost:5173` |
+| `MCP_TIMEOUT_MS` | 最大等待時間 | `30000` |
+
+> 若遠端測試代理需要額外認證或 WebSocket 連線參數，請在各自的環境設定文件補充，本節只涵蓋專案自身啟動與流程。
+
+### 疑難排解
+
+- IdP 啟動失敗：檢查 HTTPS 開發憑證或埠衝突（停止殘留 dotnet 程序）。
+- 語言切換無效：確認 `en-US.json` / `zh-TW.json` 未出現重複或語法錯誤；使用瀏覽器 DevTools Network 檢查回應是否 200。
+- invalid_scope 未觸發：確認 TestClient 注入路由是否仍存在於 `Program.cs` 事件管線中。
+
+### 後續擴充建議
+
+- 加入自動擷取同意頁 scope 計數與 `openid` 必選警示（已在 UI/i18n 完成，可在腳本驗證該字串存在）。
+- 將 invalid_scope 失敗回應擴充為 JSON 結構快照供報告產生。
+
+---
+
 ## 📊 Token 效率對比
 
 ### 之前（單一大文件）
 
-```
+```text
 每次 session 必須讀取:
 - idp_req_details.md (1284 行)
 - dev_testing_guide.md (200 行)
@@ -177,7 +252,7 @@ Token 消耗: ~1500 行 × 每次
 
 ### 現在（模組化文件）
 
-```
+```text
 新 session 閱讀:
 - DEVELOPMENT_GUIDE.md (約 1000 行)
 - PROJECT_STATUS.md (約 500 行)
@@ -192,6 +267,7 @@ Token 消耗: ~700 行 × 每次
 ```
 
 **實際節省更多：**
+
 - 熟悉專案後，只需 PROJECT_STATUS.md (500 行)
 - 查閱範本時，只看需要的 section
 - 節省可達 **60-70%**
