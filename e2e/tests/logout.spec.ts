@@ -22,8 +22,8 @@ test('TestClient logout clears session and OIDC logout works', async ({ page }) 
 
   // After logout, trying to access Profile redirects to login
   await page.goto('/Account/Profile');
-  // It should redirect to the IdP login page
-  await expect(page).toHaveURL(/https:\/\/localhost:7035\/Account\/Login/);
+  // It should redirect to the IdP authorization endpoint (OIDC authorization)
+  await expect(page).toHaveURL(/https:\/\/localhost:7035\/connect\/authorize/);
 
   // Now exercise IdP logout: go to IdP logout and confirm not authenticated for IdP
   await page.goto('https://localhost:7035/Account/Logout');
