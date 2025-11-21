@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 import adminHelpers from '../helpers/admin';
 
-// NOTE: Skipped because admin user needs Permissions.Claims.Create which isn't assigned by default
-// To enable: assign Claims.Create, Claims.Update, Claims.Delete permissions to admin role
+// NOTE: Temporarily skipped - test times out waiting for POST /api/admin/claims response
+// The permissions are added correctly, but the form submission doesn't trigger the API call
+// Needs further investigation with trace viewer to see what's preventing the form submit
 test.skip('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page }) => {
   // Accept dialogs automatically
   page.on('dialog', async (dialog) => {
@@ -10,6 +11,43 @@ test.skip('Admin - Claims CRUD (create, update, delete custom claim)', async ({ 
   });
 
   await adminHelpers.loginAsAdminViaIdP(page);
+
+  // Get admin's role and temporarily add Claims permissions
+  const { adminRoleId, originalPermissions } = await page.evaluate(async () => {
+    // Get all roles to find Admin role
+    const rolesResp = await fetch('/api/admin/roles');
+    const roles = await rolesResp.json();
+    const adminRole = roles.items.find((r: any) => r.name === 'Admin');
+    
+    if (!adminRole) {
+      throw new Error('Admin role not found');
+    }
+    
+    // Get current permissions
+    const roleDetailResp = await fetch(`/api/admin/roles/${adminRole.id}`);
+    const roleDetail = await roleDetailResp.json();
+    const original = roleDetail.permissions || [];
+    
+    // Add Claims permissions temporarily
+    const updatedPermissions = [...new Set([...original, 'claims.create', 'claims.update', 'claims.delete'])];
+    
+    await fetch(`/api/admin/roles/${adminRole.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: roleDetail.name,
+        description: roleDetail.description,
+        permissions: updatedPermissions
+      })
+    });
+    
+    return { adminRoleId: adminRole.id, originalPermissions: original };
+  });
+
+  // Re-login to get updated permissions
+  await adminHelpers.loginAsAdminViaIdP(page);
+
+  try {
 
   // Navigate to Claims page
   await page.goto('https://localhost:7035/Admin/Claims');
@@ -49,8 +87,17 @@ test.skip('Admin - Claims CRUD (create, update, delete custom claim)', async ({ 
 
   // Data Type field - select (defaults to String, no need to change)
 
+  // Capture API response
+  const responsePromise = page.waitForResponse(resp => resp.url().includes('/api/admin/claims') && resp.request().method() === 'POST');
+  
   // Submit form
   await page.click('button[type="submit"]');
+
+  // Wait for API response
+  const response = await responsePromise;
+  const responseBody = await response.text();
+  console.log(`Claims API response status: ${response.status()}`);
+  console.log(`Claims API response body: ${responseBody}`);
 
   // Wait for modal to close (success) or error message
   await Promise.race([
@@ -66,7 +113,7 @@ test.skip('Admin - Claims CRUD (create, update, delete custom claim)', async ({ 
   }
 
   // Wait for API to complete
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1000);
 
   // Verify claim was created via API
   const claimCreated = await page.evaluate(async (name) => {
@@ -109,23 +156,40 @@ test.skip('Admin - Claims CRUD (create, update, delete custom claim)', async ({ 
   await page.click('button[type="submit"]');
   await page.waitForTimeout(2000);
 
-  // Delete the claim
-  await claimRow.locator('button[title*="Delete"], button:has-text("Delete")').first().click();
+    // Delete the claim
+    await claimRow.locator('button[title*="Delete"], button:has-text("Delete")').first().click();
 
-  // Wait for claim to be removed
-  try {
-    await expect(claimsTable).not.toContainText(claimName, { timeout: 20000 });
-  } catch (e) {
-    // If UI delete fails, try API cleanup
-    console.warn(`UI delete failed for claim ${claimName}, attempting API cleanup...`);
-    await page.evaluate(async (name) => {
-      const resp = await fetch(`/api/admin/claims?search=${encodeURIComponent(name)}`);
-      const data = await resp.json();
-      if (data.items && data.items.length > 0) {
-        const claimId = data.items[0].id;
-        await fetch(`/api/admin/claims/${claimId}`, { method: 'DELETE' });
-      }
-    }, claimName);
+    // Wait for claim to be removed
+    try {
+      await expect(claimsTable).not.toContainText(claimName, { timeout: 20000 });
+    } catch (e) {
+      // If UI delete fails, try API cleanup
+      console.warn(`UI delete failed for claim ${claimName}, attempting API cleanup...`);
+      await page.evaluate(async (name) => {
+        const resp = await fetch(`/api/admin/claims?search=${encodeURIComponent(name)}`);
+        const data = await resp.json();
+        if (data.items && data.items.length > 0) {
+          const claimId = data.items[0].id;
+          await fetch(`/api/admin/claims/${claimId}`, { method: 'DELETE' });
+        }
+      }, claimName);
+    }
+  } finally {
+    // Restore original Administrator role permissions
+    await page.evaluate(async (args) => {
+      const roleDetailResp = await fetch(`/api/admin/roles/${args.roleId}`);
+      const roleDetail = await roleDetailResp.json();
+      
+      await fetch(`/api/admin/roles/${args.roleId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: roleDetail.name,
+          description: roleDetail.description,
+          permissions: args.originalPerms
+        })
+      });
+    }, { roleId: adminRoleId, originalPerms: originalPermissions });
   }
 });
 
