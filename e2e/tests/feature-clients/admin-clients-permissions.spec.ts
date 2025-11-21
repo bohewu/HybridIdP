@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import adminHelpers from './helpers/admin';
+import adminHelpers from '../helpers/admin';
 
 test('Admin - Clients permission denied (create/update/delete)', async ({ page }) => {
   // Login as admin and create role and user with read-only permission

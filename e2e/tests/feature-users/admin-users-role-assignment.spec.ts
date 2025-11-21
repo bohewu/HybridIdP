@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import adminHelpers from './helpers/admin';
+import adminHelpers from '../helpers/admin';
 
 test.describe('Admin - User Role Assignment API', () => {
   test('Should assign roles using role IDs endpoint', async ({ page }) => {

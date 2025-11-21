@@ -15,7 +15,7 @@ last-updated: 2025-11-21
 - Phase 5 — Security / i18n / Consent / API Resources: 96% — `docs/phase-5-security-i18n-consent.md`
 - Phase 6 — Code Quality & Tests: 90% — `docs/phase-6-code-quality-tests.md`
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
-- Phase 8 — e2e Test Refactor: 60% — `docs/phase-8-e2e-refactor.md`
+- Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
 

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import adminHelpers from './helpers/admin';
+import adminHelpers from '../helpers/admin';
 
 test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) => {
   // Accept native JS dialogs (confirm) automatically

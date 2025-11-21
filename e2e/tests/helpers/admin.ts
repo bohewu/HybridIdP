@@ -141,6 +141,91 @@ export async function regenerateSecretViaApi(page: Page, clientId: string) {
   }, clientId);
 }
 
+export async function createScope(page: Page, scopeName: string, displayName?: string, description?: string) {
+  const payload = {
+    name: scopeName,
+    displayName: displayName || scopeName,
+    description: description || `E2E scope ${scopeName}`,
+    resources: []
+  };
+  return await page.evaluate(async (p) => {
+    const r = await fetch('/api/admin/scopes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    });
+    if (!r.ok) throw new Error(`Failed to create scope: ${r.status}`);
+    return r.json();
+  }, payload);
+}
+
+export async function deleteScope(page: Page, scopeIdOrName: string) {
+  try {
+    await page.evaluate(async (identifier) => {
+      // First try to find the scope by name
+      const searchRes = await fetch(`/api/admin/scopes?search=${encodeURIComponent(identifier)}`);
+      if (searchRes.ok) {
+        const data = await searchRes.json();
+        const scope = data.items && data.items.length > 0 ? data.items[0] : null;
+        if (scope && scope.id) {
+          await fetch(`/api/admin/scopes/${scope.id}`, { method: 'DELETE' });
+          return;
+        }
+      }
+      // If not found by name, try using it directly as an ID
+      await fetch(`/api/admin/scopes/${identifier}`, { method: 'DELETE' });
+    }, scopeIdOrName);
+  } catch (e) {
+    // swallow errors in cleanup
+  }
+}
+
+export async function createApiResource(page: Page, resourceName: string, displayName?: string, baseUrl?: string) {
+  const payload = {
+    name: resourceName,
+    displayName: displayName || resourceName,
+    description: `E2E API resource ${resourceName}`,
+    baseUrl: baseUrl || null,
+    scopeIds: []
+  };
+  return await page.evaluate(async (p) => {
+    const r = await fetch('/api/admin/resources', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    });
+    if (!r.ok) throw new Error(`Failed to create API resource: ${r.status}`);
+    const data = await r.json();
+    return data.id;
+  }, payload);
+}
+
+export async function deleteApiResource(page: Page, resourceIdOrName: string | number) {
+  try {
+    await page.evaluate(async (identifier) => {
+      // If it's a number, use it directly as ID
+      if (typeof identifier === 'number') {
+        await fetch(`/api/admin/resources/${identifier}`, { method: 'DELETE' });
+        return;
+      }
+      // Otherwise, try to find by name first
+      const searchRes = await fetch(`/api/admin/resources?search=${encodeURIComponent(identifier)}`);
+      if (searchRes.ok) {
+        const data = await searchRes.json();
+        const resource = data.items && data.items.length > 0 ? data.items[0] : null;
+        if (resource && resource.id) {
+          await fetch(`/api/admin/resources/${resource.id}`, { method: 'DELETE' });
+          return;
+        }
+      }
+      // Last resort: try using it as ID directly
+      await fetch(`/api/admin/resources/${identifier}`, { method: 'DELETE' });
+    }, resourceIdOrName);
+  } catch (e) {
+    // swallow errors in cleanup
+  }
+}
+
 export default {
   loginAsAdminViaIdP,
   login,
@@ -149,5 +234,9 @@ export default {
   deleteRole,
   createUserWithRole,
   deleteUser,
-  regenerateSecretViaApi
+  regenerateSecretViaApi,
+  createScope,
+  deleteScope,
+  createApiResource,
+  deleteApiResource
 }

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import adminHelpers from './helpers/admin';
+import adminHelpers from '../helpers/admin';
 
 /**
  * E2E Integration Tests: Role Permissions in User Claims

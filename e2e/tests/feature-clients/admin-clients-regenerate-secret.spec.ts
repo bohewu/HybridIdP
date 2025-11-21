@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import adminHelpers from './helpers/admin';
+import adminHelpers from '../helpers/admin';
 
 test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   page.on('dialog', async (d) => await d.accept());
