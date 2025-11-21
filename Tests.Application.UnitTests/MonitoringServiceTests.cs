@@ -11,6 +11,7 @@ using Moq;
 using System.Net.Http;
 using Microsoft.AspNetCore.SignalR;
 using System.Threading;
+using Microsoft.Extensions.Configuration;
 
 namespace Tests.Application.UnitTests;
 
@@ -38,7 +39,14 @@ public class MonitoringServiceTests : IDisposable
         // Mock HubContext
         _hubContextMock = new Mock<IHubContext<Infrastructure.Hubs.MonitoringHub>>();
         
-        _monitoringService = new MonitoringService(_dbContext, null!, _httpClientFactoryMock.Object, _hubContextMock.Object);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string,string>
+            {
+                {"Monitoring:MetricsBaseUrl", "https://localhost:7035"}
+            })
+            .Build();
+
+        _monitoringService = new MonitoringService(_dbContext, null!, _httpClientFactoryMock.Object, _hubContextMock.Object, configuration);
     }
 
     public void Dispose()
