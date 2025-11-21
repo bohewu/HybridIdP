@@ -57,6 +57,29 @@ Implementation notes:
 - Add a server-side path that accepts role IDs and resolves to the name with a call to `RoleManager.FindByIdAsync(roleId)`.
 - Re-use existing `AssignRolesAsync` behavior to manipulate roles by name after lookup, and maintain backward compatibility with name-based requests.
 
+### AssignRolesById Endpoint (optional implementation plan)
+
+To make the API simpler for clients and e2e tests, consider adding an endpoint that accepts role IDs directly and resolves them on the server. Example:
+
+```http
+PUT /api/admin/users/{userId}/roles/ids
+Content-Type: application/json
+
+{
+  "RoleIds": ["<role-guid-1>", "<role-guid-2>"]
+}
+```
+
+Server-side handling (sketch):
+ - Validate the user exists and caller has users.update permission.
+ - For each roleId in RoleIds, call `roleManager.FindByIdAsync(roleId)` to obtain the role name.
+ - Build the list of role names and call existing `AssignRolesAsync(userId, roleNames)` to update roles.
+ - Return 200 on success, 4xx (400/404/403) on errors.
+
+Benefits:
+- Simplifies front-end and tests since `Role` search/list APIs commonly return both `id` and `name`, where `id` is more reliably used in code flow.
+- Avoids extra client-side round-trips or helper code to resolve names before calling APIs.
+
 ## Run & Validation
 
 Run the following tests to validate the refactor:
