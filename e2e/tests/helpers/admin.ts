@@ -88,39 +88,28 @@ export async function createUserWithRole(page: Page, email: string, password: st
   }, userPayload);
 
   // Assign roles - roleIdentifiers can be role names or role ids (GUID)
-  // Resolve identifiers that look like GUIDs to role names by fetching the role
+  // Use the ID-based endpoint if all identifiers are GUIDs, otherwise use name-based endpoint
   const resolved = await page.evaluate(async (args) => {
     const isGuid = (s: string) => /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}/.test(s);
-    const resolvedRoles: string[] = [];
-    for (const r of args.roles) {
-      try {
-        if (isGuid(r)) {
-          // Look up the role by id
-          const resp = await fetch(`/api/admin/roles/${r}`);
-          if (resp.ok) {
-            const roleJson = await resp.json();
-            if (roleJson && roleJson.name) resolvedRoles.push(roleJson.name);
-            else resolvedRoles.push(r);
-          } else {
-            // if not found, just pass the identifier through
-            resolvedRoles.push(r);
-          }
-        } else {
-          // treat as name
-          resolvedRoles.push(r);
-        }
-      } catch (e) {
-        // fallback to original identifier
-        resolvedRoles.push(r);
-      }
+    const allGuids = args.roles.every(r => isGuid(r));
+    
+    if (allGuids && args.roles.length > 0) {
+      // Use the new ID-based endpoint for cleaner implementation
+      await fetch(`/api/admin/users/${args.uid}/roles/ids`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ RoleIds: args.roles })
+      });
+      return args.roles;
+    } else {
+      // Use the name-based endpoint for role names or mixed identifiers
+      await fetch(`/api/admin/users/${args.uid}/roles`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Roles: args.roles })
+      });
+      return args.roles;
     }
-    // perform the assignment
-    await fetch(`/api/admin/users/${args.uid}/roles`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ Roles: resolvedRoles })
-    });
-    return resolvedRoles;
   }, { uid: created.id, roles: roleIdentifiers });
 
   return created;

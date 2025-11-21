@@ -64,4 +64,11 @@ public interface IUserManagementService
     Task<(bool Success, IEnumerable<string> Errors)> AssignRolesAsync(
         Guid userId,
         IEnumerable<string> roles);
+
+    /// <summary>
+    /// Assign roles to a user by role IDs (replaces existing roles)
+    /// </summary>
+    Task<(bool Success, IEnumerable<string> Errors)> AssignRolesByIdAsync(
+        Guid userId,
+        IEnumerable<Guid> roleIds);
 }

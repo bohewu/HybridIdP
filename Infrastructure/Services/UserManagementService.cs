@@ -391,4 +391,35 @@ public class UserManagementService : IUserManagementService
 
         return (true, Array.Empty<string>());
     }
+
+    public async Task<(bool Success, IEnumerable<string> Errors)> AssignRolesByIdAsync(
+        Guid userId,
+        IEnumerable<Guid> roleIds)
+    {
+        var roleNames = new List<string>();
+        var errors = new List<string>();
+
+        // Resolve role IDs to role names
+        foreach (var roleId in roleIds)
+        {
+            var role = await _roleManager.FindByIdAsync(roleId.ToString());
+            if (role == null)
+            {
+                errors.Add($"Role with ID '{roleId}' not found");
+            }
+            else
+            {
+                roleNames.Add(role.Name!);
+            }
+        }
+
+        // If any role ID was invalid, return error
+        if (errors.Any())
+        {
+            return (false, errors);
+        }
+
+        // Delegate to existing AssignRolesAsync method
+        return await AssignRolesAsync(userId, roleNames);
+    }
 }

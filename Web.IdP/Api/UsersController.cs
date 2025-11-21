@@ -288,6 +288,40 @@ public class UsersController : ControllerBase
     public record AssignRolesRequest(List<string> Roles);
 
     /// <summary>
+    /// Assign roles to a user by role IDs (replaces existing roles).
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="request">Role assignment data with role IDs</param>
+    [HttpPut("{id}/roles/ids")]
+    [HasPermission(Permissions.Users.Update)]
+    public async Task<IActionResult> AssignRolesByIds(Guid id, [FromBody] AssignRolesByIdRequest request)
+    {
+        try
+        {
+            var (success, errors) = await _userManagementService.AssignRolesByIdAsync(id, request.RoleIds);
+
+            if (!success)
+            {
+                if (errors.Any(e => e.Contains("not found")))
+                    return NotFound(new { errors });
+                return BadRequest(new { errors });
+            }
+
+            var updatedUser = await _userManagementService.GetUserByIdAsync(id);
+            return Ok(updatedUser);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while assigning roles", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Request model for assigning roles to a user by role IDs.
+    /// </summary>
+    public record AssignRolesByIdRequest(List<Guid> RoleIds);
+
+    /// <summary>
     /// List sessions (authorizations) for a user with optional paging.
     /// </summary>
     /// <param name="id">User ID</param>

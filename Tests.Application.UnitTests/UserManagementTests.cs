@@ -418,7 +418,457 @@ public class UserManagementTests
         Assert.Empty(errors);
         _mockUserManager.Verify(x => x.RemoveFromRolesAsync(user, It.IsAny<IEnumerable<string>>()), Times.Never);
         _mockUserManager.Verify(x => x.AddToRolesAsync(user, It.Is<IEnumerable<string>>(r => r.Single() == "Admin")), Times.Once);
+    }
 
+    [Fact]
+    public async Task AssignRolesAsync_UserNotFound_ShouldReturnFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync((ApplicationUser?)null);
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act
+        var (success, errors) = await sut.AssignRolesAsync(userId, new[] { "Admin" });
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains("User not found", errors);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.IsAny<UserRoleAssignedEvent>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AssignRolesAsync_EmptyRolesList_ShouldRemoveAllRoles()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserName = "testuser"
+        };
+
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+
+        _mockUserManager
+            .Setup(x => x.GetRolesAsync(user))
+            .ReturnsAsync(new List<string> { "Admin", "User" });
+
+        _mockUserManager
+            .Setup(x => x.RemoveFromRolesAsync(user, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act
+        var (success, errors) = await sut.AssignRolesAsync(userId, Array.Empty<string>());
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        _mockUserManager.Verify(x => x.RemoveFromRolesAsync(user, It.Is<IEnumerable<string>>(
+            r => r.Contains("Admin") && r.Contains("User") && r.Count() == 2)), Times.Once);
+        _mockUserManager.Verify(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()), Times.Never);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.RoleName == "Admin" && e.IsAssigned == false)), Times.Once);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.RoleName == "User" && e.IsAssigned == false)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AssignRolesAsync_InvalidRoleName_ShouldReturnFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserName = "testuser"
+        };
+
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+
+        _mockUserManager
+            .Setup(x => x.GetRolesAsync(user))
+            .ReturnsAsync(new List<string>());
+
+        _mockUserManager
+            .Setup(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError { Code = "InvalidRole", Description = "Role 'InvalidRole' does not exist." }));
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act
+        var (success, errors) = await sut.AssignRolesAsync(userId, new[] { "InvalidRole" });
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains("Role 'InvalidRole' does not exist.", errors);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.IsAny<UserRoleAssignedEvent>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AssignRolesAsync_IdentityErrorOnRemove_ShouldReturnFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserName = "testuser"
+        };
+
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+
+        _mockUserManager
+            .Setup(x => x.GetRolesAsync(user))
+            .ReturnsAsync(new List<string> { "OldRole" });
+
+        _mockUserManager
+            .Setup(x => x.RemoveFromRolesAsync(user, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError { Code = "RemoveError", Description = "Failed to remove role." }));
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act
+        var (success, errors) = await sut.AssignRolesAsync(userId, new[] { "NewRole" });
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains("Failed to remove role.", errors);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.IsAny<UserRoleAssignedEvent>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AssignRolesAsync_SameRoles_ShouldNotModify()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserName = "testuser"
+        };
+        var roles = new List<string> { "Admin", "User" };
+
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+
+        _mockUserManager
+            .Setup(x => x.GetRolesAsync(user))
+            .ReturnsAsync(roles);
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act
+        var (success, errors) = await sut.AssignRolesAsync(userId, roles);
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        _mockUserManager.Verify(x => x.RemoveFromRolesAsync(user, It.IsAny<IEnumerable<string>>()), Times.Never);
+        _mockUserManager.Verify(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()), Times.Never);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.IsAny<UserRoleAssignedEvent>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AssignRolesAsync_AddAndRemoveRoles_ShouldPublishBothEvents()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserName = "testuser"
+        };
+
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+
+        _mockUserManager
+            .Setup(x => x.GetRolesAsync(user))
+            .ReturnsAsync(new List<string> { "OldRole1", "OldRole2" });
+
+        _mockUserManager
+            .Setup(x => x.RemoveFromRolesAsync(user, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        _mockUserManager
+            .Setup(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act
+        var (success, errors) = await sut.AssignRolesAsync(userId, new[] { "NewRole1", "NewRole2" });
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        _mockUserManager.Verify(x => x.RemoveFromRolesAsync(user, It.Is<IEnumerable<string>>(
+            r => r.Contains("OldRole1") && r.Contains("OldRole2"))), Times.Once);
+        _mockUserManager.Verify(x => x.AddToRolesAsync(user, It.Is<IEnumerable<string>>(
+            r => r.Contains("NewRole1") && r.Contains("NewRole2"))), Times.Once);
+        
+        // Verify events for added roles
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.UserId == userId.ToString() && e.RoleName == "NewRole1" && e.IsAssigned == true)), Times.Once);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.UserId == userId.ToString() && e.RoleName == "NewRole2" && e.IsAssigned == true)), Times.Once);
+        
+        // Verify events for removed roles
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.UserId == userId.ToString() && e.RoleName == "OldRole1" && e.IsAssigned == false)), Times.Once);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.UserId == userId.ToString() && e.RoleName == "OldRole2" && e.IsAssigned == false)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AssignRolesAsync_OnlyRemoveRoles_ShouldPublishRemovalEvents()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserName = "testuser"
+        };
+
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+
+        _mockUserManager
+            .Setup(x => x.GetRolesAsync(user))
+            .ReturnsAsync(new List<string> { "Admin", "User", "Manager" });
+
+        _mockUserManager
+            .Setup(x => x.RemoveFromRolesAsync(user, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act - Keep only "User" role, remove "Admin" and "Manager"
+        var (success, errors) = await sut.AssignRolesAsync(userId, new[] { "User" });
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        _mockUserManager.Verify(x => x.RemoveFromRolesAsync(user, It.Is<IEnumerable<string>>(
+            r => r.Contains("Admin") && r.Contains("Manager") && r.Count() == 2)), Times.Once);
+        _mockUserManager.Verify(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()), Times.Never);
+        
+        // Verify removal events
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.RoleName == "Admin" && e.IsAssigned == false)), Times.Once);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.RoleName == "Manager" && e.IsAssigned == false)), Times.Once);
+        
+        // Verify no addition events for "User" since it already exists
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.RoleName == "User")), Times.Never);
+    }
+
+    [Fact]
+    public async Task AssignRolesByIdAsync_WithValidRoleIds_ShouldSucceed()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var roleId1 = Guid.NewGuid();
+        var roleId2 = Guid.NewGuid();
+        
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserName = "testuser"
+        };
+
+        var role1 = new ApplicationRole { Id = roleId1, Name = "Admin" };
+        var role2 = new ApplicationRole { Id = roleId2, Name = "User" };
+
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+
+        _mockUserManager
+            .Setup(x => x.GetRolesAsync(user))
+            .ReturnsAsync(new List<string>());
+
+        _mockRoleManager
+            .Setup(x => x.FindByIdAsync(roleId1.ToString()))
+            .ReturnsAsync(role1);
+
+        _mockRoleManager
+            .Setup(x => x.FindByIdAsync(roleId2.ToString()))
+            .ReturnsAsync(role2);
+
+        _mockUserManager
+            .Setup(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act
+        var (success, errors) = await sut.AssignRolesByIdAsync(userId, new[] { roleId1, roleId2 });
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        _mockUserManager.Verify(x => x.AddToRolesAsync(user, It.Is<IEnumerable<string>>(
+            r => r.Contains("Admin") && r.Contains("User"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task AssignRolesByIdAsync_WithInvalidRoleId_ShouldReturnError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var validRoleId = Guid.NewGuid();
+        var invalidRoleId = Guid.NewGuid();
+
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserName = "testuser"
+        };
+
+        var validRole = new ApplicationRole { Id = validRoleId, Name = "Admin" };
+
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+
+        _mockRoleManager
+            .Setup(x => x.FindByIdAsync(validRoleId.ToString()))
+            .ReturnsAsync(validRole);
+
+        _mockRoleManager
+            .Setup(x => x.FindByIdAsync(invalidRoleId.ToString()))
+            .ReturnsAsync((ApplicationRole?)null);
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act
+        var (success, errors) = await sut.AssignRolesByIdAsync(userId, new[] { validRoleId, invalidRoleId });
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains(invalidRoleId.ToString()));
+        Assert.Contains(errors, e => e.Contains("not found"));
+        _mockUserManager.Verify(x => x.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AssignRolesByIdAsync_WithAllInvalidRoleIds_ShouldReturnAllErrors()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var invalidRoleId1 = Guid.NewGuid();
+        var invalidRoleId2 = Guid.NewGuid();
+
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserName = "testuser"
+        };
+
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+
+        _mockRoleManager
+            .Setup(x => x.FindByIdAsync(It.IsAny<string>()))
+            .ReturnsAsync((ApplicationRole?)null);
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act
+        var (success, errors) = await sut.AssignRolesByIdAsync(userId, new[] { invalidRoleId1, invalidRoleId2 });
+
+        // Assert
+        Assert.False(success);
+        Assert.Equal(2, errors.Count());
+        Assert.Contains(errors, e => e.Contains(invalidRoleId1.ToString()));
+        Assert.Contains(errors, e => e.Contains(invalidRoleId2.ToString()));
+        _mockUserManager.Verify(x => x.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AssignRolesByIdAsync_DelegatesToAssignRolesAsync()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+        
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserName = "testuser"
+        };
+
+        var role = new ApplicationRole { Id = roleId, Name = "Admin" };
+
+        _mockUserManager
+            .Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+
+        _mockUserManager
+            .Setup(x => x.GetRolesAsync(user))
+            .ReturnsAsync(new List<string> { "User" });
+
+        _mockRoleManager
+            .Setup(x => x.FindByIdAsync(roleId.ToString()))
+            .ReturnsAsync(role);
+
+        _mockUserManager
+            .Setup(x => x.RemoveFromRolesAsync(user, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        _mockUserManager
+            .Setup(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object);
+
+        // Act
+        var (success, errors) = await sut.AssignRolesByIdAsync(userId, new[] { roleId });
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        
+        // Verify that it properly delegates to AssignRolesAsync by checking the underlying operations
+        _mockUserManager.Verify(x => x.FindByIdAsync(userId.ToString()), Times.Once);
+        _mockUserManager.Verify(x => x.GetRolesAsync(user), Times.Once);
+        _mockUserManager.Verify(x => x.RemoveFromRolesAsync(user, It.Is<IEnumerable<string>>(r => r.Contains("User"))), Times.Once);
+        _mockUserManager.Verify(x => x.AddToRolesAsync(user, It.Is<IEnumerable<string>>(r => r.Contains("Admin"))), Times.Once);
+        
+        // Verify events were published
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.RoleName == "User" && e.IsAssigned == false)), Times.Once);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<UserRoleAssignedEvent>(
+            e => e.RoleName == "Admin" && e.IsAssigned == true)), Times.Once);
     }
 
     [Fact]
