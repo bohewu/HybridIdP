@@ -419,5 +419,35 @@ public class ClientAllowedScopesServiceTests : IDisposable
         Assert.Empty(allowed);
     }
 
+    [Fact]
+    public async Task ValidateRequestedScopesAsync_ShouldReturnOnlyRequestedScopes_WhenPartialGrant()
+    {
+        // Arrange
+        var clientId = Guid.NewGuid().ToString();
+        var mockClient = new object();
+        var requestedScopes = new List<string> { "openid", "profile" }; // Partial from allowed
+        var permissions = new List<string>
+        {
+            $"{OpenIddictConstants.Permissions.Prefixes.Scope}openid",
+            $"{OpenIddictConstants.Permissions.Prefixes.Scope}profile",
+            $"{OpenIddictConstants.Permissions.Prefixes.Scope}email"
+        }.ToImmutableArray();
+
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockClient);
+        _mockApplicationManager.Setup(m => m.GetPermissionsAsync(mockClient, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(permissions);
+
+        // Act
+        var allowed = await _service.ValidateRequestedScopesAsync(Guid.Parse(clientId), requestedScopes);
+
+        // Assert
+        Assert.NotNull(allowed);
+        Assert.Equal(2, allowed.Count);
+        Assert.Contains("openid", allowed);
+        Assert.Contains("profile", allowed);
+        Assert.DoesNotContain("email", allowed);
+    }
+
     #endregion
 }
