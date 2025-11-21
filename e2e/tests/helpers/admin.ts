@@ -65,7 +65,7 @@ export async function deleteRole(page: Page, roleId: string) {
   }
 }
 
-export async function createUserWithRole(page: Page, email: string, password: string, roleNames: string[]) {
+export async function createUserWithRole(page: Page, email: string, password: string, roleIdentifiers: string[]) {
   const userPayload = {
     email,
     userName: email,
@@ -87,14 +87,41 @@ export async function createUserWithRole(page: Page, email: string, password: st
     return r.json();
   }, userPayload);
 
-  // Assign roles (role names expected by API)
-  await page.evaluate(async (args) => {
+  // Assign roles - roleIdentifiers can be role names or role ids (GUID)
+  // Resolve identifiers that look like GUIDs to role names by fetching the role
+  const resolved = await page.evaluate(async (args) => {
+    const isGuid = (s: string) => /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}/.test(s);
+    const resolvedRoles: string[] = [];
+    for (const r of args.roles) {
+      try {
+        if (isGuid(r)) {
+          // Look up the role by id
+          const resp = await fetch(`/api/admin/roles/${r}`);
+          if (resp.ok) {
+            const roleJson = await resp.json();
+            if (roleJson && roleJson.name) resolvedRoles.push(roleJson.name);
+            else resolvedRoles.push(r);
+          } else {
+            // if not found, just pass the identifier through
+            resolvedRoles.push(r);
+          }
+        } else {
+          // treat as name
+          resolvedRoles.push(r);
+        }
+      } catch (e) {
+        // fallback to original identifier
+        resolvedRoles.push(r);
+      }
+    }
+    // perform the assignment
     await fetch(`/api/admin/users/${args.uid}/roles`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ Roles: args.roles })
+      body: JSON.stringify({ Roles: resolvedRoles })
     });
-  }, { uid: created.id, roles: roleNames });
+    return resolvedRoles;
+  }, { uid: created.id, roles: roleIdentifiers });
 
   return created;
 }

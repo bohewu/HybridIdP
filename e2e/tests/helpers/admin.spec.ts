@@ -43,7 +43,25 @@ test.describe('Admin helper utilities', () => {
 
     const email = `e2e-smoke-${timestamp}@hybridauth.local`;
     const password = `E2E!${timestamp}a`;
-    const created = await adminHelpers.createUserWithRole(page, email, password, [role.name]);
+    const created = await adminHelpers.createUserWithRole(page, email, password, [role.id]);
+    expect(created).toBeDefined();
+    expect(created.id).toBeTruthy();
+
+    // Cleanup
+    await adminHelpers.deleteUser(page, created.id);
+    await adminHelpers.deleteRole(page, role.id);
+  });
+
+  test('createUserWithRole accepts role id as identifier', async ({ page }) => {
+    await adminHelpers.loginAsAdminViaIdP(page);
+    const timestamp = Date.now();
+    const role = await adminHelpers.createRole(page, `e2e-smoke-role3-${timestamp}`, ['clients.read']);
+    expect(role.id).toBeTruthy();
+
+    const email = `e2e-smoke-id-${timestamp}@hybridauth.local`;
+    const password = `E2E!${timestamp}a`;
+    // Pass role.id instead of name
+    const created = await adminHelpers.createUserWithRole(page, email, password, [role.id]);
     expect(created).toBeDefined();
     expect(created.id).toBeTruthy();
 
