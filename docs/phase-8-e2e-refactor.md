@@ -52,7 +52,14 @@ This document tracks the Phase 8 effort to refactor and expand the E2E test suit
 1. [x] ~~Add negative tests to assert invalid role IDs return 4xx when assigning via API.~~ **COMPLETED**
    - Added 5 comprehensive negative test scenarios in `e2e/tests/admin-users-role-assignment.spec.ts`
    - Tests cover: non-existent user (404), malformed GUID (400), mixed valid/invalid IDs (404), empty array (removes all roles), duplicate IDs (handled gracefully)
-2. [ ] Add one or two integration tests verifying that role permissions are reflected in user claims after login (end-to-end) — this might require explicit token inspection.
+2. [x] ~~Add one or two integration tests verifying that role permissions are reflected in user claims after login (end-to-end) — this might require explicit token inspection.~~ **COMPLETED**
+   - Implemented permission claims in OIDC tokens via `MyUserClaimsPrincipalFactory`, `Token.cshtml.cs`, and `Authorize.cshtml.cs`
+   - Fixed permission claim reading from `role.Permissions` property (comma-separated string)
+   - Added "permission" claim type to `GetDestinations` in both Token and Authorize endpoints
+   - Created `e2e/tests/role-permissions-claims.spec.ts` with 2 comprehensive E2E tests:
+     - Test 1: Verifies permissions appear in user claims after OIDC login
+     - Test 2: Verifies permission changes after role reassignment with fresh browser context
+   - Tests use separate browser contexts for admin setup and user login to avoid session contamination
 3. [x] ~~Optionally, update the backend to provide a direct AssignRolesById endpoint to simplify test helper logic; see 'Backend suggestion' below.~~ **COMPLETED**
    - Implemented `AssignRolesByIdAsync` in `UserManagementService`
    - Added API endpoint `PUT /api/admin/users/{id}/roles/ids`
