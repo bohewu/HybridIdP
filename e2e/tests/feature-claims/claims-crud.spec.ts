@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import adminHelpers from '../helpers/admin';
 
+// NOTE: Skipped because admin user needs Permissions.Claims.Create which isn't assigned by default
+// To enable: assign Claims.Create, Claims.Update, Claims.Delete permissions to admin role
 test.skip('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page }) => {
   // Accept dialogs automatically
   page.on('dialog', async (dialog) => {
@@ -14,42 +16,54 @@ test.skip('Admin - Claims CRUD (create, update, delete custom claim)', async ({ 
   await page.waitForURL(/\/Admin\/Claims/);
 
   // Wait for the Vue app to load
-  await page.waitForSelector('table, button:has-text("Create"), button:has-text("Add")', { timeout: 15000 });
+  await page.waitForSelector('table', { timeout: 15000 });
 
   const claimName = `e2e_claim_${Date.now()}`;
   const displayName = `E2E Test Claim ${Date.now()}`;
 
-  // Click Create button (try different variations)
-  const createButton = page.locator('button:has-text("Create New Claim"), button:has-text("Create Claim"), button:has-text("Add Claim")').first();
-  await createButton.click();
+  // Click Create Claim button
+  await page.locator('button:has-text("Create Claim")').click();
 
-  // Wait for modal
-  await page.waitForSelector('#claimType, #name', { timeout: 5000 });
+  // Wait for modal form to appear
+  await page.waitForSelector('form', { timeout: 5000 });
 
-  // Fill in claim details (check which fields exist)
-  const hasClaimType = await page.locator('#claimType').isVisible().catch(() => false);
-  const hasName = await page.locator('#name').isVisible().catch(() => false);
+  // Fill in claim details using the form structure from ClaimsApp.vue
+  // Name field (required)
+  const nameInput = page.locator('input[type="text"]').first();
+  await nameInput.fill(claimName);
 
-  if (hasClaimType) {
-    await page.fill('#claimType', claimName);
-  } else if (hasName) {
-    await page.fill('#name', claimName);
-  }
+  // Display Name field (required) - second text input
+  const displayNameInput = page.locator('input[type="text"]').nth(1);
+  await displayNameInput.fill(displayName);
 
-  // Fill display name if exists
-  const hasDisplayName = await page.locator('#displayName').isVisible().catch(() => false);
-  if (hasDisplayName) {
-    await page.fill('#displayName', displayName);
-  }
+  // Description field - textarea
+  await page.locator('textarea').fill('E2E test custom claim for automated testing');
 
-  // Fill description if exists
-  const hasDescription = await page.locator('#description').isVisible().catch(() => false);
-  if (hasDescription) {
-    await page.fill('#description', 'E2E test custom claim for automated testing');
-  }
+  // Claim Type field (required) - third text input
+  const claimTypeInput = page.locator('input[type="text"]').nth(2);
+  await claimTypeInput.fill(`http://schemas.example.com/${claimName}`);
+
+  // User Property Path field (required) - fourth text input
+  const userPropertyInput = page.locator('input[type="text"]').nth(3);
+  await userPropertyInput.fill('CustomProperties.TestValue');
+
+  // Data Type field - select (defaults to String, no need to change)
 
   // Submit form
   await page.click('button[type="submit"]');
+
+  // Wait for modal to close (success) or error message
+  await Promise.race([
+    page.waitForSelector('form', { state: 'hidden', timeout: 5000 }).catch(() => null),
+    page.waitForSelector('.bg-red-50', { timeout: 5000 }).catch(() => null)
+  ]);
+
+  // Check if there was an error
+  const errorVisible = await page.locator('.bg-red-50').isVisible().catch(() => false);
+  if (errorVisible) {
+    const errorText = await page.locator('.bg-red-50').textContent();
+    console.log(`Error creating claim: ${errorText}`);
+  }
 
   // Wait for API to complete
   await page.waitForTimeout(2000);
@@ -58,6 +72,7 @@ test.skip('Admin - Claims CRUD (create, update, delete custom claim)', async ({ 
   const claimCreated = await page.evaluate(async (name) => {
     const resp = await fetch(`/api/admin/claims?search=${encodeURIComponent(name)}`);
     const data = await resp.json();
+    console.log('API search result:', data);
     return data.items && data.items.length > 0 && (data.items[0].claimType === name || data.items[0].name === name);
   }, claimName);
 
@@ -78,16 +93,17 @@ test.skip('Admin - Claims CRUD (create, update, delete custom claim)', async ({ 
   const claimRow = claimsTable.locator('tr', { hasText: claimName });
   await expect(claimRow).toBeVisible();
 
-  // Click edit button
-  await claimRow.locator('button[title*="Edit"], button:has-text("Edit")').first().click();
+  // Click edit button (it's an icon button with SVG)
+  await claimRow.locator('button').first().click();
 
-  // Update display name
+  // Wait for modal form
+  await page.waitForSelector('form', { timeout: 5000 });
+
+  // Update display name (second text input in edit mode)
   const updatedDisplayName = `${displayName} (updated)`;
-  await page.waitForSelector('#displayName, #name', { timeout: 5000 });
-  
-  if (await page.locator('#displayName').isVisible().catch(() => false)) {
-    await page.fill('#displayName', updatedDisplayName);
-  }
+  const editDisplayNameInput = page.locator('input[type="text"]').nth(1);
+  await editDisplayNameInput.clear();
+  await editDisplayNameInput.fill(updatedDisplayName);
 
   // Submit update
   await page.click('button[type="submit"]');
