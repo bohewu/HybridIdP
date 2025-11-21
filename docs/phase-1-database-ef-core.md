@@ -15,7 +15,7 @@ percent-complete: 100
 - `ApplicationDbContext` 配置（PostgreSQL provider）
 - `ApplicationUser` 和 `ApplicationRole` 實體定義
 - 初始資料庫遷移建立
-- 基本測試用戶：`admin@example.com` / `Admin123!` (Admin 角色)
+- 基本測試用戶：`admin@hybridauth.local` / `Admin@123` (Admin 角色)
 
 **技術細節：**
 - Database: PostgreSQL 17
