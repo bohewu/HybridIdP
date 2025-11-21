@@ -15,15 +15,18 @@ public class SessionService : ISessionService
     private readonly IOpenIddictAuthorizationManager _authorizations;
     private readonly IOpenIddictApplicationManager _applications;
     private readonly IOpenIddictTokenManager _tokens;
+    private readonly IApplicationDbContext _db;
 
     public SessionService(
         IOpenIddictAuthorizationManager authorizations,
         IOpenIddictApplicationManager applications,
-        IOpenIddictTokenManager tokens)
+        IOpenIddictTokenManager tokens,
+        IApplicationDbContext dbContext)
     {
         _authorizations = authorizations;
         _applications = applications;
         _tokens = tokens;
+        _db = dbContext;
     }
 
     public async Task<IEnumerable<SessionDto>> ListSessionsAsync(Guid userId)
@@ -202,5 +205,17 @@ public class SessionService : ISessionService
         }
 
         return count;
+    }
+
+    public Task<RefreshResultDto> RefreshAsync(Guid userId, string authorizationId, string presentedRefreshToken, string? ipAddress, string? userAgent)
+    {
+        // Placeholder implementation for TDD; will be replaced by real logic.
+        throw new NotImplementedException("RefreshAsync lifecycle rotation not yet implemented.");
+    }
+
+    public Task<RevokeChainResultDto> RevokeChainAsync(Guid userId, string authorizationId, string reason)
+    {
+        // Placeholder implementation for TDD; will be replaced by real logic.
+        throw new NotImplementedException("RevokeChainAsync lifecycle revocation not yet implemented.");
     }
 }

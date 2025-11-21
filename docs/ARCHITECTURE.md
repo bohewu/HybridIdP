@@ -1,3 +1,16 @@
+## Session & Refresh Token Lifecycle (Stub)
+
+This section (work-in-progress) will define the local `UserSession` model decoupled from OpenIddict internals to support:
+
+- Refresh token rotation (one-time use) with secure hashing (no raw storage).
+- Sliding expiration extensions governed by per-client and global policies (max absolute lifetime enforced).
+- Reuse (replay) detection by tracking previous refresh token hash and marking audit events.
+- Cascade revocation: single session or entire chain with audit reason and cache invalidation hooks.
+- Audit events: `RefreshTokenRotated`, `RefreshTokenReuseDetected`, `SessionRevoked`, `SlidingExpirationExtended`.
+- Integration points: Monitoring dashboards, security anomaly detection, scope/settings cache invalidation.
+
+Upcoming implementation phases will replace placeholder methods in `SessionService` (see `RefreshAsync`, `RevokeChainAsync`) guided by the failing unit tests in `SessionRefreshLifecycleTests`.
+
 # HybridAuth IdP 架構指南
 
 ## 🎯 簡介

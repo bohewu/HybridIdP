@@ -29,6 +29,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<ApiResource> ApiResources => Set<ApiResource>();
     public DbSet<ApiResourceScope> ApiResourceScopes => Set<ApiResourceScope>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -171,6 +172,23 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.Property(e => e.IPAddress).HasMaxLength(45); // IPv6 max
             entity.Property(e => e.UserAgent).HasMaxLength(500);
             entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        // Configure UserSession entity
+        builder.Entity<UserSession>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.AuthorizationId).IsUnique();
+            entity.HasIndex(e => e.UserId);
+            entity.Property(e => e.AuthorizationId).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.ClientId).HasMaxLength(200);
+            entity.Property(e => e.ClientDisplayName).HasMaxLength(200);
+            entity.Property(e => e.CurrentRefreshTokenHash).HasMaxLength(256);
+            entity.Property(e => e.PreviousRefreshTokenHash).HasMaxLength(256);
+            entity.Property(e => e.DeviceInfo).HasMaxLength(500);
+            entity.Property(e => e.IpAddress).HasMaxLength(45);
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+            entity.Property(e => e.RevocationReason).HasMaxLength(500);
         });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.

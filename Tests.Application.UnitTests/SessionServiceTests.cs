@@ -18,13 +18,20 @@ public class SessionServiceTests
     private readonly Mock<IOpenIddictApplicationManager> _apps;
     private readonly Mock<IOpenIddictTokenManager> _tokens;
     private readonly SessionService _service;
+    private readonly ApplicationDbContext _dbContext;
 
     public SessionServiceTests()
     {
         _authz = new Mock<IOpenIddictAuthorizationManager>();
         _apps = new Mock<IOpenIddictApplicationManager>();
         _tokens = new Mock<IOpenIddictTokenManager>();
-        _service = new SessionService(_authz.Object, _apps.Object, _tokens.Object);
+
+        var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        _dbContext = new ApplicationDbContext(options);
+
+        _service = new SessionService(_authz.Object, _apps.Object, _tokens.Object, _dbContext);
     }
 
     private sealed class AsyncEnumerable<T> : IAsyncEnumerable<T>
