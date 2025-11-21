@@ -27,3 +27,45 @@ Backlog & Technical Debt: `docs/backlog-and-debt.md`
 
 近期更新紀錄：
 
+## 2025-11-21: E2E Test Coverage Expansion (47 tests total, 100% passing)
+
+**新增功能測試覆蓋 (Admin UI Features):**
+
+1. **Settings E2E Tests** (2 tests)
+   - ✅ Branding CRUD - update app name/product name, verify persistence
+   - ✅ Validation - empty field handling
+
+2. **Security Policies E2E Tests** (3 tests)
+   - ✅ Password requirements CRUD - minLength, maxFailedAttempts
+   - ✅ Validation - min/max bounds testing
+   - ✅ Account lockout configuration - lockoutDuration changes
+
+3. **Claims E2E Tests** (2 tests)
+   - ✅ Claims CRUD - create/update/delete custom claims (with permission management)
+   - ✅ Standard claim protection - verify system claims immutability
+
+4. **Audit Log E2E Tests** (5 tests)
+   - ✅ Viewer load and pagination
+   - ✅ Filter by event type
+   - ✅ Search by user
+   - ✅ Refresh functionality
+   - ✅ Date range filter (graceful fallback)
+
+**技術改進:**
+
+- 動態權限管理：測試中臨時添加 Claims.Create/Update/Delete 權限到 Admin 角色
+- Modal 表單選擇器：使用 `modalForm.locator()` 避免選到頁面其他元素
+- 錯誤處理：10 秒 API 響應超時，快速失敗機制
+
+**測試狀態:**
+
+- 總測試數：35 → 47 (+12 tests, +34%)
+- 通過率：47/47 (100%)
+- 執行時間：~42s (4 parallel workers)
+
+**待完成 E2E 測試:**
+
+- [ ] Users UI CRUD tests
+- [ ] User Sessions management tests  
+- [ ] Dashboard metrics tests
+
