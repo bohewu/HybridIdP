@@ -11,6 +11,8 @@ This section (work-in-progress) will define the local `UserSession` model decoup
 
 Upcoming implementation phases will replace placeholder methods in `SessionService` (see `RefreshAsync`, `RevokeChainAsync`) guided by the failing unit tests in `SessionRefreshLifecycleTests`.
 
+Current status: initial implementation completed for rotation, reuse detection (previous-token replay), sliding window extension (30m policy placeholder) and chain revocation with audit events. Hashing is a temporary deterministic mapping pending upgrade to cryptographic hashing (SHA256 + salt). Further enhancements will externalize policy (per-client) and strengthen concurrency handling.
+
 # HybridAuth IdP 架構指南
 
 ## 🎯 簡介
