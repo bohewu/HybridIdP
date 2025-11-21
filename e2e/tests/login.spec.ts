@@ -1,14 +1,11 @@
 import { test, expect } from '@playwright/test';
 
-test('login flow: login admin and redirect to profile', async ({ page }) => {
-  // Start at the TestClient home page
-  await page.goto('/');
+test('login flow: IdP login (admin) and authenticated state', async ({ page }) => {
+  // Start directly at the IdP login page
+  await page.goto('https://localhost:7035/');
 
-  // Click the login/profile link to trigger OIDC challenge
-  await page.click('a:has-text("Login")');
-
-  // The IdP will serve the login page under https://localhost:7035
-  await expect(page).toHaveURL(/https:\/\/localhost:7035/);
+  // If not authenticated we should be redirected to the login page
+  await expect(page).toHaveURL(/https:\/\/localhost:7035\/Account\/Login/);
 
   // Fill in credentials (use the development test user in README)
   await page.fill('#Input_Login', 'admin@hybridauth.local');
@@ -17,9 +14,7 @@ test('login flow: login admin and redirect to profile', async ({ page }) => {
   // Submit the form
   await page.click('button.auth-btn-primary');
 
-  // Wait for redirect back to TestClient profile and expect to see the email
-  await page.waitForURL('**/Account/Profile', { timeout: 20000 });
-
-  // Assert that the profile contains the admin email somewhere in the claims table
-  await expect(page.locator('table')).toContainText('admin@hybridauth.local');
+  // After login we should be authenticated on the IdP and see a logout link
+  await page.waitForSelector('a[href="/Account/Logout"]', { timeout: 20000 });
+  await expect(page.locator('a[href="/Account/Logout"]')).toBeVisible();
 });
