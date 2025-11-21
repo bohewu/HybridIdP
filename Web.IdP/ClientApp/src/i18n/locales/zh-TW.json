@@ -1,4 +1,3 @@
-
 {
   "admin": {
     "dashboard": {
@@ -332,7 +331,7 @@
         "userClaimsStandardLabel": "標準",
         "saving": "儲存中...",
         "createButton": "新增範圍",
-        "updateButton": "更新範圍",
+        "updateButton": "更新範圍"
       }
     },
     "claims": {
@@ -998,3 +997,19 @@
   }
 }
 
+ ,"clients": {
+    "form": {
+      "allowedScopes": "允許的範圍",
+      "allowedScopesHelp": "選取此用戶端在授權流程中可請求的範圍。",
+      "allowedScopesLoading": "載入範圍中...",
+      "allowedScopesNone": "沒有可用的範圍。",
+      "allowedScopesRequired": "至少必須選擇一個範圍。",
+      "allowedScopesOpenidRequired": "必須包含 'openid' 範圍才能使用 OIDC 驗證。",
+      "allowedScopesCount": "已選擇：{count} 個範圍",
+      "scopeCategories": {
+        "identity": "身分",
+        "apiResource": "API 資源",
+        "custom": "自訂"
+      }
+    }
+ }

@@ -609,6 +609,10 @@ const toggleAllowedScope = (scopeName) => {
                       <label class="block text-sm font-medium text-gray-700 mb-2">
                         {{ $t('clients.form.allowedScopes') }} <span class="text-red-500">*</span>
                       </label>
+                      <!-- Selected count -->
+                      <p v-if="formData.allowedScopes.length > 0" class="text-xs text-gray-500 mb-2">
+                        {{ $t('clients.form.allowedScopesCount', { count: formData.allowedScopes.length }) }}
+                      </p>
                       <div v-if="fieldErrors.allowedScopes" class="mb-2">
                         <p v-for="(err, idx) in fieldErrors.allowedScopes" :key="idx" class="text-sm text-red-600 flex items-start">
                           <svg class="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -670,6 +674,9 @@ const toggleAllowedScope = (scopeName) => {
                       </div>
                       
                       <p class="mt-3 text-xs text-gray-500">{{ $t('clients.form.allowedScopesHelp') }}</p>
+                      <p v-if="!formData.allowedScopes.includes('openid')" class="mt-1 text-xs text-yellow-600">
+                        {{ $t('clients.form.allowedScopesOpenidRequired') }}
+                      </p>
                     </div>
                   </div>
                 </div>

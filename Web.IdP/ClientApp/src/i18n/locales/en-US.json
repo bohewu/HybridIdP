@@ -331,7 +331,7 @@
         "userClaimsStandardLabel": "Standard",
         "saving": "Saving...",
         "createButton": "Create Scope",
-        "updateButton": "Update Scope",
+        "updateButton": "Update Scope"
       }
     },
     "claims": {
@@ -996,4 +996,30 @@
     }
   }
 }
+
+    ,"clients": {
+      "form": {
+        "allowedScopes": "Allowed Scopes",
+        "allowedScopesHelp": "Select the scopes this client is permitted to request during authorization.",
+        "allowedScopesLoading": "Loading scopes...",
+        "allowedScopesNone": "No scopes available.",
+        "allowedScopesRequired": "At least one scope must be selected.",
+        "allowedScopesOpenidRequired": "The 'openid' scope is required for OIDC authentication.",
+        "allowedScopesCount": "Selected: {count} scope(s)",
+        "scopeCategories": {
+          "identity": "Identity",
+          "apiResource": "API Resource",
+          "custom": "Custom"
+        }
+      }
+    }
+
+
+
+
+
+
+
+
+
 
