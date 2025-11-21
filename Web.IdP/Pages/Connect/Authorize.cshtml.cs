@@ -1,6 +1,7 @@
 using Core.Domain;
 using Core.Domain.Constants;
 using Core.Application;
+using Core.Application.DTOs;
 using Infrastructure;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
@@ -15,6 +16,7 @@ using System.Collections.Immutable;
 using System.Security.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using System.Globalization;
+using System.Text.Json;
 
 namespace Web.IdP.Pages.Connect;
 
@@ -29,6 +31,8 @@ public class AuthorizeModel : PageModel
     private readonly IApiResourceService _apiResourceService;
     private readonly ILocalizationService _localizationService;
     private readonly ILogger<AuthorizeModel> _logger;
+    private readonly IScopeService _scopeService;
+    private readonly IAuditService _auditService;
 
     public AuthorizeModel(
         IOpenIddictApplicationManager applicationManager,
@@ -38,6 +42,8 @@ public class AuthorizeModel : PageModel
         ApplicationDbContext db,
         IApiResourceService apiResourceService,
         ILocalizationService localizationService,
+        IScopeService scopeService,
+        IAuditService auditService,
         ILogger<AuthorizeModel> logger)
     {
         _applicationManager = applicationManager;
@@ -48,6 +54,8 @@ public class AuthorizeModel : PageModel
         _apiResourceService = apiResourceService;
         _localizationService = localizationService;
         _logger = logger;
+        _scopeService = scopeService;
+        _auditService = auditService;
     }
 
     public string? ApplicationName { get; set; }
@@ -182,9 +190,20 @@ public class AuthorizeModel : PageModel
                 });
         }
 
-        // User denied consent
+        // User denied consent -> audit and forbid
         if (submit == "deny")
         {
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var ua = Request.Headers["User-Agent"].ToString();
+            var requestScopes = request.GetScopes().ToImmutableArray();
+            var denyDetails = JsonSerializer.Serialize(new
+            {
+                clientId = request.ClientId,
+                requested = requestScopes,
+                reason = "user_denied"
+            });
+            await _auditService.LogEventAsync("AuthorizationDenied", result.Principal.GetClaim(Claims.Subject), denyDetails, ip, ua);
+
             return Forbid(
                 authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
                 properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -209,16 +228,25 @@ public class AuthorizeModel : PageModel
         var roles = await _userManager.GetRolesAsync(user);
         identity.SetClaims(Claims.Role, roles.ToImmutableArray());
 
-        // Enrich with scope-mapped claims from DB based on granted scopes
+        // Requested scopes
         var requestedScopes = request.GetScopes().ToImmutableArray();
-        
-        // Filter scopes based on user consent (partial grant support)
-        var grantedScopes = FilterGrantedScopes(requestedScopes, granted_scopes, ScopeInfos);
-        
-        await AddScopeMappedClaimsAsync(identity, user, grantedScopes);
 
-        // Add audience (aud) claims from API Resources associated with granted scopes
-        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(grantedScopes);
+        // Build minimal available scope summaries from loaded consent info
+        var availableSummaries = ScopeInfos.Select(s => new ScopeSummary
+        {
+            Name = s.Name,
+            IsRequired = s.IsRequired
+        }).ToList();
+
+        // Classify scopes based on user consent input
+        var classification = _scopeService.ClassifyScopes(requestedScopes, availableSummaries, granted_scopes);
+        var effectiveScopes = classification.Allowed.ToImmutableArray();
+
+        // Add claims mapped by effective (allowed) scopes
+        await AddScopeMappedClaimsAsync(identity, user, effectiveScopes);
+
+        // Audiences based on effective scopes
+        var audiences = await _apiResourceService.GetAudiencesByScopesAsync(effectiveScopes);
         if (audiences.Any())
         {
             identity.SetAudiences(audiences.ToImmutableArray());
@@ -226,10 +254,10 @@ public class AuthorizeModel : PageModel
         }
         else
         {
-            _logger.LogInformation("No audiences found for granted scopes: {Scopes}", string.Join(", ", grantedScopes));
+            _logger.LogInformation("No audiences found for effective scopes: {Scopes}", string.Join(", ", effectiveScopes));
         }
 
-        identity.SetScopes(grantedScopes);
+        identity.SetScopes(effectiveScopes);
         identity.SetDestinations(GetDestinations);
 
         // Determine authorization type based on client's consent type
@@ -245,9 +273,30 @@ public class AuthorizeModel : PageModel
             subject: await _userManager.GetUserIdAsync(user),
             client: applicationId,
             type: authorizationType,
-            scopes: grantedScopes);
+            scopes: effectiveScopes);
 
         identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
+
+        // Structured audit log for full/partial grant
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        var auditDetails = JsonSerializer.Serialize(new
+        {
+            clientId = request.ClientId,
+            requested = requestedScopes,
+            allowed = classification.Allowed,
+            required = classification.Required,
+            rejected = classification.Rejected,
+            isPartial = classification.IsPartialGrant,
+            consentType,
+            authorizationType
+        });
+        await _auditService.LogEventAsync(
+            classification.IsPartialGrant ? "AuthorizationGrantedPartial" : "AuthorizationGrantedFull",
+            await _userManager.GetUserIdAsync(user),
+            auditDetails,
+            ipAddress,
+            userAgent);
 
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
@@ -403,33 +452,4 @@ public class AuthorizeModel : PageModel
         ScopeInfos = ScopeInfos.OrderBy(s => s.DisplayOrder).ThenBy(s => s.Name).ToList();
     }
 
-    private ImmutableArray<string> FilterGrantedScopes(ImmutableArray<string> requestedScopes, string[]? grantedScopes, List<ScopeInfo> scopeInfos)
-    {
-        if (grantedScopes == null || grantedScopes.Length == 0)
-        {
-            // If no scopes were granted, only include required scopes
-            return scopeInfos
-                .Where(s => s.IsRequired && requestedScopes.Contains(s.Name))
-                .Select(s => s.Name)
-                .ToImmutableArray();
-        }
-
-        // Start with granted scopes
-        var result = grantedScopes.ToHashSet();
-
-        // Always include required scopes, even if not explicitly granted
-        var requiredScopes = scopeInfos
-            .Where(s => s.IsRequired && requestedScopes.Contains(s.Name))
-            .Select(s => s.Name);
-
-        foreach (var requiredScope in requiredScopes)
-        {
-            result.Add(requiredScope);
-        }
-
-        // Filter to only include scopes that were actually requested
-        return result
-            .Where(scope => requestedScopes.Contains(scope))
-            .ToImmutableArray();
-    }
 }
