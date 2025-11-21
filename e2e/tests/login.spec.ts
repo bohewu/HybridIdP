@@ -14,7 +14,7 @@ test('login flow: IdP login (admin) and authenticated state', async ({ page }) =
   // Submit the form
   await page.click('button.auth-btn-primary');
 
-  // After login we should be authenticated on the IdP and see a logout link
-  await page.waitForSelector('a[href="/Account/Logout"]', { timeout: 20000 });
-  await expect(page.locator('a[href="/Account/Logout"]')).toBeVisible();
+  // After login we should be authenticated on the IdP and see the user name in the header
+  await page.waitForSelector('.user-name', { timeout: 20000 });
+  await expect(page.locator('.user-name')).toContainText('admin@hybridauth.local');
 });
