@@ -29,10 +29,19 @@ This document tracks the Phase 8 effort to refactor and expand the E2E test suit
   - `e2e/tests/admin-clients-negative.spec.ts` — validation & duplicate tests
   - `e2e/tests/admin-clients-regenerate-secret.spec.ts` — secret regeneration tests
   - `e2e/tests/admin-clients-permissions.spec.ts` — permission denied tests (robust to page redirect to Access Denied)
+  - `e2e/tests/admin-users-role-assignment.spec.ts` — comprehensive role assignment tests (9 tests: 4 positive + 5 negative scenarios)
   - Updated `e2e/tests/admin-clients-crud.spec.ts` to use the helper
 - Ensured tests are robust to both `role.id` and `role.name`, with a canonical preference (roleId).
 - Updated `e2e/tests/helpers/README.md` to document helper API and the roleId canonicalization mechanism.
 - Deleted `test-debug.ps1` and updated tests accordingly.
+- **Backend Implementation: AssignRolesByIdAsync**
+  - Implemented `IUserManagementService.AssignRolesByIdAsync` method accepting `IEnumerable<Guid> roleIds`
+  - Resolves role IDs to names via `RoleManager.FindByIdAsync`, validates all IDs exist
+  - Delegates to existing `AssignRolesAsync` for actual role assignment (maintains backward compatibility)
+  - Returns detailed error messages for invalid role IDs
+  - Added comprehensive unit tests (11 tests total: 7 for AssignRolesAsync + 4 for AssignRolesByIdAsync)
+  - Added API endpoint: `PUT /api/admin/users/{id}/roles/ids` with `AssignRolesByIdRequest` DTO
+  - Maintained backward compatibility with name-based endpoint: `PUT /api/admin/users/{id}/roles`
 
 ## In-Progress / Issues
 
@@ -40,45 +49,59 @@ This document tracks the Phase 8 effort to refactor and expand the E2E test suit
 
 ## TODOs
 
-1. [ ] Add negative tests to assert invalid role IDs return 4xx when assigning via API.
+1. [x] ~~Add negative tests to assert invalid role IDs return 4xx when assigning via API.~~ **COMPLETED**
+   - Added 5 comprehensive negative test scenarios in `e2e/tests/admin-users-role-assignment.spec.ts`
+   - Tests cover: non-existent user (404), malformed GUID (400), mixed valid/invalid IDs (404), empty array (removes all roles), duplicate IDs (handled gracefully)
 2. [ ] Add one or two integration tests verifying that role permissions are reflected in user claims after login (end-to-end) — this might require explicit token inspection.
-3. [ ] Optionally, update the backend to provide a direct AssignRolesById endpoint to simplify test helper logic; see 'Backend suggestion' below.
+3. [x] ~~Optionally, update the backend to provide a direct AssignRolesById endpoint to simplify test helper logic; see 'Backend suggestion' below.~~ **COMPLETED**
+   - Implemented `AssignRolesByIdAsync` in `UserManagementService`
+   - Added API endpoint `PUT /api/admin/users/{id}/roles/ids`
+   - Comprehensive unit tests and E2E tests added
+   - See implementation details in "Completed" section above
 4. [ ] Consider splitting e2e suites by feature and running in parallel for speed.
 
-## Backend Suggestion — Role ID Support
+## Backend Implementation Details — AssignRolesByIdAsync
 
-The `AssignRolesAsync` flow currently expects role names (Identity `AddToRolesAsync`). This is natural for the server side because it manipulates role membership by name.
+**Status: ✅ COMPLETED**
 
-Suggestion: add backend support to accept role IDs in the `AssignRoles` endpoint (API) and internally resolve IDs to names right before `AddToRolesAsync`. This will:
-- Simplify front-end / test flows (role list often returns IDs; it avoids the need to explicitly fetch the role name first).
-- Reduce round-trips or client-side resolve logic in tests and scripts.
+The backend now supports accepting role IDs directly through a dedicated endpoint, eliminating the need for client-side role name resolution.
 
-Implementation notes:
-- Add a server-side path that accepts role IDs and resolves to the name with a call to `RoleManager.FindByIdAsync(roleId)`.
-- Re-use existing `AssignRolesAsync` behavior to manipulate roles by name after lookup, and maintain backward compatibility with name-based requests.
+### Implementation
 
-### AssignRolesById Endpoint (optional implementation plan)
-
-To make the API simpler for clients and e2e tests, consider adding an endpoint that accepts role IDs directly and resolves them on the server. Example:
+**API Endpoint:**
 
 ```http
 PUT /api/admin/users/{userId}/roles/ids
 Content-Type: application/json
+Authorization: Required (Permissions.Users.Update)
 
 {
   "RoleIds": ["<role-guid-1>", "<role-guid-2>"]
 }
 ```
 
-Server-side handling (sketch):
- - Validate the user exists and caller has users.update permission.
- - For each roleId in RoleIds, call `roleManager.FindByIdAsync(roleId)` to obtain the role name.
- - Build the list of role names and call existing `AssignRolesAsync(userId, roleNames)` to update roles.
- - Return 200 on success, 4xx (400/404/403) on errors.
+**Response:**
 
-Benefits:
-- Simplifies front-end and tests since `Role` search/list APIs commonly return both `id` and `name`, where `id` is more reliably used in code flow.
-- Avoids extra client-side round-trips or helper code to resolve names before calling APIs.
+- `200 OK`: Returns updated `UserDetailDto` with new roles
+- `400 Bad Request`: Malformed GUID format
+- `404 Not Found`: User not found or invalid role ID(s) with detailed error messages
+- `403 Forbidden`: Insufficient permissions
+
+**Service Layer (`UserManagementService.AssignRolesByIdAsync`):**
+
+1. Resolves each role ID to role name via `RoleManager.FindByIdAsync(roleId)`
+2. Validates all role IDs exist before making any changes
+3. Returns detailed error messages for invalid role IDs (e.g., "Role with ID 'xxx' not found")
+4. Delegates to existing `AssignRolesAsync(userId, roleNames)` for actual role assignment
+5. Maintains transactional integrity and domain event publishing
+
+**Benefits Achieved:**
+
+- Simplifies front-end and test flows (no need to fetch role names before assignment)
+- Reduces API round-trips
+- Maintains backward compatibility with name-based endpoint `PUT /api/admin/users/{id}/roles`
+- Comprehensive error handling for edge cases
+- Full unit test coverage (11 tests) and E2E test coverage (9 tests)
 
 ## Run & Validation
 
@@ -95,7 +118,36 @@ Or to run a subset:
 npx playwright test e2e/tests/helpers/admin.spec.ts e2e/tests/admin-clients-permissions.spec.ts
 ```
 
+## Test Coverage Summary
+
+### E2E Tests (`e2e/tests/admin-users-role-assignment.spec.ts`)
+
+**9 comprehensive tests covering:**
+
+**Positive Scenarios (4 tests):**
+
+- Assign multiple roles using role IDs endpoint
+- Handle invalid role ID errors correctly
+- Maintain backward compatibility with name-based endpoint
+- Switch between ID-based and name-based endpoints
+
+**Negative Scenarios (5 tests):**
+
+- Return 404 for non-existent user
+- Return 400 for malformed role ID (invalid GUID format)
+- Return 404 for mixed valid and invalid role IDs
+- Successfully remove all roles with empty array
+- Handle duplicate role IDs gracefully
+
+### Unit Tests (`Tests.Application.UnitTests/UserManagementTests.cs`)
+
+**11 tests for role assignment:**
+
+- `AssignRolesAsync` (7 tests): user not found, empty roles list, invalid role name, Identity errors, idempotency, event verification
+- `AssignRolesByIdAsync` (4 tests): valid IDs, invalid ID, all invalid IDs, delegation verification
+
 ## Notes and Next Steps
 
-- If you prefer the backend to only accept role ID, we can implement that and then simplify tests by removing the helper resolution logic.
-- If desired, I can add the backend `AssignRolesById` endpoint and update helper/clients to call it.
+- The `createUserWithRole` helper in `e2e/tests/helpers/admin.ts` intelligently detects GUID format and uses the appropriate endpoint (ID-based for GUIDs, name-based for strings)
+- Both API endpoints are fully functional and tested, providing flexibility for different client needs
+- Next: Consider adding integration tests for role permissions in user claims after login (TODO #2)
