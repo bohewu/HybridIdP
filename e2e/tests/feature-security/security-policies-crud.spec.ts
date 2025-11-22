@@ -15,12 +15,19 @@ test('Admin - Security Policies CRUD (password requirements)', async ({ page }) 
   const originalMinLength = await page.inputValue('#minLength');
   const originalMaxFailedAttempts = await page.inputValue('#maxFailedAttempts');
 
-  // Update password policy
-  await page.fill('#minLength', '10');
-  await page.fill('#maxFailedAttempts', '5');
+  // Update password policy - choose new values different from current ones
+  const newMin = originalMinLength === '10' ? '12' : '10';
+  const newMaxFailed = originalMaxFailedAttempts === '5' ? '6' : '5';
+  await page.fill('#minLength', newMin);
+  await page.locator('#minLength').press('Tab');
+  await page.fill('#maxFailedAttempts', newMaxFailed);
+  await page.locator('#maxFailedAttempts').press('Tab');
 
-  // Save changes
-  await page.click('button:has-text("Save")');
+  // Save changes (click only when Save button is enabled)
+  // Wait for Save button enabled and click
+  
+  await page.waitForSelector('button:has-text("Save"):not([disabled])', { timeout: 20000 });
+  await page.locator('button:has-text("Save"):not([disabled])').click({ timeout: 20000 });
 
   // Wait for success notification
   await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
@@ -30,13 +37,13 @@ test('Admin - Security Policies CRUD (password requirements)', async ({ page }) 
   await page.waitForSelector('input#minLength', { timeout: 15000 });
 
   // Verify changes persisted
-  await expect(page.locator('#minLength')).toHaveValue('10');
-  await expect(page.locator('#maxFailedAttempts')).toHaveValue('5');
+  await expect(page.locator('#minLength')).toHaveValue(newMin);
+  await expect(page.locator('#maxFailedAttempts')).toHaveValue(newMaxFailed);
 
   // Restore original values
   await page.fill('#minLength', originalMinLength);
   await page.fill('#maxFailedAttempts', originalMaxFailedAttempts);
-  await page.click('button:has-text("Save")');
+  await page.locator('button:has-text("Save"):not([disabled])').click({ timeout: 20000 });
   await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
 });
 

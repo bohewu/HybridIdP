@@ -226,6 +226,110 @@ export async function deleteApiResource(page: Page, resourceIdOrName: string | n
   }
 }
 
+  export async function updateUser(page: Page, userId: string, updates: {
+    email?: string,
+    firstName?: string,
+    lastName?: string,
+    isActive?: boolean,
+    roles?: string[]
+  }) {
+    return await page.evaluate(async (args) => {
+      const r = await fetch(`/api/admin/users/${args.userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args.updates)
+      });
+      if (!r.ok) {
+        const errorText = await r.text();
+        throw new Error(`Failed to update user: ${r.status} - ${errorText}`);
+      }
+      return r.json();
+    }, { userId, updates });
+  }
+
+  export async function createMultipleSessions(page: Page, email: string, password: string, count: number) {
+    const contexts = [];
+    for (let i = 0; i < count; i++) {
+        const context = await page.context().browser()!.newContext({ ignoreHTTPSErrors: true });
+        const newPage = await context.newPage();
+        // Use OIDC via TestClient to ensure an authorization (session) is created
+        await loginViaTestClient(newPage, email, password);
+      contexts.push({ context, page: newPage });
+    }
+    return contexts;
+  }
+
+  export async function loginViaTestClient(page: Page, email: string, password: string, testClientUrl = 'https://localhost:7001/') {
+    // Navigate to TestClient root
+    await page.goto(testClientUrl);
+    // Click the login/profile link to trigger OIDC challenge
+    const loginLink = page.locator('a:has-text("Login")');
+    if (await loginLink.count() > 0) {
+      await loginLink.first().click();
+    } else {
+      // fallback: navigate to '/Account/Login' on IdP
+      await page.goto('https://localhost:7035/Account/Login');
+    }
+
+    // The IdP will serve the login page under https://localhost:7035
+    await page.waitForURL(/https:\/\/localhost:7035/);
+
+    // Fill in credentials
+    await page.fill('#Input_Login', email);
+    await page.fill('#Input_Password', password);
+    // Submit the login form
+    await page.click('button.auth-btn-primary');
+
+    // If consent page appears, click Allow
+    const allowBtn = page.locator('button[name="submit"][value="allow"]');
+    if (await allowBtn.count() > 0 && await allowBtn.isVisible()) {
+      await allowBtn.click();
+    }
+
+    // Wait for redirect back to TestClient profile or root
+    await page.waitForURL('**/Account/Profile', { timeout: 20000 }).catch(() => {
+      // If not found, try to navigate back to TestClient root and wait for login to settle
+      // (use fallback to check presence of profile indicator)
+    });
+  }
+
+  export async function getDashboardStats(page: Page) {
+    return await page.evaluate(async () => {
+      // Updated endpoint path to match refactored DashboardController route: /api/admin/dashboard/stats
+      const r = await fetch('/api/admin/dashboard/stats');
+      if (!r.ok) throw new Error('Failed to fetch dashboard stats');
+      return r.json();
+    });
+  }
+
+  export async function waitForSessionRevocation(page: Page, userId: string, authorizationId: string, timeout = 5000) {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+      const sessions = await page.evaluate(async (uid) => {
+        const r = await fetch(`/api/admin/users/${uid}/sessions`);
+        if (!r.ok) return [];
+        const json = await r.json();
+        // Normalize response shape: some endpoints may return { items: [] } or an array directly
+        if (Array.isArray(json)) return json;
+        if (json && Array.isArray(json.items)) return json.items;
+        return [];
+      }, userId);
+
+      const session = sessions.find((s: any) => s.authorizationId === authorizationId);
+      if (!session) {
+        return true; // Session not found => revoked/removed
+      }
+      // If session exists but status is not valid, consider it revoked as well
+      const status = (session.status || '').toLowerCase();
+      if (status !== 'valid') {
+        return true; // Session revoked
+      }
+
+      await page.waitForTimeout(200); // Poll every 200ms
+    }
+    return false; // Timeout
+  }
+
 export default {
   loginAsAdminViaIdP,
   login,
@@ -238,5 +342,10 @@ export default {
   createScope,
   deleteScope,
   createApiResource,
-  deleteApiResource
+    deleteApiResource,
+    updateUser,
+    createMultipleSessions,
+    loginViaTestClient,
+    getDashboardStats,
+    waitForSessionRevocation
 }

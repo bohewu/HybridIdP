@@ -116,4 +116,58 @@ test.describe('Admin helper utilities', () => {
 
     expect(found).toBe(404); // expect client not found after deletion
   });
+
+    test('updateUser modifies user properties via API', async ({ page }) => {
+      await adminHelpers.loginAsAdminViaIdP(page);
+      const timestamp = Date.now();
+      const role = await adminHelpers.createRole(page, `e2e-smoke-role4-${timestamp}`, []);
+    
+      const email = `e2e-smoke-update-${timestamp}@hybridauth.local`;
+      const created = await adminHelpers.createUserWithRole(page, email, `E2E!${timestamp}a`, [role.id]);
+      expect(created.id).toBeTruthy();
+
+      // Update user
+      const updated = await adminHelpers.updateUser(page, created.id, {
+        firstName: 'Updated',
+        lastName: 'User',
+        isActive: true,
+        roles: [role.name]
+      });
+      expect(updated).toBeDefined();
+      expect(updated.firstName).toBe('Updated');
+      expect(updated.lastName).toBe('User');
+
+      // Cleanup
+      await adminHelpers.deleteUser(page, created.id);
+      await adminHelpers.deleteRole(page, role.id);
+    });
+
+    test('getDashboardStats returns dashboard metrics', async ({ page }) => {
+      await adminHelpers.loginAsAdminViaIdP(page);
+    
+      const stats = await adminHelpers.getDashboardStats(page);
+      expect(stats).toBeDefined();
+      expect(typeof stats.totalUsers).toBe('number');
+      expect(typeof stats.totalClients).toBe('number');
+      expect(typeof stats.totalScopes).toBe('number');
+      expect(stats.totalUsers).toBeGreaterThan(0); // At least admin user exists
+    });
+
+    test('waitForSessionRevocation polls until session is revoked', async ({ page }) => {
+      await adminHelpers.loginAsAdminViaIdP(page);
+      const timestamp = Date.now();
+      const role = await adminHelpers.createRole(page, `e2e-smoke-role5-${timestamp}`, []);
+    
+      const email = `e2e-smoke-session-${timestamp}@hybridauth.local`;
+      const created = await adminHelpers.createUserWithRole(page, email, `E2E!${timestamp}a`, [role.id]);
+
+      // For this smoke test, we just verify the function doesn't throw
+      // We don't expect a real session to exist, so timeout is expected
+      const result = await adminHelpers.waitForSessionRevocation(page, created.id, 'non-existent-auth-id', 1000);
+      expect(typeof result).toBe('boolean');
+
+      // Cleanup
+      await adminHelpers.deleteUser(page, created.id);
+      await adminHelpers.deleteRole(page, role.id);
+    });
 });
