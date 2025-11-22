@@ -164,24 +164,13 @@ test.describe('Admin helper utilities', () => {
     // Use the helper to click Delete and confirm
     // Inspect the row using searchListForItemWithApi to capture the DOM
     const foundBefore = await adminHelpers.searchListForItemWithApi(page, 'scopes', scopeName, { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
-    if (foundBefore.locator) {
-      const html = await foundBefore.locator.evaluate((el) => (el as HTMLElement).outerHTML);
-      console.log('row HTML before delete:', html);
-      // Also log any action candidate texts
-      const actionsText = await foundBefore.locator.locator('button, a, li').allInnerTexts();
-      console.log('candidate action texts before delete:', actionsText.join('|'));
-    }
+    // (debug logging removed)
 
     const result = await adminHelpers.searchAndConfirmAction(page, 'scopes', scopeName, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
-    console.log('searchAndConfirmAction result', JSON.stringify({ apiItem: !!result.apiItem, apiResp: !!result.apiResp, clicked: result.clicked, confirmed: result.confirmed }));
+    // (debug logging removed)
     // Inspect row after delete action
     const foundAfter = await adminHelpers.searchListForItemWithApi(page, 'scopes', scopeName, { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
-    if (foundAfter.locator) {
-      const html2 = await foundAfter.locator.evaluate(el => (el as HTMLElement).outerHTML);
-      console.log('row HTML after delete', html2);
-      const actionsText2 = await foundAfter.locator.locator('button, a, li').allInnerTexts();
-      console.log('candidate action texts after delete:', actionsText2.join('|'));
-    }
+    // (debug logging removed)
     expect(result.clicked).toBeTruthy();
     // The delete action may not present a modal in all UI variants.
     // We therefore assert that either the confirmation API returned a JSON response,

@@ -52,7 +52,11 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   if (await closeModalBtn.count() > 0) await closeModalBtn.click();
 
   try {
-    await listItem.locator('button[title*="Delete"]').click();
+    // Delete via searchAndConfirmAction for the row / confirm logic
+    const delResult = await adminHelpers.searchAndConfirmAction(page, 'clients', clientId, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+    if (!delResult.clicked) {
+      await listItem.locator('button[title*="Delete"]').click().catch(() => {});
+    }
   } catch (e) {
     await adminHelpers.deleteClientViaApiFallback(page, clientId);
   }

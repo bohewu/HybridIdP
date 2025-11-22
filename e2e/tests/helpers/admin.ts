@@ -319,7 +319,7 @@ export async function searchAndClickAction(page: Page, entity: string, query: st
 }) {
   const timeout = options?.timeout ?? 10000;
   const listSelector = options?.listSelector ?? 'ul[role="list"], table tbody';
-  const actionSelector = options?.actionSelector ?? `button[title*="${action}"], button:has-text("${action}")`;
+  const actionSelector = options?.actionSelector ?? `button[title*="${action}"], button:has-text("${action}"), a[title*="${action}"], a:has-text("${action}"), *[aria-label*="${action}"]`;
 
   const result = await searchListForItemWithApi(page, entity, query, { listSelector, timeout });
   const locator = result.locator;
@@ -363,7 +363,9 @@ export async function searchAndConfirmAction(page: Page, entity: string, query: 
         `ul[role=\"menu\"] li:has-text(\"${action}\")`,
         `button:has-text(\"${action}\")`,
         `a:has-text(\"${action}\")`,
-        `li:has-text(\"${action}\")`
+        `li:has-text(\"${action}\")`,
+        `*[aria-label*="${action}"]`,
+        `*[title*="${action}"]`
       ];
       for (const sel of menuActionCandidates) {
         const candidate = page.locator(sel).first();

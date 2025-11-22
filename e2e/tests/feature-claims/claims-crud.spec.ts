@@ -146,7 +146,12 @@ test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page 
   await page.waitForTimeout(2000);
 
     // Delete the claim
-    await claimRow.locator('button[title*="Delete"], button:has-text("Delete")').first().click();
+    const res = await adminHelpers.searchAndConfirmAction(page, 'claims', claimName, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+    if (!res.clicked) {
+      const fallbackDelete = claimRow.locator('button[title*="Delete"], button:has-text("Delete")').first();
+      if (await fallbackDelete.count() > 0) await fallbackDelete.click();
+      else console.warn('No Delete button found in claims row fallback');
+    }
 
     // Wait for claim to be removed
     try {

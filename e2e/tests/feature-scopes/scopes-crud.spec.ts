@@ -65,7 +65,10 @@ test('Admin - Scopes CRUD (create, update, delete scope)', async ({ page }) => {
   await expect(listItem).toContainText(updatedDisplayName, { timeout: 20000 });
 
   // Delete the scope: click delete and accept confirmation via dialog handler
-  await listItem.locator('button[title*="Delete"]').click();
+  const delRes = await adminHelpers.searchAndConfirmAction(page, 'scopes', scopeName, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+  if (!delRes.clicked) {
+    await listItem.locator('button[title*="Delete"]').click();
+  }
 
   // Wait for the scope to be removed from the list
   try {
