@@ -54,22 +54,12 @@ test('Admin - Users CRUD (create, update, deactivate/reactivate, delete)', async
     await page.click('button[type="submit"]');
   }
 
-  // Search for user in list
+  // Search for user in list and get the list item using the helper
   await page.waitForTimeout(500); // allow list refresh
-  const searchBox = page.locator('input[placeholder*="Search"], input[id="search"]');
-  if (await searchBox.count() > 0) {
-    await searchBox.fill(email);
-    await searchBox.press('Enter');
-  }
-
-  // Locate list item (generic list approach similar to clients)
-  const list = page.locator('ul[role="list"], table');
-  await expect(list).toContainText(email, { timeout: 20000 });
-
-  // Edit user
-  // Use getByText to avoid CSS selector parsing errors with email addresses (e.g. '@')
-  const item = list.getByText(email).first();
-  const editBtn = item.locator('button[title*="Edit"], a[title*="Edit"], button:has-text("Edit")').first();
+  const item = await adminHelpers.searchListForItem(page, 'users', email, { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+  expect(item).not.toBeNull();
+  if (item) await expect(item).toBeVisible({ timeout: 20000 });
+  const editBtn = item!.locator('button[title*="Edit"], a[title*="Edit"], button:has-text("Edit")').first();
   if (await editBtn.count() > 0) {
     await editBtn.click();
     await page.waitForSelector('#FirstName, #firstName');
@@ -91,7 +81,7 @@ test('Admin - Users CRUD (create, update, deactivate/reactivate, delete)', async
   }
 
   // Deactivate user via possible action button
-  const deactivateBtn = item.locator('button[title*="Deactivate"], button:has-text("Deactivate")').first();
+  const deactivateBtn = item!.locator('button[title*="Deactivate"], button:has-text("Deactivate")').first();
   if (await deactivateBtn.count() > 0) {
     await deactivateBtn.click();
     // Confirm UI shows inactive state
@@ -110,7 +100,7 @@ test('Admin - Users CRUD (create, update, deactivate/reactivate, delete)', async
   }
 
   // Reactivate user
-  const reactivateBtn = item.locator('button[title*="Reactivate"], button:has-text("Reactivate")').first();
+  const reactivateBtn = item!.locator('button[title*="Reactivate"], button:has-text("Reactivate")').first();
   if (await reactivateBtn.count() > 0) {
     await reactivateBtn.click();
     await page.waitForTimeout(500);

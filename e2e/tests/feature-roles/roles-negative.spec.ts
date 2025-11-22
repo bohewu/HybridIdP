@@ -68,3 +68,85 @@ test('Admin - Role create via API with invalid permission should return 400', as
   expect(result.status).toBe(400);
   expect(result.body).toContain('Invalid permissions');
 });
+
+test('Admin - Role delete is blocked when users are assigned', async ({ page }) => {
+  await adminHelpers.loginAsAdminViaIdP(page);
+
+  const ts = Date.now();
+  const roleName = `e2e-role-assigned-${ts}`;
+  const role = await adminHelpers.createRole(page, roleName, ['users.read']);
+  expect(role.id).toBeTruthy();
+
+  // Create a user and assign the role (using ID-based assignment)
+  const email = `e2e-role-user-${ts}@hybridauth.local`;
+  const password = `E2E!${ts}a`;
+  const createdUser = await adminHelpers.createUserWithRole(page, email, password, [role.id]);
+  expect(createdUser.id).toBeTruthy();
+
+  try {
+    // Navigate to Roles admin page and find the role row
+    await page.goto('https://localhost:7035/Admin/Roles');
+    await page.waitForURL(/\/Admin\/Roles/);
+    // Wait for the search input or table to be present
+    await page.waitForSelector('input[placeholder*="Search"], table', { timeout: 10000 });
+    // Small delay to let the server index the new role
+    await page.waitForTimeout(500);
+    let roleRow = await adminHelpers.searchListForItem(page, 'roles', roleName, { listSelector: 'table tbody', timeout: 10000 });
+    if (!roleRow) {
+      // As a fallback, type into the search input and try again
+      const searchInput = page.locator('input[placeholder*="Search"], input[id="search"]');
+      if (await searchInput.count() > 0) {
+        await searchInput.fill(roleName);
+        await page.waitForTimeout(500);
+      }
+      roleRow = await adminHelpers.searchListForItem(page, 'roles', roleName, { listSelector: 'table tbody', timeout: 10000 });
+    }
+    // If helper still didn't find it, try to find table row directly and match text
+    if (!roleRow) {
+      const directRow = page.locator('table tbody tr', { hasText: roleName }).first();
+      if (await directRow.count() > 0) {
+        roleRow = directRow;
+      }
+    }
+    expect(roleRow).not.toBeNull();
+    const row = roleRow!;
+
+    // Attempt to delete via UI
+    await row.locator('button[title*="Delete"], button:has-text("Delete")').first().click();
+    // Confirm delete click - if modal shows validation, the delete might be disabled
+    await page.waitForTimeout(500);
+
+    // If modal shows a confirmation button and it's enabled, click it; otherwise the UI should show an error
+    const confirmBtn = page.locator('button:has-text("Delete"):not([disabled])');
+    if (await confirmBtn.count() > 0 && await confirmBtn.isVisible()) {
+      await confirmBtn.click();
+      // Wait for potential deletion outcome; then check the list via API
+      const found = await page.evaluate(async (rId) => {
+        const resp = await fetch('/api/admin/roles?search=' + encodeURIComponent(rId));
+        if (!resp.ok) return resp.status;
+        const j = await resp.json();
+        return j.items?.length ? 200 : 404;
+      }, roleName);
+      // If deletion succeeded, we expected a failure — fail the test if role was deleted
+      expect(found).not.toBe(404);
+    } else {
+      // Look for UI-level error message explaining why the delete was blocked
+      const err = page.locator('div.bg-red-50, .toast-error, .alert-danger');
+      if (await err.count() > 0 && await err.isVisible()) {
+        const txt = await err.first().textContent();
+        expect(txt).toMatch(/assigned|users|in use|cannot delete/i);
+      } else {
+        // Fallback: call API delete and assert it's rejected
+        const deleteStatus = await page.evaluate(async (id) => {
+          const r = await fetch(`/api/admin/roles/${id}`, { method: 'DELETE' });
+          return r.status;
+        }, role.id);
+        expect([400, 403, 409]).toContain(deleteStatus);
+      }
+    }
+  } finally {
+    // Cleanup: delete the user then role via API
+    if (createdUser && createdUser.id) await adminHelpers.deleteUser(page, createdUser.id);
+    if (role && role.id) await adminHelpers.deleteRole(page, role.id);
+  }
+});
