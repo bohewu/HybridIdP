@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test'
+import { Page, Response as PlaywrightResponse } from '@playwright/test'
 
 export async function loginAsAdminViaIdP(page: Page) {
   // Ensure any existing session is logged out, then go to login page
@@ -226,6 +226,17 @@ export async function deleteApiResource(page: Page, resourceIdOrName: string | n
   }
 }
 
+// Utility: Wait for a specific API response matching the predicate and return parsed JSON
+export async function waitForResponseJson(page: Page, predicate: (resp: PlaywrightResponse) => boolean, timeout = 10000) {
+  const resp = await page.waitForResponse((r) => predicate(r as PlaywrightResponse), { timeout });
+  try {
+    // Try to parse JSON and return it; fallback to null if not JSON
+    return await resp.json();
+  } catch (e) {
+    return null;
+  }
+}
+
   export async function updateUser(page: Page, userId: string, updates: {
     email?: string,
     firstName?: string,
@@ -401,4 +412,5 @@ export default {
     loginViaTestClient,
     getDashboardStats,
     waitForSessionRevocation
+    , waitForResponseJson
 }
