@@ -339,6 +339,7 @@ export async function searchAndConfirmAction(page: Page, entity: string, query: 
   actionSelector?: string,
   confirmSelector?: string,
   waitForApi?: boolean,
+  waitForApiPredicate?: (r: PlaywrightResponse) => boolean,
   timeout?: number
 }) {
   const timeout = options?.timeout ?? 10000;
@@ -381,7 +382,8 @@ export async function searchAndConfirmAction(page: Page, entity: string, query: 
   // Prepare waiting for API response (any method other than GET) if requested
   let apiWaitPromise: Promise<any> | null = null;
   if (waitForApi) {
-    apiWaitPromise = waitForResponseJson(page, (r) => r.url().includes(`/api/admin/${entity}`) && r.request().method() !== 'GET', timeout).catch(() => null);
+    const predicate = options?.waitForApiPredicate ?? ((r: PlaywrightResponse) => r.url().includes(`/api/admin/${entity}`) && r.request().method() !== 'GET');
+    apiWaitPromise = waitForResponseJson(page, predicate, timeout).catch(() => null);
   }
 
   await btn.click();
@@ -450,6 +452,34 @@ export async function searchAndConfirmAction(page: Page, entity: string, query: 
   }
 
   return { apiItem: result.apiItem, apiResp: result.apiResp, clicked: true, confirmed, confirmationResponse };
+}
+
+// Wrapper: specifically for actions that produce a confirmation modal (e.g., Delete).
+// This wrapper will ensure the modal confirm button is clicked and an appropriate API predicate is used.
+export async function searchAndConfirmActionWithModal(page: Page, entity: string, query: string, action: string, options?: {
+  listSelector?: string,
+  actionSelector?: string,
+  confirmSelector?: string,
+  waitForApi?: boolean,
+  waitForApiPredicate?: (r: PlaywrightResponse) => boolean,
+  timeout?: number
+}) {
+  const timeout = options?.timeout ?? 10000;
+  const confirmSelector = options?.confirmSelector ?? `button:has-text("Delete"), button:has-text("Confirm"), button.confirm`;
+  // By default, wait for a DELETE call to /api/admin/{entity}
+  const defaultPredicate = (r: PlaywrightResponse) => r.url().includes(`/api/admin/${entity}`) && r.request().method() === 'DELETE';
+  const predicate = options?.waitForApiPredicate ?? defaultPredicate;
+
+  // Call the general helper with the confirm selector and predicate
+  const result = await searchAndConfirmAction(page, entity, query, action, {
+    listSelector: options?.listSelector,
+    actionSelector: options?.actionSelector,
+    confirmSelector,
+    waitForApi: options?.waitForApi ?? true,
+    waitForApiPredicate: predicate,
+    timeout
+  });
+  return result;
 }
 
   export async function updateUser(page: Page, userId: string, updates: {
@@ -632,4 +662,6 @@ export default {
     searchListForItemWithApi,
     searchAndClickAction,
     searchAndConfirmAction
+    ,
+    searchAndConfirmActionWithModal
 }

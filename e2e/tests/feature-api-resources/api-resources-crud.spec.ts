@@ -56,9 +56,13 @@ test('Admin - API Resources CRUD (create, update, delete resource)', async ({ pa
   // Delete the resource: click delete and accept confirmation via dialog handler
   const del = await adminHelpers.searchAndConfirmAction(page, 'resources', resourceName, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
   if (!del.clicked) {
-    const fallbackDelete = listItem.locator('button[title*="Delete"]').first();
-    if (await fallbackDelete.count() > 0) await fallbackDelete.click();
-    else console.warn('No Delete button found in api resource row fallback');
+    // Try the modal wrapper as an alternative
+    const del2 = await adminHelpers.searchAndConfirmActionWithModal(page, 'resources', resourceName, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+    if (!del2.clicked) {
+      const fallbackDelete = listItem.locator('button[title*="Delete"]').first();
+      if (await fallbackDelete.count() > 0) await fallbackDelete.click();
+      else console.warn('No Delete button found in api resource row fallback');
+    }
   }
 
   // Wait for the resource to be removed from the list

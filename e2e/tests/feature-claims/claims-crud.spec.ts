@@ -148,9 +148,13 @@ test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page 
     // Delete the claim
     const res = await adminHelpers.searchAndConfirmAction(page, 'claims', claimName, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
     if (!res.clicked) {
-      const fallbackDelete = claimRow.locator('button[title*="Delete"], button:has-text("Delete")').first();
-      if (await fallbackDelete.count() > 0) await fallbackDelete.click();
-      else console.warn('No Delete button found in claims row fallback');
+      // Use the modal wrapper for delete flows if the helper didn't click
+      const delRes2 = await adminHelpers.searchAndConfirmActionWithModal(page, 'claims', claimName, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+      if (!delRes2.clicked) {
+        const fallbackDelete = claimRow.locator('button[title*="Delete"], button:has-text("Delete")').first();
+        if (await fallbackDelete.count() > 0) await fallbackDelete.click();
+        else console.warn('No Delete button found in claims row fallback');
+      }
     }
 
     // Wait for claim to be removed

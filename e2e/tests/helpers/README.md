@@ -102,7 +102,8 @@ expect(listItem).not.toBeNull();
     - `listSelector` (default `ul[role="list"], table tbody`)
     - `actionSelector` (default `button[title*="${action}"], button:has-text("${action}")`)
     - `confirmSelector` (default `button:has-text("Confirm"), button:has-text("Delete"), button.confirm`)
-    - `waitForApi` (default `true`) — if `true`, the helper will wait for a non-GET API response on `/api/admin/{entity}` after confirmation and return it as `confirmationResponse`.
+    - `waitForApi` (default `true`) — if `true`, the helper will wait for an API response on `/api/admin/{entity}` after confirmation and return it as `confirmationResponse`.
+    - `waitForApiPredicate` (optional) — callback `(resp) => boolean` predicate used to filter the API response to wait for; take care to accept the exact call you want (for example, `r.request().method() === 'DELETE'` for delete actions).
   - Returns: `{ apiItem, apiResp, clicked, confirmed, confirmationResponse }` where `confirmationResponse` is the parsed JSON for the non-GET call resulting from the confirmation or `null`.
 
   Example:
@@ -114,6 +115,20 @@ expect(listItem).not.toBeNull();
   if (result.confirmationResponse) {
     expect(result.confirmationResponse).toBeDefined();
   }
+  ```
+
+- `searchAndConfirmActionWithModal(page, entity, query, action, options?)`
+  - A convenience wrapper around `searchAndConfirmAction` for the common Delete+Confirm modal flow.
+  - Defaults: `confirmSelector` to `button:has-text("Delete"), button:has-text("Confirm"), button.confirm` and `waitForApiPredicate` to a check for `DELETE` on `/api/admin/{entity}`.
+  - Use this when the expected flow includes a modal with a delete or confirm button.
+  - Returns: `{ apiItem, apiResp, clicked, confirmed, confirmationResponse }` like `searchAndConfirmAction`.
+
+  Example:
+
+  ```ts
+  const result = await adminHelpers.searchAndConfirmActionWithModal(page, 'clients', clientId, 'Delete');
+  expect(result.clicked).toBeTruthy();
+  // Expect the API delete call to return success or check the UI for deletion
   ```
 
 ## Notes and recommendations

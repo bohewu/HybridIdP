@@ -52,10 +52,15 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   if (await closeModalBtn.count() > 0) await closeModalBtn.click();
 
   try {
-    // Delete via searchAndConfirmAction for the row / confirm logic
-    const delResult = await adminHelpers.searchAndConfirmAction(page, 'clients', clientId, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+    // Delete via searchAndConfirmActionWithModal for the row / confirm logic (prefer modal wait)
+    const delResult = await adminHelpers.searchAndConfirmActionWithModal(page, 'clients', clientId, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
     if (!delResult.clicked) {
-      await listItem.locator('button[title*="Delete"]').click().catch(() => {});
+      // fallback to direct locator if present
+      const locator = found.locator;
+      if (locator) {
+        const deleteBtn = locator.locator('button[title*="Delete"], button:has-text("Delete")').first();
+        if (await deleteBtn.count() > 0) await deleteBtn.click().catch(() => {});
+      }
     }
   } catch (e) {
     await adminHelpers.deleteClientViaApiFallback(page, clientId);
