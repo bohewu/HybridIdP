@@ -33,12 +33,10 @@ test('Admin - API Resources CRUD (create, update, delete resource)', async ({ pa
   // Submit the form (Create Resource)
   await page.click('button[type="submit"]');
 
-  // Wait for the resource to appear in the list (table tbody)
-  const resourcesList = page.locator('table tbody');
-  await expect(resourcesList).toContainText(resourceName, { timeout: 20000 });
-
-  // Edit the resource: find the table row and click the Edit button
-  const listItem = resourcesList.locator('tr', { hasText: resourceName });
+  // Find the resource row using the search helper - this handles tables/pagination paths
+  const listItem = await adminHelpers.searchListForItem(page, 'resources', resourceName, { listSelector: 'table tbody', timeout: 20000 });
+  expect(listItem).not.toBeNull();
+  if (listItem) await expect(listItem).toBeVisible({ timeout: 20000 });
   await expect(listItem).toBeVisible();
 
   // Click the edit button inside the row
@@ -60,7 +58,8 @@ test('Admin - API Resources CRUD (create, update, delete resource)', async ({ pa
 
   // Wait for the resource to be removed from the list
   try {
-    await expect(resourcesList).not.toContainText(resourceName, { timeout: 20000 });
+    const removed = await adminHelpers.searchListForItem(page, 'resources', resourceName, { listSelector: 'table tbody', timeout: 20000 });
+    expect(removed).toBeNull();
   } catch (e) {
     // If UI delete fails, fall back to the API cleanup
     console.warn(`UI delete failed for resource ${resourceName}, attempting API cleanup...`);

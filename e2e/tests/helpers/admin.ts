@@ -264,7 +264,8 @@ export async function searchListForItem(page: Page, entity: string, query: strin
   }
 
   // Wait for UI list to contain the item text (fallback to query text)
-  const locator = page.locator(`${listSelector} li`, { hasText: query }).first();
+  // Support both UL/LI and TABLE/TR list styles. Use a flexible selector to catch matching list rows.
+  const locator = page.locator(`${listSelector} li, ${listSelector} tr, ${listSelector} *`, { hasText: query }).first();
   try {
     await locator.waitFor({ state: 'visible', timeout });
     return locator;

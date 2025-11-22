@@ -52,19 +52,14 @@ test('Admin - Roles CRUD (create, update, delete role)', async ({ page }) => {
   
   expect(roleCreated).toBeTruthy();
 
-  // Refresh or search to find the role in the table
-  await page.fill('input[placeholder*="Search"]', roleName);
-  await page.waitForTimeout(1000);
-
-  const rolesTable = page.locator('table tbody');
-  await expect(rolesTable).toContainText(roleName, { timeout: 10000 });
-
-  // Find the row with our role and click Edit
-  const roleRow = rolesTable.locator('tr', { hasText: roleName });
-  await expect(roleRow).toBeVisible();
+  // Use searchListForItem helper to find the row reliably (handles tables and pagination)
+  const roleRow = await adminHelpers.searchListForItem(page, 'roles', roleName, { listSelector: 'table tbody', timeout: 10000 });
+  expect(roleRow).not.toBeNull();
+  if (roleRow) await expect(roleRow).toBeVisible({ timeout: 10000 });
+  const row = roleRow!;
 
   // Click the edit button (look for Edit action button)
-  await roleRow.locator('button[title*="Edit"], button:has-text("Edit")').first().click();
+  await row.locator('button[title*="Edit"], button:has-text("Edit")').first().click();
 
   // Update the description
   const updatedDescription = `${description} (updated)`;
@@ -79,10 +74,10 @@ test('Admin - Roles CRUD (create, update, delete role)', async ({ page }) => {
   await page.click('button[type="submit"]');
 
   // Verify the update
-  await expect(roleRow).toContainText('3', { timeout: 20000 }); // 3 permissions now
+  await expect(row).toContainText('3', { timeout: 20000 }); // 3 permissions now
 
   // Delete the role: click delete button
-  await roleRow.locator('button[title*="Delete"], button:has-text("Delete")').first().click();
+  await row.locator('button[title*="Delete"], button:has-text("Delete")').first().click();
 
   // Confirm deletion in modal
   await page.waitForSelector('button:has-text("Delete"):not([disabled])', { timeout: 5000 });
@@ -90,7 +85,8 @@ test('Admin - Roles CRUD (create, update, delete role)', async ({ page }) => {
 
   // Wait for the role to be removed from the table
   try {
-    await expect(rolesTable).not.toContainText(roleName, { timeout: 20000 });
+    const removed = await adminHelpers.searchListForItem(page, 'roles', roleName, { listSelector: 'table tbody', timeout: 20000 });
+    expect(removed).toBeNull();
   } catch (e) {
     // If UI delete fails, fall back to the API cleanup
     console.warn(`UI delete failed for role ${roleName}, attempting API cleanup...`);

@@ -44,15 +44,10 @@ test('Admin - Scopes CRUD (create, update, delete scope)', async ({ page }) => {
   
   expect(scopeCreated).toBeTruthy();
 
-  // Search to find the scope in the table
-  await page.fill('input[placeholder*="Search"]', scopeName);
-  await page.waitForTimeout(1000);
-
-  const scopesList = page.locator('table tbody');
-  await expect(scopesList).toContainText(scopeName, { timeout: 10000 });
-
-  // Edit the scope: find the table row and click the Edit button
-  const listItem = scopesList.locator('tr', { hasText: scopeName });
+  // Find the scope row using the search helper - this handles tables and pagination robustly
+  const listItem = await adminHelpers.searchListForItem(page, 'scopes', scopeName, { listSelector: 'table tbody', timeout: 10000 });
+  expect(listItem).not.toBeNull();
+  if (listItem) await expect(listItem).toBeVisible({ timeout: 10000 });
   await expect(listItem).toBeVisible();
 
   // Click the edit button inside the row (match by title attribute to support icon-only buttons)
@@ -74,7 +69,8 @@ test('Admin - Scopes CRUD (create, update, delete scope)', async ({ page }) => {
 
   // Wait for the scope to be removed from the list
   try {
-    await expect(scopesList).not.toContainText(scopeName, { timeout: 20000 });
+    const removed = await adminHelpers.searchListForItem(page, 'scopes', scopeName, { listSelector: 'table tbody', timeout: 20000 });
+    expect(removed).toBeNull();
   } catch (e) {
     // If UI delete fails, fall back to the API cleanup to avoid orphaned test data
     console.warn(`UI delete failed for scope ${scopeName}, attempting API cleanup...`);
