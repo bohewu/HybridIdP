@@ -162,6 +162,30 @@ test.describe('Admin helper utilities', () => {
       await adminHelpers.deleteRole(page, role.id);
     });
 
+    test('updateUser accepts mixed role identifiers (names + ids) and assigns roles', async ({ page }) => {
+      await adminHelpers.loginAsAdminViaIdP(page);
+      const timestamp = Date.now();
+      const roleNameOnly = await adminHelpers.createRole(page, `e2e-role-name-${timestamp}`, []);
+      const roleIdOnly = await adminHelpers.createRole(page, `e2e-role-id-${timestamp}`, []);
+
+      // Ensure created user has no initial roles
+      const email = `e2e-user-mixed-${timestamp}@hybridauth.local`;
+      const password = `E2E!${timestamp}a`;
+      const created = await adminHelpers.createUserWithRole(page, email, password, []);
+      expect(created.id).toBeTruthy();
+
+      // Update user with mixed roles: one role name and one role id
+      const updated = await adminHelpers.updateUser(page, created.id, { roles: [roleNameOnly.name, roleIdOnly.id] });
+      expect(updated).toBeDefined();
+      expect(updated.roles.some((r: any) => r === roleNameOnly.name)).toBeTruthy();
+      expect(updated.roles.some((r: any) => r === roleIdOnly.name)).toBeTruthy();
+
+      // Cleanup
+      await adminHelpers.deleteUser(page, created.id);
+      await adminHelpers.deleteRole(page, roleNameOnly.id);
+      await adminHelpers.deleteRole(page, roleIdOnly.id);
+    });
+
     test('getDashboardStats returns dashboard metrics', async ({ page }) => {
       await adminHelpers.loginAsAdminViaIdP(page);
     

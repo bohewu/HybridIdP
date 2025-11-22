@@ -86,6 +86,37 @@ public class SessionRefreshLifecycleTests
     }
 
     [Fact]
+    public async Task RefreshAsync_DetectsReuseAndRevokesSessionAndEmitsAudit()
+    {
+        var userId = Guid.NewGuid();
+        var authId = "auth-reuse-audit-1";
+        _db.UserSessions.Add(new UserSession
+        {
+            UserId = userId,
+            AuthorizationId = authId,
+            CurrentRefreshTokenHash = "hash_current",
+            PreviousRefreshTokenHash = "hash_previous",
+            AbsoluteExpiresUtc = DateTime.UtcNow.AddHours(2),
+            SlidingExpiresUtc = DateTime.UtcNow.AddMinutes(20)
+        });
+        await _db.SaveChangesAsync(CancellationToken.None);
+
+        var before = _db.AuditEvents.Count();
+        var result = await _service.RefreshAsync(userId, authId, "raw-previous-token", "127.0.0.1", "UA");
+        var after = _db.AuditEvents.Count();
+
+        Assert.Equal(authId, result.AuthorizationId);
+        Assert.True(result.ReuseDetected);
+        // Session should now be revoked in DB
+        var session = await _db.UserSessions.FindAsync(userId, authId);
+        Assert.NotNull(session);
+        Assert.NotNull(session.RevokedUtc);
+        // An audit event for reuse should be created
+        Assert.True(after >= before + 1);
+        Assert.Contains(_db.AuditEvents.Select(a => a.EventType), t => t.Contains("RefreshTokenReuseDetected"));
+    }
+
+    [Fact]
     public async Task RefreshAsync_DoesNotExtendBeyondAbsoluteExpiry()
     {
         var userId = Guid.NewGuid();

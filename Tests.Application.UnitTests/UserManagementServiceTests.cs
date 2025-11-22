@@ -456,6 +456,50 @@ public class UserManagementServiceTests
             It.Is<IEnumerable<string>>(r => r.Contains("Admin"))), Times.Once);
     }
 
+    [Fact]
+    public async Task UpdateUserAsync_ShouldReturnError_WhenAddToRolesFails()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var existingUser = new ApplicationUser { Id = userId, Email = "test@test.com" };
+        var updateDto = new UpdateUserDto { Email = "test@test.com", Roles = new List<string> { "Admin" } };
+
+        _mockUserManager.Setup(m => m.FindByIdAsync(userId.ToString())).ReturnsAsync(existingUser);
+        _mockUserManager.Setup(m => m.UpdateAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(IdentityResult.Success);
+        _mockUserManager.Setup(m => m.GetRolesAsync(existingUser)).ReturnsAsync(new List<string>());
+        _mockUserManager.Setup(m => m.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError { Description = "Add failed" }));
+
+        // Act
+        var (success, errors) = await _service.UpdateUserAsync(userId, updateDto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Add failed"));
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_ShouldReturnError_WhenRemoveFromRolesFails()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var existingUser = new ApplicationUser { Id = userId, Email = "test@test.com" };
+        var updateDto = new UpdateUserDto { Email = "test@test.com", Roles = new List<string> { "Admin" } };
+
+        _mockUserManager.Setup(m => m.FindByIdAsync(userId.ToString())).ReturnsAsync(existingUser);
+        _mockUserManager.Setup(m => m.UpdateAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(IdentityResult.Success);
+        _mockUserManager.Setup(m => m.GetRolesAsync(existingUser)).ReturnsAsync(new List<string> { "User" });
+        _mockUserManager.Setup(m => m.RemoveFromRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError { Description = "Remove failed" }));
+
+        // Act
+        var (success, errors) = await _service.UpdateUserAsync(userId, updateDto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Remove failed"));
+    }
+
     #endregion
 
     #region DeactivateUserAsync Tests
@@ -724,6 +768,47 @@ public class UserManagementServiceTests
         Assert.True(success);
         Assert.Empty(errors);
         _mockUserManager.Verify(m => m.AddToRolesAsync(user, It.Is<IEnumerable<string>>(r => r.Count() == 1 && r.Contains("Admin"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task AssignRolesByIdAsync_ShouldReturnError_WhenAddToRolesFails()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new ApplicationUser { Id = userId, UserName = "testuser" };
+        var roleId = Guid.NewGuid();
+        var role = new ApplicationRole { Id = roleId, Name = "Admin" };
+
+        _mockUserManager.Setup(m => m.FindByIdAsync(userId.ToString())).ReturnsAsync(user);
+        _mockRoleManager.Setup(m => m.FindByIdAsync(roleId.ToString())).ReturnsAsync(role);
+        _mockUserManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(new List<string>());
+        _mockUserManager.Setup(m => m.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError { Description = "Add failed" }));
+
+        // Act
+        var (success, errors) = await _service.AssignRolesByIdAsync(userId, new[] { roleId });
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Add failed"));
+    }
+
+    [Fact]
+    public async Task AssignRolesByIdAsync_ShouldReturnError_WhenUserNotFound()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var validId = Guid.NewGuid();
+        var role = new ApplicationRole { Id = validId, Name = "Admin" };
+        _mockRoleManager.Setup(m => m.FindByIdAsync(validId.ToString())).ReturnsAsync(role);
+        _mockUserManager.Setup(m => m.FindByIdAsync(userId.ToString())).ReturnsAsync((ApplicationUser?)null);
+
+        // Act
+        var (success, errors) = await _service.AssignRolesByIdAsync(userId, new[] { validId });
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("User not found"));
     }
 
     #endregion

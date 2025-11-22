@@ -238,7 +238,7 @@ export async function deleteApiResource(page: Page, resourceIdOrName: string | n
     const isGuid = (s: string) => /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(s);
     const allIds = hasRoles && updates.roles!.every(r => isGuid(r));
 
-    if (allIds) {
+    if (allIds && updates && Object.keys(updates).length === 1) {
       // Use the IDs endpoint
       return await page.evaluate(async (args) => {
         const r = await fetch(`/api/admin/users/${args.userId}/roles/ids`, {
@@ -249,6 +249,37 @@ export async function deleteApiResource(page: Page, resourceIdOrName: string | n
         if (!r.ok) {
           const errorText = await r.text();
           throw new Error(`Failed to update user roles by id: ${r.status} - ${errorText}`);
+        }
+        return r.json();
+      }, { userId, updates });
+    }
+    // If there are any GUIDs mixed with names, resolve GUIDs to names and continue with update
+    const someIds = hasRoles && updates.roles!.some(r => isGuid(r));
+    if (someIds && !allIds) {
+      // Resolve GUIDs to names
+      return await page.evaluate(async (args) => {
+        const isGuidLocal = (s: any) => /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(s);
+        const resolvedRoles = [];
+        for (const r of (args.updates.roles || [])) {
+          if (isGuidLocal(r)) {
+            const res = await fetch(`/api/admin/roles/${r}`);
+            if (!res.ok) throw new Error(`Failed to resolve role by id: ${r}`);
+            const role = await res.json();
+            resolvedRoles.push(role.name);
+          } else {
+            resolvedRoles.push(r);
+          }
+        }
+        // Update roles array to names
+        args.updates.roles = resolvedRoles;
+        const r = await fetch(`/api/admin/users/${args.userId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(args.updates)
+        });
+        if (!r.ok) {
+          const errorText = await r.text();
+          throw new Error(`Failed to update user: ${r.status} - ${errorText}`);
         }
         return r.json();
       }, { userId, updates });
