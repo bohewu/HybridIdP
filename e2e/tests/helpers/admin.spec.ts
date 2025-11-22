@@ -142,6 +142,26 @@ test.describe('Admin helper utilities', () => {
       await adminHelpers.deleteRole(page, role.id);
     });
 
+    test('updateUser accepts role ids and assigns roles via ID-based endpoint', async ({ page }) => {
+      await adminHelpers.loginAsAdminViaIdP(page);
+      const timestamp = Date.now();
+      const role = await adminHelpers.createRole(page, `e2e-smoke-role-ids-${timestamp}`, []);
+
+      const email = `e2e-smoke-ids-${timestamp}@hybridauth.local`;
+      const password = `E2E!${timestamp}a`;
+      const created = await adminHelpers.createUserWithRole(page, email, password, []);
+      expect(created.id).toBeTruthy();
+
+      // Update user roles by passing role ids (GUID)
+      const updated = await adminHelpers.updateUser(page, created.id, { roles: [role.id] });
+      expect(updated).toBeDefined();
+      expect(updated.roles.some((r: any) => r === role.name)).toBeTruthy();
+
+      // Cleanup
+      await adminHelpers.deleteUser(page, created.id);
+      await adminHelpers.deleteRole(page, role.id);
+    });
+
     test('getDashboardStats returns dashboard metrics', async ({ page }) => {
       await adminHelpers.loginAsAdminViaIdP(page);
     

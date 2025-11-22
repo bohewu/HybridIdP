@@ -682,6 +682,50 @@ public class UserManagementServiceTests
         Assert.Equal(2, errors.Count());
     }
 
+    [Fact]
+    public async Task AssignRolesByIdAsync_ShouldReturnError_WhenMixedValidAndInvalidIds()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var validId = Guid.NewGuid();
+        var invalidId = Guid.NewGuid();
+        var role = new ApplicationRole { Id = validId, Name = "Admin" };
+
+        _mockRoleManager.Setup(m => m.FindByIdAsync(validId.ToString())).ReturnsAsync(role);
+        _mockRoleManager.Setup(m => m.FindByIdAsync(invalidId.ToString())).ReturnsAsync((ApplicationRole?)null);
+
+        // Act
+        var (success, errors) = await _service.AssignRolesByIdAsync(userId, new[] { validId, invalidId });
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("not found"));
+    }
+
+    [Fact]
+    public async Task AssignRolesByIdAsync_ShouldHandleDuplicateIds_WhenDuplicateIdsProvided()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+        var user = new ApplicationUser { Id = userId, UserName = "testuser" };
+        var role = new ApplicationRole { Id = roleId, Name = "Admin" };
+
+        _mockUserManager.Setup(m => m.FindByIdAsync(userId.ToString())).ReturnsAsync(user);
+        _mockRoleManager.Setup(m => m.FindByIdAsync(roleId.ToString())).ReturnsAsync(role);
+        _mockUserManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(new List<string>());
+        _mockUserManager.Setup(m => m.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>() ))
+            .ReturnsAsync(IdentityResult.Success);
+
+        // Act - pass duplicate role IDs
+        var (success, errors) = await _service.AssignRolesByIdAsync(userId, new[] { roleId, roleId });
+
+        // Assert - should succeed and only call AddToRolesAsync with unique role name once
+        Assert.True(success);
+        Assert.Empty(errors);
+        _mockUserManager.Verify(m => m.AddToRolesAsync(user, It.Is<IEnumerable<string>>(r => r.Count() == 1 && r.Contains("Admin"))), Times.Once);
+    }
+
     #endregion
 
     #region UpdateLastLoginAsync Tests

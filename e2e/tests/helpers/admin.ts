@@ -233,6 +233,28 @@ export async function deleteApiResource(page: Page, resourceIdOrName: string | n
     isActive?: boolean,
     roles?: string[]
   }) {
+    // If roles are provided and they look like GUIDs, call the ID-based endpoint
+    const hasRoles = updates && Array.isArray(updates.roles) && updates.roles.length > 0;
+    const isGuid = (s: string) => /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/.test(s);
+    const allIds = hasRoles && updates.roles!.every(r => isGuid(r));
+
+    if (allIds) {
+      // Use the IDs endpoint
+      return await page.evaluate(async (args) => {
+        const r = await fetch(`/api/admin/users/${args.userId}/roles/ids`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ RoleIds: args.updates.roles })
+        });
+        if (!r.ok) {
+          const errorText = await r.text();
+          throw new Error(`Failed to update user roles by id: ${r.status} - ${errorText}`);
+        }
+        return r.json();
+      }, { userId, updates });
+    }
+
+    // Otherwise call the normal update endpoint
     return await page.evaluate(async (args) => {
       const r = await fetch(`/api/admin/users/${args.userId}`, {
         method: 'PUT',
