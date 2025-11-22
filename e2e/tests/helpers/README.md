@@ -71,6 +71,28 @@ expect(listItem).not.toBeNull();
   await expect(clientListItem).toBeVisible();
   ```
 
+- `searchListForItemWithApi(page, entity, query, options?)`
+  - Similar to `searchListForItem` but also returns parsed API item if available.
+  - Returns `{ apiItem, locator }` where `apiItem` is the API object or `null` and `locator` is a Playwright Locator or `null`.
+
+  Example:
+
+  ```ts
+  const { apiItem, locator } = await adminHelpers.searchListForItemWithApi(page, 'clients', clientId);
+  expect(apiItem).toBeDefined();
+  expect(locator).not.toBeNull();
+  ```
+
+- `searchAndClickAction(page, entity, query, action, options?)`
+  - Finds the row and clicks the named action (Edit/Delete/Regenerate). Returns `{ apiItem, clicked }`.
+
+  Example:
+
+  ```ts
+  const result = await adminHelpers.searchAndClickAction(page, 'clients', clientId, 'Regenerate');
+  expect(result.clicked).toBeTruthy();
+  ```
+
 ## Notes and recommendations
 
 - Tests should navigate to the appropriate Admin page (e.g., `/Admin/Clients`, `/Admin/Scopes`) before calling `searchListForItem` — it relies on the search input and list rendering present on that page.

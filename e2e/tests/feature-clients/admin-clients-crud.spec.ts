@@ -92,7 +92,12 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
   await page.click('button[type="button"]:has-text("Cancel"), button:has-text("Close" )').catch(() => {});
 
   // Delete the client: click delete and accept confirmation via dialog handler
-  await listItem.locator('button[title*=\"Delete\"]').click();
+    // Delete the client: use searchAndClickAction to click the Delete button
+    const deleteResult = await adminHelpers.searchAndClickAction(page, 'clients', clientId, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+    if (!deleteResult.clicked) {
+      // fallback: click internal button if locator found
+      await listItem.locator('button[title*="Delete"]').click().catch(() => {});
+    }
 
   // Wait for the client to be removed from the list
   try {

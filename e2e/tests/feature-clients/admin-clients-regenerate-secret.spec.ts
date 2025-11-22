@@ -31,12 +31,15 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
     await closeBtn.click();
   }
 
-  const listItem = await adminHelpers.searchListForItem(page, 'clients', clientId, { timeout: 20000 });
-  expect(listItem).not.toBeNull();
-  if (listItem) await expect(listItem).toBeVisible({ timeout: 20000 });
+  const found = await adminHelpers.searchListForItemWithApi(page, 'clients', clientId, { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+  // `apiItem` may be null if the list/view implementation doesn't perform a typed search; prefer the UI locator.
+  expect(found.locator).not.toBeNull();
+  if (found.locator) await expect(found.locator).toBeVisible({ timeout: 20000 });
 
   // Click regenerate secret button in the list and confirm the modal shows a new secret
-  await listItem.locator('button[title*="Regenerate"]').click();
+  // Use searchAndClickAction to press 'Regenerate' button in the row
+  const actionResult = await adminHelpers.searchAndClickAction(page, 'clients', clientId, 'Regenerate', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+  expect(actionResult.clicked).toBeTruthy();
   // modal shows new secret
   const newSecretInput = page.locator('div.fixed input[readonly].font-mono');
   await expect(newSecretInput).toBeVisible({ timeout: 10000 });

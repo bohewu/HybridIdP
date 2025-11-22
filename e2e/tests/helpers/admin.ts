@@ -253,7 +253,7 @@ export async function searchListForItem(page: Page, entity: string, query: strin
   await page.fill(searchInput, query);
 
   // Wait for the API to return (GET /api/admin/{entity}?search=...)
-  const apiResp = await waitForResponseJson(page, (r) => r.url().includes(`/api/admin/${entity}?`) && r.request().method() === 'GET', timeout).catch(() => null);
+  const apiResp = await waitForResponseJson(page, (r) => r.url().includes(`/api/admin/${entity}`) && r.request().method() === 'GET', timeout).catch(() => null);
 
   let found = null as any;
   if (apiResp) {
@@ -282,6 +282,54 @@ export async function searchListForItem(page: Page, entity: string, query: strin
     }
   }
   return null;
+}
+
+// Helper: Search for an item and return both the API item and the UI locator
+export async function searchListForItemWithApi(page: Page, entity: string, query: string, options?: {
+  searchInputSelector?: string,
+  listSelector?: string,
+  predicate?: (item: any) => boolean,
+  timeout?: number
+}) {
+  const listSelector = options?.listSelector ?? 'ul[role="list"]';
+  const timeout = options?.timeout ?? 10000;
+
+  // Prepare to capture the GET /api/admin/{entity}?search... response that will be triggered below
+  const apiRespPromise = waitForResponseJson(page, (r) => r.url().includes(`/api/admin/${entity}?`) && r.request().method() === 'GET', timeout).catch(() => null);
+  // Use existing searchListForItem flow to find the UI element (this will trigger a search GET)
+  const locator = await searchListForItem(page, entity, query, { searchInputSelector: options?.searchInputSelector, listSelector: options?.listSelector, predicate: options?.predicate, timeout });
+  // Also try to get the API item from the GET response (same one used by searchListForItem)
+  const apiResp = await apiRespPromise;
+  let apiItem = null as any;
+  if (apiResp) {
+    const items = Array.isArray(apiResp) ? apiResp : (apiResp.items || []);
+    const matcher = options?.predicate ?? ((i: any) => i.clientId === query || i.name === query || i.displayName === query || i.id === query);
+    apiItem = items.find(matcher);
+  }
+
+  return { apiItem, locator } as { apiItem: any | null, locator: import('@playwright/test').Locator | null };
+}
+
+// Helper: Find item and click an action button inside the row (e.g., 'Edit', 'Delete', 'Regenerate')
+export async function searchAndClickAction(page: Page, entity: string, query: string, action: string, options?: {
+  listSelector?: string,
+  actionSelector?: string,
+  timeout?: number
+}) {
+  const timeout = options?.timeout ?? 10000;
+  const listSelector = options?.listSelector ?? 'ul[role="list"], table tbody';
+  const actionSelector = options?.actionSelector ?? `button[title*="${action}"], button:has-text("${action}")`;
+
+  const result = await searchListForItemWithApi(page, entity, query, { listSelector, timeout });
+  const locator = result.locator;
+  if (!locator) return { apiItem: result.apiItem, clicked: false };
+
+  const btn = locator.locator(actionSelector).first();
+  if (await btn.count() > 0) {
+    await btn.click();
+    return { apiItem: result.apiItem, clicked: true };
+  }
+  return { apiItem: result.apiItem, clicked: false };
 }
 
   export async function updateUser(page: Page, userId: string, updates: {
@@ -460,5 +508,7 @@ export default {
     getDashboardStats,
     waitForSessionRevocation,
     waitForResponseJson,
-    searchListForItem
+    searchListForItem,
+    searchListForItemWithApi,
+    searchAndClickAction
 }
