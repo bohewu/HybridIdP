@@ -16,12 +16,14 @@ last-updated: 2025-11-21
 - Phase 6 — Code Quality & Tests: 90% — `docs/phase-6-code-quality-tests.md`
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
 - Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
+- Phase 9 — Person & Identity: 0% — `docs/phase-9-person-identity.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
 
--Notes & Guidelines: `docs/notes-and-guidelines.md`
+Notes & Guidelines: `docs/notes-and-guidelines.md`
 
 說明：
+
 - 每個 Phase 檔案包含該 Phase 的摘要、已完成要點與重要檔案路徑。
 - 如需更完整的歷史紀錄或截圖證據，請參閱 `docs/PROJECT_STATUS.md`（Archive）。
 
