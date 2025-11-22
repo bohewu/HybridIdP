@@ -196,6 +196,55 @@ public class SessionServiceTests
         Assert.Equal(string.Empty, sessions[0].AuthorizationId);
     }
 
+    [Fact]
+    public async Task ListSessionsAsync_IncludesApplicationInfoAndExpiresAt_WhenTokensPresent()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var auth = new object();
+        var app = new object();
+        var token = new object();
+
+        _authz.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<System.Collections.Immutable.ImmutableArray<string>>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(new[] { auth }));
+        _authz.Setup(m => m.GetIdAsync(auth, It.IsAny<CancellationToken>())).ReturnsAsync("auth-1");
+        _authz.Setup(m => m.GetApplicationIdAsync(auth, It.IsAny<CancellationToken>())).ReturnsAsync("app-1");
+        _authz.Setup(m => m.GetCreationDateAsync(auth, It.IsAny<CancellationToken>())).ReturnsAsync(DateTimeOffset.UtcNow);
+        _authz.Setup(m => m.GetStatusAsync(auth, It.IsAny<CancellationToken>())).ReturnsAsync(OpenIddictConstants.Statuses.Valid);
+
+        _apps.Setup(m => m.FindByIdAsync("app-1", It.IsAny<CancellationToken>())).ReturnsAsync(app);
+        _apps.Setup(m => m.GetClientIdAsync(app, It.IsAny<CancellationToken>())).ReturnsAsync("testclient-app");
+        _apps.Setup(m => m.GetDisplayNameAsync(app, It.IsAny<CancellationToken>())).ReturnsAsync("Test App");
+
+        _tokens.Setup(m => m.FindAsync(
+            It.Is<string>(s => s == userId.ToString()),
+            It.Is<string?>(c => c == "testclient-app"),
+            It.IsAny<string?>(),
+            It.IsAny<string?>()))
+            .Returns(new AsyncEnumerable<object>(new[] { token }));
+        _tokens.Setup(m => m.GetAuthorizationIdAsync(token, It.IsAny<CancellationToken>())).ReturnsAsync("auth-1");
+        _tokens.Setup(m => m.GetStatusAsync(token, It.IsAny<CancellationToken>())).ReturnsAsync(OpenIddictConstants.Statuses.Valid);
+        _tokens.Setup(m => m.GetExpirationDateAsync(token, It.IsAny<CancellationToken>())).ReturnsAsync(DateTimeOffset.UtcNow.AddHours(1));
+
+        // Act
+        var list = (await _service.ListSessionsAsync(userId)).ToList();
+
+        // Assert
+        Assert.Single(list);
+        var s = list.First();
+        Assert.Equal("auth-1", s.AuthorizationId);
+        Assert.Equal("testclient-app", s.ClientId);
+        Assert.Equal("Test App", s.ClientDisplayName);
+        Assert.NotNull(s.CreatedAt);
+        Assert.NotNull(s.ExpiresAt);
+    }
+
     #endregion
 
     #region RevokeSessionAsync - Additional Tests
