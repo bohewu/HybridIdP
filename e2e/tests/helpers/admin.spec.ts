@@ -186,6 +186,56 @@ test.describe('Admin helper utilities', () => {
       await adminHelpers.deleteRole(page, roleIdOnly.id);
     });
 
+    test('updateUser returns error when a provided role id does not exist', async ({ page }) => {
+      await adminHelpers.loginAsAdminViaIdP(page);
+      const timestamp = Date.now();
+      const role = await adminHelpers.createRole(page, `e2e-smoke-role-valid-${timestamp}`, []);
+      const email = `e2e-user-invalid-role-${timestamp}@hybridauth.local`;
+      const password = `E2E!${timestamp}a`;
+      const created = await adminHelpers.createUserWithRole(page, email, password, []);
+      expect(created.id).toBeTruthy();
+
+      // Use a GUID that should not exist
+      const invalidRoleId = '00000000-0000-0000-0000-000000000000';
+      let caught = false;
+      try {
+        await adminHelpers.updateUser(page, created.id, { roles: [invalidRoleId] });
+      } catch (e) {
+        caught = true;
+        // Should surface a failure to resolve role id or an error from the API
+        expect((e as Error).message).toMatch(/Failed to resolve role by id|404|not found/i);
+      }
+      expect(caught).toBeTruthy();
+
+      // Cleanup
+      await adminHelpers.deleteUser(page, created.id);
+      await adminHelpers.deleteRole(page, role.id);
+    });
+
+    test('updateUser returns error when provided role id is malformed', async ({ page }) => {
+      await adminHelpers.loginAsAdminViaIdP(page);
+      const timestamp = Date.now();
+      const role = await adminHelpers.createRole(page, `e2e-smoke-role-valid2-${timestamp}`, []);
+      const email = `e2e-user-malformed-role-${timestamp}@hybridauth.local`;
+      const password = `E2E!${timestamp}a`;
+      const created = await adminHelpers.createUserWithRole(page, email, password, []);
+      expect(created.id).toBeTruthy();
+
+      const malformedRoleId = 'not-a-guid';
+      let caught = false;
+      try {
+        await adminHelpers.updateUser(page, created.id, { roles: [malformedRoleId] });
+      } catch (e) {
+        caught = true;
+        expect((e as Error).message).toMatch(/Failed to update user|not found|invalid/i);
+      }
+      expect(caught).toBeTruthy();
+
+      // Cleanup
+      await adminHelpers.deleteUser(page, created.id);
+      await adminHelpers.deleteRole(page, role.id);
+    });
+
     test('getDashboardStats returns dashboard metrics', async ({ page }) => {
       await adminHelpers.loginAsAdminViaIdP(page);
     
