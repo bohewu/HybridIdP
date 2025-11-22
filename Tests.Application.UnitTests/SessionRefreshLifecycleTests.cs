@@ -107,8 +107,8 @@ public class SessionRefreshLifecycleTests
 
         Assert.Equal(authId, result.AuthorizationId);
         Assert.True(result.ReuseDetected);
-        // Session should now be revoked in DB
-        var session = await _db.UserSessions.FindAsync(userId, authId);
+        // Session should now be revoked in DB - query by UserId+AuthorizationId since PK is single Id
+        var session = await _db.UserSessions.SingleOrDefaultAsync(s => s.UserId == userId && s.AuthorizationId == authId);
         Assert.NotNull(session);
         Assert.NotNull(session.RevokedUtc);
         // An audit event for reuse should be created

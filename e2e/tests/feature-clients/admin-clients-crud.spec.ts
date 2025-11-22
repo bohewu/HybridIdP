@@ -63,8 +63,10 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
   // Submit the update form (Update Client)
   await page.click('button[type="submit"]');
 
-  // Ensure the list updates and shows the updated name
-  await expect(listItem).toContainText(updatedDisplayName, { timeout: 20000 });
+  // Ensure the list updates and shows the updated name - re-resolve the list item after update
+  await page.waitForTimeout(500); // brief wait to allow list refresh
+  const updatedListItem = clientsList.locator('li', { hasText: clientId });
+  await expect(updatedListItem).toContainText(updatedDisplayName, { timeout: 20000 });
 
   // Delete the client: click delete and accept confirmation via dialog handler
   await listItem.locator('button[title*=\"Delete\"]').click();

@@ -36,8 +36,22 @@ test('Admin - Security Policies CRUD (password requirements)', async ({ page }) 
   await page.reload();
   await page.waitForSelector('input#minLength', { timeout: 15000 });
 
-  // Verify changes persisted
+  // Verify changes persisted (retry if necessary to avoid transient UI propagation issues)
+  let actualMin = await page.inputValue('#minLength');
+  if (actualMin !== newMin) {
+    for (let i = 0; i < 3 && actualMin !== newMin; i++) {
+      await page.waitForTimeout(500);
+      actualMin = await page.inputValue('#minLength');
+    }
+  }
   await expect(page.locator('#minLength')).toHaveValue(newMin);
+  let actualMax = await page.inputValue('#maxFailedAttempts');
+  if (actualMax !== newMaxFailed) {
+    for (let i = 0; i < 3 && actualMax !== newMaxFailed; i++) {
+      await page.waitForTimeout(500);
+      actualMax = await page.inputValue('#maxFailedAttempts');
+    }
+  }
   await expect(page.locator('#maxFailedAttempts')).toHaveValue(newMaxFailed);
 
   // Restore original values

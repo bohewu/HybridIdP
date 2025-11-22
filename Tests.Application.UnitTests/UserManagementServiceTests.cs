@@ -500,6 +500,29 @@ public class UserManagementServiceTests
         Assert.Contains(errors, e => e.Contains("Remove failed"));
     }
 
+    [Fact]
+    public async Task UpdateUserAsync_ShouldReturnError_WhenRolesContainNonExistentRoleName()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var existingUser = new ApplicationUser { Id = userId, Email = "test@test.com" };
+        var updateDto = new UpdateUserDto { Email = "test@test.com", Roles = new List<string> { "NoSuchRole" } };
+
+        _mockUserManager.Setup(m => m.FindByIdAsync(userId.ToString())).ReturnsAsync(existingUser);
+        _mockUserManager.Setup(m => m.UpdateAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(IdentityResult.Success);
+        _mockUserManager.Setup(m => m.GetRolesAsync(existingUser)).ReturnsAsync(new List<string>());
+        // Simulate AddToRoles failing because role does not exist
+        _mockUserManager.Setup(m => m.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError { Description = "Role 'NoSuchRole' not found" }));
+
+        // Act
+        var (success, errors) = await _service.UpdateUserAsync(userId, updateDto);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("not found") || e.Contains("not exist") || e.Contains("NoSuchRole"));
+    }
+
     #endregion
 
     #region DeactivateUserAsync Tests
