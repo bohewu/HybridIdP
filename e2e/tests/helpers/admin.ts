@@ -28,7 +28,7 @@ export async function deleteClientViaApiFallback(page: Page, clientId: string) {
         const res = await fetch(`/api/admin/clients?search=${encodeURIComponent(id)}`);
         if (!res.ok) return;
         const json = await res.json();
-        const client = Array.isArray(json) ? json.find(c => c.clientId === id) : (json.items || []).find(c => c.clientId === id);
+        const client = Array.isArray(json) ? json.find((c: any) => c.clientId === id) : (json.items || []).find((c: any) => c.clientId === id);
         if (client && client.id) {
           await fetch(`/api/admin/clients/${client.id}`, { method: 'DELETE' });
         }
@@ -133,7 +133,7 @@ export async function regenerateSecretViaApi(page: Page, clientId: string) {
     const res = await fetch('/api/admin/clients?search=' + encodeURIComponent(id));
     if (!res.ok) throw new Error('Not found');
     const json = await res.json();
-    const client = Array.isArray(json) ? json.find(c => c.clientId === id) : (json.items || []).find(c => c.clientId === id);
+    const client = Array.isArray(json) ? json.find((c: any) => c.clientId === id) : (json.items || []).find((c: any) => c.clientId === id);
     if (!client) throw new Error('Client not found');
     const regen = await fetch(`/api/admin/clients/${client.id}/regenerate-secret`, { method: 'POST' });
     if (!regen.ok) throw new Error('Failed to regenerate');
@@ -235,6 +235,52 @@ export async function waitForResponseJson(page: Page, predicate: (resp: Playwrig
   } catch (e) {
     return null;
   }
+}
+
+// Utility: Search for an item via the Search input and wait for list update
+export async function searchListForItem(page: Page, entity: string, query: string, options?: {
+  searchInputSelector?: string,
+  listSelector?: string,
+  predicate?: (item: any) => boolean,
+  timeout?: number
+}) {
+  const searchInput = options?.searchInputSelector ?? 'input[placeholder*="Search"]';
+  const listSelector = options?.listSelector ?? 'ul[role="list"]';
+  const timeout = options?.timeout ?? 10000;
+
+  // Click/clear then fill to ensure it triggers the filter
+  await page.fill(searchInput, '');
+  await page.fill(searchInput, query);
+
+  // Wait for the API to return (GET /api/admin/{entity}?search=...)
+  const apiResp = await waitForResponseJson(page, (r) => r.url().includes(`/api/admin/${entity}?`) && r.request().method() === 'GET', timeout).catch(() => null);
+
+  let found = null as any;
+  if (apiResp) {
+    // Normalize shape: array or { items: [] }
+    const items = Array.isArray(apiResp) ? apiResp : (apiResp.items || []);
+    const matcher = options?.predicate ?? ((i: any) => i.clientId === query || i.name === query || i.displayName === query || i.id === query);
+    found = items.find(matcher);
+  }
+
+  // Wait for UI list to contain the item text (fallback to query text)
+  const locator = page.locator(`${listSelector} li`, { hasText: query }).first();
+  try {
+    await locator.waitFor({ state: 'visible', timeout });
+    return locator;
+  } catch (e) {
+    // If not visible, but we found an item in API, try to match by ID in list
+    if (found && found.id) {
+      const byIdLocator = page.locator(`${listSelector} li`, { hasText: String(found.id) }).first();
+      try {
+        await byIdLocator.waitFor({ state: 'visible', timeout });
+        return byIdLocator;
+      } catch (e2) {
+        // nothing
+      }
+    }
+  }
+  return null;
 }
 
   export async function updateUser(page: Page, userId: string, updates: {
@@ -411,6 +457,7 @@ export default {
     createMultipleSessions,
     loginViaTestClient,
     getDashboardStats,
-    waitForSessionRevocation
-    , waitForResponseJson
+    waitForSessionRevocation,
+    waitForResponseJson,
+    searchListForItem
 }

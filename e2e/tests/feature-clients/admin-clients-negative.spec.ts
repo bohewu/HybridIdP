@@ -66,11 +66,12 @@ test.describe('Admin - Clients negative tests', () => {
     const closeBtn = page.locator('button:has-text("Close")');
     if (await closeBtn.count() > 0 && await closeBtn.isVisible()) await closeBtn.click();
 
-    // Verify the client appears - use the search box to avoid paging issues
-    const clientsList = page.locator('ul[role="list"]');
-    await page.fill('input[placeholder*="Search"]', clientId);
-    await page.waitForTimeout(500);
-    await expect(clientsList).toContainText(clientId, { timeout: 20000 });
+    // Verify the client appears - use the search helper to avoid paging issues
+    const clientsListItem = await adminHelpers.searchListForItem(page, 'clients', clientId, { timeout: 20000 });
+    expect(clientsListItem).not.toBeNull();
+    if (clientsListItem) {
+      await expect(clientsListItem).toBeVisible({ timeout: 20000 });
+    }
 
     // Try to create duplicate
     await page.click('button:has-text("Create New Client")');

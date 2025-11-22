@@ -44,12 +44,13 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
     await closeBtn.click();
   }
 
-  // Wait for the client to appear in the list
-  const clientsList = page.locator('ul[role="list"]');
-  await expect(clientsList).toContainText(clientId, { timeout: 20000 });
+  // Wait for the client to appear in the list (use search helper to avoid paging issues)
+  const createdItem = await adminHelpers.searchListForItem(page, 'clients', clientId, { timeout: 20000 });
+  expect(createdItem).not.toBeNull();
+  if (createdItem) await expect(createdItem).toBeVisible({ timeout: 20000 });
 
   // Edit the client: find the list item and click the Edit button
-  const listItem = clientsList.locator('li', { hasText: clientId });
+  const listItem = createdItem!;
   await expect(listItem).toBeVisible();
 
   // Click the edit button inside the list item (match by title attribute to support icon-only buttons)
@@ -95,7 +96,8 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
 
   // Wait for the client to be removed from the list
   try {
-    await expect(clientsList).not.toContainText(clientId, { timeout: 20000 });
+    const deleted = await adminHelpers.searchListForItem(page, 'clients', clientId, { timeout: 20000 });
+    expect(deleted).toBeNull();
   } catch (e) {
     // If UI delete fails, fall back to the API cleanup to avoid orphaned test data
     await adminHelpers.deleteClientViaApiFallback(page, clientId);

@@ -69,7 +69,8 @@ This document tracks the Phase 8 effort to refactor and expand the E2E test suit
    - Reorganized E2E tests into feature-based directories: `feature-auth/`, `feature-clients/`, `feature-users/`, `feature-scopes/`
    - Updated Playwright config to enable parallel execution (`workers: 4`, `fullyParallel: true`)
    - Added Scopes E2E coverage: `scopes-crud.spec.ts` and `scopes-negative.spec.ts`
-   - Extended admin helpers with `createScope` and `deleteScope` functions
+  - Extended admin helpers with `createScope` and `deleteScope` functions
+  - Added `searchListForItem(page, entity, query)` helper to perform Search input filtering, wait for API GET response, and return the corresponding UI list item locator
    - Performance: Tests now run in ~72 seconds (1m 12s) with 4 parallel workers
    - **Note**: Additional E2E coverage for API Resources and Roles can be added following the same patterns
    - See "TODO 4 Implementation Details" section below for complete information

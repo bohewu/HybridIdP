@@ -31,9 +31,9 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
     await closeBtn.click();
   }
 
-  const clientsList = page.locator('ul[role="list"]');
-  await expect(clientsList).toContainText(clientId, { timeout: 20000 });
-  const listItem = clientsList.locator('li', { hasText: clientId });
+  const listItem = await adminHelpers.searchListForItem(page, 'clients', clientId, { timeout: 20000 });
+  expect(listItem).not.toBeNull();
+  if (listItem) await expect(listItem).toBeVisible({ timeout: 20000 });
 
   // Click regenerate secret button in the list and confirm the modal shows a new secret
   await listItem.locator('button[title*="Regenerate"]').click();

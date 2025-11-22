@@ -2,93 +2,79 @@
 
 Helper utilities for E2E tests used to interact with the IdP admin UI and APIs.
 
-## createUserWithRole(page, email, password, roleIds)
+## Quick Examples
 
-- This helper expects an array of role IDs (GUIDs) as the canonical format.
-- The helper will resolve each GUID to the role name via `/api/admin/roles/{id}` and then call `/api/admin/users/{id}/roles` with the resolved role names. This is required because the backend identity APIs operate using role names in AddToRolesAsync.
-- Tests should prefer passing `role.id`; the helper will do the necessary resolution automatically.
+```ts
+// Login as admin
+await adminHelpers.loginAsAdminViaIdP(page);
 
-## loginAsAdminViaIdP(page)
+// Create a client via API and verify it is present in the admin UI using the search helper
+const client = await page.evaluate(async () => { /* create client via POST /api/admin/clients */ });
+await page.goto('https://localhost:7035/Admin/Clients');
+const listItem = await adminHelpers.searchListForItem(page, 'clients', client.clientId, { timeout: 20000 });
+expect(listItem).not.toBeNull();
+```
 
-- Logs out any current session, then authenticates as `admin@hybridauth.local`.
+## Available helpers (short reference)
 
-## login(page, email, password)
+- `loginAsAdminViaIdP(page)`
+  - Logs out any current session and logs in with `admin@hybridauth.local`.
 
-- Navigates to `/Account/Login`, fills in the credentials, and logs in.
+- `login(page, email, password)`
+  - Navigates to the IdP login page and performs login with provided credentials.
 
-## deleteClientViaApiFallback(page, clientId)
+- `createRole(page, roleName, permissions?)`
+  - Creates a role via the admin API and returns the created DTO.
 
-- Uses the current page session to call the clients API and delete the test client by id.
+- `deleteRole(page, roleId)`
+  - Deletes the role by id via the admin API.
 
-## Other helper methods
+- `createUserWithRole(page, email, password, roleIdentifiers)`
+  - Accepts array of role identifiers (names or GUIDs). GUIDs are resolved to names if necessary, then the assignment endpoint is called.
 
-- `createRole`, `deleteRole`, `deleteUser`, `regenerateSecretViaApi` are thin wrappers around server endpoints used for the smoke and cleanup tests.
+- `deleteUser(page, userId)`
+  - Deletes a user via API.
 
-## Notes
+- `deleteClientViaApiFallback(page, clientId)`
+  - Searches for a client by clientId and deletes it. Useful for cleanup when the UI is flaky.
 
-- `createUserWithRole` intentionally supports both role name and role id to reduce friction in test scenarios and make re-use easier.
+- `regenerateSecretViaApi(page, clientId)`
+  - Calls POST `/api/admin/clients/{id}/regenerate-secret` for a confidential client and returns the secret object.
 
-If you prefer strict types or only one format in your tests, the helper can be adjusted to accept only role names or only role ids.
-# Admin helper functions
+- `createScope(page, scopeName, displayName?, description?)`
+  - API helper to create a scope via POST.
 
-Helper utilities for E2E tests used to interact with the IdP admin UI and APIs.
+- `deleteScope(page, scopeIdOrName)`
+  - Deletes a scope via API (by name or ID).
 
-## createUserWithRole(page, email, password, roleIdentifiers)
+- `createApiResource(page, resourceName, displayName?, baseUrl?)`
+  - API helper to create API resources.
 
-- Accepts an array of role identifiers that can be role names or role IDs (GUIDs).
-- If an identifier looks like a GUID, the helper resolves it to the role name using `/api/admin/roles/{id}` before sending the assignment request to `/api/admin/users/{id}/roles`.
-- This allows tests to pass whatever value is most convenient (role name if you want clarity, or id if you retrieved it from the API earlier).
+- `deleteApiResource(page, resourceIdOrName)`
+  - Deletes an API resource by ID or name.
 
-## loginAsAdminViaIdP(page)
+- `waitForResponseJson(page, predicate, timeout)`
+  - Waits for a Playwright response matching the `predicate`, parses JSON if possible, and returns the parsed JSON or null.
+  - Example: `await adminHelpers.waitForResponseJson(page, r => r.url().includes('/api/admin/clients?') && r.request().method() === 'GET', 10000)`
 
-- Logs out any current session, then authenticates as `admin@hybridauth.local`.
+- `searchListForItem(page, entity, query, options?)`
+  - Standardized helper to search the Admin UI lists.
+  - It fills the search input (`input[placeholder*="Search"]` by default), waits for a GET `/api/admin/{entity}?search=...` API response, and returns a `Locator` for the matching list item or `null`.
+  - Default selectors: `input[placeholder*="Search"]` and `ul[role="list"]`.
+  - Example usage:
 
-## login(page, email, password)
+  ```ts
+  // Navigate to the Clients admin UI
+  await page.goto('https://localhost:7035/Admin/Clients');
+  const clientListItem = await adminHelpers.searchListForItem(page, 'clients', clientId, { timeout: 15000 });
+  expect(clientListItem).not.toBeNull();
+  await expect(clientListItem).toBeVisible();
+  ```
 
-- Navigates to `/Account/Login`, fills in the credentials, and logs in.
+## Notes and recommendations
 
-## deleteClientViaApiFallback(page, clientId)
+- Tests should navigate to the appropriate Admin page (e.g., `/Admin/Clients`, `/Admin/Scopes`) before calling `searchListForItem` — it relies on the search input and list rendering present on that page.
+- Use `waitForResponseJson` when you need to parse JSON returned by an API call and use the predicate to assert the correct response (for instance, wait for PUT/GET to complete and return JSON). This helps avoid timing-related flakiness.
+- Prefer `page.evaluate` API-based actions for setup/cleanup as they are faster and less likely to be flaky than using the UI for those tasks.
 
-- Uses the current page session to call the clients API and delete the test client by id.
-
-## Other helper methods
-
-- `createRole`, `deleteRole`, `deleteUser`, `regenerateSecretViaApi` are thin wrappers around server endpoints used for the smoke and cleanup tests.
-
-## Notes
-
-- `createUserWithRole` intentionally supports both role name and role id to reduce friction in test scenarios and make re-use easier.
-
-If you want the helper to only accept one format (name or id), change `createUserWithRole` accordingly and update tests to pass the expected format.
-Admin helper functions
-======================
-
-Helper utilities for E2E tests used to interact with the IdP admin UI and APIs.
-
-createUserWithRole(page, email, password, roleIdentifiers)
---------------------------------------------------------
-- Accepts an array of role identifiers that can be role names or role IDs (GUIDs).
-- If an identifier looks like a GUID, the helper resolves it to the role name using `/api/admin/roles/{id}` before sending the assignment request to `/api/admin/users/{id}/roles`.
-- This allows tests to pass whichever value is most convenient (role name if you want clarity, or id if you retrieved it from the API earlier).
-
-loginAsAdminViaIdP(page)
-------------------------
-- Logs out the current session (if any) and authenticates as `admin@hybridauth.local`.
-
-login(page, email, password)
-----------------------------
-- Navigates to `/Account/Login`, fills in the credentials, and logs in.
-
-deleteClientViaApiFallback(page, clientId)
------------------------------------------
-- Uses the current page session to call the clients API and delete the test client by id.
-
-Other helper methods
---------------------
-- `createRole`, `deleteRole`, `deleteUser`, `regenerateSecretViaApi` - thin wrappers around server endpoints used for the smoke and cleanup tests.
-
-Notes
------
-- `createUserWithRole` intentionally supports both role name and role id to reduce friction in test scenarios and make re-use easier.
-
-If you want these helpers to only accept one format (name or id), change `createUserWithRole` accordingly and update tests to pass the expected format.
+If you'd like, I can also add a short README example for `searchListForItem` inside each feature folder where it's relevant (Clients/Scopes/Resources).

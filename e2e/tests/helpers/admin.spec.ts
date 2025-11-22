@@ -110,11 +110,47 @@ test.describe('Admin helper utilities', () => {
       const r = await fetch(`/api/admin/clients?search=${encodeURIComponent(cid)}`);
       if (!r.ok) return r.status;
       const j = await r.json();
-      const client = Array.isArray(j) ? j.find(c => c.clientId === cid) : (j.items || []).find(c => c.clientId === cid);
+      const client = Array.isArray(j) ? j.find((c: any) => c.clientId === cid) : (j.items || []).find((c: any) => c.clientId === cid);
       return client ? 200 : 404;
     }, createdClient.clientId);
 
     expect(found).toBe(404); // expect client not found after deletion
+  });
+
+  test('searchListForItem can find a client using the search input and API wait', async ({ page }) => {
+    await adminHelpers.loginAsAdminViaIdP(page);
+    await page.goto('https://localhost:7035/Admin/Clients');
+    await page.waitForURL(/\/Admin\/Clients/);
+    const timestamp = Date.now();
+    const clientId = `e2e-search-client-${timestamp}`;
+    const payload = {
+      clientId,
+      clientName: `E2E Search ${timestamp}`,
+      hint: 'e2e-search',
+      type: 'public',
+      redirectUris: ['https://localhost:7001/signin-oidc'],
+      postLogoutRedirectUris: [],
+      clientSecrets: [],
+      allowedScopes: ['openid']
+    } as any;
+
+    const createdClient = await page.evaluate(async (p) => {
+      const r = await fetch('/api/admin/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(p)
+      });
+      if (!r.ok) throw new Error('Failed to create client');
+      return r.json();
+    }, payload);
+
+    expect(createdClient).toBeDefined();
+    const found = await adminHelpers.searchListForItem(page, 'clients', clientId, { timeout: 20000 });
+    expect(found).not.toBeNull();
+    if (found) await expect(found).toBeVisible({ timeout: 20000 });
+
+    // Cleanup
+    await adminHelpers.deleteClientViaApiFallback(page, clientId);
   });
 
     test('updateUser modifies user properties via API', async ({ page }) => {
