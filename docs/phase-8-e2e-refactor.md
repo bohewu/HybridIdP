@@ -153,6 +153,14 @@ npx playwright test e2e/tests/helpers/admin.spec.ts e2e/tests/admin-clients-perm
 - Successfully remove all roles with empty array
 - Handle duplicate role IDs gracefully
 
+#### Additional E2E Roles Negative Tests
+
+- `e2e/tests/feature-roles/roles-negative.spec.ts` (new) contains tests for:
+  - Duplicate role name creation (UI) — Create a role and confirm re-creating with same name shows validation error in the Create Role modal.
+  - Invalid permission creation (API) — POST to `/api/admin/roles` with an invalid permission returns 400 and a human-friendly error message.
+
+These tests help close a known validation gap previously covered only by unit tests; testing both the UI and API ensures the front-end and back-end validations remain aligned.
+
 ### E2E Tests for Permission Claims Integration (`e2e/tests/role-permissions-claims.spec.ts`)
 
 **2 comprehensive integration tests covering:**
@@ -275,3 +283,13 @@ This starts the Vite dev server on `http://localhost:5173/` which serves the Vue
 - Both API endpoints are fully functional and tested, providing flexibility for different client needs
 - Test reorganization enables better isolation and parallel execution, reducing overall test suite runtime
 - Scopes E2E coverage establishes patterns for other admin features (API Resources, Roles, Claims)
+
+### Prioritized Backlog (next sprint)
+
+1. Add E2E negative checks for Roles rename and system role rename block (UI should show validation errors). (High priority; low risk)
+2. Add E2E for 'Delete role with assigned users' negative flow via UI and API (ensures backend and UI messages consistent). (High priority)
+3. Add E2E test for duplicate email validation on user create/update (UI + API combination), since client previously allowed duplicate emails in certain flows. (Medium priority)
+4. Add E2E scenario to verify 'role permissions reflected in claims' for new sign-in flows (refresh token, multiple sessions). (Medium priority / dependent on Phase 9 work)
+5. Add integration tests for Role permission update propagation (re-check login claims after permission changes using new browser contexts). (Low priority)
+
+These are small, incremental steps designed to reduce friction and improve the reliability of the admin UI, matching the Phase 8 goals for E2E robustness.
