@@ -73,7 +73,10 @@ expect(listItem).not.toBeNull();
 
 - `searchListForItemWithApi(page, entity, query, options?)`
   - Similar to `searchListForItem` but also returns parsed API item if available.
-  - Returns `{ apiItem, locator }` where `apiItem` is the API object or `null` and `locator` is a Playwright Locator or `null`.
+  - Returns `{ apiItem, apiResp, locator }` where:
+    - `apiItem` is the API item found by the predicate or `null`.
+    - `apiResp` is the parsed JSON response returned from the GET `/api/admin/{entity}?search=` request or `null`.
+    - `locator` is a Playwright Locator for the matching UI row or `null`.
 
   Example:
 
@@ -91,6 +94,26 @@ expect(listItem).not.toBeNull();
   ```ts
   const result = await adminHelpers.searchAndClickAction(page, 'clients', clientId, 'Regenerate');
   expect(result.clicked).toBeTruthy();
+  ```
+
+- `searchAndConfirmAction(page, entity, query, action, options?)`
+  - Finds the row for the given `query` (using `searchListForItemWithApi`), clicks an `action` button in the row (e.g., `Delete`), then clicks a `confirm` button in the confirmation modal.
+  - Options include:
+    - `listSelector` (default `ul[role="list"], table tbody`)
+    - `actionSelector` (default `button[title*="${action}"], button:has-text("${action}")`)
+    - `confirmSelector` (default `button:has-text("Confirm"), button:has-text("Delete"), button.confirm`)
+    - `waitForApi` (default `true`) — if `true`, the helper will wait for a non-GET API response on `/api/admin/{entity}` after confirmation and return it as `confirmationResponse`.
+  - Returns: `{ apiItem, apiResp, clicked, confirmed, confirmationResponse }` where `confirmationResponse` is the parsed JSON for the non-GET call resulting from the confirmation or `null`.
+
+  Example:
+
+  ```ts
+  const result = await adminHelpers.searchAndConfirmAction(page, 'clients', clientId, 'Delete');
+  expect(result.clicked).toBeTruthy();
+  // If the delete API returned JSON, inspect it
+  if (result.confirmationResponse) {
+    expect(result.confirmationResponse).toBeDefined();
+  }
   ```
 
 ## Notes and recommendations

@@ -298,7 +298,7 @@ export async function searchListForItemWithApi(page: Page, entity: string, query
   const apiRespPromise = waitForResponseJson(page, (r) => r.url().includes(`/api/admin/${entity}?`) && r.request().method() === 'GET', timeout).catch(() => null);
   // Use existing searchListForItem flow to find the UI element (this will trigger a search GET)
   const locator = await searchListForItem(page, entity, query, { searchInputSelector: options?.searchInputSelector, listSelector: options?.listSelector, predicate: options?.predicate, timeout });
-  // Also try to get the API item from the GET response (same one used by searchListForItem)
+  // Also capture the API response from the GET (same one used by searchListForItem)
   const apiResp = await apiRespPromise;
   let apiItem = null as any;
   if (apiResp) {
@@ -307,7 +307,8 @@ export async function searchListForItemWithApi(page: Page, entity: string, query
     apiItem = items.find(matcher);
   }
 
-  return { apiItem, locator } as { apiItem: any | null, locator: import('@playwright/test').Locator | null };
+  // Return both the parsed API item, the raw API response (as parsed JSON) and the UI locator
+  return { apiItem, apiResp, locator } as { apiItem: any | null, apiResp: any | null, locator: import('@playwright/test').Locator | null };
 }
 
 // Helper: Find item and click an action button inside the row (e.g., 'Edit', 'Delete', 'Regenerate')
@@ -330,6 +331,123 @@ export async function searchAndClickAction(page: Page, entity: string, query: st
     return { apiItem: result.apiItem, clicked: true };
   }
   return { apiItem: result.apiItem, clicked: false };
+}
+
+// Helper: search, click an action button inside the row and click a confirm button that appears.
+export async function searchAndConfirmAction(page: Page, entity: string, query: string, action: string, options?: {
+  listSelector?: string,
+  actionSelector?: string,
+  confirmSelector?: string,
+  waitForApi?: boolean,
+  timeout?: number
+}) {
+  const timeout = options?.timeout ?? 10000;
+  const listSelector = options?.listSelector ?? 'ul[role="list"], table tbody';
+  const actionSelector = options?.actionSelector ?? `button[title*="${action}"], button:has-text("${action}")`;
+  const confirmSelector = options?.confirmSelector ?? `button:has-text("Confirm"), button:has-text("Delete"), button.confirm`;
+  const waitForApi = options?.waitForApi ?? true;
+
+  const result = await searchListForItemWithApi(page, entity, query, { listSelector, timeout });
+  const locator = result.locator;
+  if (!locator) return { apiItem: result.apiItem, apiResp: result.apiResp, clicked: false, confirmed: false, confirmationResponse: null };
+
+  let btn = locator.locator(actionSelector).first();
+  // If action button not visible directly (e.g. inside a "more" dropdown), attempt to open the dropdown and find the action
+  if (await btn.count() === 0) {
+    const moreBtn = locator.locator('button[aria-haspopup], button[title*="More"], button:has-text("More"), button[aria-label*="More"]').first();
+    if (await moreBtn.count() > 0) {
+      await moreBtn.click();
+      // Look for the action inside an opened menu within the row
+      // We attempt several menu/anchor selectors to maximize chance of finding the correct action
+      const menuActionCandidates = [
+        `ul[role=\"menu\"] li:has-text(\"${action}\")`,
+        `button:has-text(\"${action}\")`,
+        `a:has-text(\"${action}\")`,
+        `li:has-text(\"${action}\")`
+      ];
+      for (const sel of menuActionCandidates) {
+        const candidate = page.locator(sel).first();
+        if (await candidate.count() > 0) {
+          btn = candidate;
+          break;
+        }
+      }
+    }
+  }
+  if (await btn.count() === 0) return { apiItem: result.apiItem, apiResp: result.apiResp, clicked: false, confirmed: false, confirmationResponse: null };
+
+  // Prepare waiting for API response (any method other than GET) if requested
+  let apiWaitPromise: Promise<any> | null = null;
+  if (waitForApi) {
+    apiWaitPromise = waitForResponseJson(page, (r) => r.url().includes(`/api/admin/${entity}`) && r.request().method() !== 'GET', timeout).catch(() => null);
+  }
+
+  await btn.click();
+
+  // If confirmation modal appears, click confirm
+  let confirmed = false;
+  let confirmationResponse = null as any;
+  const confirmBtnLocator = page.locator(confirmSelector).first();
+  if (await confirmBtnLocator.count() > 0) {
+    try {
+      await confirmBtnLocator.waitFor({ state: 'visible', timeout });
+      await confirmBtnLocator.click();
+      confirmed = true;
+      if (apiWaitPromise) {
+        confirmationResponse = await apiWaitPromise;
+      }
+    } catch (e) {
+      // ignore - modal did not appear or confirm failed
+      confirmed = false;
+      confirmationResponse = apiWaitPromise ? await apiWaitPromise : null;
+    }
+  } else {
+    // If no modal, the action itself might trigger the API; wait if requested
+    if (apiWaitPromise) {
+      confirmationResponse = await apiWaitPromise;
+      confirmed = !!confirmationResponse;
+    }
+  }
+
+  // If we didn't see confirmation and no API response, attempt a resilient fallback:
+  //  - Try clicking any 'confirm' or 'delete' button again with force, and wait for API or for the row to disappear
+  if (!confirmed && !confirmationResponse) {
+    // Re-evaluate the confirm button
+    const confirmBtn2 = page.locator(confirmSelector).first();
+    if (await confirmBtn2.count() > 0) {
+      try {
+        await confirmBtn2.waitFor({ state: 'visible', timeout: 1000 }).catch(() => null);
+        await confirmBtn2.click({ force: true });
+        if (apiWaitPromise) confirmationResponse = await apiWaitPromise;
+        if (confirmationResponse) confirmed = true;
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // If no modal/confirm button, try to re-click the action button forcefully
+    if (!confirmed && !confirmationResponse) {
+      try {
+        await btn.click({ force: true });
+        if (apiWaitPromise) confirmationResponse = await apiWaitPromise;
+        if (confirmationResponse) confirmed = true;
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // As a final check, wait a short time and see if the row disappears (UI-only deletion)
+    if (!confirmed && !confirmationResponse && locator) {
+      try {
+        await locator.waitFor({ state: 'hidden', timeout: 1000 });
+        confirmed = true;
+      } catch (e) {
+        // still present
+      }
+    }
+  }
+
+  return { apiItem: result.apiItem, apiResp: result.apiResp, clicked: true, confirmed, confirmationResponse };
 }
 
   export async function updateUser(page: Page, userId: string, updates: {
@@ -510,5 +628,6 @@ export default {
     waitForResponseJson,
     searchListForItem,
     searchListForItemWithApi,
-    searchAndClickAction
+    searchAndClickAction,
+    searchAndConfirmAction
 }
