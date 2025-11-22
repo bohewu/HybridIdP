@@ -364,9 +364,9 @@ docs/
 ```
 
 #### E2E 測試檔案位置
+-   請先讀取e2e/README.md
+-   `e2e/tests/...` - 測試 scope-mapped claims
 
--   `e2e/tests/testclient-scope-claims.spec.ts` - 測試 scope-mapped claims
--   `e2e/tests/admin-claims-ui.spec.ts` - 測試 Admin Claims UI
 
 ### 10. 失敗場景測試指南
 

@@ -219,7 +219,7 @@ dotnet run --project .\TestClient\TestClient.csproj
 | 名稱 | 用途 | 範例值 |
 |------|------|--------|
 | `IDP_BASE_URL` | 指向 IdP 基礎 URL | `https://localhost:7035` |
-| `TESTCLIENT_BASE_URL` | 指向 TestClient URL | `https://localhost:5173` |
+| `TESTCLIENT_BASE_URL` | 指向 TestClient URL | `https://localhost:7001` |
 | `MCP_TIMEOUT_MS` | 最大等待時間 | `30000` |
 
 > 若遠端測試代理需要額外認證或 WebSocket 連線參數，請在各自的環境設定文件補充，本節只涵蓋專案自身啟動與流程。
