@@ -195,6 +195,16 @@ If you want the run-e2e-postgres helper to seed API Resources (the `ApiResources
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -SeedApiResources -TimeoutSeconds 300
 ```
 
+Normalize test client permissions (recommended)
+--------------------------------------------
+
+To avoid OpenIddict parsing errors caused by malformed/duplicated permissions in the `OpenIddictApplications.Permissions` column, the runner can normalize the TestClient permissions for both Postgres and MSSQL prior to seeding or running tests.
+
+```powershell
+# Normalize across both DBs, then seed and run tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -NormalizePermissions -SeedApiResources -TimeoutSeconds 300
+```
+
 TestClient UI readiness check
 ---------------------------
 

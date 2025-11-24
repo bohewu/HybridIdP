@@ -31,6 +31,7 @@ param(
     [switch]$Headed,
     [switch]$WebOnly,
     [int]$TimeoutSeconds = 180,
+    [switch]$NormalizePermissions,
     [switch]$SeedApiResources,
     [string]$ComposeFile = 'docker-compose.yml',
     [string]$PgUser = 'user',
@@ -121,11 +122,25 @@ if ($RunMigrations) {
     Write-Ok 'EF migrations applied successfully.'
 }
 
+if ($NormalizePermissions) {
+    Write-Info 'Normalizing TestClient permissions in DB(s)...'
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\normalize-testclient-permissions.ps1"
+    if ($LASTEXITCODE -ne 0) { Write-Warn "normalize-testclient-permissions failed (exit $LASTEXITCODE)" }
+    Write-Ok 'Permissions normalization step finished.'
+}
+
 if ($SeedApiResources) {
     Write-Info 'Seeding API resources (setup-test-api-resources.sql) into the database...'
     & pwsh -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\seed-api-resources.ps1" -PgUser $PgUser -PgDb $PgDb
     if ($LASTEXITCODE -ne 0) { Write-Err "seed-api-resources failed (exit $LASTEXITCODE)"; exit $LASTEXITCODE }
     Write-Ok 'API resources seeded.'
+}
+
+if ($NormalizePermissions) {
+    Write-Info 'Normalizing TestClient permissions in DB(s)...'
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\normalize-testclient-permissions.ps1"
+    if ($LASTEXITCODE -ne 0) { Write-Warn "normalize-testclient-permissions failed (exit $LASTEXITCODE)" }
+    Write-Ok 'Permissions normalization step finished.'
 }
 
 if ($StartServices) {
