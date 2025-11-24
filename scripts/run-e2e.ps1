@@ -29,8 +29,8 @@ function Write-Err($msg){ Write-Host $msg -ForegroundColor Red }
 $root = (Get-Location).Path
 
 if ($StartServices) {
-    Write-Info "Starting IdP and TestClient windows (scripts/start-e2e-dev.ps1)..."
-    & pwsh -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\start-e2e-dev.ps1"
+    Write-Info "Starting IdP and TestClient windows (scripts/start-e2e-dev.ps1) and inheriting parent env vars..."
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\start-e2e-dev.ps1" -InheritEnv
     Start-Sleep -Seconds 2
 }
 

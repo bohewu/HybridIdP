@@ -101,6 +101,8 @@ This repo includes small PowerShell helper scripts to make it easier to run the 
   - `dotnet run --project .\Web.IdP\Web.IdP.csproj --launch-profile https` (IdP)
   - `dotnet run --project .\TestClient\TestClient.csproj --launch-profile https` (TestClient)
   - optionally starts the Vite dev server when run with `-StartVite`
+  - When launching new windows the script can inherit the current environment variables so they start with DATABASE_PROVIDER/connection strings
+    already set. Use `-InheritEnv` to enable this behavior (useful when starting from a session that sets `DATABASE_PROVIDER` for Postgres runs).
 
 - `e2e/wait-for-idp-ready.ps1` — waits for IdP/TestClient to be reachable, attempts an admin sign-in, and calls the protected admin health endpoint (`/api/admin/health`) to verify seeding/initialization finished.
 
@@ -164,3 +166,69 @@ Notes:
 - The tests expect the above API scopes (api:company:read, api:inventory:read) to exist in OpenIddict and be associated with API resources. The readiness script `e2e/wait-for-idp-ready.ps1` will attempt to verify and create the `testclient-public` client and the two API scopes automatically when it runs (if not present).
 - If you run the IdP/TestClient manually, ensure `testclient-public` is seeded or created via the Admin UI before running the Playwright suite to avoid `invalid_scope` or `invalid_client` errors during authorize.
 - The TestClient's options in `TestClient/Program.cs` show the requested scopes and must match allowed scopes in the IdP for the OIDC flow to succeed.
+
+Running tests using PostgreSQL (helper)
+------------------------------------
+
+This repository includes a helper `scripts/run-e2e-postgres.ps1` which automates the common Postgres-backed e2e workflow: bring up docker-compose, ensure the Postgres DB exists and `pgcrypto` is enabled, apply Postgres EF migrations, start `Web.IdP` and `TestClient` in separate windows, wait for readiness, and run Playwright tests.
+
+Basic example (from repo root):
+
+```powershell
+# start docker-compose, create DB + pgcrypto, run migrations, start services, and run tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -TimeoutSeconds 300
+```
+
+Only start Web.IdP window (skip TestClient) when running the Postgres helper:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -WebOnly -TimeoutSeconds 300
+```
+
+Seed API resources automatically
+--------------------------------
+
+If you want the run-e2e-postgres helper to seed API Resources (the `ApiResources` and `ApiResourceScopes` table data) before running tests, pass `-SeedApiResources`.
+
+```powershell
+# bring up containers, apply migrations, create API resources, start services and run tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -SeedApiResources -TimeoutSeconds 300
+```
+
+TestClient UI readiness check
+---------------------------
+
+The Postgres helper can also validate that the TestClient home page is returning and contains a `Login` link or `signin-oidc` anchor before tests run. This check helps catch cases where TestClient is reachable at the TCP/HTTP level but still returning e.g. a static error page. The helper `scripts/check-testclient-ready.ps1` is automatically called by `run-e2e-postgres.ps1` after starting services.
+
+pgcrypto validation
+-------------------
+
+The `run-e2e-postgres.ps1` helper now validates that the `pgcrypto` extension exists in the target database and will attempt to create it automatically. If the script cannot create the extension (for example when the DB user lacks CREATE EXTENSION privileges), it will print actionable commands you can run inside the Postgres container (as the `postgres` superuser) and then exit with a clear error. This helps avoid subtle `gen_random_uuid()` seed failures during migrations.
+
+Only starting Web.IdP against Postgres (no tests)
+-----------------------------------------------
+
+If you want to run only `Web.IdP` pointing at Postgres (for manual dev or debugging), you can prepare Postgres and migrations then start the IdP process directly in your shell. Example sequence:
+
+```powershell
+# 1) Ensure postgres container is running (docker-compose up -d)
+# 2) Create DB and enable pgcrypto inside the container (adjust container name / user):
+docker exec -it <postgres_container> psql -U user -d postgres -c "CREATE DATABASE hybridauth_idp;"
+docker exec -it <postgres_container> psql -U user -d hybridauth_idp -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+
+# 3) Set env vars in the same shell (so dotnet run inherits them):
+$env:DATABASE_PROVIDER = 'PostgreSQL'
+$env:ConnectionStrings__PostgreSqlConnection = 'Host=localhost;Port=5432;Database=hybridauth_idp;Username=user;Password=password'
+
+# 4) Apply Postgres migrations (from repo root):
+cd Infrastructure.Migrations.Postgres
+dotnet ef database update --startup-project ..\Web.IdP
+
+# 5) Run Web.IdP (this will use the Postgres provider):
+cd ..\Web.IdP
+dotnet run --launch-profile https
+```
+
+Notes:
+- `scripts/run-e2e-postgres.ps1` is intended as a convenience wrapper for local development and should be run from the repository root so it can find `docker-compose.yml` and relative projects.
+- The script uses the first container matching `db-service` or the `postgres` image when locating the DB container. Use `docker ps` to confirm container names if needed.

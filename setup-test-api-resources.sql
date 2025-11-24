@@ -132,11 +132,11 @@ BEGIN
 END $$;
 
 -- Step 4: Update test client to include the new API scopes
+-- Update TestClient permissions: append the API scope permissions and ensure the resulting JSON array has unique values
+-- Reset TestClient permissions to canonical list to ensure OpenIddict reads permissions as strings
 UPDATE "OpenIddictApplications"
-SET "Permissions" = jsonb_set(
-    "Permissions"::jsonb,
-    '{0}',
-    ("Permissions"::jsonb || '["scp:api:company:read","scp:api:company:write","scp:api:inventory:read"]'::jsonb)
+SET "Permissions" = (
+    '["ept:authorization","ept:token","ept:logout","gt:authorization_code","gt:refresh_token","response_type:code","scp:openid","scp:profile","scp:email","scp:roles","scp:api:company:read","scp:api:company:write","scp:api:inventory:read"]'::jsonb
 )
 WHERE "ClientId" = 'testclient-public';
 
