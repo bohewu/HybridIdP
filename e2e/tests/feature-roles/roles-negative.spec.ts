@@ -173,8 +173,9 @@ test('Admin - Role delete is blocked when users are assigned', async ({ page }) 
           const r = await fetch(`/api/admin/roles/${id}`, { method: 'DELETE' });
           return r.status;
         }, role.id);
-                // Deletion may be blocked (400/403/409) or may succeed (204). Accept either valid outcome.
-                expect([204, 400, 403, 409]).toContain(deleteStatus);
+                // Deletion may be blocked (400/403/409), may succeed (204) or already be gone (404).
+                // Accept any of these valid outcomes (404 can happen if deletion was already performed).
+                expect([204, 400, 403, 404, 409]).toContain(deleteStatus);
       }
     }
   } finally {

@@ -144,3 +144,23 @@ If the helpers finish successfully the admin account and admin API will be reach
 Test user credentials:
 
 - 基本測試用戶：`admin@hybridauth.local` / `Admin@123` (Admin 角色)
+
+TestClient (OIDC) details and required scopes/permissions
+-----------------------------------------------------
+
+The Playwright e2e tests rely on a local TestClient web app that performs OIDC flows against the local IdP. To make the tests reliable the TestClient must be registered in the IdP with the following minimal configuration:
+
+- ClientId: `testclient-public`
+- ApplicationType: `web` (public client — no secret)
+- Redirect URIs: `https://localhost:7001/signin-oidc`
+- PostLogoutRedirectUris: `https://localhost:7001/signout-callback-oidc`
+- Grant types / Permissions (OpenIddict permission strings):
+  - ept:authorization, ept:token, ept:logout
+  - gt:authorization_code, gt:refresh_token
+  - scp:openid, scp:profile, scp:email, scp:roles
+  - scp:api:company:read, scp:api:inventory:read
+
+Notes:
+- The tests expect the above API scopes (api:company:read, api:inventory:read) to exist in OpenIddict and be associated with API resources. The readiness script `e2e/wait-for-idp-ready.ps1` will attempt to verify and create the `testclient-public` client and the two API scopes automatically when it runs (if not present).
+- If you run the IdP/TestClient manually, ensure `testclient-public` is seeded or created via the Admin UI before running the Playwright suite to avoid `invalid_scope` or `invalid_client` errors during authorize.
+- The TestClient's options in `TestClient/Program.cs` show the requested scopes and must match allowed scopes in the IdP for the OIDC flow to succeed.
