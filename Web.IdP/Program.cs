@@ -25,11 +25,27 @@ var builder = WebApplication.CreateBuilder(args);
 // Add Vite services for Vue.js integration
 builder.Services.AddViteServices();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+// Database provider selection: prioritize environment variable, then appsettings
+var databaseProvider = Environment.GetEnvironmentVariable("DATABASE_PROVIDER") 
+    ?? builder.Configuration["DatabaseProvider"] 
+    ?? "SqlServer";
+
+var connectionString = databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase)
+    ? builder.Configuration.GetConnectionString("PostgreSqlConnection") ?? throw new InvalidOperationException("Connection string 'PostgreSqlConnection' not found.")
+    : builder.Configuration.GetConnectionString("SqlServerConnection") ?? throw new InvalidOperationException("Connection string 'SqlServerConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseNpgsql(connectionString);
+    if (databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseNpgsql(connectionString, sqlOptions => 
+            sqlOptions.MigrationsAssembly("Infrastructure.Migrations.Postgres"));
+    }
+    else
+    {
+        options.UseSqlServer(connectionString, sqlOptions => 
+            sqlOptions.MigrationsAssembly("Infrastructure.Migrations.SqlServer"));
+    }
     // Register the entity sets needed by OpenIddict
     options.UseOpenIddict<Guid>();
 });

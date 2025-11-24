@@ -8,19 +8,40 @@ services:
       - "8080:80"
     environment:
       - ASPNETCORE_URLS=http://+:80
+      - DATABASE_PROVIDER=${DATABASE_PROVIDER:-SqlServer}
+      - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection}
+      - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection}
     depends_on:
+      - mssql-service
       - db-service
       - redis-service
+  
+  mssql-service:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+  
   db-service:
-    image: postgres:latest
+    image: postgres:17
     environment:
       POSTGRES_DB: hybridauth_idp
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     
   redis-service:
     image: redis:alpine
     ports:
       - "6379:6379"
+
+volumes:
+  mssql-data:
+  postgres-data:

@@ -53,6 +53,19 @@
 - ⏱️ **閱讀時間：** 3-5 分鐘
 - 📌 **更新頻率：** 新功能實作後更新
 
+### 設定資料庫
+
+**查看 [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md)**
+- 📖 **用途：** 資料庫設定、切換、Migration、Production 部署
+- 🎯 **適合：** 設定開發環境、切換資料庫、部署到正式環境
+- ⏱️ **閱讀時間：** 5-10 分鐘
+- 📌 **包含內容：**
+  - SQL Server / PostgreSQL 快速開始
+  - 環境變數與 Secrets 管理
+  - Migration 管理指南
+  - Production 部署最佳實踐
+  - 故障排除
+
 ---
 
 ## 📋 文件分類
@@ -63,8 +76,9 @@
 |------|------|----------|-----------|
 | [`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md) | 開發工作流程、規範、測試指南 | 穩定 | ~2000 行 |
 | [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) | 專案進度、待辦事項、已完成摘要 | 每 Phase 更新 | ~1000 行 |
+| [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) | 資料庫設定、Migration、部署 | 穩定 | ~600 行 |
 
-**總 Token 消耗（核心文件）：** ~3000 行
+**總 Token 消耗（核心文件）：** ~3600 行
 - ✅ 按需查閱，減少 50-70% token 消耗
 
 ### 📚 參考文件（按需查閱）
@@ -74,6 +88,7 @@
 | [`idp_req_details.md`](./idp_req_details.md) | 完整需求文件 | 需要細節規格時 |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 架構決策與技術棧詳解 | 了解架構原因時 |
 | [`FEATURES.md`](./FEATURES.md) | 功能細節與未來增強 | 實作特定功能時 |
+| [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) | 資料庫設定與部署 | 設定環境、切換資料庫、Production 部署時 |
 | `docs/examples/` | 程式碼範例 | 實作時參考 |
 
 ---
@@ -318,6 +333,15 @@ Token 消耗: ~700 行 × 每次
 
 **Q: 怎麼實作 API？**
 → 查看 [`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md) > API 實作範本
+
+**Q: 如何切換資料庫 (SQL Server/PostgreSQL)？**
+→ 查看 [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) > 本地開發環境
+
+**Q: 如何部署到 Production？**
+→ 查看 [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) > Production 部署
+
+**Q: E2E 測試失敗 (TestClient 認證錯誤)？**
+→ 查看 [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) > 測試資料設定
 
 **Q: Tailwind CSS 不工作？**
 → 查看 [`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md) > 常見陷阱 #1
