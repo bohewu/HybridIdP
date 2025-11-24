@@ -30,6 +30,8 @@ const loadingScopes = ref(false)
 const submitting = ref(false)
 const error = ref(null)
 
+const nameInput = ref(null)
+
 const resetForm = () => {
   formData.value = {
     name: '',
@@ -95,6 +97,19 @@ const handleSubmit = async () => {
   submitting.value = true
   error.value = null
 
+  // Client-side validation: ensure required Name is present
+  if (!formData.value.name || formData.value.name.trim() === '') {
+    error.value = 'Name is required and cannot be empty.'
+    submitting.value = false
+    // Focus the name input so the user sees validation
+    // Use Vue template ref for focusing (avoids direct DOM access)
+    if (nameInput.value && typeof nameInput.value.focus === 'function') {
+      // nextTick optional but focus should work immediately here
+      nameInput.value.focus()
+    }
+    return
+  }
+
   try {
     const payload = {
       name: formData.value.name,
@@ -159,7 +174,7 @@ const isScopeSelected = (scopeId) => {
     <div class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
         <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
-          <form @submit.prevent="handleSubmit">
+          <form @submit.prevent="handleSubmit" novalidate>
             <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
               <div class="sm:flex sm:items-start">
                 <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
@@ -180,9 +195,9 @@ const isScopeSelected = (scopeId) => {
                       </label>
                       <input
                         id="name"
+                        ref="nameInput"
                         v-model="formData.name"
                         type="text"
-                        required
                         :disabled="isEdit"
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         :placeholder="$t('resources.form.namePlaceholder')"

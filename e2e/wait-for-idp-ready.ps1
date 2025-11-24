@@ -168,4 +168,65 @@ if (-not $success) {
 }
 
 Write-Ok "IdP & TestClient ready and admin API healthy."
+
+# Ensure required E2E TestClient entry exists in IdP (create via Admin API if missing)
+try {
+    Write-Info "Verifying TestClient registration (clientId = 'testclient-public')..."
+    $clientsResp = Invoke-WebRequest -Uri ($IdpUrl.TrimEnd('/') + '/api/admin/clients?search=testclient-public') -WebSession $session -SkipCertificateCheck -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+    $clientsJson = $clientsResp.Content | ConvertFrom-Json -ErrorAction SilentlyContinue
+    $found = $false
+    if ($null -ne $clientsJson) {
+        if ($clientsJson.items -and $clientsJson.items.Count -gt 0) { $found = $true }
+        if (-not $found -and ($clientsJson | Where-Object { $_.clientId -eq 'testclient-public' })) { $found = $true }
+    }
+
+    if (-not $found) {
+        Write-Warn "TestClient not found — creating via Admin API..."
+        $createBody = @{ 
+            ClientId = 'testclient-public';
+            ClientSecret = $null;
+            DisplayName = 'Test Client (Public)';
+            ApplicationType = 'web';
+            Type = 'public';
+            ConsentType = 'explicit';
+            RedirectUris = @('https://localhost:7001/signin-oidc');
+            PostLogoutRedirectUris = @('https://localhost:7001/signout-callback-oidc');
+            Permissions = @('ept:authorization','ept:token','ept:logout','gt:authorization_code','gt:refresh_token','scp:openid','scp:profile','scp:email','scp:roles','scp:api:company:read','scp:api:inventory:read')
+        } | ConvertTo-Json -Depth 5
+
+        $createResp = Invoke-WebRequest -Uri ($IdpUrl.TrimEnd('/') + '/api/admin/clients') -WebSession $session -Method Post -Body $createBody -ContentType 'application/json' -SkipCertificateCheck -TimeoutSec 15 -ErrorAction Stop
+        if ($createResp.StatusCode -in 200,201) { Write-Ok "TestClient created via Admin API." } else { Write-Warn "Unexpected response creating TestClient: $($createResp.StatusCode)" }
+    } else {
+        Write-Ok "TestClient already registered."
+    }
+} catch {
+    Write-Warn "Could not verify/create test client via Admin API: $($_.Exception.Message)"
+}
+
+# Ensure the API scopes requested by TestClient exist (avoid invalid_scope during OIDC authorize)
+try {
+    $requiredScopes = @('api:company:read','api:inventory:read')
+    foreach ($scopeName in $requiredScopes) {
+        Write-Info "Checking scope: $scopeName"
+        $sResp = Invoke-WebRequest -Uri ($IdpUrl.TrimEnd('/') + "/api/admin/scopes?search=$scopeName") -WebSession $session -SkipCertificateCheck -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+        $sJson = $sResp.Content | ConvertFrom-Json -ErrorAction SilentlyContinue
+        $exists = $false
+        if ($null -ne $sJson) {
+            if ($sJson.items -and $sJson.items.Count -gt 0) { $exists = $true }
+            if (-not $exists -and ($sJson | Where-Object { $_.name -eq $scopeName })) { $exists = $true }
+        }
+
+        if (-not $exists) {
+            Write-Warn "Scope '$scopeName' not found — creating via Admin API..."
+            $scopeBody = @{ Name = $scopeName; DisplayName = $scopeName; Description = "E2E test scope: $scopeName" } | ConvertTo-Json -Depth 3
+            $createScopeResp = Invoke-WebRequest -Uri ($IdpUrl.TrimEnd('/') + '/api/admin/scopes') -WebSession $session -Method Post -Body $scopeBody -ContentType 'application/json' -SkipCertificateCheck -TimeoutSec 10 -ErrorAction Stop
+            if ($createScopeResp.StatusCode -in 200,201) { Write-Ok "Scope '$scopeName' created." } else { Write-Warn "Unexpected response creating scope $($scopeName): $($createScopeResp.StatusCode)" }
+        } else {
+            Write-Ok "Scope '$scopeName' already exists."
+        }
+    }
+} catch {
+    Write-Warn "Could not verify/create required scopes via Admin API: $($_.Exception.Message)"
+}
+
 exit 0
