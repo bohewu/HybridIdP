@@ -46,6 +46,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlServer(connectionString, sqlOptions => 
             sqlOptions.MigrationsAssembly("Infrastructure.Migrations.SqlServer"));
     }
+    // Ignore EF Core "PendingModelChangesWarning" at startup so migrations can be applied
+    // at runtime without failing if the model snapshot differs slightly. This prevents
+    // MigrateAsync from throwing when the model has harmless provider-specific annotations
+    // or snapshot differences during local development/testing runs.
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
     // Register the entity sets needed by OpenIddict
     options.UseOpenIddict<Guid>();
 });

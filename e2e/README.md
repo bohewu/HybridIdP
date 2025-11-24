@@ -92,6 +92,55 @@ Notes:
 - Self-signed HTTPS is accepted via `ignoreHTTPSErrors` in config.
 - Tests assume IdP and TestClient are already started.
 
+
+Developer helpers (PowerShell) — quick start ⚡
+
+This repo includes small PowerShell helper scripts to make it easier to run the IdP, TestClient, and Playwright E2E tests in separate terminals.
+
+- `scripts/start-e2e-dev.ps1` — opens separate pwsh windows for:
+  - `dotnet run --project .\Web.IdP\Web.IdP.csproj --launch-profile https` (IdP)
+  - `dotnet run --project .\TestClient\TestClient.csproj --launch-profile https` (TestClient)
+  - optionally starts the Vite dev server when run with `-StartVite`
+
+- `e2e/wait-for-idp-ready.ps1` — waits for IdP/TestClient to be reachable, attempts an admin sign-in, and calls the protected admin health endpoint (`/api/admin/health`) to verify seeding/initialization finished.
+
+- `scripts/run-e2e.ps1` — convenience wrapper that:
+  1. installs e2e npm deps and Playwright browsers
+  2. (optionally) launches services via `scripts/start-e2e-dev.ps1` when run with `-StartServices`
+  3. invokes `e2e/wait-for-idp-ready.ps1` to wait for readiness
+  4. runs Playwright tests (headless by default; use `-Headed` to run headed)
+
+Example flows
+
+1) Start services manually in separate terminals and run tests
+
+```powershell
+# In terminal 1 (IdP)
+cd Web.IdP
+dotnet run --launch-profile https
+
+# In terminal 2 (TestClient)
+cd TestClient
+dotnet run --launch-profile https
+
+# In a third terminal, wait for readiness and run tests
+cd .\e2e
+..\scripts\wait-for-idp-ready.ps1 -IdpUrl 'https://localhost:7035' -TestClientUrl 'https://localhost:7001' -TimeoutSeconds 180
+npm test
+```
+
+2) Single-command developer flow (opens helper windows + runs tests)
+
+```powershell
+# From repo root: starts services, waits for readiness, runs tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e.ps1 -StartServices -TimeoutSeconds 180
+
+# Run headed tests instead
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e.ps1 -StartServices -Headed
+```
+
+If the helpers finish successfully the admin account and admin API will be reachable and you can run `npm test` in `./e2e` to run Playwright E2E.
+
 Test user credentials:
 
 - 基本測試用戶：`admin@hybridauth.local` / `Admin@123` (Admin 角色)

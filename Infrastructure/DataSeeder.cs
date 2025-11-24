@@ -20,8 +20,10 @@ public static class DataSeeder
         var applicationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
         var scopeManager = scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
 
-        // Ensure database is created and migrated
-        await context.Database.EnsureCreatedAsync();
+        // Ensure database schema is applied using migrations for both providers
+        // Using MigrateAsync ensures EF migrations are executed and the schema matches
+        // the migrations assemblies configured for the selected provider.
+        await context.Database.MigrateAsync();
 
         // Seed default roles
         await SeedRolesAsync(roleManager);
