@@ -359,6 +359,14 @@ public class UsersController : ControllerBase
     {
         try
         {
+            // Only allow self revocation or admins to revoke sessions for other users
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var isAdmin = User.IsInRole(AuthConstants.Roles.Admin);
+            if (!isAdmin && !string.Equals(currentUserId, id.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                // Authenticated but not allowed to act on another user's sessions
+                return Forbid();
+            }
             var success = await _sessionService.RevokeSessionAsync(id, authorizationId);
             if (!success)
             {
@@ -368,7 +376,8 @@ public class UsersController : ControllerBase
             // If the current user revoked their own current authorization, sign them out so the cookie is invalidated
             try
             {
-                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                // reuse previously-resolved currentUserId
+                // var currentUserId already resolved above
                 if (string.Equals(currentUserId, id.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
                     // Look for a claim that contains the authorization id - OpenIddict sets an authorization claim when signing in
@@ -405,6 +414,13 @@ public class UsersController : ControllerBase
     {
         try
         {
+            // Only allow self revocation of all sessions or admins to act on other users
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var isAdmin = User.IsInRole(AuthConstants.Roles.Admin);
+            if (!isAdmin && !string.Equals(currentUserId, id.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
             var count = await _sessionService.RevokeAllSessionsAsync(id);
             return Ok(new { revoked = count });
         }

@@ -107,8 +107,29 @@ public class UsersControllerSessionsTests
         var controller = CreateController(out var sessMock);
         var userId = Guid.NewGuid();
         sessMock.Setup(s => s.RevokeSessionAsync(userId, "auth-1")).ReturnsAsync(true);
+        // Simulate the caller being the same user (owner) so the controller allows the operation
+        var claims = new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, userId.ToString()) };
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(claims, "TestAuth")) } };
         var result = await controller.RevokeSession(userId, "auth-1");
         Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task RevokeSession_ReturnsForbidden_WhenCalledByDifferentNonAdmin()
+    {
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        // The session service would return true if the authorization exists and was revoked
+        sessMock.Setup(s => s.RevokeSessionAsync(userId, "auth-1")).ReturnsAsync(true);
+
+        // Simulate a different signed-in user (not admin)
+        var otherUserId = Guid.NewGuid();
+        var claims = new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, otherUserId.ToString()) };
+        var principal = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(claims, "TestAuth"));
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = principal } };
+
+        var result = await controller.RevokeSession(userId, "auth-1");
+        Assert.IsType<ForbidResult>(result);
     }
 
     [Fact]
@@ -117,8 +138,27 @@ public class UsersControllerSessionsTests
         var controller = CreateController(out var sessMock);
         var userId = Guid.NewGuid();
         sessMock.Setup(s => s.RevokeSessionAsync(userId, "auth-x")).ReturnsAsync(false);
+        // Simulate the caller being the same user (owner) so the controller allows the operation to run
+        var claims = new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, userId.ToString()) };
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(claims, "TestAuth")) } };
         var result = await controller.RevokeSession(userId, "auth-x");
         Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task RevokeAllSessions_ReturnsForbidden_WhenCalledByDifferentNonAdmin()
+    {
+        var controller = CreateController(out var sessMock);
+        var userId = Guid.NewGuid();
+        sessMock.Setup(s => s.RevokeAllSessionsAsync(userId)).ReturnsAsync(1);
+
+        var otherUserId = Guid.NewGuid();
+        var claims = new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, otherUserId.ToString()) };
+        var principal = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(claims, "TestAuth"));
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = principal } };
+
+        var result = await controller.RevokeAllSessions(userId);
+        Assert.IsType<ForbidResult>(result);
     }
 
     [Fact]
