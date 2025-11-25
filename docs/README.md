@@ -45,6 +45,16 @@
   - 測試流程
   - 常見錯誤排除（⚠️ Vite 管理警告）
 
+### E2E 測試（Playwright）
+
+專案包含 Playwright E2E 測試，並提供 `e2e/README.md`，內含完整使用說明與 Postgres 專用 helper（`scripts/run-e2e-postgres.ps1`）。推薦在本機使用 Postgres E2E runner（會執行容器、遷移、Admin-API seeding 以及 Playwright 測試）：
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -NormalizePermissions -SeedApiResources -TimeoutSeconds 600
+```
+
+更多細節請參閱： `e2e/README.md`。
+
 ### 查看功能與未來計畫
 
 **隨時查看 [`FEATURES.md`](./FEATURES.md)**
