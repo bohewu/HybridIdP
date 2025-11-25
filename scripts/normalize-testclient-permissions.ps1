@@ -47,11 +47,22 @@ if ($Provider -in @('All','Postgres')) {
     if ($pgContainer) {
         Write-Info "Using Postgres container: $pgContainer"
         Write-Info 'Current Permissions (Postgres):'
-        docker exec -i $pgContainer bash -c "psql -U $PgUser -d $PgDb -q -t -c \"SELECT \"Permissions\" FROM \"OpenIddictApplications\" WHERE \"ClientId\" = 'testclient-public';\"" || Out-Null
+        # Build a properly-quoted psql command string and run it in the container.
+        # Use a double-quoted -c argument and escape double-quotes inside so the PowerShell
+        # parser doesn't misinterpret embedded single-quote sequences or the $canonical variable.
+        $selectCmd = @"
+    psql -U $PgUser -d $PgDb -q -t -c "SELECT \"Permissions\" FROM \"OpenIddictApplications\" WHERE \"ClientId\" = 'testclient-public';"
+"@
+        docker exec -i $pgContainer bash -c ($selectCmd.Trim()) | Out-Null
 
-        $updateCmd = "psql -U $PgUser -d $PgDb -c \"UPDATE \"OpenIddictApplications\" SET \"Permissions\" = '$canonical'::jsonb WHERE \"ClientId\" = 'testclient-public';\""
+        # Construct an update command with the canonical JSON string inserted (wrapped in single quotes for psql)
+        # Put the full -c argument inside double quotes and escape internal double-quotes; $canonical
+        # is expanded by the outer PowerShell string and will be wrapped in single-quotes for SQL.
+        $updateCmd = @"
+    psql -U $PgUser -d $PgDb -c "UPDATE \"OpenIddictApplications\" SET \"Permissions\" = '$canonical'::jsonb WHERE \"ClientId\" = 'testclient-public';"
+"@
         Write-Info 'Updating Permissions in Postgres to canonical list...'
-        docker exec -i $pgContainer bash -c $updateCmd
+        docker exec -i $pgContainer bash -c ($updateCmd.Trim())
         if ($LASTEXITCODE -eq 0) { Write-Ok 'Postgres permissions normalized.' } else { Write-Warn 'Postgres update exited with non-zero code (check container logs).' }
     } else {
         Write-Warn 'No Postgres container found. Skipping Postgres normalization.'
@@ -69,11 +80,14 @@ if ($Provider -in @('All','SqlServer')) {
     if ($mssql) {
         Write-Info "Using MSSQL container: $mssql"
         Write-Info 'Current Permissions (MSSQL):'
-        docker exec -i $mssql /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P "$SqlSaPassword" -d hybridauth_idp -Q "SET NOCOUNT ON; SELECT Permissions FROM OpenIddictApplications WHERE ClientId = 'testclient-public';"
+        # Use -C to trust server certificate (OC driver 18 requires trusting self-signed certs in some containers)
+        docker exec -i $mssql /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P "$SqlSaPassword" -d hybridauth_idp -C -Q "SET NOCOUNT ON; SELECT Permissions FROM OpenIddictApplications WHERE ClientId = 'testclient-public';"
 
-        $sql = "UPDATE OpenIddictApplications SET Permissions = N$canonical WHERE ClientId = 'testclient-public';"
+        # Make sure the JSON string is wrapped in single-quotes for T-SQL
+        # Ensure QUOTED_IDENTIFIER is ON to match DB requirements for updates when applicable
+        $sql = "SET QUOTED_IDENTIFIER ON; SET NOCOUNT ON; UPDATE OpenIddictApplications SET Permissions = N'$canonical' WHERE ClientId = 'testclient-public';"
         Write-Info 'Updating Permissions in MSSQL to canonical list...'
-        docker exec -i $mssql /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P "$SqlSaPassword" -d hybridauth_idp -Q "$sql"
+        docker exec -i $mssql /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P "$SqlSaPassword" -d hybridauth_idp -C -Q "$sql"
         if ($LASTEXITCODE -eq 0) { Write-Ok 'MSSQL permissions normalized.' } else { Write-Warn 'MSSQL update exited with non-zero code (check container logs).' }
     } else {
         Write-Warn 'No MSSQL container found. Skipping MSSQL normalization.'
