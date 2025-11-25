@@ -1,9 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  timeout: 8_000,
+  // Per-test timeout: increase to 60s so longer admin UI flows don't hit the global limit
+  timeout: 60_000,
   retries: 0,
-  workers: 4, // Run 4 tests in parallel
+  // Lower worker count when running locally to reduce flakiness caused by contention
+  workers: 2,
   fullyParallel: true, // Enable full parallelization across workers
   use: {
     baseURL: 'https://localhost:7001',
