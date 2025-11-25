@@ -6,7 +6,7 @@ ClientId 'testclient-public' so it is stored as a clean JSON array of strings â€
 avoiding nested arrays or stringified JSON which can break OpenIddict parsing.
 
 The script supports Postgres and SQL Server when run against the containers launched by
-docker-compose in this repo. It will attempt to find Postgres (db-service) and MSSQL
+docker-compose in this repo. It will attempt to find Postgres (postgres-service) and MSSQL
 (mssql-service) containers automatically.
 
 Usage examples:
@@ -39,7 +39,10 @@ $canonical = '["ept:authorization","ept:token","ept:logout","gt:authorization_co
 
 if ($Provider -in @('All','Postgres')) {
     Write-Info 'Normalizing permissions in PostgreSQL...'
-    $pgContainer = docker ps --filter "name=db-service" --format '{{.Names}}' 2>$null | Select-Object -First 1
+    # Prefer explicit service name 'postgres-service' for consistency with mssql-service
+    $pgContainer = docker ps --filter "name=postgres-service" --format '{{.Names}}' 2>$null | Select-Object -First 1
+    # Backwards compatibility: some environments still use 'db-service'
+    if (-not $pgContainer) { $pgContainer = docker ps --filter "name=db-service" --format '{{.Names}}' 2>$null | Select-Object -First 1 }
     if (-not $pgContainer) { $pgContainer = docker ps --filter "ancestor=postgres" --format '{{.Names}}' 2>$null | Select-Object -First 1 }
     if ($pgContainer) {
         Write-Info "Using Postgres container: $pgContainer"

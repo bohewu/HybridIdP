@@ -1,1 +1,1 @@
-docker compose start db-service
+docker compose start postgres-service

@@ -195,6 +195,26 @@ If you want the run-e2e-postgres helper to seed API Resources (the `ApiResources
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -SeedApiResources -TimeoutSeconds 300
 ```
 
+Admin-API-based seeding (recommended)
+------------------------------------
+
+The `-SeedApiResources` flag now uses the Admin API seeder (`setup-test-api-resources.ps1`) which signs in to the local Admin UI and calls the protected Admin endpoints to create scopes, API resources and ensure the `testclient-public` client exists with canonical permissions. This is safer and consistent across database providers (Postgres & MSSQL).
+
+Required preconditions / envs:
+
+- IdP (Web.IdP) running and reachable at https://localhost:7035 (or adjust the base URL inside `setup-test-api-resources.ps1`)
+- Admin user present with credentials (defaults used by the script): `admin@hybridauth.local` / `Admin@123` — if you changed these in your environment, update the variables at the top of `setup-test-api-resources.ps1` or pass a different approach for automated login.
+
+Recommended combined command for a Postgres-backed full run that normalizes DB permissions and seeds via Admin API:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -NormalizePermissions -SeedApiResources -TimeoutSeconds 600
+```
+
+Notes:
+- The seeder attempts to sign in to the Admin UI (so Admin UI login must be functional). If the Admin UI is unreachable or uses different credentials, the script will warn and continue — in that case you can seed manually or update the script.
+- Keep the SQL seeding scripts as a fallback for CI setups where Admin UI login is not possible.
+
 Normalize test client permissions (recommended)
 --------------------------------------------
 
@@ -241,4 +261,4 @@ dotnet run --launch-profile https
 
 Notes:
 - `scripts/run-e2e-postgres.ps1` is intended as a convenience wrapper for local development and should be run from the repository root so it can find `docker-compose.yml` and relative projects.
-- The script uses the first container matching `db-service` or the `postgres` image when locating the DB container. Use `docker ps` to confirm container names if needed.
+ - The script uses the first container matching `postgres-service` (or the `postgres` image) when locating the DB container. Use `docker ps` to confirm container names if needed.

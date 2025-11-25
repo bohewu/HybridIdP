@@ -556,7 +556,7 @@ docs/
 
 **測試步驟**：
 1.  啟動應用並登入
-2.  停止 PostgreSQL：`docker compose stop db-service`
+2.  停止 PostgreSQL：`docker compose stop postgres-service`
 3.  嘗試授權或 token 操作
 
 **預期結果**：

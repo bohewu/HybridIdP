@@ -48,7 +48,7 @@ cd Infrastructure.Migrations.Postgres
 dotnet ef database update --startup-project ..\Web.IdP
 
 # 4. 註冊 TestClient (用於 E2E 測試)
-Get-Content ..\create-testclient.sql | docker exec -i hybrididp-db-service-1 psql -U user -d hybridauth_idp
+Get-Content ..\create-testclient.sql | docker exec -i hybrididp-postgres-service-1 psql -U user -d hybridauth_idp
 
 # 5. 啟動應用程式
 cd ..\Web.IdP
@@ -120,7 +120,7 @@ services:
       - mssql-data:/var/opt/mssql
 
   # PostgreSQL (Port 5432)
-  db-service:
+  postgres-service:
     image: postgres:17
     environment:
       - POSTGRES_USER=user
@@ -435,8 +435,8 @@ cd Infrastructure.Migrations.Postgres
 Remove-Item -Recurse Migrations\
 
 # 2. 刪除資料庫 (Docker)
-docker exec hybrididp-db-service-1 psql -U user -d postgres -c "DROP DATABASE hybridauth_idp;"
-docker exec hybrididp-db-service-1 psql -U user -d postgres -c "CREATE DATABASE hybridauth_idp;"
+docker exec hybrididp-postgres-service-1 psql -U user -d postgres -c "DROP DATABASE hybridauth_idp;"
+docker exec hybrididp-postgres-service-1 psql -U user -d postgres -c "CREATE DATABASE hybridauth_idp;"
 
 # 3. 重新產生 Migration
 dotnet ef migrations add InitialCreate --startup-project ..\Web.IdP
@@ -445,7 +445,7 @@ dotnet ef migrations add InitialCreate --startup-project ..\Web.IdP
 dotnet ef database update --startup-project ..\Web.IdP
 
 # 5. 註冊 TestClient (E2E 測試用)
-Get-Content ..\create-testclient.sql | docker exec -i hybrididp-db-service-1 psql -U user -d hybridauth_idp
+Get-Content ..\create-testclient.sql | docker exec -i hybrididp-postgres-service-1 psql -U user -d hybridauth_idp
 ```
 
 ---
@@ -463,7 +463,7 @@ Get-Content create-testclient-mssql.sql | docker exec -i hybrididp-mssql-service
 
 **PostgreSQL:**
 ```powershell
-Get-Content create-testclient.sql | docker exec -i hybrididp-db-service-1 psql -U user -d hybridauth_idp
+Get-Content create-testclient.sql | docker exec -i hybrididp-postgres-service-1 psql -U user -d hybridauth_idp
 ```
 
 **驗證:**
@@ -472,7 +472,7 @@ Get-Content create-testclient.sql | docker exec -i hybrididp-db-service-1 psql -
 docker exec hybrididp-mssql-service-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -d hybridauth_idp -C -Q "SELECT ClientId, DisplayName FROM OpenIddictApplications WHERE ClientId = 'testclient-public'"
 
 # PostgreSQL
-docker exec hybrididp-db-service-1 psql -U user -d hybridauth_idp -c "SELECT \"ClientId\", \"DisplayName\" FROM \"OpenIddictApplications\" WHERE \"ClientId\" = 'testclient-public'"
+docker exec hybrididp-postgres-service-1 psql -U user -d hybridauth_idp -c "SELECT \"ClientId\", \"DisplayName\" FROM \"OpenIddictApplications\" WHERE \"ClientId\" = 'testclient-public'"
 ```
 
 ### 預設測試使用者
@@ -536,7 +536,7 @@ OAuth flow fails with "invalid_client"
 Get-Content create-testclient-mssql.sql | docker exec -i hybrididp-mssql-service-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -d hybridauth_idp -C
 
 # PostgreSQL
-Get-Content create-testclient.sql | docker exec -i hybrididp-db-service-1 psql -U user -d hybridauth_idp
+Get-Content create-testclient.sql | docker exec -i hybrididp-postgres-service-1 psql -U user -d hybridauth_idp
 ```
 
 ### 問題 3: Connection String 錯誤
@@ -551,7 +551,7 @@ could not connect to server: Connection refused
 1. Docker 容器是否執行?
    ```powershell
    docker ps
-   # 應該看到 hybrididp-mssql-service-1 或 hybrididp-db-service-1
+  # 應該看到 hybrididp-mssql-service-1 或 hybrididp-postgres-service-1
    ```
 
 2. Port 是否正確?

@@ -13,7 +13,7 @@ services:
       - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection}
     depends_on:
       - mssql-service
-      - db-service
+      - postgres-service
       - redis-service
   
   mssql-service:
@@ -26,7 +26,7 @@ services:
     volumes:
       - mssql-data:/var/opt/mssql
   
-  db-service:
+  postgres-service:
     image: postgres:17
     environment:
       POSTGRES_DB: hybridauth_idp

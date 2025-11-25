@@ -26,8 +26,11 @@ function Write-Warn($m){ Write-Host $m -ForegroundColor Yellow }
 
 $root = (Get-Location).Path
 
-Write-Info 'Locating Postgres container (docker-compose -> db-service or postgres image)...'
-$pgContainer = docker ps --filter "name=db-service" --format '{{.Names}}' 2>$null | Select-Object -First 1
+Write-Info 'Locating Postgres container (docker-compose -> postgres-service or postgres image)...'
+# Prefer explicit service name 'postgres-service'
+$pgContainer = docker ps --filter "name=postgres-service" --format '{{.Names}}' 2>$null | Select-Object -First 1
+# Backwards compatibility: old name 'db-service'
+if (-not $pgContainer) { $pgContainer = docker ps --filter "name=db-service" --format '{{.Names}}' 2>$null | Select-Object -First 1 }
 if (-not $pgContainer) { $pgContainer = docker ps --filter "ancestor=postgres" --format '{{.Names}}' 2>$null | Select-Object -First 1 }
 
 if (-not $pgContainer) { Write-Warn 'Could not find Postgres container. Ensure docker-compose is running'; exit 3 }

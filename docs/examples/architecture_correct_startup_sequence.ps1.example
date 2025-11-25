@@ -1,5 +1,5 @@
 # 1. 啟動資料庫
-docker compose up -d db-service
+docker compose up -d postgres-service
 
 # 2. 啟動 IdP（終端機 1）
 cd Web.IdP

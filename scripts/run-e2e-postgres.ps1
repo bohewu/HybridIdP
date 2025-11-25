@@ -57,9 +57,14 @@ if ($UpCompose) {
     Start-Sleep -Seconds 3
 }
 
-# Locate Postgres container (search for service name containing 'db-service' first, else use ancestor image postgres)
+# Locate Postgres container (search for service name containing 'postgres-service' first, then 'db-service' for compatibility, else use ancestor image postgres)
 Write-Info 'Locating PostgreSQL container...'
-$pgContainer = docker ps --filter "name=db-service" --format '{{.Names}}' 2>$null | Select-Object -First 1
+# Prefer the explicit service name 'postgres-service' to keep naming consistent with mssql-service
+$pgContainer = docker ps --filter "name=postgres-service" --format '{{.Names}}' 2>$null | Select-Object -First 1
+if (-not $pgContainer) {
+    # Backwards compatibility: some workflows still name the service 'db-service'
+    $pgContainer = docker ps --filter "name=db-service" --format '{{.Names}}' 2>$null | Select-Object -First 1
+}
 if (-not $pgContainer) {
     $pgContainer = docker ps --filter "ancestor=postgres" --format '{{.Names}}' 2>$null | Select-Object -First 1
 }
@@ -130,10 +135,10 @@ if ($NormalizePermissions) {
 }
 
 if ($SeedApiResources) {
-    Write-Info 'Seeding API resources (setup-test-api-resources.sql) into the database...'
-    & pwsh -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\seed-api-resources.ps1" -PgUser $PgUser -PgDb $PgDb
-    if ($LASTEXITCODE -ne 0) { Write-Err "seed-api-resources failed (exit $LASTEXITCODE)"; exit $LASTEXITCODE }
-    Write-Ok 'API resources seeded.'
+    Write-Info 'Seeding API resources via Admin API (setup-test-api-resources.ps1) into the IdP...'
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File "$root\setup-test-api-resources.ps1"
+    if ($LASTEXITCODE -ne 0) { Write-Err "setup-test-api-resources failed (exit $LASTEXITCODE)"; exit $LASTEXITCODE }
+    Write-Ok 'API resources seeded via Admin API.'
 }
 
 if ($NormalizePermissions) {

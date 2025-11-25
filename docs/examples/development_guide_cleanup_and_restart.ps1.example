@@ -4,7 +4,7 @@ taskkill /F /IM node.exe /T 2>$null
 
 # 重新啟動（依序執行）
 # 1. 資料庫
-docker compose up -d db-service
+docker compose up -d postgres-service
 
 # 2. IdP 後端（在終端機 1 - 使用專用視窗）
 cd Web.IdP

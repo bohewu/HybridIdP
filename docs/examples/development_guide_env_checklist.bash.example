@@ -1,5 +1,5 @@
 # ✅ 檢查清單
-□ PostgreSQL 資料庫運行中 (docker compose up -d db-service)
+□ PostgreSQL 資料庫運行中 (docker compose up -d postgres-service)
 □ IdP Backend 運行中 (dotnet run --launch-profile https in Web.IdP/)
 □ Vite Dev Server 運行中 (npm run dev in Web.IdP/ClientApp/)
   

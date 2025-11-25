@@ -201,7 +201,7 @@ git commit -m "docs: Update progress - Phase 4.5 completed"
 
 ```powershell
 # 1. 啟動資料庫與快取
-docker compose up -d db-service redis-service
+docker compose up -d postgres-service redis-service
 
 # 2. 啟動 Identity Provider (HTTPS)
 dotnet run --project .\Web.IdP\Web.IdP.csproj --launch-profile https
