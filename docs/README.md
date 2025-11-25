@@ -193,14 +193,18 @@ git commit -m "docs: Update progress - Phase 4.5 completed"
 
 ### 前置環境
 
-- 已安裝 .NET 8 SDK
-- 已啟動必要容器：PostgreSQL、Redis
+- 已安裝 .NET 10 SDK (本專案目標為 .NET 10)
+- 已啟動必要容器：預設為 **MSSQL (mssql-service)** 與 **Redis (redis-service)**。若你要使用 PostgreSQL 作為 provider，請啟動 **postgres-service** 與 Redis。
 - 管理端與 IdP 資料表已遷移（如需：`dotnet ef database update` 對相關專案執行）
 
 ### 啟動基礎服務順序
 
 ```powershell
-# 1. 啟動資料庫與快取
+# 1. 啟動資料庫與快取 (預設: MSSQL)
+# 使用 MSSQL (預設)
+docker compose up -d mssql-service redis-service
+
+# 或者使用 PostgreSQL (Postgres E2E runner 將使用 postgres-service)
 docker compose up -d postgres-service redis-service
 
 # 2. 啟動 Identity Provider (HTTPS)
