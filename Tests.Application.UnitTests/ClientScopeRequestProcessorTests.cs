@@ -20,6 +20,9 @@ namespace Tests.Application.UnitTests
             public Task SetAllowedScopesAsync(Guid clientId, IEnumerable<string> scopes) => Task.CompletedTask;
             public Task<bool> IsScopeAllowedAsync(Guid clientId, string scope) => Task.FromResult(_allowed.Contains(scope));
             public Task<IReadOnlyList<string>> ValidateRequestedScopesAsync(Guid clientId, IEnumerable<string> requestedScopes) => Task.FromResult((IReadOnlyList<string>)requestedScopes.Where(_allowed.Contains).ToList().AsReadOnly());
+            public Task<IReadOnlyList<string>> GetRequiredScopesAsync(Guid clientId) => Task.FromResult((IReadOnlyList<string>)Array.Empty<string>());
+            public Task SetRequiredScopesAsync(Guid clientId, IEnumerable<string> scopeNames) => Task.CompletedTask;
+            public Task<bool> IsScopeRequiredAsync(Guid clientId, string scopeName) => Task.FromResult(false);
         }
 
         private class CapturingAuditService : IAuditService

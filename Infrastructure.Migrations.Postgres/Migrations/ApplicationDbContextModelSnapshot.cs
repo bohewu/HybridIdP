@@ -313,6 +313,39 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.ToTable("AuditEvents");
                 });
 
+            modelBuilder.Entity("Core.Domain.Entities.ClientRequiredScope", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("ScopeId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId", "ScopeId")
+                        .IsUnique();
+
+                    b.ToTable("ClientRequiredScopes");
+                });
+
             modelBuilder.Entity("Core.Domain.Entities.LoginHistory", b =>
                 {
                     b.Property<int>("Id")

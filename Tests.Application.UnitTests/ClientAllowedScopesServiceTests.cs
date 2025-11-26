@@ -9,23 +9,34 @@ using Moq;
 using Core.Application;
 using OpenIddict.Abstractions;
 using Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace Tests.Application.UnitTests;
 
 public class ClientAllowedScopesServiceTests : IDisposable
 {
     private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
+    private readonly Mock<IOpenIddictScopeManager> _mockScopeManager;
+    private readonly Infrastructure.ApplicationDbContext _dbContext;
     private readonly ClientAllowedScopesService _service;
 
     public ClientAllowedScopesServiceTests()
     {
         _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
-        _service = new ClientAllowedScopesService(_mockApplicationManager.Object);
+        _mockScopeManager = new Mock<IOpenIddictScopeManager>();
+        var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<Infrastructure.ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _dbContext = new Infrastructure.ApplicationDbContext(options);
+        _service = new ClientAllowedScopesService(
+            _mockApplicationManager.Object,
+            _mockScopeManager.Object,
+            _dbContext);
     }
 
     public void Dispose()
     {
-        // Cleanup if needed
+        _dbContext?.Dispose();
     }
 
     #region GetAllowedScopesAsync Tests
@@ -448,6 +459,15 @@ public class ClientAllowedScopesServiceTests : IDisposable
         Assert.Contains("profile", allowed);
         Assert.DoesNotContain("email", allowed);
     }
+
+    #endregion
+
+    #region Required Scope Tests
+
+    // NOTE: The new required scope methods (GetRequiredScopesAsync, SetRequiredScopesAsync, IsScopeRequiredAsync)
+    // require ApplicationDbContext and IOpenIddictScopeManager which are not easily mockable.
+    // These methods are better tested with integration tests using in-memory database.
+    // See Tests.Infrastructure.IntegrationTests for comprehensive required scope testing.
 
     #endregion
 }

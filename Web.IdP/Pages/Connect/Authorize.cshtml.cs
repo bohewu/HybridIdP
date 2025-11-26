@@ -117,7 +117,7 @@ public class AuthorizeModel : PageModel
         var effectiveRequestedScopes = eval.AllowedScopes.ToImmutableArray();
 
         // Fetch scope information only for allowed scopes
-        await LoadScopeInfosAsync(effectiveRequestedScopes);
+        await LoadScopeInfosAsync(effectiveRequestedScopes, clientGuid);
 
         // Retrieve the permanent authorizations associated with the user and the calling client application
         var userId = result.Principal.GetClaim(Claims.Subject)!;
@@ -266,6 +266,26 @@ public class AuthorizeModel : PageModel
         // Classify scopes based on user consent input
         var classification = _scopeService.ClassifyScopes(requestedScopes, availableSummaries, granted_scopes);
         var effectiveScopes = classification.Allowed.ToImmutableArray();
+
+        // Server-side validation: Ensure all required scopes are present (prevent tampering)
+        var clientRequiredScopes = await _clientAllowedScopesService.GetRequiredScopesAsync(clientGuid);
+        var missingRequired = clientRequiredScopes.Except(effectiveScopes, StringComparer.OrdinalIgnoreCase).ToList();
+        
+        if (missingRequired.Any())
+        {
+            // Log tampering attempt
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var ua = Request.Headers["User-Agent"].ToString();
+            var tamperDetails = JsonSerializer.Serialize(new
+            {
+                clientId = request.ClientId,
+                missingRequiredScopes = missingRequired,
+                grantedScopes = granted_scopes ?? Array.Empty<string>()
+            });
+            await _auditService.LogEventAsync("ConsentTamperingDetected", result.Principal.GetClaim(Claims.Subject), tamperDetails, ip, ua);
+            
+            return BadRequest("Required scopes cannot be excluded from consent.");
+        }
 
         // Add claims mapped by effective (allowed) scopes
         await AddScopeMappedClaimsAsync(identity, user, effectiveScopes);
@@ -427,7 +447,7 @@ public class AuthorizeModel : PageModel
         return current?.ToString();
     }
 
-    private async Task LoadScopeInfosAsync(ImmutableArray<string> scopeNames)
+    private async Task LoadScopeInfosAsync(ImmutableArray<string> scopeNames, Guid clientId)
     {
         ScopeInfos.Clear();
         
@@ -439,6 +459,10 @@ public class AuthorizeModel : PageModel
 
         // Load all scope extensions for efficient lookup
         var scopeExtensions = await _db.ScopeExtensions.ToDictionaryAsync(se => se.ScopeId);
+
+        // Load client-specific required scopes
+        var clientRequiredScopes = await _clientAllowedScopesService.GetRequiredScopesAsync(clientId);
+        var clientRequiredSet = clientRequiredScopes.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var scopeName in scopeNames)
         {
@@ -466,6 +490,10 @@ public class AuthorizeModel : PageModel
                 }
             }
 
+            // Merge global and client-specific required flags
+            var isGlobalRequired = extension?.IsRequired ?? false;
+            var isClientRequired = clientRequiredSet.Contains(scopeName);
+
             ScopeInfos.Add(new ScopeInfo
             {
                 Name = scopeName,
@@ -473,7 +501,7 @@ public class AuthorizeModel : PageModel
                 ConsentDisplayName = consentDisplayName,
                 ConsentDescription = consentDescription,
                 IconUrl = extension?.IconUrl,
-                IsRequired = extension?.IsRequired ?? false,
+                IsRequired = isGlobalRequired || isClientRequired,
                 DisplayOrder = extension?.DisplayOrder ?? 0,
                 Category = extension?.Category
             });

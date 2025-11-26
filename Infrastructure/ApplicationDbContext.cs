@@ -28,6 +28,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Resource> Resources => Set<Resource>();
     public DbSet<ApiResource> ApiResources => Set<ApiResource>();
     public DbSet<ApiResourceScope> ApiResourceScopes => Set<ApiResourceScope>();
+    public DbSet<ClientRequiredScope> ClientRequiredScopes => Set<ClientRequiredScope>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -189,6 +190,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.Property(e => e.IpAddress).HasMaxLength(45);
             entity.Property(e => e.UserAgent).HasMaxLength(500);
             entity.Property(e => e.RevocationReason).HasMaxLength(500);
+        });
+
+        // Configure ClientRequiredScope entity
+        builder.Entity<ClientRequiredScope>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ClientId, e.ScopeId }).IsUnique();
+            entity.Property(e => e.ClientId).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.ScopeId).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.CreatedBy).HasMaxLength(450); // Match ASP.NET Identity User ID length
         });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.
