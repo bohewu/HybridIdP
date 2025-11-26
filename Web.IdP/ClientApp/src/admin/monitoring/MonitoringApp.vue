@@ -36,24 +36,17 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="monitoring-app">
+  <div class="monitoring-app" v-loading="{ loading: loading, overlay: true, message: t('admin.monitoring.loading') }">
     <PageHeader
       :title="t('admin.monitoring.title')"
       :subtitle="t('admin.monitoring.subtitle')"
     />
 
-    <div v-if="loading" class="text-center py-8">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">{{ t('admin.monitoring.loading') }}</span>
-      </div>
-      <p class="mt-2">{{ t('admin.monitoring.loading') }}</p>
-    </div>
-
-    <div v-else-if="error" class="alert alert-danger">
+    <div v-if="error" class="alert alert-danger">
       {{ error }}
     </div>
 
-    <div v-else class="monitoring-content">
+    <div class="monitoring-content">
       <ActivityDashboard />
       <SecurityMetrics />
       <RealTimeAlerts />
