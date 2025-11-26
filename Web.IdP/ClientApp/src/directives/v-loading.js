@@ -18,13 +18,15 @@ export default {
 
     // container for the mounted LoadingIndicator
     const container = document.createElement('div')
-    // choose tailwind classes depending on overlay/inline
+    // get options early (we used to read 'opts' below but referenced it before
+    // initialization — move it up so we can safely choose the default overlay)
+    const opts = binding.value && typeof binding.value === 'object' ? binding.value : {}
+    // choose tailwind classes depending on overlay/inline (default overlay = true)
     const defaultOverlay = opts.overlay ?? true
     container.className = defaultOverlay
       ? 'absolute inset-0 bg-white/60 z-40 flex items-center justify-center pointer-events-auto v-loading-container'
       : 'flex items-center justify-center v-loading-container'
     // mount a small Vue app with the LoadingIndicator component so behavior stays consistent
-    const opts = binding.value && typeof binding.value === 'object' ? binding.value : {}
     const initialLoading = typeof binding.value === 'object' ? !!(binding.value.loading ?? binding.value.value) : !!binding.value
     const app = createApp(LoadingIndicator, {
       loading: initialLoading,
