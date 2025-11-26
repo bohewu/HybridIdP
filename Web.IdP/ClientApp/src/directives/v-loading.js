@@ -18,7 +18,11 @@ export default {
 
     // container for the mounted LoadingIndicator
     const container = document.createElement('div')
-    container.className = 'v-loading-container'
+    // choose tailwind classes depending on overlay/inline
+    const defaultOverlay = opts.overlay ?? true
+    container.className = defaultOverlay
+      ? 'absolute inset-0 bg-white/60 z-40 flex items-center justify-center pointer-events-auto v-loading-container'
+      : 'flex items-center justify-center v-loading-container'
     // mount a small Vue app with the LoadingIndicator component so behavior stays consistent
     const opts = binding.value && typeof binding.value === 'object' ? binding.value : {}
     const initialLoading = typeof binding.value === 'object' ? !!(binding.value.loading ?? binding.value.value) : !!binding.value
@@ -60,7 +64,13 @@ export default {
       // ensure container is visible/hidden even if vm updates aren't applied synchronously
       if (ref.container) {
         ref.container.style.display = newLoading ? '' : 'none'
-        if (opts.overlay !== undefined) ref.vm.overlay = opts.overlay
+        if (opts.overlay !== undefined) {
+          ref.vm.overlay = opts.overlay
+          // update classes on the container to match overlay vs inline styles
+          ref.container.className = opts.overlay
+            ? 'absolute inset-0 bg-white/60 z-40 flex items-center justify-center pointer-events-auto v-loading-container'
+            : 'flex items-center justify-center v-loading-container'
+        }
         if (opts.message !== undefined) ref.vm.message = opts.message
         if (opts.size !== undefined) ref.vm.size = opts.size
       }

@@ -223,6 +223,8 @@ app.component('LoadingIndicator', LoadingIndicator)
 - overlay/inline 模式
 - 設定 message 與 size
 
+備註：指令的 overlay 與 inline 佈局現在使用 Tailwind utility classes（例如：`absolute inset-0 bg-white/60 flex items-center justify-center`），所以樣式會與應用的 Tailwind 設定一致。
+
 ### 🧩 single-component loading → use LoadingIndicator (component-base)
 
 對於「單一元件」或局部載入狀態（例如：小卡片、按鈕內的小 spinner），仍建議直接使用 `LoadingIndicator` component:

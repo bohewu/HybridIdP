@@ -7,7 +7,9 @@
     </div>
 
     <!-- Loading State (use shared LoadingIndicator component instead of v-loading overlay) -->
-    <LoadingIndicator v-if="loading" :loading="loading" size="lg" />
+    <div v-if="loading" class="flex items-center justify-center py-12">
+      <LoadingIndicator :loading="loading" size="lg" />
+    </div>
 
     <!-- Error State -->
     <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
