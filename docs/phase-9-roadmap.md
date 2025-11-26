@@ -22,31 +22,38 @@ Phase 9 focuses on comprehensive scope authorization and management, enabling fi
 
 ---
 
-### 9.2: Scope Authorization Handler & Policy Provider
+### 9.2: Scope Authorization Handler & Policy Provider ✅
+**Status:** Complete (2025-11-26)  
 **Focus:** Authorization infrastructure  
-**Duration:** ~1 day  
+**Duration:** ~4 hours  
 **Key Deliverables:**
-- ScopeRequirement, ScopeAuthorizationHandler, ScopeAuthorizationPolicyProvider
-- [Authorize(Policy = "RequireScope:...")] attribute support
-- Registration in Program.cs
+- ✅ ScopeRequirement class implementing IAuthorizationRequirement
+- ✅ ScopeAuthorizationHandler with OAuth2 "scope" and Azure AD "scp" claim support
+- ✅ ScopeAuthorizationPolicyProvider for dynamic policy creation ("RequireScope:{scopeName}" pattern)
+- ✅ Test controller (ScopeProtectedController) demonstrating attribute usage
+- ✅ DI registration in Program.cs
 
 **Verification:**
-- Unit tests: handler and policy provider
-- Integration tests: in-memory API endpoint protection
-- Test controller with protected endpoints
+- ✅ Unit tests: ScopeAuthorizationHandlerTests (14/14 passed)
+- ✅ Unit tests: ScopeAuthorizationPolicyProviderTests (14/14 passed)
+- ✅ Integration tests: ScopeAuthorizationIntegrationTests (14/14 passed)
+- ✅ Total: 42/42 tests passing
 
 ---
 
-### 9.3: OpenID Userinfo Endpoint Scope Protection
+### 9.3: OpenID Userinfo Endpoint Scope Protection ✅
+**Status:** Complete (2025-11-26)  
 **Focus:** OIDC compliance  
-**Duration:** ~0.5 day  
+**Duration:** ~1 hour  
 **Key Deliverables:**
-- Protect /connect/userinfo with openid scope requirement
-- E2E tests for userinfo access control
+- ✅ Protected /connect/userinfo with [Authorize(Policy = "RequireScope:openid")]
+- ✅ Verified with existing E2E test (TestClient login flow includes userinfo call)
 
 **Verification:**
-- E2E test: userinfo succeeds with openid scope
-- E2E test: userinfo fails without openid scope
+- ✅ E2E test: userinfo succeeds with openid scope (83/84 tests passing)
+- ⏳ E2E test: userinfo fails without openid scope (deferred to Phase 9.4)
+  - **Reason:** openid is globally required in DB, cannot be unchecked on consent page
+  - **Solution:** After Phase 9.4 Admin UI implementation, remove global requirement and add negative test
 
 ---
 
@@ -105,10 +112,11 @@ Phase 9 focuses on comprehensive scope authorization and management, enabling fi
 **8-11 days** (assuming one developer)
 
 ## Current Status
-- ✅ Planning complete
-- ✅ Documentation created
-- ✅ Working tree clean (ready to start)
-- ⏳ Next: Begin Phase 9.1 implementation
+- ✅ Phase 9.1: Complete (2025-11-26)
+- ✅ Phase 9.2: Complete (2025-11-26)
+- ✅ Phase 9.3: Complete (2025-11-26)
+- 📊 Progress: 50% (3/6 sub-phases completed)
+- ⏳ Next: Phase 9.4 - Client Scope Management UI Optimization
 
 ## Implementation Strategy
 1. **TDD Approach:** Write tests first, then implementation

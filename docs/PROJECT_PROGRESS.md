@@ -16,7 +16,7 @@ last-updated: 2025-11-21
 - Phase 6 — Code Quality & Tests: 90% — `docs/phase-6-code-quality-tests.md`
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
 - Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
-- Phase 9 — Scope Authorization & Management: 17% — `docs/phase-9-roadmap.md`
+- Phase 9 — Scope Authorization & Management: 50% — `docs/phase-9-roadmap.md`
 - Phase 10 — Person & Identity: 0% — `docs/phase-10-person-identity.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
@@ -122,6 +122,105 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 
 - Phase 9.1: ✅ Complete (1/6 sub-phases)
 - Phase 9 Overall: 17% (1 of 6 sub-phases completed)
+
+---
+
+## 2025-11-26: Phase 9.2 Scope Authorization Handler & Policy Provider - Complete ✅
+
+**實作完成項目:**
+
+1. **Authorization Infrastructure**
+   - ✅ 新增 `ScopeRequirement` class 實作 `IAuthorizationRequirement`
+   - ✅ 新增 `ScopeAuthorizationHandler` 處理 scope 驗證邏輯
+     - 支援 OAuth2 "scope" claim (space-separated)
+     - 支援 Azure AD "scp" claim (multiple instances)
+     - Case-insensitive scope matching
+   - ✅ 新增 `ScopeAuthorizationPolicyProvider` 動態產生 policies
+     - 識別 "RequireScope:{scopeName}" pattern
+     - 建立對應的 `AuthorizationPolicy` with `ScopeRequirement`
+     - 非 scope policies 委派給 default provider
+
+2. **Controller Integration**
+   - ✅ 新增 `ScopeProtectedController` 作為測試範例
+   - ✅ 示範屬性語法: `[Authorize(Policy = "RequireScope:api:company:read")]`
+   - ✅ DI 註冊: `AddSingleton<IAuthorizationHandler, ScopeAuthorizationHandler>()`
+   - ✅ DI 註冊: `AddSingleton<IAuthorizationPolicyProvider, ScopeAuthorizationPolicyProvider>()`
+
+3. **Testing**
+   - ✅ `ScopeAuthorizationHandlerTests.cs` (14 unit tests, 100% passing)
+     - Success with scope claim (space-separated)
+     - Success with scp claim (multiple instances)
+     - Success with mixed case scopes
+     - Failure scenarios (no claims, missing scope, etc.)
+   - ✅ `ScopeAuthorizationPolicyProviderTests.cs` (14 unit tests, 100% passing)
+     - Policy creation for valid patterns
+     - Fallback to default provider
+     - Case handling and edge cases
+   - ✅ `ScopeAuthorizationIntegrationTests.cs` (14 integration tests, 100% passing)
+     - End-to-end authorization flow with real AuthorizationService
+     - Multiple scope formats validation
+     - Policy caching behavior
+
+**測試結果:**
+
+- Unit Tests: 28/28 passed ✅
+- Integration Tests: 14/14 passed ✅
+- Total: 42/42 tests passing ✅
+
+**技術細節:**
+
+- Handler 支援兩種 scope claim 格式:
+  - `"scope"`: 單一 claim 值為 space-separated scopes (OAuth2 標準)
+  - `"scp"`: 多個 claim instances, 每個值為單一 scope (Azure AD 格式)
+- Case-insensitive matching 確保 `api:Company:Read` 與 `api:company:read` 等同
+- Policy provider 使用 `FallbackPolicyProvider` 處理非 scope policies
+- 可重用設計: 任何 controller/action 都可使用 `[Authorize(Policy = "RequireScope:xxx")]`
+
+**進度:**
+
+- Phase 9.2: ✅ Complete (2/6 sub-phases)
+- Phase 9 Overall: 33% (2 of 6 sub-phases completed)
+
+---
+
+## 2025-11-26: Phase 9.3 Userinfo Endpoint Scope Protection - Complete ✅
+
+**實作完成項目:**
+
+1. **Userinfo Endpoint Protection**
+   - ✅ 新增 `[Authorize(Policy = "RequireScope:openid")]` 到 `UserinfoController.Userinfo()` action
+   - ✅ 確保 `/connect/userinfo` endpoint 需要 access token 包含 openid scope
+   - ✅ 符合 OpenID Connect Core 規範要求
+
+2. **Testing & Validation**
+   - ✅ 使用現有 E2E 測試驗證 positive scenario: "TestClient login + consent redirects back to profile"
+     - Test flow includes "Test API Call" which hits `/connect/userinfo`
+     - 驗證 userinfo endpoint 正常運作 (with openid scope)
+   - ✅ E2E 測試結果: 83/84 passing (1 unrelated monitoring timeout)
+
+**Negative Test Case - Deferred:**
+
+- ⏳ 測試 403 response (when openid scope not granted) 延後到 Phase 9.4
+- **原因:** `openid` scope 目前在資料庫中標記為 globally required
+  - 使用者無法在 consent page 取消勾選
+  - 無法測試 "openid scope 被拒絕" 的場景
+- **解決方案:** Phase 9.4 實作 Admin UI 管理 required scopes 後:
+  1. 透過 Admin UI 將 openid 從 globally required 移除
+  2. 建立 E2E 測試在 consent page 取消勾選 openid
+  3. 驗證 Test API Call 回傳 403 Forbidden
+
+**技術細節:**
+
+- Userinfo endpoint 使用雙重驗證:
+  - Authentication: Bearer token or OIDC session
+  - Authorization: Policy = "RequireScope:openid"
+- 當 access token 缺少 openid scope 時自動回傳 403 Forbidden
+- 利用 Phase 9.2 的 `ScopeAuthorizationHandler` infrastructure
+
+**進度:**
+
+- Phase 9.3: ✅ Complete (3/6 sub-phases)
+- Phase 9 Overall: 50% (3 of 6 sub-phases completed)
 
 ---
 
