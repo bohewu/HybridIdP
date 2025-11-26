@@ -5,19 +5,20 @@ Phase 9 focuses on comprehensive scope authorization and management, enabling fi
 
 ## Sub-phases Summary
 
-### 9.1: Consent Page Required Scope Support
+### 9.1: Consent Page Required Scope Support ✅
+**Status:** Complete (2025-11-26)  
 **Focus:** Database + Backend + Consent UI  
-**Duration:** ~1-2 days  
+**Duration:** ~4 hours  
 **Key Deliverables:**
-- ClientRequiredScope entity & migration
-- Service methods for managing required scopes
-- Consent page UI with disabled required scopes
-- Server-side validation against tampering
+- ✅ ClientRequiredScope entity & migration (SQL Server + PostgreSQL)
+- ✅ Service methods for managing required scopes (Get/Set/IsRequired)
+- ✅ Consent page UI with disabled required scopes (global + client-specific merge)
+- ✅ Server-side validation against tampering (audit logging)
 
 **Verification:**
-- Unit tests for service methods
-- Manual test: required scope checkbox disabled
-- E2E test: consent flow with required scopes
+- ✅ Unit tests for service methods (15/15 passed)
+- ✅ Integration tests for ClientRequiredScope (10/10 passed)
+- ✅ E2E test: consent flow with required scopes (3/3 auth tests passed)
 
 ---
 

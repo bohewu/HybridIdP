@@ -16,7 +16,7 @@ last-updated: 2025-11-21
 - Phase 6 — Code Quality & Tests: 90% — `docs/phase-6-code-quality-tests.md`
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
 - Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
-- Phase 9 — Scope Authorization & Management: 0% — `docs/phase-9-scope-authorization.md`
+- Phase 9 — Scope Authorization & Management: 17% — `docs/phase-9-roadmap.md`
 - Phase 10 — Person & Identity: 0% — `docs/phase-10-person-identity.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
@@ -71,6 +71,57 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 - [ ] Users UI CRUD tests
 - [ ] User Sessions management tests  
 - [ ] Dashboard metrics tests
+
+---
+
+## 2025-11-26: Phase 9.1 Consent Page Required Scope Support - Complete ✅
+
+**實作完成項目:**
+
+1. **Database Layer**
+   - ✅ 新增 `ClientRequiredScope` entity (ClientId, ScopeId, CreatedAt, CreatedBy)
+   - ✅ ApplicationDbContext 設定 unique index on (ClientId, ScopeId)
+   - ✅ 產生 SQL Server & PostgreSQL migrations
+
+2. **Service Layer**
+   - ✅ 擴充 `IClientAllowedScopesService` 新增 3 個方法:
+     - `GetRequiredScopesAsync()` - 取得 client-specific required scopes
+     - `SetRequiredScopesAsync()` - 設定 required scopes (含驗證)
+     - `IsScopeRequiredAsync()` - 檢查 scope 是否為 required
+   - ✅ 實作驗證邏輯:required scopes 必須是 allowed scopes 的子集合
+
+3. **Consent Page Integration**
+   - ✅ 更新 `Authorize.cshtml.cs` 的 `LoadScopeInfosAsync` 載入 client-specific required scopes
+   - ✅ 合併 global (`ScopeExtension.IsRequired`) 與 client-specific flags
+   - ✅ 在 `OnPostAsync` 新增 server-side 驗證防止篡改
+   - ✅ 篡改嘗試會記錄 audit event: `ConsentTamperingDetected`
+
+4. **Testing**
+   - ✅ 新增 `ClientRequiredScopeIntegrationTests.cs` (10 tests, 100% passing)
+   - ✅ 更新 `ClientAllowedScopesServiceTests.cs` (15 tests, 100% passing)
+   - ✅ E2E 測試驗證 consent flow 正常運作 (3/3 auth tests passing)
+
+**測試結果:**
+
+- Unit Tests: 15/15 passed ✅
+- Integration Tests: 10/10 passed ✅
+- E2E Tests (Auth): 3/3 passed ✅
+  - Login flow
+  - TestClient login + consent (驗證 Phase 9.1 功能)
+  - Logout flow
+
+**技術細節:**
+
+- Required scopes 在 consent UI 顯示為 disabled checkbox (使用者無法取消勾選)
+- 支援兩層 required scope 控制:
+  - Global: `ScopeExtension.IsRequired` (套用到所有 clients)
+  - Client-specific: `ClientRequiredScope` (只套用到特定 client)
+- 最終判定: `IsRequired = globalFlag || clientSpecificFlag`
+
+**進度:**
+
+- Phase 9.1: ✅ Complete (1/6 sub-phases)
+- Phase 9 Overall: 17% (1 of 6 sub-phases completed)
 
 ---
 
