@@ -226,6 +226,25 @@ export async function deleteApiResource(page: Page, resourceIdOrName: string | n
   }
 }
 
+// Utility: Poll an API URL (relative) until a predicate function returns true or timeout
+export async function pollApiUntil(page: Page, url: string, predicate: (json: any) => boolean, timeout = 15000, interval = 500) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    try {
+      const data = await page.evaluate(async (u) => {
+        const r = await fetch(u, { cache: 'no-store' });
+        if (!r.ok) return null;
+        try { return await r.json(); } catch { return null; }
+      }, url);
+      if (data && predicate(data)) return data;
+    } catch (e) {
+      // swallow transient errors while polling
+    }
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  return null;
+}
+
 // Utility: Wait for a specific API response matching the predicate and return parsed JSON
 export async function waitForResponseJson(page: Page, predicate: (resp: PlaywrightResponse) => boolean, timeout = 10000) {
   const resp = await page.waitForResponse((r) => predicate(r as PlaywrightResponse), { timeout });
@@ -657,6 +676,7 @@ export default {
     loginViaTestClient,
     getDashboardStats,
     waitForSessionRevocation,
+    pollApiUntil,
     waitForResponseJson,
     searchListForItem,
     searchListForItemWithApi,

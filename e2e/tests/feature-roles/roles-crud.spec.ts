@@ -88,22 +88,7 @@ test('Admin - Roles CRUD (create, update, delete role)', async ({ page }) => {
   // full test run. Poll the API until the permission we added appears to avoid
   // flakiness caused by eventual consistency. This is safer than asserting an
   // immediate count which occasionally fails when other tests run in parallel.
-  const updatedRole = await page.evaluate(async (id) => {
-    const deadline = Date.now() + 15000;
-    while (Date.now() < deadline) {
-      try {
-        const r = await fetch(`/api/admin/roles/${id}`);
-        if (r.ok) {
-          const json = await r.json();
-          if ((json.permissions || []).includes('roles.update')) return json;
-        }
-      } catch (e) {
-        // swallow network errors while polling
-      }
-      await new Promise((res) => setTimeout(res, 500));
-    }
-    return null;
-  }, roleApiItem.id);
+  const updatedRole = await adminHelpers.pollApiUntil(page, `/api/admin/roles/${roleApiItem.id}`, (json: any) => (json?.permissions || []).includes('roles.update'), 15000, 500);
 
   expect(updatedRole).not.toBeNull();
   // When updatedRole is present, it should include the added permission
