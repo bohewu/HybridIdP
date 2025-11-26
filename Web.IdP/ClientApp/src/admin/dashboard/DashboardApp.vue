@@ -1,15 +1,13 @@
 <template>
-  <div class="max-w-7xl mx-auto dashboard-root" v-loading="loading">
+  <div class="max-w-7xl mx-auto dashboard-root">
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900">{{ $t('admin.dashboard.title') }}</h1>
       <p class="mt-2 text-gray-600">{{ $t('admin.dashboard.subtitle') }}</p>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-    </div>
+    <!-- Loading State (use shared LoadingIndicator component instead of v-loading overlay) -->
+    <LoadingIndicator v-if="loading" :loading="loading" size="lg" />
 
     <!-- Error State -->
     <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -128,6 +126,7 @@ import { HubConnectionBuilder } from '@microsoft/signalr'
 import ActivityDashboard from '../monitoring/components/ActivityDashboard.vue'
 import SecurityMetrics from '../monitoring/components/SecurityMetrics.vue'
 import RealTimeAlerts from '../monitoring/components/RealTimeAlerts.vue'
+import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 
 const { t } = useI18n()
 

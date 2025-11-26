@@ -26,7 +26,8 @@ test.describe('Dashboard main page loading (v-loading directive)', () => {
     await page.goto('https://localhost:7035/Admin/Dashboard');
 
     // target specifically the overlay instance created by the directive
-    const pageLoading = page.locator('.dashboard-root .loading-indicator.loading-overlay')
+    // the inline LoadingIndicator used on the Dashboard page is rendered as a direct child of .dashboard-root
+    const pageLoading = page.locator('.dashboard-root > [data-testid="loading-indicator"]')
     await expect(pageLoading).toBeVisible({ timeout: 3000 })
     await expect(pageLoading).toBeHidden({ timeout: 7000 })
 
