@@ -31,7 +31,9 @@ test.describe('Monitoring / SecurityMetrics loading', () => {
     // Navigate to the Dashboard which contains the SecurityMetrics component
     await page.goto('https://localhost:7035/Admin/Dashboard');
 
-    const loading = page.locator('[data-testid="loading-indicator"]');
+    // scope the locator to the SecurityMetrics component so we only look at
+    // the component-level loading indicator for SecurityMetrics
+    const loading = page.locator('.security-metrics [data-testid="loading-indicator"]');
 
     // Expect loading indicator to appear while the API is delayed
     await expect(loading).toBeVisible({ timeout: 3000 });
