@@ -170,6 +170,12 @@ builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHand
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
     Infrastructure.Authorization.IpWhitelistAuthorizationHandler>();
 
+// Register scope authorization handler and policy provider (Phase 9.2)
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+    Infrastructure.Authorization.ScopeAuthorizationHandler>();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider,
+    Infrastructure.Authorization.ScopeAuthorizationPolicyProvider>();
+
 // Register Turnstile service and HttpClient
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<ITurnstileService, TurnstileService>();
