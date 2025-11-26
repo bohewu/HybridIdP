@@ -16,7 +16,8 @@ last-updated: 2025-11-21
 - Phase 6 — Code Quality & Tests: 90% — `docs/phase-6-code-quality-tests.md`
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
 - Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
-- Phase 9 — Person & Identity: 0% — `docs/phase-9-person-identity.md`
+- Phase 9 — Scope Authorization & Management: 0% — `docs/phase-9-scope-authorization.md`
+- Phase 10 — Person & Identity: 0% — `docs/phase-10-person-identity.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
 
@@ -70,4 +71,54 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 - [ ] Users UI CRUD tests
 - [ ] User Sessions management tests  
 - [ ] Dashboard metrics tests
+
+---
+
+## 2025-11-26: Phase 9 Scope Authorization & Management - Planning Complete
+
+**新 Phase 架構:**
+
+- Phase 9 改為：Scope Authorization & Management (全新功能)
+- Phase 10 改為：Person & Identity (原 Phase 9)
+
+**Phase 9 Sub-phases 規劃:**
+
+1. **Phase 9.1: Consent Page Required Scope Support**
+   - 新增 ClientRequiredScope entity 儲存 per-client required scopes
+   - Consent page UI 顯示 required scope 為 disabled (不可取消勾選)
+   - Server-side 驗證防止竄改
+   - 測試：Unit + Integration + E2E
+
+2. **Phase 9.2: Scope Authorization Handler & Policy Provider**
+   - 實作 ScopeRequirement, ScopeAuthorizationHandler, ScopeAuthorizationPolicyProvider
+   - 支援屬性語法：`[Authorize(Policy = "RequireScope:api:company:read")]`
+   - 測試：Unit + Integration (in-memory)
+
+3. **Phase 9.3: OpenID Userinfo Endpoint Scope Protection**
+   - 保護 `/connect/userinfo` 需要 openid scope (OIDC 規範)
+   - E2E 測試完整 HTTPS flow
+
+4. **Phase 9.4: Client Scope Management UI Optimization**
+   - 重構 client 註冊的 scope 設定 UI
+   - 支援 Allowed / Required 雙欄位設定
+   - 搜尋、分頁功能應對大量 custom scopes
+   - 驗證：required scope 必須在 allowed scopes 中
+
+5. **Phase 9.5: Modal/Dialog UX Consistency**
+   - 檢視所有 admin UI 的 modals
+   - 確保 ESC 鍵可關閉
+   - 右上角 close icon 一致性
+   - E2E 測試 modal 行為
+
+6. **Phase 9.6: E2E Testing & Documentation**
+   - 完整 scope authorization flow E2E 測試
+   - 文件：ARCHITECTURE.md, SCOPE_AUTHORIZATION.md
+   - 開發者指南與範例
+
+**目前狀態:**
+
+- 已復原所有暫存變更 (working tree clean)
+- Phase 9 詳細計畫已撰寫
+- Phase 10 (Person Identity) 已重新編號
+- 準備開始 Phase 9.1 實作
 
