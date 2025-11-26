@@ -197,6 +197,42 @@ app.component('LoadingIndicator', LoadingIndicator)
 
 - 可測試指標：component 提供 `data-testid="loading-indicator"`，方便 Playwright 等 E2E 測試驗證顯示/隱藏行為。
 
+### 🔁 v-loading 指令 (推薦用於頁面 / 覆蓋式載入)
+
+我們為方便在「整頁」或容器上統一管理載入覆蓋而新增 `v-loading` 指令。該指令會在元素內以 `LoadingIndicator` SFC 顯示 overlay，適合用於：
+
+- 「Main Page」或大範圍區域（覆蓋樣式、一鍵鎖定互動）
+- 想要統一行為但不改變子層元件內部實作
+
+用法範例：
+
+```vue
+<template>
+    <div v-loading="loading">
+        <!-- page content -->
+    </div>
+</template>
+
+// 或使用 object options
+<div v-loading="{ loading: isSaving, overlay: true, message: 'Saving...' }"></div>
+```
+
+指令會使用現有的 `LoadingIndicator` SFC 以保持視覺一致性，並支援：
+
+- boolean 或對象格試的綁定
+- overlay/inline 模式
+- 設定 message 與 size
+
+### 🧩 single-component loading → use LoadingIndicator (component-base)
+
+對於「單一元件」或局部載入狀態（例如：小卡片、按鈕內的小 spinner），仍建議直接使用 `LoadingIndicator` component:
+
+```vue
+<LoadingIndicator :loading="isFetching" size="sm" />
+```
+
+這種方式較簡單、顯式，並且便於在元件內微調，例如使用 slot 或自訂訊息。
+
 最佳實踐：
 - 儘量把 loading UI 保持無障礙（aria-label），且使用 i18n 儲存訊息文字。
 - 採用逐步遷移策略：一次改一個 component、同時加入對應的 E2E 測試來確保行為一致。
