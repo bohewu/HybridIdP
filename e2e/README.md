@@ -225,6 +225,27 @@ To avoid OpenIddict parsing errors caused by malformed/duplicated permissions in
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -NormalizePermissions -SeedApiResources -TimeoutSeconds 300
 ```
 
+If you still see authorize errors like `error:unauthorized_client` / ID2043 when running authorize flows, the TestClient record in the IdP DB may have malformed or missing permission entries. Two convenient fixes are provided:
+
+1) Normalize permissions (safe, idempotent)
+
+```powershell
+# This updates the `OpenIddictApplications.Permissions` column to a canonical JSON array
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\normalize-testclient-permissions.ps1 -Provider Postgres
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\normalize-testclient-permissions.ps1 -Provider SqlServer
+```
+
+2) Recreate the TestClient via the Admin API (backup + recreate)
+
+```powershell
+# Recreates (deletes + re-creates) the testclient-public client using Admin API credentials.
+pwsh -NoProfile -ExecutionPolicy Bypass -File ..\scripts\recreate-testclient.ps1
+```
+
+Notes:
+- If you run the Postgres helper and temporarily set `DATABASE_PROVIDER` to `PostgreSQL` for migrations or seeding, remember to restore your default provider (for example, `SqlServer`) when you're done so local manual runs use the expected DB provider.
+- The runner's readiness scripts will attempt to create the test client automatically; these manual scripts are intended for troubleshooting and repair when automatic seeding doesn't produce valid permissions.
+
 TestClient UI readiness check
 ---------------------------
 
