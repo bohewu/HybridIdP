@@ -199,7 +199,7 @@ app.component('LoadingIndicator', LoadingIndicator)
 
 ### 🔁 v-loading 指令 (推薦用於頁面 / 覆蓋式載入)
 
-我們為方便在「整頁」或容器上統一管理載入覆蓋而新增 `v-loading` 指令。該指令會在元素內以 `LoadingIndicator` SFC 顯示 overlay，適合用於：
+我們為方便在「整頁」或容器上統一管理載入覆蓋而新增 `v-loading` 指令（在 Dashboard 與大型頁面上建議預設使用此指令，overlay 會保留頁面內容並以不破壞布局的方式顯示載入狀態）。該指令會在元素內以 `LoadingIndicator` SFC 顯示 overlay，適合用於：
 
 - 「Main Page」或大範圍區域（覆蓋樣式、一鍵鎖定互動）
 - 想要統一行為但不改變子層元件內部實作

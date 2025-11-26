@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 import adminHelpers from '../helpers/admin';
 
-test.describe('Dashboard main page loading (component)', () => {
-  test('shows page-level loading indicator when dashboard stats are slow', async ({ page, browserName }) => {
+test.describe('Dashboard main page loading (v-loading)', () => {
+  test('shows page-level loading overlay when dashboard stats are slow', async ({ page, browserName }) => {
     await adminHelpers.loginAsAdminViaIdP(page);
 
     // Delay the dashboard stats API
@@ -25,8 +25,8 @@ test.describe('Dashboard main page loading (component)', () => {
 
     await page.goto('https://localhost:7035/Admin/Dashboard');
 
-    // the inline LoadingIndicator used on the Dashboard page sits inside a centered wrapper
-    const pageLoading = page.locator('.dashboard-root [data-testid="loading-indicator"]')
+    // the directive places the overlay instance as a direct child (.v-loading-container)
+    const pageLoading = page.locator('.dashboard-root > .v-loading-container [data-testid="loading-indicator"]')
     await expect(pageLoading).toBeVisible({ timeout: 3000 })
     await expect(pageLoading).toBeHidden({ timeout: 7000 })
 
@@ -36,4 +36,6 @@ test.describe('Dashboard main page loading (component)', () => {
       await client.detach()
     }
   })
+
+  // overlay is default; second test removed because directive is now the default behavior
 })

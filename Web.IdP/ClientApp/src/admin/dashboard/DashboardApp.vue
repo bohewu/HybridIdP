@@ -1,18 +1,19 @@
 <template>
-  <div class="max-w-7xl mx-auto dashboard-root">
+  <div
+    class="max-w-7xl mx-auto dashboard-root"
+    v-loading="{ loading: loading, overlay: true, message: t('admin.dashboard.loading') }">
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900">{{ $t('admin.dashboard.title') }}</h1>
       <p class="mt-2 text-gray-600">{{ $t('admin.dashboard.subtitle') }}</p>
     </div>
 
-    <!-- Loading State (use shared LoadingIndicator component instead of v-loading overlay) -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <LoadingIndicator :loading="loading" size="lg" />
-    </div>
+    <!-- Page-level loading is now handled by the v-loading overlay so the
+         page content remains visible while data loads. Keep the
+         LoadingIndicator component available for smaller/local usages. -->
 
     <!-- Error State -->
-    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
       <div class="flex items-center">
         <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -22,7 +23,7 @@
     </div>
 
     <!-- Dashboard Content -->
-    <div v-else>
+    <div v-if="!error">
       <!-- Quick Stats -->
       <div class="mb-8 bg-white rounded-lg shadow-sm p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('admin.dashboard.quickStats') }}</h3>
@@ -203,6 +204,12 @@ const cleanupSignalR = () => {
 }
 
 onMounted(async () => {
+  // Dashboard default: prefer v-loading overlay for page-level loading so the
+  // content remains visible and is visually less disruptive than replacing
+  // the DOM during load. The inline `LoadingIndicator` component is kept in
+  // the repo for localized / component-level usages but is not used at the
+  // top-level Dashboard page to avoid blanking the page contents.
+
   await fetchStats()
   await setupSignalR()
 })
