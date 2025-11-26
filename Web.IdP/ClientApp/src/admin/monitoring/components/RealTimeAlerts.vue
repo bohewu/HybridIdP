@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 import { useI18n } from 'vue-i18n'
 import * as signalR from '@microsoft/signalr'
 
@@ -88,9 +89,7 @@ const formatTimestamp = (timestamp) => {
 <template>
   <div class="real-time-alerts">
 
-    <div v-if="loading" class="text-center py-4">
-      <div class="spinner-border spinner-border-sm" role="status"></div>
-    </div>
+    <LoadingIndicator v-if="loading" :loading="loading" size="sm" />
 
     <div v-else-if="alerts.length === 0" class="text-center py-8 text-gray-500">
       {{ t('admin.monitoring.realTimeAlerts.noAlerts') }}

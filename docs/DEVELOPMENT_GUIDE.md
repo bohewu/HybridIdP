@@ -171,6 +171,36 @@ docs/
 // See docs/examples/development_guide_ui_layered_approach.txt.example
 ```
 
+### 🔧 Shared UI components — LoadingIndicator
+
+為了讓整個管理後台在「載入中」狀態顯示一致，我們提供了一個可重用的 LoadingIndicator Vue component。
+
+- 檔案位置：`Web.IdP/ClientApp/src/components/common/LoadingIndicator.vue`
+- 註冊方式：通常在每個 SPA 的 `main.js` 中註冊 component（例：`src/admin/monitoring/main.js`）以避免一次性改動所有 SPA：
+
+```js
+import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+app.component('LoadingIndicator', LoadingIndicator)
+```
+
+- 基本用法（inline, small）：
+
+```vue
+<LoadingIndicator :loading="loading" size="sm" />
+```
+
+- 覆蓋式 (overlay) 用法（覆蓋整個區塊並顯示訊息）：
+
+```vue
+<LoadingIndicator :loading="loading" overlay message="Loading metrics..." />
+```
+
+- 可測試指標：component 提供 `data-testid="loading-indicator"`，方便 Playwright 等 E2E 測試驗證顯示/隱藏行為。
+
+最佳實踐：
+- 儘量把 loading UI 保持無障礙（aria-label），且使用 i18n 儲存訊息文字。
+- 採用逐步遷移策略：一次改一個 component、同時加入對應的 E2E 測試來確保行為一致。
+
 ---
 
 ## ⚠️ 關鍵注意事項

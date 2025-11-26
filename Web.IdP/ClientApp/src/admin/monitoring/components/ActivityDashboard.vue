@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 import { useI18n } from 'vue-i18n'
 import * as signalR from '@microsoft/signalr'
 
@@ -80,9 +81,8 @@ onUnmounted(() => {
 <template>
   <div class="activity-dashboard">
 
-    <div v-if="loading" class="text-center py-4">
-      <div class="spinner-border spinner-border-sm" role="status"></div>
-    </div>
+    <!-- Use shared loading component (inline small) -->
+    <LoadingIndicator v-if="loading" :loading="loading" size="sm" />
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="stat-card">

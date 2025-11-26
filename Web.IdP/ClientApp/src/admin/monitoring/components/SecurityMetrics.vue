@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 import { useI18n } from 'vue-i18n'
 import * as signalR from '@microsoft/signalr'
 
@@ -16,6 +17,7 @@ const connection = ref(null)
 
 const fetchMetrics = async () => {
   try {
+    console.debug('[SecurityMetrics] fetchMetrics: start')
     loading.value = true
     error.value = null
 
@@ -31,11 +33,13 @@ const fetchMetrics = async () => {
     }
 
     const data = await response.json()
+    console.debug('[SecurityMetrics] fetchMetrics: received data', data)
     metrics.value = data
   } catch (err) {
     console.error('Failed to fetch security metrics:', err)
     error.value = err.message || 'Failed to load security metrics'
   } finally {
+    console.debug('[SecurityMetrics] fetchMetrics: finished, setting loading=false')
     loading.value = false
   }
 }
@@ -67,6 +71,7 @@ const stopSignalRConnection = async () => {
 }
 
 onMounted(async () => {
+  console.debug('[SecurityMetrics] mounted (initial loading =', loading.value, ')')
   await fetchMetrics()
   await startSignalRConnection()
 })
@@ -79,9 +84,8 @@ onUnmounted(() => {
 <template>
   <div class="security-metrics">
 
-    <div v-if="loading" class="text-center py-4">
-      <div class="spinner-border spinner-border-sm" role="status"></div>
-    </div>
+    <!-- Use the shared LoadingIndicator component (inline, small) -->
+    <LoadingIndicator v-if="loading" :loading="loading" size="sm" />
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Gauges -->
