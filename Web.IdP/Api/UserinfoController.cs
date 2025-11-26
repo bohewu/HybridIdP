@@ -6,10 +6,17 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Web.IdP.Api;
 
+/// <summary>
+/// OpenID Connect UserInfo endpoint
+/// Returns user claims based on the granted scopes
+/// Requires 'openid' scope per OIDC specification
+/// </summary>
 [ApiController]
 public class UserinfoController : ControllerBase
 {
-    [Authorize(AuthenticationSchemes = OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)]
+    [Authorize(
+        AuthenticationSchemes = OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+        Policy = "RequireScope:openid")]
     [HttpGet("~/connect/userinfo")]
     [HttpPost("~/connect/userinfo")]
     public IActionResult Userinfo()
