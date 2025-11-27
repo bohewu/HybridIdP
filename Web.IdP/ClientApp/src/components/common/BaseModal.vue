@@ -33,6 +33,7 @@
               @click="handleClose"
               :disabled="loading"
               :aria-label="closeAriaLabel"
+              tabindex="-1"
               class="absolute top-4 right-4 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed z-10"
             >
               <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
