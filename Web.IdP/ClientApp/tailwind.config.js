@@ -19,7 +19,10 @@ export default {
         '30': '30',  // top-header
         '35': '35',  // mobile-overlay
         '40': '40',  // sidebar
-        '50': '50',  // Vue modals
+        '50': '50',  // Vue modals (legacy)
+        'modal': '50',         // Standard modals
+        'modal-nested': '60',  // Nested modals (e.g., SecretDisplayModal)
+        'alert': '9999',       // Global alerts/errors
       },
       // Match the sidebar width
       spacing: {

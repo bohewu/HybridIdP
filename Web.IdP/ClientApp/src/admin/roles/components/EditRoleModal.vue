@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import BaseModal from '../../../components/common/BaseModal.vue'
 
 const props = defineProps({
   role: { type: Object, required: true }
@@ -170,27 +171,32 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50" @click.self="handleClose">
-    <div class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full sm:max-w-2xl">
-          <form @submit.prevent="handleSubmit">
-            <div class="bg-white px-4 pt-5 sm:p-6">
-              <div class="sm:flex sm:items-start">
-                <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
-                  <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                    {{ $t('admin.roles.editModal.title') }}
-                    <span v-if="role.isSystem" class="ml-2 inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
-                      {{ $t('admin.roles.editModal.systemRole') }}
-                    </span>
-                  </h3>
+  <BaseModal
+    :show="true"
+    size="lg"
+    :show-close-icon="true"
+    :close-on-backdrop="false"
+    :close-on-esc="true"
+    :loading="saving"
+    @close="handleClose"
+  >
+    <template #header>
+      <h3 class="text-lg font-semibold leading-6 text-gray-900">
+        {{ $t('admin.roles.editModal.title') }}
+        <span v-if="role.isSystem" class="ml-2 inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+          {{ $t('admin.roles.editModal.systemRole') }}
+        </span>
+      </h3>
+    </template>
 
-                  <!-- Error Alert -->
-                  <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
-                    <p class="text-sm text-red-700">{{ error }}</p>
-                  </div>
+    <template #body>
+      <form @submit.prevent="handleSubmit">
+        <!-- Error Alert -->
+        <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
+          <p class="text-sm text-red-700">{{ error }}</p>
+        </div>
 
-                  <div class="max-h-[80vh] overflow-y-auto px-1">
+        <div class="max-h-[80vh] overflow-y-auto px-1">
                     <!-- System Role Info -->
                     <div v-if="role.isSystem" class="mb-4 bg-blue-50 border-l-4 border-blue-400 p-4">
                       <p class="text-sm text-blue-700">
@@ -283,34 +289,29 @@ onMounted(() => {
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Footer Buttons -->
-            <div class="bg-gray-50 px-4 py-2.5 sm:flex sm:flex-row-reverse sm:px-6">
-              <button
-                  type="submit"
-                  :disabled="saving || loadingPermissions"
-                  class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
-              >
-                {{ saving ? $t('admin.roles.editModal.updating') : $t('admin.roles.editModal.updateButton') }}
-              </button>
-              <button
-                  type="button"
-                  @click="handleClose"
-                  :disabled="saving"
-                  class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
-              >
-                {{ $t('admin.roles.createModal.cancel') }}
-              </button>
-            </div>
-          </form>
         </div>
-      </div>
-    </div>
-  </div>
+      </form>
+    </template>
+
+    <template #footer>
+      <button
+        type="submit"
+        @click="handleSubmit"
+        :disabled="saving || loadingPermissions"
+        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
+      >
+        {{ saving ? $t('admin.roles.editModal.updating') : $t('admin.roles.editModal.updateButton') }}
+      </button>
+      <button
+        type="button"
+        @click="handleClose"
+        :disabled="saving"
+        class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
+      >
+        {{ $t('admin.roles.createModal.cancel') }}
+      </button>
+    </template>
+  </BaseModal>
 </template>
 
 <style scoped>

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import BaseModal from '../../../components/common/BaseModal.vue'
 
 const props = defineProps({
   role: { type: Object, required: true }
@@ -59,22 +60,25 @@ const handleClose = () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50" @click.self="handleClose">
-    <div class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full sm:max-w-lg">
-          <div class="bg-white px-4 pt-5 sm:p-6">
-            <div class="sm:flex sm:items-start">
-              <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
-              </div>
-              <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                <h3 class="text-base font-semibold leading-6 text-gray-900">
-                  {{ $t('admin.roles.deleteModal.title') }}
-                </h3>
-                <div class="mt-2 max-h-[80vh] overflow-y-auto px-1">
+  <BaseModal
+    :show="true"
+    :title="$t('admin.roles.deleteModal.title')"
+    size="md"
+    :show-close-icon="true"
+    :close-on-backdrop="false"
+    :close-on-esc="true"
+    :loading="deleting"
+    @close="handleClose"
+  >
+    <template #body>
+      <div class="sm:flex sm:items-start">
+        <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+          <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+        </div>
+        <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+          <div class="mt-2 max-h-[80vh] overflow-y-auto px-1">
                   <!-- Error Alert -->
                   <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
                     <p class="text-sm text-red-700">{{ error }}</p>
@@ -130,33 +134,31 @@ const handleClose = () => {
                       </ul>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="bg-gray-50 px-4 py-2.5 sm:flex sm:flex-row-reverse sm:px-6">
-            <button
-              v-if="canDelete && role.userCount === 0"
-              type="button"
-              @click="handleDelete"
-              :disabled="deleting"
-              class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
-            >
-              {{ deleting ? $t('admin.roles.deleteModal.deleting') : $t('admin.roles.deleteModal.deleteButton') }}
-            </button>
-            <button
-              type="button"
-              @click="handleClose"
-              :disabled="deleting"
-              class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
-            >
-              {{ canDelete && role.userCount === 0 ? $t('admin.roles.createModal.cancel') : $t('admin.roles.deleteModal.close') }}
-            </button>
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+
+    <template #footer>
+      <button
+        v-if="canDelete && role.userCount === 0"
+        type="button"
+        @click="handleDelete"
+        :disabled="deleting"
+        class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
+      >
+        {{ deleting ? $t('admin.roles.deleteModal.deleting') : $t('admin.roles.deleteModal.deleteButton') }}
+      </button>
+      <button
+        type="button"
+        @click="handleClose"
+        :disabled="deleting"
+        class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
+      >
+        {{ canDelete && role.userCount === 0 ? $t('admin.roles.createModal.cancel') : $t('admin.roles.deleteModal.close') }}
+      </button>
+    </template>
+  </BaseModal>
 </template>
 
 <style scoped>

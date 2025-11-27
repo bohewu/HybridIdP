@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseModal from '../../../components/common/BaseModal.vue'
 
 const { t } = useI18n()
 
@@ -90,27 +91,27 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50" @click.self="handleClose">
-    <div class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full sm:max-w-lg">
-          <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-              <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
-                <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                  {{ t('roleAssignment.title') }}
-                </h3>
+  <BaseModal
+    :show="true"
+    :title="t('roleAssignment.title')"
+    size="md"
+    :show-close-icon="true"
+    :close-on-backdrop="false"
+    :close-on-esc="true"
+    :loading="saving"
+    @close="handleClose"
+  >
+    <template #body>
+      <div class="mb-4 p-3 bg-gray-50 rounded-md">
+        <p class="text-sm text-gray-700">
+          <span class="font-medium">{{ t('roleAssignment.userLabel') }}:</span> {{ user.email }}
+        </p>
+      </div>
 
-                <div class="mb-4 p-3 bg-gray-50 rounded-md">
-                  <p class="text-sm text-gray-700">
-                    <span class="font-medium">{{ t('roleAssignment.userLabel') }}:</span> {{ user.email }}
-                  </p>
-                </div>
-
-                <!-- Error Alert -->
-                <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
-                  <p class="text-sm text-red-700">{{ error }}</p>
-                </div>
+      <!-- Error Alert -->
+      <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
+        <p class="text-sm text-red-700">{{ error }}</p>
+      </div>
 
                 <!-- Loading State -->
                 <div v-if="loading" class="flex flex-col items-center justify-center py-8">
@@ -166,40 +167,35 @@ onMounted(() => {
                     </div>
                   </div>
 
-                  <div v-if="selectedRoles.length > 0" class="mt-3">
-                    <p class="text-xs text-gray-500">
-                      {{ t('roleAssignment.selectedRolesCount', { count: selectedRoles.length }) }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-gray-50 px-4 py-2.5 sm:flex sm:flex-row-reverse sm:px-6">
-            <button
-              type="button"
-              @click="handleSave"
-              :disabled="saving || loading"
-              class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {{ saving ? t('buttons.saving') : t('buttons.saveRoles') }}
-            </button>
-            <button
-              type="button"
-              @click="handleClose"
-              :disabled="saving"
-              class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {{ t('buttons.cancel') }}
-            </button>
-          </div>
+        <div v-if="selectedRoles.length > 0" class="mt-3">
+          <p class="text-xs text-gray-500">
+            {{ t('roleAssignment.selectedRolesCount', { count: selectedRoles.length }) }}
+          </p>
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+
+    <template #footer>
+      <button
+        type="button"
+        @click="handleSave"
+        :disabled="saving || loading"
+        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {{ saving ? t('buttons.saving') : t('buttons.saveRoles') }}
+      </button>
+      <button
+        type="button"
+        @click="handleClose"
+        :disabled="saving"
+        class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {{ t('buttons.cancel') }}
+      </button>
+    </template>
+  </BaseModal>
 </template>
