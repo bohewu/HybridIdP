@@ -40,6 +40,7 @@ test.describe('Admin - Clients negative tests', () => {
     if (await addOpenIdBtn.count() > 0) await addOpenIdBtn.click();
     await page.check('input[id="gt:authorization_code"]');
 
+    // Submit and expect client-side validation error or server rejection
     await page.click('button[type="submit"]');
     // As a fallback (UI validation sometimes renders localized strings differently), call the API directly
     // to assert the server rejects missing clientId or invalid redirect URIs.
@@ -67,7 +68,10 @@ test.describe('Admin - Clients negative tests', () => {
     // Now fix the clientId but use invalid redirect and expect redirect URI invalid message
     await page.fill('#clientId', `e2e-val-${Date.now()}`);
     await page.fill('#redirectUris', 'not-a-valid-url');
+    // Submit and wait for POST that creates the client
+    const createResp = page.waitForResponse((resp) => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST', { timeout: 20000 }).catch(() => null);
     await page.click('button[type="submit"]');
+    await createResp;
     await expect(page.locator('text=Redirect URI line')).toBeVisible({ timeout: 5000 });
   });
 
@@ -102,7 +106,11 @@ test.describe('Admin - Clients negative tests', () => {
     await page.fill('#clientId', clientId);
     await page.fill('#displayName', 'E2E Duplicate Test 2');
     await page.fill('#redirectUris', 'https://localhost:7001/signin-oidc');
-    await page.check('input[id="scope-openid"]');
+    // Use scope manager search for the second create attempt as well
+    await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
+    await page.fill('[data-test="csm-available-search"]', 'openid');
+    const addOpenIdForDuplicate = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
+    if (await addOpenIdForDuplicate.count() > 0) await addOpenIdForDuplicate.click();
     await page.check('input[id="gt:authorization_code"]');
     await page.click('button[type="submit"]');
 
