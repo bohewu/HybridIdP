@@ -46,6 +46,16 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
 
   // Wait for scope manager to load and add `openid` + `profile` scopes
   await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
+  // Debug: capture available scopes server-side to verify 'openid' was created and is returned by the API
+  const scopesPayload = await page.evaluate(async () => {
+    try {
+      const resp = await fetch('/api/admin/scopes?skip=0&take=100');
+      if (!resp.ok) return null;
+      return await resp.json();
+    } catch (e) { return { error: String(e) } }
+  });
+  console.log('available scopes response:', scopesPayload);
+
   // Click the add button for the openid scope
   const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
   await addOpenIdBtn.waitFor({ state: 'visible', timeout: 10000 });
