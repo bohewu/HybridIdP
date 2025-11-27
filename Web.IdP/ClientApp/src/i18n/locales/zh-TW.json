@@ -88,7 +88,7 @@
       "atLeastOneUppercase": "至少一個大寫字母 (A-Z)",
       "atLeastOneLowercase": "至少一個小寫字母 (a-z)",
       "atLeastOneDigit": "至少一個數字 (0-9)",
-      "atLeastOneSpecialChar": "至少一個特殊字元（例如 !@#$%)",
+      "atLeastOneSpecialChar": "至少一個特殊字元（例如 {'!@#$%'}）",
       "passwordStrength": "密碼強度",
       "weak": "弱",
       "fair": "中等",
@@ -115,7 +115,7 @@
         "uppercase": "至少一個大寫字母 (A-Z)",
         "lowercase": "至少一個小寫字母 (a-z)",
         "digit": "至少一個數字 (0-9)",
-        "specialChar": "至少一個特殊字元（例如 !@#$%)"
+        "specialChar": "至少一個特殊字元（例如 {'!@#$%'}）"
       },
       "loginHistory": {
         "title": "登入歷史記錄",
@@ -1010,5 +1010,8 @@
       "update": "您沒有權限更新 API 資源。",
       "delete": "您沒有權限刪除 API 資源。"
     }
+  },
+  "modal": {
+    "close": "關閉"
   }
 }

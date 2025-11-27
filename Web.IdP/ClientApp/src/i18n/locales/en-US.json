@@ -88,7 +88,7 @@
       "atLeastOneUppercase": "At least one uppercase letter (A-Z)",
       "atLeastOneLowercase": "At least one lowercase letter (a-z)",
       "atLeastOneDigit": "At least one digit (0-9)",
-      "atLeastOneSpecialChar": "At least one special character (e.g., !@#$%)",
+      "atLeastOneSpecialChar": "At least one special character (e.g., {'!@#$%'})",
       "passwordStrength": "Password Strength",
       "weak": "Weak",
       "fair": "Fair",
@@ -115,7 +115,7 @@
         "uppercase": "At least one uppercase letter (A-Z)",
         "lowercase": "At least one lowercase letter (a-z)",
         "digit": "At least one digit (0-9)",
-        "specialChar": "At least one special character (e.g., !@#$%)"
+        "specialChar": "At least one special character (e.g., {'!@#$%'})"
       },
       "loginHistory": {
         "title": "Login History",
@@ -1009,5 +1009,8 @@
       "update": "You do not have permission to update API resources.",
       "delete": "You do not have permission to delete API resources."
     }
+  },
+  "modal": {
+    "close": "Close"
   }
 }
