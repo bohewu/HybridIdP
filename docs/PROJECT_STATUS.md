@@ -1709,6 +1709,53 @@ b21a694 - fix(i18n): Fix loginHistory key nesting and add Chinese menu translati
 
 ---
 
+### Phase 9.5: Modal/Dialog UX Consistency ✅
+
+**完成時間：** 2025-11-27
+
+**功能摘要：**
+- Created standardized `BaseModal.vue` component with consistent behavior across all modals
+- Migrated 13 modal components to use BaseModal (100% migration complete)
+- Implemented ESC key closure, focus management, and z-index standardization
+- Added comprehensive i18n translations for modal components
+- Fixed HTML structure issues and button styling inconsistencies
+
+**Components Created/Modified:**
+- `BaseModal.vue` (New) - 9 size variants (xs/sm/md/lg/xl/2xl/3xl/4xl/5xl), ESC handler, focus trap, backdrop control
+- `ClaimFormModal.vue` (Extracted) - Separated from inline ClaimsApp.vue modal
+- Migrated modals: AccessDeniedDialog, UserForm, RoleAssignment, CreateRoleModal, EditRoleModal, DeleteRoleModal, LoginHistoryDialog, UserSessions, ClientForm, SecretDisplayModal, ScopeForm, ResourceForm
+
+**Key Features:**
+- **Focus Management:** Prioritizes form inputs over buttons, excludes close icon from tab order
+- **Z-index Standardization:** `modal: 50`, `modal-nested: 60`, `alert: 9999` in tailwind.config.js
+- **Consistent Button Spacing:** Standardized footer button layout with `mt-2.5` and `sm:ml-3`
+- **i18n Support:** Added `modal.close`, `accessDenied.*` translations (en-US, zh-TW)
+- **Accessibility:** Proper ARIA labels, keyboard navigation, focus trap
+
+**Commits:**
+- `afdaf5b` - feat(phase-9.5): create BaseModal component and migrate Phase 1 modals
+- `b0e069d` - feat(phase-9.5): migrate Phase 2 modals and extract ClaimFormModal
+- `87773f5` - fix(phase-9.5): correct HTML structure in ResourceForm.vue
+- `5809a74` - fix(phase-9.5): correct HTML structure in ScopeForm.vue
+- `43489e0` - fix(phase-9.5): standardize modal button spacing and focus behavior
+- `6303cb6` - fix(phase-9.5): improve BaseModal focus management
+- `c8698f0` - fix(phase-9.5): add i18n translations and fix special character escaping
+- `36d7bae` - fix(phase-9.5): add global accessDenied i18n translations
+
+**Verification:**
+- ✅ All 13 modals migrated and tested
+- ✅ ESC key closure working across all modals
+- ✅ Focus management verified (first input field receives focus)
+- ✅ Z-index stacking correct (nested modals work properly)
+- ✅ i18n translations complete (no missing key warnings)
+- ✅ Button spacing consistent across all forms
+- ✅ HTML validation passed (no structure errors)
+
+**Pending:**
+- E2E tests for modal interactions (3 basic + 1 nested modal test)
+
+---
+
 ## Backlog (功能增強和技術債務)
 
 ### 功能增強
