@@ -68,10 +68,7 @@ test.describe('Admin - Clients negative tests', () => {
     // Now fix the clientId but use invalid redirect and expect redirect URI invalid message
     await page.fill('#clientId', `e2e-val-${Date.now()}`);
     await page.fill('#redirectUris', 'not-a-valid-url');
-    // Submit and wait for POST that creates the client
-    const createResp = page.waitForResponse((resp) => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST', { timeout: 20000 }).catch(() => null);
     await page.click('button[type="submit"]');
-    await createResp;
     await expect(page.locator('text=Redirect URI line')).toBeVisible({ timeout: 5000 });
   });
 
