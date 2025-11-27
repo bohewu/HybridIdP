@@ -43,6 +43,26 @@ test.describe('Admin - Clients negative tests', () => {
     // Submit and expect client-side validation error or server rejection
     const createResp = page.waitForResponse((resp) => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST', { timeout: 20000 }).catch(() => null);
     await page.click('button[type="submit"]');
+
+    // Poll the admin API until the client appears (helps avoid list refresh/race conditions)
+    const apiPollResult = await page.evaluate(async (cid, timeout = 20000) => {
+      const deadline = Date.now() + timeout;
+      while (Date.now() < deadline) {
+        try {
+          const r = await fetch(`/api/admin/clients?search=${encodeURIComponent(cid)}&take=100`);
+          if (r.ok) {
+            const json = await r.json();
+            const items = Array.isArray(json) ? json : (json.items || []);
+            if (items.find(i => i.clientId === cid)) return { found: true, items };
+          }
+        } catch (e) {
+          // ignore
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+      return { found: false };
+    }, clientId);
+    console.log('api poll result:', apiPollResult);
     const createRespResult = await createResp;
     if (createRespResult) {
       console.log('create client status', createRespResult.status());
