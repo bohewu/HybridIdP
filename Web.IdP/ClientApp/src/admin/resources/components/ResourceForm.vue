@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseModal from '@/components/common/BaseModal.vue'
 
 const { t } = useI18n()
 
@@ -170,17 +171,16 @@ const isScopeSelected = (scopeId) => {
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50">
-    <div class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
-          <form @submit.prevent="handleSubmit" novalidate>
-            <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-              <div class="sm:flex sm:items-start">
-                <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
-                  <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                    {{ $t(isEdit ? 'resources.form.editTitle' : 'resources.form.createTitle') }}
-                  </h3>
+  <BaseModal
+    :show="true"
+    :title="$t(isEdit ? 'resources.form.editTitle' : 'resources.form.createTitle')"
+    size="2xl"
+    :loading="submitting"
+    :close-on-backdrop="false"
+    @close="emit('cancel')"
+  >
+    <template #body>
+      <form @submit.prevent="handleSubmit" novalidate>
 
                   <!-- Error Alert -->
                   <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
@@ -298,36 +298,30 @@ const isScopeSelected = (scopeId) => {
                         {{ $t('resources.form.scopesSelected', { count: selectedScopeIds.length }) }}
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      </form>
+    </template>
 
-            <!-- Modal Footer -->
-            <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
-              <button
-                type="submit"
-                :disabled="submitting"
-                class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {{ $t(isEdit ? 'resources.form.saveButton' : 'resources.form.createButton') }}
-              </button>
-              <button
-                type="button"
-                :disabled="submitting"
-                @click="emit('cancel')"
-                class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {{ $t('resources.form.cancelButton') }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
+    <template #footer>
+      <button
+        type="submit"
+        @click="handleSubmit"
+        :disabled="submitting"
+        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {{ $t(isEdit ? 'resources.form.saveButton' : 'resources.form.createButton') }}
+      </button>
+      <button
+        type="button"
+        :disabled="submitting"
+        @click="emit('cancel')"
+        class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {{ $t('resources.form.cancelButton') }}
+      </button>
+    </template>
+  </BaseModal>
 </template>

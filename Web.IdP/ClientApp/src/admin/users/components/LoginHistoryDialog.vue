@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseModal from '@/components/common/BaseModal.vue'
 
 const { t } = useI18n()
 
@@ -118,20 +119,18 @@ onMounted(() => fetchLoginHistory())
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50" @click.self="handleClose">
-    <div class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
-        <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-5xl">
-          <!-- Header -->
-          <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-              <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                <h3 class="text-lg font-semibold leading-6 text-gray-900" id="modal-title">
-                  {{ t('admin.users.loginHistory.title') }}
-                </h3>
-                <div class="mt-1 text-sm text-gray-500">
-                  <span class="font-medium">{{ t('admin.users.loginHistory.userLabel') }}:</span> {{ user.email }}
-                </div>
+  <BaseModal
+    :show="true"
+    :title="t('admin.users.loginHistory.title')"
+    size="5xl"
+    :loading="approving"
+    :close-on-backdrop="false"
+    @close="handleClose"
+  >
+    <template #body>
+      <div class="text-sm text-gray-500 mb-4">
+        <span class="font-medium">{{ t('admin.users.loginHistory.userLabel') }}:</span> {{ user.email }}
+      </div>
 
                 <!-- Filter: Show Abnormal Only -->
                 <div class="mt-4 flex items-center">
@@ -311,23 +310,17 @@ onMounted(() => fetchLoginHistory())
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
+    </template>
 
-          <!-- Footer -->
-          <div class="bg-gray-50 px-4 py-2.5 sm:flex sm:flex-row-reverse sm:px-6">
-            <button
-              type="button"
-              @click="handleClose"
-              :disabled="approving"
-              class="inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {{ t('admin.users.loginHistory.buttons.close') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <template #footer>
+      <button
+        type="button"
+        @click="handleClose"
+        :disabled="approving"
+        class="inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {{ t('admin.users.loginHistory.buttons.close') }}
+      </button>
+    </template>
+  </BaseModal>
 </template>

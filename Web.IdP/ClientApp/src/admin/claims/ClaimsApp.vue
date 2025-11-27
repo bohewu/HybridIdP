@@ -168,138 +168,12 @@
     </div>
 
     <!-- Create/Edit Modal -->
-    <div v-if="showModal" class="fixed z-10 inset-0 overflow-y-auto">
-      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal"></div>
-
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <form @submit.prevent="saveClaim">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-              <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
-                {{ editingClaim ? $t('claims.form.editTitle') : $t('claims.form.createTitle') }}
-              </h3>
-
-              <!-- Name -->
-              <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.name') }} *</label>
-                <input
-                  v-model="formData.name"
-                  type="text"
-                  required
-                  :disabled="editingClaim?.isStandard"
-                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
-                  :placeholder="$t('claims.form.namePlaceholder')"
-                />
-              </div>
-
-              <!-- Display Name -->
-              <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.displayName') }} *</label>
-                <input
-                  v-model="formData.displayName"
-                  type="text"
-                  required
-                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                  :placeholder="$t('claims.form.displayNamePlaceholder')"
-                />
-              </div>
-
-              <!-- Description -->
-              <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.description') }}</label>
-                <textarea
-                  v-model="formData.description"
-                  rows="2"
-                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors px-3 py-2"
-                  :placeholder="$t('claims.form.descriptionPlaceholder')"
-                ></textarea>
-              </div>
-
-              <!-- Claim Type -->
-              <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.claimType') }} *</label>
-                <input
-                  v-model="formData.claimType"
-                  type="text"
-                  required
-                  :disabled="editingClaim?.isStandard"
-                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
-                  :placeholder="$t('claims.form.claimTypePlaceholder')"
-                />
-                <p class="mt-1.5 text-xs text-gray-500">{{ $t('claims.form.claimTypeHelp') }}</p>
-              </div>
-
-              <!-- User Property Path -->
-              <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.userPropertyPath') }} *</label>
-                <input
-                  v-model="formData.userPropertyPath"
-                  type="text"
-                  required
-                  :disabled="editingClaim?.isStandard"
-                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
-                  :placeholder="$t('claims.form.userPropertyPathPlaceholder')"
-                />
-                <p class="mt-1.5 text-xs text-gray-500">{{ $t('claims.form.userPropertyPathHelp') }}</p>
-              </div>
-
-              <!-- Data Type -->
-              <div class="mb-5">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $t('claims.form.dataType') }} *</label>
-                <select
-                  v-model="formData.dataType"
-                  :disabled="editingClaim?.isStandard"
-                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
-                >
-                  <option value="String">{{ $t('claims.form.dataTypes.string') }}</option>
-                  <option value="Boolean">{{ $t('claims.form.dataTypes.boolean') }}</option>
-                  <option value="Integer">{{ $t('claims.form.dataTypes.integer') }}</option>
-                  <option value="DateTime">{{ $t('claims.form.dataTypes.dateTime') }}</option>
-                  <option value="JSON">{{ $t('claims.form.dataTypes.json') }}</option>
-                </select>
-              </div>
-
-              <!-- Is Required -->
-              <div class="mb-5">
-                <label class="flex items-center">
-                  <input
-                    v-model="formData.isRequired"
-                    type="checkbox"
-                    :disabled="editingClaim?.isStandard"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 disabled:bg-gray-100 h-4 w-4"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">{{ $t('claims.form.isRequired') }}</span>
-                </label>
-              </div>
-
-              <div v-if="editingClaim?.isStandard" class="mt-4 p-3 bg-blue-50 rounded-md">
-                <p class="text-sm text-blue-800">
-                  {{ $t('claims.form.standardNote') }}
-                </p>
-              </div>
-            </div>
-
-            <div class="bg-gray-50 px-4 py-2.5 sm:px-6 sm:flex sm:flex-row-reverse">
-              <button
-                type="submit"
-                :disabled="saving"
-                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-              >
-                {{ saving ? $t('claims.form.saving') : $t('claims.form.save') }}
-              </button>
-              <button
-                type="button"
-                @click="closeModal"
-                :disabled="saving"
-                class="mt-2.5 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-              >
-                {{ $t('claims.form.cancel') }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+    <ClaimFormModal
+      :show="showModal"
+      :claim="editingClaim"
+      @close="closeModal"
+      @save="saveClaim"
+    />
   </div>
 </template>
 
@@ -309,6 +183,7 @@ import { useI18n } from 'vue-i18n'
 import PageHeader from '@/components/common/PageHeader.vue'
 import SearchInput from '@/components/common/SearchInput.vue'
 import Pagination from '@/components/common/Pagination.vue'
+import ClaimFormModal from './components/ClaimFormModal.vue'
 
 const { t } = useI18n()
 
@@ -317,7 +192,6 @@ const loading = ref(false)
 const error = ref(null)
 const showModal = ref(false)
 const editingClaim = ref(null)
-const saving = ref(false)
 
 // Pagination and filtering
 const search = ref('')
@@ -328,16 +202,6 @@ const pageSize = ref(10)
 const totalCount = ref(0)
 
 const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value))
-
-const formData = ref({
-  name: '',
-  displayName: '',
-  description: '',
-  claimType: '',
-  userPropertyPath: '',
-  dataType: 'String',
-  isRequired: false
-})
 
 async function fetchClaims() {
   loading.value = true
@@ -380,29 +244,11 @@ const handlePageSizeChange = (newSize) => {
 
 function openCreateModal() {
   editingClaim.value = null
-  formData.value = {
-    name: '',
-    displayName: '',
-    description: '',
-    claimType: '',
-    userPropertyPath: '',
-    dataType: 'String',
-    isRequired: false
-  }
   showModal.value = true
 }
 
 function openEditModal(claim) {
   editingClaim.value = claim
-  formData.value = {
-    name: claim.name,
-    displayName: claim.displayName,
-    description: claim.description || '',
-    claimType: claim.claimType,
-    userPropertyPath: claim.userPropertyPath,
-    dataType: claim.dataType,
-    isRequired: claim.isRequired
-  }
   showModal.value = true
 }
 
@@ -411,8 +257,7 @@ function closeModal() {
   editingClaim.value = null
 }
 
-async function saveClaim() {
-  saving.value = true
+async function saveClaim(formData) {
   error.value = null
 
   try {
@@ -425,7 +270,7 @@ async function saveClaim() {
     const response = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData.value)
+      body: JSON.stringify(formData)
     })
 
     if (!response.ok) {
@@ -437,8 +282,7 @@ async function saveClaim() {
     await fetchClaims()
   } catch (err) {
     error.value = err.message
-  } finally {
-    saving.value = false
+    throw err
   }
 }
 

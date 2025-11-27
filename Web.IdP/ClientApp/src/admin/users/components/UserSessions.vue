@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseModal from '@/components/common/BaseModal.vue'
 
 const { t } = useI18n()
 
@@ -116,19 +117,20 @@ onMounted(() => fetchSessions())
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50" @click.self="handleClose">
-    <div class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full sm:max-w-3xl">
-          <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-            <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">
-              {{ t('sessions.title') }}
-            </h3>
-            <div class="mb-3 p-3 bg-gray-50 rounded-md">
-              <p class="text-sm text-gray-700">
-                <span class="font-medium">{{ t('sessions.userLabel') }}:</span> {{ user.email }}
-              </p>
-            </div>
+  <BaseModal
+    :show="true"
+    :title="t('sessions.title')"
+    size="3xl"
+    :loading="revoking"
+    :close-on-backdrop="false"
+    @close="handleClose"
+  >
+    <template #body>
+      <div class="mb-3 p-3 bg-gray-50 rounded-md">
+        <p class="text-sm text-gray-700">
+          <span class="font-medium">{{ t('sessions.userLabel') }}:</span> {{ user.email }}
+        </p>
+      </div>
             <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-3">
               <p class="text-sm text-red-700">{{ error }}</p>
             </div>
@@ -206,30 +208,28 @@ onMounted(() => fetchSessions())
                 </div>
               </div>
             </div>
-          </div>
-          <div class="bg-gray-50 px-4 py-2.5 sm:flex sm:flex-row-reverse sm:px-6">
-            <div class="flex gap-2 w-full sm:w-auto sm:flex-row-reverse">
-              <button
-                type="button"
-                v-if="sessions.length > 0 && canUpdate"
-                @click="revokeAll"
-                :disabled="revoking"
-                class="inline-flex justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 disabled:opacity-50"
-              >
-                {{ revoking ? t('sessions.buttons.revoking') : t('sessions.buttons.revokeAll') }}
-              </button>
-              <button
-                type="button"
-                @click="handleClose"
-                :disabled="revoking"
-                class="inline-flex justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {{ t('buttons.close') }}
-              </button>
-            </div>
-          </div>
-        </div>
+    </template>
+
+    <template #footer>
+      <div class="flex gap-2 w-full sm:w-auto sm:flex-row-reverse">
+        <button
+          type="button"
+          v-if="sessions.length > 0 && canUpdate"
+          @click="revokeAll"
+          :disabled="revoking"
+          class="inline-flex justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 disabled:opacity-50"
+        >
+          {{ revoking ? t('sessions.buttons.revoking') : t('sessions.buttons.revokeAll') }}
+        </button>
+        <button
+          type="button"
+          @click="handleClose"
+          :disabled="revoking"
+          class="inline-flex justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
+        >
+          {{ t('buttons.close') }}
+        </button>
       </div>
-    </div>
-  </div>
+    </template>
+  </BaseModal>
 </template>
