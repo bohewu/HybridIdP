@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import adminHelpers from '../helpers/admin';
 
+// TODO (e2e): This test occasionally fails with "page.route: Target page, context or browser has been closed" or timing race
+// conditions when the monitoring SPA isn't present or network emulation closes the page. Record & investigate later.
 test.describe('Monitoring main page loading (v-loading)', () => {
   test('shows page-level overlay while permissions API is delayed', async ({ page, browserName }) => {
     // Login first to get a session cookie, then create a fresh page in the same context
