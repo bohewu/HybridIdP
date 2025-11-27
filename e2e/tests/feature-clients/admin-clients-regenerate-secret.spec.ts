@@ -8,13 +8,13 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   await page.waitForURL(/\/Admin\/Clients/);
 
   await page.evaluate(async () => {
-    const ensureScope = async (name, displayName) => {
+    const ensureScope = async (name: string, displayName: string) => {
       try {
         const resp = await fetch(`/api/admin/scopes?search=${encodeURIComponent(name)}`);
         if (resp.ok) {
           const json = await resp.json();
           const items = Array.isArray(json) ? json : (json.items || []);
-          if (items.some(i => i.name === name)) return;
+          if (items.some((i: any) => i.name === name)) return;
         }
       } catch {}
       await fetch('/api/admin/scopes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, displayName, description: '' }) });
@@ -37,9 +37,16 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   await page.check('input[id="gt:authorization_code"]');
   await page.click('button[type="submit"]');
 
+  // Wait for secret modal to appear and render
+  await page.waitForSelector('div.fixed', { timeout: 10000, state: 'visible' });
+  await page.waitForTimeout(800); // Allow modal animation to complete
+  
+  // Wait for any input to appear in the modal (secret might not have font-mono class yet)
+  await page.locator('div.fixed input[readonly]').first().waitFor({ state: 'visible', timeout: 10000 });
+
   // Read the generated client secret from modal
-  const secretInput = page.locator('input[readonly][class*="font-mono"]');
-  await expect(secretInput).toBeVisible({ timeout: 10000 });
+  const secretInput = page.locator('div.fixed input[readonly]').first();
+  await expect(secretInput).toBeVisible({ timeout: 5000 });
   const firstSecret = await secretInput.inputValue();
   expect(firstSecret.length).toBeGreaterThan(16);
 

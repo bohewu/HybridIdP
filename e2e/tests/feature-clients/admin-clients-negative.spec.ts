@@ -1,12 +1,7 @@
 import { test, expect } from '@playwright/test';
 import adminHelpers from '../helpers/admin';
+import { waitForListItemWithRetry, waitForDebounce } from '../helpers/timing';
 
-// TODO (e2e): This file has a flaky test 'Duplicate clientId shows error' that intermittently
-// fails because created clients sometimes don't appear immediately in the UI list (race
-// between POST and list refresh / pagination). We have stabilized this test somewhat (search
-// + waiting for server responses) but it still flakes under heavy test-data load. Leave this
-// annotated and address with a reliable API-first lookup or a refactor of the clients list
-// in a follow-up pass.
 test.describe('Admin - Clients negative tests', () => {
   test.beforeEach(async ({ page }) => {
     page.on('dialog', async (d) => await d.accept());
@@ -18,13 +13,13 @@ test.describe('Admin - Clients negative tests', () => {
   test('Validation error - missing required fields', async ({ page }) => {
     // Ensure OIDC scopes exist in admin scopes so the client form can add them
     await page.evaluate(async () => {
-      const ensureScope = async (name, displayName) => {
+      const ensureScope = async (name: string, displayName: string) => {
         try {
           const resp = await fetch(`/api/admin/scopes?search=${encodeURIComponent(name)}`);
           if (resp.ok) {
             const json = await resp.json();
             const items = Array.isArray(json) ? json : (json.items || []);
-            if (items.some(i => i.name === name)) return;
+            if (items.some((i: any) => i.name === name)) return;
           }
         } catch {}
         await fetch('/api/admin/scopes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, displayName, description: '' }) });
@@ -42,6 +37,7 @@ test.describe('Admin - Clients negative tests', () => {
     // Add openid scope via scope manager (UI changed: checkboxes replaced by scope manager)
     await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
     await page.fill('[data-test="csm-available-search"]', 'openid');
+    await waitForDebounce(page, 600); // Wait for search debounce
     const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
     if (await addOpenIdBtn.count() > 0) await addOpenIdBtn.click();
     await page.check('input[id="gt:authorization_code"]');
@@ -51,23 +47,6 @@ test.describe('Admin - Clients negative tests', () => {
     await page.click('button[type="submit"]');
     await createResp;
 
-    // Poll the API to ensure the client record is present before searching via UI
-    const created = await page.evaluate(async (cid, timeout = 20000) => {
-      const deadline = Date.now() + timeout;
-      while (Date.now() < deadline) {
-        try {
-          const r = await fetch(`/api/admin/clients?search=${encodeURIComponent(cid)}&take=100`);
-          if (r.ok) {
-            const json = await r.json();
-            const items = Array.isArray(json) ? json : (json.items || []);
-            if (items.find(i => i.clientId === cid)) return true;
-          }
-        } catch {}
-        await new Promise(r => setTimeout(r, 500));
-      }
-      return false;
-    }, clientId);
-    console.log('client present after create?', created);
     // As a fallback (UI validation sometimes renders localized strings differently), call the API directly
     // to assert the server rejects missing clientId or invalid redirect URIs.
     const serverResp = await page.evaluate(async () => {
@@ -108,6 +87,7 @@ test.describe('Admin - Clients negative tests', () => {
     // Ensure openid added via scope manager for duplicate creation
     await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
     await page.fill('[data-test="csm-available-search"]', 'openid');
+    await waitForDebounce(page, 600); // Wait for search debounce
     const addOpenIdBtn2 = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
     if (await addOpenIdBtn2.count() > 0) await addOpenIdBtn2.click();
     await page.check('input[id="gt:authorization_code"]');
@@ -117,11 +97,14 @@ test.describe('Admin - Clients negative tests', () => {
     const closeBtn = page.locator('button:has-text("Close")');
     if (await closeBtn.count() > 0 && await closeBtn.isVisible()) await closeBtn.click();
 
-    // Verify the client appears - use the search helper to avoid paging issues
-    const clientsListItem = await adminHelpers.searchListForItem(page, 'clients', clientId, { timeout: 20000 });
+    // Use enhanced list item wait with retry logic
+    const clientsListItem = await waitForListItemWithRetry(page, 'clients', clientId, { 
+      timeout: 30000  // Increased from 20s to 30s
+    });
+    
     expect(clientsListItem).not.toBeNull();
     if (clientsListItem) {
-      await expect(clientsListItem).toBeVisible({ timeout: 20000 });
+      await expect(clientsListItem).toBeVisible({ timeout: 5000 });
     }
 
     // Try to create duplicate
@@ -132,6 +115,7 @@ test.describe('Admin - Clients negative tests', () => {
     // Use scope manager search for the second create attempt as well
     await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
     await page.fill('[data-test="csm-available-search"]', 'openid');
+    await waitForDebounce(page, 600); // Wait for search debounce
     const addOpenIdForDuplicate = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
     if (await addOpenIdForDuplicate.count() > 0) await addOpenIdForDuplicate.click();
     await page.check('input[id="gt:authorization_code"]');
@@ -140,7 +124,6 @@ test.describe('Admin - Clients negative tests', () => {
     // Expect an error message mentioning 'Failed to save client' (server error)
     await expect(page.locator('text=Failed to save client')).toBeVisible({ timeout: 5000 });
 
-    // Cleanup the created client
     // Cleanup the created client via API fallback to ensure cleanup even if UI is flaky
     await adminHelpers.deleteClientViaApiFallback(page, clientId);
   });

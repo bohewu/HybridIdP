@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import adminHelpers from '../helpers/admin';
+import { waitForDebounce } from '../helpers/timing';
 
 test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) => {
   // Accept native JS dialogs (confirm) automatically
@@ -15,13 +16,13 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
 
   // Ensure common OIDC scopes exist (some environments only seed API scopes).
   await page.evaluate(async () => {
-    const ensureScope = async (name, displayName) => {
+    const ensureScope = async (name: string, displayName: string) => {
       try {
         const resp = await fetch(`/api/admin/scopes?search=${encodeURIComponent(name)}`);
         if (resp.ok) {
           const json = await resp.json();
           const items = Array.isArray(json) ? json : (json.items || []);
-          if (items.some(i => i.name === name)) return;
+          if (items.some((i: any) => i.name === name)) return;
         }
       } catch {}
       await fetch('/api/admin/scopes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, displayName, description: '' }) });
@@ -58,6 +59,7 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
 
   // Search and add the openid scope (filter list so we can find it among many scopes)
   await page.fill('[data-test="csm-available-search"]', 'openid');
+  await waitForDebounce(page, 600); // Wait for search debounce
   const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
   await addOpenIdBtn.waitFor({ state: 'visible', timeout: 10000 });
 
@@ -67,19 +69,29 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
   // Submit the form (Create Client)
   await page.click('button[type="submit"]');
 
-  // If secret modal appears, close it
+  // Close secret modal if shown
   const closeBtn = page.locator('button:has-text("Close")');
   if (await closeBtn.count() > 0 && await closeBtn.isVisible()) {
     await closeBtn.click();
   }
 
-  // Wait for the client to appear in the list (use search helper to avoid paging issues)
-  const createdItem = await adminHelpers.searchListForItem(page, 'clients', clientId, { timeout: 20000 });
-  expect(createdItem).not.toBeNull();
-  if (createdItem) await expect(createdItem).toBeVisible({ timeout: 20000 });
+  // Wait a moment for modal to close
+  await page.waitForTimeout(1000);
+
+  // Refresh the clients list to ensure new client appears
+  await page.goto('https://localhost:7035/Admin/Clients');
+  await page.waitForLoadState('networkidle');
+
+  // Wait for the client to appear in the list
+  const found = await adminHelpers.searchListForItemWithApi(page, 'clients', clientId, { 
+    listSelector: 'ul[role="list"], table tbody', 
+    timeout: 30000 
+  });
+  expect(found.locator).not.toBeNull();
+  if (found.locator) await expect(found.locator).toBeVisible({ timeout: 5000 });
 
   // Edit the client: find the list item and click the Edit button
-  const listItem = createdItem!;
+  const listItem = found.locator!;
   await expect(listItem).toBeVisible();
 
   // Click the edit button inside the list item (match by title attribute to support icon-only buttons)

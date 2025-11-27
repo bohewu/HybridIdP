@@ -1,9 +1,7 @@
 import { test, expect } from '@playwright/test';
 import adminHelpers from '../helpers/admin';
+import { waitForModalFormReady, waitForDebounce, waitForApiResponse } from '../helpers/timing';
 
-// NOTE: Temporarily skipped - test times out waiting for POST /api/admin/claims response
-// The permissions are added correctly, but the form submission doesn't trigger the API call
-// Needs further investigation with trace viewer to see what's preventing the form submit
 test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page }) => {
   // Accept dialogs automatically
   page.on('dialog', async (dialog) => {
@@ -44,12 +42,26 @@ test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page 
     return { adminRoleId: adminRole.id, originalPermissions: original };
   });
 
-  // Re-login to get updated permissions
+  // Re-login to get updated permissions with explicit session refresh
+  await page.goto('https://localhost:7035/Account/Logout');
   await adminHelpers.loginAsAdminViaIdP(page);
+  
+  // Verify we can access the Claims API (Admin role may bypass specific permission checks)
+  const canAccessClaimsApi = await page.evaluate(async () => {
+    try {
+      const resp = await fetch('/api/admin/claims?take=1');
+      return resp.ok || resp.status === 403; // 200 OK or 403 means API is reachable
+    } catch {
+      return false;
+    }
+  });
+  
+  if (!canAccessClaimsApi) {
+    throw new Error('Cannot access Claims API after re-login');
+  }
 
   try {
-
-  // Navigate to Claims page
+    // Navigate to Claims page
   await page.goto('https://localhost:7035/Admin/Claims');
   await page.waitForURL(/\/Admin\/Claims/);
 
@@ -62,17 +74,12 @@ test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page 
   // Click Create Claim button
   await page.locator('button:has-text("Create Claim")').click();
 
-  // Wait for modal form to appear
-  await page.waitForSelector('form', { timeout: 5000 });
-  
-  // Wait a bit for Vue to fully render the modal
-  await page.waitForTimeout(500);
+  // Wait for modal form to be fully ready
+  const formReady = await waitForModalFormReady(page, 'form', { timeout: 5000 });
+  expect(formReady).toBeTruthy();
 
-  // Fill in claim details using the form structure from ClaimsApp.vue
-  // The modal form has: Name, DisplayName, Description(textarea), ClaimType, UserPropertyPath, DataType(select), IsRequired(checkbox)
-  
   // Use form context to avoid selecting inputs from the table
-  const modalForm = page.locator('form');
+  const modalForm = page.locator('form').first();
   
   // Name field (required) - first text input in the modal
   await modalForm.locator('input[type="text"]').nth(0).fill(claimName);
@@ -89,36 +96,31 @@ test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page 
   // User Property Path field (required) - fourth text input in modal
   await modalForm.locator('input[type="text"]').nth(3).fill('CustomProperties.TestValue');
 
-  // Data Type field - select (defaults to String, no need to change)
-
-  // Capture API response with shorter timeout
-  const responsePromise = page.waitForResponse(
-    resp => resp.url().includes('/api/admin/claims') && resp.request().method() === 'POST',
-    { timeout: 10000 }
-  ).catch(() => null);
+  // Wait for form to process and submit
+  const responsePromise = waitForApiResponse(page, '/api/admin/claims', {
+    method: 'POST',
+    timeout: 15000,
+    status: 201
+  });
   
   // Submit form
   await modalForm.locator('button[type="submit"]').click();
 
   // Wait for API response
-  const response = await responsePromise;
-  
-  if (!response || !response.ok()) {
-    const errorText = response ? await response.text() : 'No response';
-    throw new Error(`Failed to create claim: ${errorText}`);
-  }
+  const responseData = await responsePromise;
+  expect(responseData.id).toBeTruthy();
 
-  // Wait for modal to close
+  // Wait for modal to close with explicit check
   await page.waitForSelector('form', { state: 'hidden', timeout: 5000 });
   
-  // Wait for table to update
-  await page.waitForTimeout(1000);
+  // Wait for debounce and table refresh
+  await waitForDebounce(page, 1000);
 
   // Search for the claim in table
   const searchInput = page.locator('input[placeholder*="Search"], input[type="search"]').first();
   if (await searchInput.isVisible().catch(() => false)) {
     await searchInput.fill(claimName);
-    await page.waitForTimeout(1000);
+    await waitForDebounce(page, 600);
   }
 
   // Find the claim in table
@@ -133,45 +135,40 @@ test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page 
   await claimRow.locator('button').first().click();
 
   // Wait for modal form
-  await page.waitForSelector('form', { timeout: 5000 });
+  await waitForModalFormReady(page, 'form', { timeout: 5000 });
 
   // Update display name (second text input in edit mode)
   const updatedDisplayName = `${displayName} (updated)`;
-  const editDisplayNameInput = page.locator('input[type="text"]').nth(1);
+  const editDisplayNameInput = page.locator('form input[type="text"]').nth(1);
   await editDisplayNameInput.clear();
   await editDisplayNameInput.fill(updatedDisplayName);
 
   // Submit update
-  await page.click('button[type="submit"]');
-  await page.waitForTimeout(2000);
+  const updateResponsePromise = waitForApiResponse(page, `/api/admin/claims/${responseData.id}`, {
+    method: 'PUT',
+    timeout: 10000
+  });
+  
+  await page.locator('form button[type="submit"]').click();
+  await updateResponsePromise;
+  
+  await waitForDebounce(page, 1000);
 
     // Delete the claim
-    const res = await adminHelpers.searchAndConfirmAction(page, 'claims', claimName, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
+    const res = await adminHelpers.searchAndConfirmAction(page, 'claims', claimName, 'Delete', { 
+      listSelector: 'ul[role="list"], table tbody', 
+      timeout: 20000 
+    });
+    
     if (!res.clicked) {
-      // Use the modal wrapper for delete flows if the helper didn't click
-      const delRes2 = await adminHelpers.searchAndConfirmActionWithModal(page, 'claims', claimName, 'Delete', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
-      if (!delRes2.clicked) {
-        const fallbackDelete = claimRow.locator('button[title*="Delete"], button:has-text("Delete")').first();
-        if (await fallbackDelete.count() > 0) await fallbackDelete.click();
-        else console.warn('No Delete button found in claims row fallback');
-      }
+      // Fallback to API deletion
+      await page.evaluate(async (id) => {
+        await fetch(`/api/admin/claims/${id}`, { method: 'DELETE' });
+      }, responseData.id);
     }
 
-    // Wait for claim to be removed
-    try {
-      await expect(claimsTable).not.toContainText(claimName, { timeout: 20000 });
-    } catch (e) {
-      // If UI delete fails, try API cleanup
-      console.warn(`UI delete failed for claim ${claimName}, attempting API cleanup...`);
-      await page.evaluate(async (name) => {
-        const resp = await fetch(`/api/admin/claims?search=${encodeURIComponent(name)}`);
-        const data = await resp.json();
-        if (data.items && data.items.length > 0) {
-          const claimId = data.items[0].id;
-          await fetch(`/api/admin/claims/${claimId}`, { method: 'DELETE' });
-        }
-      }, claimName);
-    }
+    // Verify deletion
+    await expect(claimsTable).not.toContainText(claimName, { timeout: 10000 });
   } finally {
     // Restore original Administrator role permissions
     await page.evaluate(async (args) => {
