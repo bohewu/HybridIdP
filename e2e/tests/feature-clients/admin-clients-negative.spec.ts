@@ -41,7 +41,16 @@ test.describe('Admin - Clients negative tests', () => {
     await page.check('input[id="gt:authorization_code"]');
 
     // Submit and expect client-side validation error or server rejection
+    const createResp = page.waitForResponse((resp) => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST', { timeout: 20000 }).catch(() => null);
     await page.click('button[type="submit"]');
+    const createRespResult = await createResp;
+    if (createRespResult) {
+      console.log('create client status', createRespResult.status());
+      const body = await createRespResult.text().catch(() => null);
+      console.log('create client body', body);
+    } else {
+      console.log('create client response not captured');
+    }
     // As a fallback (UI validation sometimes renders localized strings differently), call the API directly
     // to assert the server rejects missing clientId or invalid redirect URIs.
     const serverResp = await page.evaluate(async () => {
