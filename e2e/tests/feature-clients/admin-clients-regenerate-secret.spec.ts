@@ -7,6 +7,20 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   await page.goto('https://localhost:7035/Admin/Clients');
   await page.waitForURL(/\/Admin\/Clients/);
 
+  await page.evaluate(async () => {
+    const ensureScope = async (name, displayName) => {
+      try {
+        const resp = await fetch(`/api/admin/scopes?search=${encodeURIComponent(name)}`);
+        if (resp.ok) {
+          const json = await resp.json();
+          const items = Array.isArray(json) ? json : (json.items || []);
+          if (items.some(i => i.name === name)) return;
+        }
+      } catch {}
+      await fetch('/api/admin/scopes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, displayName, description: '' }) });
+    };
+    await ensureScope('openid', 'OpenID');
+  });
   await page.click('button:has-text("Create New Client")');
   await page.waitForSelector('#clientId');
 
