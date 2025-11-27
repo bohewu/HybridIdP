@@ -1,5 +1,11 @@
 
 {
+  "accessDenied": {
+    "title": "Access Denied",
+    "defaultMessage": "You do not have permission to access this resource.",
+    "requiredPermission": "Required Permission",
+    "contactAdmin": "Please contact your administrator if you believe you should have access."
+  },
   "admin": {
     "dashboard": {
       "title": "Admin Dashboard",

@@ -1,4 +1,10 @@
 {
+  "accessDenied": {
+    "title": "拒絕存取",
+    "defaultMessage": "您沒有權限存取此資源。",
+    "requiredPermission": "需要的權限",
+    "contactAdmin": "如果您認為您應該有存取權限，請聯絡系統管理員。"
+  },
   "admin": {
     "dashboard": {
       "title": "管理儀表板",
