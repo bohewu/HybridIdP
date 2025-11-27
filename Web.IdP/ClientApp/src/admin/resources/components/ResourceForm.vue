@@ -180,124 +180,124 @@ const isScopeSelected = (scopeId) => {
     @close="emit('cancel')"
   >
     <template #body>
+      <!-- Error Alert -->
+      <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
+        <p class="text-sm text-red-700">{{ error }}</p>
+      </div>
+
       <form @submit.prevent="handleSubmit" novalidate>
+        <div class="space-y-5">
+          <!-- Resource Name -->
+          <div class="mb-5">
+            <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
+              {{ $t('resources.form.name') }} <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="name"
+              ref="nameInput"
+              v-model="formData.name"
+              type="text"
+              :disabled="isEdit"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              :placeholder="$t('resources.form.namePlaceholder')"
+            />
+            <p class="mt-1 text-xs text-gray-500">{{ $t('resources.form.nameHelp') }}</p>
+          </div>
 
-                  <!-- Error Alert -->
-                  <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
-                    <p class="text-sm text-red-700">{{ error }}</p>
-                  </div>
+          <!-- Display Name -->
+          <div class="mb-5">
+            <label for="displayName" class="block text-sm font-medium text-gray-700 mb-1.5">
+              {{ $t('resources.form.displayName') }}
+            </label>
+            <input
+              id="displayName"
+              v-model="formData.displayName"
+              type="text"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+              :placeholder="$t('resources.form.displayNamePlaceholder')"
+            />
+          </div>
 
-                  <div class="space-y-5">
-                    <!-- Resource Name -->
-                    <div class="mb-5">
-                      <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('resources.form.name') }} <span class="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="name"
-                        ref="nameInput"
-                        v-model="formData.name"
-                        type="text"
-                        :disabled="isEdit"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        :placeholder="$t('resources.form.namePlaceholder')"
-                      />
-                      <p class="mt-1 text-xs text-gray-500">{{ $t('resources.form.nameHelp') }}</p>
-                    </div>
+          <!-- Description -->
+          <div class="mb-5">
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-1.5">
+              {{ $t('resources.form.description') }}
+            </label>
+            <textarea
+              id="description"
+              v-model="formData.description"
+              rows="3"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
+              :placeholder="$t('resources.form.descriptionPlaceholder')"
+            ></textarea>
+          </div>
 
-                    <!-- Display Name -->
-                    <div class="mb-5">
-                      <label for="displayName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('resources.form.displayName') }}
-                      </label>
-                      <input
-                        id="displayName"
-                        v-model="formData.displayName"
-                        type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
-                        :placeholder="$t('resources.form.displayNamePlaceholder')"
-                      />
-                    </div>
+          <!-- Base URL -->
+          <div class="mb-5">
+            <label for="baseUrl" class="block text-sm font-medium text-gray-700 mb-1.5">
+              {{ $t('resources.form.baseUrl') }}
+            </label>
+            <input
+              id="baseUrl"
+              v-model="formData.baseUrl"
+              type="url"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+              :placeholder="$t('resources.form.baseUrlPlaceholder')"
+            />
+            <p class="mt-1 text-xs text-gray-500">{{ $t('resources.form.baseUrlHelp') }}</p>
+          </div>
 
-                    <!-- Description -->
-                    <div class="mb-5">
-                      <label for="description" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('resources.form.description') }}
-                      </label>
-                      <textarea
-                        id="description"
-                        v-model="formData.description"
-                        rows="3"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
-                        :placeholder="$t('resources.form.descriptionPlaceholder')"
-                      ></textarea>
-                    </div>
+          <!-- Associated Scopes -->
+          <div class="mb-5 border-t pt-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-3">
+              {{ $t('resources.form.scopesTitle') }}
+            </h4>
+            <p class="text-xs text-gray-500 mb-3">
+              {{ $t('resources.form.scopesHelp') }}
+            </p>
 
-                    <!-- Base URL -->
-                    <div class="mb-5">
-                      <label for="baseUrl" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('resources.form.baseUrl') }}
-                      </label>
-                      <input
-                        id="baseUrl"
-                        v-model="formData.baseUrl"
-                        type="url"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
-                        :placeholder="$t('resources.form.baseUrlPlaceholder')"
-                      />
-                      <p class="mt-1 text-xs text-gray-500">{{ $t('resources.form.baseUrlHelp') }}</p>
-                    </div>
+            <div v-if="loadingScopes" class="text-sm text-gray-500">
+              {{ $t('resources.form.loadingScopes') }}
+            </div>
 
-                    <!-- Associated Scopes -->
-                    <div class="mb-5 border-t pt-4">
-                      <h4 class="text-sm font-semibold text-gray-900 mb-3">
-                        {{ $t('resources.form.scopesTitle') }}
-                      </h4>
-                      <p class="text-xs text-gray-500 mb-3">
-                        {{ $t('resources.form.scopesHelp') }}
-                      </p>
+            <div v-else-if="availableScopes.length === 0" class="text-sm text-gray-500">
+              {{ $t('resources.form.noScopesAvailable') }}
+            </div>
 
-                      <div v-if="loadingScopes" class="text-sm text-gray-500">
-                        {{ $t('resources.form.loadingScopes') }}
-                      </div>
+            <div v-else class="max-h-64 overflow-y-auto border border-gray-200 rounded-md p-3 space-y-2">
+              <div
+                v-for="scope in availableScopes"
+                :key="scope.id"
+                class="flex items-start"
+              >
+                <div class="flex items-center h-5">
+                  <input
+                    :id="`scope-${scope.id}`"
+                    type="checkbox"
+                    :checked="isScopeSelected(scope.id)"
+                    @change="toggleScope(scope.id)"
+                    class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded cursor-pointer"
+                  />
+                </div>
+                <div class="ml-3 text-sm">
+                  <label :for="`scope-${scope.id}`" class="font-medium text-gray-700 cursor-pointer">
+                    {{ scope.name }}
+                  </label>
+                  <p v-if="scope.displayName" class="text-gray-500 text-xs">
+                    {{ scope.displayName }}
+                  </p>
+                  <p v-if="scope.description" class="text-gray-400 text-xs mt-0.5">
+                    {{ scope.description }}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-                      <div v-else-if="availableScopes.length === 0" class="text-sm text-gray-500">
-                        {{ $t('resources.form.noScopesAvailable') }}
-                      </div>
-
-                      <div v-else class="max-h-64 overflow-y-auto border border-gray-200 rounded-md p-3 space-y-2">
-                        <div
-                          v-for="scope in availableScopes"
-                          :key="scope.id"
-                          class="flex items-start"
-                        >
-                          <div class="flex items-center h-5">
-                            <input
-                              :id="`scope-${scope.id}`"
-                              type="checkbox"
-                              :checked="isScopeSelected(scope.id)"
-                              @change="toggleScope(scope.id)"
-                              class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded cursor-pointer"
-                            />
-                          </div>
-                          <div class="ml-3 text-sm">
-                            <label :for="`scope-${scope.id}`" class="font-medium text-gray-700 cursor-pointer">
-                              {{ scope.name }}
-                            </label>
-                            <p v-if="scope.displayName" class="text-gray-500 text-xs">
-                              {{ scope.displayName }}
-                            </p>
-                            <p v-if="scope.description" class="text-gray-400 text-xs mt-0.5">
-                              {{ scope.description }}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div v-if="selectedScopeIds.length > 0" class="mt-2 text-xs text-gray-500">
-                        {{ $t('resources.form.scopesSelected', { count: selectedScopeIds.length }) }}
-                      </div>
-                    </div>
+            <div v-if="selectedScopeIds.length > 0" class="mt-2 text-xs text-gray-500">
+              {{ $t('resources.form.scopesSelected', { count: selectedScopeIds.length }) }}
+            </div>
+          </div>
+        </div>
       </form>
     </template>
 
