@@ -17,11 +17,15 @@ export default async function globalSetup() {
       try {
         // try the admin health endpoint — use a short navigation timeout so we can retry quickly
         const resp = await page.goto(`${baseUrl}/api/admin/health`, { waitUntil: 'networkidle', timeout: 5000 }).catch(() => null);
-        if (resp && resp.status() === 200) {
+        // Accept 200 = healthy, but also treat 401/403 as the service being reachable (auth-protected API)
+        if (resp && (resp.status() === 200 || resp.status() === 401 || resp.status() === 403)) {
           try {
             // attempt parse - some environments might return simple text
             const json = await resp.json().catch(() => null);
             if (!json || json.status === 'healthy') return true;
+            // If json exists but doesn't indicate 'healthy', it's still OK to consider the instance available
+            // if the status code indicates the service is reachable and protected.
+            if (resp.status() === 401 || resp.status() === 403) return true;
           } catch {
             return true; // 200 OK is sufficient if we can't parse JSON
           }

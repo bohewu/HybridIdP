@@ -31,7 +31,9 @@ export async function ensureAdminAvailable(page: Page, timeout = 120_000, interv
     try {
       // Try health endpoint first
       const resp = await page.goto(`${base}/api/admin/health`, { waitUntil: 'networkidle', timeout: 5000 }).catch(() => null);
-      if (resp && resp.status() === 200) {
+        // If the admin health endpoint returns 200 -> healthy.
+        // If it returns 401/403 it means the service is reachable but requires auth — treat as available.
+        if (resp && (resp.status() === 200 || resp.status() === 401 || resp.status() === 403)) {
         return true;
       }
     } catch (e) {
