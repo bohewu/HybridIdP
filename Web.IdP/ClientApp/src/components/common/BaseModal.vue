@@ -191,12 +191,31 @@ const setInitialFocus = async () => {
   
   if (props.initialFocusRef?.value) {
     props.initialFocusRef.value.focus()
-  } else if (modalPanel.value) {
-    // Focus first focusable element
-    const focusableElements = modalPanel.value.querySelectorAll(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    return
+  }
+  
+  if (modalPanel.value) {
+    // Add small delay to ensure DOM is fully rendered
+    await nextTick()
+    
+    // Prioritize form inputs, then other focusable elements (excluding close button with tabindex="-1")
+    const inputElements = modalPanel.value.querySelectorAll(
+      'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])'
     )
+    console.log('[BaseModal] Found input elements:', inputElements.length, inputElements)
+    if (inputElements.length > 0) {
+      console.log('[BaseModal] Focusing first input:', inputElements[0])
+      inputElements[0].focus()
+      return
+    }
+    
+    // If no inputs, find other focusable elements
+    const focusableElements = modalPanel.value.querySelectorAll(
+      'button:not([disabled]):not([tabindex="-1"]), [href], [tabindex]:not([tabindex="-1"])'
+    )
+    console.log('[BaseModal] Found focusable elements:', focusableElements.length, focusableElements)
     if (focusableElements.length > 0) {
+      console.log('[BaseModal] Focusing first focusable:', focusableElements[0])
       focusableElements[0].focus()
     }
   }
@@ -230,10 +249,11 @@ const handleKeyDown = (event) => {
 
 // Watch show prop to manage focus
 watch(() => props.show, (newVal) => {
+  console.log('[BaseModal] show changed to:', newVal)
   if (newVal) {
     setInitialFocus()
   }
-})
+}, { immediate: true })
 
 // Lifecycle hooks
 onMounted(() => {
