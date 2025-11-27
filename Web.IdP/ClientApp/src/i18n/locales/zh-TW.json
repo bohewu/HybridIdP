@@ -366,6 +366,7 @@
       "enabled": "已啟用",
       "disabled": "已停用",
       "search": "搜尋...",
+      "noSearchResults": "找不到符合的結果",
       "filter": "篩選",
       "sort": "排序",
       "actions": "操作",

@@ -1,33 +1,40 @@
 <template>
-  <button
-    type="button"
-    :class="[enabled ? 'bg-indigo-600' : 'bg-gray-200', 'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2']"
-    role="switch"
-    :aria-checked="enabled"
-    @click="toggle"
-  >
-    <span
-      aria-hidden="true"
-      :class="[enabled ? 'translate-x-5' : 'translate-x-0', 'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out']"
-    />
-  </button>
+  <label class="flex items-center cursor-pointer" :title="title">
+    <div class="relative">
+      <input 
+        type="checkbox" 
+        class="sr-only peer" 
+        :checked="modelValue"
+        @change="$emit('update:modelValue', $event.target.checked)"
+      >
+      <!-- Track -->
+      <div class="w-10 h-5 rounded-full shadow-inner transition-colors bg-gray-200 peer-checked:bg-amber-400"></div>
+      <!-- Dot -->
+      <div class="dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full shadow transition-transform transform peer-checked:translate-x-5"></div>
+    </div>
+    <span v-if="label" class="ml-2 text-xs font-medium" :class="modelValue ? 'text-amber-600' : 'text-gray-500'">
+      {{ label }}
+    </span>
+  </label>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { defineProps, defineEmits } from 'vue';
 
-const props = defineProps({
+defineProps({
   modelValue: {
     type: Boolean,
-    required: true,
+    default: false
   },
+  label: {
+    type: String,
+    default: ''
+  },
+  title: {
+    type: String,
+    default: ''
+  }
 });
 
-const emit = defineEmits(['update:modelValue']);
-
-const enabled = computed(() => props.modelValue);
-
-function toggle() {
-  emit('update:modelValue', !enabled.value);
-}
+defineEmits(['update:modelValue']);
 </script>

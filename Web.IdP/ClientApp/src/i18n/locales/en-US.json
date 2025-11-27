@@ -366,6 +366,7 @@
       "enabled": "Enabled",
       "disabled": "Disabled",
       "search": "Search...",
+      "noSearchResults": "No matching results found",
       "filter": "Filter",
       "sort": "Sort",
       "actions": "Actions",

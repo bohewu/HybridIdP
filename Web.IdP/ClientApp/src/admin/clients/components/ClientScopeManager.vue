@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+import ToggleSwitch from '@/components/common/ToggleSwitch.vue'
 
 const { t } = useI18n()
 
@@ -20,11 +21,12 @@ const emit = defineEmits(['update:modelValue', 'update:requiredScopes'])
 
 // Local state
 const searchQuery = ref('')
+const clientScopeSearchQuery = ref('') // New search for right column
 const availableScopes = ref([])
 const loading = ref(false)
 const totalAvailable = ref(0)
 const currentPage = ref(1)
-const pageSize = 20
+const pageSize = 10 // Set to 10 per user request
 
 // Helper to check if scope is selected
 const isSelected = (scopeName) => props.modelValue.includes(scopeName)
@@ -103,17 +105,20 @@ const toggleRequired = (scopeName) => {
 // We try to enrich the selected scopes with details if available in 'availableScopes'
 // Otherwise fallback to just name
 const selectedScopesList = computed(() => {
-  return props.modelValue.map(name => {
+  const list = props.modelValue.map(name => {
     const found = availableScopes.value.find(s => s.name === name)
     return found || { name, displayName: name, description: '' }
   })
+  
+  // Filter by search query if present
+  if (!clientScopeSearchQuery.value) return list
+  
+  const q = clientScopeSearchQuery.value.toLowerCase()
+  return list.filter(s => 
+    s.name.toLowerCase().includes(q) || 
+    (s.displayName && s.displayName.toLowerCase().includes(q))
+  )
 })
-
-// Computed for Left Column (Available Scopes)
-// Filter out already selected scopes from the visible list to avoid clutter?
-// Or just show them as "Added"? Showing as "Added" (disabled button) is better context.
-// But requirement says "dual-column", usually implies moving items.
-// Let's keep them but disable the Add button.
 
 // Initial load
 onMounted(() => {
@@ -122,18 +127,19 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-[500px]">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <!-- Removed fixed height from root to fix overlap -->
     <!-- Left Column: Available Scopes -->
-    <div class="border rounded-md flex flex-col bg-white shadow-sm">
+    <div class="border rounded-md flex flex-col bg-white shadow-sm h-100"> <!-- Added fixed height here -->
       <div class="p-3 border-b bg-gray-50">
-        <h4 class="font-medium text-gray-700 mb-2">{{ t('clients.form.scopeManager.availableScopes') }}</h4>
+        <h4 class="font-medium text-gray-700 mb-2" data-test="csm-available-header">{{ t('clients.form.scopeManager.availableScopes') }}</h4>
         <div class="relative">
           <input
             type="text"
             v-model="searchQuery"
             @input="handleSearch"
             :placeholder="t('clients.form.scopeManager.searchAvailable')"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm pl-9"
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm pl-9 h-10 py-2"
+            data-test="csm-available-search"
           />
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -143,7 +149,7 @@ onMounted(() => {
         </div>
       </div>
       
-      <div class="flex-1 overflow-y-auto p-2 space-y-1 relative">
+      <div class="flex-1 overflow-y-auto p-2 space-y-1 relative min-h-0">
         <LoadingIndicator 
           v-if="loading" 
           :loading="loading" 
@@ -161,6 +167,7 @@ onMounted(() => {
           v-for="scope in availableScopes"
           :key="scope.name"
           class="flex items-center justify-between p-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 group"
+          data-test="csm-available-item"
         >
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-900 truncate" :title="scope.displayName || scope.name">
@@ -176,6 +183,7 @@ onMounted(() => {
             </div>
           </div>
           <button
+            type="button"
             @click="addScope(scope)"
             :disabled="isSelected(scope.name)"
             class="ml-2 inline-flex items-center p-1.5 border border-transparent rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
@@ -189,34 +197,54 @@ onMounted(() => {
 
       <!-- Pagination -->
       <div class="p-2 border-t bg-gray-50 flex justify-between items-center text-xs text-gray-500">
-        <button @click="prevPage" :disabled="currentPage === 1" class="px-2 py-1 rounded hover:bg-gray-200 disabled:opacity-50">
+        <button type="button" @click="prevPage" :disabled="currentPage === 1" class="px-2 py-1 rounded hover:bg-gray-200 disabled:opacity-50">
           &lt;
         </button>
-        <span>Page {{ currentPage }}</span>
-        <button @click="nextPage" :disabled="(currentPage * pageSize) >= totalAvailable" class="px-2 py-1 rounded hover:bg-gray-200 disabled:opacity-50">
+        <span>{{ currentPage }} / {{ Math.ceil(totalAvailable / pageSize) || 1 }} (Total: {{ totalAvailable }})</span>
+        <button type="button" @click="nextPage" :disabled="(currentPage * pageSize) >= totalAvailable" class="px-2 py-1 rounded hover:bg-gray-200 disabled:opacity-50">
           &gt;
         </button>
       </div>
     </div>
 
     <!-- Right Column: Selected Scopes -->
-    <div class="border rounded-md flex flex-col bg-white shadow-sm">
-      <div class="p-3 border-b bg-gray-50 flex justify-between items-center">
-        <h4 class="font-medium text-gray-700">{{ t('clients.form.scopeManager.clientScopes') }}</h4>
-        <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
-          {{ t('clients.form.scopeManager.assignedCount', { count: modelValue.length }) }}
-        </span>
+    <div class="border rounded-md flex flex-col bg-white shadow-sm h-100" data-test="csm-selected">
+      <div class="p-3 border-b bg-gray-50">
+        <div class="flex justify-between items-center mb-2">
+          <h4 class="font-medium text-gray-700">{{ t('clients.form.scopeManager.clientScopes') }}</h4>
+          <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
+            {{ t('clients.form.scopeManager.assignedCount', { count: modelValue.length }) }}
+          </span>
+        </div>
+        <div class="relative">
+          <input
+            type="text"
+            v-model="clientScopeSearchQuery"
+            :placeholder="t('clients.form.scopeManager.searchClient')"
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm pl-9 h-10 py-2"
+            data-test="csm-selected-search"
+          />
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-2 space-y-1">
+      <div class="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
         <div v-if="modelValue.length === 0" class="text-center py-4 text-gray-500 text-sm">
           {{ t('clients.form.scopeManager.noClientScopes') }}
+        </div>
+        <div v-else-if="selectedScopesList.length === 0" class="text-center py-4 text-gray-500 text-sm">
+          {{ t('common.noSearchResults') || 'No matching scopes found' }}
         </div>
 
         <div
           v-for="scope in selectedScopesList"
           :key="scope.name"
           class="flex items-start justify-between p-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200"
+          data-test="csm-selected-item"
         >
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-900 truncate">
@@ -228,25 +256,17 @@ onMounted(() => {
           </div>
           
           <div class="flex items-center ml-4 space-x-3">
-            <!-- Required Toggle -->
-            <label class="flex items-center cursor-pointer" :title="t('clients.form.scopeManager.requiredHelp')">
-              <div class="relative">
-                <input 
-                  type="checkbox" 
-                  class="sr-only" 
-                  :checked="isRequired(scope.name)"
-                  @change="toggleRequired(scope.name)"
-                >
-                <div class="w-10 h-5 bg-gray-200 rounded-full shadow-inner transition-colors" :class="{ 'bg-amber-400': isRequired(scope.name) }"></div>
-                <div class="dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full shadow transition-transform" :class="{ 'transform translate-x-5': isRequired(scope.name) }"></div>
-              </div>
-              <span class="ml-2 text-xs font-medium" :class="isRequired(scope.name) ? 'text-amber-600' : 'text-gray-500'">
-                {{ t('clients.form.scopeManager.required') }}
-              </span>
-            </label>
+            <!-- Required Toggle Component -->
+            <ToggleSwitch
+              :model-value="isRequired(scope.name)"
+              @update:model-value="toggleRequired(scope.name)"
+              :label="t('clients.form.scopeManager.required')"
+              :title="t('clients.form.scopeManager.requiredHelp')"
+            />
 
             <!-- Remove Button -->
             <button
+              type="button"
               @click="removeScope(scope.name)"
               class="text-gray-400 hover:text-red-500 focus:outline-none"
               :title="t('clients.form.scopeManager.remove')"
@@ -261,13 +281,3 @@ onMounted(() => {
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Custom toggle styles */
-input:checked ~ .dot {
-  transform: translateX(100%);
-}
-input:checked ~ .bg-gray-200 {
-  background-color: #f59e0b; /* amber-400 */
-}
-</style>
