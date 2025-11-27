@@ -10,7 +10,35 @@ export default async function globalSetup() {
   const context = await browser.newContext({ ignoreHTTPSErrors: true });
   const page = await context.newPage();
 
+  // helper: wait for the Admin API health endpoint to be reachable before proceeding
+  async function waitForAdminHealth(timeout = 120_000, interval = 2_000) {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      try {
+        // try the admin health endpoint — use a short navigation timeout so we can retry quickly
+        const resp = await page.goto(`${baseUrl}/api/admin/health`, { waitUntil: 'networkidle', timeout: 5000 }).catch(() => null);
+        if (resp && resp.status() === 200) {
+          try {
+            // attempt parse - some environments might return simple text
+            const json = await resp.json().catch(() => null);
+            if (!json || json.status === 'healthy') return true;
+          } catch {
+            return true; // 200 OK is sufficient if we can't parse JSON
+          }
+        }
+      } catch (err) {
+        // ignore and retry
+      }
+      await new Promise((r) => setTimeout(r, interval));
+    }
+    return false;
+  }
+
   try {
+    // Wait for the admin API to be up and healthy; fail fast with informative log otherwise
+    const ok = await waitForAdminHealth().catch(() => false);
+    if (!ok) throw new Error(`globalSetup: admin API ${baseUrl}/api/admin/health did not become healthy in time`);
+
     await page.goto(`${baseUrl}/Account/Login`);
     await page.fill('#Input_Login', adminEmail);
     await page.fill('#Input_Password', adminPassword);

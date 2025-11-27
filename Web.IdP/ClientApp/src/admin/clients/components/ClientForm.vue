@@ -225,8 +225,9 @@ const handleSubmit = async () => {
     const clientId = isEdit.value ? props.client.id : responseData.id
     if (clientId) {
       try {
-        // Save Allowed Scopes
-        if (formData.value.allowedScopes.length > 0) {
+        // Save Allowed Scopes (always send explicit state so server reflects current UI)
+        // sending empty array will clear allowed scopes server-side if user removed all
+        {
           const scopesResponse = await fetch(`/api/admin/clients/${clientId}/scopes`, {
             method: 'PUT',
             headers: {
@@ -240,8 +241,9 @@ const handleSubmit = async () => {
           }
         }
 
-        // Save Required Scopes (if any)
-        if (formData.value.requiredScopes.length > 0) {
+        // Save Required Scopes (always send explicit state to avoid race conditions)
+        // sending empty array will clear any previously required scopes
+        {
           const requiredResponse = await fetch(`/api/admin/clients/${clientId}/required-scopes`, {
             method: 'PUT',
             headers: {

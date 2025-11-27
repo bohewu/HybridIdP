@@ -1,13 +1,10 @@
 import { Page } from '@playwright/test'
+import { ensureAdminAvailable, loginAsAdminViaIdP } from './admin'
 
 export async function recreateTestClientViaApi(page: Page, clientId = 'testclient-public') {
-  // Ensure admin session
-  await page.goto('https://localhost:7035/Account/Logout')
-  await page.goto('https://localhost:7035/Account/Login')
-  await page.fill('#Input_Login', 'admin@hybridauth.local')
-  await page.fill('#Input_Password', 'Admin@123')
-  await page.click('button.auth-btn-primary')
-  await page.waitForSelector('.user-name', { timeout: 20000 })
+  // Ensure admin is reachable and that we are logged in
+  await ensureAdminAvailable(page)
+  await loginAsAdminViaIdP(page)
 
   // Search for existing client
   const found = await page.evaluate(async (id) => {
@@ -18,27 +15,7 @@ export async function recreateTestClientViaApi(page: Page, clientId = 'testclien
     return items.find((c: any) => c.clientId === id) || null
   }, clientId)
 
-  // Backup + delete if exists
-  if (found && found.id) {
-    try {
-      // Save backup to a server-side place is not possible from browser; return the details to caller
-      await page.evaluate(async (id) => {
-        const r = await fetch(`/api/admin/clients/${id}`)
-        if (!r.ok) return
-        const details = await r.json()
-        // attempt to send to console (tests may log this)
-        // Note: we can't save files to disk easily from the browser context in tests
-        console.log('backup-client-details', JSON.stringify(details))
-      }, found.id)
-      await page.evaluate(async (id) => {
-        await fetch(`/api/admin/clients/${id}`, { method: 'DELETE' })
-      }, found.id)
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  // Create canonical client
+  // Create canonical client payload
   const createBody = {
     clientId: 'testclient-public',
     clientSecret: null,
@@ -54,7 +31,42 @@ export async function recreateTestClientViaApi(page: Page, clientId = 'testclien
     ]
   }
 
+  // If exists, attempt to update the existing client to match canonical test client
+  if (found && found.id) {
+    try {
+      const updateBody = { ...createBody }
+      // Ensure clientId matches existing; update endpoint uses id path
+      const updated = await page.evaluate(async (args) => {
+        const { id, body } = args
+        const r = await fetch(`/api/admin/clients/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+        if (!r.ok) {
+          const text = await r.text().catch(() => '')
+          throw new Error(`Failed to update test client: ${r.status} ${text}`)
+        }
+        return r.json()
+      }, { id: found.id, body: updateBody })
+
+      return updated
+    } catch (e) {
+      // If update failed, attempt delete+create as a fallback
+      try {
+        await page.evaluate(async (id) => {
+          await fetch(`/api/admin/clients/${id}`, { method: 'DELETE' })
+        }, found.id)
+      } catch (err) {
+        // continue to create below and let create handle duplicate errors
+      }
+    }
+  }
+
+  // Create canonical client (createBody declared above)
+
   const created = await page.evaluate(async (body) => {
+    // Attempt to create; if a duplicate exists due to race we handle by fetching the existing client
     const r = await fetch('/api/admin/clients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -62,6 +74,15 @@ export async function recreateTestClientViaApi(page: Page, clientId = 'testclien
     })
     if (!r.ok) {
       const text = await r.text().catch(() => '')
+      // If server indicates the client already exists (409 or message contains 'already exists' / 'duplicate'), try to return the existing client
+      if (r.status === 409 || /already exists|duplicate key|IX_OpenIddictApplications_ClientId/i.test(text)) {
+        const s = await fetch(`/api/admin/clients?search=${encodeURIComponent(body.clientId)}&take=100`)
+        if (s.ok) {
+          const json = await s.json()
+          const items = Array.isArray(json) ? json : (json.items || [])
+          return items.find((c: any) => c.clientId === body.clientId) || null
+        }
+      }
       throw new Error(`Failed to create test client: ${r.status} ${text}`)
     }
     return r.json()

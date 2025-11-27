@@ -19,7 +19,7 @@ async function main() {
     await page.click('button.auth-btn-primary');
     await page.waitForSelector('.user-name', { timeout: 20000 });
 
-    console.log('Logged in as admin. Searching for existing testclient-public...');
+    // logged in and searching for client
     const client = await page.evaluate(async () => {
       const r = await fetch('/api/admin/clients?search=testclient-public&take=100');
       if (!r.ok) return null;
@@ -29,19 +29,19 @@ async function main() {
     });
 
     if (client && client.id) {
-      console.log(`Found existing testclient-public (id=${client.id}), deleting...`);
+      // found existing client, deleting
       const details = await page.evaluate(async (id) => {
         const r = await fetch(`/api/admin/clients/${id}`);
         return (r.ok ? r.json() : null);
       }, client.id);
-      console.log('Client backup (partial):', JSON.stringify({ id: details?.id, clientId: details?.clientId }).slice(0, 400));
+      // client details backed up (partial)
       await page.evaluate(async (id) => {
         await fetch(`/api/admin/clients/${id}`, { method: 'DELETE' });
       }, client.id);
-      console.log('Deleted existing client');
+      // deleted existing client
     }
 
-    console.log('Creating fresh testclient-public with canonical permissions...');
+    // creating fresh testclient-public with canonical permissions
     const createResp = await page.evaluate(async () => {
       const payload = {
         clientId: 'testclient-public',
@@ -59,7 +59,7 @@ async function main() {
       return r.json();
     });
 
-    console.log('Created client:', createResp?.id || '(no id returned)');
+    // created client (id may be available in createResp)
   } catch (err) {
     console.error('Failed during recreate testclient:', err);
     process.exitCode = 1;

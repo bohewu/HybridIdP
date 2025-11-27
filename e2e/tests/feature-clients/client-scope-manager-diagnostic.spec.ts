@@ -68,7 +68,6 @@ test('Diagnostic - capture network when toggling required scope', async ({ page 
 
   // Now inspect the captured responses
   const reqScopes = seenResponses.filter(r => r.url.includes('/required-scopes') || r.url.includes('/scopes'))
-  console.log('Captured client-related responses:', reqScopes)
 
   // Assert that required-scopes PUT occurred or else we will fail and print details
   const reqPut = reqScopes.find(r => r.url.includes('/required-scopes') && r.method === 'PUT')

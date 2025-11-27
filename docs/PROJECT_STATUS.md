@@ -16,6 +16,21 @@
 - ✅ **Phase 7.3：異常登入管理 UI 已完成** (LoginHistoryDialog with abnormal login approval, visual indicators, E2E testing)
 - ✅ **Phase 7.4：即時活動儀表板已完成** (SignalR real-time dashboard, monitoring cards, security metrics, activity stats, E2E tested)
 
+### Recent progress (2025-11-27)
+
+Short summary of E2E work completed and stabilization efforts today:
+
+- Removed leftover debug logging from Playwright tests & helper scripts to keep test output clean.
+- Added focused Playwright E2E tests for the ClientScopeManager UI (add/remove allowed scopes, pagination, search, required-scope toggle persistence).
+- Introduced a TypeScript script + helper to programmatically recreate or update the canonical `testclient-public` client used by tests.
+- Hardened Playwright global setup and helpers: global-setup now polls `/api/admin/health` before logging in, and helpers include an `ensureAdminAvailable` wait helper to avoid ERR_CONNECTION_REFUSED flakes when services are starting.
+- Fixed Admin UI persistence bug: ClientForm now always sends both `allowedScopes` and `requiredScopes` on save to ensure required-scope updates persist reliably.
+
+Next steps / notes:
+
+- Full E2E runs should be executed in a stable environment (use `e2e/wait-for-idp-ready.ps1` or `scripts/run-e2e.ps1 -StartServices`) so Playwright doesn't start before services are ready.
+- If you want me to continue, I can run a full headless test pass and triage any failing specs.
+
 **架構狀態分析：**
 - ✅ 已重構完成（Thin Controller + Service Pattern）：
   - ClientsController → ClientService (240 行，41 單元測試 ✅)

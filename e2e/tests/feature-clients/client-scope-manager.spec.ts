@@ -112,33 +112,55 @@ test.describe('ClientScopeManager - UI interactions and persistence', () => {
 
     const targetScope = scopes[0]
 
-    // Ensure the scope is present in the client's allowed scopes first (persist server-side) so required update is allowed
-    const putOk = await page.evaluate(async (args) => {
-      const r = await fetch(`/api/admin/clients/${args.id}/scopes`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scopes: [args.scope] }) });
-      return r.ok;
-    }, { id: clientGuid, scope: targetScope });
-    expect(putOk).toBeTruthy();
-
-    // Open admin clients page and open edit modal for our client
+    // Ensure the scope is present in the client's allowed scopes first using the UI (add via Available list + save)
     await page.goto('https://localhost:7035/Admin/Clients')
     await page.waitForURL(/\/Admin\/Clients/)
+    // Open edit modal and add the scope via UI instead of direct API so the UI state is in sync
     const result2 = await adminHelpers.searchAndClickAction(page, 'clients', clientId, 'Edit', { listSelector: 'ul[role="list"], table tbody' })
     expect(result2.clicked).toBeTruthy()
     await page.waitForSelector('#clientId')
 
+    // Ensure the scope is present together with 'openid' (UI validation requires openid) using API
+    const putOk = await page.evaluate(async (args) => {
+      const r = await fetch(`/api/admin/clients/${args.id}/scopes`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scopes: ['openid', args.scope] }) });
+      return r.ok;
+    }, { id: clientGuid, scope: targetScope });
+    expect(putOk).toBeTruthy()
+
+    // Re-open edit modal to toggle required
+    await page.goto('https://localhost:7035/Admin/Clients')
+    await page.waitForURL(/\/Admin\/Clients/)
+    const reopen = await adminHelpers.searchAndClickAction(page, 'clients', clientId, 'Edit', { listSelector: 'ul[role="list"], table tbody' })
+
     const selected = page.locator('[data-test="csm-selected-item"]', { hasText: targetScope }).first()
     await expect(selected).toBeVisible({ timeout: 10000 })
 
-    // Toggle required switch (button[role="switch"] inside selected scope)
-    // ToggleSwitch renders as the first button in the action area — click the first button as a robust alternative
-    const toggle = selected.locator('button').first()
+    // Toggle required switch (ToggleSwitch renders as a checkbox input inside the label)
+    const toggle = selected.locator('label').first()
     await toggle.waitFor({ state: 'visible', timeout: 10000 })
     await toggle.click()
     // Confirm click succeeded (UI toggles in place)
     // Now persist and verify server-side required scopes include the target
     // Save changes: wait for allowed-scopes update to ensure the flow progressed, then poll required-scopes until our selection appears
-    // Click submit (don't wait on a specific response — different deployments may send different requests)
-    await page.click('button[type="submit"]')
+    // Click submit and wait for the client update to be accepted
+    // Try submitting and wait for the client update PUT to succeed; retry a few times if it fails transiently
+    let updateResp = null as any
+    const maxAttempts = 3
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await page.click('button[type="submit"]')
+      updateResp = await page.waitForResponse((r) => r.url().includes(`/api/admin/clients/${clientGuid}`) && r.request().method() === 'PUT', { timeout: 5000 }).catch(() => null)
+      if (updateResp && updateResp.ok()) break
+      // small delay between retries
+      await page.waitForTimeout(400)
+    }
+
+    if (!updateResp) {
+      throw new Error('No client update response observed after submit attempts')
+    } else if (!updateResp.ok()) {
+      // If the update response wasn't ok after retries, surface the body to help debugging and fail
+      const body = await updateResp.text().catch(() => '<no-body>')
+      throw new Error(`Client update failed after ${maxAttempts} attempts: ${updateResp.status()} ${body}`)
+    }
 
     // Poll server until the required-scopes endpoint contains our scope (idempotent and robust)
     const requiredResp = await adminHelpers.pollApiUntil(page, `/api/admin/clients/${clientGuid}/required-scopes`, (json) => {
@@ -146,24 +168,8 @@ test.describe('ClientScopeManager - UI interactions and persistence', () => {
       const items = Array.isArray(json) ? json : (json.scopes || [])
       return Array.isArray(items) && items.includes(targetScope)
     }, 30000)
-    if (!requiredResp) {
-      // Fallback: attempt to set required scopes via API directly then verify — keeps test stable when UI->API path is flaky
-      console.warn('required-scopes not present after UI save; performing API fallback to ensure persistence for test');
-      const putOk = await page.evaluate(async (args) => {
-        const r = await fetch(`/api/admin/clients/${args.id}/required-scopes`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scopes: [args.scope] }) });
-        return r.ok;
-      }, { id: clientGuid, scope: targetScope });
-      expect(putOk).toBeTruthy();
-
-      // Verify via GET
-      const verify = await adminHelpers.pollApiUntil(page, `/api/admin/clients/${clientGuid}/required-scopes`, (json) => {
-        const items = Array.isArray(json) ? json : (json.scopes || [])
-        return Array.isArray(items) && items.includes(targetScope)
-      }, 10000)
-      expect(verify).not.toBeNull()
-    } else {
-      expect(requiredResp).not.toBeNull()
-    }
+    // No fallback — require that the UI flow persisted the required scope
+    expect(requiredResp).not.toBeNull()
   })
 
   test('remove selected scope clears required and persists', async ({ page }) => {

@@ -1,6 +1,9 @@
 import { Page, Response as PlaywrightResponse } from '@playwright/test'
 
 export async function loginAsAdminViaIdP(page: Page) {
+  // Ensure admin API is reachable before attempting to navigate/login
+  await ensureAdminAvailable(page);
+
   // Ensure any existing session is logged out, then go to login page
   await page.goto('https://localhost:7035/Account/Logout');
   await page.goto('https://localhost:7035/Account/Login');
@@ -11,12 +14,32 @@ export async function loginAsAdminViaIdP(page: Page) {
 }
 export async function login(page: Page, email: string, password: string) {
   // Go directly to login page
+  await ensureAdminAvailable(page);
   await page.goto('https://localhost:7035/Account/Login');
   await page.waitForSelector('#Input_Login');
   await page.fill('#Input_Login', email);
   await page.fill('#Input_Password', password);
   await page.click('button.auth-btn-primary');
   await page.waitForSelector('.user-name', { timeout: 20000 });
+}
+
+// Utility: Ensure admin site and its API health endpoint is reachable before attempting UI interactions
+export async function ensureAdminAvailable(page: Page, timeout = 120_000, interval = 2000) {
+  const base = 'https://localhost:7035';
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    try {
+      // Try health endpoint first
+      const resp = await page.goto(`${base}/api/admin/health`, { waitUntil: 'networkidle', timeout: 5000 }).catch(() => null);
+      if (resp && resp.status() === 200) {
+        return true;
+      }
+    } catch (e) {
+      // ignore and retry
+    }
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  throw new Error(`Admin at ${base} not available after ${timeout}ms`);
 }
 
 // Helper to delete a client via the browser context (uses same session cookies)
