@@ -56,12 +56,15 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
   });
   console.log('available scopes response:', scopesPayload);
 
-  // Click the add button for the openid scope
+  // Search and add the openid scope (filter list so we can find it among many scopes)
+  await page.fill('[data-test="csm-available-search"]', 'openid');
   const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
   await addOpenIdBtn.waitFor({ state: 'visible', timeout: 10000 });
   await addOpenIdBtn.click();
 
   // Click the add button for the profile scope
+  // Search and add profile scope
+  await page.fill('[data-test="csm-available-search"]', 'profile');
   const addProfileBtn = page.locator('[data-test="csm-available-item"]', { hasText: /profile/i }).locator('button').first();
   await addProfileBtn.waitFor({ state: 'visible', timeout: 10000 });
   await addProfileBtn.click();

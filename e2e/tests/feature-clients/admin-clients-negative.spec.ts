@@ -35,6 +35,7 @@ test.describe('Admin - Clients negative tests', () => {
     await page.fill('#redirectUris', 'not-a-valid-url');
     // Add openid scope via scope manager (UI changed: checkboxes replaced by scope manager)
     await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
+    await page.fill('[data-test="csm-available-search"]', 'openid');
     const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
     if (await addOpenIdBtn.count() > 0) await addOpenIdBtn.click();
     await page.check('input[id="gt:authorization_code"]');
@@ -79,6 +80,7 @@ test.describe('Admin - Clients negative tests', () => {
     await page.fill('#redirectUris', 'https://localhost:7001/signin-oidc');
     // Ensure openid added via scope manager for duplicate creation
     await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
+    await page.fill('[data-test="csm-available-search"]', 'openid');
     const addOpenIdBtn2 = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
     if (await addOpenIdBtn2.count() > 0) await addOpenIdBtn2.click();
     await page.check('input[id="gt:authorization_code"]');

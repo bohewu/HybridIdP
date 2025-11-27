@@ -31,6 +31,7 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   await page.fill('#redirectUris', 'https://localhost:7001/signin-oidc');
   // Add openid scope via scope manager (Client scope UI replaced checkboxes with a manager)
   await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
+  await page.fill('[data-test="csm-available-search"]', 'openid');
   const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
   if (await addOpenIdBtn.count() > 0) await addOpenIdBtn.click();
   await page.check('input[id="gt:authorization_code"]');
