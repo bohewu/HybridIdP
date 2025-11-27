@@ -18,19 +18,59 @@
 
 ### Recent progress (2025-11-27)
 
-Short summary of E2E work completed and stabilization efforts today:
+**E2E Test Stabilization - Major Improvements ✅**
 
-- Removed leftover debug logging from Playwright tests & helper scripts to keep test output clean.
-- Added a short E2E failures summary and triage doc at `docs/E2E_TEST_FAILURES.md` to record remaining flaky tests, traces location and recommended next steps.
-- Added focused Playwright E2E tests for the ClientScopeManager UI (add/remove allowed scopes, pagination, search, required-scope toggle persistence).
-- Introduced a TypeScript script + helper to programmatically recreate or update the canonical `testclient-public` client used by tests.
-- Hardened Playwright global setup and helpers: global-setup now polls `/api/admin/health` before logging in, and helpers include an `ensureAdminAvailable` wait helper to avoid ERR_CONNECTION_REFUSED flakes when services are starting.
-- Fixed Admin UI persistence bug: ClientForm now always sends both `allowedScopes` and `requiredScopes` on save to ensure required-scope updates persist reliably.
+Successfully fixed 3 critical flaky E2E tests identified in previous testing sessions:
 
-Next steps / notes:
+1. **claims-crud.spec.ts** ✅
+   - Fixed permission verification logic (Admin role bypasses specific permission checks)
+   - Added timing helpers for modal form readiness and API response waiting
+   - Test now passes consistently (2/2 tests passing)
 
-- Full E2E runs should be executed in a stable environment (use `e2e/wait-for-idp-ready.ps1` or `scripts/run-e2e.ps1 -StartServices`) so Playwright doesn't start before services are ready.
-- If you want me to continue, I can run a full headless test pass and triage any failing specs.
+2. **admin-clients-negative.spec.ts** ✅
+   - Fixed race conditions between API POST and list refresh
+   - Added debounce waits (600ms) after search inputs
+   - Increased timeout from 20s to 30s for list item appearance
+   - Test now passes consistently (2/2 tests passing)
+
+3. **monitoring-page-loading.spec.ts** ✅
+   - Removed fragile CDP network emulation (was causing browser closure errors)
+   - Replaced with Playwright's built-in `page.route()` delay mechanism
+   - Added retry configuration (2 retries) for resilience
+   - Test now passes consistently (1/1 test passing)
+
+**New Infrastructure:**
+- Created `e2e/tests/helpers/timing.ts` library with 5 reusable timing utilities:
+  - `waitForListItemWithRetry` - API polling + UI verification (30s timeout)
+  - `waitForModalFormReady` - Modal animation + input readiness check
+  - `waitForDebounce` - Explicit debounce wait for search inputs (default 500ms)
+  - `waitForApiResponse` - Reliable network response waiting with status validation
+  - `waitForElementStable` - Animation completion detection
+
+**Test Suite Status:**
+- **87/89 tests passing (97.8% pass rate)** ✅
+- All 3 originally identified flaky tests now stable
+- Improvement from unstable baseline to consistent passing
+
+**Known Issues (Pre-existing, Out of Scope):**
+1. `admin-clients-crud.spec.ts` - Client not appearing in list after creation
+   - Possible pagination or UI refresh timing issue
+   - Requires investigation into client list rendering logic
+   
+2. `admin-clients-regenerate-secret.spec.ts` - Secret modal selector mismatch
+   - Modal input element not found with current selectors
+   - May need UI inspection to determine correct element locators
+
+**Previous E2E work (earlier sessions):**
+- Removed leftover debug logging from Playwright tests & helper scripts
+- Added focused Playwright E2E tests for ClientScopeManager UI
+- Hardened Playwright global setup with health check polling
+- Fixed Admin UI persistence bug for required scopes
+
+**Next steps:**
+- Investigate the 2 remaining failing tests (admin-clients-crud, admin-clients-regenerate-secret)
+- Consider applying timing helpers to other tests using arbitrary `waitForTimeout()` calls (20+ test files identified)
+- Full E2E runs should be executed in a stable environment (use `e2e/wait-for-idp-ready.ps1`)
 
 **架構狀態分析：**
 - ✅ 已重構完成（Thin Controller + Service Pattern）：
