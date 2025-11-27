@@ -13,6 +13,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',
   },
+  globalSetup: require.resolve('./global-setup'),
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
