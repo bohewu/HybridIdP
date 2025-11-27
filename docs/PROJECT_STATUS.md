@@ -21,6 +21,7 @@
 Short summary of E2E work completed and stabilization efforts today:
 
 - Removed leftover debug logging from Playwright tests & helper scripts to keep test output clean.
+- Added a short E2E failures summary and triage doc at `docs/E2E_TEST_FAILURES.md` to record remaining flaky tests, traces location and recommended next steps.
 - Added focused Playwright E2E tests for the ClientScopeManager UI (add/remove allowed scopes, pagination, search, required-scope toggle persistence).
 - Introduced a TypeScript script + helper to programmatically recreate or update the canonical `testclient-public` client used by tests.
 - Hardened Playwright global setup and helpers: global-setup now polls `/api/admin/health` before logging in, and helpers include an `ensureAdminAvailable` wait helper to avoid ERR_CONNECTION_REFUSED flakes when services are starting.

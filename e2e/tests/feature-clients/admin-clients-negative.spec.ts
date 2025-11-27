@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 import adminHelpers from '../helpers/admin';
 
+// TODO (e2e): This file has a flaky test 'Duplicate clientId shows error' that intermittently
+// fails because created clients sometimes don't appear immediately in the UI list (race
+// between POST and list refresh / pagination). We have stabilized this test somewhat (search
+// + waiting for server responses) but it still flakes under heavy test-data load. Leave this
+// annotated and address with a reliable API-first lookup or a refactor of the clients list
+// in a follow-up pass.
 test.describe('Admin - Clients negative tests', () => {
   test.beforeEach(async ({ page }) => {
     page.on('dialog', async (d) => await d.accept());
