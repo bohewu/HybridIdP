@@ -43,9 +43,10 @@ test.describe('Admin - Clients negative tests', () => {
     // Submit and expect client-side validation error or server rejection
     const createResp = page.waitForResponse((resp) => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST', { timeout: 20000 }).catch(() => null);
     await page.click('button[type="submit"]');
+    await createResp;
 
-    // Poll the admin API until the client appears (helps avoid list refresh/race conditions)
-    const apiPollResult = await page.evaluate(async (cid, timeout = 20000) => {
+    // Poll the API to ensure the client record is present before searching via UI
+    const created = await page.evaluate(async (cid, timeout = 20000) => {
       const deadline = Date.now() + timeout;
       while (Date.now() < deadline) {
         try {
@@ -53,24 +54,14 @@ test.describe('Admin - Clients negative tests', () => {
           if (r.ok) {
             const json = await r.json();
             const items = Array.isArray(json) ? json : (json.items || []);
-            if (items.find(i => i.clientId === cid)) return { found: true, items };
+            if (items.find(i => i.clientId === cid)) return true;
           }
-        } catch (e) {
-          // ignore
-        }
+        } catch {}
         await new Promise(r => setTimeout(r, 500));
       }
-      return { found: false };
+      return false;
     }, clientId);
-    console.log('api poll result:', apiPollResult);
-    const createRespResult = await createResp;
-    if (createRespResult) {
-      console.log('create client status', createRespResult.status());
-      const body = await createRespResult.text().catch(() => null);
-      console.log('create client body', body);
-    } else {
-      console.log('create client response not captured');
-    }
+    console.log('client present after create?', created);
     // As a fallback (UI validation sometimes renders localized strings differently), call the API directly
     // to assert the server rejects missing clientId or invalid redirect URIs.
     const serverResp = await page.evaluate(async () => {
