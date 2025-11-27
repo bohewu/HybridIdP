@@ -692,6 +692,20 @@
       "allowedScopesCount": "已選擇：{count} 個範圍",
       "allowedScopesLoading": "載入可用範圍中...",
       "allowedScopesNone": "沒有可用的範圍。請先建立範圍。",
+      "scopeManager": {
+        "availableScopes": "可用範圍",
+        "clientScopes": "用戶端範圍",
+        "searchAvailable": "搜尋可用範圍...",
+        "searchClient": "搜尋用戶端範圍...",
+        "add": "新增",
+        "remove": "移除",
+        "required": "必要",
+        "requiredHelp": "使用者無法取消選取此範圍",
+        "noAvailableScopes": "找不到範圍",
+        "noClientScopes": "未分配範圍",
+        "loading": "載入中...",
+        "assignedCount": "已分配 {count} 個"
+      },
       "scopeCategories": {
         "identity": "身分範圍",
         "apiResource": "API 資源範圍",

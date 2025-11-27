@@ -691,6 +691,20 @@
       "allowedScopesOpenidRequired": "OIDC clients must include the 'openid' scope",
       "allowedScopesLoading": "Loading available scopes...",
       "allowedScopesNone": "No scopes available. Please create scopes first.",
+      "scopeManager": {
+        "availableScopes": "Available Scopes",
+        "clientScopes": "Client Scopes",
+        "searchAvailable": "Search available scopes...",
+        "searchClient": "Search client scopes...",
+        "add": "Add",
+        "remove": "Remove",
+        "required": "Required",
+        "requiredHelp": "User cannot deselect this scope",
+        "noAvailableScopes": "No scopes found",
+        "noClientScopes": "No scopes assigned",
+        "loading": "Loading...",
+        "assignedCount": "{count} assigned"
+      },
       "scopeCategories": {
         "identity": "Identity Scopes",
         "apiResource": "API Resource Scopes",

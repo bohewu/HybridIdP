@@ -1629,6 +1629,30 @@ b21a694 - fix(i18n): Fix loginHistory key nesting and add Chinese menu translati
 
 ---
 
+### Phase 9: Scope Authorization & Client Management (Partial) ✅
+
+**完成時間：** 2025-11-27 (Phase 9.1-9.4)
+
+**功能摘要：**
+- **9.1 Required Scopes:** Database support, consent UI enforcement, server-side validation.
+- **9.2 Authorization Policies:** `[Authorize(Policy = "RequireScope:name")]` attribute support.
+- **9.3 UserInfo Protection:** OIDC UserInfo endpoint protected by scope.
+- **9.4 Client Scope UI:** Refactored Admin UI with dual-column layout, search/pagination, and required scope toggle.
+
+**API Endpoints:**
+- `GET/PUT /api/admin/clients/{id}/required-scopes`
+- `GET /api/admin/scopes?search=...` (Enhanced usage)
+
+**Components:**
+- `ClientScopeManager.vue` (New dual-list UI)
+- `ClientForm.vue` (Integrated)
+
+**Verification:**
+- ✅ UI Build & Backend Build passed.
+- ✅ Unit/Integration tests passed for backend logic.
+
+---
+
 ## Backlog (功能增強和技術債務)
 
 ### 功能增強

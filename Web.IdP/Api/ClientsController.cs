@@ -251,9 +251,58 @@ public class ClientsController : ControllerBase
         var allowedScopes = await _allowedScopesService.ValidateRequestedScopesAsync(clientId, request.RequestedScopes);
         return Ok(new { allowedScopes });
     }
+
+    /// <summary>
+    /// Get required scopes for a specific client.
+    /// </summary>
+    [HttpGet("{id}/required-scopes")]
+    [HasPermission(DomainPermissions.Clients.Read)]
+    public async Task<IActionResult> GetRequiredScopes(string id)
+    {
+        if (!Guid.TryParse(id, out var clientId))
+        {
+            return BadRequest(new { message = "Invalid client ID format." });
+        }
+
+        var scopes = await _allowedScopesService.GetRequiredScopesAsync(clientId);
+        return Ok(new { scopes });
+    }
+
+    /// <summary>
+    /// Set required scopes for a specific client.
+    /// </summary>
+    [HttpPut("{id}/required-scopes")]
+    [HasPermission(DomainPermissions.Clients.Update)]
+    public async Task<IActionResult> SetRequiredScopes(string id, [FromBody] SetRequiredScopesRequest request)
+    {
+        if (!Guid.TryParse(id, out var clientId))
+        {
+            return BadRequest(new { message = "Invalid client ID format." });
+        }
+
+        if (request.Scopes == null)
+        {
+            return BadRequest(new { message = "Scopes are required." });
+        }
+
+        try
+        {
+            await _allowedScopesService.SetRequiredScopesAsync(clientId, request.Scopes);
+            return Ok(new { message = "Required scopes updated successfully." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }
 
 public class SetAllowedScopesRequest
+{
+    public List<string>? Scopes { get; set; }
+}
+
+public class SetRequiredScopesRequest
 {
     public List<string>? Scopes { get; set; }
 }

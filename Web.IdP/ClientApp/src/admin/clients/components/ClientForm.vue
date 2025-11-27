@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { z } from 'zod'
 import SecretDisplayModal from './SecretDisplayModal.vue'
+import ClientScopeManager from './ClientScopeManager.vue'
 
 const { t } = useI18n()
 
@@ -25,16 +26,12 @@ const formData = ref({
   redirectUris: '',
   postLogoutRedirectUris: '',
   permissions: [],
-  allowedScopes: []
+  allowedScopes: [],
+  requiredScopes: []
 })
 
 const generatedClientSecret = ref(null)
 const showSecretModal = ref(false)
-
-// State for available scopes
-const availableScopes = ref([])
-const scopesLoading = ref(false)
-const scopesError = ref(null)
 
 // All available permissions from OpenIddict
 const availablePermissions = computed(() => [
@@ -115,7 +112,8 @@ const resetForm = () => {
     redirectUris: '',
     postLogoutRedirectUris: '',
     permissions: [],
-    allowedScopes: []
+    allowedScopes: [],
+    requiredScopes: []
   }
   error.value = null
   fieldErrors.value = {}
@@ -134,19 +132,28 @@ watch(() => props.client, async (newClient) => {
       redirectUris: newClient.redirectUris?.join('\n') || '',
       postLogoutRedirectUris: newClient.postLogoutRedirectUris?.join('\n') || '',
       permissions: newClient.permissions || [],
-      allowedScopes: []
+      allowedScopes: [],
+      requiredScopes: []
     }
     
-    // Fetch allowed scopes for this client in edit mode
+    // Fetch allowed and required scopes for this client in edit mode
     if (newClient.id) {
       try {
-        const response = await fetch(`/api/admin/clients/${newClient.id}/scopes`)
-        if (response.ok) {
-          const data = await response.json()
+        // Fetch Allowed Scopes
+        const responseAllowed = await fetch(`/api/admin/clients/${newClient.id}/scopes`)
+        if (responseAllowed.ok) {
+          const data = await responseAllowed.json()
           formData.value.allowedScopes = data.scopes || []
         }
+
+        // Fetch Required Scopes
+        const responseRequired = await fetch(`/api/admin/clients/${newClient.id}/required-scopes`)
+        if (responseRequired.ok) {
+          const data = await responseRequired.json()
+          formData.value.requiredScopes = data.scopes || []
+        }
       } catch (e) {
-        console.error('Failed to fetch client allowed scopes:', e)
+        console.error('Failed to fetch client scopes:', e)
       }
     }
   } else {
@@ -216,22 +223,41 @@ const handleSubmit = async () => {
 
     // Save allowed scopes via dedicated endpoint
     const clientId = isEdit.value ? props.client.id : responseData.id
-    if (clientId && formData.value.allowedScopes.length > 0) {
+    if (clientId) {
       try {
-        const scopesResponse = await fetch(`/api/admin/clients/${clientId}/scopes`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ scopes: formData.value.allowedScopes })
-        })
-        
-        if (!scopesResponse.ok) {
-          throw new Error(`Failed to save allowed scopes: ${scopesResponse.status}`)
+        // Save Allowed Scopes
+        if (formData.value.allowedScopes.length > 0) {
+          const scopesResponse = await fetch(`/api/admin/clients/${clientId}/scopes`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ scopes: formData.value.allowedScopes })
+          })
+          
+          if (!scopesResponse.ok) {
+            throw new Error(`Failed to save allowed scopes: ${scopesResponse.status}`)
+          }
         }
+
+        // Save Required Scopes (if any)
+        if (formData.value.requiredScopes.length > 0) {
+          const requiredResponse = await fetch(`/api/admin/clients/${clientId}/required-scopes`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ scopes: formData.value.requiredScopes })
+          })
+
+          if (!requiredResponse.ok) {
+             throw new Error(`Failed to save required scopes: ${requiredResponse.status}`)
+          }
+        }
+
       } catch (e) {
-        console.error('Error saving allowed scopes:', e)
-        throw new Error(`Client saved but failed to update allowed scopes: ${e.message}`)
+        console.error('Error saving client scopes:', e)
+        throw new Error(`Client saved but failed to update scopes: ${e.message}`)
       }
     }
 
@@ -262,64 +288,6 @@ const closeSecretModal = () => {
   showSecretModal.value = false
   emit('submit') // Signal to parent that form submission is complete
 }
-
-// Fetch available scopes
-const fetchAvailableScopes = async () => {
-  scopesLoading.value = true
-  scopesError.value = null
-  
-  try {
-    const response = await fetch('/api/admin/scopes?skip=0&take=1000')
-    if (!response.ok) {
-      throw new Error(`Failed to fetch scopes: ${response.status}`)
-    }
-    const data = await response.json()
-    availableScopes.value = data.items || []
-  } catch (e) {
-    scopesError.value = `Failed to load scopes: ${e.message}`
-    console.error('Error fetching scopes:', e)
-  } finally {
-    scopesLoading.value = false
-  }
-}
-
-// Categorize scopes based on standard identity scopes and API resources
-const categorizedScopes = computed(() => {
-  const identityScopes = ['openid', 'profile', 'email', 'address', 'phone', 'offline_access']
-  const categories = {
-    identity: [],
-    apiResource: [],
-    custom: []
-  }
-  
-  availableScopes.value.forEach(scope => {
-    const scopeName = scope.name
-    if (identityScopes.includes(scopeName)) {
-      categories.identity.push(scope)
-    } else if (scope.resources && scope.resources.length > 0) {
-      // Scopes with resources are API Resource scopes
-      categories.apiResource.push(scope)
-    } else {
-      categories.custom.push(scope)
-    }
-  })
-  
-  return categories
-})
-
-const toggleAllowedScope = (scopeName) => {
-  const index = formData.value.allowedScopes.indexOf(scopeName)
-  if (index > -1) {
-    formData.value.allowedScopes.splice(index, 1)
-  } else {
-    formData.value.allowedScopes.push(scopeName)
-  }
-}
-
-// Fetch scopes when component mounts
-;(async () => {
-  await fetchAvailableScopes()
-})()
 </script>
 
 <template>
@@ -609,10 +577,7 @@ const toggleAllowedScope = (scopeName) => {
                       <label class="block text-sm font-medium text-gray-700 mb-2">
                         {{ $t('clients.form.allowedScopes') }} <span class="text-red-500">*</span>
                       </label>
-                      <!-- Selected count -->
-                      <p v-if="formData.allowedScopes.length > 0" class="text-xs text-gray-500 mb-2">
-                        {{ $t('clients.form.allowedScopesCount', { count: formData.allowedScopes.length }) }}
-                      </p>
+                      
                       <div v-if="fieldErrors.allowedScopes" class="mb-2">
                         <p v-for="(err, idx) in fieldErrors.allowedScopes" :key="idx" class="text-sm text-red-600 flex items-start">
                           <svg class="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -622,56 +587,10 @@ const toggleAllowedScope = (scopeName) => {
                         </p>
                       </div>
                       
-                      <!-- Loading state -->
-                      <div v-if="scopesLoading" class="text-sm text-gray-500 py-4">
-                        <svg class="animate-spin inline-block h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        {{ $t('clients.form.allowedScopesLoading') }}
-                      </div>
-                      
-                      <!-- Error state -->
-                      <div v-else-if="scopesError" class="text-sm text-red-600 py-2">
-                        {{ scopesError }}
-                      </div>
-                      
-                      <!-- Scopes grouped by category -->
-                      <div v-else-if="availableScopes.length > 0" class="space-y-4">
-                        <div v-for="(scopes, category) in categorizedScopes" :key="category" v-show="scopes.length > 0">
-                          <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                            {{ $t(`clients.form.scopeCategories.${category}`) }}
-                          </h4>
-                          <div class="grid grid-cols-2 gap-2">
-                            <div
-                              v-for="scope in scopes"
-                              :key="scope.name"
-                              class="relative flex items-start"
-                            >
-                              <div class="flex h-5 items-center">
-                                <input
-                                  :id="`scope-${scope.name}`"
-                                  type="checkbox"
-                                  :checked="formData.allowedScopes.includes(scope.name)"
-                                  @change="toggleAllowedScope(scope.name)"
-                                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                />
-                              </div>
-                              <div class="ml-3 text-sm">
-                                <label :for="`scope-${scope.name}`" class="font-medium text-gray-700">
-                                  {{ scope.displayName || scope.name }}
-                                </label>
-                                <p v-if="scope.description" class="text-xs text-gray-500">{{ scope.description }}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <!-- No scopes available -->
-                      <div v-else class="text-sm text-gray-500 py-2">
-                        {{ $t('clients.form.allowedScopesNone') }}
-                      </div>
+                      <ClientScopeManager 
+                        v-model="formData.allowedScopes" 
+                        v-model:requiredScopes="formData.requiredScopes" 
+                      />
                       
                       <p class="mt-3 text-xs text-gray-500">{{ $t('clients.form.allowedScopesHelp') }}</p>
                       <p v-if="!formData.allowedScopes.includes('openid')" class="mt-1 text-xs text-yellow-600">
