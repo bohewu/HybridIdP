@@ -17,7 +17,10 @@ test.describe('Admin - Clients negative tests', () => {
     // Leave clientId blank and try to submit
     await page.fill('#displayName', 'Should Fail');
     await page.fill('#redirectUris', 'not-a-valid-url');
-    await page.check('input[id="scope-openid"]');
+    // Add openid scope via scope manager (UI changed: checkboxes replaced by scope manager)
+    await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
+    const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
+    if (await addOpenIdBtn.count() > 0) await addOpenIdBtn.click();
     await page.check('input[id="gt:authorization_code"]');
 
     await page.click('button[type="submit"]');
@@ -58,7 +61,10 @@ test.describe('Admin - Clients negative tests', () => {
     await page.fill('#clientId', clientId);
     await page.fill('#displayName', 'E2E Duplicate Test');
     await page.fill('#redirectUris', 'https://localhost:7001/signin-oidc');
-    await page.check('input[id="scope-openid"]');
+    // Ensure openid added via scope manager for duplicate creation
+    await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
+    const addOpenIdBtn2 = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
+    if (await addOpenIdBtn2.count() > 0) await addOpenIdBtn2.click();
     await page.check('input[id="gt:authorization_code"]');
     await page.click('button[type="submit"]');
 

@@ -27,10 +27,17 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
   await page.fill('#displayName', displayName);
   await page.fill('#redirectUris', 'https://localhost:7001/signin-oidc');
 
-  // Wait for scopes and check the required values
-  await page.waitForSelector('input[id="scope-openid"]');
-  await page.check('input[id="scope-openid"]');
-  await page.check('input[id="scope-profile"]');
+  // Wait for scope manager to load and add `openid` + `profile` scopes
+  await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
+  // Click the add button for the openid scope
+  const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
+  await addOpenIdBtn.waitFor({ state: 'visible', timeout: 10000 });
+  await addOpenIdBtn.click();
+
+  // Click the add button for the profile scope
+  const addProfileBtn = page.locator('[data-test="csm-available-item"]', { hasText: /profile/i }).locator('button').first();
+  await addProfileBtn.waitFor({ state: 'visible', timeout: 10000 });
+  await addProfileBtn.click();
 
   // Make sure at least one grant type is checked
   await page.check('input[id="gt:authorization_code"]');

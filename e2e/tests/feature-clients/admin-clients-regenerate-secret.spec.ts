@@ -15,7 +15,10 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   await page.fill('#displayName', 'E2E Confidential Client');
   await page.check('#type-confidential');
   await page.fill('#redirectUris', 'https://localhost:7001/signin-oidc');
-  await page.check('input[id="scope-openid"]');
+  // Add openid scope via scope manager (Client scope UI replaced checkboxes with a manager)
+  await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
+  const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
+  if (await addOpenIdBtn.count() > 0) await addOpenIdBtn.click();
   await page.check('input[id="gt:authorization_code"]');
   await page.click('button[type="submit"]');
 
