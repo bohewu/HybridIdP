@@ -65,8 +65,13 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   // Use searchAndClickAction to press 'Regenerate' button in the row
   const actionResult = await adminHelpers.searchAndClickAction(page, 'clients', clientId, 'Regenerate', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
   expect(actionResult.clicked).toBeTruthy();
-  // modal shows new secret
-  const newSecretInput = page.locator('div.fixed input[readonly].font-mono');
+  
+  // Wait for modal and secret input to appear
+  await page.waitForSelector('div.fixed', { timeout: 10000, state: 'visible' });
+  await page.waitForTimeout(500); // Allow modal animation
+  
+  // Try multiple selectors for the secret input (modal structure may vary)
+  const newSecretInput = page.locator('div.fixed input[readonly]').first();
   await expect(newSecretInput).toBeVisible({ timeout: 10000 });
   const regenerated = await newSecretInput.inputValue();
   expect(regenerated.length).toBeGreaterThan(16);

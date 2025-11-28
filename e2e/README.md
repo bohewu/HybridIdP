@@ -251,6 +251,61 @@ TestClient UI readiness check
 
 The Postgres helper can also validate that the TestClient home page is returning and contains a `Login` link or `signin-oidc` anchor before tests run. This check helps catch cases where TestClient is reachable at the TCP/HTTP level but still returning e.g. a static error page. The helper `scripts/check-testclient-ready.ps1` is automatically called by `run-e2e-postgres.ps1` after starting services.
 
+Scope Authorization E2E Tests
+------------------------------
+
+Phase 9.7 introduced comprehensive E2E tests for scope-based authorization features. These tests verify consent page behavior, userinfo endpoint protection, and admin UI integration for required scopes.
+
+**Test Files:**
+- `e2e/tests/feature-auth/consent-required-scopes.spec.ts` - Consent page behavior (5 tests)
+- `e2e/tests/feature-auth/userinfo-scope-enforcement.spec.ts` - Userinfo endpoint protection (3 tests)
+- `e2e/tests/feature-auth/scope-authorization-flow.spec.ts` - Admin UI integration (5 tests)
+- `e2e/tests/feature-auth/testclient-login-consent.spec.ts` - Enhanced with scope assertions
+
+**Prerequisites:**
+The `global-setup.ts` automatically configures:
+1. `testclient-public` with `openid` as required scope
+2. `testclient-no-openid` for testing 403 scenarios (created without openid scope)
+3. Required API scopes: `api:company:read`, `api:inventory:read`
+
+**Helper Functions:**
+New helper functions in `e2e/tests/helpers/scopeHelpers.ts`:
+- `setClientRequiredScopes(page, clientGuid, scopeNames)` - Set required scopes via API
+- `getClientGuidByClientId(page, clientId)` - Get client GUID from clientId string
+- `createTestClientWithoutOpenId(page, clientId)` - Create client without openid scope
+- `getClientRequiredScopes(page, clientGuid)` - Get required scopes for a client
+- `deleteTestClient(page, clientId)` - Delete test client by clientId
+- `extractAccessTokenFromTestClient(page)` - Extract access token from TestClient profile
+
+**Running Scope Tests:**
+
+```powershell
+# Run all scope authorization tests
+npx playwright test tests/feature-auth/consent-required-scopes.spec.ts
+npx playwright test tests/feature-auth/userinfo-scope-enforcement.spec.ts
+npx playwright test tests/feature-auth/scope-authorization-flow.spec.ts
+
+# Run all feature-auth tests
+npx playwright test tests/feature-auth/
+
+# Run with headed browser (for debugging)
+npx playwright test tests/feature-auth/consent-required-scopes.spec.ts --headed
+```
+
+**Test Coverage:**
+- Consent page displays required scopes as disabled checkboxes
+- Users can uncheck optional scopes (excluded from token)
+- Server detects and logs consent tampering attempts (ConsentTamperingDetected audit event)
+- Multiple required scopes all show as disabled
+- Clients without required scopes show all scopes as optional
+- Userinfo endpoint returns 200 with openid scope, 403 without
+- Admin UI integration: marking scope as required → consent shows disabled
+- Required scope validation: cannot mark non-allowed scope as required
+- Cross-session persistence: required scopes persist across edit sessions
+
+**Developer Guide:**
+See `docs/SCOPE_AUTHORIZATION.md` for detailed documentation on implementing and testing scope-based authorization.
+
 pgcrypto validation
 -------------------
 

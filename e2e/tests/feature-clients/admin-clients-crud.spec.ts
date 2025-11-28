@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import adminHelpers from '../helpers/admin';
-import { waitForDebounce } from '../helpers/timing';
+import { waitForDebounce, waitForListItemWithRetry } from '../helpers/timing';
 
 test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) => {
   // Accept native JS dialogs (confirm) automatically
@@ -78,20 +78,21 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
   // Wait a moment for modal to close
   await page.waitForTimeout(1000);
 
-  // Refresh the clients list to ensure new client appears
-  await page.goto('https://localhost:7035/Admin/Clients');
-  await page.waitForLoadState('networkidle');
-
-  // Wait for the client to appear in the list
-  const found = await adminHelpers.searchListForItemWithApi(page, 'clients', clientId, { 
+  // Wait for the client to appear in the list using improved timing helper
+  const found = await waitForListItemWithRetry(page, 'clients', clientId, { 
     listSelector: 'ul[role="list"], table tbody', 
     timeout: 30000 
   });
-  expect(found.locator).not.toBeNull();
-  if (found.locator) await expect(found.locator).toBeVisible({ timeout: 5000 });
+  
+  expect(found).not.toBeNull();
+  if (found) {
+    await expect(found).toBeVisible({ timeout: 5000 });
+  } else {
+    throw new Error(`Client ${clientId} not found in list after creation`);
+  }
 
   // Edit the client: find the list item and click the Edit button
-  const listItem = found.locator!;
+  const listItem = found;
   await expect(listItem).toBeVisible();
 
   // Click the edit button inside the list item (match by title attribute to support icon-only buttons)

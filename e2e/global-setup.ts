@@ -96,6 +96,72 @@ export default async function globalSetup() {
       }, s).catch(() => {});
     }
 
+    // Get testclient-public GUID and set openid as required scope
+    const publicClientGuid = await page.evaluate(async () => {
+      const res = await fetch('/api/admin/clients?search=testclient-public&take=100');
+      if (!res.ok) return null;
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (json.items || []);
+      const client = items.find((c: any) => c.clientId === 'testclient-public');
+      return client?.id || null;
+    });
+
+    if (publicClientGuid) {
+      await page.evaluate(async (guid) => {
+        await fetch(`/api/admin/clients/${guid}/required-scopes`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scopes: ['openid'] })
+        });
+      }, publicClientGuid).catch(() => {});
+    }
+
+    // Create testclient-no-openid for userinfo 403 testing
+    // First delete if exists
+    const noOpenIdClient = await page.evaluate(async () => {
+      const res = await fetch('/api/admin/clients?search=testclient-no-openid&take=100');
+      if (!res.ok) return null;
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (json.items || []);
+      return items.find((c: any) => c.clientId === 'testclient-no-openid') || null;
+    });
+
+    if (noOpenIdClient?.id) {
+      await page.evaluate(async (id) => {
+        await fetch(`/api/admin/clients/${id}`, { method: 'DELETE' });
+      }, noOpenIdClient.id).catch(() => {});
+    }
+
+    // Create new testclient-no-openid without openid scope
+    await page.evaluate(async () => {
+      const payload = {
+        clientId: 'testclient-no-openid',
+        clientSecret: null,
+        displayName: 'Test Client Without OpenID',
+        applicationType: 'web',
+        type: 'public',
+        consentType: 'explicit',
+        redirectUris: ['https://localhost:7002/signin-oidc'],
+        postLogoutRedirectUris: ['https://localhost:7002/signout-callback-oidc'],
+        permissions: [
+          'ept:authorization',
+          'ept:token',
+          'ept:logout',
+          'gt:authorization_code',
+          'gt:refresh_token',
+          'response_type:code',
+          'scp:profile',
+          'scp:email',
+          'scp:api:company:read'
+        ]
+      };
+      await fetch('/api/admin/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }).catch(() => {});
+
   } catch (e) {
     console.error('globalSetup failed to recreate testclient:', e);
     // Swallow - global setup should not crash the run abruptly in dev environments

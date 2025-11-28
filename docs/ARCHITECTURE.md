@@ -394,3 +394,268 @@ HybridAuth IdP 採用**混合架構**，結合 Bootstrap 5 和 Vue.js 3 的優�
 | 🔍 **SEO 友好** | 伺服器端渲染基礎結構 |
 
 這個架構設計經過深思熟慮，兼顧**安全性、效能、開發體驗和可維護性**，是生產環境的最佳實踐。
+
+---
+
+## 🔐 Scope-Based Authorization
+
+### Overview
+
+HybridIdP implements OAuth 2.0/OpenID Connect scope-based authorization with runtime enforcement and consent management. This allows fine-grained access control for protected API endpoints.
+
+### Architecture Components
+
+#### 1. ScopeAuthorizationHandler
+
+**Purpose**: Runtime authorization handler that validates scope claims in access tokens.
+
+**Implementation**: `Infrastructure/Authorization/ScopeAuthorizationHandler.cs`
+
+```csharp
+public class ScopeAuthorizationHandler : AuthorizationHandler<ScopeRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        ScopeRequirement requirement)
+    {
+        // Check 'scope' claim (space-separated string)
+        var scopeClaim = context.User.FindFirst("scope")?.Value;
+        if (!string.IsNullOrEmpty(scopeClaim))
+        {
+            var scopes = scopeClaim.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (scopes.Contains(requirement.Scope, StringComparer.OrdinalIgnoreCase))
+            {
+                context.Succeed(requirement);
+                return Task.CompletedTask;
+            }
+        }
+
+        // Check 'scp' claims (multiple claim instances)
+        var scpClaims = context.User.FindAll("scp").Select(c => c.Value);
+        if (scpClaims.Contains(requirement.Scope, StringComparer.OrdinalIgnoreCase))
+        {
+            context.Succeed(requirement);
+        }
+
+        return Task.CompletedTask;
+    }
+}
+```
+
+**Key Features**:
+- Supports both `scope` (space-separated) and `scp` (multiple claims) formats
+- Case-insensitive scope matching
+- Logs authorization failures for debugging
+
+#### 2. ScopeAuthorizationPolicyProvider
+
+**Purpose**: Dynamically creates authorization policies for the `RequireScope:` pattern.
+
+**Implementation**: `Infrastructure/Authorization/ScopeAuthorizationPolicyProvider.cs`
+
+```csharp
+public class ScopeAuthorizationPolicyProvider : IAuthorizationPolicyProvider
+{
+    private readonly DefaultAuthorizationPolicyProvider _fallbackPolicyProvider;
+    private const string PolicyPrefix = "RequireScope:";
+
+    public async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
+    {
+        if (policyName.StartsWith(PolicyPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var scopeName = policyName.Substring(PolicyPrefix.Length);
+            var policy = new AuthorizationPolicyBuilder()
+                .AddRequirements(new ScopeRequirement(scopeName))
+                .Build();
+            return policy;
+        }
+
+        // Fall back to default provider for other policies
+        return await _fallbackPolicyProvider.GetPolicyAsync(policyName);
+    }
+}
+```
+
+**Key Features**:
+- Recognizes `RequireScope:{scopeName}` policy pattern
+- Falls back to default provider for non-scope policies
+- No need to register policies individually
+
+#### 3. Required Scopes Model
+
+**Purpose**: Store client-specific required scopes that users cannot opt-out of.
+
+**Database Entity**: `Core.Domain/Entities/ClientRequiredScope.cs`
+
+```csharp
+public class ClientRequiredScope
+{
+    public Guid Id { get; set; }
+    public Guid ClientId { get; set; }  // FK to OpenIddictApplications
+    public Guid ScopeId { get; set; }   // FK to OpenIddictScopes
+    public DateTime CreatedAt { get; set; }
+    public string? CreatedBy { get; set; }
+}
+```
+
+**Service Layer**: `Infrastructure/Services/ClientAllowedScopesService.cs`
+
+```csharp
+public interface IClientAllowedScopesService
+{
+    Task<IReadOnlyList<string>> GetRequiredScopesAsync(Guid clientId);
+    Task SetRequiredScopesAsync(Guid clientId, IEnumerable<string> scopeNames);
+    Task<bool> IsScopeRequiredAsync(Guid clientId, string scopeName);
+}
+```
+
+### Usage Patterns
+
+#### Protecting API Endpoints
+
+Apply the `RequireScope:` policy to controllers or actions:
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class CompanyController : ControllerBase
+{
+    [Authorize(Policy = "RequireScope:api:company:read")]
+    [HttpGet]
+    public IActionResult GetCompanyData()
+    {
+        // Only accessible with api:company:read scope
+        return Ok(new { company = "Acme Corp" });
+    }
+}
+```
+
+#### Multiple Scope Requirements
+
+Require multiple scopes by stacking `[Authorize]` attributes:
+
+```csharp
+[Authorize(Policy = "RequireScope:api:company:read")]
+[Authorize(Policy = "RequireScope:api:admin")]
+[HttpGet("sensitive")]
+public IActionResult GetSensitiveData()
+{
+    // Requires BOTH scopes
+    return Ok();
+}
+```
+
+#### Userinfo Endpoint (OIDC Compliance)
+
+The `/connect/userinfo` endpoint requires `openid` scope per OIDC specification:
+
+```csharp
+[Authorize(
+    AuthenticationSchemes = OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+    Policy = "RequireScope:openid")]
+[HttpGet("~/connect/userinfo")]
+public IActionResult Userinfo()
+{
+    // Returns user claims only if openid scope is present
+    return Ok(userinfo);
+}
+```
+
+### Consent Page Integration
+
+#### Required Scopes Display
+
+Required scopes are shown as disabled checkboxes in the consent page:
+
+**View**: `Web.IdP/Pages/Connect/Authorize.cshtml`
+
+```html
+<input 
+    class="form-check-input" 
+    type="checkbox" 
+    name="granted_scopes" 
+    value="@scopeInfo.Name" 
+    checked
+    @if (scopeInfo.IsRequired) { <text>disabled</text> }
+/>
+@if (scopeInfo.IsRequired)
+{
+    <span class="badge bg-secondary">Required</span>
+}
+```
+
+#### Server-Side Validation
+
+The consent POST handler validates that all required scopes are present:
+
+**Page Model**: `Web.IdP/Pages/Connect/Authorize.cshtml.cs`
+
+```csharp
+var clientRequiredScopes = await _clientAllowedScopesService.GetRequiredScopesAsync(clientGuid);
+var missingRequired = clientRequiredScopes.Except(effectiveScopes).ToList();
+
+if (missingRequired.Any())
+{
+    await _auditService.LogAsync(new AuditEvent
+    {
+        EventType = AuditEventType.ConsentTamperingDetected,
+        UserId = userId,
+        Details = new { clientId, missingRequiredScopes = missingRequired }
+    });
+
+    return BadRequest("Required scopes cannot be excluded from consent.");
+}
+```
+
+### Admin UI Integration
+
+#### Client Scope Manager
+
+The Admin UI provides a ClientScopeManager component for managing allowed and required scopes:
+
+**Component**: `Web.IdP/ClientApp/src/components/ClientScopeManager.vue`
+
+**Features**:
+- Two-column layout: Available Scopes | Selected Scopes
+- Search/filter functionality
+- Toggle required switch for each selected scope
+- Server-side validation (required scopes must be in allowed list)
+
+**API Endpoints**:
+```
+GET  /api/admin/clients/{id}/scopes          → Returns allowed scopes
+PUT  /api/admin/clients/{id}/scopes          → Set allowed scopes
+GET  /api/admin/clients/{id}/required-scopes → Returns required scopes
+PUT  /api/admin/clients/{id}/required-scopes → Set required scopes
+```
+
+### Security Considerations
+
+1. **Server-Side Enforcement**: All authorization checks occur on the server; client-side checks are for UX only.
+
+2. **Tampering Detection**: Attempts to remove required scopes during consent are logged as `ConsentTamperingDetected` audit events.
+
+3. **Token Validation**: Access tokens are validated on every request using the `ScopeAuthorizationHandler`.
+
+4. **OIDC Compliance**: The `openid` scope is mandatory for the userinfo endpoint per OIDC specification.
+
+5. **Principle of Least Privilege**: Clients should only request scopes they actually need.
+
+### Testing
+
+**Unit Tests**: `Tests.Infrastructure.UnitTests/Authorization/`
+- ScopeAuthorizationHandlerTests (11 tests)
+- ScopeAuthorizationPolicyProviderTests (4 tests)
+
+**Integration Tests**: `Tests.Infrastructure.IntegrationTests/ClientRequiredScopeIntegrationTests.cs` (10 tests)
+
+**E2E Tests**: `e2e/tests/feature-auth/`
+- consent-required-scopes.spec.ts (5 tests)
+- userinfo-scope-enforcement.spec.ts (3 tests)
+- scope-authorization-flow.spec.ts (5 tests)
+
+### Related Documentation
+
+- [SCOPE_AUTHORIZATION.md](./SCOPE_AUTHORIZATION.md) - Developer guide for using scope-based authorization
+- [phase-9-scope-authorization.md](./phase-9-scope-authorization.md) - Implementation details and verification
+- [E2E Testing Guide](../e2e/README.md) - Testing scope authorization flows

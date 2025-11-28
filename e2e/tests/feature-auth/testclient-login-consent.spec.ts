@@ -17,9 +17,22 @@ async function loginViaTestClient(page) {
   // Submit the login form
   await page.click('button.auth-btn-primary');
 
-  // If we see the consent page, click Allow
+  // If we see the consent page, verify scope checkboxes and click Allow
   const allowBtn = page.locator('button[name="submit"][value="allow"]');
   if (await allowBtn.count() > 0 && await allowBtn.isVisible()) {
+    // Verify openid scope is present and checked (should be required/disabled)
+    const openidCheckbox = page.locator('input[name="granted_scopes"][value="openid"]');
+    if (await openidCheckbox.count() > 0) {
+      await expect(openidCheckbox).toBeChecked();
+      // Note: openid should be disabled if marked as required by global-setup
+    }
+
+    // Verify profile scope is present and enabled (optional)
+    const profileCheckbox = page.locator('input[name="granted_scopes"][value="profile"]');
+    if (await profileCheckbox.count() > 0) {
+      await expect(profileCheckbox).toBeEnabled();
+    }
+
     await allowBtn.click();
   }
 
@@ -32,6 +45,32 @@ test('TestClient login + consent redirects back to profile', async ({ page }) =>
 
   // Expect to see the user email in the profile
   await expect(page.locator('table')).toContainText('admin@hybridauth.local');
+
+  // Verify access token is present in profile
+  const hasAccessToken = await page.evaluate(() => {
+    const rows = document.querySelectorAll('table tr');
+    for (const row of rows) {
+      const cells = row.querySelectorAll('td');
+      if (cells.length >= 2 && cells[0].textContent?.toLowerCase().includes('access_token')) {
+        return cells[1].textContent?.trim() ? true : false;
+      }
+    }
+    return false;
+  });
+  expect(hasAccessToken).toBeTruthy();
+
+  // Verify scopes are present (should include openid at minimum)
+  const scopes = await page.evaluate(() => {
+    const rows = document.querySelectorAll('table tr');
+    for (const row of rows) {
+      const cells = row.querySelectorAll('td');
+      if (cells.length >= 2 && cells[0].textContent?.toLowerCase().includes('scope')) {
+        return cells[1].textContent?.trim() || '';
+      }
+    }
+    return '';
+  });
+  expect(scopes).toContain('openid');
 
   // Click the Test API Call and assert success if available
   await page.click('a:has-text("Test API Call")');
