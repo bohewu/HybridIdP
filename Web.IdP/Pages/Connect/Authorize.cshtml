@@ -17,121 +17,6 @@
                         <strong>@Model.ApplicationName</strong> @Localizer["is requesting access to your account"]
                     </div>
 
-                    @if (Model.ScopeInfos.Any())
-                    {
-                        <div class="mb-4">
-                            <h5>@Localizer["This application will be able to:"]</h5>
-                            
-                            @* Group scopes by category *@
-                            @{
-                                var groupedScopes = Model.ScopeInfos.GroupBy(s => s.Category ?? "General").OrderBy(g => g.Key);
-                            }
-                            
-                            @foreach (var group in groupedScopes)
-                            {
-                                @if (groupedScopes.Count() > 1 && !string.IsNullOrEmpty(group.Key))
-                                {
-                                    <h6 class="mt-3 mb-2 text-muted">@group.Key</h6>
-                                }
-                                
-                                <div class="mb-3">
-                                    @foreach (var scopeInfo in group)
-                                    {
-                                        <div class="form-check mb-2">
-                                            @if (scopeInfo.IsRequired)
-                                            {
-                                                @* Required scopes: use hidden input + disabled checkbox for display *@
-                                                <input type="hidden" name="granted_scopes" value="@scopeInfo.Name" />
-                                                <input 
-                                                    class="form-check-input" 
-                                                    type="checkbox" 
-                                                    value="@scopeInfo.Name" 
-                                                    id="scope_@scopeInfo.Name"
-                                                    checked
-                                                    disabled
-                                                />
-                                            }
-                                            else
-                                            {
-                                                @* Optional scopes: regular checkbox that can be unchecked *@
-                                                <input 
-                                                    class="form-check-input" 
-                                                    type="checkbox" 
-                                                    name="granted_scopes" 
-                                                    value="@scopeInfo.Name" 
-                                                    id="scope_@scopeInfo.Name"
-                                                    checked
-                                                />
-                                            }
-                                            <label class="form-check-label d-flex align-items-start" for="scope_@scopeInfo.Name">
-                                                <div class="flex-grow-1">
-                                                    <div class="d-flex align-items-center">
-                                                        @* Display icon if provided *@
-                                                        @if (!string.IsNullOrEmpty(scopeInfo.IconUrl))
-                                                        {
-                                                            @if (scopeInfo.IconUrl.StartsWith("bi "))
-                                                            {
-                                                                <i class="@scopeInfo.IconUrl me-2"></i>
-                                                            }
-                                                            else
-                                                            {
-                                                                <img src="@scopeInfo.IconUrl" alt="@scopeInfo.Name" class="me-2" style="width: 20px; height: 20px;" />
-                                                            }
-                                                        }
-                                                        else
-                                                        {
-                                                            @* Default icons for standard scopes *@
-                                                            @if (scopeInfo.Name == "openid")
-                                                            {
-                                                                <i class="bi bi-person-badge me-2"></i>
-                                                            }
-                                                            else if (scopeInfo.Name == "email")
-                                                            {
-                                                                <i class="bi bi-envelope me-2"></i>
-                                                            }
-                                                            else if (scopeInfo.Name == "profile")
-                                                            {
-                                                                <i class="bi bi-person me-2"></i>
-                                                            }
-                                                            else if (scopeInfo.Name == "roles")
-                                                            {
-                                                                <i class="bi bi-shield-check me-2"></i>
-                                                            }
-                                                            else
-                                                            {
-                                                                <i class="bi bi-check-circle me-2"></i>
-                                                            }
-                                                        }
-                                                        
-                                                        <div>
-                                                            <strong>
-                                                                @* Use ConsentDisplayName if available, otherwise fallback to DisplayName or Name *@
-                                                                @(scopeInfo.ConsentDisplayName ?? scopeInfo.DisplayName)
-                                                            </strong>
-                                                            
-                                                            @if (scopeInfo.IsRequired)
-                                                            {
-                                                                <span class="badge bg-warning text-dark ms-2">@Localizer["Required"]</span>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    @* Display description if provided *@
-                                                    @if (!string.IsNullOrEmpty(scopeInfo.ConsentDescription))
-                                                    {
-                                                        <div class="text-muted small mt-1">
-                                                            @scopeInfo.ConsentDescription
-                                                        </div>
-                                                    }
-                                                </div>
-                                            </label>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
-
                     <form method="post">
                         @* Preserve original authorize request parameters in the POST body *@
                         @foreach (var kvp in Request.Query)
@@ -140,6 +25,121 @@
                             {
                                 <input type="hidden" name="@kvp.Key" value="@val" />
                             }
+                        }
+                        
+                        @if (Model.ScopeInfos.Any())
+                        {
+                            <div class="mb-4">
+                                <h5>@Localizer["This application will be able to:"]</h5>
+                                
+                                @* Group scopes by category *@
+                                @{
+                                    var groupedScopes = Model.ScopeInfos.GroupBy(s => s.Category ?? "General").OrderBy(g => g.Key);
+                                }
+                                
+                                @foreach (var group in groupedScopes)
+                                {
+                                    @if (groupedScopes.Count() > 1 && !string.IsNullOrEmpty(group.Key))
+                                    {
+                                        <h6 class="mt-3 mb-2 text-muted">@group.Key</h6>
+                                    }
+                                    
+                                    <div class="mb-3">
+                                        @foreach (var scopeInfo in group)
+                                        {
+                                            <div class="form-check mb-2">
+                                                @if (scopeInfo.IsRequired)
+                                                {
+                                                    @* Required scopes: use hidden input + disabled checkbox for display *@
+                                                    <input type="hidden" name="granted_scopes" value="@scopeInfo.Name" />
+                                                    <input 
+                                                        class="form-check-input" 
+                                                        type="checkbox" 
+                                                        value="@scopeInfo.Name" 
+                                                        id="scope_@scopeInfo.Name"
+                                                        checked
+                                                        disabled
+                                                    />
+                                                }
+                                                else
+                                                {
+                                                    @* Optional scopes: regular checkbox that can be unchecked *@
+                                                    <input 
+                                                        class="form-check-input" 
+                                                        type="checkbox" 
+                                                        name="granted_scopes" 
+                                                        value="@scopeInfo.Name" 
+                                                        id="scope_@scopeInfo.Name"
+                                                        checked
+                                                    />
+                                                }
+                                                <label class="form-check-label d-flex align-items-start" for="scope_@scopeInfo.Name">
+                                                    <div class="flex-grow-1">
+                                                        <div class="d-flex align-items-center">
+                                                            @* Display icon if provided *@
+                                                            @if (!string.IsNullOrEmpty(scopeInfo.IconUrl))
+                                                            {
+                                                                @if (scopeInfo.IconUrl.StartsWith("bi "))
+                                                                {
+                                                                    <i class="@scopeInfo.IconUrl me-2"></i>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <img src="@scopeInfo.IconUrl" alt="@scopeInfo.Name" class="me-2" style="width: 20px; height: 20px;" />
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                @* Default icons for standard scopes *@
+                                                                @if (scopeInfo.Name == "openid")
+                                                                {
+                                                                    <i class="bi bi-person-badge me-2"></i>
+                                                                }
+                                                                else if (scopeInfo.Name == "email")
+                                                                {
+                                                                    <i class="bi bi-envelope me-2"></i>
+                                                                }
+                                                                else if (scopeInfo.Name == "profile")
+                                                                {
+                                                                    <i class="bi bi-person me-2"></i>
+                                                                }
+                                                                else if (scopeInfo.Name == "roles")
+                                                                {
+                                                                    <i class="bi bi-shield-check me-2"></i>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <i class="bi bi-check-circle me-2"></i>
+                                                                }
+                                                            }
+                                                            
+                                                            <div>
+                                                                <strong>
+                                                                    @* Use ConsentDisplayName if available, otherwise fallback to DisplayName or Name *@
+                                                                    @(scopeInfo.ConsentDisplayName ?? scopeInfo.DisplayName)
+                                                                </strong>
+                                                                
+                                                                @if (scopeInfo.IsRequired)
+                                                                {
+                                                                    <span class="badge bg-warning text-dark ms-2">@Localizer["Required"]</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        @* Display description if provided *@
+                                                        @if (!string.IsNullOrEmpty(scopeInfo.ConsentDescription))
+                                                        {
+                                                            <div class="text-muted small mt-1">
+                                                                @scopeInfo.ConsentDescription
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
                         }
                         <div class="d-grid gap-2">
                             <button type="submit" name="submit" value="allow" class="btn btn-success btn-lg">

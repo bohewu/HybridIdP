@@ -54,7 +54,7 @@ test.describe('Consent Page - Required Scopes', () => {
         await expect(profileCheckbox).toBeEnabled();
       }
     } finally {
-      await userContext.close();
+      await userContext.close().catch(() => {});
     }
   });
 
@@ -86,8 +86,8 @@ test.describe('Consent Page - Required Scopes', () => {
 
         // Submit consent and wait for OAuth flow to complete
         // The consent form submission triggers redirects: IdP→TestClient callback→Profile
-        await Promise.all([
-          userPage.waitForURL(/localhost:7001/, { timeout: 60000 }),
+        const [response] = await Promise.all([
+          userPage.waitForNavigation({ url: /localhost:7001/, timeout: 60000, waitUntil: 'load' }),
           userPage.click('button[name="submit"][value="allow"]')
         ]);
         
@@ -95,7 +95,7 @@ test.describe('Consent Page - Required Scopes', () => {
         await expect(userPage.locator('body')).toContainText('admin@hybridauth.local');
       }
     } finally {
-      await userContext.close();
+      await userContext.close().catch(() => {});
     }
   });
 
@@ -181,7 +181,7 @@ test.describe('Consent Page - Required Scopes', () => {
       const details = typeof latestEvent.details === 'string' ? JSON.parse(latestEvent.details) : latestEvent.details;
       expect(details?.clientId).toBe('testclient-public');
     } finally {
-      await userContext.close();
+      await userContext.close().catch(() => {});
     }
   });
 
@@ -230,13 +230,13 @@ test.describe('Consent Page - Required Scopes', () => {
 
       // Submit consent and wait for OAuth flow to complete
       await Promise.all([
-        userPage.waitForURL(/localhost:7001/, { timeout: 60000 }),
+        userPage.waitForNavigation({ url: /localhost:7001/, timeout: 60000, waitUntil: 'load' }),
         userPage.click('button[name="submit"][value="allow"]')
       ]);
     } finally {
       // Cleanup: restore original required scopes
       await scopeHelpers.setClientRequiredScopes(page, clientGuid!, ['openid']);
-      await userContext.close();
+      await userContext.close().catch(() => {});
     }
   });
 
@@ -316,7 +316,7 @@ test.describe('Consent Page - Required Scopes', () => {
     } finally {
       // Cleanup: delete temp client
       await adminHelpers.deleteClientViaApiFallback(page, tempClientId);
-      await userContext.close();
+      await userContext.close().catch(() => {});
     }
   });
 });

@@ -146,7 +146,7 @@ test.describe('Userinfo Endpoint - Scope Protection', () => {
         }
       }
     } finally {
-      await userContext.close();
+      await userContext.close().catch(() => {});
     }
   });
 

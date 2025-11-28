@@ -23,13 +23,14 @@ async function main() {
     const client = await page.evaluate(async () => {
       const r = await fetch('/api/admin/clients?search=testclient-public&take=100');
       if (!r.ok) return null;
-      const json = await r.json();
+      const json: any = await r.json();
       const items = Array.isArray(json) ? json : (json.items || []);
       return items.find((c: any) => c.clientId === 'testclient-public') || null;
     });
 
     if (client && client.id) {
       // found existing client, deleting
+      console.log('Found existing testclient-public, deleting...');
       const details = await page.evaluate(async (id) => {
         const r = await fetch(`/api/admin/clients/${id}`);
         return (r.ok ? r.json() : null);
@@ -38,10 +39,13 @@ async function main() {
       await page.evaluate(async (id) => {
         await fetch(`/api/admin/clients/${id}`, { method: 'DELETE' });
       }, client.id);
-      // deleted existing client
+      console.log('Deleted existing client.');
+    } else {
+      console.log('No existing testclient-public found.');
     }
 
     // creating fresh testclient-public with canonical permissions
+    console.log('Creating new testclient-public...');
     const createResp = await page.evaluate(async () => {
       const payload = {
         clientId: 'testclient-public',
@@ -59,7 +63,21 @@ async function main() {
       return r.json();
     });
 
-    // created client (id may be available in createResp)
+    console.log('✓ Successfully recreated testclient-public:', createResp);
+
+    // Set required scopes (openid should be required by default for E2E tests)
+    if (createResp.id) {
+      console.log('Setting required scopes for testclient-public...');
+      await page.evaluate(async (clientId) => {
+        const r = await fetch(`/api/admin/clients/${clientId}/required-scopes`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scopes: ['openid'] })
+        });
+        if (!r.ok) throw new Error('Failed to set required scopes: ' + r.status);
+      }, createResp.id);
+      console.log('✓ Required scopes set to: [openid]');
+    }
   } catch (err) {
     console.error('Failed during recreate testclient:', err);
     process.exitCode = 1;

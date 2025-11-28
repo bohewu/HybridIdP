@@ -70,13 +70,15 @@ export async function extractAccessTokenFromTestClient(
   await page.goto('https://localhost:7001/Account/Profile', { waitUntil: 'networkidle' });
   
   // Try to extract access token from the profile page
+  // The access token is displayed in a textarea/input element, not in the claims table
   const accessToken = await page.evaluate(() => {
-    // Look for access token in the profile table
-    const rows = document.querySelectorAll('table tr');
-    for (const row of rows) {
-      const cells = row.querySelectorAll('td');
-      if (cells.length >= 2 && cells[0].textContent?.includes('access_token')) {
-        return cells[1].textContent?.trim() || null;
+    // Look for textarea or input that contains the token (typically under "Access Token" heading)
+    const textareas = document.querySelectorAll('textarea, input[type="text"]');
+    for (const element of textareas) {
+      const value = (element as HTMLInputElement | HTMLTextAreaElement).value;
+      // JWT tokens start with 'eyJ'
+      if (value && value.startsWith('eyJ')) {
+        return value.trim();
       }
     }
     return null;

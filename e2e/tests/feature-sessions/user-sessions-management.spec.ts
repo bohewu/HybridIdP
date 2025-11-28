@@ -84,7 +84,7 @@ test.describe('User Sessions Management', () => {
     expect(revoked).toBeTruthy();
 
     // Cleanup
-    await userContext.close();
+    await userContext.close().catch(() => {});
     await adminHelpers.deleteUser(page, userRecord.id);
     await adminHelpers.deleteRole(page, role.id);
   });

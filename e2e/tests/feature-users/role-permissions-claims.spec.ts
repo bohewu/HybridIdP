@@ -126,8 +126,8 @@ test.describe('Role Permissions in User Claims - E2E Integration', () => {
       await adminHelpers.deleteRole(adminPage, role.id);
     } finally {
       // Close contexts
-      await adminContext.close();
-      await userContext.close();
+      await adminContext.close().catch(() => {});
+      await userContext.close().catch(() => {});
     }
   });
 
@@ -271,10 +271,10 @@ test.describe('Role Permissions in User Claims - E2E Integration', () => {
       await adminHelpers.deleteRole(adminPage, role2.id);
       
       // Close second user context
-      await userContext2.close();
+      await userContext2.close().catch(() => {});
     } finally {
       // Close contexts
-      await adminContext.close();
+      await adminContext.close().catch(() => {});
     }
   });
 });
