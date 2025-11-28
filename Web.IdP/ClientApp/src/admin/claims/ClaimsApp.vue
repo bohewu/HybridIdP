@@ -184,7 +184,7 @@ import ClaimFormModal from './components/ClaimFormModal.vue'
 const { t } = useI18n()
 
 const claims = ref([])
-const loading = ref(false)
+const loading = ref(true)
 const error = ref(null)
 const showModal = ref(false)
 const editingClaim = ref(null)

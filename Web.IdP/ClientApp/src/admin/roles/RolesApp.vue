@@ -189,7 +189,7 @@ const deniedMessage = ref('')
 const deniedPermission = ref('')
 
 const roles = ref([])
-const loading = ref(false)
+const loading = ref(true)
 const error = ref('')
 
 const page = ref(1)
