@@ -63,15 +63,6 @@ onMounted(async () => {
         <!-- Future sections placeholder -->
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
           <h2 class="text-lg font-semibold text-gray-900 mb-2">
-            Security Settings
-          </h2>
-          <p class="text-sm text-gray-500">
-            Coming soon: Password policy, MFA settings, session configuration
-          </p>
-        </div>
-
-        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-2">
             Email Settings
           </h2>
           <p class="text-sm text-gray-500">
