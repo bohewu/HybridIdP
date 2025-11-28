@@ -32,7 +32,8 @@
       <p class="text-sm text-red-700">{{ error }}</p>
     </div>
 
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200"
+         v-loading="{ loading: loading, overlay: true, message: $t('admin.roles.loadingMessage') }">
       <!-- Filter Section -->
       <div class="p-4 border-b border-gray-200">
         <div class="flex flex-col md:flex-row md:items-center gap-3">
@@ -75,17 +76,12 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-if="loading">
-                <td colspan="6" class="px-6 py-4">
-                  <div class="text-center text-gray-500">{{ $t('admin.roles.loadingMessage') }}</div>
-                </td>
-              </tr>
-              <tr v-else-if="roles.length === 0">
+              <tr v-if="!loading && roles.length === 0">
                 <td colspan="6" class="px-6 py-4">
                   <div class="text-center text-gray-500">{{ $t('admin.roles.noRolesMessage') }}</div>
                 </td>
               </tr>
-              <tr v-for="r in roles" :key="r.id" class="hover:bg-gray-50">
+              <tr v-for="r in roles" :key="r.id" v-show="!loading" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ r.name }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ r.description }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">

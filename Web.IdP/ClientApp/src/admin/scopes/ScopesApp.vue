@@ -193,7 +193,8 @@ watch([page, pageSize, search, sort], () => {
     </div>
 
     <!-- Main Content -->
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200"
+         v-loading="{ loading: loading, overlay: true, message: $t('scopes.loadingMessage') }">
       <!-- Filter Section -->
       <div class="p-4 border-b border-gray-200">
         <div class="flex flex-col md:flex-row md:items-center gap-3">
@@ -217,18 +218,13 @@ watch([page, pageSize, search, sort], () => {
         </div>
       </div>
 
-      <!-- Loading State -->
-      <div v-if="loading" class="px-6 py-12">
-        <div class="text-center text-gray-500">{{ $t('scopes.loadingMessage') }}</div>
-      </div>
-
       <!-- Empty State -->
-      <div v-else-if="!loading && scopes.length === 0" class="px-6 py-12">
+      <div v-if="!loading && scopes.length === 0" class="px-6 py-12">
         <div class="text-center text-gray-500">{{ $t('scopes.noScopesMessage') }}</div>
       </div>
 
       <!-- Scope List -->
-      <template v-else>
+      <template v-if="!loading && scopes.length > 0">
         <ScopeList
           :scopes="scopes"
           :can-update="canUpdate"

@@ -213,7 +213,8 @@ watch([page, pageSize, search, typeFilter, sort], () => {
     </div>
 
     <!-- Main Content -->
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200"
+         v-loading="{ loading: loading, overlay: true, message: $t('clients.loadingMessage') }">
       <!-- Filter Section -->
       <div class="p-4 border-b border-gray-200">
         <div class="flex flex-col md:flex-row md:items-center gap-3">
@@ -245,18 +246,13 @@ watch([page, pageSize, search, typeFilter, sort], () => {
         </div>
       </div>
 
-      <!-- Loading State -->
-      <div v-if="loading" class="px-6 py-12">
-        <div class="text-center text-gray-500">{{ $t('clients.loadingMessage') }}</div>
-      </div>
-
       <!-- Empty State -->
-      <div v-else-if="!loading && clients.length === 0" class="px-6 py-12">
+      <div v-if="!loading && clients.length === 0" class="px-6 py-12">
         <div class="text-center text-gray-500">{{ $t('clients.noClients') }}</div>
       </div>
 
       <!-- Client List -->
-      <template v-else>
+      <template v-if="!loading && clients.length > 0">
         <ClientList
           :clients="clients"
           :can-update="canUpdate"

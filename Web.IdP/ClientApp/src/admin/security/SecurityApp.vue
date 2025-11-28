@@ -1,5 +1,6 @@
 <template>
-  <div class="px-4 sm:px-6 lg:px-8 py-8">
+  <div class="px-4 sm:px-6 lg:px-8 py-8"
+       v-loading="{ loading: loading, overlay: true, message: $t('security.loading') }">
     <!-- Page Header -->
     <PageHeader :title="$t('security.pageTitle')" :subtitle="$t('security.pageSubtitle')">
       <template #actions>
@@ -24,11 +25,7 @@
     </div>
 
     <!-- Main Content -->
-    <div v-if="loading" class="text-center py-16 text-gray-500">
-      {{ $t('security.loading') }}
-    </div>
-    
-    <div v-else class="space-y-6">
+    <div v-if="!loading" class="space-y-6">
       <!-- Password Requirements -->
       <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <div class="px-4 py-5 sm:px-6">
