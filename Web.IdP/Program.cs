@@ -233,6 +233,10 @@ builder.Services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
 // Add SignalR services
 builder.Services.AddSignalR();
 
+// Add Monitoring Background Service
+// todo: 未來可以在安全設定裡面設定是否啟用，及秒數
+// builder.Services.AddHostedService<Infrastructure.BackgroundServices.MonitoringBackgroundService>();
+
 // Configure OpenTelemetry
 var serviceName = "HybridAuthIdP";
 var serviceVersion = "1.0.0";

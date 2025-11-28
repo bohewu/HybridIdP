@@ -1,20 +1,18 @@
 using Microsoft.AspNetCore.SignalR;
-using Core.Application;
 using Core.Application.DTOs;
-using System.Threading.Tasks;
 
 namespace Infrastructure.Hubs;
 
 /// <summary>
 /// SignalR hub for real-time monitoring updates.
+/// Clients connect to this hub to receive periodic updates from MonitoringBackgroundService.
 /// </summary>
 public class MonitoringHub : Hub
 {
-    private readonly IMonitoringService _monitoringService;
-
-    public MonitoringHub(IMonitoringService monitoringService)
+    // No dependencies needed - this hub only manages connections and groups.
+    // The MonitoringBackgroundService broadcasts updates via IHubContext.
+    public MonitoringHub()
     {
-        _monitoringService = monitoringService;
     }
 
     /// <summary>
