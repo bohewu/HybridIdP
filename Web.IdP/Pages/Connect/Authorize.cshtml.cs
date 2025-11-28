@@ -155,20 +155,20 @@ public class AuthorizeModel : PageModel
                     .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user));
 
                 var roles = await _userManager.GetRolesAsync(user);
-                identity.SetClaims(Claims.Role, roles.ToImmutableArray());
+                identity.SetClaims(Claims.Role, [..roles]);
 
                 // Add permission claims from user's roles
                 await AddPermissionClaimsAsync(identity, user);
 
                 // Enrich with scope-mapped claims from DB based on requested scopes
-                await AddScopeMappedClaimsAsync(identity, user, scopes.ToImmutableArray());
+                await AddScopeMappedClaimsAsync(identity, user, [..scopes]);
             }
 
             // Add audience (aud) claims from API Resources associated with requested scopes
-            var audiences = await _apiResourceService.GetAudiencesByScopesAsync(scopes);
+            var audiences = (await _apiResourceService.GetAudiencesByScopesAsync(scopes)).ToList();
             if (audiences.Any())
             {
-                identity.SetAudiences(audiences.ToImmutableArray());
+                identity.SetAudiences([..audiences]);
                 _logger.LogInformation("Setting audiences for existing authorization: {Audiences}", string.Join(", ", audiences));
             }
             else
@@ -413,7 +413,7 @@ public class AuthorizeModel : PageModel
             return;
         }
 
-        var scopeNames = requestedScopes.ToArray();
+        var scopeNames = requestedScopes.ToArray().AsEnumerable();
         var mappings = await _db.ScopeClaims
             .Include(sc => sc.UserClaim)
             .Where(sc => scopeNames.Contains(sc.ScopeName))

@@ -1,6 +1,5 @@
 @page
 @model Web.IdP.Pages.Connect.AuthorizeModel
-@using Microsoft.AspNetCore.Mvc.Localization
 @inject IViewLocalizer Localizer
 @{
     ViewData["Title"] = Localizer["Authorize Application"];
@@ -34,7 +33,7 @@
                                 
                                 @* Group scopes by category *@
                                 @{
-                                    var groupedScopes = Model.ScopeInfos.GroupBy(s => s.Category ?? "General").OrderBy(g => g.Key);
+                                    var groupedScopes = Model.ScopeInfos.GroupBy(s => s.Category ?? "General").OrderBy(g => g.Key).ToArray();
                                 }
                                 
                                 @foreach (var group in groupedScopes)
