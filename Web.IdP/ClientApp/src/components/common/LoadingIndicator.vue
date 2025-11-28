@@ -18,7 +18,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   loading: { type: Boolean, default: true },
@@ -29,9 +28,7 @@ const props = defineProps({
   showMessage: { type: Boolean, default: false }
 })
 
-const { t } = useI18n()
-
-const defaultLabel = t('loading') || 'Loading'
+const defaultLabel = 'Loading...'
 
 const spinnerClasses = computed(() => {
   const base = ['animate-spin', 'rounded-full', 'border-b-2', 'border-blue-600']
