@@ -163,7 +163,8 @@ const exportToExcel = () => {
 </script>
 
 <template>
-  <div class="audit-app px-4 py-6">
+  <div class="audit-app px-4 py-6"
+       v-loading="{ loading: loading, overlay: true, message: $t('admin.audit.loading') }">
     <AccessDeniedDialog
       v-if="showAccessDenied"
       :message="deniedMessage"
