@@ -12,7 +12,10 @@
 - [測試資料設定](#測試資料設定)
 - [故障排除](#故障排除)
 
-> **⚠️ 重要提醒**: 由於專案有兩個 DbContext (`ApplicationDbContext` 和 `ApplicationDbContextPostgres`)，執行 EF Core 命令時**必須指定 `--context` 參數**，否則會出現「No migrations were found in assembly」錯誤。
+> **⚠️ 重要提醒**: 
+> 1. 專案有獨立的 migrations 專案（`Infrastructure.Migrations.SqlServer` 和 `Infrastructure.Migrations.Postgres`）
+> 2. 兩個資料庫都使用相同的 `ApplicationDbContext`
+> 3. 執行 EF Core 命令時**必須在正確的 migrations 專案目錄**並指定 `--context ApplicationDbContext` 參數
 
 ---
 
@@ -24,7 +27,7 @@
 # 1. 啟動 Docker 容器
 docker-compose up -d
 
-# 2. 套用 Migrations
+# 2. 套用 Migrations（注意：是 Infrastructure.Migrations.SqlServer，不是 Infrastructure）
 cd Infrastructure.Migrations.SqlServer
 dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
 
@@ -45,9 +48,9 @@ docker-compose up -d
 # 2. 設定環境變數
 $env:DATABASE_PROVIDER="PostgreSQL"
 
-# 3. 套用 Migrations
+# 3. 套用 Migrations（注意：是 Infrastructure.Migrations.Postgres，不是 Infrastructure）
 cd Infrastructure.Migrations.Postgres
-dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # 4. 註冊 TestClient (用於 E2E 測試)
 Get-Content ..\create-testclient.sql | docker exec -i hybrididp-postgres-service-1 psql -U user -d hybridauth_idp
@@ -406,7 +409,7 @@ dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbCo
 **PostgreSQL:**
 ```powershell
 cd Infrastructure.Migrations.Postgres
-dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
 ```
 
 > **注意**: `--context` 參數必須指定，因為 Infrastructure 專案包含兩個 DbContext。
@@ -443,10 +446,10 @@ docker exec hybrididp-postgres-service-1 psql -U user -d postgres -c "DROP DATAB
 docker exec hybrididp-postgres-service-1 psql -U user -d postgres -c "CREATE DATABASE hybridauth_idp;"
 
 # 3. 重新產生 Migration
-dotnet ef migrations add InitialCreate --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+dotnet ef migrations add InitialCreate --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # 4. 套用 Migration
-dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # 5. 註冊 TestClient (E2E 測試用)
 Get-Content ..\create-testclient.sql | docker exec -i hybrididp-postgres-service-1 psql -U user -d hybridauth_idp
@@ -580,27 +583,45 @@ No migrations were found in assembly 'Infrastructure'.
 A migration needs to be added before the database can be updated.
 ```
 
-**原因:** EF Core 無法判斷要使用哪個 DbContext（專案有 `ApplicationDbContext` 和 `ApplicationDbContextPostgres` 兩個）
+**原因 1:** 在錯誤的目錄執行命令（migrations 在 `Infrastructure.Migrations.SqlServer` 或 `Infrastructure.Migrations.Postgres`，不是 `Infrastructure`）
+
+**原因 2:** `IDesignTimeDbContextFactory` 沒有正確設定 `MigrationsAssembly`（已在 Infrastructure\DesignTime\ApplicationDbContextFactory.cs 中修正）
 
 **解決方案:**
 ```powershell
-# ❌ 錯誤 - 缺少 --context 參數
+# ❌ 錯誤 1 - 在 Infrastructure 目錄執行
+cd Infrastructure
+dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+
+# ❌ 錯誤 2 - 缺少 --context 參數
 dotnet ef database update --startup-project ..\Web.IdP
 
-# ✅ 正確 - SQL Server
+# ✅ 正確方式 1 - 切換到正確的 migrations 專案目錄
 cd Infrastructure.Migrations.SqlServer
 dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
 
-# ✅ 正確 - PostgreSQL
+# ✅ 正確方式 2 - 使用 --project 參數指定 migrations 專案
+cd C:\repos\HybridIdP
+dotnet ef database update --project Infrastructure.Migrations.SqlServer --startup-project Web.IdP --context ApplicationDbContext
+
+# PostgreSQL 同理
 cd Infrastructure.Migrations.Postgres
-dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
 ```
 
-**重要:** 所有 EF Core 命令都必須加上 `--context` 參數：
-- `dotnet ef migrations add` → 加上 `--context ApplicationDbContext`
-- `dotnet ef database update` → 加上 `--context ApplicationDbContext`
-- `dotnet ef migrations list` → 加上 `--context ApplicationDbContext`
-- `dotnet ef migrations remove` → 加上 `--context ApplicationDbContext`
+**記憶要點:**
+- 必須在 `Infrastructure.Migrations.SqlServer` 或 `Infrastructure.Migrations.Postgres` 目錄
+- **不是** `Infrastructure` 目錄
+- 或使用 `--project` 參數明確指定 migrations 專案
+
+> **重要**: 所有 EF Core 命令都必須：
+> 1. 在正確的 migrations 專案目錄執行（`Infrastructure.Migrations.SqlServer` 或 `Infrastructure.Migrations.Postgres`）
+> 2. 加上 `--context ApplicationDbContext` 參數（兩個資料庫都用相同的 context 名稱）
+> 
+> **範例:**
+> - `dotnet ef migrations add YourMigration --startup-project ..\Web.IdP --context ApplicationDbContext`
+> - `dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext`
+> - `dotnet ef migrations list --startup-project ..\Web.IdP --context ApplicationDbContext`
 
 ### 問題 5: Migration 套用失敗
 
@@ -684,11 +705,18 @@ GO
 # 檢查當前目錄
 pwd
 
-# 切換到 SQL Server migrations 目錄
+# ⚠️ 重要：必須切換到 Infrastructure.Migrations.SqlServer 目錄（不是 Infrastructure）
 cd C:\repos\HybridIdP\Infrastructure.Migrations.SqlServer
+
+# 列出 migrations（驗證設定正確）
+dotnet ef migrations list --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # 套用 migrations
 dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+
+# 或者從專案根目錄執行（使用 --project 參數）
+# cd C:\repos\HybridIdP
+# dotnet ef database update --project Infrastructure.Migrations.SqlServer --startup-project Web.IdP --context ApplicationDbContext
 
 # 建立新 migration
 dotnet ef migrations add MigrationName --startup-project ..\Web.IdP --context ApplicationDbContext
@@ -712,26 +740,33 @@ dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDb
 # 檢查當前目錄
 pwd
 
-# 切換到 PostgreSQL migrations 目錄
+# ⚠️ 重要：必須切換到 Infrastructure.Migrations.Postgres 目錄（不是 Infrastructure）
 cd C:\repos\HybridIdP\Infrastructure.Migrations.Postgres
 
-# 套用 migrations
-dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+# 列出 migrations（驗證設定正確）
+dotnet ef migrations list --startup-project ..\Web.IdP --context ApplicationDbContext
+
+# 套用 migrations（注意：PostgreSQL 也是用 ApplicationDbContext，不是 ApplicationDbContext）
+dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+
+# 或者從專案根目錄執行（使用 --project 參數）
+# cd C:\repos\HybridIdP
+# dotnet ef database update --project Infrastructure.Migrations.Postgres --startup-project Web.IdP --context ApplicationDbContext
 
 # 建立新 migration
-dotnet ef migrations add MigrationName --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+dotnet ef migrations add MigrationName --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # 列出所有 migrations
-dotnet ef migrations list --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+dotnet ef migrations list --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # 移除最後一個 migration
-dotnet ef migrations remove --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+dotnet ef migrations remove --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # 回滾到指定 migration
-dotnet ef database update PreviousMigrationName --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+dotnet ef database update PreviousMigrationName --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # 重置資料庫（移除所有 migrations）
-dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDbContextPostgres
+dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDbContext
 ```
 
 ### 記憶口訣
@@ -739,7 +774,7 @@ dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDb
 **所有 EF Core 命令都要加 `--context`！**
 
 - SQL Server → `--context ApplicationDbContext`
-- PostgreSQL → `--context ApplicationDbContextPostgres`
+- PostgreSQL → `--context ApplicationDbContext`
 
 ---
 

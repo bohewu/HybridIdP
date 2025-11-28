@@ -23,14 +23,20 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
             var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__PostgreSqlConnection")
                 ?? "Host=localhost;Port=5432;Database=hybridauth_idp;Username=user;Password=password";
             
-            optionsBuilder.UseNpgsql(connectionString);
+            optionsBuilder.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                npgsqlOptions.MigrationsAssembly("Infrastructure.Migrations.Postgres");
+            });
         }
         else
         {
             var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__SqlServerConnection")
                 ?? "Server=localhost,1433;Database=hybridauth_idp;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;Encrypt=False";
             
-            optionsBuilder.UseSqlServer(connectionString);
+            optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
+            {
+                sqlOptions.MigrationsAssembly("Infrastructure.Migrations.SqlServer");
+            });
         }
 
         return new ApplicationDbContext(optionsBuilder.Options);

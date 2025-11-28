@@ -23,7 +23,7 @@ namespace Infrastructure.Migrations.SqlServer
                 .HasDefaultSchema("dbo")
                 .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
-                .HasAnnotation("Relational:MigrationsAssembly", "Infrastructure");
+                .HasAnnotation("Relational:MigrationsAssembly", "Infrastructure.Migrations.SqlServer");
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
