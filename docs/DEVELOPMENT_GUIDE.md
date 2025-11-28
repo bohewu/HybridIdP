@@ -171,73 +171,127 @@ docs/
 // See docs/examples/development_guide_ui_layered_approach.txt.example
 ```
 
-### 🔧 Shared UI components — LoadingIndicator
+### 🔧 Shared UI components — LoadingIndicator (Phase 9.6 ✅)
 
-為了讓整個管理後台在「載入中」狀態顯示一致，我們提供了一個可重用的 LoadingIndicator Vue component。
+為了讓整個管理後台在「載入中」狀態顯示一致，我們提供了統一的載入 UI 方案，使用 **藍色 Tailwind spinner** 樣式（`animate-spin rounded-full border-b-2 border-blue-600`）。
 
-- 檔案位置：`Web.IdP/ClientApp/src/components/common/LoadingIndicator.vue`
-- 註冊方式：通常在每個 SPA 的 `main.js` 中註冊 component（例：`src/admin/monitoring/main.js`）以避免一次性改動所有 SPA：
+**📁 檔案位置：**
+- Component: `Web.IdP/ClientApp/src/components/common/LoadingIndicator.vue`
+- Directive: `Web.IdP/ClientApp/src/directives/v-loading.js`
+
+**🎨 統一樣式特點：**
+- 藍色 spinner (`border-blue-600`)
+- 三種尺寸：`sm` (h-8 w-8)、`md` (h-12 w-12)、`lg` (h-16 w-16)
+- 支援顯示訊息文字（使用 i18n）
+- 提供 `data-testid="loading-indicator"` 用於 E2E 測試
+
+**🔧 註冊方式：**
+所有 admin SPA 的 `main.js` 都已註冊 v-loading 指令：
 
 ```js
-import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
-app.component('LoadingIndicator', LoadingIndicator)
+import vLoading from '@/directives/v-loading'
+app.directive('loading', vLoading)
 ```
 
-- 基本用法（inline, small）：
+**📝 使用規範：**
+1. **頁面級別載入** → 使用 `v-loading` 指令
+2. **組件級別載入** → 使用 `LoadingIndicator` 組件
+
+**組件用法範例（component-level）：**
 
 ```vue
-<LoadingIndicator :loading="loading" size="sm" />
+<!-- 小尺寸，帶訊息 -->
+<LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('loading.message')" />
+
+<!-- 中尺寸（預設） -->
+<LoadingIndicator v-if="loading" :loading="loading" :message="t('loading.message')" />
 ```
 
-- 覆蓋式 (overlay) 用法（覆蓋整個區塊並顯示訊息）：
+### 🔁 v-loading 指令（推薦用於頁面級載入）✅
 
-```vue
-<LoadingIndicator :loading="loading" overlay message="Loading metrics..." />
-```
+**用途：** 整頁或大範圍容器的覆蓋式載入狀態
 
-- 可測試指標：component 提供 `data-testid="loading-indicator"`，方便 Playwright 等 E2E 測試驗證顯示/隱藏行為。
+**優勢：**
+- 保留頁面內容結構（不破壞布局）
+- 一行代碼實現 overlay 效果
+- 自動鎖定使用者互動
+- 內部使用 `LoadingIndicator` 組件確保視覺一致性
 
-### 🔁 v-loading 指令 (推薦用於頁面 / 覆蓋式載入)
-
-我們為方便在「整頁」或容器上統一管理載入覆蓋而新增 `v-loading` 指令（在 Dashboard 與大型頁面上建議預設使用此指令，overlay 會保留頁面內容並以不破壞布局的方式顯示載入狀態）。該指令會在元素內以 `LoadingIndicator` SFC 顯示 overlay，適合用於：
-
-- 「Main Page」或大範圍區域（覆蓋樣式、一鍵鎖定互動）
-- 想要統一行為但不改變子層元件內部實作
-
-用法範例：
+**標準用法（所有 admin 頁面已遷移）：**
 
 ```vue
 <template>
-    <div v-loading="loading">
-        <!-- page content -->
-    </div>
+  <div class="max-w-7xl mx-auto"
+       v-loading="{ loading: loading, overlay: true, message: t('admin.xxx.loading') }">
+    <!-- 頁面內容 -->
+  </div>
 </template>
 
-// 或使用 object options
-<div v-loading="{ loading: isSaving, overlay: true, message: 'Saving...' }"></div>
+<script setup>
+import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+const loading = ref(true)  // 初始值必須為 true，確保首次載入時顯示 spinner
+
+onMounted(async () => {
+  // 載入數據...
+  loading.value = false
+})
+</script>
 ```
 
-指令會使用現有的 `LoadingIndicator` SFC 以保持視覺一致性，並支援：
+**⚠️ 重要注意事項：**
+1. **loading 初始值必須為 `true`**：確保頁面載入時立即顯示 spinner
+2. **訊息使用 i18n**：所有顯示文字都應該使用 `t()` 函數翻譯
+3. **指令已全域註冊**：所有 admin SPA 的 main.js 都已註冊，無需額外導入
 
-- boolean 或對象格試的綁定
-- overlay/inline 模式
-- 設定 message 與 size
+**支援選項：**
+- `loading`: boolean - 控制顯示/隱藏
+- `overlay`: boolean (預設 true) - 是否使用覆蓋層模式
+- `message`: string - 顯示的載入訊息
+- `size`: 'sm' | 'md' | 'lg' (預設 'md') - spinner 尺寸
 
-備註：指令的 overlay 與 inline 佈局現在使用 Tailwind utility classes（例如：`absolute inset-0 bg-white/60 flex items-center justify-center`），所以樣式會與應用的 Tailwind 設定一致。
+### 🧩 組件級載入 → 使用 LoadingIndicator 組件 ✅
 
-### 🧩 single-component loading → use LoadingIndicator (component-base)
+**用途：** 單一組件或局部區域的載入狀態（卡片、表單、小區塊）
 
-對於「單一元件」或局部載入狀態（例如：小卡片、按鈕內的小 spinner），仍建議直接使用 `LoadingIndicator` component:
+**標準用法：**
 
 ```vue
-<LoadingIndicator :loading="isFetching" size="sm" />
+<template>
+  <div class="component-container">
+    <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('component.loading')" />
+    
+    <div v-else>
+      <!-- 組件內容 -->
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+
+const { t } = useI18n()
+const loading = ref(true)
+</script>
 ```
 
-這種方式較簡單、顯式，並且便於在元件內微調，例如使用 slot 或自訂訊息。
+**已遷移的組件：**
+- ✅ `BrandingSettings.vue`
+- ✅ `UserSessions.vue`
+- ✅ `UserList.vue`
+- ✅ `LoginHistoryDialog.vue`
+- ✅ `RoleAssignment.vue`
+- ✅ `AuditLogViewer.vue`
 
-最佳實踐：
-- 儘量把 loading UI 保持無障礙（aria-label），且使用 i18n 儲存訊息文字。
-- 採用逐步遷移策略：一次改一個 component、同時加入對應的 E2E 測試來確保行為一致。
+**最佳實踐：**
+1. **使用 v-if 條件渲染**：`v-if="loading"` 確保載入完成後不佔用 DOM
+2. **傳遞 i18n 訊息**：`:message="t('xxx.loading')"` 使用翻譯文字
+3. **選擇適當尺寸**：`size="sm"` 適合小組件，`size="md"` 適合一般組件
+4. **保持無障礙性**：組件內建 aria-label 和 role="status"
 
 ---
 

@@ -1713,6 +1713,84 @@ b21a694 - fix(i18n): Fix loginHistory key nesting and add Chinese menu translati
 
 **完成時間：** 2025-11-27
 
+### Phase 9.6: Loading UI Standardization ✅
+
+**完成時間：** 2025-11-28
+
+**功能摘要：**
+- Standardized all loading UI across admin pages with consistent blue Tailwind spinner
+- Updated LoadingIndicator component to use `animate-spin rounded-full border-b-2 border-blue-600`
+- Registered v-loading directive in all admin SPA main.js files
+- Migrated all admin App pages to use v-loading directive for page-level loading
+- Migrated component-level loading to use LoadingIndicator component
+- Fixed loading initial state issues and i18n warnings
+
+**Components Updated:**
+- `LoadingIndicator.vue` - New Tailwind spinner with size variants (sm: h-8 w-8, md: h-12 w-12, lg: h-16 w-16)
+- `v-loading.js` - Updated to pass showMessage prop automatically
+- Component-level migrations: BrandingSettings, UserSessions, UserList, LoginHistoryDialog, RoleAssignment, AuditLogViewer
+
+**Admin SPAs with v-loading:**
+- ✅ Dashboard
+- ✅ Monitoring
+- ✅ Settings
+- ✅ Users
+- ✅ Security
+- ✅ Scopes
+- ✅ Resources
+- ✅ Roles
+- ✅ Clients
+- ✅ Claims
+- ✅ Audit
+
+**Admin Pages Migrated:**
+- ✅ SettingsApp.vue
+- ✅ ScopesApp.vue
+- ✅ ClientsApp.vue
+- ✅ ResourcesApp.vue
+- ✅ RolesApp.vue
+- ✅ ClaimsApp.vue
+- ✅ SecurityApp.vue
+- ✅ AuditApp.vue
+
+**Key Features:**
+- **Consistent Styling:** All spinners use blue color (border-blue-600) with Tailwind classes
+- **Three Size Variants:** sm (8x8), md (12x12), lg (16x16)
+- **Message Support:** Automatic message display when message prop is provided
+- **i18n Integration:** All loading messages use proper i18n translations
+- **Accessibility:** Built-in aria-label and role="status" for screen readers
+- **E2E Testing:** Provides data-testid="loading-indicator" for test automation
+
+**Best Practices Established:**
+1. **Page-level loading:** Use v-loading directive on main container
+2. **Component-level loading:** Use LoadingIndicator component with v-if
+3. **Initial state:** Always set `loading = ref(true)` to show spinner on first load
+4. **Message text:** Always use i18n translations via `t()` function
+5. **Size selection:** sm for components, md for pages (default), lg for large areas
+
+**Commits:**
+- `31b179c` - refactor: standardize loading UI with v-loading directive and Tailwind spinner
+- `962e4e4` - refactor: migrate component-level loading to LoadingIndicator component
+- `1029853` - refactor: register v-loading directive across all admin SPAs
+- `cdcbc9b` - refactor: migrate all admin App pages to v-loading directive
+- `d1ad4bf` - refactor: register v-loading directive in audit main.js
+- `140a9e4` - refactor: migrate AuditApp to v-loading directive
+- `968d8d9` - fix: set loading initial state to true for Roles and Claims pages
+- `c561799` - fix: remove i18n dependency from LoadingIndicator component
+- `a04d947` - refactor: remove Security Settings placeholder from SettingsApp
+
+**Verification:**
+- ✅ All admin pages display consistent blue spinner
+- ✅ Loading messages properly translated
+- ✅ No i18n console warnings
+- ✅ Spinner visible on initial page load
+- ✅ Component-level loading works correctly
+- ✅ All directives registered globally
+
+**Documentation Updated:**
+- ✅ DEVELOPMENT_GUIDE.md - Updated LoadingIndicator and v-loading sections
+- ✅ PROJECT_STATUS.md - Added Phase 9.6 completion status
+
 **功能摘要：**
 - Created standardized `BaseModal.vue` component with consistent behavior across all modals
 - Migrated 13 modal components to use BaseModal (100% migration complete)
