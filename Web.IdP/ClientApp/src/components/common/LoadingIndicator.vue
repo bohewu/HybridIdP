@@ -34,18 +34,23 @@ const { t } = useI18n()
 const defaultLabel = t('loading') || 'Loading'
 
 const spinnerClasses = computed(() => {
-  // Re-uses Bootstrap spinner classes present in the repo while also supporting sizes
-  const base = ['spinner-border']
-  if (props.size === 'sm') base.push('spinner-border-sm')
-  if (props.size === 'lg') base.push('!w-14 !h-14') // a little larger for page-level use; using utilities enhances size when available
-  // inline vs overlay style adjustments handled by parent classes
+  const base = ['animate-spin', 'rounded-full', 'border-b-2', 'border-blue-600']
+  if (props.size === 'sm') {
+    base.push('h-8', 'w-8')
+  } else if (props.size === 'lg') {
+    base.push('h-16', 'w-16')
+  } else {
+    // md is default
+    base.push('h-12', 'w-12')
+  }
   return base.join(' ')
+})
+
+const showMessage = computed(() => {
+  return props.showMessage || !!props.message
 })
 </script>
 
 <style scoped>
-/* Keep a tiny CSS fallback for environments that don't process Tailwind classes
-   Most visual/layout is handled with Tailwind utility classes applied in the template. */
 .loading-indicator { display: flex; align-items: center; justify-content: center; }
-.loading-indicator .spinner-border { display: inline-block; }
 </style>

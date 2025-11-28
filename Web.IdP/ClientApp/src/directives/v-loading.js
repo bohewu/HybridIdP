@@ -32,7 +32,8 @@ export default {
       loading: initialLoading,
       overlay: opts.overlay ?? true,
       message: opts.message ?? '',
-      size: opts.size ?? 'md'
+      size: opts.size ?? 'md',
+      showMessage: !!opts.message
     })
 
     // ensure i18n is available inside the small app so LoadingIndicator can use useI18n()
@@ -73,7 +74,10 @@ export default {
             ? 'absolute inset-0 bg-white/60 z-40 flex items-center justify-center pointer-events-auto v-loading-container'
             : 'flex items-center justify-center v-loading-container'
         }
-        if (opts.message !== undefined) ref.vm.message = opts.message
+        if (opts.message !== undefined) {
+          ref.vm.message = opts.message
+          ref.vm.showMessage = !!opts.message
+        }
         if (opts.size !== undefined) ref.vm.size = opts.size
       }
     } catch (err) {
