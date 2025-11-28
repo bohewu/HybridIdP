@@ -241,15 +241,63 @@ Implement comprehensive scope-based authorization with proper consent management
      - Open modal → click outside (if enabled) → modal closes
 
 ### Verification:
-- [ ] Inventory: All modals documented and tested
-- [ ] ESC key: Works on all modals
-- [ ] Close icon: Present and functional on all modals
-- [ ] E2E tests: Modal behavior tests pass
-- [ ] Accessibility: Focus trap and keyboard navigation work
+- [✅] Inventory: All modals documented and tested
+- [✅] ESC key: Works on all modals
+- [✅] Close icon: Present and functional on all modals
+- [✅] E2E tests: Modal behavior tests pass
+- [✅] Accessibility: Focus trap and keyboard navigation work
+
+**Status:** Complete (2025-11-27)
 
 ---
 
-## Phase 9.6: E2E Testing & Documentation
+## Phase 9.6: Loading UI Standardization
+
+**Objective:** Standardize loading indicators across the admin UI for consistent UX.
+
+### Tasks:
+1. **Update LoadingIndicator Component:**
+   - Replace Bootstrap spinner with Tailwind CSS spinner
+   - Blue spinner style: `animate-spin rounded-full border-b-2 border-blue-600`
+   - Three size variants: sm (h-8 w-8), md (h-12 w-12), lg (h-16 w-16)
+   - Remove i18n dependency, accept translated messages via props
+
+2. **Create v-loading Directive:**
+   - Create `src/directives/v-loading.js`
+   - Support options: loading (boolean), overlay (boolean), message (string), size (string)
+   - Auto-mount LoadingIndicator with overlay when loading=true
+   - Register in all admin SPA main.js files
+
+3. **Migrate Admin Pages:**
+   - Apply v-loading directive to all 8 admin App pages
+   - Remove inline loading divs/table rows
+   - Fix loading initial state (true for immediate display)
+   - Pattern: `v-loading="{ loading: loading, overlay: true, message: t('admin.xxx.loading') }"`
+
+4. **Migrate Components:**
+   - Update component-level loading to use LoadingIndicator
+   - Replace inline SVG spinners
+   - Pattern: `<LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('xxx.loading')" />`
+
+5. **Documentation:**
+   - Update DEVELOPMENT_GUIDE.md with usage patterns
+   - Establish best practices for new components
+   - Document page vs component loading patterns
+
+### Verification:
+- [✅] LoadingIndicator updated with Tailwind spinner
+- [✅] v-loading directive created and registered in 11 SPAs
+- [✅] 8 admin App pages migrated to v-loading
+- [✅] 6 components migrated to LoadingIndicator
+- [✅] No i18n console warnings
+- [✅] Loading spinner visible on initial page load
+- [✅] Documentation updated with best practices
+
+**Status:** Complete (2025-11-28)
+
+---
+
+## Phase 9.7: E2E Testing & Documentation
 
 **Objective:** Comprehensive E2E tests for scope authorization flows and complete documentation.
 
@@ -290,6 +338,8 @@ Implement comprehensive scope-based authorization with proper consent management
 - [ ] Code examples tested and work as documented
 - [ ] README updated with scope authorization feature
 
+**Status:** Pending
+
 ---
 
 ## Success Criteria (Phase 9 Complete)
@@ -300,8 +350,9 @@ Implement comprehensive scope-based authorization with proper consent management
 - ✅ Userinfo endpoint requires openid scope (OIDC compliant)
 - ✅ Client scope management UI scales with many scopes
 - ✅ All modals support ESC key and close icon
-- ✅ Comprehensive E2E test coverage for scope flows
-- ✅ Complete documentation for developers and administrators
+- ✅ Loading UI standardized across all admin pages and components
+- [ ] Comprehensive E2E test coverage for scope flows
+- [ ] Complete documentation for developers and administrators
 
 ## Testing Summary
 - Unit tests: ClientAllowedScopesService, ScopeAuthorizationHandler, PolicyProvider
@@ -317,10 +368,15 @@ Implement comprehensive scope-based authorization with proper consent management
 - `Web.IdP/Pages/Connect/Authorize.cshtml.cs` - Updated consent logic
 - `Web.IdP/Api/ClientsController.cs` - Updated scope management endpoints
 - `Web.IdP/Api/UserinfoController.cs` - Protected with scope requirement
+- `Web.IdP/ClientApp/src/components/common/LoadingIndicator.vue` - Standardized loading component
+- `Web.IdP/ClientApp/src/directives/v-loading.js` - Page-level loading directive
+- `Web.IdP/ClientApp/admin/*/main.js` - Admin SPA entry points (11 files)
 
 ## Notes
 - Phase 9 focuses on authorization, not authentication
 - Scope validation happens at runtime, not at token issuance
 - Required scopes are per-client configuration, not global
-- Modal UX improvements benefit entire admin interface
+- Modal UX improvements (9.5) and loading UI standardization (9.6) benefit entire admin interface
 - OIDC compliance maintained throughout implementation
+- Phase 9.6 established v-loading directive pattern for page-level loading
+- Phase 9.6 established LoadingIndicator component pattern for component-level loading

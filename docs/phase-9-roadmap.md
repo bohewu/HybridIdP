@@ -76,24 +76,49 @@ Phase 9 focuses on comprehensive scope authorization and management, enabling fi
 
 ---
 
-### 9.5: Modal/Dialog UX Consistency
+### 9.5: Modal/Dialog UX Consistency ✅
+**Status:** Complete (2025-11-27)
 **Focus:** UX polish  
 **Duration:** ~1-2 days  
 **Key Deliverables:**
-- Audit all modals in admin UI
-- Implement ESC key handler
-- Add close icon to all modals
-- Standard modal component/pattern
+- ✅ Audit all modals in admin UI
+- ✅ Implement ESC key handler
+- ✅ Add close icon to all modals
+- ✅ Standard modal component/pattern
 
 **Verification:**
-- Inventory of all modals completed
-- ESC key works on all modals
-- Close icon present on all modals
-- E2E tests for modal behavior
+- ✅ Inventory of all modals completed
+- ✅ ESC key works on all modals
+- ✅ Close icon present on all modals
+- ✅ E2E tests for modal behavior
 
 ---
 
-### 9.6: E2E Testing & Documentation
+### 9.6: Loading UI Standardization ✅
+**Status:** Complete (2025-11-28)
+**Focus:** Consistent loading indicators across admin UI  
+**Duration:** ~1 day  
+**Key Deliverables:**
+- ✅ Updated LoadingIndicator.vue with Tailwind blue spinner (3 size variants)
+- ✅ v-loading directive for page-level loading
+- ✅ Registered v-loading in all 11 admin SPAs
+- ✅ Migrated 8 admin App pages to v-loading
+- ✅ Migrated 6 components to LoadingIndicator
+- ✅ Removed i18n dependency from LoadingIndicator
+- ✅ Fixed loading initial state bugs
+- ✅ Updated documentation with best practices
+
+**Verification:**
+- ✅ All admin pages display consistent blue spinner
+- ✅ No i18n console warnings
+- ✅ Loading spinner visible on initial page load
+- ✅ Component-level loading works correctly
+- ✅ All directives globally registered
+- ✅ Documentation reflects implementation
+
+---
+
+### 9.7: E2E Testing & Documentation
 **Focus:** Quality assurance & documentation  
 **Duration:** ~1-2 days  
 **Key Deliverables:**
@@ -111,15 +136,17 @@ Phase 9 focuses on comprehensive scope authorization and management, enabling fi
 ---
 
 ## Total Estimated Duration
-**8-11 days** (assuming one developer)
+**9-12 days** (assuming one developer)
 
 ## Current Status
 - ✅ Phase 9.1: Complete (2025-11-26)
 - ✅ Phase 9.2: Complete (2025-11-26)
 - ✅ Phase 9.3: Complete (2025-11-26)
 - ✅ Phase 9.4: Complete (2025-11-27)
-- 📊 Progress: 66% (4/6 sub-phases completed)
-- ⏳ Next: Phase 9.5 - Modal/Dialog UX Consistency
+- ✅ Phase 9.5: Complete (2025-11-27)
+- ✅ Phase 9.6: Complete (2025-11-28)
+- 📊 Progress: 85% (6/7 sub-phases completed)
+- ⏳ Next: Phase 9.7 - E2E Testing & Documentation
 
 ## Implementation Strategy
 1. **TDD Approach:** Write tests first, then implementation
@@ -138,5 +165,5 @@ Phase 9 focuses on comprehensive scope authorization and management, enabling fi
 ## Notes
 - Each sub-phase is independently testable
 - Can pause between sub-phases for feedback
-- Phase 9.5 (Modal UX) can be done in parallel with 9.4
-- Phase 9.6 (E2E + Docs) should be last to capture all changes
+- Phase 9.5 (Modal UX) and 9.6 (Loading UI) completed UI polish work
+- Phase 9.7 (E2E + Docs) should be last to capture all changes
