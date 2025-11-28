@@ -30,6 +30,40 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 
 近期更新紀錄：
 
+## 2025-11-28: Phase 9.7 Critical OAuth Consent Flow Fix (95/102 E2E tests passing, 93%)
+
+**CRITICAL BUG FIX: OAuth Redirect Loop**
+- **問題**：Consent page POST 後無限重定向循環，返回 `/connect/authorize` 而不是完成 OAuth flow
+- **根本原因**：`AuthorizeModel.OnPostAsync` 中 `ScopeInfos` 為空
+  - `ScopeInfos` 只在 `OnGetAsync` 中通過 `LoadScopeInfosAsync()` 填充
+  - POST 請求中為空 List，導致 `ClassifyScopes` 無法正確分類 scopes
+- **解決方案**：在 POST handler 中重新調用 `await LoadScopeInfosAsync(requestedScopes, clientGuid)`
+
+**Required Scopes Tampering Detection 改進**
+- 將 tampering 驗證移到 `ClassifyScopes` **之前**執行
+- 原因：`ClassifyScopes` 會自動添加所有 required scopes（Line 435-438），破壞 tampering detection
+- 新邏輯：先驗證 `granted_scopes` 包含所有 required scopes，再調用 ClassifyScopes
+
+**E2E Test 修復**
+- 更新測試使用正確的 element selector：`input#scope_openid[type="checkbox"]` 而不是 `input[name="granted_scopes"][value="openid"]`
+- 原因：Required scopes 使用兩個 inputs（hidden + disabled checkbox），測試需要查找 visible checkbox
+- 改進 tampering 測試來正確移除 hidden input
+
+**測試結果**
+- 從 **8/13 (62%)** 提升到 **95/102 (93%)**
+- 主要修復的測試：
+  - ✅ Unchecking optional scope excludes it from granted scopes
+  - ✅ Required scope displays as disabled checkbox with badge  
+  - ✅ Multiple required scopes all display as disabled
+  - ✅ Client without required scopes shows all checkboxes as enabled
+- 剩餘 7 個失敗測試主要是 selector 問題和其他功能測試
+
+**技術債務**
+- Tampering detection 測試仍返回 302 而非 400（需進一步調查）
+- 部分測試需要更新 selector 以配合新的 HTML 結構
+
+---
+
 ## 2025-11-21: E2E Test Coverage Expansion (47 tests total, 100% passing)
 
 **新增功能測試覆蓋 (Admin UI Features):**

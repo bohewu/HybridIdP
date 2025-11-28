@@ -349,6 +349,14 @@ Implement comprehensive scope-based authorization with proper consent management
 - Updated e2e/global-setup.ts to seed required scopes and create test clients
 - Created scopeHelpers.ts with 6 helper functions for E2E testing
 
+**CRITICAL BUG FIX (2025-11-28):**
+- Fixed OAuth redirect loop in consent flow POST handler
+- Root cause: `ScopeInfos` was empty during POST (only populated in GET)
+- Solution: Added `await LoadScopeInfosAsync(requestedScopes, clientGuid)` in `OnPostAsync`
+- Moved tampering check BEFORE `ClassifyScopes` to prevent auto-addition of required scopes
+- Updated E2E tests with correct element selectors (id-based for checkboxes)
+- Test improvement: 62% → 93% pass rate (95/102 tests passing)
+
 **Test Coverage:**
 - consent-required-scopes.spec.ts: 5 tests (required scope display, optional scopes, tampering detection, multiple required, no required)
 - userinfo-scope-enforcement.spec.ts: 3 tests (200 with openid, 403 without openid, token validation)
