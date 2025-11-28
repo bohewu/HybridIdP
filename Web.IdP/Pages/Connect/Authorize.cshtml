@@ -38,15 +38,31 @@
                                     @foreach (var scopeInfo in group)
                                     {
                                         <div class="form-check mb-2">
-                                            <input 
-                                                class="form-check-input" 
-                                                type="checkbox" 
-                                                name="granted_scopes" 
-                                                value="@scopeInfo.Name" 
-                                                id="scope_@scopeInfo.Name"
-                                                checked
-                                                @if (scopeInfo.IsRequired) { <text>disabled</text> }
-                                            />
+                                            @if (scopeInfo.IsRequired)
+                                            {
+                                                @* Required scopes: use hidden input + disabled checkbox for display *@
+                                                <input type="hidden" name="granted_scopes" value="@scopeInfo.Name" />
+                                                <input 
+                                                    class="form-check-input" 
+                                                    type="checkbox" 
+                                                    value="@scopeInfo.Name" 
+                                                    id="scope_@scopeInfo.Name"
+                                                    checked
+                                                    disabled
+                                                />
+                                            }
+                                            else
+                                            {
+                                                @* Optional scopes: regular checkbox that can be unchecked *@
+                                                <input 
+                                                    class="form-check-input" 
+                                                    type="checkbox" 
+                                                    name="granted_scopes" 
+                                                    value="@scopeInfo.Name" 
+                                                    id="scope_@scopeInfo.Name"
+                                                    checked
+                                                />
+                                            }
                                             <label class="form-check-label d-flex align-items-start" for="scope_@scopeInfo.Name">
                                                 <div class="flex-grow-1">
                                                     <div class="d-flex align-items-center">

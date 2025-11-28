@@ -22,6 +22,7 @@ using System.Text.Json;
 namespace Web.IdP.Pages.Connect;
 
 [Authorize]
+[IgnoreAntiforgeryToken] // OAuth flows use state parameter for CSRF protection
 public class AuthorizeModel : PageModel
 {
     private readonly IOpenIddictApplicationManager _applicationManager;
@@ -256,20 +257,20 @@ public class AuthorizeModel : PageModel
         var eval = await _clientScopeProcessor.EnforceAsync(clientGuid, requestedScopesOriginal, logAuditIfRestricted: false);
         var requestedScopes = eval.AllowedScopes.ToImmutableArray();
 
-        // Build minimal available scope summaries from loaded consent info
-        var availableSummaries = ScopeInfos.Select(s => new ScopeSummary
-        {
-            Name = s.Name,
-            IsRequired = s.IsRequired
-        }).ToList();
+        // Reload scope information for POST request (ScopeInfos is only populated in GET)
+        await LoadScopeInfosAsync(requestedScopes, clientGuid);
 
-        // Classify scopes based on user consent input
-        var classification = _scopeService.ClassifyScopes(requestedScopes, availableSummaries, granted_scopes);
-        var effectiveScopes = classification.Allowed.ToImmutableArray();
-
-        // Server-side validation: Ensure all required scopes are present (prevent tampering)
+        // Server-side validation: Ensure all required scopes are present in granted_scopes (prevent tampering)
+        // This must be done BEFORE ClassifyScopes, because ClassifyScopes auto-adds required scopes
         var clientRequiredScopes = await _clientAllowedScopesService.GetRequiredScopesAsync(clientGuid);
-        var missingRequired = clientRequiredScopes.Except(effectiveScopes, StringComparer.OrdinalIgnoreCase).ToList();
+        var grantedSet = (granted_scopes ?? Array.Empty<string>()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missingRequired = clientRequiredScopes.Except(grantedSet, StringComparer.OrdinalIgnoreCase).ToList();
+        
+        _logger.LogInformation("Tampering check: clientId={ClientId}, requiredScopes={Required}, grantedScopes={Granted}, missing={Missing}",
+            request.ClientId,
+            string.Join(",", clientRequiredScopes),
+            string.Join(",", grantedSet),
+            string.Join(",", missingRequired));
         
         if (missingRequired.Any())
         {
@@ -286,6 +287,17 @@ public class AuthorizeModel : PageModel
             
             return BadRequest("Required scopes cannot be excluded from consent.");
         }
+
+        // Build minimal available scope summaries from loaded consent info
+        var availableSummaries = ScopeInfos.Select(s => new ScopeSummary
+        {
+            Name = s.Name,
+            IsRequired = s.IsRequired
+        }).ToList();
+
+        // Classify scopes based on user consent input (this will auto-add required scopes)
+        var classification = _scopeService.ClassifyScopes(requestedScopes, availableSummaries, granted_scopes);
+        var effectiveScopes = classification.Allowed.ToImmutableArray();
 
         // Add claims mapped by effective (allowed) scopes
         await AddScopeMappedClaimsAsync(identity, user, effectiveScopes);

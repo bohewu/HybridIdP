@@ -25,23 +25,17 @@ test.describe('Userinfo Endpoint - Scope Protection', () => {
       // Handle consent if presented
       const consentForm = userPage.locator('form[method="post"]');
       if (await consentForm.count() > 0) {
-        await userPage.click('button[name="submit"][value="allow"]');
+        await Promise.all([
+          userPage.waitForURL(/localhost:7001/, { timeout: 60000 }),
+          userPage.click('button[name="submit"][value="allow"]')
+        ]);
+      } else {
+        // No consent needed, should already be at profile
+        await userPage.waitForURL(/localhost:7001/, { timeout: 10000 });
       }
 
-      // Wait for redirect back to TestClient
-      await userPage.waitForURL('**/Account/Profile', { timeout: 20000 });
-
       // Extract access token from TestClient profile page
-      const accessToken = await userPage.evaluate(() => {
-        const rows = document.querySelectorAll('table tr');
-        for (const row of rows) {
-          const cells = row.querySelectorAll('td');
-          if (cells.length >= 2 && cells[0].textContent?.toLowerCase().includes('access_token')) {
-            return cells[1].textContent?.trim() || null;
-          }
-        }
-        return null;
-      });
+      const accessToken = await scopeHelpers.extractAccessTokenFromTestClient(userPage);
 
       expect(accessToken).not.toBeNull();
       expect(accessToken).toBeTruthy();

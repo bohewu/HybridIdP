@@ -12,17 +12,28 @@ export async function setClientRequiredScopes(
   clientGuid: string,
   scopeNames: string[]
 ): Promise<boolean> {
-  return await page.evaluate(
-    async ({ guid, scopes }) => {
-      const response = await fetch(`/api/admin/clients/${guid}/required-scopes`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scopes }),
-      });
-      return response.ok;
-    },
-    { guid: clientGuid, scopes: scopeNames }
-  );
+  // Retry on transient errors (page evaluation may fail if session temporarily closed)
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await page.evaluate(
+        async ({ guid, scopes }) => {
+          const response = await fetch(`/api/admin/clients/${guid}/required-scopes`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scopes }),
+          });
+          return response.ok;
+        },
+        { guid: clientGuid, scopes: scopeNames }
+      );
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      // small backoff
+      await new Promise((r) => setTimeout(r, 250 * attempt));
+    }
+  }
+  return false;
 }
 
 /**

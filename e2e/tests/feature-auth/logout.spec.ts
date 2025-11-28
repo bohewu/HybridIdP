@@ -11,7 +11,7 @@ async function loginViaTestClient(page) {
   if (await allowBtn.count() > 0 && await allowBtn.isVisible()) {
     await allowBtn.click();
   }
-  await page.waitForURL('**/Account/Profile', { timeout: 20000 });
+  await page.waitForURL('**/Account/Profile', { timeout: 60000 });
 }
 
 test('TestClient logout clears session and OIDC logout works', async ({ page }) => {

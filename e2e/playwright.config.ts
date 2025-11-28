@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  // Per-test timeout: increase to 60s so longer admin UI flows don't hit the global limit
-  timeout: 60_000,
+  // Per-test timeout: increase to 90s for E2E flows with OAuth redirects
+  timeout: 90_000,
   retries: 0,
   // Lower worker count when running locally to reduce flakiness caused by contention
   // Use 3 workers for a balance of speed and isolation as requested

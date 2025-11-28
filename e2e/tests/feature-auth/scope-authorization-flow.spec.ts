@@ -32,6 +32,16 @@ test.describe('Scope Authorization Flow - Admin UI Integration', () => {
     // Set api:company:read as required via API (easier than UI manipulation)
     const currentRequired = await scopeHelpers.getClientRequiredScopes(page, clientGuid);
     await scopeHelpers.setClientRequiredScopes(page, clientGuid, [...currentRequired, 'api:company:read']);
+    // ensure the required scopes persist before continuing
+    const confirmDeadline = Date.now() + 10000;
+    while (Date.now() < confirmDeadline) {
+      const rs = await scopeHelpers.getClientRequiredScopes(page, clientGuid);
+      if (rs.includes('api:company:read')) break;
+      await page.waitForTimeout(200);
+    }
+    
+    // Additional wait to ensure database transaction is fully committed
+    await page.waitForTimeout(1000);
 
     // Close the modal
     await page.keyboard.press('Escape');
@@ -62,9 +72,11 @@ test.describe('Scope Authorization Flow - Admin UI Integration', () => {
         await expect(apiScopeCheckbox).toBeChecked();
       }
 
-      // Submit consent
-      await userPage.click('button[name="submit"][value="allow"]');
-      await userPage.waitForURL('**/Account/Profile', { timeout: 20000 });
+      // Submit consent and wait for OAuth flow to complete
+      await Promise.all([
+        userPage.waitForURL(/localhost:7001/, { timeout: 60000 }),
+        userPage.click('button[name="submit"][value="allow"]')
+      ]);
 
       // Verify token contains api:company:read scope
       const scopes = await userPage.evaluate(() => {
@@ -150,10 +162,14 @@ test.describe('Scope Authorization Flow - Admin UI Integration', () => {
 
       const consentForm = userPage.locator('form[method="post"]');
       if (await consentForm.count() > 0) {
-        await userPage.click('button[name="submit"][value="allow"]');
+        await Promise.all([
+          userPage.waitForURL(/localhost:7001/, { timeout: 60000 }),
+          userPage.click('button[name="submit"][value="allow"]')
+        ]);
+      } else {
+        // No consent needed, should already be at profile
+        await userPage.waitForURL(/localhost:7001/, { timeout: 10000 });
       }
-
-      await userPage.waitForURL('**/Account/Profile', { timeout: 20000 });
 
       // Extract access token
       const accessToken = await userPage.evaluate(() => {

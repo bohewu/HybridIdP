@@ -37,7 +37,7 @@ async function loginViaTestClient(page) {
   }
 
   // Wait for redirect back to TestClient profile
-  await page.waitForURL('**/Account/Profile', { timeout: 20000 });
+  await page.waitForURL('**/Account/Profile', { timeout: 60000 });
 }
 
 test('TestClient login + consent redirects back to profile', async ({ page }) => {

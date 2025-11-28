@@ -640,10 +640,7 @@ export async function searchAndConfirmActionWithModal(page: Page, entity: string
     }
 
     // Wait for redirect back to TestClient profile or root
-    await page.waitForURL('**/Account/Profile', { timeout: 20000 }).catch(() => {
-      // If not found, try to navigate back to TestClient root and wait for login to settle
-      // (use fallback to check presence of profile indicator)
-    });
+    await page.waitForURL('**/Account/Profile', { timeout: 60000 });
   }
 
   export async function getDashboardStats(page: Page) {
