@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 
 const props = defineProps({
   canUpdate: {
@@ -169,10 +170,7 @@ onMounted(() => {
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="p-6 flex justify-center items-center">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      <span class="ml-3 text-gray-600">{{ t('admin.settings.loading') }}</span>
-    </div>
+    <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('admin.settings.loading')" />
 
     <!-- Form Content -->
     <div v-else class="p-4">

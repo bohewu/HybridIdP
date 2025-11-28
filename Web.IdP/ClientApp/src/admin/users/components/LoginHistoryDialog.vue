@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseModal from '@/components/common/BaseModal.vue'
+import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 
 const { t } = useI18n()
 
@@ -152,10 +153,7 @@ onMounted(() => fetchLoginHistory())
                 </div>
 
                 <!-- Loading State -->
-                <div v-if="loading" class="mt-4 text-center py-8">
-                  <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                  <p class="mt-2 text-sm text-gray-500">{{ t('admin.users.loginHistory.loading') }}</p>
-                </div>
+                <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('admin.users.loginHistory.loading')" />
 
                 <!-- Empty State -->
                 <div v-else-if="!loading && filteredHistory.length === 0" class="mt-4 text-center py-8">
