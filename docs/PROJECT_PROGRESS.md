@@ -1,7 +1,7 @@
 ---
 title: "Project Progress Summary"
-owner: HybridIdP Team
-last-updated: 2025-11-28
+owner: HybridAuthIdP Team
+last-updated: 2025-11-29
 ---
 
 # 專案進度摘要
@@ -16,7 +16,7 @@ last-updated: 2025-11-28
 - Phase 6 — Code Quality & Tests: 90% — `docs/phase-6-code-quality-tests.md`
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
 - Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
-- Phase 9 — Scope Authorization & Management: 50% — `docs/phase-9-roadmap.md`
+- Phase 9 — Scope Authorization & Management: 100% — `docs/phase-9-roadmap.md`
 - Phase 10 — Person & Identity: 0% — `docs/phase-10-person-identity.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
@@ -78,6 +78,8 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 - ✅ OAuth consent flow 完整運作
 - ✅ Admin UI 可以設定 client required scopes
 - ✅ Userinfo endpoint 正確執行 openid scope 檢查
+
+**Phase 9 Overall: 100% (7/7 sub-phases completed)** ✅
 
 ---
 

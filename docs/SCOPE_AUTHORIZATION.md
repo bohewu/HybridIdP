@@ -1,5 +1,8 @@
 # Scope-Based Authorization Guide
 
+**Status:** Phase 9 — Scope Authorization & Management: Completed (2025-11-28) ✅
+See `docs/phase-9-scope-authorization.md` for implementation details and E2E test coverage.
+
 This guide explains how to use and configure scope-based authorization in HybridIdP to protect API endpoints and manage user consent for resource access.
 
 ## Table of Contents
