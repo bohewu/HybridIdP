@@ -145,6 +145,7 @@ const handleClose = () => {
                         v-model="formData.firstName"
                         type="text"
                         required
+                        :placeholder="t('admin.persons.form.firstName')"
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
@@ -157,6 +158,7 @@ const handleClose = () => {
                         id="middleName"
                         v-model="formData.middleName"
                         type="text"
+                        :placeholder="t('admin.persons.form.middleName')"
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
@@ -170,6 +172,7 @@ const handleClose = () => {
                         v-model="formData.lastName"
                         type="text"
                         required
+                        :placeholder="t('admin.persons.form.lastName')"
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
@@ -184,6 +187,7 @@ const handleClose = () => {
                       id="nickname"
                       v-model="formData.nickname"
                       type="text"
+                      :placeholder="t('admin.persons.form.nickname')"
                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
                   </div>
@@ -198,6 +202,7 @@ const handleClose = () => {
                         id="employeeId"
                         v-model="formData.employeeId"
                         type="text"
+                        :placeholder="t('admin.persons.form.employeeId')"
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
@@ -210,6 +215,7 @@ const handleClose = () => {
                         id="department"
                         v-model="formData.department"
                         type="text"
+                        :placeholder="t('admin.persons.form.department')"
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
@@ -222,6 +228,7 @@ const handleClose = () => {
                         id="jobTitle"
                         v-model="formData.jobTitle"
                         type="text"
+                        :placeholder="t('admin.persons.form.jobTitle')"
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
@@ -239,6 +246,7 @@ const handleClose = () => {
                           id="gender"
                           v-model="formData.gender"
                           type="text"
+                          :placeholder="t('admin.persons.form.gender')"
                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                         />
                       </div>
@@ -264,6 +272,7 @@ const handleClose = () => {
                         id="address"
                         v-model="formData.address"
                         rows="2"
+                        :placeholder="t('admin.persons.form.address')"
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       ></textarea>
                     </div>
@@ -277,6 +286,7 @@ const handleClose = () => {
                           id="timeZone"
                           v-model="formData.timeZone"
                           type="text"
+                          :placeholder="t('admin.persons.form.timeZone')"
                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                         />
                       </div>
@@ -289,6 +299,7 @@ const handleClose = () => {
                           id="locale"
                           v-model="formData.locale"
                           type="text"
+                          :placeholder="t('admin.persons.form.locale')"
                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                         />
                       </div>
@@ -315,7 +326,7 @@ const handleClose = () => {
               type="button"
               @click="handleClose"
               :disabled="saving"
-              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              class="mt-2.5 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {{ t('admin.persons.cancel') }}
             </button>
