@@ -227,4 +227,28 @@ public class PersonService : IPersonService
     {
         return await _context.Persons.CountAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<List<ApplicationUser>> GetUnlinkedUsersAsync(string? searchTerm = null)
+    {
+        _logger.LogInformation("Getting unlinked users with search term: {SearchTerm}", searchTerm ?? "(none)");
+
+        var query = _context.Users
+            .Where(u => u.PersonId == null);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.ToLower();
+            query = query.Where(u =>
+                (u.Email != null && u.Email.ToLower().Contains(term)) ||
+                (u.UserName != null && u.UserName.ToLower().Contains(term)) ||
+                (u.FirstName != null && u.FirstName.ToLower().Contains(term)) ||
+                (u.LastName != null && u.LastName.ToLower().Contains(term)));
+        }
+
+        return await query
+            .OrderBy(u => u.Email)
+            .Take(100) // Limit to prevent large result sets
+            .ToListAsync();
+    }
 }

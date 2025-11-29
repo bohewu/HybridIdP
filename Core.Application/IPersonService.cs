@@ -93,4 +93,11 @@ public interface IPersonService
     /// </summary>
     /// <returns>Total number of persons</returns>
     Task<int> GetPersonsCountAsync();
+
+    /// <summary>
+    /// Get all users that are not linked to any person (PersonId is null)
+    /// </summary>
+    /// <param name="searchTerm">Optional search term to filter by email or username</param>
+    /// <returns>List of unlinked application users</returns>
+    Task<List<ApplicationUser>> GetUnlinkedUsersAsync(string? searchTerm = null);
 }

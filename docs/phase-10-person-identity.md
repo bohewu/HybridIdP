@@ -237,7 +237,7 @@ Invoke-RestMethod -Uri "https://localhost:7035/api/admin/persons/search?term=joh
    - Add navigation menu items
 
 3. **API Integration**
-   - Create `personApi.ts` service wrapper
+   - Create `personApi.js` service wrapper
    - Implement all CRUD operations
    - Handle errors and loading states
 

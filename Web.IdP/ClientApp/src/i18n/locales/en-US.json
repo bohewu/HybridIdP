@@ -246,6 +246,83 @@
         "close": "Close"
       }
     },
+    "persons": {
+      "pageTitle": "Person Management",
+      "pageSubtitle": "Manage person profiles and linked accounts",
+      "createPerson": "Create Person",
+      "editPerson": "Edit Person",
+      "search": "Search by name, employee ID, or department...",
+      "loading": "Loading persons...",
+      "noPersons": "No persons found matching your criteria.",
+      "noPermission": "You do not have permission to view persons.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "accounts": "Accounts",
+      "manageAccounts": "Manage Linked Accounts",
+      "linkedAccountsCount": "{count} linked account(s)",
+      "close": "Close",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "form": {
+        "firstName": "First Name",
+        "middleName": "Middle Name",
+        "lastName": "Last Name",
+        "nickname": "Nickname",
+        "employeeId": "Employee ID",
+        "department": "Department",
+        "jobTitle": "Job Title",
+        "gender": "Gender",
+        "birthdate": "Birthdate",
+        "address": "Address",
+        "timeZone": "Time Zone",
+        "locale": "Locale",
+        "personalInfo": "Personal Information"
+      },
+      "linkedAccounts": {
+        "title": "Linked Accounts",
+        "personName": "Person: {name}",
+        "noAccounts": "No accounts linked to this person.",
+        "linkAccount": "Link Account",
+        "unlink": "Unlink",
+        "active": "Active",
+        "inactive": "Inactive",
+        "lastLogin": "Last login",
+        "selectUser": "Select User to Link",
+        "searchUsers": "Search users by email or username...",
+        "search": "Search",
+        "noAvailableUsers": "No available users found. All users may already be linked.",
+        "link": "Link",
+        "linking": "Linking...",
+        "errors": {
+          "loadFailed": "Failed to load linked accounts: {message}",
+          "loadAvailableFailed": "Failed to load available users: {message}",
+          "linkFailed": "Failed to link account: {message}",
+          "unlinkFailed": "Failed to unlink account: {message}",
+          "noUserSelected": "Please select a user to link."
+        },
+        "alerts": {
+          "linkSuccess": "Account linked successfully.",
+          "unlinkSuccess": "Account unlinked successfully."
+        },
+        "confirmations": {
+          "unlink": "Are you sure you want to unlink the account {email} from this person?"
+        }
+      },
+      "errors": {
+        "loadFailed": "Failed to load persons: {message}",
+        "saveFailed": "Failed to save person: {message}",
+        "deleteFailed": "Failed to delete person: {message}",
+        "firstNameRequired": "First name is required.",
+        "lastNameRequired": "Last name is required."
+      },
+      "alerts": {
+        "deleteSuccess": "Person deleted successfully."
+      },
+      "confirmations": {
+        "delete": "Are you sure you want to delete {name}? This will unlink all associated accounts but will not delete the accounts themselves."
+      }
+    },
     "clients": {
       "title": "Client Management",
       "createClient": "Create Client",

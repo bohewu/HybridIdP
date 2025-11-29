@@ -1,6 +1,8 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -10,30 +12,35 @@ namespace Web.IdP.Controllers.Admin;
 /// <summary>
 /// Admin API controller for managing Persons
 /// Phase 10.2: Person Service & API
+/// Phase 10.3: Permission-based authorization
 /// </summary>
 [ApiController]
 [Route("api/admin/persons")]
-[Authorize(Policy = "RequireAdminRole")]
+[Authorize]
 public class PersonsController : ControllerBase
 {
     private readonly IPersonService _personService;
     private readonly ILogger<PersonsController> _logger;
     private readonly IAuditService _auditService;
+    private readonly IUserManagementService _userManagementService;
 
     public PersonsController(
         IPersonService personService,
         ILogger<PersonsController> logger,
-        IAuditService auditService)
+        IAuditService auditService,
+        IUserManagementService userManagementService)
     {
         _personService = personService;
         _logger = logger;
         _auditService = auditService;
+        _userManagementService = userManagementService;
     }
 
     /// <summary>
     /// Get all persons with pagination
     /// </summary>
     [HttpGet]
+    [HasPermission(Permissions.Persons.Read)]
     public async Task<ActionResult<PersonListResponseDto>> GetPersons([FromQuery] int skip = 0, [FromQuery] int take = 50)
     {
         try
@@ -62,6 +69,7 @@ public class PersonsController : ControllerBase
     /// Get a specific person by ID
     /// </summary>
     [HttpGet("{id}")]
+    [HasPermission(Permissions.Persons.Read)]
     public async Task<ActionResult<PersonResponseDto>> GetPerson(Guid id)
     {
         try
@@ -83,6 +91,7 @@ public class PersonsController : ControllerBase
     /// Search persons by name or employee ID
     /// </summary>
     [HttpGet("search")]
+    [HasPermission(Permissions.Persons.Read)]
     public async Task<ActionResult<PersonListResponseDto>> SearchPersons(
         [FromQuery] string term, 
         [FromQuery] int skip = 0, 
@@ -114,6 +123,7 @@ public class PersonsController : ControllerBase
     /// Create a new person
     /// </summary>
     [HttpPost]
+    [HasPermission(Permissions.Persons.Create)]
     public async Task<ActionResult<PersonResponseDto>> CreatePerson([FromBody] PersonDto dto)
     {
         try
@@ -150,6 +160,7 @@ public class PersonsController : ControllerBase
     /// Update an existing person
     /// </summary>
     [HttpPut("{id}")]
+    [HasPermission(Permissions.Persons.Update)]
     public async Task<ActionResult<PersonResponseDto>> UpdatePerson(Guid id, [FromBody] PersonDto dto)
     {
         try
@@ -185,6 +196,7 @@ public class PersonsController : ControllerBase
     /// Delete a person
     /// </summary>
     [HttpDelete("{id}")]
+    [HasPermission(Permissions.Persons.Delete)]
     public async Task<IActionResult> DeletePerson(Guid id)
     {
         try
@@ -215,6 +227,7 @@ public class PersonsController : ControllerBase
     /// Get all accounts linked to a person
     /// </summary>
     [HttpGet("{id}/accounts")]
+    [HasPermission(Permissions.Persons.Read)]
     public async Task<ActionResult<List<LinkedAccountDto>>> GetPersonAccounts(Guid id)
     {
         try
@@ -246,6 +259,7 @@ public class PersonsController : ControllerBase
     /// Link an account to a person
     /// </summary>
     [HttpPost("{id}/accounts")]
+    [HasPermission(Permissions.Persons.Update)]
     public async Task<IActionResult> LinkAccount(Guid id, [FromBody] LinkAccountDto dto)
     {
         try
@@ -276,6 +290,7 @@ public class PersonsController : ControllerBase
     /// Unlink an account from its person
     /// </summary>
     [HttpDelete("accounts/{userId}")]
+    [HasPermission(Permissions.Persons.Update)]
     public async Task<IActionResult> UnlinkAccount(Guid userId)
     {
         try
@@ -299,6 +314,34 @@ public class PersonsController : ControllerBase
         {
             _logger.LogError(ex, "Error unlinking account {UserId}", userId);
             return StatusCode(500, "An error occurred while unlinking the account");
+        }
+    }
+
+    /// <summary>
+    /// Get all users that are not linked to any person (available for linking)
+    /// </summary>
+    [HttpGet("available-users")]
+    [HasPermission(Permissions.Persons.Read)]
+    public async Task<ActionResult<List<LinkedAccountDto>>> GetAvailableUsers([FromQuery] string? search = null)
+    {
+        try
+        {
+            var availableUsers = await _personService.GetUnlinkedUsersAsync(search);
+            var accountDtos = availableUsers.Select(a => new LinkedAccountDto
+            {
+                Id = a.Id,
+                UserName = a.UserName,
+                Email = a.Email,
+                IsActive = a.IsActive,
+                LastLoginDate = a.LastLoginDate
+            }).ToList();
+
+            return Ok(accountDtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving available users");
+            return StatusCode(500, "An error occurred while retrieving available users");
         }
     }
 

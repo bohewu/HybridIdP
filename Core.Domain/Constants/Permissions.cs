@@ -61,6 +61,17 @@ public static class Permissions
     }
 
     /// <summary>
+    /// Person management permissions (Phase 10.3)
+    /// </summary>
+    public static class Persons
+    {
+        public const string Read = "persons.read";
+        public const string Create = "persons.create";
+        public const string Update = "persons.update";
+        public const string Delete = "persons.delete";
+    }
+
+    /// <summary>
     /// Audit log permissions
     /// </summary>
     public static class Audit
@@ -97,6 +108,7 @@ public static class Permissions
             Users.Read, Users.Create, Users.Update, Users.Delete,
             Roles.Read, Roles.Create, Roles.Update, Roles.Delete,
             Claims.Read, Claims.Create, Claims.Update, Claims.Delete,
+            Persons.Read, Persons.Create, Persons.Update, Persons.Delete,
             Audit.Read,
             Monitoring.Read,
             Settings.Read, Settings.Update

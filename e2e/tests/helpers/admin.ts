@@ -680,6 +680,75 @@ export async function searchAndConfirmActionWithModal(page: Page, entity: string
     return false; // Timeout
   }
 
+// Person management helpers (Phase 10.3)
+export async function createPerson(page: Page, firstName: string, lastName: string, employeeId?: string) {
+  const payload = {
+    firstName,
+    lastName,
+    employeeId: employeeId || null,
+    department: 'E2E Department',
+    jobTitle: 'E2E Tester'
+  };
+  
+  return await page.evaluate(async (p) => {
+    const r = await fetch('/api/admin/persons', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    });
+    if (!r.ok) {
+      const errorText = await r.text();
+      throw new Error(`Failed to create person: ${r.status} - ${errorText}`);
+    }
+    return r.json();
+  }, payload);
+}
+
+export async function deletePerson(page: Page, personId: string) {
+  try {
+    await page.evaluate(async (id) => {
+      await fetch(`/api/admin/persons/${id}`, { method: 'DELETE' });
+    }, personId);
+  } catch (e) {
+    // swallow errors
+  }
+}
+
+export async function linkAccountToPerson(page: Page, personId: string, userId: string) {
+  return await page.evaluate(async (args) => {
+    const r = await fetch(`/api/admin/persons/${args.personId}/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: args.userId })
+    });
+    if (!r.ok) {
+      const errorText = await r.text();
+      throw new Error(`Failed to link account: ${r.status} - ${errorText}`);
+    }
+  }, { personId, userId });
+}
+
+export async function unlinkAccountFromPerson(page: Page, userId: string) {
+  return await page.evaluate(async (id) => {
+    const r = await fetch(`/api/admin/persons/accounts/${id}`, {
+      method: 'DELETE'
+    });
+    if (!r.ok) {
+      const errorText = await r.text();
+      throw new Error(`Failed to unlink account: ${r.status} - ${errorText}`);
+    }
+  }, userId);
+}
+
+export async function getAvailableUsers(page: Page, searchTerm?: string) {
+  return await page.evaluate(async (search) => {
+    const params = search ? `?search=${encodeURIComponent(search)}` : '';
+    const r = await fetch(`/api/admin/persons/available-users${params}`);
+    if (!r.ok) throw new Error(`Failed to get available users: ${r.status}`);
+    return r.json();
+  }, searchTerm || '');
+}
+
 export default {
   loginAsAdminViaIdP,
   login,
@@ -705,5 +774,10 @@ export default {
     searchAndClickAction,
     searchAndConfirmAction
     ,
-    searchAndConfirmActionWithModal
+    searchAndConfirmActionWithModal,
+    createPerson,
+    deletePerson,
+    linkAccountToPerson,
+    unlinkAccountFromPerson,
+    getAvailableUsers
 }

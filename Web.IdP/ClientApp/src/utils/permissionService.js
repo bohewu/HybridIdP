@@ -130,6 +130,12 @@ export const Permissions = {
     Update: 'roles.update',
     Delete: 'roles.delete'
   },
+  Persons: {
+    Read: 'persons.read',
+    Create: 'persons.create',
+    Update: 'persons.update',
+    Delete: 'persons.delete'
+  },
   Audit: {
     Read: 'audit.read'
   },
