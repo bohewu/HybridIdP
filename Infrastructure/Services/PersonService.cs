@@ -43,6 +43,7 @@ public class PersonService : IPersonService
     public async Task<List<Person>> GetAllPersonsAsync(int skip = 0, int take = 50)
     {
         return await _context.Persons
+            .Include(p => p.Accounts)
             .OrderBy(p => p.LastName)
             .ThenBy(p => p.FirstName)
             .Skip(skip)
@@ -227,6 +228,7 @@ public class PersonService : IPersonService
         var term = searchTerm.ToLower();
 
         return await _context.Persons
+            .Include(p => p.Accounts)
             .Where(p => 
                 (p.FirstName != null && p.FirstName.ToLower().Contains(term)) ||
                 (p.LastName != null && p.LastName.ToLower().Contains(term)) ||
