@@ -29,6 +29,18 @@ public class ApplicationUser : IdentityUser<Guid>
     // Enterprise Claims
     public string? EmployeeId { get; set; }
     
+    // Person Link (Phase 10.1: Multi-Account Identity)
+    /// <summary>
+    /// Foreign key to Person entity. Multiple ApplicationUsers can share the same PersonId.
+    /// This allows a single real-life identity to have multiple authentication accounts.
+    /// </summary>
+    public Guid? PersonId { get; set; }
+    
+    /// <summary>
+    /// Navigation property to Person entity
+    /// </summary>
+    public Entities.Person? Person { get; set; }
+    
     // Account Status
     public bool IsActive { get; set; } = true;
     public DateTime? LastLoginDate { get; set; }

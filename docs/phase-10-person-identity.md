@@ -1,6 +1,6 @@
 # Phase 10: Person - Multi-Account Identity & Profile
 
-Status: Proposed (Phase 10)
+Status: In Progress (Phase 10.1 Complete ✅)
 
 ## Goal
 Introduce a `Person` layer to represent the real-life identity (profile, employment history, employeeID, etc.) separate from `ApplicationUser` which represents an authentication account (username, external login, credentials, roles).
@@ -20,13 +20,22 @@ Introduce a `Person` layer to represent the real-life identity (profile, employm
 ## Incremental Implementation Plan (Small steps)
 Phase 9 is intentionally designed as incremental tasks with tests at each step.
 
-### Phase 9.1 - Schema & Backfill (Minimal risk)
-- Create `Person` entity and a new DB migration to add `Person` table.
-- Add `PersonId` column on `ApplicationUser` (nullable) with FK.
-- Implement a one-off migration script / data migration that creates a `Person` row for each existing `ApplicationUser` and sets `PersonId`.
-- Add unit test for model and migration logic (create person from single user).
+### Phase 10.1 - Schema & Backfill ✅ (Completed: 2025-11-29)
+- ✅ Create `Person` entity and a new DB migration to add `Person` table.
+- ✅ Add `PersonId` column on `ApplicationUser` (nullable) with FK.
+- ✅ Implement a one-off migration script / data migration that creates a `Person` row for each existing `ApplicationUser` and sets `PersonId`.
+- ✅ Add unit test for model and migration logic (create person from single user).
 
-### Phase 9.2 - Services & API (Backwards compatible)
+**Implementation Details:**
+- Created `Core.Domain.Entities.Person` entity with full profile fields
+- Generated migrations for both SQL Server and PostgreSQL
+- Created backfill scripts: `scripts/phase10-1-backfill-persons-sqlserver.sql` and `scripts/phase10-1-backfill-persons-postgres.sql`
+- Added 9 unit tests in `Tests.Infrastructure.UnitTests.PersonEntityTests` (all passing)
+- Created automation script: `scripts/run-phase10-1-migration.ps1`
+- Configured unique index on `EmployeeId` with nullable filter
+- Set up `OnDelete: SetNull` relationship to preserve user accounts when person is deleted
+
+### Phase 10.2 - Services & API (Backwards compatible)
 - Add `IPersonService` interface and `PersonService` implementation.
 - Add controller endpoints:
   - GET /api/admin/persons/{id}
@@ -37,16 +46,16 @@ Phase 9 is intentionally designed as incremental tasks with tests at each step.
 - Add `UserManagementService.AttachPersonToUser` and `Detach`.
 - Add unit tests for the new service and controller methods.
 
-### Phase 9.3 - UI and E2E (Optional but recommended)
+### Phase 10.3 - UI and E2E (Optional but recommended)
 - Add a Person profile page in the Admin UI that lists linked accounts for that person, and a way to link/unlink accounts.
 - Tests: E2E to create person, link account, unlink account, and ensure login flows still map to the correct user and person profile.
 
-### Phase 9.4 - Optional Full Migration (Clean-up)
+### Phase 10.4 - Optional Full Migration (Clean-up)
 - Refactor code to prefer `Person` for profile reads/writes (move profile fields off `ApplicationUser`), then remove duplicated profile fields from `ApplicationUser`.
 - Ensure all APIs reading user profile are updated to use `Person` where appropriate.
 - Add integration tests for Person-centric queries & permissions.
 
-## Possible further features (Phase 9.5+)
+## Possible further features (Phase 10.5+)
 - Role switch / AssumeRole: Allow account owners to select which role to act as during a session (use claims or impersonation tokens, store active role in `UserSession`).
 - External login binding management UI & API (link/unlink Google/Facebook to specific `ApplicationUser` accounts).
 - Person-level audit and history UI.
@@ -75,9 +84,48 @@ Phase 9 is intentionally designed as incremental tasks with tests at each step.
 - Coordinate with operations to plan DB migration downtime or transactional migration strategy for production.
 
 ## Delivery Plan
-I will implement Phase 9 in small steps as described, starting with Phase 9.1 (migration + basic service + tests). Each step will include unit and E2E tests.
+I will implement Phase 10 in small steps as described, starting with Phase 10.1 (migration + basic service + tests). Each step will include unit and E2E tests.
 
 See `docs/PROJECT_PROGRESS.md` for status and checklists.
 
 ---
-End of Phase 9 design doc
+
+## Phase 10.1 Completion Summary ✅
+
+**Date:** 2025-11-29
+
+**Files Created/Modified:**
+1. `Core.Domain/Entities/Person.cs` - New entity
+2. `Core.Domain/ApplicationUser.cs` - Added PersonId FK
+3. `Core.Application/IApplicationDbContext.cs` - Added Persons DbSet
+4. `Infrastructure/ApplicationDbContext.cs` - Person entity configuration
+5. `Infrastructure.Migrations.SqlServer/20251129020038_Phase10_1_AddPersonEntity.cs` - SQL Server migration
+6. `Infrastructure.Migrations.Postgres/Migrations/20251129020038_Phase10_1_AddPersonEntity.cs` - PostgreSQL migration
+7. `scripts/phase10-1-backfill-persons-sqlserver.sql` - SQL Server backfill script
+8. `scripts/phase10-1-backfill-persons-postgres.sql` - PostgreSQL backfill script
+9. `scripts/run-phase10-1-migration.ps1` - Automation script
+10. `Tests.Infrastructure.UnitTests/PersonEntityTests.cs` - Unit tests (9 tests, all passing)
+
+**Database Changes:**
+- New table: `Persons` with 20 columns
+- New column: `AspNetUsers.PersonId` (nullable, FK to Persons)
+- Index: `IX_Persons_EmployeeId` (unique, filtered for non-null values)
+- FK constraint: `FK_AspNetUsers_Persons_PersonId` with `OnDelete: SetNull`
+
+**Test Results:**
+- ✅ 9/9 unit tests passing
+- ✅ All existing tests still passing
+- ✅ Build successful
+
+**Migration Scripts:**
+- SQL Server: Transaction-based with rollback on error
+- PostgreSQL: DO block with exception handling
+- Both include verification and summary output
+
+**Next Steps:**
+- Proceed to Phase 10.2: Implement IPersonService and API endpoints
+- Add Person CRUD operations
+- Add account linking/unlinking functionality
+
+---
+End of Phase 10 design doc

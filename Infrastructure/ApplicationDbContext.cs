@@ -31,6 +31,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<ClientRequiredScope> ClientRequiredScopes => Set<ClientRequiredScope>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
+    public DbSet<Person> Persons => Set<Person>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -201,6 +202,41 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.Property(e => e.ScopeId).HasMaxLength(200).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.CreatedBy).HasMaxLength(450); // Match ASP.NET Identity User ID length
+        });
+
+        // Configure Person entity (Phase 10.1)
+        builder.Entity<Person>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            // Unique index on EmployeeId (if provided)
+            entity.HasIndex(e => e.EmployeeId)
+                .IsUnique()
+                .HasFilter("[EmployeeId] IS NOT NULL"); // SQL Server syntax for filtered unique index
+            
+            // String length constraints
+            entity.Property(e => e.FirstName).HasMaxLength(100);
+            entity.Property(e => e.MiddleName).HasMaxLength(100);
+            entity.Property(e => e.LastName).HasMaxLength(100);
+            entity.Property(e => e.Nickname).HasMaxLength(100);
+            entity.Property(e => e.EmployeeId).HasMaxLength(50);
+            entity.Property(e => e.Department).HasMaxLength(200);
+            entity.Property(e => e.JobTitle).HasMaxLength(200);
+            entity.Property(e => e.ProfileUrl).HasMaxLength(500);
+            entity.Property(e => e.PictureUrl).HasMaxLength(500);
+            entity.Property(e => e.Website).HasMaxLength(500);
+            entity.Property(e => e.Address).HasColumnType("text"); // JSON string
+            entity.Property(e => e.Birthdate).HasMaxLength(10); // YYYY-MM-DD
+            entity.Property(e => e.Gender).HasMaxLength(50);
+            entity.Property(e => e.TimeZone).HasMaxLength(100);
+            entity.Property(e => e.Locale).HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            
+            // Configure relationship: One Person can have Many ApplicationUsers
+            entity.HasMany(p => p.Accounts)
+                .WithOne(u => u.Person)
+                .HasForeignKey(u => u.PersonId)
+                .OnDelete(DeleteBehavior.SetNull); // When person is deleted, set PersonId to null in users
         });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.

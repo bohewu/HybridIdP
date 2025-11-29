@@ -17,7 +17,7 @@ last-updated: 2025-11-29
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
 - Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
 - Phase 9 — Scope Authorization & Management: 100% — `docs/phase-9-roadmap.md`
-- Phase 10 — Person & Identity: 0% — `docs/phase-10-person-identity.md`
+- Phase 10 — Person & Identity: 25% (Phase 10.1 Complete ✅) — `docs/phase-10-person-identity.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
 
@@ -28,7 +28,60 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 - 每個 Phase 檔案包含該 Phase 的摘要、已完成要點與重要檔案路徑。
 - 如需更完整的歷史紀錄或截圖證據，請參閱 `docs/PROJECT_STATUS.md`（Archive）。
 
-近期更新紀錄：
+近期更新紀錄:
+
+## 2025-11-29: Phase 10.1 Person Entity Schema & Migration Complete ✅
+
+**Implementation Summary:**
+
+Phase 10.1 introduces the `Person` entity to support multi-account identity, allowing a single real-life person to have multiple authentication accounts (e.g., contract + permanent employee accounts).
+
+**Database Schema Changes:**
+- ✅ New `Person` table with 20 columns (profile, employment, OIDC claims)
+- ✅ `ApplicationUser.PersonId` FK (nullable) to support gradual migration
+- ✅ Unique index on `EmployeeId` (filtered for non-null values)
+- ✅ `OnDelete: SetNull` relationship to preserve accounts when person deleted
+
+**Migrations & Scripts:**
+- ✅ SQL Server migration: `20251129020038_Phase10_1_AddPersonEntity.cs`
+- ✅ PostgreSQL migration: `20251129020038_Phase10_1_AddPersonEntity.cs`
+- ✅ Backfill script for SQL Server: `scripts/phase10-1-backfill-persons-sqlserver.sql`
+- ✅ Backfill script for PostgreSQL: `scripts/phase10-1-backfill-persons-postgres.sql`
+- ✅ Automation script: `scripts/run-phase10-1-migration.ps1`
+
+**Testing:**
+- ✅ 9 new unit tests in `PersonEntityTests` (all passing)
+- ✅ Tests cover: entity creation, profile info, multi-account linking, audit tracking
+- ✅ All existing tests still passing (no regressions)
+
+**Key Design Decisions:**
+1. **Nullable PersonId**: Allows gradual migration without breaking existing functionality
+2. **Filtered Unique Index**: EmployeeId unique only for non-null values (supports contractors without IDs)
+3. **Profile Duplication**: Keeping profile fields in both Person & ApplicationUser during Phase 10.1-10.3 for backward compatibility
+4. **Navigation Properties**: Bidirectional Person ↔ Accounts relationship for easy querying
+
+**Files Created:**
+- `Core.Domain/Entities/Person.cs` - New entity with full documentation
+- `Tests.Infrastructure.UnitTests/PersonEntityTests.cs` - Comprehensive unit tests
+- `scripts/phase10-1-backfill-persons-*.sql` - Data migration scripts
+- `scripts/run-phase10-1-migration.ps1` - PowerShell automation
+
+**Files Modified:**
+- `Core.Domain/ApplicationUser.cs` - Added PersonId + Person navigation property
+- `Core.Application/IApplicationDbContext.cs` - Added Persons DbSet
+- `Infrastructure/ApplicationDbContext.cs` - Person entity configuration with EF Core
+
+**Next Steps (Phase 10.2):**
+- Implement `IPersonService` interface
+- Add Person CRUD API endpoints
+- Add account linking/unlinking functionality
+- Add service layer unit tests and integration tests
+
+**Progress:**
+- Phase 10.1: ✅ Complete (1/4 sub-phases, 25%)
+- Phase 10 Overall: 25% (1 of 4 sub-phases completed)
+
+---
 
 ## 2025-11-28: Phase 9.7 OAuth Consent Form Structure Fix ✅ (102/102 E2E tests passing, 100%)
 

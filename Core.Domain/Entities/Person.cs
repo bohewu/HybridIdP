@@ -1,0 +1,120 @@
+using System;
+
+namespace Core.Domain.Entities;
+
+/// <summary>
+/// Represents a real-life identity (person/employee) that can have multiple authentication accounts.
+/// This entity centralizes profile information and employment history.
+/// </summary>
+public class Person
+{
+    /// <summary>
+    /// Unique identifier for the person
+    /// </summary>
+    public Guid Id { get; set; }
+    
+    // Profile Information
+    /// <summary>
+    /// First name / Given name
+    /// </summary>
+    public string? FirstName { get; set; }
+    
+    /// <summary>
+    /// Middle name
+    /// </summary>
+    public string? MiddleName { get; set; }
+    
+    /// <summary>
+    /// Last name / Family name / Surname
+    /// </summary>
+    public string? LastName { get; set; }
+    
+    /// <summary>
+    /// Preferred name / Nickname
+    /// </summary>
+    public string? Nickname { get; set; }
+    
+    // Enterprise Information
+    /// <summary>
+    /// Employee ID / Staff ID (unique identifier in organization)
+    /// </summary>
+    public string? EmployeeId { get; set; }
+    
+    /// <summary>
+    /// Department or organizational unit
+    /// </summary>
+    public string? Department { get; set; }
+    
+    /// <summary>
+    /// Job title / Position
+    /// </summary>
+    public string? JobTitle { get; set; }
+    
+    // Extended Profile (OIDC Standard Claims)
+    /// <summary>
+    /// URL to user's profile page
+    /// </summary>
+    public string? ProfileUrl { get; set; }
+    
+    /// <summary>
+    /// URL to user's profile picture
+    /// </summary>
+    public string? PictureUrl { get; set; }
+    
+    /// <summary>
+    /// User's website URL
+    /// </summary>
+    public string? Website { get; set; }
+    
+    /// <summary>
+    /// Physical address (stored as JSON string)
+    /// </summary>
+    public string? Address { get; set; }
+    
+    /// <summary>
+    /// Date of birth in ISO 8601 format (YYYY-MM-DD)
+    /// </summary>
+    public string? Birthdate { get; set; }
+    
+    /// <summary>
+    /// Gender identity
+    /// </summary>
+    public string? Gender { get; set; }
+    
+    /// <summary>
+    /// Time zone (e.g., "America/New_York")
+    /// </summary>
+    public string? TimeZone { get; set; }
+    
+    /// <summary>
+    /// Preferred locale/language (e.g., "en-US", "zh-TW")
+    /// </summary>
+    public string? Locale { get; set; }
+    
+    // Audit Fields
+    /// <summary>
+    /// User ID who created this person record
+    /// </summary>
+    public Guid? CreatedBy { get; set; }
+    
+    /// <summary>
+    /// Timestamp when this person record was created
+    /// </summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
+    /// <summary>
+    /// User ID who last modified this person record
+    /// </summary>
+    public Guid? ModifiedBy { get; set; }
+    
+    /// <summary>
+    /// Timestamp when this person record was last modified
+    /// </summary>
+    public DateTime? ModifiedAt { get; set; }
+    
+    // Navigation Properties
+    /// <summary>
+    /// Collection of authentication accounts (ApplicationUser) linked to this person
+    /// </summary>
+    public ICollection<ApplicationUser>? Accounts { get; set; }
+}
