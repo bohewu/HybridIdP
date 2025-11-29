@@ -359,6 +359,124 @@ public class PersonServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task LinkAccountToPersonAsync_WithAlreadyLinkedUser_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        await context.Database.EnsureCreatedAsync();
+        
+        var service = new PersonService(context, _loggerMock.Object);
+
+        var person1 = new Person { FirstName = "John", LastName = "Doe" };
+        var createdPerson1 = await service.CreatePersonAsync(person1);
+
+        var person2 = new Person { FirstName = "Jane", LastName = "Smith" };
+        var createdPerson2 = await service.CreatePersonAsync(person2);
+
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "testuser",
+            Email = "test@example.com"
+        };
+        context.Users.Add(user);
+        await context.SaveChangesAsync(CancellationToken.None);
+
+        // Link user to person1
+        await service.LinkAccountToPersonAsync(createdPerson1.Id, user.Id, Guid.NewGuid());
+
+        // Act & Assert - Attempt to link same user to person2 should throw
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
+            service.LinkAccountToPersonAsync(createdPerson2.Id, user.Id, Guid.NewGuid()));
+
+        Assert.Contains("already linked", exception.Message);
+        Assert.Contains(createdPerson1.Id.ToString(), exception.Message);
+
+        // Verify user is still linked to person1
+        var updatedUser = await context.Users.FindAsync(user.Id);
+        Assert.Equal(createdPerson1.Id, updatedUser!.PersonId);
+    }
+
+    [Fact]
+    public async Task LinkAccountToPersonAsync_WithSamePersonTwice_ShouldBeIdempotent()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        await context.Database.EnsureCreatedAsync();
+        
+        var service = new PersonService(context, _loggerMock.Object);
+
+        var person = new Person { FirstName = "John", LastName = "Doe" };
+        var createdPerson = await service.CreatePersonAsync(person);
+
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "testuser",
+            Email = "test@example.com"
+        };
+        context.Users.Add(user);
+        await context.SaveChangesAsync(CancellationToken.None);
+
+        // Link user to person
+        var result1 = await service.LinkAccountToPersonAsync(createdPerson.Id, user.Id, Guid.NewGuid());
+
+        // Act - Link same user to same person again (should succeed and be idempotent)
+        var result2 = await service.LinkAccountToPersonAsync(createdPerson.Id, user.Id, Guid.NewGuid());
+
+        // Assert
+        Assert.True(result1);
+        Assert.True(result2);
+
+        var updatedUser = await context.Users.FindAsync(user.Id);
+        Assert.Equal(createdPerson.Id, updatedUser!.PersonId);
+    }
+
+    [Fact]
+    public async Task LinkAccountToPersonAsync_WithNonExistentPerson_ShouldReturnFalse()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        await context.Database.EnsureCreatedAsync();
+        
+        var service = new PersonService(context, _loggerMock.Object);
+
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "testuser",
+            Email = "test@example.com"
+        };
+        context.Users.Add(user);
+        await context.SaveChangesAsync(CancellationToken.None);
+
+        // Act
+        var result = await service.LinkAccountToPersonAsync(Guid.NewGuid(), user.Id, Guid.NewGuid());
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task LinkAccountToPersonAsync_WithNonExistentUser_ShouldReturnFalse()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        await context.Database.EnsureCreatedAsync();
+        
+        var service = new PersonService(context, _loggerMock.Object);
+
+        var person = new Person { FirstName = "John", LastName = "Doe" };
+        var createdPerson = await service.CreatePersonAsync(person);
+
+        // Act
+        var result = await service.LinkAccountToPersonAsync(createdPerson.Id, Guid.NewGuid(), Guid.NewGuid());
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
     public async Task UnlinkAccountFromPersonAsync_ShouldUnlinkAccount()
     {
         // Arrange
