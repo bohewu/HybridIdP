@@ -17,7 +17,7 @@ last-updated: 2025-11-29
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
 - Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
 - Phase 9 — Scope Authorization & Management: 100% — `docs/phase-9-roadmap.md`
-- Phase 10 — Person & Identity: 25% (Phase 10.1 Complete ✅) — `docs/phase-10-person-identity.md`
+- Phase 10 — Person & Identity: 50% (Phase 10.1-10.2 Complete ✅) — `docs/phase-10-person-identity.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
 
@@ -29,6 +29,77 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 - 如需更完整的歷史紀錄或截圖證據，請參閱 `docs/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
+
+## 2025-11-29: Phase 10.2 Person Service & API Complete ✅
+
+**Implementation Summary:**
+
+Phase 10.2 implements the complete service layer and Admin API for Person management, enabling CRUD operations and account linking functionality.
+
+**Service Layer:**
+- ✅ `IPersonService` interface with 11 methods
+- ✅ `PersonService` implementation with full CRUD
+- ✅ Account linking/unlinking support
+- ✅ Search functionality (by name, employeeId, nickname)
+- ✅ Pagination support
+- ✅ EmployeeId uniqueness validation
+- ✅ Comprehensive logging
+
+**API Layer:**
+- ✅ `PersonsController` - 9 RESTful endpoints
+- ✅ DTOs: `PersonDto`, `PersonResponseDto`, `LinkedAccountDto`, `PersonListResponseDto`
+- ✅ Authorization: `[Authorize(Policy = "RequireAdminRole")]`
+- ✅ Audit logging for all operations
+
+**API Endpoints:**
+```
+GET    /api/admin/persons              - List persons (paginated)
+GET    /api/admin/persons/search       - Search by term
+GET    /api/admin/persons/{id}         - Get specific person
+POST   /api/admin/persons              - Create person
+PUT    /api/admin/persons/{id}         - Update person
+DELETE /api/admin/persons/{id}         - Delete person
+GET    /api/admin/persons/{id}/accounts    - Get linked accounts
+POST   /api/admin/persons/{id}/accounts    - Link account
+DELETE /api/admin/persons/accounts/{userId} - Unlink account
+```
+
+**Testing:**
+- ✅ 17 unit tests for PersonService (all passing)
+- ✅ Tests cover: CRUD, linking, unlinking, search, pagination, validation
+- ✅ In-memory database for isolated testing
+
+**Key Features:**
+1. **CRUD Operations**: Full create, read, update, delete for Person entities
+2. **Account Linking**: Link/unlink ApplicationUser accounts to/from Person
+3. **Search**: Search by firstName, lastName, nickname, or employeeId
+4. **Validation**: EmployeeId uniqueness enforcement
+5. **Audit Trail**: All operations logged via IAuditService
+6. **Pagination**: Efficient data retrieval with skip/take parameters
+
+**Files Created:**
+- `Core.Application/IPersonService.cs` - Service interface
+- `Infrastructure/Services/PersonService.cs` - Service implementation (230+ lines)
+- `Core.Application/DTOs/PersonDto.cs` - 4 DTOs for API
+- `Web.IdP/Controllers/Admin/PersonsController.cs` - Admin API (340+ lines)
+- `Tests.Infrastructure.UnitTests/PersonServiceTests.cs` - 17 comprehensive tests
+
+**Files Modified:**
+- `Web.IdP/Program.cs` - Registered PersonService in DI
+- `Tests.Infrastructure.UnitTests.csproj` - Added EF Core InMemory package
+
+**Progress:**
+- Phase 10.1: ✅ Complete (Schema & Migration)
+- Phase 10.2: ✅ Complete (Services & API)
+- Phase 10 Overall: 50% (2 of 4 sub-phases completed)
+
+**Next Steps (Phase 10.3):**
+- Create Admin UI for Person management
+- Add Vue.js components for Person CRUD
+- Implement account linking UI
+- Add E2E tests for Person workflows
+
+---
 
 ## 2025-11-29: Phase 10.1 Person Entity Schema & Migration Complete ✅
 

@@ -123,9 +123,154 @@ See `docs/PROJECT_PROGRESS.md` for status and checklists.
 - Both include verification and summary output
 
 **Next Steps:**
-- Proceed to Phase 10.2: Implement IPersonService and API endpoints
-- Add Person CRUD operations
-- Add account linking/unlinking functionality
+- ✅ Phase 10.2: Implement IPersonService and API endpoints (COMPLETE)
+
+---
+
+## Phase 10.2: Services & API
+
+### Status: ✅ COMPLETE
+
+**Implementation Date:** 2025-11-29
+
+**What was built:**
+
+1. **Service Layer (`IPersonService`, `PersonService`)**
+   - 11 methods: CRUD operations + account management
+   - Search functionality (by name, employeeId, nickname)
+   - Pagination support (skip/take)
+   - EmployeeId uniqueness validation
+   - Comprehensive logging via `ILogger`
+
+2. **API Layer (`PersonsController`)**
+   - 9 RESTful endpoints under `/api/admin/persons`
+   - Admin authorization via `[Authorize]` attribute
+   - DTOs: `PersonDto`, `PersonResponseDto`, `LinkedAccountDto`, `PersonListResponseDto`
+   - Full CRUD + Account Linking operations
+
+3. **Testing**
+   - 17 unit tests in `PersonServiceTests` (all passing)
+   - Tests cover: CRUD, linking, unlinking, search, pagination, validation
+   - Uses EF Core InMemory database for isolation
+
+**API Endpoints:**
+
+```http
+GET    /api/admin/persons              # List persons (paginated)
+GET    /api/admin/persons/search       # Search by term
+GET    /api/admin/persons/{id}         # Get specific person
+POST   /api/admin/persons              # Create person
+PUT    /api/admin/persons/{id}         # Update person
+DELETE /api/admin/persons/{id}         # Delete person
+GET    /api/admin/persons/{id}/accounts    # Get linked accounts
+POST   /api/admin/persons/{id}/accounts    # Link account
+DELETE /api/admin/persons/accounts/{userId} # Unlink account
+```
+
+**Files Created:**
+- `Core.Application/IPersonService.cs` - Service interface
+- `Infrastructure/Services/PersonService.cs` - Implementation (230+ lines)
+- `Core.Application/DTOs/PersonDto.cs` - 4 DTOs for API
+- `Web.IdP/Controllers/Admin/PersonsController.cs` - Admin API (340+ lines)
+- `Tests.Infrastructure.UnitTests/PersonServiceTests.cs` - 17 tests
+
+**Files Modified:**
+- `Web.IdP/Program.cs` - Registered `IPersonService → PersonService` in DI
+- `Tests.Infrastructure.UnitTests.csproj` - Added `Microsoft.EntityFrameworkCore.InMemory`
+
+**Key Design Decisions:**
+
+1. **Service Layer Validation**: EmployeeId uniqueness enforced at service level
+2. **Account Linking**: Multi-account support with validation (prevent duplicate links)
+3. **Search Flexibility**: Search across firstName, lastName, nickname, employeeId
+4. **Pagination**: Efficient for large datasets (skip/take pattern)
+5. **Audit Trail**: All operations logged for compliance
+
+**How to Test (Manual):**
+
+```powershell
+# 1. Start IdP
+dotnet run --project Web.IdP --launch-profile https
+
+# 2. Get admin token (authenticate via browser or API)
+
+# 3. Create person
+$token = "YOUR_ADMIN_TOKEN"
+Invoke-RestMethod -Uri "https://localhost:7035/api/admin/persons" `
+  -Method POST `
+  -Headers @{"Authorization"="Bearer $token"} `
+  -ContentType "application/json" `
+  -Body '{"firstName":"John","lastName":"Doe","employeeId":"E12345"}'
+
+# 4. List persons
+Invoke-RestMethod -Uri "https://localhost:7035/api/admin/persons" `
+  -Headers @{"Authorization"="Bearer $token"}
+
+# 5. Search persons
+Invoke-RestMethod -Uri "https://localhost:7035/api/admin/persons/search?term=john" `
+  -Headers @{"Authorization"="Bearer $token"}
+```
+
+**Next Steps:**
+- Proceed to Phase 10.3: Implement Admin UI with Vue.js
+- Create Person management pages
+- Add E2E tests for Person workflows
+
+---
+
+## Phase 10.3: UI and E2E
+
+### Status: 📋 PLANNED
+
+**Goal:** Build Admin UI for Person management and add E2E tests
+
+**Tasks:**
+
+1. **Vue.js Components (Web.IdP/ClientApp)**
+   - `PersonList.vue` - List persons with search/filter
+   - `PersonDetail.vue` - View/edit person profile
+   - `PersonCreate.vue` - Create new person
+   - `LinkedAccounts.vue` - Manage account linking
+
+2. **Router Configuration**
+   - Add routes: `/admin/persons`, `/admin/persons/:id`, `/admin/persons/new`
+   - Add navigation menu items
+
+3. **API Integration**
+   - Create `personApi.ts` service wrapper
+   - Implement all CRUD operations
+   - Handle errors and loading states
+
+4. **E2E Tests (e2e/tests/admin/)**
+   - `person-crud.spec.ts` - Test person CRUD operations
+   - `account-linking.spec.ts` - Test account linking/unlinking
+   - `person-search.spec.ts` - Test search functionality
+
+**Success Criteria:**
+- Admin can create/edit/delete persons via UI
+- Admin can link/unlink accounts to persons
+- Search functionality works correctly
+- All E2E tests passing
+
+---
+
+## Phase 10.4: Optional Full Migration
+
+### Status: 📋 PLANNED (OPTIONAL)
+
+**Goal:** Move profile fields from `ApplicationUser` to `Person` as primary source
+
+**Tasks:**
+
+1. Update all APIs to read from `Person` instead of `ApplicationUser`
+2. Migrate existing profile data from `ApplicationUser` to `Person`
+3. Mark profile fields in `ApplicationUser` as deprecated
+4. Eventually remove duplicated profile fields from `ApplicationUser`
+
+**Considerations:**
+- Breaking change for existing code
+- Requires comprehensive testing
+- May need feature flag for gradual rollout
 
 ---
 End of Phase 10 design doc
