@@ -43,8 +43,8 @@ test('Admin - Persons Account Linking (link and unlink)', async ({ page }) => {
   await page.waitForTimeout(500);
 
   // Click "Accounts" button
-  const personRow = page.locator(`li:has-text("${personData.firstName} ${personData.lastName}")`);
-  const accountsBtn = personRow.locator('button:has-text("Accounts")');
+  const personRow = page.locator(`tr:has-text("${personData.firstName} ${personData.lastName}")`);
+  const accountsBtn = personRow.locator('button[title*="Manage"]');
   await accountsBtn.click();
 
   // Wait for linked accounts dialog
@@ -70,15 +70,17 @@ test('Admin - Persons Account Linking (link and unlink)', async ({ page }) => {
   const userOption = page.locator(`text=${userEmail}`).first();
   await userOption.click();
 
-  // Click Link button
-  const linkBtn = page.locator('button:has-text("Link")').first();
-  await linkBtn.click();
+  // Click Link button (use a more specific selector to avoid input intercept)
+  const linkDialog = page.locator('[role="dialog"]').last();
+  const linkBtn = linkDialog.locator('button:has-text("Link")');
+  await linkBtn.click({ force: true });
 
   // Wait for success alert (dialog auto-accepted)
   await page.waitForTimeout(1000);
 
-  // Verify account is now linked
-  await expect(page.locator(`text=${userEmail}`)).toBeVisible({ timeout: 10000 });
+  // Verify account is now linked (check in the linked accounts list within the dialog)
+  const linkedAccountsList = page.locator('ul[role="list"]').first();
+  await expect(linkedAccountsList.locator(`text=${userEmail}`).first()).toBeVisible({ timeout: 10000 });
 
   // Verify user is excluded from available users
   await page.click('button:has-text("Link Account")');
@@ -99,7 +101,7 @@ test('Admin - Persons Account Linking (link and unlink)', async ({ page }) => {
 
   // Unlink the account
   await page.waitForTimeout(500);
-  const unlinkBtn = page.locator('button:has-text("Unlink")');
+  const unlinkBtn = page.locator('button:has-text("Unlink")').first();
   await unlinkBtn.click();
 
   // Confirm unlink (dialog already handled)

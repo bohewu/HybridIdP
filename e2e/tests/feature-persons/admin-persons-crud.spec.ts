@@ -44,8 +44,8 @@ test('Admin - Persons CRUD (create, update, delete)', async ({ page }) => {
   await expect(personItem).toBeVisible({ timeout: 10000 });
 
   // Edit Person
-  const personRow = page.locator(`li:has-text("${firstName} ${lastName}")`);
-  const editBtn = personRow.locator('button:has-text("Edit")');
+  const personRow = page.locator(`tr:has-text("${firstName} ${lastName}")`);
+  const editBtn = personRow.locator('button[title*="Edit"]');
   await editBtn.click();
 
   await page.waitForSelector('#firstName');
@@ -57,8 +57,9 @@ test('Admin - Persons CRUD (create, update, delete)', async ({ page }) => {
   // Verify update
   await expect(page.locator('text=Updated Department')).toBeVisible({ timeout: 10000 });
 
-  // Delete Person
-  const deleteBtn = personRow.locator('button:has-text("Delete")');
+  // Delete Person - need to get the row again after update
+  const updatedPersonRow = page.locator(`tr:has-text("${firstName} ${lastName}")`);
+  const deleteBtn = updatedPersonRow.locator('button[title*="Delete"]');
   await deleteBtn.click();
 
   // Confirm deletion (dialog already handled by listener)
