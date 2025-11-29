@@ -364,8 +364,9 @@ watch([page, pageSize, search], () => {
         </div>
 
         <!-- Pagination -->
-        <div v-if="!loading && persons.length > 0" class="p-4 border-t border-gray-200 flex items-center justify-between">
-        <div class="flex-1 flex justify-between sm:hidden">
+        <div v-if="!loading && persons.length > 0" class="p-4 border-t border-gray-200">
+          <div class="flex items-center justify-between">
+            <div class="flex-1 flex justify-between sm:hidden">
           <button
             @click="handlePageChange(page - 1)"
             :disabled="page === 1"
@@ -426,6 +427,7 @@ watch([page, pageSize, search], () => {
             </nav>
           </div>
         </div>
+          </div>
         </div>
       </div>
 
