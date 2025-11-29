@@ -264,6 +264,14 @@
       "save": "Save",
       "saving": "Saving...",
       "cancel": "Cancel",
+      "table": {
+        "name": "Name",
+        "employeeId": "Employee ID",
+        "department": "Department",
+        "jobTitle": "Job Title",
+        "linkedAccounts": "Linked Accounts",
+        "actions": "Actions"
+      },
       "form": {
         "firstName": "First Name",
         "middleName": "Middle Name",

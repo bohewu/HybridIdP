@@ -231,107 +231,140 @@ watch([page, pageSize, search], () => {
         </div>
       </div>
 
-      <!-- Search -->
-      <div class="mb-4">
-        <input
-          v-model="search"
-          type="text"
-          :placeholder="t('admin.persons.search')"
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-        />
-      </div>
-
-      <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <span class="ml-3 text-gray-600">{{ t('admin.persons.loading') }}</span>
-      </div>
-
-      <!-- Empty State -->
-      <div v-else-if="persons.length === 0" class="text-center py-12">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-        <h3 class="mt-2 text-sm font-medium text-gray-900">{{ t('admin.persons.noPersons') }}</h3>
-      </div>
-
-      <!-- Persons List -->
-      <div v-else class="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul role="list" class="divide-y divide-gray-200">
-          <li v-for="person in persons" :key="person.id" class="px-4 py-4 hover:bg-gray-50">
-            <div class="flex items-center justify-between">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center space-x-3">
-                  <div class="flex-shrink-0">
-                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                      <span class="text-indigo-600 font-medium text-sm">
-                        {{ person.firstName?.charAt(0) || '' }}{{ person.lastName?.charAt(0) || '' }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900 truncate">
-                      {{ person.firstName }} {{ person.middleName ? person.middleName + ' ' : '' }}{{ person.lastName }}
-                      <span v-if="person.nickname" class="text-gray-500 font-normal">({{ person.nickname }})</span>
-                    </p>
-                    <div class="flex items-center space-x-2 text-sm text-gray-500">
-                      <span v-if="person.employeeId">{{ person.employeeId }}</span>
-                      <span v-if="person.employeeId && person.department">•</span>
-                      <span v-if="person.department">{{ person.department }}</span>
-                      <span v-if="person.department && person.jobTitle">•</span>
-                      <span v-if="person.jobTitle">{{ person.jobTitle }}</span>
-                    </div>
-                    <div v-if="person.accounts && person.accounts.length > 0" class="mt-1 flex items-center text-xs text-gray-500">
-                      <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      {{ t('admin.persons.linkedAccountsCount', { count: person.accounts.length }) }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center space-x-2">
-                <button
-                  v-if="canRead"
-                  @click="handleManageAccounts(person)"
-                  class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  :title="t('admin.persons.manageAccounts')"
-                >
-                  <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  {{ t('admin.persons.accounts') }}
-                </button>
-                <button
-                  v-if="canUpdate"
-                  @click="handleEdit(person)"
-                  class="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  :title="t('admin.persons.edit')"
-                >
-                  <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  {{ t('admin.persons.edit') }}
-                </button>
-                <button
-                  v-if="canDelete"
-                  @click="handleDelete(person)"
-                  class="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  :title="t('admin.persons.delete')"
-                >
-                  <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  {{ t('admin.persons.delete') }}
-                </button>
-              </div>
+      <!-- Unified Card: Filters + Table + Pagination -->
+      <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+        <!-- Filter Section -->
+        <div class="p-4 border-b border-gray-200">
+          <div class="flex flex-col md:flex-row md:items-center gap-3">
+            <!-- Search Input -->
+            <div class="flex-1">
+              <input
+                v-model="search"
+                type="text"
+                :placeholder="t('admin.persons.search')"
+                class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
+              />
             </div>
-          </li>
-        </ul>
-      </div>
+          </div>
+        </div>
 
-      <!-- Pagination -->
-      <div v-if="!loading && persons.length > 0" class="mt-4 flex items-center justify-between">
+        <!-- Loading State -->
+        <div v-if="loading" class="flex justify-center items-center py-12">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <span class="ml-3 text-gray-600">{{ t('admin.persons.loading') }}</span>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else-if="persons.length === 0" class="text-center py-12">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <p class="mt-2 text-sm text-gray-600">{{ t('admin.persons.noPersons') }}</p>
+        </div>
+
+        <!-- Persons Table -->
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('admin.persons.table.name') }}
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('admin.persons.table.employeeId') }}
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('admin.persons.table.department') }}
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('admin.persons.table.jobTitle') }}
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('admin.persons.table.linkedAccounts') }}
+                </th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('admin.persons.table.actions') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr v-for="person in persons" :key="person.id" class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10">
+                      <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <span class="text-indigo-600 font-medium text-sm">
+                          {{ person.firstName?.charAt(0) || '' }}{{ person.lastName?.charAt(0) || '' }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="ml-4">
+                      <div class="text-sm font-medium text-gray-900">
+                        {{ person.firstName }} {{ person.middleName ? person.middleName + ' ' : '' }}{{ person.lastName }}
+                      </div>
+                      <div v-if="person.nickname" class="text-sm text-gray-500">{{ person.nickname }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span v-if="person.employeeId" class="text-sm text-gray-900">{{ person.employeeId }}</span>
+                  <span v-else class="text-sm text-gray-400">-</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span v-if="person.department" class="text-sm text-gray-900">{{ person.department }}</span>
+                  <span v-else class="text-sm text-gray-400">-</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span v-if="person.jobTitle" class="text-sm text-gray-900">{{ person.jobTitle }}</span>
+                  <span v-else class="text-sm text-gray-400">-</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span v-if="person.accounts && person.accounts.length > 0" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                    {{ person.accounts.length }}
+                  </span>
+                  <span v-else class="text-sm text-gray-400">0</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div class="flex items-center justify-end space-x-2">
+                    <button
+                      v-if="canRead"
+                      @click="handleManageAccounts(person)"
+                      class="text-indigo-600 hover:text-indigo-900"
+                      :title="t('admin.persons.manageAccounts')"
+                    >
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </button>
+                    <button
+                      v-if="canUpdate"
+                      @click="handleEdit(person)"
+                      class="text-gray-600 hover:text-gray-900"
+                      :title="t('admin.persons.edit')"
+                    >
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      v-if="canDelete"
+                      @click="handleDelete(person)"
+                      class="text-red-600 hover:text-red-900"
+                      :title="t('admin.persons.delete')"
+                    >
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="!loading && persons.length > 0" class="p-4 border-t border-gray-200 flex items-center justify-between">
         <div class="flex-1 flex justify-between sm:hidden">
           <button
             @click="handlePageChange(page - 1)"
@@ -392,6 +425,7 @@ watch([page, pageSize, search], () => {
               </button>
             </nav>
           </div>
+        </div>
         </div>
       </div>
 
