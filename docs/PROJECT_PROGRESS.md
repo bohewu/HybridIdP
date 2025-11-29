@@ -17,7 +17,7 @@ last-updated: 2025-11-29
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
 - Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
 - Phase 9 — Scope Authorization & Management: 100% — `docs/phase-9-roadmap.md`
-- Phase 10 — Person & Identity: 100% (Phase 10.1-10.4 Complete ✅) — `docs/phase-10-person-identity.md`
+- Phase 10 — Person & Identity: 90% (Phase 10.1-10.4 Complete ✅, 10.5 Planned) — `docs/phase-10-person-identity.md`
 - Phase 11 — Role & Account Switching: 0% (Planning) — `docs/phase-11-account-role-management.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
@@ -83,7 +83,8 @@ _userManager = new UserManager<ApplicationUser>(
 - Phase 10.2: ✅ Complete (Services & API)
 - Phase 10.3: ✅ Complete (UI & E2E Tests)
 - Phase 10.4: ✅ Complete (Person-First Profile Migration)
-- **Phase 10 Overall: 100% Complete** 🎉
+- Phase 10.5: 📋 Planned (Audit & Registration Enhancement)
+- **Phase 10 Overall: 90% Complete** (10.1-10.4 done, 10.5 pending)
 
 **Why No E2E Tests Needed:**
 Phase 10.4 is a pure backend refactoring with no user-facing changes. Existing E2E tests already validate the complete user management workflow. The 432 passing unit/integration tests provide comprehensive coverage of the Person-first logic.

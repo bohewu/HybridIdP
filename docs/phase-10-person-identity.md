@@ -56,10 +56,82 @@ Phase 10 is intentionally designed as incremental tasks with tests at each step.
 - ✅ Achieve 100% test pass rate (432/432 tests passing).
 - ✅ Update MyUserClaimsPrincipalFactory to include Person data in claims.
 
-## Possible further features (Phase 10.5 - To be determined)
-- **Audit Enhancement**: Add formal audit trail for Person CRUD operations and account linking/unlinking (currently only has logging)
-- **Multi-Account Login Testing**: E2E tests to verify a Person with multiple linked accounts can login with any account and access same profile
-- **Person-level History UI**: Admin interface to view Person audit history
+## Phase 10.5: Audit & Registration Enhancement (Planned)
+
+**Status:** 📋 PLANNED
+
+**Critical Issues to Address:**
+
+1. **Missing Person on Self-Registration** 🔴
+   - Current: User self-registration (Register.cshtml.cs) only creates ApplicationUser
+   - Issue: No Person entity created, breaking Person-first pattern
+   - Impact: Self-registered users won't have profile data in Person table
+   - Fix: Update Register.cshtml.cs to create Person entity before ApplicationUser
+
+2. **Missing Audit Trail** 🟡
+   - Current: PersonService only has logging (_logger.LogInformation)
+   - Issue: No formal audit records in AuditEvents table
+   - Required for: CRUD operations (Create/Update/Delete Person, Link/Unlink accounts)
+   - Fix: Add IAuditService calls to PersonService
+
+3. **Multi-Account Login Testing** 🟡
+   - Current: No E2E test for Person with multiple ApplicationUser accounts
+   - Issue: Can't verify both accounts access same Person profile after login
+   - Test scenario: Create Person → Link 2 accounts → Login with each → Verify same profile
+   - Fix: Add E2E test in `e2e/tests/feature-persons/`
+
+**Implementation Tasks:**
+
+**Task 1: Fix Self-Registration**
+```csharp
+// In Register.cshtml.cs OnPostAsync
+var person = new Person
+{
+    FirstName = Input.Email.Split('@')[0], // Default from email
+    CreatedAt = DateTime.UtcNow
+};
+await _context.Persons.AddAsync(person);
+await _context.SaveChangesAsync();
+
+var user = new ApplicationUser
+{
+    UserName = Input.Email,
+    Email = Input.Email,
+    PersonId = person.Id,  // Link to Person
+    EmailConfirmed = false
+};
+await _userManager.CreateAsync(user, Input.Password);
+```
+
+**Task 2: Add Audit Trail**
+```csharp
+// In PersonService methods
+await _auditService.LogAsync(new AuditEvent
+{
+    EntityType = "Person",
+    EntityId = person.Id.ToString(),
+    Action = "Create",
+    UserId = createdBy,
+    Timestamp = DateTime.UtcNow,
+    Changes = JsonSerializer.Serialize(new { person.FirstName, person.LastName })
+});
+```
+
+**Task 3: Multi-Account E2E Test**
+```typescript
+test('Person with 2 accounts - login with either shows same profile', async ({ page }) => {
+  // Create Person + 2 linked accounts
+  // Login with account1 → verify Person profile
+  // Logout, login with account2 → verify same Person profile
+});
+```
+
+**Estimated Time:** 2-3 hours
+
+**Files to Modify:**
+- `Web.IdP/Pages/Account/Register.cshtml.cs` - Add Person creation
+- `Infrastructure/Services/PersonService.cs` - Add audit trail
+- `e2e/tests/feature-persons/multi-account-login.spec.ts` - New E2E test
 
 **Note**: Role switching and external login management are planned for Phase 11 (see `docs/phase-11-account-role-management.md`)
 
@@ -419,20 +491,28 @@ Phase 10.4 is a pure backend refactoring with no user-facing changes. Existing E
 
 ---
 
-## Summary: Phase 10 Complete ✅
+## Summary: Phase 10 Status
 
-All four sub-phases of Phase 10 are now complete:
+**Completed Sub-Phases:**
 
 - ✅ **Phase 10.1**: Schema & Backfill (Person entity, migrations, backfill scripts)
 - ✅ **Phase 10.2**: Services & API (PersonService, DTOs, 9 RESTful endpoints)
 - ✅ **Phase 10.3**: UI & E2E (Vue.js components, 5 E2E tests, i18n)
 - ✅ **Phase 10.4**: Person-First Migration (UserManagementService refactoring, 432/432 tests passing)
+- 📋 **Phase 10.5**: Audit & Registration Enhancement (PLANNED - see above)
 
-**Total Implementation Time:** ~3 days  
+**Current Status:** Phase 10.1-10.4 complete, Phase 10.5 pending
+
+**Total Implementation Time (10.1-10.4):** ~3 days  
 **Total Test Coverage:** 432 tests (100% passing)  
 **Lines of Code:** ~2,500+ across backend, frontend, tests
 
-Phase 10 successfully introduces the Person entity as a separate identity layer from ApplicationUser, enabling multi-account support while maintaining full backward compatibility.
+**Known Issues (to be addressed in Phase 10.5):**
+1. 🔴 Self-registration doesn't create Person entity
+2. 🟡 Person operations lack formal audit trail (only logging)
+3. 🟡 No E2E test for multi-account login scenarios
+
+Phase 10 successfully introduces the Person entity as a separate identity layer from ApplicationUser, enabling multi-account support while maintaining full backward compatibility. Phase 10.5 will address remaining audit and registration gaps.
 
 ---
 End of Phase 10 design doc
