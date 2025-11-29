@@ -72,6 +72,13 @@ Successfully fixed 3 critical flaky E2E tests identified in previous testing ses
 - Consider applying timing helpers to other tests using arbitrary `waitForTimeout()` calls (20+ test files identified)
 - Full E2E runs should be executed in a stable environment (use `e2e/wait-for-idp-ready.ps1`)
 
+### Recent progress (2025-11-29)
+**Phase 9 — Scope Authorization & Management: Completed (2025-11-28)**
+- Completed final E2E test coverage and documentation (Phase 9.7)
+- Fixed OAuth consent form POST bug and improved tampering detection & audit logging
+- Admin UI: required scopes configuration & UI optimizations
+- Test results: 102/102 E2E tests passing (feature-auth: 16/16)
+
 **架構狀態分析：**
 - ✅ 已重構完成（Thin Controller + Service Pattern）：
   - ClientsController → ClientService (240 行，41 單元測試 ✅)
