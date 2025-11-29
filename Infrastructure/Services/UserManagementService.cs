@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Entities;
 using Core.Domain.Events;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -12,15 +13,18 @@ public class UserManagementService : IUserManagementService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly IDomainEventPublisher _eventPublisher;
+    private readonly IApplicationDbContext _context;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        IDomainEventPublisher eventPublisher)
+        IDomainEventPublisher eventPublisher,
+        IApplicationDbContext context)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _eventPublisher = eventPublisher;
+        _context = context;
     }
 
     public async Task<PagedUsersDto> GetUsersAsync(
@@ -32,7 +36,7 @@ public class UserManagementService : IUserManagementService
         string? sortBy = "email",
         string? sortDirection = "asc")
     {
-        var query = _userManager.Users.AsQueryable();
+        var query = _userManager.Users.Include(u => u.Person).AsQueryable();
 
         // Filter out soft-deleted users
         query = query.Where(u => !u.IsDeleted);
@@ -99,10 +103,10 @@ public class UserManagementService : IUserManagementService
                 Id = user.Id,
                 Email = user.Email ?? string.Empty,
                 UserName = user.UserName,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Department = user.Department,
-                JobTitle = user.JobTitle,
+                FirstName = user.Person?.FirstName ?? user.FirstName,
+                LastName = user.Person?.LastName ?? user.LastName,
+                Department = user.Person?.Department ?? user.Department,
+                JobTitle = user.Person?.JobTitle ?? user.JobTitle,
                 IsActive = user.IsActive,
                 EmailConfirmed = user.EmailConfirmed,
                 LastLoginDate = user.LastLoginDate,
@@ -122,7 +126,9 @@ public class UserManagementService : IUserManagementService
 
     public async Task<UserDetailDto?> GetUserByIdAsync(Guid userId)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await _userManager.Users
+            .Include(u => u.Person)
+            .FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return null;
 
@@ -133,22 +139,22 @@ public class UserManagementService : IUserManagementService
             Id = user.Id,
             Email = user.Email ?? string.Empty,
             UserName = user.UserName,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            MiddleName = user.MiddleName,
-            Nickname = user.Nickname,
+            FirstName = user.Person?.FirstName ?? user.FirstName,
+            LastName = user.Person?.LastName ?? user.LastName,
+            MiddleName = user.Person?.MiddleName ?? user.MiddleName,
+            Nickname = user.Person?.Nickname ?? user.Nickname,
             PhoneNumber = user.PhoneNumber,
-            Department = user.Department,
-            JobTitle = user.JobTitle,
-            ProfileUrl = user.ProfileUrl,
-            PictureUrl = user.PictureUrl,
-            Website = user.Website,
-            Address = user.Address,
-            Birthdate = user.Birthdate,
-            Gender = user.Gender,
-            TimeZone = user.TimeZone,
-            Locale = user.Locale,
-            EmployeeId = user.EmployeeId,
+            Department = user.Person?.Department ?? user.Department,
+            JobTitle = user.Person?.JobTitle ?? user.JobTitle,
+            ProfileUrl = user.Person?.ProfileUrl ?? user.ProfileUrl,
+            PictureUrl = user.Person?.PictureUrl ?? user.PictureUrl,
+            Website = user.Person?.Website ?? user.Website,
+            Address = user.Person?.Address ?? user.Address,
+            Birthdate = user.Person?.Birthdate ?? user.Birthdate,
+            Gender = user.Person?.Gender ?? user.Gender,
+            TimeZone = user.Person?.TimeZone ?? user.TimeZone,
+            Locale = user.Person?.Locale ?? user.Locale,
+            EmployeeId = user.Person?.EmployeeId ?? user.EmployeeId,
             IsActive = user.IsActive,
             EmailConfirmed = user.EmailConfirmed,
             PhoneNumberConfirmed = user.PhoneNumberConfirmed,
@@ -164,16 +170,33 @@ public class UserManagementService : IUserManagementService
         CreateUserDto createDto,
         Guid? createdBy = null)
     {
+        // Phase 10.4: Create Person first, then ApplicationUser
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = createDto.FirstName,
+            LastName = createDto.LastName,
+            Department = createDto.Department,
+            JobTitle = createDto.JobTitle,
+            EmployeeId = createDto.EmployeeId,
+            CreatedBy = createdBy,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Persons.Add(person);
+        await _context.SaveChangesAsync(CancellationToken.None);
+
         var user = new ApplicationUser
         {
             Email = createDto.Email,
             UserName = createDto.UserName,
-            FirstName = createDto.FirstName,
+            FirstName = createDto.FirstName,  // Keep for backward compatibility
             LastName = createDto.LastName,
             PhoneNumber = createDto.PhoneNumber,
             Department = createDto.Department,
             JobTitle = createDto.JobTitle,
             EmployeeId = createDto.EmployeeId,
+            PersonId = person.Id,  // Link to Person
             IsActive = true, // Default to active for new users
             EmailConfirmed = true, // Admin-created users are pre-confirmed and can login immediately
             CreatedBy = createdBy,
@@ -209,13 +232,39 @@ public class UserManagementService : IUserManagementService
         UpdateUserDto updateDto,
         Guid? modifiedBy = null)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await _userManager.Users
+            .Include(u => u.Person)
+            .FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
         {
             return (false, new[] { "User not found" });
         }
 
-        // Update properties
+        // Phase 10.4: Update Person first (if exists), then ApplicationUser
+        if (user.Person != null)
+        {
+            user.Person.FirstName = updateDto.FirstName;
+            user.Person.LastName = updateDto.LastName;
+            user.Person.MiddleName = updateDto.MiddleName;
+            user.Person.Nickname = updateDto.Nickname;
+            user.Person.Department = updateDto.Department;
+            user.Person.JobTitle = updateDto.JobTitle;
+            user.Person.ProfileUrl = updateDto.ProfileUrl;
+            user.Person.PictureUrl = updateDto.PictureUrl;
+            user.Person.Website = updateDto.Website;
+            user.Person.Address = updateDto.Address;
+            user.Person.Birthdate = updateDto.Birthdate;
+            user.Person.Gender = updateDto.Gender;
+            user.Person.TimeZone = updateDto.TimeZone;
+            user.Person.Locale = updateDto.Locale;
+            user.Person.EmployeeId = updateDto.EmployeeId;
+            user.Person.ModifiedBy = modifiedBy;
+            user.Person.ModifiedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(CancellationToken.None);
+        }
+
+        // Update ApplicationUser properties (keep for backward compatibility)
         user.Email = updateDto.Email;
         if (updateDto.UserName != null)
         {

@@ -18,7 +18,7 @@ Introduce a `Person` layer to represent the real-life identity (profile, employm
 - Optionally add indexes (e.g., `EmployeeId` unique) and `AuditEvents` for person-level updates.
 
 ## Incremental Implementation Plan (Small steps)
-Phase 9 is intentionally designed as incremental tasks with tests at each step.
+Phase 10 is intentionally designed as incremental tasks with tests at each step.
 
 ### Phase 10.1 - Schema & Backfill ✅ (Completed: 2025-11-29)
 - ✅ Create `Person` entity and a new DB migration to add `Person` table.

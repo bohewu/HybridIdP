@@ -1,3 +1,4 @@
+using Core.Application;
 using Core.Domain;
 using Core.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
@@ -9,15 +10,25 @@ namespace Infrastructure.Identity;
 
 public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser, ApplicationRole>
 {
+    private readonly IApplicationDbContext _context;
+
     public MyUserClaimsPrincipalFactory(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        IOptions<IdentityOptions> optionsAccessor) : base(userManager, roleManager, optionsAccessor)
+        IOptions<IdentityOptions> optionsAccessor,
+        IApplicationDbContext context) : base(userManager, roleManager, optionsAccessor)
     {
+        _context = context;
     }
 
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
     {
+        // Phase 10.4: Load Person navigation property if not already loaded
+        if (user.PersonId.HasValue && user.Person == null)
+        {
+            user.Person = await _context.Persons.FindAsync(user.PersonId.Value);
+        }
+
         var identity = await base.GenerateClaimsAsync(user);
 
         // Ensure preferred_username claim for downstream clients
@@ -25,6 +36,13 @@ public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Applicati
         if (!string.IsNullOrEmpty(preferredUsername) && !identity.HasClaim(c => c.Type == AuthConstants.Claims.PreferredUsername))
         {
             identity.AddClaim(new Claim(AuthConstants.Claims.PreferredUsername, preferredUsername));
+        }
+
+        // Phase 10.4: Add profile claims from Person (with fallback to ApplicationUser)
+        var department = user.Person?.Department ?? user.Department;
+        if (!string.IsNullOrEmpty(department))
+        {
+            identity.AddClaim(new Claim(AuthConstants.Claims.Department, department));
         }
 
         // Add permission claims from user's roles

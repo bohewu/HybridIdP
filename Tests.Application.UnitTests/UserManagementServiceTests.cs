@@ -1,9 +1,11 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Entities;
 using Core.Domain.Events;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -18,6 +20,8 @@ public class UserManagementServiceTests
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
     private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
+    private readonly Mock<IApplicationDbContext> _mockContext;
+    private readonly Mock<DbSet<Person>> _mockPersonsDbSet;
     private readonly UserManagementService _service;
 
     public UserManagementServiceTests()
@@ -32,10 +36,18 @@ public class UserManagementServiceTests
 
         _mockEventPublisher = new Mock<IDomainEventPublisher>();
 
+        // Mock IApplicationDbContext with Persons DbSet
+        _mockContext = new Mock<IApplicationDbContext>();
+        _mockPersonsDbSet = new Mock<DbSet<Person>>();
+        _mockContext.Setup(c => c.Persons).Returns(_mockPersonsDbSet.Object);
+        _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
         _service = new UserManagementService(
             _mockUserManager.Object,
             _mockRoleManager.Object,
-            _mockEventPublisher.Object);
+            _mockEventPublisher.Object,
+            _mockContext.Object);
     }
 
     #region GetUsersAsync Tests
