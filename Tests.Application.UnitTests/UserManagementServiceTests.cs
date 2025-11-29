@@ -6,7 +6,10 @@ using Core.Domain.Events;
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -18,40 +21,70 @@ namespace Tests.Application.UnitTests;
 
 public class UserManagementServiceTests : IDisposable
 {
-    private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
-    private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
-    private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
     private readonly ApplicationDbContext _context;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;  // Keep for simple tests
+    private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;  // Keep for simple tests
+    private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
     private readonly UserManagementService _service;
 
     public UserManagementServiceTests()
     {
-        var userStore = new Mock<IUserStore<ApplicationUser>>();
-        _mockUserManager = new Mock<UserManager<ApplicationUser>>(
-            userStore.Object, null!, null!, null!, null!, null!, null!, null!, null!);
-
-        var roleStore = new Mock<IRoleStore<ApplicationRole>>();
-        _mockRoleManager = new Mock<RoleManager<ApplicationRole>>(
-            roleStore.Object, null!, null!, null!, null!);
-
-        _mockEventPublisher = new Mock<IDomainEventPublisher>();
-
-        // Use InMemory database for Person entity support
+        // Create InMemory database
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // Unique DB per test
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         
         _context = new ApplicationDbContext(options);
 
+        // Create real UserStore and RoleStore with InMemory database
+        var userStore = new UserStore<ApplicationUser, ApplicationRole, ApplicationDbContext, Guid>(_context);
+        var roleStore = new RoleStore<ApplicationRole, ApplicationDbContext, Guid>(_context);
+
+        // Create real UserManager
+        _userManager = new UserManager<ApplicationUser>(
+            userStore,
+            Options.Create(new IdentityOptions()),
+            new PasswordHasher<ApplicationUser>(),
+            Array.Empty<IUserValidator<ApplicationUser>>(),
+            Array.Empty<IPasswordValidator<ApplicationUser>>(),
+            new UpperInvariantLookupNormalizer(),
+            new IdentityErrorDescriber(),
+            null!,
+            new Mock<ILogger<UserManager<ApplicationUser>>>().Object);
+
+        // Create real RoleManager
+        _roleManager = new RoleManager<ApplicationRole>(
+            roleStore,
+            Array.Empty<IRoleValidator<ApplicationRole>>(),
+            new UpperInvariantLookupNormalizer(),
+            new IdentityErrorDescriber(),
+            new Mock<ILogger<RoleManager<ApplicationRole>>>().Object);
+
+        // Also keep mock versions for tests that don't need real DB
+        var mockUserStore = new Mock<IUserStore<ApplicationUser>>();
+        _mockUserManager = new Mock<UserManager<ApplicationUser>>(
+            mockUserStore.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+
+        var mockRoleStore = new Mock<IRoleStore<ApplicationRole>>();
+        _mockRoleManager = new Mock<RoleManager<ApplicationRole>>(
+            mockRoleStore.Object, null!, null!, null!, null!);
+
+        _mockEventPublisher = new Mock<IDomainEventPublisher>();
+
         _service = new UserManagementService(
-            _mockUserManager.Object,
-            _mockRoleManager.Object,
+            _userManager,
+            _roleManager,
             _mockEventPublisher.Object,
             _context);
     }
 
     public void Dispose()
     {
+        _userManager?.Dispose();
+        _roleManager?.Dispose();
+        _context?.Database.EnsureDeleted();
         _context?.Dispose();
     }
 
@@ -60,16 +93,14 @@ public class UserManagementServiceTests : IDisposable
     [Fact]
     public async Task GetUsersAsync_ShouldReturnPagedUsers_WhenUsersExist()
     {
-        // Arrange
-        var users = new List<ApplicationUser>
-        {
-            new ApplicationUser { Id = Guid.NewGuid(), Email = "user1@test.com", UserName = "user1", IsActive = true, IsDeleted = false },
-            new ApplicationUser { Id = Guid.NewGuid(), Email = "user2@test.com", UserName = "user2", IsActive = true, IsDeleted = false }
-        }.AsQueryable();
-
-        _mockUserManager.Setup(m => m.Users).Returns(users);
-        _mockUserManager.Setup(m => m.GetRolesAsync(It.IsAny<ApplicationUser>()))
-            .ReturnsAsync(new List<string> { "User" });
+        // Arrange - Add users to InMemory database
+        var user1 = new ApplicationUser { Email = "user1@test.com", UserName = "user1", IsActive = true, IsDeleted = false };
+        var user2 = new ApplicationUser { Email = "user2@test.com", UserName = "user2", IsActive = true, IsDeleted = false };
+        
+        await _userManager.CreateAsync(user1);
+        await _userManager.CreateAsync(user2);
+        await _userManager.AddToRoleAsync(user1, "User");
+        await _userManager.AddToRoleAsync(user2, "User");
 
         // Act
         var result = await _service.GetUsersAsync(skip: 0, take: 25);
@@ -84,16 +115,12 @@ public class UserManagementServiceTests : IDisposable
     [Fact]
     public async Task GetUsersAsync_ShouldFilterBySearch_WhenSearchProvided()
     {
-        // Arrange
-        var users = new List<ApplicationUser>
-        {
-            new ApplicationUser { Id = Guid.NewGuid(), Email = "john@test.com", UserName = "john", FirstName = "John", IsDeleted = false },
-            new ApplicationUser { Id = Guid.NewGuid(), Email = "jane@test.com", UserName = "jane", FirstName = "Jane", IsDeleted = false }
-        }.AsQueryable();
-
-        _mockUserManager.Setup(m => m.Users).Returns(users);
-        _mockUserManager.Setup(m => m.GetRolesAsync(It.IsAny<ApplicationUser>()))
-            .ReturnsAsync(new List<string>());
+        // Arrange - Add users to database
+        var john = new ApplicationUser { Email = "john@test.com", UserName = "john", FirstName = "John", IsDeleted = false };
+        var jane = new ApplicationUser { Email = "jane@test.com", UserName = "jane", FirstName = "Jane", IsDeleted = false };
+        
+        await _userManager.CreateAsync(john);
+        await _userManager.CreateAsync(jane);
 
         // Act
         var result = await _service.GetUsersAsync(skip: 0, take: 25, search: "john");
@@ -107,16 +134,12 @@ public class UserManagementServiceTests : IDisposable
     [Fact]
     public async Task GetUsersAsync_ShouldFilterByIsActive_WhenIsActiveProvided()
     {
-        // Arrange
-        var users = new List<ApplicationUser>
-        {
-            new ApplicationUser { Id = Guid.NewGuid(), Email = "active@test.com", IsActive = true, IsDeleted = false },
-            new ApplicationUser { Id = Guid.NewGuid(), Email = "inactive@test.com", IsActive = false, IsDeleted = false }
-        }.AsQueryable();
-
-        _mockUserManager.Setup(m => m.Users).Returns(users);
-        _mockUserManager.Setup(m => m.GetRolesAsync(It.IsAny<ApplicationUser>()))
-            .ReturnsAsync(new List<string>());
+        // Arrange - Add users to database
+        var active = new ApplicationUser { Email = "active@test.com", UserName = "active", IsActive = true, IsDeleted = false };
+        var inactive = new ApplicationUser { Email = "inactive@test.com", UserName = "inactive", IsActive = false, IsDeleted = false };
+        
+        await _userManager.CreateAsync(active);
+        await _userManager.CreateAsync(inactive);
 
         // Act
         var result = await _service.GetUsersAsync(skip: 0, take: 25, isActive: true);
@@ -130,16 +153,12 @@ public class UserManagementServiceTests : IDisposable
     [Fact]
     public async Task GetUsersAsync_ShouldExcludeDeletedUsers_Always()
     {
-        // Arrange
-        var users = new List<ApplicationUser>
-        {
-            new ApplicationUser { Id = Guid.NewGuid(), Email = "user1@test.com", IsDeleted = false },
-            new ApplicationUser { Id = Guid.NewGuid(), Email = "deleted@test.com", IsDeleted = true }
-        }.AsQueryable();
-
-        _mockUserManager.Setup(m => m.Users).Returns(users);
-        _mockUserManager.Setup(m => m.GetRolesAsync(It.IsAny<ApplicationUser>()))
-            .ReturnsAsync(new List<string>());
+        // Arrange - Add users to database
+        var user1 = new ApplicationUser { Email = "user1@test.com", UserName = "user1", IsDeleted = false };
+        var deleted = new ApplicationUser { Email = "deleted@test.com", UserName = "deleted", IsDeleted = true };
+        
+        await _userManager.CreateAsync(user1);
+        await _userManager.CreateAsync(deleted);
 
         // Act
         var result = await _service.GetUsersAsync(skip: 0, take: 25);
@@ -223,28 +242,28 @@ public class UserManagementServiceTests : IDisposable
     [Fact]
     public async Task GetUserByIdAsync_ShouldReturnUser_WhenUserExists()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
+        // Arrange - Add user to database
         var user = new ApplicationUser
         {
-            Id = userId,
             Email = "test@test.com",
             UserName = "testuser",
             FirstName = "Test",
             LastName = "User"
         };
 
-        _mockUserManager.Setup(m => m.FindByIdAsync(userId.ToString()))
-            .ReturnsAsync(user);
-        _mockUserManager.Setup(m => m.GetRolesAsync(user))
-            .ReturnsAsync(new List<string> { "Admin" });
+        await _userManager.CreateAsync(user);
+        
+        // Create Admin role and assign to user
+        var adminRole = new ApplicationRole { Name = "Admin" };
+        await _roleManager.CreateAsync(adminRole);
+        await _userManager.AddToRoleAsync(user, "Admin");
 
         // Act
-        var result = await _service.GetUserByIdAsync(userId);
+        var result = await _service.GetUserByIdAsync(user.Id);
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(userId, result.Id);
+        Assert.Equal(user.Id, result.Id);
         Assert.Equal("test@test.com", result.Email);
         Assert.Contains("Admin", result.Roles);
     }
@@ -252,10 +271,8 @@ public class UserManagementServiceTests : IDisposable
     [Fact]
     public async Task GetUserByIdAsync_ShouldReturnNull_WhenUserDoesNotExist()
     {
-        // Arrange
+        // Arrange - Use non-existent ID
         var userId = Guid.NewGuid();
-        _mockUserManager.Setup(m => m.FindByIdAsync(userId.ToString()))
-            .ReturnsAsync((ApplicationUser?)null);
 
         // Act
         var result = await _service.GetUserByIdAsync(userId);
