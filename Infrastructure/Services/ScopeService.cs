@@ -408,8 +408,9 @@ public class ScopeService : IScopeService
 
     public ScopeClassificationResult ClassifyScopes(IEnumerable<string> requestedScopes, IEnumerable<ScopeSummary> availableScopes, IEnumerable<string>? grantedScopes)
     {
-        var requestedSet = requestedScopes.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase)
-                           ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var requestedScopesList = requestedScopes?.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).ToList()
+                                  ?? new List<string>();
+        var requestedSet = requestedScopesList.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var requiredSet = availableScopes
             .Where(s => s.IsRequired && requestedSet.Contains(s.Name))
@@ -445,9 +446,9 @@ public class ScopeService : IScopeService
         var rejectedSet = requestedSet.Where(r => !allowedSet.Contains(r)).ToList();
 
         // Preserve original requested order for deterministic output
-        var allowedOrdered = requestedScopes.Where(s => allowedSet.Contains(s)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var requiredOrdered = requestedScopes.Where(s => requiredSet.Contains(s)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var rejectedOrdered = requestedScopes.Where(s => rejectedSet.Contains(s)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var allowedOrdered = requestedScopesList.Where(s => allowedSet.Contains(s)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var requiredOrdered = requestedScopesList.Where(s => requiredSet.Contains(s)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var rejectedOrdered = requestedScopesList.Where(s => rejectedSet.Contains(s)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
         return new ScopeClassificationResult
         {
