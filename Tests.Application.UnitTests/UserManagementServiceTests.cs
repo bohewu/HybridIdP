@@ -3,6 +3,7 @@ using Core.Application.DTOs;
 using Core.Domain;
 using Core.Domain.Entities;
 using Core.Domain.Events;
+using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -15,13 +16,12 @@ using Xunit;
 
 namespace Tests.Application.UnitTests;
 
-public class UserManagementServiceTests
+public class UserManagementServiceTests : IDisposable
 {
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
     private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
-    private readonly Mock<IApplicationDbContext> _mockContext;
-    private readonly Mock<DbSet<Person>> _mockPersonsDbSet;
+    private readonly ApplicationDbContext _context;
     private readonly UserManagementService _service;
 
     public UserManagementServiceTests()
@@ -36,18 +36,23 @@ public class UserManagementServiceTests
 
         _mockEventPublisher = new Mock<IDomainEventPublisher>();
 
-        // Mock IApplicationDbContext with Persons DbSet
-        _mockContext = new Mock<IApplicationDbContext>();
-        _mockPersonsDbSet = new Mock<DbSet<Person>>();
-        _mockContext.Setup(c => c.Persons).Returns(_mockPersonsDbSet.Object);
-        _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
+        // Use InMemory database for Person entity support
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // Unique DB per test
+            .Options;
+        
+        _context = new ApplicationDbContext(options);
 
         _service = new UserManagementService(
             _mockUserManager.Object,
             _mockRoleManager.Object,
             _mockEventPublisher.Object,
-            _mockContext.Object);
+            _context);
+    }
+
+    public void Dispose()
+    {
+        _context?.Dispose();
     }
 
     #region GetUsersAsync Tests
