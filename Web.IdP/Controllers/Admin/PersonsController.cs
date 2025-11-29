@@ -279,6 +279,11 @@ public class PersonsController : ControllerBase
 
             return NoContent();
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when linking account {UserId} to person {PersonId}", dto.UserId, id);
+            return BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error linking account {UserId} to person {PersonId}", dto.UserId, id);

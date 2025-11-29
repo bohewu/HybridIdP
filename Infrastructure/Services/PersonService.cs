@@ -158,12 +158,28 @@ public class PersonService : IPersonService
             return false;
         }
 
-        // Verify user exists
-        var user = await _context.Users.FindAsync(userId);
+        // Verify user exists and fetch fresh data from database (avoid cache)
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
         {
             _logger.LogWarning("Cannot link account: User {UserId} not found", userId);
             return false;
+        }
+
+        // Check if user is already linked to another person
+        if (user.PersonId.HasValue && user.PersonId.Value != personId)
+        {
+            _logger.LogWarning("Cannot link account: User {UserId} is already linked to person {ExistingPersonId}", 
+                userId, user.PersonId.Value);
+            throw new InvalidOperationException($"User is already linked to another person (PersonId: {user.PersonId.Value})");
+        }
+
+        // Check if user is already linked to the same person (idempotent operation)
+        if (user.PersonId == personId)
+        {
+            _logger.LogInformation("User {UserId} is already linked to person {PersonId}, skipping", userId, personId);
+            return true;
         }
 
         // Link user to person

@@ -185,3 +185,91 @@ test('Admin - Persons Account Linking via API', async ({ page }) => {
 
   console.log('✓ Persons API account linking test passed');
 });
+
+test('Admin - Persons Duplicate Account Linking Prevention', async ({ page }) => {
+  page.on('dialog', async d => await d.accept());
+  await adminHelpers.loginAsAdminViaIdP(page);
+
+  const timestamp = Date.now();
+
+  // Create a test user
+  const userEmail = `e2e-dup-link-${timestamp}@hybridauth.local`;
+  const userPassword = `E2E!${timestamp}a`;
+  const createdUser = await adminHelpers.createUserWithRole(page, userEmail, userPassword, []);
+
+  // Create two persons
+  const person1Data = {
+    firstName: `DupLink1-${timestamp}`,
+    lastName: `Person${timestamp}`,
+    employeeId: `DUP1-${timestamp}`
+  };
+  const person2Data = {
+    firstName: `DupLink2-${timestamp}`,
+    lastName: `Person${timestamp}`,
+    employeeId: `DUP2-${timestamp}`
+  };
+
+  const createdPerson1 = await page.evaluate(async (data) => {
+    const r = await fetch('/api/admin/persons', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) throw new Error(`Failed to create person: ${r.status}`);
+    return r.json();
+  }, person1Data);
+
+  const createdPerson2 = await page.evaluate(async (data) => {
+    const r = await fetch('/api/admin/persons', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) throw new Error(`Failed to create person: ${r.status}`);
+    return r.json();
+  }, person2Data);
+
+  // Link user to person1
+  await adminHelpers.linkAccountToPerson(page, createdPerson1.id, createdUser.id);
+
+  // Attempt to link the same user to person2 (should fail)
+  const linkResult = await page.evaluate(async ({ personId, userId }) => {
+    const r = await fetch(`/api/admin/persons/${personId}/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    return { status: r.status, body: await r.text() };
+  }, { personId: createdPerson2.id, userId: createdUser.id });
+
+  // Should return 400 Bad Request
+  expect(linkResult.status).toBe(400);
+  expect(linkResult.body).toContain('already linked');
+
+  // Verify user is still linked to person1
+  const linkedAccounts1 = await page.evaluate(async (personId) => {
+    const r = await fetch(`/api/admin/persons/${personId}/accounts`);
+    if (!r.ok) throw new Error(`Failed to fetch accounts: ${r.status}`);
+    return r.json();
+  }, createdPerson1.id);
+
+  expect(linkedAccounts1.length).toBe(1);
+  expect(linkedAccounts1[0].email).toBe(userEmail);
+
+  // Verify user is NOT linked to person2
+  const linkedAccounts2 = await page.evaluate(async (personId) => {
+    const r = await fetch(`/api/admin/persons/${personId}/accounts`);
+    if (!r.ok) throw new Error(`Failed to fetch accounts: ${r.status}`);
+    return r.json();
+  }, createdPerson2.id);
+
+  expect(linkedAccounts2.length).toBe(0);
+
+  // Cleanup
+  await adminHelpers.unlinkAccountFromPerson(page, createdUser.id);
+  await adminHelpers.deletePerson(page, createdPerson1.id);
+  await adminHelpers.deletePerson(page, createdPerson2.id);
+  await adminHelpers.deleteUser(page, createdUser.id);
+
+  console.log('✓ Duplicate account linking prevention test passed');
+});
