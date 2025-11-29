@@ -68,7 +68,17 @@ Phase 10 is intentionally designed as incremental tasks with tests at each step.
    - Impact: Self-registered users won't have profile data in Person table
    - Fix: Update Register.cshtml.cs to create Person entity before ApplicationUser
 
-2. **Missing Audit Trail** 🟡
+2. **Orphan ApplicationUser Handling** 🔴
+   - Current: No validation for ApplicationUser.PersonId == null during login
+   - Issue: Orphan users (no Person link) can still login but may have incomplete profile
+   - Risk scenarios:
+     - Self-registered users before Phase 10.5 fix
+     - Person deleted but ApplicationUser retained (OnDelete: SetNull)
+     - Manual database operations errors
+   - Fix: Add auto-healing in MyUserClaimsPrincipalFactory to create Person on-the-fly
+   - Fallback: Claims already use `user.Person?.Field ?? user.Field` pattern
+
+3. **Missing Audit Trail** 🟡
    - Current: PersonService only has logging (_logger.LogInformation)
    - Issue: No formal audit records in AuditEvents table
    - Required for: CRUD operations (Create/Update/Delete Person, Link/Unlink accounts)
@@ -103,21 +113,97 @@ var user = new ApplicationUser
 await _userManager.CreateAsync(user, Input.Password);
 ```
 
-**Task 2: Add Audit Trail**
+**Task 2: Add Orphan User Auto-Healing with Audit**
 ```csharp
-// In PersonService methods
-await _auditService.LogAsync(new AuditEvent
+// In MyUserClaimsPrincipalFactory.GenerateClaimsAsync
+protected override async Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
 {
-    EntityType = "Person",
-    EntityId = person.Id.ToString(),
-    Action = "Create",
-    UserId = createdBy,
-    Timestamp = DateTime.UtcNow,
-    Changes = JsonSerializer.Serialize(new { person.FirstName, person.LastName })
-});
+    // Auto-heal orphan users: create Person if missing
+    if (!user.PersonId.HasValue)
+    {
+        _logger.LogWarning("Orphan ApplicationUser detected: {UserId}, auto-creating Person", user.Id);
+        
+        var person = new Person
+        {
+            FirstName = user.FirstName ?? user.Email?.Split('@')[0],
+            LastName = user.LastName,
+            Department = user.Department,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Persons.Add(person);
+        await _context.SaveChangesAsync(CancellationToken.None);
+        
+        user.PersonId = person.Id;
+        await _userManager.UpdateAsync(user);
+        user.Person = person;
+        
+        // ⚠️ AUDIT: Critical data repair operation
+        await _auditService.LogEventAsync(new AuditEventDto
+        {
+            EventType = "OrphanUserAutoHealed",
+            UserId = user.Id,
+            Username = user.UserName,
+            Description = $"Auto-created Person for orphan ApplicationUser. PersonId: {person.Id}",
+            Details = new Dictionary<string, object>
+            {
+                ["PersonId"] = person.Id,
+                ["ApplicationUserId"] = user.Id,
+                ["Email"] = user.Email,
+                ["HealedAt"] = DateTime.UtcNow,
+                ["TriggerPoint"] = "Login/ClaimsGeneration"
+            }
+        });
+    }
+    // Load Person if PersonId exists but not loaded
+    else if (user.Person == null)
+    {
+        user.Person = await _context.Persons.FindAsync(user.PersonId.Value);
+    }
+    
+    // Continue with normal claims generation...
+    var identity = await base.GenerateClaimsAsync(user);
+    // ... rest of code
+}
 ```
 
-**Task 3: Multi-Account E2E Test**
+**Task 3: Add Audit Trail to PersonService**
+```csharp
+// In PersonService CRUD methods
+public async Task<PersonDto> CreateAsync(CreatePersonDto dto, string createdBy)
+{
+    var person = _mapper.Map<Person>(dto);
+    person.CreatedAt = DateTime.UtcNow;
+    _context.Persons.Add(person);
+    await _context.SaveChangesAsync();
+    
+    // Audit the creation
+    await _auditService.LogEventAsync(new AuditEventDto
+    {
+        EventType = "PersonCreated",
+        UserId = createdBy,
+        EntityType = "Person",
+        EntityId = person.Id.ToString(),
+        Description = $"Created Person: {person.FirstName} {person.LastName}",
+        Details = new Dictionary<string, object>
+        {
+            ["PersonId"] = person.Id,
+            ["FirstName"] = person.FirstName,
+            ["LastName"] = person.LastName,
+            ["Email"] = person.Email
+        }
+    });
+    
+    return _mapper.Map<PersonDto>(person);
+}
+
+// Similar audit calls needed for:
+// - UpdateAsync (PersonUpdated event)
+// - DeleteAsync (PersonDeleted event)
+// - AttachAccountAsync (PersonAccountLinked event)
+// - DetachAccountAsync (PersonAccountUnlinked event)
+```
+
+**Task 4: Multi-Account E2E Test**
 ```typescript
 test('Person with 2 accounts - login with either shows same profile', async ({ page }) => {
   // Create Person + 2 linked accounts
@@ -126,12 +212,23 @@ test('Person with 2 accounts - login with either shows same profile', async ({ p
 });
 ```
 
-**Estimated Time:** 2-3 hours
+**Estimated Time:** 3-4 hours (updated with orphan handling)
+
+**Audit Events to Add:**
+1. `OrphanUserAutoHealed` - When auto-healing creates Person for orphan ApplicationUser
+2. `PersonCreated` - When PersonService.CreateAsync is called
+3. `PersonUpdated` - When PersonService.UpdateAsync is called
+4. `PersonDeleted` - When PersonService.DeleteAsync is called
+5. `PersonAccountLinked` - When PersonService.AttachAccountAsync is called
+6. `PersonAccountUnlinked` - When PersonService.DetachAccountAsync is called
+7. `SelfRegistrationPersonCreated` - When Register.cshtml.cs creates Person during self-registration
 
 **Files to Modify:**
-- `Web.IdP/Pages/Account/Register.cshtml.cs` - Add Person creation
-- `Infrastructure/Services/PersonService.cs` - Add audit trail
+- `Web.IdP/Pages/Account/Register.cshtml.cs` - Add Person creation + audit on registration
+- `Infrastructure/Identity/MyUserClaimsPrincipalFactory.cs` - Add orphan auto-healing + audit
+- `Infrastructure/Services/PersonService.cs` - Add audit trail for all CRUD operations
 - `e2e/tests/feature-persons/multi-account-login.spec.ts` - New E2E test
+- Unit tests for auto-healing logic and audit events
 
 **Note**: Role switching and external login management are planned for Phase 11 (see `docs/phase-11-account-role-management.md`)
 
