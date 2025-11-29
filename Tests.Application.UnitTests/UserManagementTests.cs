@@ -144,16 +144,22 @@ public class UserManagementTests
     [Fact]
     public async Task UpdateUser_WithValidData_ShouldSucceed()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
+        // Arrange - Use real UserManager with InMemory database
+        var context = CreateInMemoryContext();
+        var (userManager, roleManager) = CreateRealUserAndRoleManager(context);
+        
         var existingUser = new ApplicationUser
         {
-            Id = userId,
             Email = "test@example.com",
             UserName = "testuser",
             FirstName = "Test",
             LastName = "User"
         };
+        await userManager.CreateAsync(existingUser);
+        
+        await roleManager.CreateAsync(new ApplicationRole { Name = "User" });
+        await roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
+        await userManager.AddToRoleAsync(existingUser, "User");
 
         var updateDto = new UpdateUserDto
         {
@@ -167,44 +173,31 @@ public class UserManagementTests
             EmailConfirmed = true
         };
 
-        _mockUserManager
-            .Setup(x => x.FindByIdAsync(userId.ToString()))
-            .ReturnsAsync(existingUser);
-
-        _mockUserManager
-            .Setup(x => x.UpdateAsync(It.IsAny<ApplicationUser>()))
-            .ReturnsAsync(IdentityResult.Success);
-
-        _mockUserManager
-            .Setup(x => x.GetRolesAsync(existingUser))
-            .ReturnsAsync(new List<string> { "User" });
-
-        _mockUserManager
-            .Setup(x => x.RemoveFromRolesAsync(existingUser, It.IsAny<IEnumerable<string>>()))
-            .ReturnsAsync(IdentityResult.Success);
-
-        _mockUserManager
-            .Setup(x => x.AddToRolesAsync(existingUser, It.IsAny<IEnumerable<string>>()))
-            .ReturnsAsync(IdentityResult.Success);
-
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext());
+        var sut = new UserManagementService(userManager, roleManager, _mockEventPublisher.Object, context);
 
         // Act
-        var (success, errors) = await sut.UpdateUserAsync(userId, updateDto);
+        var (success, errors) = await sut.UpdateUserAsync(existingUser.Id, updateDto);
 
         // Assert
         Assert.True(success);
         Assert.Empty(errors);
-        Assert.Equal("Updated", existingUser.FirstName);
-        _mockUserManager.Verify(x => x.RemoveFromRolesAsync(existingUser, It.Is<IEnumerable<string>>(r => r.Single() == "User")), Times.Once);
-        _mockUserManager.Verify(x => x.AddToRolesAsync(existingUser, It.Is<IEnumerable<string>>(r => r.Single() == "Admin")), Times.Once);
+        
+        var updatedUser = await userManager.FindByIdAsync(existingUser.Id.ToString());
+        Assert.Equal("Updated", updatedUser!.FirstName);
+        
+        var roles = await userManager.GetRolesAsync(updatedUser);
+        Assert.DoesNotContain("User", roles);
+        Assert.Contains("Admin", roles);
     }
 
     [Fact]
     public async Task UpdateUser_NonExistent_ShouldFail()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
+        // Arrange - Use real UserManager with InMemory database
+        var context = CreateInMemoryContext();
+        var (userManager, roleManager) = CreateRealUserAndRoleManager(context);
+        
+        var nonExistentUserId = Guid.NewGuid();
         var updateDto = new UpdateUserDto
         {
             Email = "test@example.com",
@@ -212,14 +205,10 @@ public class UserManagementTests
             Roles = new List<string>()
         };
 
-        _mockUserManager
-            .Setup(x => x.FindByIdAsync(userId.ToString()))
-            .ReturnsAsync((ApplicationUser?)null);
-
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext());
+        var sut = new UserManagementService(userManager, roleManager, _mockEventPublisher.Object, context);
 
         // Act
-        var (success, errors) = await sut.UpdateUserAsync(userId, updateDto);
+        var (success, errors) = await sut.UpdateUserAsync(nonExistentUserId, updateDto);
 
         // Assert
         Assert.False(success);
@@ -229,11 +218,12 @@ public class UserManagementTests
     [Fact]
     public async Task GetUser_ById_ShouldReturnUserDetail()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
+        // Arrange - Use real UserManager with InMemory database
+        var context = CreateInMemoryContext();
+        var (userManager, roleManager) = CreateRealUserAndRoleManager(context);
+        
         var user = new ApplicationUser
         {
-            Id = userId,
             Email = "test@example.com",
             UserName = "testuser",
             FirstName = "Test",
@@ -242,23 +232,19 @@ public class UserManagementTests
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
+        await userManager.CreateAsync(user);
+        
+        await roleManager.CreateAsync(new ApplicationRole { Name = "User" });
+        await userManager.AddToRoleAsync(user, "User");
 
-        _mockUserManager
-            .Setup(x => x.FindByIdAsync(userId.ToString()))
-            .ReturnsAsync(user);
-
-        _mockUserManager
-            .Setup(x => x.GetRolesAsync(user))
-            .ReturnsAsync(new List<string> { "User" });
-
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext());
+        var sut = new UserManagementService(userManager, roleManager, _mockEventPublisher.Object, context);
 
         // Act
-        var detail = await sut.GetUserByIdAsync(userId);
+        var detail = await sut.GetUserByIdAsync(user.Id);
 
         // Assert
         Assert.NotNull(detail);
-        Assert.Equal(userId, detail!.Id);
+        Assert.Equal(user.Id, detail!.Id);
         Assert.Equal("test@example.com", detail.Email);
         Assert.Contains("User", detail.Roles);
     }
@@ -988,6 +974,33 @@ public class UserManagementTests
         Assert.Empty(errors);
         Assert.True(user.IsActive);
         _mockUserManager.Verify(x => x.UpdateAsync(It.Is<ApplicationUser>(u => u.Id == userId && u.IsActive == true)), Times.Once);
+    }
+
+    private (UserManager<ApplicationUser>, RoleManager<ApplicationRole>) CreateRealUserAndRoleManager(ApplicationDbContext context)
+    {
+        var userStore = new Microsoft.AspNetCore.Identity.EntityFrameworkCore.UserStore<ApplicationUser, ApplicationRole, ApplicationDbContext, Guid>(context);
+        var roleStore = new Microsoft.AspNetCore.Identity.EntityFrameworkCore.RoleStore<ApplicationRole, ApplicationDbContext, Guid>(context);
+
+        var identityOptions = Microsoft.Extensions.Options.Options.Create(new IdentityOptions());
+        var userManager = new UserManager<ApplicationUser>(
+            userStore,
+            identityOptions,
+            new PasswordHasher<ApplicationUser>(),
+            new IUserValidator<ApplicationUser>[] { new UserValidator<ApplicationUser>() },
+            Array.Empty<IPasswordValidator<ApplicationUser>>(),
+            new UpperInvariantLookupNormalizer(),
+            new IdentityErrorDescriber(),
+            null!,
+            new Mock<Microsoft.Extensions.Logging.ILogger<UserManager<ApplicationUser>>>().Object);
+
+        var roleManager = new RoleManager<ApplicationRole>(
+            roleStore,
+            Array.Empty<IRoleValidator<ApplicationRole>>(),
+            new UpperInvariantLookupNormalizer(),
+            new IdentityErrorDescriber(),
+            new Mock<Microsoft.Extensions.Logging.ILogger<RoleManager<ApplicationRole>>>().Object);
+
+        return (userManager, roleManager);
     }
 }
 

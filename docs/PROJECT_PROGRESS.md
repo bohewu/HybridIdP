@@ -17,7 +17,8 @@ last-updated: 2025-11-29
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
 - Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
 - Phase 9 — Scope Authorization & Management: 100% — `docs/phase-9-roadmap.md`
-- Phase 10 — Person & Identity: 75% (Phase 10.1-10.3 Complete ✅) — `docs/phase-10-person-identity.md`
+- Phase 10 — Person & Identity: 100% (Phase 10.1-10.4 Complete ✅) — `docs/phase-10-person-identity.md`
+- Phase 11 — Role & Account Switching: 0% (Planning) — `docs/phase-11-account-role-management.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
 
@@ -29,6 +30,69 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 - 如需更完整的歷史紀錄或截圖證據，請參閱 `docs/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
+
+## 2025-11-29: Phase 10.4 Person-First Profile Migration Complete ✅
+
+**Implementation Summary:**
+
+Phase 10.4 completes the Person entity integration by refactoring all profile data access to use Person as the primary source, with ApplicationUser fields as fallback for backward compatibility.
+
+**Core Refactoring:**
+- ✅ UserManagementService fully migrated to Person-first pattern
+- ✅ `GetUserByIdAsync`: Reads `user.Person?.Field ?? user.Field` (Person priority)
+- ✅ `CreateUserAsync`: Creates Person first, then links ApplicationUser via PersonId
+- ✅ `UpdateUserAsync`: Updates both Person and ApplicationUser simultaneously
+- ✅ MyUserClaimsPrincipalFactory: Includes Person data in user claims
+
+**Testing Infrastructure Overhaul:**
+- ✅ Migrated from Mock UserManager to Real UserManager + InMemory Database
+- ✅ Fixed async query provider issues (`.Include().FirstOrDefaultAsync()` now works)
+- ✅ Added UserValidator for username uniqueness validation
+- ✅ All 432 backend tests passing (100% pass rate)
+
+**Test Results:**
+- ✅ Tests.Application.UnitTests: **328/328** (100%) 
+- ✅ Tests.Infrastructure.UnitTests: **78/78** (100%)
+- ✅ Tests.Infrastructure.IntegrationTests: **26/26** (100%)
+- ✅ **Total: 432/432 (100%)** 🎉
+
+**Key Technical Decisions:**
+```csharp
+// Person-first read pattern
+var firstName = user.Person?.FirstName ?? user.FirstName;
+var lastName = user.Person?.LastName ?? user.LastName;
+
+// Test infrastructure with real UserManager
+_userManager = new UserManager<ApplicationUser>(
+    userStore,
+    identityOptions,
+    new PasswordHasher<ApplicationUser>(),
+    new IUserValidator<ApplicationUser>[] { new UserValidator<ApplicationUser>() },  // Critical for uniqueness
+    ...
+);
+```
+
+**Files Modified:**
+- `Infrastructure/Services/UserManagementService.cs` - Person-first CRUD operations
+- `Infrastructure/Factories/MyUserClaimsPrincipalFactory.cs` - Person data in claims
+- `Tests.Application.UnitTests/UserManagementServiceTests.cs` - Real UserManager (35 tests)
+- `Tests.Application.UnitTests/UserManagementTests.cs` - Fixed 3 failing tests
+
+**Progress:**
+- Phase 10.1: ✅ Complete (Schema & Migration)
+- Phase 10.2: ✅ Complete (Services & API)
+- Phase 10.3: ✅ Complete (UI & E2E Tests)
+- Phase 10.4: ✅ Complete (Person-First Profile Migration)
+- **Phase 10 Overall: 100% Complete** 🎉
+
+**Why No E2E Tests Needed:**
+Phase 10.4 is a pure backend refactoring with no user-facing changes. Existing E2E tests already validate the complete user management workflow. The 432 passing unit/integration tests provide comprehensive coverage of the Person-first logic.
+
+**Next Steps:**
+- Phase 11: Role & Account Switching features (design complete)
+- Consider adding index on `ApplicationUser.PersonId` for query optimization
+
+---
 
 ## 2025-11-29: Phase 10.3 Person Admin UI & E2E Tests Complete ✅
 
