@@ -17,7 +17,7 @@ last-updated: 2025-11-29
 - Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
 - Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
 - Phase 9 — Scope Authorization & Management: 100% — `docs/phase-9-roadmap.md`
-- Phase 10 — Person & Identity: 50% (Phase 10.1-10.2 Complete ✅) — `docs/phase-10-person-identity.md`
+- Phase 10 — Person & Identity: 75% (Phase 10.1-10.3 Complete ✅) — `docs/phase-10-person-identity.md`
 
 Backlog & Technical Debt: `docs/backlog-and-debt.md`
 
@@ -29,6 +29,69 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 - 如需更完整的歷史紀錄或截圖證據，請參閱 `docs/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
+
+## 2025-11-29: Phase 10.3 Person Admin UI & E2E Tests Complete ✅
+
+**Implementation Summary:**
+
+Phase 10.3 completes the Person management feature with a full-featured Admin UI and comprehensive E2E test coverage.
+
+**UI Implementation:**
+- ✅ PersonsApp.vue - Table-based list view with search and pagination
+- ✅ PersonForm.vue - Modal form using BaseModal component
+- ✅ LinkedAccountsDialog.vue - Account linking with nested modal
+- ✅ Full i18n support (70+ keys for en-US and zh-TW)
+- ✅ Fine-grained permission checks (Read/Create/Update/Delete)
+- ✅ Consistent styling with other admin pages
+
+**E2E Testing:**
+- ✅ 5 comprehensive E2E tests using Playwright
+- ✅ Tests cover: CRUD operations, search, account linking, duplicate prevention
+- ✅ Test execution time: ~17 seconds
+- ✅ All tests passing with proper cleanup
+
+**Backend Enhancements:**
+- ✅ Duplicate account linking prevention with validation
+- ✅ Idempotent linking support
+- ✅ 4 additional unit tests for edge cases
+- ✅ Fixed navigation property includes for linked accounts count
+- ✅ Fixed CS8604 null reference warning in ScopeService
+
+**Key Features:**
+1. **Person CRUD**: Full create, read, update, delete with form validation
+2. **Search**: Real-time search across name and employeeId
+3. **Pagination**: Table view with configurable page size
+4. **Account Linking**: Link/unlink user accounts with duplicate prevention
+5. **Authorization**: Fine-grained permissions with AccessDeniedDialog
+6. **i18n**: Complete bilingual support (English + Traditional Chinese)
+
+**Test Results:**
+- ✅ 5/5 E2E tests passing
+- ✅ 17/17 PersonService unit tests passing
+- ✅ No build warnings
+- ✅ All existing tests still passing
+
+**Files Created:**
+- `Web.IdP/ClientApp/src/admin/persons/PersonsApp.vue`
+- `Web.IdP/ClientApp/src/admin/persons/components/PersonForm.vue`
+- `Web.IdP/ClientApp/src/admin/persons/components/LinkedAccountsDialog.vue`
+- `Web.IdP/ClientApp/src/admin/persons/main.js`
+- `Web.IdP/Pages/Admin/Persons.cshtml` + `.cs`
+- `e2e/tests/feature-persons/admin-persons-crud.spec.ts`
+- `e2e/tests/feature-persons/admin-persons-account-linking.spec.ts`
+
+**Progress:**
+- Phase 10.1: ✅ Complete (Schema & Migration)
+- Phase 10.2: ✅ Complete (Services & API)
+- Phase 10.3: ✅ Complete (UI & E2E Tests)
+- Phase 10 Overall: 75% (3 of 4 sub-phases completed)
+
+**Next Steps (Phase 10.4 - Optional):**
+- Move profile fields from ApplicationUser to Person as primary source
+- Deprecate profile fields in ApplicationUser
+- Update all APIs to use Person for profile data
+
+---
 
 ## 2025-11-29: Phase 10.2 Person Service & API Complete ✅
 

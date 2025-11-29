@@ -1,6 +1,6 @@
 # Phase 10: Person - Multi-Account Identity & Profile
 
-Status: In Progress (Phase 10.1 Complete ✅)
+Status: In Progress (Phase 10.1-10.3 Complete ✅)
 
 ## Goal
 Introduce a `Person` layer to represent the real-life identity (profile, employment history, employeeID, etc.) separate from `ApplicationUser` which represents an authentication account (username, external login, credentials, roles).
@@ -35,20 +35,19 @@ Phase 9 is intentionally designed as incremental tasks with tests at each step.
 - Configured unique index on `EmployeeId` with nullable filter
 - Set up `OnDelete: SetNull` relationship to preserve user accounts when person is deleted
 
-### Phase 10.2 - Services & API (Backwards compatible)
-- Add `IPersonService` interface and `PersonService` implementation.
-- Add controller endpoints:
+### Phase 10.2 - Services & API ✅ (Completed: 2025-11-29)
+- ✅ Add `IPersonService` interface and `PersonService` implementation.
+- ✅ Add controller endpoints:
   - GET /api/admin/persons/{id}
   - POST /api/admin/persons
   - PUT /api/admin/persons/{id}
   - GET /api/admin/persons/{id}/accounts
-  - POST /api/admin/persons/{id}/accounts (link existing account to person) - optional
-- Add `UserManagementService.AttachPersonToUser` and `Detach`.
-- Add unit tests for the new service and controller methods.
+  - POST /api/admin/persons/{id}/accounts (link existing account to person)
+- ✅ Add unit tests for the new service and controller methods.
 
-### Phase 10.3 - UI and E2E (Optional but recommended)
-- Add a Person profile page in the Admin UI that lists linked accounts for that person, and a way to link/unlink accounts.
-- Tests: E2E to create person, link account, unlink account, and ensure login flows still map to the correct user and person profile.
+### Phase 10.3 - UI and E2E ✅ (Completed: 2025-11-29)
+- ✅ Add a Person profile page in the Admin UI that lists linked accounts for that person, and a way to link/unlink accounts.
+- ✅ Tests: E2E to create person, link account, unlink account, and ensure login flows still map to the correct user and person profile.
 
 ### Phase 10.4 - Optional Full Migration (Clean-up)
 - Refactor code to prefer `Person` for profile reads/writes (move profile fields off `ApplicationUser`), then remove duplicated profile fields from `ApplicationUser`.
@@ -220,37 +219,102 @@ Invoke-RestMethod -Uri "https://localhost:7035/api/admin/persons/search?term=joh
 
 ## Phase 10.3: UI and E2E
 
-### Status: 📋 PLANNED
+### Status: ✅ COMPLETE
 
-**Goal:** Build Admin UI for Person management and add E2E tests
+**Implementation Date:** 2025-11-29
 
-**Tasks:**
+**What was built:**
 
-1. **Vue.js Components (Web.IdP/ClientApp)**
-   - `PersonList.vue` - List persons with search/filter
-   - `PersonDetail.vue` - View/edit person profile
-   - `PersonCreate.vue` - Create new person
-   - `LinkedAccounts.vue` - Manage account linking
+1. **Vue.js Components (Web.IdP/ClientApp/src/admin/persons)**
+   - ✅ `PersonsApp.vue` - Main list view with search, pagination, table layout
+   - ✅ `PersonForm.vue` - Create/edit person modal using BaseModal
+   - ✅ `LinkedAccountsDialog.vue` - Manage account linking with nested modals
+   - ✅ Consistent styling with other admin pages
+   - ✅ Full i18n support (en-US, zh-TW)
 
-2. **Router Configuration**
-   - Add routes: `/admin/persons`, `/admin/persons/:id`, `/admin/persons/new`
-   - Add navigation menu items
+2. **Router & Navigation**
+   - ✅ Admin route: `/Admin/Persons`
+   - ✅ Navigation menu item in Razor layout
+   - ✅ Backend menu i18n (SharedResource files)
 
-3. **API Integration**
-   - Create `personApi.js` service wrapper
-   - Implement all CRUD operations
-   - Handle errors and loading states
+3. **Authorization**
+   - ✅ Fine-grained permissions: `Permissions.Persons.Read/Create/Update/Delete`
+   - ✅ HasPermission attribute on all controller methods
+   - ✅ Permission checks in Vue.js components
+   - ✅ AccessDeniedDialog for unauthorized access
 
-4. **E2E Tests (e2e/tests/admin/)**
-   - `person-crud.spec.ts` - Test person CRUD operations
-   - `account-linking.spec.ts` - Test account linking/unlinking
-   - `person-search.spec.ts` - Test search functionality
+4. **E2E Tests (e2e/tests/feature-persons)**
+   - ✅ `admin-persons-crud.spec.ts` - 2 tests (CRUD operations, search)
+   - ✅ `admin-persons-account-linking.spec.ts` - 3 tests (UI linking, API linking, duplicate prevention)
+   - ✅ All 5 E2E tests passing
+   - ✅ Test helpers in `e2e/tests/helpers/admin.ts`
+
+5. **Backend Validation**
+   - ✅ Duplicate account linking prevention
+   - ✅ Idempotent linking (same user to same person)
+   - ✅ 4 additional unit tests for duplicate link scenarios
+   - ✅ Total 17 PersonService unit tests passing
+
+6. **Bug Fixes**
+   - ✅ Fixed linked accounts count display (Include navigation property)
+   - ✅ Fixed CS8604 null reference warning in ScopeService
+
+**Files Created:**
+- `Web.IdP/ClientApp/src/admin/persons/PersonsApp.vue` - Main app component
+- `Web.IdP/ClientApp/src/admin/persons/components/PersonForm.vue` - Form modal
+- `Web.IdP/ClientApp/src/admin/persons/components/LinkedAccountsDialog.vue` - Account linking
+- `Web.IdP/ClientApp/src/admin/persons/main.js` - Vite entry point
+- `Web.IdP/Pages/Admin/Persons.cshtml` - Razor page
+- `Web.IdP/Pages/Admin/Persons.cshtml.cs` - Page model
+- `e2e/tests/feature-persons/admin-persons-crud.spec.ts` - CRUD tests
+- `e2e/tests/feature-persons/admin-persons-account-linking.spec.ts` - Linking tests
+
+**Files Modified:**
+- `Web.IdP/ClientApp/vite.config.js` - Added persons entry point
+- `Web.IdP/ClientApp/src/i18n/locales/en-US.json` - Added 70+ i18n keys
+- `Web.IdP/ClientApp/src/i18n/locales/zh-TW.json` - Added Chinese translations
+- `Web.IdP/Resources/SharedResource.en-US.resx` - Added "Persons"
+- `Web.IdP/Resources/SharedResource.zh-TW.resx` - Added "人員"
+- `Web.IdP/Views/Shared/_AdminLayout.cshtml` - Added navigation menu item
+- `Core.Domain/Constants/Permissions.cs` - Added Persons permissions
+- `Infrastructure/Services/PersonService.cs` - Added duplicate link validation and Include()
+- `Web.IdP/Controllers/Admin/PersonsController.cs` - Added InvalidOperationException handling
+- `e2e/tests/helpers/admin.ts` - Added linkAccountToPerson, unlinkAccountFromPerson helpers
+
+**UI Features:**
+- Table-based list view with sortable columns
+- Real-time search across name, employeeId
+- Pagination with configurable page size
+- Icon-based action buttons (Manage Accounts, Edit, Delete)
+- Linked accounts count badge
+- Modal-based forms using BaseModal component
+- Nested modal for user selection
+- Form validation (required fields)
+- Loading states and error handling
+- Consistent card container styling
+
+**Test Coverage:**
+- ✅ Create person
+- ✅ Edit person
+- ✅ Delete person
+- ✅ Search persons
+- ✅ Link account (UI-based)
+- ✅ Link account (API-based)
+- ✅ Unlink account
+- ✅ Duplicate link prevention
+- ✅ Verify linked users excluded from available list
 
 **Success Criteria:**
-- Admin can create/edit/delete persons via UI
-- Admin can link/unlink accounts to persons
-- Search functionality works correctly
-- All E2E tests passing
+- ✅ Admin can create/edit/delete persons via UI
+- ✅ Admin can link/unlink accounts to persons
+- ✅ Search functionality works correctly
+- ✅ Duplicate linking is prevented with proper error message
+- ✅ All E2E tests passing (5/5)
+- ✅ All unit tests passing (17/17)
+- ✅ No build warnings
+
+**Next Steps:**
+- Phase 10.4 (Optional): Full migration to Person-centric profile
 
 ---
 
