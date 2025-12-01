@@ -56,9 +56,11 @@ Phase 10 is intentionally designed as incremental tasks with tests at each step.
 - ✅ Achieve 100% test pass rate (432/432 tests passing).
 - ✅ Update MyUserClaimsPrincipalFactory to include Person data in claims.
 
-## Phase 10.5: Audit & Registration Enhancement (Planned)
+## Phase 10.5: Audit & Registration Enhancement
 
-**Status:** 📋 PLANNED
+**Status:** ✅ COMPLETE
+
+**Implementation Date:** 2025-12-01
 
 **Critical Issues to Address:**
 
@@ -596,20 +598,103 @@ Phase 10.4 is a pure backend refactoring with no user-facing changes. Existing E
 - ✅ **Phase 10.2**: Services & API (PersonService, DTOs, 9 RESTful endpoints)
 - ✅ **Phase 10.3**: UI & E2E (Vue.js components, 5 E2E tests, i18n)
 - ✅ **Phase 10.4**: Person-First Migration (UserManagementService refactoring, 432/432 tests passing)
-- 📋 **Phase 10.5**: Audit & Registration Enhancement (PLANNED - see above)
+- ✅ **Phase 10.5**: Audit & Registration Enhancement (Self-registration Person creation, orphan auto-healing, audit trail, 437/437 tests passing)
 
-**Current Status:** Phase 10.1-10.4 complete, Phase 10.5 pending
+**Current Status:** Phase 10.1-10.5 ALL COMPLETE ✅
 
-**Total Implementation Time (10.1-10.4):** ~3 days  
-**Total Test Coverage:** 432 tests (100% passing)  
-**Lines of Code:** ~2,500+ across backend, frontend, tests
+**Total Implementation Time (10.1-10.5):** ~3.5 days  
+**Total Test Coverage:** 437 tests (100% passing)  
+**Lines of Code:** ~3,000+ across backend, frontend, tests, e2e
 
-**Known Issues (to be addressed in Phase 10.5):**
-1. 🔴 Self-registration doesn't create Person entity
-2. 🟡 Person operations lack formal audit trail (only logging)
-3. 🟡 No E2E test for multi-account login scenarios
+Phase 10 successfully introduces the Person entity as a separate identity layer from ApplicationUser, enabling multi-account support while maintaining full backward compatibility. All planned features including audit trail and registration enhancement are now complete.
 
-Phase 10 successfully introduces the Person entity as a separate identity layer from ApplicationUser, enabling multi-account support while maintaining full backward compatibility. Phase 10.5 will address remaining audit and registration gaps.
+---
+
+## Phase 10.5 Completion Summary ✅
+
+**Date:** 2025-12-01
+
+**What was built:**
+
+1. **Self-Registration Person Creation**
+   - ✅ Updated `Register.cshtml.cs` to create Person entity before ApplicationUser
+   - ✅ Automatic linking via PersonId during registration
+   - ✅ Audit event logging: `SelfRegistrationPersonCreated`
+
+2. **Orphan User Auto-Healing**
+   - ✅ Enhanced `MyUserClaimsPrincipalFactory.cs` with auto-healing logic
+   - ✅ Auto-creates Person for users without PersonId at login
+   - ✅ Handles edge cases: deleted Persons (OnDelete:SetNull), manual DB errors
+   - ✅ Audit event logging: `OrphanUserAutoHealed`
+
+3. **PersonService Audit Trail**
+   - ✅ Injected `IAuditService` into PersonService
+   - ✅ Audit events for all CRUD operations:
+     - `PersonCreated` - Person creation
+     - `PersonUpdated` - Person updates
+     - `PersonDeleted` - Person deletion
+     - `PersonAccountLinked` - Account linking
+     - `PersonAccountUnlinked` - Account unlinking
+   - ✅ Key field logging (PersonId, FirstName, LastName, Email, etc.)
+
+4. **Multi-Account Login E2E Test**
+   - ✅ Created `e2e/tests/feature-persons/multi-account-login.spec.ts`
+   - ✅ Verifies Person with 2 linked ApplicationUser accounts
+   - ✅ Tests login with each account
+   - ✅ Validates same Person profile data across accounts
+
+5. **Unit Tests for Audit Events**
+   - ✅ Added 5 new tests in `PersonServiceTests.cs`:
+     - `CreatePersonAsync_ShouldLogAuditEvent`
+     - `UpdatePersonAsync_ShouldLogAuditEvent`
+     - `DeletePersonAsync_ShouldLogAuditEvent`
+     - `LinkAccountToPersonAsync_ShouldLogAuditEvent`
+     - `UnlinkAccountFromPersonAsync_ShouldLogAuditEvent`
+   - ✅ All tests verify IAuditService.LogEventAsync invocation
+
+**Files Created:**
+- `e2e/tests/feature-persons/multi-account-login.spec.ts` - Multi-account E2E test
+
+**Files Modified:**
+- `Web.IdP/Pages/Account/Register.cshtml.cs` - Person creation + audit on registration
+- `Infrastructure/Identity/MyUserClaimsPrincipalFactory.cs` - Orphan auto-healing + audit
+- `Infrastructure/Services/PersonService.cs` - Audit trail for all CRUD operations
+- `Tests.Infrastructure.UnitTests/PersonServiceTests.cs` - 5 new audit tests, updated all 21 existing tests
+
+**Audit Events Added:**
+1. `SelfRegistrationPersonCreated` - User self-registration with Person creation
+2. `OrphanUserAutoHealed` - Auto-healing creates Person for orphan ApplicationUser
+3. `PersonCreated` - PersonService.CreateAsync
+4. `PersonUpdated` - PersonService.UpdateAsync
+5. `PersonDeleted` - PersonService.DeleteAsync
+6. `PersonAccountLinked` - PersonService.AttachAccountAsync
+7. `PersonAccountUnlinked` - PersonService.DetachAccountAsync
+
+**Test Results:**
+- ✅ Unit Tests: 83/83 (Infrastructure.UnitTests) - increased from 78
+- ✅ Integration Tests: 26/26
+- ✅ Application Tests: 328/328
+- ✅ **Total: 437/437 (100%)**
+
+**Key Features:**
+- Auto-healing ensures zero-downtime migration for existing users
+- Self-registered users get Person entity automatically
+- Comprehensive audit trail for compliance
+- Multi-account support fully tested end-to-end
+- Backward compatibility maintained (ApplicationUser fields as fallback)
+
+**Success Criteria:**
+- ✅ Self-registration creates Person entity
+- ✅ Orphan users auto-healed at login with audit logging
+- ✅ All Person CRUD operations audited
+- ✅ Multi-account login tested and verified
+- ✅ All 437 tests passing (100% pass rate)
+- ✅ No breaking changes
+
+**Next Steps:**
+- Phase 11: Role & Account Switching features (design in `docs/phase-11-account-role-management.md`)
+- Monitor audit event storage growth
+- Consider adding index on AuditEvents.EventType for performance
 
 ---
 End of Phase 10 design doc

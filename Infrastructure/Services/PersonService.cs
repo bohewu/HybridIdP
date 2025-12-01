@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Core.Application;
 using Core.Domain;
 using Core.Domain.Entities;
@@ -9,18 +10,22 @@ namespace Infrastructure.Services;
 /// <summary>
 /// Service implementation for managing Person entities and their relationships with ApplicationUsers.
 /// Phase 10.2: Person Service & API
+/// Phase 10.5: Added audit trail for all CRUD operations
 /// </summary>
 public class PersonService : IPersonService
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<PersonService> _logger;
+    private readonly IAuditService _auditService;
 
     public PersonService(
         IApplicationDbContext context,
-        ILogger<PersonService> logger)
+        ILogger<PersonService> logger,
+        IAuditService auditService)
     {
         _context = context;
         _logger = logger;
+        _auditService = auditService;
     }
 
     public async Task<Person?> GetPersonByIdAsync(Guid personId)
@@ -76,6 +81,22 @@ public class PersonService : IPersonService
         _logger.LogInformation("Created new person {PersonId} (EmployeeId: {EmployeeId})", 
             person.Id, person.EmployeeId ?? "N/A");
 
+        // Phase 10.5: Audit the creation
+        var auditDetails = JsonSerializer.Serialize(new
+        {
+            PersonId = person.Id,
+            FirstName = person.FirstName,
+            LastName = person.LastName,
+            EmployeeId = person.EmployeeId,
+            Department = person.Department
+        });
+        await _auditService.LogEventAsync(
+            "PersonCreated",
+            createdBy?.ToString(),
+            auditDetails,
+            null,
+            null);
+
         return person;
     }
 
@@ -122,6 +143,23 @@ public class PersonService : IPersonService
         _logger.LogInformation("Updated person {PersonId} (EmployeeId: {EmployeeId})", 
             personId, existingPerson.EmployeeId ?? "N/A");
 
+        // Phase 10.5: Audit the update
+        var auditDetails = JsonSerializer.Serialize(new
+        {
+            PersonId = existingPerson.Id,
+            FirstName = existingPerson.FirstName,
+            LastName = existingPerson.LastName,
+            EmployeeId = existingPerson.EmployeeId,
+            Department = existingPerson.Department,
+            ModifiedBy = modifiedBy
+        });
+        await _auditService.LogEventAsync(
+            "PersonUpdated",
+            modifiedBy?.ToString(),
+            auditDetails,
+            null,
+            null);
+
         return existingPerson;
     }
 
@@ -137,6 +175,22 @@ public class PersonService : IPersonService
 
         _logger.LogInformation("Deleted person {PersonId} (EmployeeId: {EmployeeId})", 
             personId, person.EmployeeId ?? "N/A");
+
+        // Phase 10.5: Audit the deletion
+        var auditDetails = JsonSerializer.Serialize(new
+        {
+            PersonId = person.Id,
+            FirstName = person.FirstName,
+            LastName = person.LastName,
+            EmployeeId = person.EmployeeId,
+            Department = person.Department
+        });
+        await _auditService.LogEventAsync(
+            "PersonDeleted",
+            null, // Deletion typically done by admin, tracked at controller level
+            auditDetails,
+            null,
+            null);
 
         return true;
     }
@@ -193,6 +247,23 @@ public class PersonService : IPersonService
         _logger.LogInformation("Linked user {UserId} ({UserName}) to person {PersonId} (EmployeeId: {EmployeeId})", 
             userId, user.UserName, personId, person.EmployeeId ?? "N/A");
 
+        // Phase 10.5: Audit the account linking
+        var auditDetails = JsonSerializer.Serialize(new
+        {
+            PersonId = personId,
+            ApplicationUserId = userId,
+            UserName = user.UserName,
+            Email = user.Email,
+            PersonEmployeeId = person.EmployeeId,
+            LinkedBy = modifiedBy
+        });
+        await _auditService.LogEventAsync(
+            "PersonAccountLinked",
+            modifiedBy?.ToString(),
+            auditDetails,
+            null,
+            null);
+
         return true;
     }
 
@@ -216,6 +287,22 @@ public class PersonService : IPersonService
 
         _logger.LogInformation("Unlinked user {UserId} ({UserName}) from person {PersonId}", 
             userId, user.UserName, previousPersonId ?? Guid.Empty);
+
+        // Phase 10.5: Audit the account unlinking
+        var auditDetails = JsonSerializer.Serialize(new
+        {
+            PersonId = previousPersonId,
+            ApplicationUserId = userId,
+            UserName = user.UserName,
+            Email = user.Email,
+            UnlinkedBy = modifiedBy
+        });
+        await _auditService.LogEventAsync(
+            "PersonAccountUnlinked",
+            modifiedBy?.ToString(),
+            auditDetails,
+            null,
+            null);
 
         return true;
     }

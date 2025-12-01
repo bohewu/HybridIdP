@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using Core.Application;
 using Core.Domain;
+using Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -14,19 +16,25 @@ public class RegisterModel : PageModel
     private readonly ITurnstileService _turnstileService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<RegisterModel> _logger;
+    private readonly IApplicationDbContext _context;
+    private readonly IAuditService _auditService;
 
     public RegisterModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ITurnstileService turnstileService,
         IConfiguration configuration,
-        ILogger<RegisterModel> logger)
+        ILogger<RegisterModel> logger,
+        IApplicationDbContext context,
+        IAuditService auditService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _turnstileService = turnstileService;
         _configuration = configuration;
         _logger = logger;
+        _context = context;
+        _auditService = auditService;
     }
 
     [BindProperty]
@@ -88,11 +96,22 @@ public class RegisterModel : PageModel
                 }
             }
 
+            // Phase 10.5: Create Person entity first
+            var person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = Input.Email.Split('@')[0], // Default from email
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Persons.Add(person);
+            await _context.SaveChangesAsync(CancellationToken.None);
+
             var user = new ApplicationUser
             {
                 UserName = Input.Email,
                 Email = Input.Email,
-                EmailConfirmed = false // Will be confirmed via email in Phase 5
+                EmailConfirmed = false, // Will be confirmed via email in Phase 5
+                PersonId = person.Id  // Phase 10.5: Link to Person
             };
 
             var result = await _userManager.CreateAsync(user, Input.Password);
@@ -100,6 +119,22 @@ public class RegisterModel : PageModel
             if (result.Succeeded)
             {
                 _logger.LogInformation("User created a new account with password.");
+
+                // Phase 10.5: Audit the self-registration with Person creation
+                var auditDetails = JsonSerializer.Serialize(new
+                {
+                    PersonId = person.Id,
+                    ApplicationUserId = user.Id,
+                    Email = user.Email,
+                    FirstName = person.FirstName,
+                    RegisteredAt = DateTime.UtcNow
+                });
+                await _auditService.LogEventAsync(
+                    "SelfRegistrationPersonCreated",
+                    user.Id.ToString(),
+                    auditDetails,
+                    HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    HttpContext.Request.Headers["User-Agent"].ToString());
 
                 // Assign default User role
                 await _userManager.AddToRoleAsync(user, "User");

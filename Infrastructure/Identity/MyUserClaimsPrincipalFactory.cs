@@ -1,8 +1,11 @@
+using System.Text.Json;
 using Core.Application;
 using Core.Domain;
 using Core.Domain.Constants;
+using Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 
@@ -11,20 +14,64 @@ namespace Infrastructure.Identity;
 public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser, ApplicationRole>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IAuditService _auditService;
+    private readonly ILogger<MyUserClaimsPrincipalFactory> _logger;
 
     public MyUserClaimsPrincipalFactory(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         IOptions<IdentityOptions> optionsAccessor,
-        IApplicationDbContext context) : base(userManager, roleManager, optionsAccessor)
+        IApplicationDbContext context,
+        IAuditService auditService,
+        ILogger<MyUserClaimsPrincipalFactory> logger) : base(userManager, roleManager, optionsAccessor)
     {
         _context = context;
+        _auditService = auditService;
+        _logger = logger;
     }
 
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
     {
+        // Phase 10.5: Auto-heal orphan users by creating Person if missing
+        if (!user.PersonId.HasValue)
+        {
+            _logger.LogWarning("Orphan ApplicationUser detected: {UserId}, auto-creating Person", user.Id);
+            
+            var person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = user.FirstName ?? user.Email?.Split('@')[0],
+                LastName = user.LastName,
+                Department = user.Department,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Persons.Add(person);
+            await _context.SaveChangesAsync(CancellationToken.None);
+            
+            user.PersonId = person.Id;
+            await UserManager.UpdateAsync(user);
+            user.Person = person;
+            
+            // Phase 10.5: Audit the auto-healing operation
+            var auditDetails = JsonSerializer.Serialize(new
+            {
+                PersonId = person.Id,
+                ApplicationUserId = user.Id,
+                Email = user.Email,
+                FirstName = person.FirstName,
+                LastName = person.LastName,
+                HealedAt = DateTime.UtcNow,
+                TriggerPoint = "Login/ClaimsGeneration"
+            });
+            await _auditService.LogEventAsync(
+                "OrphanUserAutoHealed",
+                user.Id.ToString(),
+                auditDetails,
+                null,
+                null);
+        }
         // Phase 10.4: Load Person navigation property if not already loaded
-        if (user.PersonId.HasValue && user.Person == null)
+        else if (user.Person == null)
         {
             user.Person = await _context.Persons.FindAsync(user.PersonId.Value);
         }
