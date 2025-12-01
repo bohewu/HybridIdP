@@ -11,9 +11,8 @@ namespace Infrastructure.Migrations.Postgres.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_Persons_EmployeeId",
-                table: "Persons");
+            // Note: IX_Persons_EmployeeId already exists from Phase10_1 migration, 
+            // no need to drop/recreate since filter is identical
 
             migrationBuilder.AddColumn<string>(
                 name: "IdentityDocumentType",
@@ -56,13 +55,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                 nullable: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Persons_EmployeeId",
-                table: "Persons",
-                column: "EmployeeId",
-                unique: true,
-                filter: "\"EmployeeId\" IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Persons_NationalId",
                 table: "Persons",
                 column: "NationalId",
@@ -87,9 +79,7 @@ namespace Infrastructure.Migrations.Postgres.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_Persons_EmployeeId",
-                table: "Persons");
+            // Note: Don't drop IX_Persons_EmployeeId as it's from Phase10_1 migration
 
             migrationBuilder.DropIndex(
                 name: "IX_Persons_NationalId",
@@ -126,13 +116,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
             migrationBuilder.DropColumn(
                 name: "ResidentCertificateNumber",
                 table: "Persons");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Persons_EmployeeId",
-                table: "Persons",
-                column: "EmployeeId",
-                unique: true,
-                filter: "\"EmployeeId\" IS NOT NULL");
         }
     }
 }

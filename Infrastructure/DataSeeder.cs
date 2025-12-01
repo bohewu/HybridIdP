@@ -28,8 +28,8 @@ public static class DataSeeder
         // Seed default roles
         await SeedRolesAsync(roleManager);
 
-        // Seed default admin user
-        await SeedAdminUserAsync(userManager, roleManager);
+        // Seed default admin user (Phase 10.6.2: with Person entity)
+        await SeedAdminUserAsync(userManager, roleManager, context);
 
         // Seed OpenIddict scopes
         await SeedScopesAsync(scopeManager);
@@ -63,17 +63,34 @@ public static class DataSeeder
 
     private static async Task SeedAdminUserAsync(
         UserManager<ApplicationUser> userManager, 
-        RoleManager<ApplicationRole> roleManager)
+        RoleManager<ApplicationRole> roleManager,
+        ApplicationDbContext context)
     {
         var adminUser = await userManager.FindByEmailAsync(AuthConstants.DefaultAdmin.Email);
         
         if (adminUser == null)
         {
+            // Phase 10.6.2: Create Person entity first with default NationalId
+            var adminPerson = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "System",
+                LastName = "Administrator",
+                NationalId = "A123456789", // Default admin National ID (Taiwan format)
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            context.Persons.Add(adminPerson);
+            await context.SaveChangesAsync();
+
             adminUser = new ApplicationUser
             {
                 UserName = AuthConstants.DefaultAdmin.Email,
                 Email = AuthConstants.DefaultAdmin.Email,
-                EmailConfirmed = true
+                EmailConfirmed = true,
+                PersonId = adminPerson.Id // Link admin user to Person entity
             };
 
             var result = await userManager.CreateAsync(adminUser, AuthConstants.DefaultAdmin.Password);
@@ -81,6 +98,47 @@ public static class DataSeeder
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(adminUser, AuthConstants.Roles.Admin);
+                
+                // Update Person.CreatedBy after user is created
+                adminPerson.CreatedBy = adminUser.Id;
+                adminPerson.IdentityVerifiedBy = adminUser.Id;
+                await context.SaveChangesAsync();
+            }
+        }
+        else
+        {
+            // Phase 10.6.2: Update existing admin user's Person if it doesn't exist
+            if (adminUser.PersonId == null)
+            {
+                var existingPerson = await context.Persons
+                    .FirstOrDefaultAsync(p => p.NationalId == "A123456789");
+                
+                if (existingPerson == null)
+                {
+                    // Create Person for existing admin
+                    var adminPerson = new Person
+                    {
+                        Id = Guid.NewGuid(),
+                        FirstName = "System",
+                        LastName = "Administrator",
+                        NationalId = "A123456789",
+                        IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                        IdentityVerifiedAt = DateTime.UtcNow,
+                        CreatedBy = adminUser.Id,
+                        IdentityVerifiedBy = adminUser.Id,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    
+                    context.Persons.Add(adminPerson);
+                    adminUser.PersonId = adminPerson.Id;
+                    await context.SaveChangesAsync();
+                }
+                else
+                {
+                    // Link existing Person to admin user
+                    adminUser.PersonId = existingPerson.Id;
+                    await context.SaveChangesAsync();
+                }
             }
         }
     }
