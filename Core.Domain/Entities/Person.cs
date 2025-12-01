@@ -91,6 +91,37 @@ public class Person
     /// </summary>
     public string? Locale { get; set; }
     
+    // Identity Verification (Phase 10.6)
+    /// <summary>
+    /// National ID number (身分證字號) - Taiwan ROC ID format
+    /// </summary>
+    public string? NationalId { get; set; }
+    
+    /// <summary>
+    /// Passport number (護照號碼)
+    /// </summary>
+    public string? PassportNumber { get; set; }
+    
+    /// <summary>
+    /// Resident Certificate number (居留證號碼) - for foreign residents
+    /// </summary>
+    public string? ResidentCertificateNumber { get; set; }
+    
+    /// <summary>
+    /// Identity document type (NationalId, Passport, ResidentCertificate, None)
+    /// </summary>
+    public string? IdentityDocumentType { get; set; }
+    
+    /// <summary>
+    /// Date when identity was verified (null if not verified)
+    /// </summary>
+    public DateTime? IdentityVerifiedAt { get; set; }
+    
+    /// <summary>
+    /// User ID who verified the identity (admin/verifier)
+    /// </summary>
+    public Guid? IdentityVerifiedBy { get; set; }
+    
     // Audit Fields
     /// <summary>
     /// User ID who created this person record

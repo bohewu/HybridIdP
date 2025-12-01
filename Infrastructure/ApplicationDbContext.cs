@@ -232,6 +232,25 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.Property(e => e.Locale).HasMaxLength(20);
             entity.Property(e => e.CreatedAt).IsRequired();
             
+            // Phase 10.6: Identity verification fields
+            entity.Property(e => e.NationalId).HasMaxLength(20);
+            entity.Property(e => e.PassportNumber).HasMaxLength(20);
+            entity.Property(e => e.ResidentCertificateNumber).HasMaxLength(20);
+            entity.Property(e => e.IdentityDocumentType).HasMaxLength(30);
+            
+            // Phase 10.6: Unique indexes for identity fields (filtered to allow NULL values)
+            entity.HasIndex(e => e.NationalId)
+                .IsUnique()
+                .HasFilter("[NationalId] IS NOT NULL"); // SQL Server syntax
+            
+            entity.HasIndex(e => e.PassportNumber)
+                .IsUnique()
+                .HasFilter("[PassportNumber] IS NOT NULL");
+            
+            entity.HasIndex(e => e.ResidentCertificateNumber)
+                .IsUnique()
+                .HasFilter("[ResidentCertificateNumber] IS NOT NULL");
+            
             // Configure relationship: One Person can have Many ApplicationUsers
             entity.HasMany(p => p.Accounts)
                 .WithOne(u => u.Person)
