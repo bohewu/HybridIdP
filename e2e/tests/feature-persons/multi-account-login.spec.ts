@@ -21,111 +21,98 @@ test('Person with 2 accounts - login with either shows same profile', async ({ p
   const department = 'Multi-Account Dept';
   const jobTitle = 'Multi-Account Tester';
 
-  // Step 1: Create a Person via Admin UI
-  await page.goto('https://localhost:7035/Admin/Persons');
-  await page.waitForURL(/\/Admin\/Persons/);
-
-  const createBtn = page.locator('button:has-text("Create Person")');
-  await createBtn.click();
-
-  await page.waitForSelector('#firstName');
-  await page.fill('#firstName', firstName);
-  await page.fill('#lastName', lastName);
-  await page.fill('#employeeId', employeeId);
-  await page.fill('#department', department);
-  await page.fill('#jobTitle', jobTitle);
-
-  await page.click('button[type="submit"]');
-  await page.waitForTimeout(1000);
-
-  // Find the created person's ID from the list
-  const searchInput = page.locator('input[type="text"]').first();
-  await searchInput.fill(firstName);
-  await page.waitForTimeout(500);
-
-  const personRow = page.locator(`tr:has-text("${firstName} ${lastName}")`);
-  await expect(personRow).toBeVisible({ timeout: 10000 });
-
-  // Get Person ID from the manage accounts button
-  const manageBtn = personRow.locator('button[title*="Manage Accounts"]');
-  await manageBtn.click();
-  await page.waitForTimeout(500);
-
-  // Step 2: Create two ApplicationUser accounts
+  // Step 1: Create two ApplicationUser accounts via API
+  // Note: Phase 10.4 auto-creates a Person for each user
   const account1Email = `account1-${timestamp}@test.local`;
   const account2Email = `account2-${timestamp}@test.local`;
   const password = 'Test@123456';
 
-  // Create account 1
-  await page.goto('https://localhost:7035/Admin/Users');
-  await page.waitForURL(/\/Admin\/Users/);
-  
-  const createUserBtn = page.locator('button:has-text("Create User")');
-  await createUserBtn.click();
-  await page.waitForSelector('#email');
-  await page.fill('#email', account1Email);
-  await page.fill('#userName', account1Email);
-  await page.fill('#password', password);
-  await page.fill('#confirmPassword', password);
-  await page.click('button[type="submit"]');
-  await page.waitForTimeout(1000);
+  // Create account 1 via API (auto-creates Person1)
+  const account1UserId = await page.evaluate(async (args) => {
+    const response = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: args.email,
+        userName: args.email,
+        password: args.password,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        department: args.department,
+        jobTitle: args.jobTitle,
+        employeeId: args.employeeId,
+        isActive: true,
+        emailConfirmed: true
+      })
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create account1: ${response.status} - ${errorText}`);
+    }
+    const user = await response.json();
+    return user.id;
+  }, { email: account1Email, password, firstName, lastName, department, jobTitle, employeeId });
 
-  // Create account 2
-  await createUserBtn.click();
-  await page.waitForSelector('#email');
-  await page.fill('#email', account2Email);
-  await page.fill('#userName', account2Email);
-  await page.fill('#password', password);
-  await page.fill('#confirmPassword', password);
-  await page.click('button[type="submit"]');
-  await page.waitForTimeout(1000);
+  // Create account 2 via API (auto-creates Person2)
+  const account2UserId = await page.evaluate(async (args) => {
+    const response = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: args.email,
+        userName: args.email,
+        password: args.password,
+        firstName: 'Account2',
+        lastName: 'User',
+        isActive: true,
+        emailConfirmed: true
+      })
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create account2: ${response.status} - ${errorText}`);
+    }
+    const user = await response.json();
+    return user.id;
+  }, { email: account2Email, password });
 
-  // Step 3: Link both accounts to the Person via API
-  const personId = await page.evaluate(async (searchTerm) => {
-    const response = await fetch(`/api/admin/persons/search?term=${encodeURIComponent(searchTerm)}`);
-    const persons = await response.json();
-    return persons.items?.[0]?.id || persons[0]?.id;
-  }, firstName);
+  // Step 2: Get the actual Person IDs from the users (now that UserDetailDto includes PersonId)
+  const { person1Id, person2Id } = await page.evaluate(async (args) => {
+    const user1Resp = await fetch(`/api/admin/users/${args.user1Id}`);
+    const user1 = await user1Resp.json();
+    const user2Resp = await fetch(`/api/admin/users/${args.user2Id}`);
+    const user2 = await user2Resp.json();
+    return { person1Id: user1.personId, person2Id: user2.personId };
+  }, { user1Id: account1UserId, user2Id: account2UserId });
 
-  const account1UserId = await page.evaluate(async (email) => {
-    const response = await fetch(`/api/admin/users?search=${encodeURIComponent(email)}`);
-    const data = await response.json();
-    return data.items?.[0]?.id || data.users?.[0]?.id;
-  }, account1Email);
+  console.log(`Created users: ${account1UserId} (Person: ${person1Id}), ${account2UserId} (Person: ${person2Id})`);
 
-  const account2UserId = await page.evaluate(async (email) => {
-    const response = await fetch(`/api/admin/users?search=${encodeURIComponent(email)}`);
-    const data = await response.json();
-    return data.items?.[0]?.id || data.users?.[0]?.id;
-  }, account2Email);
+  // Step 3: Unlink account2 from auto-created Person2, then link to Person1
+  // This tests multi-account Person functionality
+  await page.evaluate(async (userId) => {
+    const response = await fetch(`/api/admin/persons/accounts/${userId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to unlink account2: ${response.status} - ${errorText}`);
+    }
+  }, account2UserId);
 
-  expect(personId).toBeTruthy();
-  expect(account1UserId).toBeTruthy();
-  expect(account2UserId).toBeTruthy();
-
-  // Link account 1 to person
-  await page.evaluate(async ({ personId, userId }) => {
-    const response = await fetch(`/api/admin/persons/${personId}/accounts`, {
+  // Link account2 to Person1 (now both accounts share same Person)
+  await page.evaluate(async ({ person1Id, userId }) => {
+    const response = await fetch(`/api/admin/persons/${person1Id}/accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId })
     });
     if (!response.ok) {
-      throw new Error(`Failed to link account 1: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Failed to link account2 to Person1: ${response.status} - ${errorText}`);
     }
-  }, { personId, userId: account1UserId });
+  }, { person1Id, userId: account2UserId });
 
-  // Link account 2 to person
-  await page.evaluate(async ({ personId, userId }) => {
-    const response = await fetch(`/api/admin/persons/${personId}/accounts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId })
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to link account 2: ${response.status}`);
-    }
-  }, { personId, userId: account2UserId });
+  const personId = person1Id; // Use Person1 for testing
 
   console.log(`✓ Created Person ${personId} with 2 linked accounts: ${account1UserId}, ${account2UserId}`);
 

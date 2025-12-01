@@ -33,6 +33,9 @@ public class UserDetailDto
     // Enterprise Claims
     public string? EmployeeId { get; set; }
     
+    // Phase 10: Person Link
+    public Guid? PersonId { get; set; }
+    
     // Account Status
     public bool IsActive { get; set; }
     public bool EmailConfirmed { get; set; }

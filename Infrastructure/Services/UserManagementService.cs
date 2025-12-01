@@ -155,6 +155,7 @@ public class UserManagementService : IUserManagementService
             TimeZone = user.Person?.TimeZone ?? user.TimeZone,
             Locale = user.Person?.Locale ?? user.Locale,
             EmployeeId = user.Person?.EmployeeId ?? user.EmployeeId,
+            PersonId = user.PersonId,  // Phase 10: Expose Person link
             IsActive = user.IsActive,
             EmailConfirmed = user.EmailConfirmed,
             PhoneNumberConfirmed = user.PhoneNumberConfirmed,
