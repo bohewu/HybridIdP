@@ -3,6 +3,7 @@ namespace Core.Application.DTOs;
 /// <summary>
 /// DTO for creating or updating a Person
 /// Phase 10.2: Person Service & API
+/// Phase 10.6: Added identity verification fields
 /// </summary>
 public class PersonDto
 {
@@ -21,6 +22,12 @@ public class PersonDto
     public string? Gender { get; set; }
     public string? TimeZone { get; set; }
     public string? Locale { get; set; }
+    
+    // Phase 10.6: Identity Verification Fields
+    public string? NationalId { get; set; }
+    public string? PassportNumber { get; set; }
+    public string? ResidentCertificateNumber { get; set; }
+    public string? IdentityDocumentType { get; set; }
 }
 
 /// <summary>
@@ -34,6 +41,10 @@ public class PersonResponseDto : PersonDto
     public DateTime? ModifiedAt { get; set; }
     public Guid? ModifiedBy { get; set; }
     public List<LinkedAccountDto>? Accounts { get; set; }
+    
+    // Phase 10.6: Identity Verification Audit Fields
+    public DateTime? IdentityVerifiedAt { get; set; }
+    public Guid? IdentityVerifiedBy { get; set; }
 }
 
 /// <summary>

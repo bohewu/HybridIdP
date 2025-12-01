@@ -717,4 +717,313 @@ public class PersonServiceTests : IDisposable
                 null),
             Times.Once);
     }
+
+    #region Phase 10.6: Identity Document Validation Tests
+
+    [Fact]
+    public async Task CreatePersonAsync_WithValidNationalId_ShouldCreatePerson()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789"
+        };
+
+        // Act
+        var result = await service.CreatePersonAsync(person, Guid.NewGuid());
+
+        // Assert
+        Assert.NotEqual(Guid.Empty, result.Id);
+        Assert.Equal("A123456789", result.NationalId);
+    }
+
+    [Fact]
+    public async Task CreatePersonAsync_WithInvalidNationalId_ShouldThrowException()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456780" // Invalid checksum
+        };
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreatePersonAsync(person, Guid.NewGuid()));
+        Assert.Contains("Invalid Taiwan National ID format", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreatePersonAsync_WithDuplicateNationalId_ShouldThrowException()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person1 = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789"
+        };
+        await service.CreatePersonAsync(person1);
+
+        var person2 = new Person
+        {
+            FirstName = "Jane",
+            LastName = "Smith",
+            NationalId = "A123456789" // Duplicate
+        };
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreatePersonAsync(person2));
+        Assert.Contains("Person with this identity document already exists", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreatePersonAsync_WithInvalidPassportNumber_ShouldThrowException()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            PassportNumber = "12345" // Too short
+        };
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreatePersonAsync(person, Guid.NewGuid()));
+        Assert.Contains("Invalid passport number format", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreatePersonAsync_WithInvalidResidentCertificate_ShouldThrowException()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            ResidentCertificateNumber = "ABC123" // Too short
+        };
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreatePersonAsync(person, Guid.NewGuid()));
+        Assert.Contains("Invalid resident certificate format", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdatePersonAsync_ChangingNationalId_ShouldResetVerification()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789"
+        };
+        var created = await service.CreatePersonAsync(person);
+
+        // Verify identity
+        await service.VerifyPersonIdentityAsync(created.Id, Guid.NewGuid());
+
+        // Update with new national ID
+        var updatedPerson = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "B123456780" // Different valid ID
+        };
+
+        // Act
+        var result = await service.UpdatePersonAsync(created.Id, updatedPerson);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("B123456780", result.NationalId);
+        Assert.Null(result.IdentityVerifiedAt);
+        Assert.Null(result.IdentityVerifiedBy);
+    }
+
+    [Fact]
+    public async Task CheckPersonUniquenessAsync_WithDuplicateNationalId_ShouldReturnFalse()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789"
+        };
+        await service.CreatePersonAsync(person);
+
+        // Act
+        var (success, errorMessage) = await service.CheckPersonUniquenessAsync("A123456789", null, null);
+
+        // Assert
+        Assert.False(success);
+        Assert.NotNull(errorMessage);
+        Assert.Contains("already exists", errorMessage);
+    }
+
+    [Fact]
+    public async Task CheckPersonUniquenessAsync_WithNoDuplicate_ShouldReturnTrue()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        // Act
+        var (success, errorMessage) = await service.CheckPersonUniquenessAsync("A123456789", null, null);
+
+        // Assert
+        Assert.True(success);
+        Assert.Null(errorMessage);
+    }
+
+    [Fact]
+    public async Task CheckPersonUniquenessAsync_ExcludingSamePerson_ShouldReturnTrue()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789"
+        };
+        var created = await service.CreatePersonAsync(person);
+
+        // Act - check same national ID but exclude the person who owns it
+        var (success, errorMessage) = await service.CheckPersonUniquenessAsync(
+            "A123456789", null, null, created.Id);
+
+        // Assert
+        Assert.True(success);
+        Assert.Null(errorMessage);
+    }
+
+    [Fact]
+    public async Task VerifyPersonIdentityAsync_WithValidPerson_ShouldSetVerificationFields()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789"
+        };
+        var created = await service.CreatePersonAsync(person);
+        var verifierId = Guid.NewGuid();
+
+        // Act
+        var result = await service.VerifyPersonIdentityAsync(created.Id, verifierId);
+
+        // Assert
+        Assert.True(result);
+
+        var verifiedPerson = await service.GetPersonByIdAsync(created.Id);
+        Assert.NotNull(verifiedPerson);
+        Assert.NotNull(verifiedPerson.IdentityVerifiedAt);
+        Assert.Equal(verifierId, verifiedPerson.IdentityVerifiedBy);
+    }
+
+    [Fact]
+    public async Task VerifyPersonIdentityAsync_WithNonExistentPerson_ShouldReturnFalse()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        // Act
+        var result = await service.VerifyPersonIdentityAsync(Guid.NewGuid(), Guid.NewGuid());
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task VerifyPersonIdentityAsync_WithNoIdentityDocument_ShouldReturnFalse()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe"
+            // No identity document
+        };
+        var created = await service.CreatePersonAsync(person);
+
+        // Act
+        var result = await service.VerifyPersonIdentityAsync(created.Id, Guid.NewGuid());
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task VerifyPersonIdentityAsync_ShouldLogAuditEvent()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789"
+        };
+        var created = await service.CreatePersonAsync(person);
+
+        _auditServiceMock.Reset(); // Clear previous audit calls
+        var verifierId = Guid.NewGuid();
+
+        // Act
+        await service.VerifyPersonIdentityAsync(created.Id, verifierId);
+
+        // Assert
+        _auditServiceMock.Verify(
+            a => a.LogEventAsync(
+                "PersonIdentityVerified",
+                verifierId.ToString(),
+                It.IsAny<string>(),
+                null,
+                null),
+            Times.Once);
+    }
+
+    #endregion
 }

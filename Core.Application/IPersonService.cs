@@ -100,4 +100,26 @@ public interface IPersonService
     /// <param name="searchTerm">Optional search term to filter by email or username</param>
     /// <returns>List of unlinked application users</returns>
     Task<List<ApplicationUser>> GetUnlinkedUsersAsync(string? searchTerm = null);
+
+    /// <summary>
+    /// Check if a person with the given identity documents already exists (Phase 10.6)
+    /// </summary>
+    /// <param name="nationalId">National ID to check</param>
+    /// <param name="passportNumber">Passport number to check</param>
+    /// <param name="residentCertificateNumber">Resident certificate number to check</param>
+    /// <param name="excludePersonId">Person ID to exclude from the check (for updates)</param>
+    /// <returns>Tuple with success flag and error message if duplicate found</returns>
+    Task<(bool success, string? errorMessage)> CheckPersonUniquenessAsync(
+        string? nationalId,
+        string? passportNumber,
+        string? residentCertificateNumber,
+        Guid? excludePersonId = null);
+
+    /// <summary>
+    /// Verify a person's identity document (Phase 10.6)
+    /// </summary>
+    /// <param name="personId">The person's unique ID</param>
+    /// <param name="verifiedByUserId">The user ID who verified the identity</param>
+    /// <returns>True if verification successful, false if person not found or identity document missing</returns>
+    Task<bool> VerifyPersonIdentityAsync(Guid personId, Guid verifiedByUserId);
 }

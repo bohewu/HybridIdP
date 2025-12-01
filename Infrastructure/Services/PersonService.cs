@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Core.Application;
 using Core.Domain;
+using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Infrastructure.Validators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -11,6 +13,7 @@ namespace Infrastructure.Services;
 /// Service implementation for managing Person entities and their relationships with ApplicationUsers.
 /// Phase 10.2: Person Service & API
 /// Phase 10.5: Added audit trail for all CRUD operations
+/// Phase 10.6: Added identity document validation and verification
 /// </summary>
 public class PersonService : IPersonService
 {
@@ -75,6 +78,43 @@ public class PersonService : IPersonService
             }
         }
 
+        // Phase 10.6: Validate identity documents
+        if (!string.IsNullOrWhiteSpace(person.NationalId))
+        {
+            if (!IdentityDocumentValidator.IsValidTaiwanNationalId(person.NationalId))
+            {
+                throw new InvalidOperationException($"Invalid Taiwan National ID format: {person.NationalId}");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(person.PassportNumber))
+        {
+            if (!IdentityDocumentValidator.IsValidPassportNumber(person.PassportNumber))
+            {
+                throw new InvalidOperationException($"Invalid passport number format: {person.PassportNumber}");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(person.ResidentCertificateNumber))
+        {
+            if (!IdentityDocumentValidator.IsValidResidentCertificateNumber(person.ResidentCertificateNumber))
+            {
+                throw new InvalidOperationException($"Invalid resident certificate format: {person.ResidentCertificateNumber}");
+            }
+        }
+
+        // Phase 10.6: Check for duplicate identity documents
+        var (isUnique, errorMessage) = await CheckPersonUniquenessAsync(
+            person.NationalId,
+            person.PassportNumber,
+            person.ResidentCertificateNumber,
+            null);
+
+        if (!isUnique)
+        {
+            throw new InvalidOperationException(errorMessage);
+        }
+
         _context.Persons.Add(person);
         await _context.SaveChangesAsync(CancellationToken.None);
 
@@ -117,6 +157,49 @@ public class PersonService : IPersonService
             }
         }
 
+        // Phase 10.6: Validate identity documents
+        if (!string.IsNullOrWhiteSpace(person.NationalId))
+        {
+            if (!IdentityDocumentValidator.IsValidTaiwanNationalId(person.NationalId))
+            {
+                throw new InvalidOperationException($"Invalid Taiwan National ID format: {person.NationalId}");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(person.PassportNumber))
+        {
+            if (!IdentityDocumentValidator.IsValidPassportNumber(person.PassportNumber))
+            {
+                throw new InvalidOperationException($"Invalid passport number format: {person.PassportNumber}");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(person.ResidentCertificateNumber))
+        {
+            if (!IdentityDocumentValidator.IsValidResidentCertificateNumber(person.ResidentCertificateNumber))
+            {
+                throw new InvalidOperationException($"Invalid resident certificate format: {person.ResidentCertificateNumber}");
+            }
+        }
+
+        // Phase 10.6: Check for duplicate identity documents (excluding current person)
+        var (isUnique, errorMessage) = await CheckPersonUniquenessAsync(
+            person.NationalId,
+            person.PassportNumber,
+            person.ResidentCertificateNumber,
+            personId);
+
+        if (!isUnique)
+        {
+            throw new InvalidOperationException(errorMessage);
+        }
+
+        // Phase 10.6: Reset verification fields if identity document changes
+        bool identityChanged = 
+            person.NationalId != existingPerson.NationalId ||
+            person.PassportNumber != existingPerson.PassportNumber ||
+            person.ResidentCertificateNumber != existingPerson.ResidentCertificateNumber;
+
         // Update fields
         existingPerson.FirstName = person.FirstName;
         existingPerson.MiddleName = person.MiddleName;
@@ -133,6 +216,20 @@ public class PersonService : IPersonService
         existingPerson.Gender = person.Gender;
         existingPerson.TimeZone = person.TimeZone;
         existingPerson.Locale = person.Locale;
+
+        // Phase 10.6: Update identity fields
+        existingPerson.NationalId = person.NationalId;
+        existingPerson.PassportNumber = person.PassportNumber;
+        existingPerson.ResidentCertificateNumber = person.ResidentCertificateNumber;
+        existingPerson.IdentityDocumentType = person.IdentityDocumentType;
+
+        // Reset verification if identity document changed
+        if (identityChanged)
+        {
+            existingPerson.IdentityVerifiedAt = null;
+            existingPerson.IdentityVerifiedBy = null;
+            _logger.LogInformation("Identity document changed for person {PersonId}, reset verification status", personId);
+        }
 
         // Update audit fields
         existingPerson.ModifiedAt = DateTime.UtcNow;
@@ -355,5 +452,77 @@ public class PersonService : IPersonService
             .OrderBy(u => u.Email)
             .Take(100) // Limit to prevent large result sets
             .ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<(bool success, string? errorMessage)> CheckPersonUniquenessAsync(
+        string? nationalId,
+        string? passportNumber,
+        string? residentCertificateNumber,
+        Guid? excludePersonId = null)
+    {
+        // Check if any identity document already exists
+        var existingPerson = await _context.Persons
+            .Where(p => excludePersonId == null || p.Id != excludePersonId)
+            .Where(p =>
+                (nationalId != null && p.NationalId == nationalId) ||
+                (passportNumber != null && p.PassportNumber == passportNumber) ||
+                (residentCertificateNumber != null && p.ResidentCertificateNumber == residentCertificateNumber))
+            .FirstOrDefaultAsync();
+
+        if (existingPerson != null)
+        {
+            return (false, $"Person with this identity document already exists (PersonId: {existingPerson.Id})");
+        }
+
+        return (true, null);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> VerifyPersonIdentityAsync(Guid personId, Guid verifiedByUserId)
+    {
+        var person = await GetPersonByIdAsync(personId);
+        if (person == null)
+        {
+            _logger.LogWarning("Cannot verify identity: Person {PersonId} not found", personId);
+            return false;
+        }
+
+        // Check if any identity document is provided
+        if (string.IsNullOrWhiteSpace(person.NationalId) &&
+            string.IsNullOrWhiteSpace(person.PassportNumber) &&
+            string.IsNullOrWhiteSpace(person.ResidentCertificateNumber))
+        {
+            _logger.LogWarning("Cannot verify identity: Person {PersonId} has no identity document", personId);
+            return false;
+        }
+
+        // Set verification fields
+        person.IdentityVerifiedAt = DateTime.UtcNow;
+        person.IdentityVerifiedBy = verifiedByUserId;
+
+        await _context.SaveChangesAsync(CancellationToken.None);
+
+        _logger.LogInformation("Verified identity for person {PersonId} by user {VerifiedBy}", 
+            personId, verifiedByUserId);
+
+        // Audit the identity verification
+        var auditDetails = JsonSerializer.Serialize(new
+        {
+            PersonId = personId,
+            VerifiedBy = verifiedByUserId,
+            VerifiedAt = person.IdentityVerifiedAt,
+            NationalId = !string.IsNullOrWhiteSpace(person.NationalId) ? "***" : null,
+            PassportNumber = !string.IsNullOrWhiteSpace(person.PassportNumber) ? "***" : null,
+            ResidentCertificate = !string.IsNullOrWhiteSpace(person.ResidentCertificateNumber) ? "***" : null
+        });
+        await _auditService.LogEventAsync(
+            "PersonIdentityVerified",
+            verifiedByUserId.ToString(),
+            auditDetails,
+            null,
+            null);
+
+        return true;
     }
 }
