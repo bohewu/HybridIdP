@@ -139,24 +139,82 @@ public static class IdentityDocumentTypes
 
 ### Task 3: Business Logic & Validation
 
-#### Taiwan National ID Validation
+#### Taiwan National ID Validation (with Checksum)
 ```csharp
 public static class NationalIdValidator
 {
     // Taiwan ROC ID format: A123456789 (1 letter + 9 digits)
+    // Reference: https://zh.wikipedia.org/wiki/中華民國國民身分證
+    
+    private static readonly Dictionary<char, int> LetterValues = new()
+    {
+        {'A', 10}, {'B', 11}, {'C', 12}, {'D', 13}, {'E', 14}, {'F', 15},
+        {'G', 16}, {'H', 17}, {'I', 34}, {'J', 18}, {'K', 19}, {'L', 20},
+        {'M', 21}, {'N', 22}, {'O', 35}, {'P', 23}, {'Q', 24}, {'R', 25},
+        {'S', 26}, {'T', 27}, {'U', 28}, {'V', 29}, {'W', 32}, {'X', 30},
+        {'Y', 31}, {'Z', 33}
+    };
+    
     public static bool IsValidTaiwanNationalId(string? nationalId)
     {
         if (string.IsNullOrWhiteSpace(nationalId)) return false;
+        
+        nationalId = nationalId.Trim().ToUpper();
+        
+        // Format check: 1 letter + 9 digits
         if (nationalId.Length != 10) return false;
-        
-        // First character must be letter (A-Z)
         if (!char.IsLetter(nationalId[0])) return false;
-        
-        // Remaining 9 characters must be digits
         if (!nationalId.Substring(1).All(char.IsDigit)) return false;
         
-        // TODO: Add checksum validation for Taiwan ID
-        return true;
+        // Letter must be valid (A-Z)
+        if (!LetterValues.ContainsKey(nationalId[0])) return false;
+        
+        // ✅ Checksum validation
+        int letterValue = LetterValues[nationalId[0]];
+        int[] weights = { 1, 9, 8, 7, 6, 5, 4, 3, 2, 1 }; // 10 weights total
+        
+        // Convert letter to two digits (e.g., A=10 → [1, 0])
+        int firstDigit = letterValue / 10;
+        int secondDigit = letterValue % 10;
+        
+        // Calculate checksum
+        int sum = firstDigit * weights[0] + secondDigit * weights[1];
+        
+        for (int i = 1; i < 9; i++)
+        {
+            sum += (nationalId[i] - '0') * weights[i + 1];
+        }
+        
+        int lastDigit = nationalId[9] - '0';
+        int checksum = (10 - (sum % 10)) % 10;
+        
+        return checksum == lastDigit;
+    }
+    
+    public static bool IsValidPassportNumber(string? passportNumber)
+    {
+        if (string.IsNullOrWhiteSpace(passportNumber)) return false;
+        
+        passportNumber = passportNumber.Trim().ToUpper();
+        
+        // Taiwan passport format: 9 alphanumeric characters (e.g., 300123456)
+        // International standard: 6-9 characters
+        if (passportNumber.Length < 6 || passportNumber.Length > 12) return false;
+        
+        return passportNumber.All(c => char.IsLetterOrDigit(c));
+    }
+    
+    public static bool IsValidResidentCertificateNumber(string? residentCert)
+    {
+        if (string.IsNullOrWhiteSpace(residentCert)) return false;
+        
+        residentCert = residentCert.Trim().ToUpper();
+        
+        // Taiwan Resident Certificate format: Similar to National ID
+        // Format: 2 letters + 8 digits (e.g., AA12345678) or 1 letter + 9 digits
+        if (residentCert.Length < 10 || residentCert.Length > 12) return false;
+        
+        return residentCert.All(c => char.IsLetterOrDigit(c));
     }
 }
 ```
@@ -201,11 +259,13 @@ public async Task<(bool success, string? errorMessage)> CheckPersonUniquenessAsy
 - [ ] Link new user to existing Person if identity document matches
 - [ ] Show warning if Person already has linked accounts (security check)
 
-### Task 6: E2E Test Fixes
+### Task 6: E2E Test Fixes (Phase 10.6.5 - Final Sub-Phase)
 - [ ] Update `multi-account-login.spec.ts` to handle Phase 10.4 auto-linking
+- [ ] Provide valid NationalId in Person creation for E2E tests
 - [ ] Add test for duplicate identity document rejection
 - [ ] Add test for identity verification workflow
 - [ ] Add test for linking user to existing Person by identity document
+- [ ] Ensure all 108 E2E tests pass with identity requirement
 
 ### Task 7: Audit & Security
 - [ ] Log all identity document access (PII compliance)
@@ -276,16 +336,19 @@ public async Task<(bool success, string? errorMessage)> CheckPersonUniquenessAsy
 // appsettings.json - Phase 10.6 Settings
 {
   "PersonIdentitySettings": {
-    "RequireIdentityDocumentOnCreation": false,  // Start with optional
+    "RequireIdentityDocumentOnCreation": true,   // ✅ REQUIRED for all new Persons
+    "DefaultAdminNationalId": "A123456789",      // Default for admin accounts
     "AllowedDocumentTypes": [
       "NationalId",
       "Passport", 
       "ResidentCertificate"
     ],
-    "EnableAutomaticVerification": false,  // Manual verification initially
-    "MaskIdentityDocumentsInUI": true,     // Show only last 4 digits
-    "IdentityDocumentMaxAge": 3650,        // 10 years before re-verification
-    "RequireVerificationForSensitiveOps": false  // Future: require for password reset, etc.
+    "EnableAutomaticVerification": false,        // Manual verification initially
+    "EnableTaiwanIdChecksumValidation": true,    // ✅ Validate Taiwan ID checksum
+    "MaskIdentityDocumentsInUI": true,           // Show only last 4 digits
+    "IdentityDocumentMaxAge": 3650,              // 10 years before re-verification
+    "RequireVerificationForSensitiveOps": false, // Future: require for password reset, etc.
+    "UseColumnLevelEncryption": false            // ✅ Future: Use MSSQL Always Encrypted
   }
 }
 ```
@@ -294,9 +357,16 @@ public async Task<(bool success, string? errorMessage)> CheckPersonUniquenessAsy
 
 ### 1. Data Privacy
 - Identity documents are **Personally Identifiable Information (PII)**
-- Encrypt at rest (consider Azure Key Vault or similar)
-- Mask in logs and UI
-- Restrict access to administrators only
+- ✅ **Access Control Only** (Phase 10.6)
+  - Restrict viewing to Administrator role
+  - Mask in logs (show only last 4 digits)
+  - Mask in UI (show `A*****6789`)
+  - Audit all access to identity documents
+- 🔮 **Future: MSSQL Always Encrypted** (Post Phase 10.6)
+  - Column-level encryption for `NationalId`, `PassportNumber`, `ResidentCertificateNumber`
+  - Transparent encryption/decryption at application layer
+  - Key management via Azure Key Vault or HSM
+  - Reference: [SQL Server Always Encrypted](https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine)
 
 ### 2. Compliance
 - GDPR: Right to erasure (soft delete Person with identity documents)
@@ -348,11 +418,13 @@ public static class Permissions
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Users refuse to provide ID | Medium | Make identity documents optional initially |
-| Identity document format varies by country | High | Start with Taiwan ID only, expand later |
-| Data privacy violations | High | Implement encryption, access controls, audit logs |
+| Users refuse to provide ID | ~~Medium~~ Low | ✅ REQUIRED - clean slate approach with test data deletion |
+| Identity document format varies by country | High | Start with Taiwan ID only, expand later with passport/resident cert |
+| Data privacy violations | High | ✅ Access controls + audit logs (encryption via MSSQL later) |
 | Performance impact (unique index queries) | Low | Filtered indexes + proper indexing strategy |
-| Legacy data without identity documents | Medium | Gradual migration, NULL handling |
+| Legacy data without identity documents | ~~Medium~~ Low | ✅ Delete all non-admin data, set admin default |
+| Invalid Taiwan ID checksums in test data | Medium | Implement strict validation, provide valid test IDs |
+| E2E test failures with identity requirement | Medium | Update all E2E tests to provide valid identity documents |
 
 ## Future Enhancements (Post Phase 10.6)
 
@@ -370,10 +442,42 @@ public static class Permissions
 
 ## Estimated Timeline
 
-- Day 1: Database schema + migrations + entity updates
-- Day 2: Service layer + validation logic + duplicate detection
-- Day 3: Admin UI + identity verification workflow
-- Day 4: E2E tests + unit tests + documentation
+### Phase 10.6.1: Database Schema (Day 1)
+- Add identity fields to Person entity
+- Create EF Core migrations (SQL Server + PostgreSQL)
+- Add filtered unique indexes
+- Keep fields nullable at DB level
+
+### Phase 10.6.2: Data Migration (Day 1)
+- Create migration script to delete non-admin users/persons
+- Set default NationalId='A123456789' for admin accounts
+- Test migration on local environment
+
+### Phase 10.6.3: Service Layer & Validation (Day 2)
+- Implement Taiwan National ID checksum validation
+- Add REQUIRED validation at application level
+- Implement duplicate detection logic
+- Update PersonService CRUD methods
+- Add audit logging for PII access
+
+### Phase 10.6.4: Admin UI & Workflow (Day 3)
+- Add identity fields to Person create/edit forms
+- Implement identity document masking in UI
+- Add identity verification workflow
+- Add duplicate identity document error handling
+- Update person list/detail views
+
+### Phase 10.6.5: E2E Tests & Final Integration (Day 4)
+- Fix `multi-account-login.spec.ts` with identity documents
+- Add E2E tests for duplicate rejection
+- Add E2E tests for identity verification
+- Ensure all 108 E2E tests pass
+- Final testing and documentation
+
+### Phase 10.6.6: Future Enhancement (Post-Launch)
+- Integrate MSSQL Always Encrypted for column-level encryption
+- Azure Key Vault integration for key management
+- Government ID verification API integration
 
 ## References
 
