@@ -41,7 +41,7 @@
       }
     },
     "users": {
-      "pageTitle": "使用者管理",
+      "pageTitle": "帳號管理",
       "pageSubtitle": "管理使用者帳號、角色和權限",
       "createUser": "建立使用者",
       "search": "依電子郵件、姓名或 ID 搜尋使用者...",
