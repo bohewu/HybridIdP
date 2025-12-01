@@ -350,6 +350,40 @@ public class PersonsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Verify a person's identity document (Phase 10.6)
+    /// </summary>
+    [HttpPost("{id}/verify-identity")]
+    [HasPermission(Permissions.Persons.Update)]
+    public async Task<IActionResult> VerifyIdentity(Guid id)
+    {
+        try
+        {
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId == null)
+                return Unauthorized();
+
+            var verified = await _personService.VerifyPersonIdentityAsync(id, currentUserId.Value);
+
+            if (!verified)
+                return BadRequest("Person not found or no identity document provided");
+
+            await _auditService.LogEventAsync(
+                "PersonIdentityVerificationRequested",
+                currentUserId?.ToString(),
+                $"Verified identity for person {id}",
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                HttpContext.Request.Headers["User-Agent"].ToString());
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying identity for person {PersonId}", id);
+            return StatusCode(500, "An error occurred while verifying the identity");
+        }
+    }
+
     #region Helper Methods
 
     private Guid? GetCurrentUserId()
@@ -376,7 +410,12 @@ public class PersonsController : ControllerBase
             Birthdate = dto.Birthdate,
             Gender = dto.Gender,
             TimeZone = dto.TimeZone,
-            Locale = dto.Locale
+            Locale = dto.Locale,
+            // Phase 10.6: Identity fields
+            NationalId = dto.NationalId,
+            PassportNumber = dto.PassportNumber,
+            ResidentCertificateNumber = dto.ResidentCertificateNumber,
+            IdentityDocumentType = dto.IdentityDocumentType
         };
     }
 
@@ -404,6 +443,13 @@ public class PersonsController : ControllerBase
             CreatedBy = person.CreatedBy,
             ModifiedAt = person.ModifiedAt,
             ModifiedBy = person.ModifiedBy,
+            // Phase 10.6: Identity fields
+            NationalId = person.NationalId,
+            PassportNumber = person.PassportNumber,
+            ResidentCertificateNumber = person.ResidentCertificateNumber,
+            IdentityDocumentType = person.IdentityDocumentType,
+            IdentityVerifiedAt = person.IdentityVerifiedAt,
+            IdentityVerifiedBy = person.IdentityVerifiedBy,
             Accounts = person.Accounts?.Select(a => new LinkedAccountDto
             {
                 Id = a.Id,

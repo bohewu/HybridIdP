@@ -149,6 +149,41 @@ const handleFormClose = () => {
   selectedPerson.value = null
 }
 
+const handleVerifyIdentity = async (person) => {
+  if (!canUpdate.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = t('deniedMessages.update')
+    deniedPermission.value = Permissions.Persons.Update
+    return
+  }
+
+  if (!person.nationalId && !person.passportNumber && !person.residentCertificateNumber) {
+    alert(t('admin.persons.errors.noIdentityDocument'))
+    return
+  }
+
+  if (!confirm(t('admin.persons.confirmations.verifyIdentity', { name: `${person.firstName} ${person.lastName}` }))) {
+    return
+  }
+
+  try {
+    const response = await fetch(`/api/admin/persons/${person.id}/verify-identity`, {
+      method: 'POST'
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(errorText || `HTTP error! status: ${response.status}`)
+    }
+
+    await fetchPersons()
+    alert(t('admin.persons.alerts.verifySuccess'))
+  } catch (e) {
+    alert(t('admin.persons.errors.verifyFailed', { message: e.message }))
+    console.error('Error verifying identity:', e)
+  }
+}
+
 const handleFormSave = async () => {
   showForm.value = false
   selectedPerson.value = null
@@ -282,6 +317,9 @@ watch([page, pageSize, search], () => {
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {{ t('admin.persons.table.linkedAccounts') }}
                 </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('admin.persons.table.identityStatus') }}
+                </th>
                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {{ t('admin.persons.table.actions') }}
                 </th>
@@ -324,6 +362,18 @@ watch([page, pageSize, search], () => {
                   </span>
                   <span v-else class="text-sm text-gray-400">0</span>
                 </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span v-if="person.identityVerifiedAt" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <svg class="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                    {{ t('admin.persons.verified') }}
+                  </span>
+                  <span v-else-if="person.nationalId || person.passportNumber || person.residentCertificateNumber" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    {{ t('admin.persons.unverified') }}
+                  </span>
+                  <span v-else class="text-sm text-gray-400">-</span>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex items-center justify-end space-x-2">
                     <button
@@ -334,6 +384,16 @@ watch([page, pageSize, search], () => {
                     >
                       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </button>
+                    <button
+                      v-if="canUpdate && !person.identityVerifiedAt && (person.nationalId || person.passportNumber || person.residentCertificateNumber)"
+                      @click="handleVerifyIdentity(person)"
+                      class="text-green-600 hover:text-green-900"
+                      :title="t('admin.persons.verifyIdentity')"
+                    >
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </button>
                     <button

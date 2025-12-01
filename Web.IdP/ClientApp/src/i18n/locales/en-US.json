@@ -260,6 +260,9 @@
       "accounts": "Accounts",
       "manageAccounts": "Manage Linked Accounts",
       "linkedAccountsCount": "{count} linked account(s)",
+      "verifyIdentity": "Verify Identity",
+      "verified": "Verified",
+      "unverified": "Unverified",
       "close": "Close",
       "save": "Save",
       "saving": "Saving...",
@@ -270,6 +273,7 @@
         "department": "Department",
         "jobTitle": "Job Title",
         "linkedAccounts": "Linked Accounts",
+        "identityStatus": "Identity Status",
         "actions": "Actions"
       },
       "form": {
@@ -285,7 +289,23 @@
         "address": "Address",
         "timeZone": "Time Zone",
         "locale": "Locale",
-        "personalInfo": "Personal Information"
+        "personalInfo": "Personal Information",
+        "identityVerification": "Identity Verification",
+        "identityDocumentType": "Identity Document Type",
+        "documentTypes": {
+          "none": "None",
+          "nationalId": "National ID (Taiwan ROC)",
+          "passport": "Passport",
+          "residentCertificate": "Resident Certificate"
+        },
+        "nationalId": "National ID (身分證)",
+        "nationalIdPlaceholder": "e.g., A123456789",
+        "nationalIdHint": "Taiwan ROC ID format",
+        "passportNumber": "Passport Number",
+        "passportPlaceholder": "e.g., 300123456",
+        "residentCertificate": "Resident Certificate",
+        "residentCertPlaceholder": "e.g., AA12345678",
+        "identityVerified": "Identity verified on"
       },
       "linkedAccounts": {
         "title": "Linked Accounts",
@@ -322,13 +342,17 @@
         "saveFailed": "Failed to save person: {message}",
         "deleteFailed": "Failed to delete person: {message}",
         "firstNameRequired": "First name is required.",
-        "lastNameRequired": "Last name is required."
+        "lastNameRequired": "Last name is required.",
+        "noIdentityDocument": "This person has no identity document to verify.",
+        "verifyFailed": "Failed to verify identity: {message}"
       },
       "alerts": {
-        "deleteSuccess": "Person deleted successfully."
+        "deleteSuccess": "Person deleted successfully.",
+        "verifySuccess": "Identity verified successfully."
       },
       "confirmations": {
-        "delete": "Are you sure you want to delete {name}? This will unlink all associated accounts but will not delete the accounts themselves."
+        "delete": "Are you sure you want to delete {name}? This will unlink all associated accounts but will not delete the accounts themselves.",
+        "verifyIdentity": "Are you sure you want to verify the identity of {name}? This action will mark the identity document as verified."
       }
     },
     "clients": {

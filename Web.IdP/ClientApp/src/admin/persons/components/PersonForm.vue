@@ -36,7 +36,12 @@ const formData = ref({
 	locale: '',
 	profileUrl: '',
 	pictureUrl: '',
-	website: ''
+	website: '',
+	// Phase 10.6: Identity fields
+	nationalId: '',
+	passportNumber: '',
+	residentCertificateNumber: '',
+	identityDocumentType: 'None'
 })
 
 // Load person data for edit
@@ -58,7 +63,12 @@ if (props.person) {
 		locale: props.person.locale || '',
 		profileUrl: props.person.profileUrl || '',
 		pictureUrl: props.person.pictureUrl || '',
-		website: props.person.website || ''
+		website: props.person.website || '',
+		// Phase 10.6: Identity fields
+		nationalId: props.person.nationalId || '',
+		passportNumber: props.person.passportNumber || '',
+		residentCertificateNumber: props.person.residentCertificateNumber || '',
+		identityDocumentType: props.person.identityDocumentType || 'None'
 	}
 }
 
@@ -242,6 +252,74 @@ const handleClose = () => {
 									<input id="locale" v-model="formData.locale" type="text"
 										:placeholder="t('admin.persons.form.locale')"
 										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+								</div>
+							</div>
+						</div>
+
+						<!-- Phase 10.6: Identity Verification -->
+						<div class="border-t pt-4">
+							<h4 class="text-sm font-medium text-gray-700 mb-3">{{ t('admin.persons.form.identityVerification')
+								}}</h4>
+							
+							<div class="mb-4">
+								<label for="identityDocumentType" class="block text-sm font-medium text-gray-700">
+									{{ t('admin.persons.form.identityDocumentType') }}
+								</label>
+								<select id="identityDocumentType" v-model="formData.identityDocumentType"
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+									<option value="None">{{ t('admin.persons.form.documentTypes.none') }}</option>
+									<option value="NationalId">{{ t('admin.persons.form.documentTypes.nationalId') }}</option>
+									<option value="Passport">{{ t('admin.persons.form.documentTypes.passport') }}</option>
+									<option value="ResidentCertificate">{{ t('admin.persons.form.documentTypes.residentCertificate') }}</option>
+								</select>
+							</div>
+
+							<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+								<div>
+									<label for="nationalId" class="block text-sm font-medium text-gray-700">
+										{{ t('admin.persons.form.nationalId') }}
+									</label>
+									<input id="nationalId" v-model="formData.nationalId" type="text"
+										:placeholder="t('admin.persons.form.nationalIdPlaceholder')"
+										maxlength="20"
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									<p class="mt-1 text-xs text-gray-500">{{ t('admin.persons.form.nationalIdHint') }}</p>
+								</div>
+
+								<div>
+									<label for="passportNumber" class="block text-sm font-medium text-gray-700">
+										{{ t('admin.persons.form.passportNumber') }}
+									</label>
+									<input id="passportNumber" v-model="formData.passportNumber" type="text"
+										:placeholder="t('admin.persons.form.passportPlaceholder')"
+										maxlength="20"
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+								</div>
+
+								<div>
+									<label for="residentCertificateNumber" class="block text-sm font-medium text-gray-700">
+										{{ t('admin.persons.form.residentCertificate') }}
+									</label>
+									<input id="residentCertificateNumber" v-model="formData.residentCertificateNumber" type="text"
+										:placeholder="t('admin.persons.form.residentCertPlaceholder')"
+										maxlength="20"
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+								</div>
+							</div>
+
+							<div v-if="isEdit && props.person.identityVerifiedAt" class="mt-4 bg-green-50 border-l-4 border-green-400 p-3">
+								<div class="flex">
+									<div class="flex-shrink-0">
+										<svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+											<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+										</svg>
+									</div>
+									<div class="ml-3">
+										<p class="text-sm text-green-700">
+											{{ t('admin.persons.form.identityVerified') }}
+											<span class="font-medium">{{ new Date(props.person.identityVerifiedAt).toLocaleDateString() }}</span>
+										</p>
+									</div>
 								</div>
 							</div>
 						</div>
