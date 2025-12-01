@@ -109,7 +109,7 @@
                 }
                 @if (userPermissions.HasPermission(Permissions.Persons.Read))
                 {
-                    <a href="/Admin/People" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/People" ? "active" : "")">
+                    <a href="/Admin/Persons" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Persons" ? "active" : "")">
                         <i class="bi bi-person-vcard"></i>
                         <span>@Localizer["Persons"]</span>
                     </a>

@@ -128,7 +128,7 @@ const handleDelete = async (person) => {
   }
   
   try {
-    const response = await fetch(`/api/admin/people/${person.id}`, {
+    const response = await fetch(`/api/admin/persons/${person.id}`, {
       method: 'DELETE'
     })
     
@@ -167,7 +167,7 @@ const handleVerifyIdentity = async (person) => {
   }
 
   try {
-    const response = await fetch(`/api/admin/people/${person.id}/verify-identity`, {
+    const response = await fetch(`/api/admin/persons/${person.id}/verify-identity`, {
       method: 'POST',
     })
 
