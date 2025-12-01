@@ -89,8 +89,8 @@ const handleSubmit = async () => {
 
 	try {
 		const url = isEdit.value
-			? `/api/admin/persons/${props.person.id}`
-			: '/api/admin/persons'
+			? `/api/admin/people/${props.person.id}`
+			: '/api/admin/people'
 
 		const method = isEdit.value ? 'PUT' : 'POST'
 

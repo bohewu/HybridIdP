@@ -35,7 +35,7 @@ const fetchLinkedAccounts = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch(`/api/admin/persons/${props.person.id}/accounts`)
+    const response = await fetch(`/api/admin/people/${props.person.id}/accounts`)
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
@@ -57,7 +57,7 @@ const fetchAvailableUsers = async () => {
       params.append('search', searchTerm.value)
     }
     
-    const response = await fetch(`/api/admin/persons/available-users?${params.toString()}`)
+    const response = await fetch(`/api/admin/people/available-users?${params.toString()}`)
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
@@ -91,7 +91,7 @@ const handleLinkAccount = async () => {
   error.value = null
   
   try {
-    const response = await fetch(`/api/admin/persons/${props.person.id}/accounts`, {
+    const response = await fetch(`/api/admin/people/${props.person.id}/accounts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -126,7 +126,7 @@ const handleUnlinkAccount = async (account) => {
   error.value = null
   
   try {
-    const response = await fetch(`/api/admin/persons/accounts/${account.id}`, {
+    const response = await fetch(`/api/admin/people/accounts/${account.id}`, {
       method: 'DELETE'
     })
     

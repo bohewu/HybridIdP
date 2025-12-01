@@ -1,14 +1,13 @@
--- Delete all persons except the admin person
--- This script preserves the admin person and removes all others
--- PersonIdentities linking will be preserved for admin, others will be removed
+-- Delete all persons except the admin person (SQL Server syntax)
+-- This script preserves the person linked to admin user
+-- Finds admin's PersonId via AspNetUsers table
 
--- First, remove PersonIdentities for non-admin persons
-DELETE FROM "PersonIdentities" 
-WHERE "PersonId" IN (
-    SELECT "Id" FROM "Persons" 
-    WHERE "Email" != 'admin@hybridauth.local'
+SET QUOTED_IDENTIFIER ON;
+GO
+
+-- Delete all persons except the one linked to admin user
+DELETE FROM [Persons] 
+WHERE [Id] NOT IN (
+    SELECT [PersonId] FROM [AspNetUsers] 
+    WHERE [Email] = 'admin@hybridauth.local' AND [PersonId] IS NOT NULL
 );
-
--- Then, delete all persons except admin
-DELETE FROM "Persons" 
-WHERE "Email" != 'admin@hybridauth.local';
