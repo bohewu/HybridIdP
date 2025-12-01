@@ -28,7 +28,7 @@
     <value>身分管理</value>
   </data>
   <data name="Users" xml:space="preserve">
-    <value>帳號管理</value>
+    <value>使用者</value>
   </data>
   <data name="Roles" xml:space="preserve">
     <value>角色</value>
