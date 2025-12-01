@@ -181,15 +181,15 @@ Phase 10.2 implements the complete service layer and Admin API for Person manage
 
 **API Endpoints:**
 ```
-GET    /api/admin/persons              - List persons (paginated)
-GET    /api/admin/persons/search       - Search by term
-GET    /api/admin/persons/{id}         - Get specific person
-POST   /api/admin/persons              - Create person
-PUT    /api/admin/persons/{id}         - Update person
-DELETE /api/admin/persons/{id}         - Delete person
-GET    /api/admin/persons/{id}/accounts    - Get linked accounts
-POST   /api/admin/persons/{id}/accounts    - Link account
-DELETE /api/admin/persons/accounts/{userId} - Unlink account
+GET    /api/admin/people              - List persons (paginated)
+GET    /api/admin/people/search       - Search by term
+GET    /api/admin/people/{id}         - Get specific person
+POST   /api/admin/people              - Create person
+PUT    /api/admin/people/{id}         - Update person
+DELETE /api/admin/people/{id}         - Delete person
+GET    /api/admin/people/{id}/accounts    - Get linked accounts
+POST   /api/admin/people/{id}/accounts    - Link account
+DELETE /api/admin/people/accounts/{userId} - Unlink account
 ```
 
 **Testing:**

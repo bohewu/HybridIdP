@@ -6,7 +6,7 @@ namespace Web.IdP.Pages.Admin;
 
 // Allow access with persons.read permission OR Admin role
 [Authorize(Policy = Permissions.Persons.Read)]
-public class PersonsModel : PageModel
+public class PeopleModel : PageModel
 {
     public void OnGet()
     {

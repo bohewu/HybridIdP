@@ -34,8 +34,8 @@ test('Admin - Persons Account Linking (link and unlink)', async ({ page }) => {
   }, personData);
 
   // Navigate to Persons page
-  await page.goto('https://localhost:7035/Admin/Persons');
-  await page.waitForURL(/\/Admin\/Persons/);
+  await page.goto('https://localhost:7035/Admin/People');
+  await page.waitForURL(/\/Admin\/People/);
 
   // Search for the person
   const searchInput = page.locator('input[type="text"]').first();
@@ -140,7 +140,7 @@ test('Admin - Persons Account Linking via API', async ({ page }) => {
   };
 
   const createdPerson = await page.evaluate(async (data) => {
-    const r = await fetch('/api/admin/persons', {
+    const r = await fetch('/api/admin/people', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -154,7 +154,7 @@ test('Admin - Persons Account Linking via API', async ({ page }) => {
 
   // Verify link via API
   const linkedAccounts = await page.evaluate(async (personId) => {
-    const r = await fetch(`/api/admin/persons/${personId}/accounts`);
+    const r = await fetch(`/api/admin/people/${personId}/accounts`);
     if (!r.ok) throw new Error(`Failed to fetch accounts: ${r.status}`);
     return r.json();
   }, createdPerson.id);
@@ -172,7 +172,7 @@ test('Admin - Persons Account Linking via API', async ({ page }) => {
 
   // Verify unlink
   const linkedAccountsAfter = await page.evaluate(async (personId) => {
-    const r = await fetch(`/api/admin/persons/${personId}/accounts`);
+    const r = await fetch(`/api/admin/people/${personId}/accounts`);
     if (!r.ok) throw new Error(`Failed to fetch accounts: ${r.status}`);
     return r.json();
   }, createdPerson.id);
@@ -210,7 +210,7 @@ test('Admin - Persons Duplicate Account Linking Prevention', async ({ page }) =>
   };
 
   const createdPerson1 = await page.evaluate(async (data) => {
-    const r = await fetch('/api/admin/persons', {
+    const r = await fetch('/api/admin/people', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -220,7 +220,7 @@ test('Admin - Persons Duplicate Account Linking Prevention', async ({ page }) =>
   }, person1Data);
 
   const createdPerson2 = await page.evaluate(async (data) => {
-    const r = await fetch('/api/admin/persons', {
+    const r = await fetch('/api/admin/people', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -234,7 +234,7 @@ test('Admin - Persons Duplicate Account Linking Prevention', async ({ page }) =>
 
   // Attempt to link the same user to person2 (should fail)
   const linkResult = await page.evaluate(async ({ personId, userId }) => {
-    const r = await fetch(`/api/admin/persons/${personId}/accounts`, {
+    const r = await fetch(`/api/admin/people/${personId}/accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId })
@@ -248,7 +248,7 @@ test('Admin - Persons Duplicate Account Linking Prevention', async ({ page }) =>
 
   // Verify user is still linked to person1
   const linkedAccounts1 = await page.evaluate(async (personId) => {
-    const r = await fetch(`/api/admin/persons/${personId}/accounts`);
+    const r = await fetch(`/api/admin/people/${personId}/accounts`);
     if (!r.ok) throw new Error(`Failed to fetch accounts: ${r.status}`);
     return r.json();
   }, createdPerson1.id);
@@ -258,7 +258,7 @@ test('Admin - Persons Duplicate Account Linking Prevention', async ({ page }) =>
 
   // Verify user is NOT linked to person2
   const linkedAccounts2 = await page.evaluate(async (personId) => {
-    const r = await fetch(`/api/admin/persons/${personId}/accounts`);
+    const r = await fetch(`/api/admin/people/${personId}/accounts`);
     if (!r.ok) throw new Error(`Failed to fetch accounts: ${r.status}`);
     return r.json();
   }, createdPerson2.id);

@@ -90,7 +90,7 @@ test('Person with 2 accounts - login with either shows same profile', async ({ p
   // Step 3: Unlink account2 from auto-created Person2, then link to Person1
   // This tests multi-account Person functionality
   await page.evaluate(async (userId) => {
-    const response = await fetch(`/api/admin/persons/accounts/${userId}`, {
+    const response = await fetch(`/api/admin/people/accounts/${userId}`, {
       method: 'DELETE'
     });
     if (!response.ok) {
@@ -101,7 +101,7 @@ test('Person with 2 accounts - login with either shows same profile', async ({ p
 
   // Link account2 to Person1 (now both accounts share same Person)
   await page.evaluate(async ({ person1Id, userId }) => {
-    const response = await fetch(`/api/admin/persons/${person1Id}/accounts`, {
+    const response = await fetch(`/api/admin/people/${person1Id}/accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId })
@@ -156,7 +156,7 @@ test('Person with 2 accounts - login with either shows same profile', async ({ p
   await adminHelpers.loginAsAdminViaIdP(page);
 
   const linkedAccounts = await page.evaluate(async (pId) => {
-    const response = await fetch(`/api/admin/persons/${pId}/accounts`);
+    const response = await fetch(`/api/admin/people/${pId}/accounts`);
     const accounts = await response.json();
     return accounts;
   }, personId);
@@ -176,7 +176,7 @@ test('Person with 2 accounts - login with either shows same profile', async ({ p
 
   // Cleanup: Delete test person
   await page.evaluate(async (pId) => {
-    await fetch(`/api/admin/persons/${pId}`, { method: 'DELETE' });
+    await fetch(`/api/admin/people/${pId}`, { method: 'DELETE' });
   }, personId);
 
   console.log('✓ Cleanup completed');

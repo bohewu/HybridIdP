@@ -60,9 +60,9 @@ const fetchPersons = async () => {
       take: String(pageSize.value)
     })
     
-    let url = '/api/admin/persons'
+    let url = '/api/admin/people'
     if (search.value) {
-      url = '/api/admin/persons/search'
+      url = '/api/admin/people/search'
       params.append('term', search.value)
     }
     
@@ -128,7 +128,7 @@ const handleDelete = async (person) => {
   }
   
   try {
-    const response = await fetch(`/api/admin/persons/${person.id}`, {
+    const response = await fetch(`/api/admin/people/${person.id}`, {
       method: 'DELETE'
     })
     
@@ -167,7 +167,7 @@ const handleVerifyIdentity = async (person) => {
   }
 
   try {
-    const response = await fetch(`/api/admin/persons/${person.id}/verify-identity`, {
+    const response = await fetch(`/api/admin/people/${person.id}/verify-identity`, {
       method: 'POST',
     })
 

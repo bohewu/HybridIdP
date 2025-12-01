@@ -15,7 +15,7 @@ namespace Web.IdP.Controllers.Admin;
 /// Phase 10.3: Permission-based authorization
 /// </summary>
 [ApiController]
-[Route("api/admin/persons")]
+[Route("api/admin/people")]
 [Authorize]
 public class PersonsController : ControllerBase
 {

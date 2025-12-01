@@ -38,11 +38,11 @@ Phase 10 is intentionally designed as incremental tasks with tests at each step.
 ### Phase 10.2 - Services & API ✅ (Completed: 2025-11-29)
 - ✅ Add `IPersonService` interface and `PersonService` implementation.
 - ✅ Add controller endpoints:
-  - GET /api/admin/persons/{id}
-  - POST /api/admin/persons
-  - PUT /api/admin/persons/{id}
-  - GET /api/admin/persons/{id}/accounts
-  - POST /api/admin/persons/{id}/accounts (link existing account to person)
+  - GET /api/admin/people/{id}
+  - POST /api/admin/people
+  - PUT /api/admin/people/{id}
+  - GET /api/admin/people/{id}/accounts
+  - POST /api/admin/people/{id}/accounts (link existing account to person)
 - ✅ Add unit tests for the new service and controller methods.
 
 ### Phase 10.3 - UI and E2E ✅ (Completed: 2025-11-29)
@@ -317,7 +317,7 @@ See `docs/PROJECT_PROGRESS.md` for status and checklists.
    - Comprehensive logging via `ILogger`
 
 2. **API Layer (`PersonsController`)**
-   - 9 RESTful endpoints under `/api/admin/persons`
+   - 9 RESTful endpoints under `/api/admin/people`
    - Admin authorization via `[Authorize]` attribute
    - DTOs: `PersonDto`, `PersonResponseDto`, `LinkedAccountDto`, `PersonListResponseDto`
    - Full CRUD + Account Linking operations
@@ -330,15 +330,15 @@ See `docs/PROJECT_PROGRESS.md` for status and checklists.
 **API Endpoints:**
 
 ```http
-GET    /api/admin/persons              # List persons (paginated)
-GET    /api/admin/persons/search       # Search by term
-GET    /api/admin/persons/{id}         # Get specific person
-POST   /api/admin/persons              # Create person
-PUT    /api/admin/persons/{id}         # Update person
-DELETE /api/admin/persons/{id}         # Delete person
-GET    /api/admin/persons/{id}/accounts    # Get linked accounts
-POST   /api/admin/persons/{id}/accounts    # Link account
-DELETE /api/admin/persons/accounts/{userId} # Unlink account
+GET    /api/admin/people              # List persons (paginated)
+GET    /api/admin/people/search       # Search by term
+GET    /api/admin/people/{id}         # Get specific person
+POST   /api/admin/people              # Create person
+PUT    /api/admin/people/{id}         # Update person
+DELETE /api/admin/people/{id}         # Delete person
+GET    /api/admin/people/{id}/accounts    # Get linked accounts
+POST   /api/admin/people/{id}/accounts    # Link account
+DELETE /api/admin/people/accounts/{userId} # Unlink account
 ```
 
 **Files Created:**
@@ -370,18 +370,18 @@ dotnet run --project Web.IdP --launch-profile https
 
 # 3. Create person
 $token = "YOUR_ADMIN_TOKEN"
-Invoke-RestMethod -Uri "https://localhost:7035/api/admin/persons" `
+Invoke-RestMethod -Uri "https://localhost:7035/api/admin/people" `
   -Method POST `
   -Headers @{"Authorization"="Bearer $token"} `
   -ContentType "application/json" `
   -Body '{"firstName":"John","lastName":"Doe","employeeId":"E12345"}'
 
 # 4. List persons
-Invoke-RestMethod -Uri "https://localhost:7035/api/admin/persons" `
+Invoke-RestMethod -Uri "https://localhost:7035/api/admin/people" `
   -Headers @{"Authorization"="Bearer $token"}
 
 # 5. Search persons
-Invoke-RestMethod -Uri "https://localhost:7035/api/admin/persons/search?term=john" `
+Invoke-RestMethod -Uri "https://localhost:7035/api/admin/people/search?term=john" `
   -Headers @{"Authorization"="Bearer $token"}
 ```
 
@@ -408,7 +408,7 @@ Invoke-RestMethod -Uri "https://localhost:7035/api/admin/persons/search?term=joh
    - ✅ Full i18n support (en-US, zh-TW)
 
 2. **Router & Navigation**
-   - ✅ Admin route: `/Admin/Persons`
+   - ✅ Admin route: `/Admin/People`
    - ✅ Navigation menu item in Razor layout
    - ✅ Backend menu i18n (SharedResource files)
 

@@ -8,8 +8,8 @@ test('Admin - Persons CRUD (create, update, delete)', async ({ page }) => {
   await adminHelpers.loginAsAdminViaIdP(page);
 
   // Navigate to Persons admin page
-  await page.goto('https://localhost:7035/Admin/Persons');
-  await page.waitForURL(/\/Admin\/Persons/);
+  await page.goto('https://localhost:7035/Admin/People');
+  await page.waitForURL(/\/Admin\/People/);
 
   const timestamp = Date.now();
   const firstName = `E2EFirst${timestamp}`;
@@ -88,7 +88,7 @@ test('Admin - Persons Search', async ({ page }) => {
   };
 
   const createdPerson = await page.evaluate(async (data) => {
-    const r = await fetch('/api/admin/persons', {
+    const r = await fetch('/api/admin/people', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)

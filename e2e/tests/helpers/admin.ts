@@ -691,7 +691,7 @@ export async function createPerson(page: Page, firstName: string, lastName: stri
   };
   
   return await page.evaluate(async (p) => {
-    const r = await fetch('/api/admin/persons', {
+    const r = await fetch('/api/admin/people', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(p)
@@ -707,7 +707,7 @@ export async function createPerson(page: Page, firstName: string, lastName: stri
 export async function deletePerson(page: Page, personId: string) {
   try {
     await page.evaluate(async (id) => {
-      await fetch(`/api/admin/persons/${id}`, { method: 'DELETE' });
+      await fetch(`/api/admin/people/${id}`, { method: 'DELETE' });
     }, personId);
   } catch (e) {
     // swallow errors
@@ -716,7 +716,7 @@ export async function deletePerson(page: Page, personId: string) {
 
 export async function linkAccountToPerson(page: Page, personId: string, userId: string) {
   return await page.evaluate(async (args) => {
-    const r = await fetch(`/api/admin/persons/${args.personId}/accounts`, {
+    const r = await fetch(`/api/admin/people/${args.personId}/accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: args.userId })
@@ -730,7 +730,7 @@ export async function linkAccountToPerson(page: Page, personId: string, userId: 
 
 export async function unlinkAccountFromPerson(page: Page, userId: string) {
   return await page.evaluate(async (id) => {
-    const r = await fetch(`/api/admin/persons/accounts/${id}`, {
+    const r = await fetch(`/api/admin/people/accounts/${id}`, {
       method: 'DELETE'
     });
     if (!r.ok) {
@@ -743,7 +743,7 @@ export async function unlinkAccountFromPerson(page: Page, userId: string) {
 export async function getAvailableUsers(page: Page, searchTerm?: string) {
   return await page.evaluate(async (search) => {
     const params = search ? `?search=${encodeURIComponent(search)}` : '';
-    const r = await fetch(`/api/admin/persons/available-users${params}`);
+    const r = await fetch(`/api/admin/people/available-users${params}`);
     if (!r.ok) throw new Error(`Failed to get available users: ${r.status}`);
     return r.json();
   }, searchTerm || '');
