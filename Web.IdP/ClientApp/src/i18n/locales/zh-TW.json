@@ -28,7 +28,7 @@
           "action": "管理範圍"
         },
         "users": {
-          "title": "使用者",
+          "title": "帳號管理",
           "description": "管理使用者帳號、角色和身分管理的權限。",
           "action": "管理使用者",
           "badge": "階段 4"
@@ -260,6 +260,9 @@
       "accounts": "帳號",
       "manageAccounts": "管理連結帳號",
       "linkedAccountsCount": "已連結 {count} 個帳號",
+      "verifyIdentity": "驗證身分",
+      "verified": "已驗證",
+      "unverified": "未驗證",
       "close": "關閉",
       "save": "儲存",
       "saving": "儲存中...",
@@ -270,6 +273,7 @@
         "department": "部門",
         "jobTitle": "職位",
         "linkedAccounts": "連結帳號",
+        "identityStatus": "身分狀態",
         "actions": "動作"
       },
       "form": {
@@ -285,7 +289,23 @@
         "address": "地址",
         "timeZone": "時區",
         "locale": "地區設定",
-        "personalInfo": "個人資訊"
+        "personalInfo": "個人資訊",
+        "identityVerification": "身分驗證",
+        "identityDocumentType": "身分證件類型",
+        "documentTypes": {
+          "none": "無",
+          "nationalId": "國民身分證",
+          "passport": "護照",
+          "residentCertificate": "居留證"
+        },
+        "nationalId": "身分證字號",
+        "nationalIdPlaceholder": "例如：A123456789",
+        "nationalIdHint": "中華民國國民身分證格式",
+        "passportNumber": "護照號碼",
+        "passportPlaceholder": "例如：300123456",
+        "residentCertificate": "居留證號碼",
+        "residentCertPlaceholder": "例如：AA12345678",
+        "identityVerified": "身分已於以下時間驗證"
       },
       "linkedAccounts": {
         "title": "連結帳號",
@@ -322,13 +342,17 @@
         "saveFailed": "儲存人員失敗：{message}",
         "deleteFailed": "刪除人員失敗：{message}",
         "firstNameRequired": "名字為必填項。",
-        "lastNameRequired": "姓氏為必填項。"
+        "lastNameRequired": "姓氏為必填項。",
+        "noIdentityDocument": "此人員沒有身分證件可供驗證。",
+        "verifyFailed": "驗證身分失敗：{message}"
       },
       "alerts": {
-        "deleteSuccess": "人員已成功刪除。"
+        "deleteSuccess": "人員已成功刪除。",
+        "verifySuccess": "身分已成功驗證。"
       },
       "confirmations": {
-        "delete": "您確定要刪除 {name} 嗎？這將取消所有相關帳號的連結，但不會刪除帳號本身。"
+        "delete": "您確定要刪除 {name} 嗎？這將取消所有關聯帳號的連結，但不會刪除帳號本身。",
+        "verifyIdentity": "您確定要驗證 {name} 的身分嗎？此操作會將身分證件標記為已驗證。"
       }
     },
     "clients": {
@@ -646,6 +670,7 @@
     "clientId": "客戶端 ID",
     "status": "狀態",
     "actions": "操作",
+    "username": "使用者名稱",
     "email": "電子郵件",
     "department": "部門",
     "roles": "角色",

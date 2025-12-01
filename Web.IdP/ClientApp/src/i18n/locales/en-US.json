@@ -670,6 +670,7 @@
     "clientId": "Client ID",
     "status": "Status",
     "actions": "Actions",
+    "username": "Username",
     "email": "Email",
     "department": "Department",
     "roles": "Roles",

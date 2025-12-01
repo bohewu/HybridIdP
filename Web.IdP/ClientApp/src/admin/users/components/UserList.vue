@@ -125,6 +125,15 @@ const getSortIcon = (field) => {
           <thead class="bg-gray-50">
             <tr>
               <th
+                @click="handleSort('userName')"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              >
+                <div class="flex items-center space-x-1">
+                  <span>{{ $t('tableHeaders.username') }}</span>
+                  <span v-html="getSortIcon('userName')"></span>
+                </div>
+              </th>
+              <th
                 @click="handleSort('email')"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
@@ -162,8 +171,11 @@ const getSortIcon = (field) => {
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ user.email }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ user.userName }}</div>
                 <div v-if="user.employeeId" class="text-sm text-gray-500">{{ t('userDetails.id', { id: user.employeeId }) }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">{{ user.email }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div v-if="user.firstName || user.lastName" class="text-sm text-gray-900">
