@@ -740,6 +740,19 @@ export async function unlinkAccountFromPerson(page: Page, userId: string) {
   }, userId);
 }
 
+export async function createUnlinkedUser(page: Page, email: string, password: string, roleIdentifiers: string[] = []) {
+  const user = await createUserWithRole(page, email, password, roleIdentifiers);
+  
+  // Check if user was auto-linked to a person and unlink it
+  try {
+    await unlinkAccountFromPerson(page, user.id);
+  } catch (e) {
+    // User might not be linked, which is fine
+  }
+  
+  return user;
+}
+
 export async function getAvailableUsers(page: Page, searchTerm?: string) {
   return await page.evaluate(async (search) => {
     const params = search ? `?search=${encodeURIComponent(search)}` : '';
@@ -835,7 +848,9 @@ export async function verifyPersonIdentity(page: Page, personId: string) {
       const errorText = await r.text();
       throw new Error(`Failed to verify person identity: ${r.status} - ${errorText}`);
     }
-    return r.json();
+    // API might return 204 No Content, check content before parsing JSON
+    const text = await r.text();
+    return text ? JSON.parse(text) : null;
   }, personId);
 }
 
@@ -883,5 +898,6 @@ export default {
     createPersonWithIdentity,
     updatePersonIdentity,
     verifyPersonIdentity,
-    getPersonDetails
+    getPersonDetails,
+    createUnlinkedUser
 }
