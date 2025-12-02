@@ -7,13 +7,22 @@ namespace Core.Application.DTOs;
 /// </summary>
 public class PersonDto
 {
+    // Contact Information
+    public string? Email { get; set; }
+    public string? PhoneNumber { get; set; }
+    
+    // Name Information
     public string? FirstName { get; set; }
     public string? MiddleName { get; set; }
     public string? LastName { get; set; }
     public string? Nickname { get; set; }
+    
+    // Employment Information
     public string? EmployeeId { get; set; }
     public string? Department { get; set; }
     public string? JobTitle { get; set; }
+    
+    // Profile Information
     public string? ProfileUrl { get; set; }
     public string? PictureUrl { get; set; }
     public string? Website { get; set; }

@@ -68,6 +68,14 @@ public class PersonService : IPersonService
         person.ModifiedAt = null;
         person.ModifiedBy = null;
 
+        // Normalize empty strings to null (prevents unique index violations and improves data consistency)
+        person.Email = string.IsNullOrWhiteSpace(person.Email) ? null : person.Email;
+        person.PhoneNumber = string.IsNullOrWhiteSpace(person.PhoneNumber) ? null : person.PhoneNumber;
+        person.EmployeeId = string.IsNullOrWhiteSpace(person.EmployeeId) ? null : person.EmployeeId;
+        person.NationalId = string.IsNullOrWhiteSpace(person.NationalId) ? null : person.NationalId;
+        person.PassportNumber = string.IsNullOrWhiteSpace(person.PassportNumber) ? null : person.PassportNumber;
+        person.ResidentCertificateNumber = string.IsNullOrWhiteSpace(person.ResidentCertificateNumber) ? null : person.ResidentCertificateNumber;
+
         // Validate EmployeeId uniqueness if provided
         if (!string.IsNullOrWhiteSpace(person.EmployeeId))
         {
@@ -145,6 +153,14 @@ public class PersonService : IPersonService
         var existingPerson = await GetPersonByIdAsync(personId);
         if (existingPerson == null)
             return null;
+
+        // Normalize empty strings to null (prevents unique index violations and improves data consistency)
+        person.Email = string.IsNullOrWhiteSpace(person.Email) ? null : person.Email;
+        person.PhoneNumber = string.IsNullOrWhiteSpace(person.PhoneNumber) ? null : person.PhoneNumber;
+        person.EmployeeId = string.IsNullOrWhiteSpace(person.EmployeeId) ? null : person.EmployeeId;
+        person.NationalId = string.IsNullOrWhiteSpace(person.NationalId) ? null : person.NationalId;
+        person.PassportNumber = string.IsNullOrWhiteSpace(person.PassportNumber) ? null : person.PassportNumber;
+        person.ResidentCertificateNumber = string.IsNullOrWhiteSpace(person.ResidentCertificateNumber) ? null : person.ResidentCertificateNumber;
 
         // Validate EmployeeId uniqueness if changed
         if (!string.IsNullOrWhiteSpace(person.EmployeeId) && 

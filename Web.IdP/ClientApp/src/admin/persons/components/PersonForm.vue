@@ -181,7 +181,7 @@ const handleSubmit = async () => {
 			: '/api/admin/people'
 
 		const method = isEdit.value ? 'PUT' : 'POST'
-
+		
 		const response = await fetch(url, {
 			method,
 			headers: {

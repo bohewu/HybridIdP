@@ -396,13 +396,19 @@ public class PersonsController : ControllerBase
     {
         return new Person
         {
+            // Contact Information
+            Email = dto.Email,
+            PhoneNumber = dto.PhoneNumber,
+            // Name Information
             FirstName = dto.FirstName,
             MiddleName = dto.MiddleName,
             LastName = dto.LastName,
             Nickname = dto.Nickname,
+            // Employment Information
             EmployeeId = dto.EmployeeId,
             Department = dto.Department,
             JobTitle = dto.JobTitle,
+            // Profile Information
             ProfileUrl = dto.ProfileUrl,
             PictureUrl = dto.PictureUrl,
             Website = dto.Website,
@@ -424,13 +430,19 @@ public class PersonsController : ControllerBase
         return new PersonResponseDto
         {
             Id = person.Id,
+            // Contact Information
+            Email = person.Email,
+            PhoneNumber = person.PhoneNumber,
+            // Name Information
             FirstName = person.FirstName,
             MiddleName = person.MiddleName,
             LastName = person.LastName,
             Nickname = person.Nickname,
+            // Employment Information
             EmployeeId = person.EmployeeId,
             Department = person.Department,
             JobTitle = person.JobTitle,
+            // Profile Information
             ProfileUrl = person.ProfileUrl,
             PictureUrl = person.PictureUrl,
             Website = person.Website,
@@ -438,6 +450,7 @@ public class PersonsController : ControllerBase
             Birthdate = person.Birthdate,
             Gender = person.Gender,
             TimeZone = person.TimeZone,
+            
             Locale = person.Locale,
             CreatedAt = person.CreatedAt,
             CreatedBy = person.CreatedBy,
