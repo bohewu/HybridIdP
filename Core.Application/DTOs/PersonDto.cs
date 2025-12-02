@@ -58,14 +58,18 @@ public class PersonResponseDto : PersonDto
 
 /// <summary>
 /// DTO for linked account information
+/// Phase 11.2: Extended with Roles and IsCurrentAccount for account management
 /// </summary>
 public class LinkedAccountDto
 {
     public Guid Id { get; set; }
+    public Guid UserId { get; set; } // Phase 11.2: Added for clarity (same as Id)
     public string? UserName { get; set; }
     public string? Email { get; set; }
     public bool IsActive { get; set; }
     public DateTime? LastLoginDate { get; set; }
+    public List<string> Roles { get; set; } = new(); // Phase 11.2: User's assigned roles
+    public bool IsCurrentAccount { get; set; } // Phase 11.2: Indicates if this is the current account
 }
 
 /// <summary>
@@ -85,4 +89,17 @@ public class PersonListResponseDto
     public int TotalCount { get; set; }
     public int Skip { get; set; }
     public int Take { get; set; }
+}
+
+/// <summary>
+/// DTO for available role information
+/// Phase 11.2: Account Management - Role Switching
+/// </summary>
+public class AvailableRoleDto
+{
+    public Guid RoleId { get; set; }
+    public string RoleName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsActive { get; set; } // True if this is the currently active role in the session
+    public bool RequiresPasswordConfirmation { get; set; } // True for Admin and other sensitive roles
 }

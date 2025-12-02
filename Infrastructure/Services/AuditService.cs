@@ -3,6 +3,7 @@ using Core.Application.DTOs;
 using Core.Domain.Entities;
 using Core.Domain.Events;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -35,12 +36,14 @@ public class AuditService : IAuditService,
     IDomainEventHandler<SecurityPolicyUpdatedEvent>
 {
     private readonly IApplicationDbContext _db;
+    private readonly ApplicationDbContext _dbContext; // For accessing Roles DbSet
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly ISettingsService _settingsService;
 
-    public AuditService(IApplicationDbContext db, IDomainEventPublisher eventPublisher, ISettingsService settingsService)
+    public AuditService(IApplicationDbContext db, ApplicationDbContext dbContext, IDomainEventPublisher eventPublisher, ISettingsService settingsService)
     {
         _db = db;
+        _dbContext = dbContext;
         _eventPublisher = eventPublisher;
         _settingsService = settingsService;
     }
@@ -261,5 +264,27 @@ public class AuditService : IAuditService,
     public async Task HandleAsync(SecurityPolicyUpdatedEvent @event)
     {
         await LogEventAsync("SecurityPolicyUpdated", @event.UpdatedByUserId, $"Security policies updated by '{@event.UpdatedByUserName}': {@event.PolicyChanges}", null, null);
+    }
+
+    public async Task LogRoleSwitchAsync(Guid userId, Guid oldRoleId, Guid newRoleId, string sessionAuthorizationId, string ipAddress, string userAgent)
+    {
+        // Get role names for better audit readability
+        var oldRole = await _dbContext.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == oldRoleId);
+        var newRole = await _dbContext.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == newRoleId);
+
+        var details = $"User switched from role '{oldRole?.Name ?? oldRoleId.ToString()}' to '{newRole?.Name ?? newRoleId.ToString()}'. Session: {sessionAuthorizationId}";
+        
+        await LogEventAsync("RoleSwitch", userId.ToString(), details, ipAddress, userAgent);
+    }
+
+    public async Task LogAccountSwitchAsync(Guid currentUserId, Guid targetAccountId, string reason, string ipAddress, string userAgent)
+    {
+        // Get user information for better audit readability
+        var currentUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == currentUserId);
+        var targetUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == targetAccountId);
+
+        var details = $"User '{currentUser?.UserName ?? currentUserId.ToString()}' switched to account '{targetUser?.UserName ?? targetAccountId.ToString()}'. Reason: {reason}";
+        
+        await LogEventAsync("AccountSwitch", currentUserId.ToString(), details, ipAddress, userAgent);
     }
 }

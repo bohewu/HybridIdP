@@ -30,5 +30,28 @@ namespace Core.Application
         /// <param name="eventId">The event ID to export</param>
         /// <returns>Export DTO with additional user info</returns>
         Task<AuditEventExportDto?> ExportEventAsync(int eventId);
+
+        /// <summary>
+        /// Logs a role switch event for audit.
+        /// </summary>
+        /// <param name="userId">User ID performing the switch</param>
+        /// <param name="oldRoleId">Previous role ID</param>
+        /// <param name="newRoleId">New role ID</param>
+        /// <param name="sessionAuthorizationId">Session authorization ID</param>
+        /// <param name="ipAddress">Client IP address</param>
+        /// <param name="userAgent">Client user agent</param>
+        /// <returns>Task</returns>
+        Task LogRoleSwitchAsync(Guid userId, Guid oldRoleId, Guid newRoleId, string sessionAuthorizationId, string ipAddress, string userAgent);
+
+        /// <summary>
+        /// Logs an account switch event for audit.
+        /// </summary>
+        /// <param name="currentUserId">Current user ID</param>
+        /// <param name="targetAccountId">Target account ID</param>
+        /// <param name="reason">Reason for switching</param>
+        /// <param name="ipAddress">Client IP address</param>
+        /// <param name="userAgent">Client user agent</param>
+        /// <returns>Task</returns>
+        Task LogAccountSwitchAsync(Guid currentUserId, Guid targetAccountId, string reason, string ipAddress, string userAgent);
     }
 }
