@@ -5,126 +5,185 @@ You are implementing end-to-end (E2E) tests for the My Account feature (Phase 11
 
 ## Project Structure Reference
 
-### Test Location
-- E2E tests are located in: `e2e/tests/`
-- Page objects are in: `e2e/page-objects/`
-- Test fixtures are in: `e2e/fixtures/`
+### Test Location and Structure
+```
+e2e/
+├── tests/
+│   ├── feature-auth/          # Authentication tests (login, logout, consent)
+│   ├── feature-clients/       # OIDC clients CRUD tests
+│   ├── feature-users/         # User management tests
+│   ├── feature-roles/         # Role management tests
+│   ├── feature-people/        # Person & account linking tests
+│   ├── feature-sessions/      # Session management tests
+│   ├── feature-my-account/    # ← CREATE THIS for My Account tests
+│   ├── page-objects/          # Page object classes
+│   └── helpers/               # Test helper utilities
+├── playwright.config.ts       # Playwright configuration
+├── package.json
+└── README.md                  # E2E setup and running instructions
+```
 
 ### Existing Test Patterns to Follow
 **CRITICAL**: Review these files for project conventions:
-1. `e2e/tests/admin-clients.spec.ts` - Admin feature testing pattern
-2. `e2e/tests/admin-users.spec.ts` - User management testing pattern
-3. `e2e/page-objects/AdminClientsPage.ts` - Page object pattern
-4. `e2e/page-objects/LoginPage.ts` - Authentication pattern
-5. `e2e/fixtures/test-helpers.ts` - Helper utilities
-6. `e2e/playwright.config.ts` - Playwright configuration
+1. `e2e/tests/feature-auth/login.spec.ts` - Simple authentication test pattern
+2. `e2e/tests/feature-users/admin-users-crud.spec.ts` - CRUD operations pattern
+3. `e2e/tests/feature-users/admin-users-role-assignment.spec.ts` - Role management pattern
+4. `e2e/tests/feature-people/admin-people-account-linking.spec.ts` - Account linking pattern
+5. `e2e/tests/feature-sessions/user-sessions-management.spec.ts` - Session operations pattern
+6. `e2e/tests/page-objects/PeoplePage.ts` - Page object pattern example
+7. `e2e/playwright.config.ts` - Playwright configuration
+8. `e2e/README.md` - E2E test setup and conventions
 
 ## Implementation Requirements
 
-### 1. Page Object Model
-Create `e2e/page-objects/MyAccountPage.ts`:
+### 1. Page Object Model (Optional)
+Create `e2e/tests/page-objects/MyAccountPage.ts` if complex interactions are needed:
 
-**Required Methods:**
+**Note**: Based on existing tests like `login.spec.ts`, many tests interact directly with page selectors without page objects. Use page objects only if the My Account page has complex reusable interactions.
+
+**If creating page object, include these methods:**
 ```typescript
-class MyAccountPage {
+export class MyAccountPage {
+  constructor(private page: Page) {}
+  
   // Navigation
-  async navigate(): Promise<void>
+  async navigate(): Promise<void> {
+    await this.page.goto('https://localhost:7035/Account/MyAccount');
+    await this.page.waitForSelector('.page-title');
+  }
   
-  // Role Management
-  async getRoles(): Promise<Array<{name: string, isActive: boolean, requiresPassword: boolean}>>
-  async switchRole(roleName: string, password?: string): Promise<void>
-  async getActiveRole(): Promise<string | null>
+  // Role list selectors
+  getRoleCards() {
+    return this.page.locator('.role-card');
+  }
   
-  // Account Management
-  async getLinkedAccounts(): Promise<Array<{email: string, isCurrent: boolean}>>
-  async switchAccount(email: string): Promise<void>
+  getRoleByName(roleName: string) {
+    return this.page.locator('.role-card').filter({ hasText: roleName });
+  }
   
-  // Password Modal
-  async isPasswordModalVisible(): Promise<boolean>
-  async enterPassword(password: string): Promise<void>
-  async confirmPasswordModal(): Promise<void>
-  async cancelPasswordModal(): Promise<void>
+  // Account list selectors  
+  getAccountCards() {
+    return this.page.locator('.account-card');
+  }
   
-  // Verification
-  async waitForPageLoad(): Promise<void>
-  async hasError(): Promise<boolean>
-  async getErrorMessage(): Promise<string | null>
+  // Actions
+  async switchRole(roleName: string, password?: string): Promise<void> {
+    const roleCard = this.getRoleByName(roleName);
+    await roleCard.locator('.btn-primary').click();
+    
+    if (password) {
+      await this.page.waitForSelector('.modal-overlay');
+      await this.page.fill('#password', password);
+      await this.page.click('.modal-footer .btn-primary');
+    }
+  }
 }
 ```
 
-### 2. Test Fixtures
-Update `e2e/fixtures/test-helpers.ts` to include:
-- Multi-role user creation (User, Admin, Manager roles)
-- Person with multiple accounts setup
-- Session cleanup utilities
+### 2. Test Data Setup
+Based on `e2e/README.md`, use existing test user:
+- Admin user: `admin@hybridauth.local` / `Admin@123`
+
+For multi-role testing, you may need to:
+- Create additional test users via Admin UI or SQL scripts
+- Use existing PowerShell scripts in repo root for user creation
+- Reference `cleanup-e2e-test-data.ps1` and `setup-test-user.ps1`
 
 ### 3. Test Scenarios
 
-#### Test File: `e2e/tests/my-account.spec.ts`
+#### Test File Structure: `e2e/tests/feature-my-account/`
+Create folder and test files following existing pattern:
+- `my-account-role-switching.spec.ts` - Role switching tests
+- `my-account-account-switching.spec.ts` - Account switching tests  
+- `my-account-navigation.spec.ts` - Navigation and UI tests
 
-**Test Suite Structure:**
+**Example Test Structure** (following `login.spec.ts` pattern):
+
+File: `e2e/tests/feature-my-account/my-account-role-switching.spec.ts`
 ```typescript
-describe('My Account - Role & Account Management', () => {
-  describe('Role Switching', () => {
-    test('should display all user roles')
-    test('should show active role with badge')
-    test('should switch to non-admin role without password')
-    test('should require password for Admin role')
-    test('should reject invalid password for Admin role')
-    test('should update role badge after switching')
-    test('should persist role across page refresh')
-  })
-  
-  describe('Account Switching', () => {
-    test('should display linked accounts when multiple exist')
-    test('should hide linked accounts section when only one account')
-    test('should show current account badge')
-    test('should switch to another linked account')
-    test('should redirect to home after account switch')
-  })
-  
-  describe('Password Modal', () => {
-    test('should show modal when switching to Admin role')
-    test('should focus password input on modal open')
-    test('should close modal on cancel')
-    test('should submit on Enter key')
-    test('should disable confirm button when password empty')
-  })
-  
-  describe('UI/UX', () => {
-    test('should show loading state while fetching data')
-    test('should display error message on API failure')
-    test('should be responsive on mobile viewport')
-  })
-  
-  describe('Navigation', () => {
-    test('should navigate from user dropdown menu')
-    test('should navigate from role badge click')
-  })
-})
+import { test, expect } from '@playwright/test';
+
+test.describe('My Account - Role Switching', () => {
+  test.beforeEach(async ({ page }) => {
+    // Login as admin user
+    await page.goto('https://localhost:7035/Account/Login');
+    await page.fill('#Input_Login', 'admin@hybridauth.local');
+    await page.fill('#Input_Password', 'Admin@123');
+    await page.click('button.auth-btn-primary');
+    await page.waitForSelector('.user-name');
+  });
+
+  test('should navigate to My Account page', async ({ page }) => {
+    // Click user dropdown
+    await page.click('#userDropdown');
+    
+    // Click My Account link
+    await page.click('a[href="/Account/MyAccount"]');
+    
+    // Verify we're on My Account page
+    await expect(page).toHaveURL('https://localhost:7035/Account/MyAccount');
+    await expect(page.locator('.page-title')).toContainText('我的帳戶');
+  });
+
+  test('should display all user roles', async ({ page }) => {
+    await page.goto('https://localhost:7035/Account/MyAccount');
+    
+    // Wait for roles to load
+    await page.waitForSelector('.role-card');
+    
+    // Verify role cards are displayed
+    const roleCards = page.locator('.role-card');
+    await expect(roleCards).toHaveCount(1); // Admin user has Admin role
+  });
+
+  // Add more tests following this pattern...
+});
+```
+
+File: `e2e/tests/feature-my-account/my-account-navigation.spec.ts`
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('My Account - Navigation', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('https://localhost:7035/Account/Login');
+    await page.fill('#Input_Login', 'admin@hybridauth.local');
+    await page.fill('#Input_Password', 'Admin@123');
+    await page.click('button.auth-btn-primary');
+    await page.waitForSelector('.user-name');
+  });
+
+  test('should show role badge in navigation', async ({ page }) => {
+    // Verify role badge is visible
+    await expect(page.locator('.role-badge')).toBeVisible();
+    await expect(page.locator('.role-badge')).toContainText('Admin');
+  });
+
+  test('should navigate via role badge click', async ({ page }) => {
+    // Click on role badge
+    await page.click('.role-badge');
+    
+    // Should navigate to My Account
+    await expect(page).toHaveURL('https://localhost:7035/Account/MyAccount');
+  });
+});
 ```
 
 ### 4. Test Data Setup
 
-**Required Test Users:**
-```typescript
-// User with multiple roles
-const multiRoleUser = {
-  username: 'multirole.user',
-  email: 'multirole@example.com',
-  password: 'Test123!@#',
-  roles: ['User', 'Admin', 'Manager']
-}
+**Default Test User (from e2e/README.md):**
+- Username: `admin@hybridauth.local`
+- Password: `Admin@123`
+- Role: `Admin`
 
-// Person with multiple accounts
-const personWithMultipleAccounts = {
-  personId: 'guid',
-  accounts: [
-    { username: 'account1', email: 'account1@example.com', roles: ['User'] },
-    { username: 'account2', email: 'account2@example.com', roles: ['User', 'Admin'] }
-  ]
-}
-```
+**For Multi-Role Testing:**
+You may need to create additional test users. Reference:
+- `setup-test-user.ps1` - PowerShell script for user creation
+- `cleanup-e2e-test-data.ps1` - Cleanup script
+- Admin UI at `https://localhost:7035/Admin/Users` - Manual user creation
+
+**For Multi-Account Testing:**
+Reference `e2e/tests/feature-people/admin-people-account-linking.spec.ts` for account linking patterns.
 
 ## Backend API Endpoints Reference
 Review these implementations for test expectations:
@@ -148,40 +207,60 @@ Review these for selector patterns:
 ## Project Conventions (CRITICAL - MUST FOLLOW)
 
 ### TypeScript
-- **ALWAYS use TypeScript** for E2E tests (NOT JavaScript)
+- **ALWAYS use TypeScript** for E2E tests (`.spec.ts` files)
 - Use strict typing for all variables and functions
-- Define interfaces for test data structures
+- Import from `@playwright/test`: `import { test, expect } from '@playwright/test';`
 
-### Selectors
-- Prefer `data-testid` attributes (add to components if needed)
-- Use semantic selectors: `page.getByRole()`, `page.getByText()`, `page.getByLabel()`
-- Avoid CSS selectors unless absolutely necessary
+### Test File Naming
+- Place tests in appropriate `feature-*` folders: `e2e/tests/feature-my-account/`
+- Name files descriptively: `my-account-role-switching.spec.ts`
+- Use `.spec.ts` extension (NOT `.test.ts`)
+
+### Selectors (Following Existing Patterns)
+Based on `login.spec.ts` and other existing tests:
+- Use CSS class selectors: `.user-name`, `.role-badge`, `.page-title`
+- Use ID selectors for form inputs: `#Input_Login`, `#Input_Password`
+- Use element + class: `button.auth-btn-primary`
+- Use attribute selectors: `a[href="/Account/MyAccount"]`
+- Add `data-testid` attributes to Vue components if needed for complex scenarios
 
 ### Async/Await
 - Always use `async/await` for Playwright actions
-- Use `page.waitForSelector()` or `page.waitForLoadState()` appropriately
-- Don't use arbitrary `page.waitForTimeout()` unless documenting why
+- Use `page.waitForSelector()` to wait for elements: `await page.waitForSelector('.user-name')`
+- Use `page.waitForLoadState()` when needed
+- Avoid `page.waitForTimeout()` unless absolutely necessary
 
 ### Test Organization
-- One test file per feature
-- Group related tests in `describe` blocks
-- Use descriptive test names starting with "should"
+- Use `test.describe()` for grouping related tests
+- Use `test.beforeEach()` for common setup (like login)
+- Use `test.afterEach()` for cleanup if needed
 - Keep tests independent and atomic
+- Use descriptive test names: `test('should display all user roles', ...)`
 
 ### Assertions
 - Use Playwright's `expect()` from `@playwright/test`
-- Use specific matchers: `toBeVisible()`, `toHaveText()`, `toContainText()`
-- Add meaningful assertion messages for failures
+- Common matchers:
+  - `await expect(page).toHaveURL('...')`
+  - `await expect(locator).toBeVisible()`
+  - `await expect(locator).toContainText('...')`
+  - `await expect(locator).toHaveCount(n)`
+- Add timeout if needed: `{ timeout: 20000 }`
 
 ### Authentication
-- Use existing `LoginPage` page object
-- Reuse authentication state with `storageState` when possible
-- Clean up sessions after tests
+- Login in `beforeEach` for authenticated tests
+- Standard login flow:
+  ```typescript
+  await page.goto('https://localhost:7035/Account/Login');
+  await page.fill('#Input_Login', 'admin@hybridauth.local');
+  await page.fill('#Input_Password', 'Admin@123');
+  await page.click('button.auth-btn-primary');
+  await page.waitForSelector('.user-name');
+  ```
 
-### Error Handling
-- Test both success and failure scenarios
-- Verify error messages are user-friendly
-- Test network failure scenarios with `page.route()`
+### URLs
+- IdP: `https://localhost:7035`
+- TestClient: `https://localhost:7001`
+- Use full URLs in tests: `await page.goto('https://localhost:7035/Account/MyAccount')`
 
 ## Existing Project Patterns
 
@@ -254,32 +333,65 @@ Your E2E tests should:
 
 ## Files to Create/Modify
 
-1. **Create**: `e2e/page-objects/MyAccountPage.ts`
-2. **Create**: `e2e/tests/my-account.spec.ts`
-3. **Update**: `e2e/fixtures/test-helpers.ts` (add multi-role user helpers)
-4. **Update**: Vue components (add `data-testid` attributes if needed)
+1. **Create**: `e2e/tests/feature-my-account/` (new folder)
+2. **Create**: `e2e/tests/feature-my-account/my-account-role-switching.spec.ts`
+3. **Create**: `e2e/tests/feature-my-account/my-account-navigation.spec.ts`
+4. **Create**: `e2e/tests/feature-my-account/my-account-account-switching.spec.ts` (if multi-account feature needs testing)
+5. **Optional**: `e2e/tests/page-objects/MyAccountPage.ts` (only if complex interactions warrant it)
+6. **Update**: Vue components with `data-testid` attributes if CSS selectors are insufficient
 
 ## Testing Checklist
 
 Before considering implementation complete:
-- [ ] All tests pass locally
+- [ ] Tests are in correct folder structure: `e2e/tests/feature-my-account/`
+- [ ] Test files use `.spec.ts` extension
+- [ ] All tests pass locally with `npm test`
 - [ ] Tests are deterministic (no random failures)
-- [ ] Page object follows existing patterns
 - [ ] TypeScript types are properly defined
-- [ ] Test data is cleaned up after runs
-- [ ] Both zh-TW and en-US locales work
-- [ ] Mobile responsive tests included
+- [ ] Follow existing selector patterns from other tests
+- [ ] Both zh-TW and en-US locales work (test text content accordingly)
 - [ ] Error scenarios covered
 - [ ] Authentication flows work correctly
-- [ ] Known 404 issue documented in test
+- [ ] Known 404 issue (Admin to Admin) documented in test with skip or known issue marker
+
+## Running Tests
+
+From `e2e/` directory:
+
+```powershell
+# Ensure IdP and TestClient are running first
+# Terminal 1: cd Web.IdP; dotnet run --launch-profile https
+# Terminal 2: cd TestClient; dotnet run --launch-profile https
+
+# Install dependencies
+npm install
+
+# Run all tests (headless)
+npm test
+
+# Run specific feature tests
+npx playwright test tests/feature-my-account/
+
+# Run single test file
+npx playwright test tests/feature-my-account/my-account-role-switching.spec.ts
+
+# Run with headed browser (for debugging)
+npm run test:headed
+
+# Or specific test headed
+npx playwright test tests/feature-my-account/my-account-navigation.spec.ts --headed
+
+# Run with UI mode
+npx playwright test --ui
+```
 
 ## Additional Notes
 
-- Run tests with: `npm run test:e2e` from `e2e/` directory
-- Run in UI mode for debugging: `npm run test:e2e:ui`
+- Review `e2e/README.md` for complete setup instructions
 - Check Playwright docs: https://playwright.dev/
-- Review test reports in `e2e/playwright-report/`
-- Screenshots saved to `e2e/test-results/` on failure
+- Test reports in `e2e/playwright-report/`
+- Screenshots on failure in `e2e/test-results/`
+- Use `scripts/start-e2e-dev.ps1` helper to start services automatically
 
 ## Important References
 
