@@ -155,9 +155,10 @@ Step 1: 檢查是否已有此外部登入（AspNetUserLogins）
 ├─ 已存在 → 更新 ApplicationUser 資訊，返回
 └─ 不存在 → 繼續 Step 2
 
-Step 2: 透過 Email 檢查是否有現存的 Person
-├─ 有 Person → 使用現有 Person，繼續 Step 3
-└─ 無 Person → 建立新 Person，繼續 Step 3
+Step 2: 優先透過身分文件欄位（NationalId / PassportNumber / ResidentCertificateNumber）檢查是否有現存的 Person；若沒有身分文件或比對失敗，再以 Email 作為備援檢查
+├─ 身分文件命中 → 使用該 Person，繼續 Step 3
+├─ 身分文件未命中但 Email 有值且 Email 命中 → 使用該 Person，繼續 Step 3
+└─ 都未命中 → 建立新 Person，繼續 Step 3
 
 Step 3: 建立新的 ApplicationUser（連結到 Person）
 
@@ -171,7 +172,14 @@ Step 5: 儲存所有變更
 1. **需要注入 `ApplicationDbContext`** 來存取 `Persons` 表
 2. **使用 `UserManager.FindByLoginAsync()`** 檢查外部登入
 3. **使用 `UserManager.AddLoginAsync()`** 建立外部登入連結
-4. **Person.Email 判斷邏輯**: 如果 Email 相同，視為同一個 Person
+4. **Person 唯一性判斷邏輯**: 在匹配 Person 時，應遵循以下優先順序：
+
+    1. 使用身分文件（NationalId / PassportNumber / ResidentCertificateNumber）作為首要匹配條件 — 只要其中任一欄位命中，即視為同一個 Person。
+    2. 若無身分文件或匹配失敗，再以 Email 作為備援匹配條件（Email 相同則視為同一個 Person）。
+
+    註：若 Email 缺失或兩者皆未命中，將建立新的 Person。
+
+    另外，username 的預設行為仍然可以採用 Email；若 Email 不存在，則使用 `{Provider}_{ProviderKey}` 作為 username。
 5. **Transaction 處理**: Person + ApplicationUser + AspNetUserLogins 應在同一個 transaction
 
 **程式碼骨架：**

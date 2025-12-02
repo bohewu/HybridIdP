@@ -209,12 +209,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         {
             entity.HasKey(e => e.Id);
             
+            // Index on Email for matching during JIT provisioning
+            entity.HasIndex(e => e.Email);
+            
             // Unique index on EmployeeId (if provided)
             entity.HasIndex(e => e.EmployeeId)
                 .IsUnique()
                 .HasFilter("[EmployeeId] IS NOT NULL"); // SQL Server syntax for filtered unique index
             
             // String length constraints
+            entity.Property(e => e.Email).HasMaxLength(256);
+            entity.Property(e => e.PhoneNumber).HasMaxLength(50);
             entity.Property(e => e.FirstName).HasMaxLength(100);
             entity.Property(e => e.MiddleName).HasMaxLength(100);
             entity.Property(e => e.LastName).HasMaxLength(100);

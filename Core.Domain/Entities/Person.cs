@@ -13,6 +13,17 @@ public class Person
     /// </summary>
     public Guid Id { get; set; }
     
+    // Contact Information
+    /// <summary>
+    /// Primary email address for this person (can be manually set by admin)
+    /// </summary>
+    public string? Email { get; set; }
+    
+    /// <summary>
+    /// Phone number
+    /// </summary>
+    public string? PhoneNumber { get; set; }
+    
     // Profile Information
     /// <summary>
     /// First name / Given name

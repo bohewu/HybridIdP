@@ -388,28 +388,38 @@ aws secretsmanager create-secret \
 
 **SQL Server:**
 ```powershell
-cd Infrastructure.Migrations.SqlServer
-dotnet ef migrations add YourMigrationName --startup-project ..\Web.IdP
+cd Infrastructure.Migrations.SqlServer; dotnet ef migrations add YourMigrationName --startup-project ..\Web.IdP; cd ..
 ```
 
 **PostgreSQL:**
 ```powershell
-cd Infrastructure.Migrations.Postgres
-dotnet ef migrations add YourMigrationName --startup-project ..\Web.IdP
+$env:DATABASE_PROVIDER="PostgreSQL"; cd Infrastructure.Migrations.Postgres; dotnet ef migrations add YourMigrationName --startup-project ..\Web.IdP; cd ..; $env:DATABASE_PROVIDER=$null
+```
+
+> **重要**: PostgreSQL migrations 需要設定 `DATABASE_PROVIDER` 環境變數，否則會使用預設的 SQL Server 設定。
+
+### 檢查 Migration 狀態
+
+**SQL Server:**
+```powershell
+cd Infrastructure.Migrations.SqlServer; dotnet ef migrations list --startup-project ..\Web.IdP; cd ..
+```
+
+**PostgreSQL:**
+```powershell
+$env:DATABASE_PROVIDER="PostgreSQL"; cd Infrastructure.Migrations.Postgres; dotnet ef migrations list --startup-project ..\Web.IdP; cd ..; $env:DATABASE_PROVIDER=$null
 ```
 
 ### 套用 Migration
 
 **SQL Server:**
 ```powershell
-cd Infrastructure.Migrations.SqlServer
-dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+cd Infrastructure.Migrations.SqlServer; dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext; cd ..
 ```
 
 **PostgreSQL:**
 ```powershell
-cd Infrastructure.Migrations.Postgres
-dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+$env:DATABASE_PROVIDER="PostgreSQL"; cd Infrastructure.Migrations.Postgres; dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext; cd ..; $env:DATABASE_PROVIDER=$null
 ```
 
 > **注意**: `--context` 參數必須指定，因為 Infrastructure 專案包含兩個 DbContext。

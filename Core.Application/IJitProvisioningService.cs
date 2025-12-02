@@ -5,5 +5,21 @@ namespace Core.Application;
 
 public interface IJitProvisioningService
 {
-    Task<ApplicationUser> ProvisionUserAsync(LegacyUserDto dto, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Provision or update Person and ApplicationUser for external authentication
+    /// </summary>
+    /// <param name="externalAuth">External authentication result</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Provisioned or updated ApplicationUser</returns>
+    Task<ApplicationUser> ProvisionExternalUserAsync(
+        ExternalAuthResult externalAuth,
+        CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Legacy system JIT Provisioning (for backward compatibility)
+    /// </summary>
+    [Obsolete("Use ProvisionExternalUserAsync instead")]
+    Task<ApplicationUser> ProvisionUserAsync(
+        LegacyUserDto dto,
+        CancellationToken cancellationToken = default);
 }
