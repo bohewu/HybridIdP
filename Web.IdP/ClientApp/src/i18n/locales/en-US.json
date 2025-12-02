@@ -281,6 +281,8 @@
         "middleName": "Middle Name",
         "lastName": "Last Name",
         "nickname": "Nickname",
+        "email": "Email",
+        "phoneNumber": "Phone Number",
         "employeeId": "Employee ID",
         "department": "Department",
         "jobTitle": "Job Title",

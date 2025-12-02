@@ -252,6 +252,27 @@ const handleClose = () => {
 								class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 						</div>
 
+						<!-- Contact Information -->
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+							<div>
+								<label for="email" class="block text-sm font-medium text-gray-700">
+									{{ t('admin.persons.form.email') }}
+								</label>
+								<input id="email" v-model="formData.email" type="email"
+									:placeholder="t('admin.persons.form.email')"
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+							</div>
+
+							<div>
+								<label for="phoneNumber" class="block text-sm font-medium text-gray-700">
+									{{ t('admin.persons.form.phoneNumber') }}
+								</label>
+								<input id="phoneNumber" v-model="formData.phoneNumber" type="tel"
+									:placeholder="t('admin.persons.form.phoneNumber')"
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+							</div>
+						</div>
+
 						<!-- Employment Info -->
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 							<div>

@@ -281,6 +281,8 @@
         "middleName": "中間名",
         "lastName": "姓氏",
         "nickname": "暱稱",
+        "email": "電子郵件",
+        "phoneNumber": "電話號碼",
         "employeeId": "員工編號",
         "department": "部門",
         "jobTitle": "職位",
