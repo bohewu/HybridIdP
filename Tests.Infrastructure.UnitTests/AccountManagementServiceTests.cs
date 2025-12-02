@@ -61,6 +61,10 @@ public class AccountManagementServiceTests
         _sessionServiceMock = new Mock<ISessionService>();
         _auditServiceMock = new Mock<IAuditService>();
 
+        // Create test logger factory for debugging
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
+        var logger = loggerFactory.CreateLogger<AccountManagementService>();
+
         _service = new AccountManagementService(
             _db,
             _db, // Pass same instance as ApplicationDbContext
@@ -68,7 +72,8 @@ public class AccountManagementServiceTests
             _roleManagerMock.Object,
             _signInManagerMock.Object,
             _sessionServiceMock.Object,
-            _auditServiceMock.Object);
+            _auditServiceMock.Object,
+            logger);
     }
 
     [Fact]

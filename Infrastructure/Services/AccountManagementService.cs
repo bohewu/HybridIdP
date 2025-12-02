@@ -192,13 +192,15 @@ public class AccountManagementService : IAccountManagementService
             await _db.SaveChangesAsync(CancellationToken.None);
 
             // Log the role switch for audit
+            var ipAddress = GetClientIpAddress();
+            var userAgent = GetClientUserAgent();
             await _auditService.LogRoleSwitchAsync(
                 userId,
                 oldRoleId,
                 roleId,
                 sessionAuthorizationId,
-                _signInManager.Context?.Connection?.RemoteIpAddress?.ToString() ?? "unknown",
-                _signInManager.Context?.Request?.Headers["User-Agent"].ToString() ?? "unknown");
+                ipAddress,
+                userAgent);
 
             _logger.LogInformation("User {UserId} switched from role {OldRoleId} to {NewRoleId}", 
                 userId, oldRoleId, roleId);
@@ -242,12 +244,14 @@ public class AccountManagementService : IAccountManagementService
             await _signInManager.SignInAsync(targetUser, isPersistent: true);
 
             // Log the account switch for audit
+            var ipAddress = GetClientIpAddress();
+            var userAgent = GetClientUserAgent();
             await _auditService.LogAccountSwitchAsync(
                 currentUserId,
                 targetAccountId,
                 reason,
-                _signInManager.Context?.Connection?.RemoteIpAddress?.ToString() ?? "unknown",
-                _signInManager.Context?.Request?.Headers["User-Agent"].ToString() ?? "unknown");
+                ipAddress,
+                userAgent);
 
             _logger.LogInformation("User {CurrentUserId} switched to account {TargetAccountId}. Reason: {Reason}",
                 currentUserId, targetAccountId, reason);
@@ -259,6 +263,30 @@ public class AccountManagementService : IAccountManagementService
             _logger.LogError(ex, "Error switching account from {CurrentUserId} to {TargetAccountId}",
                 currentUserId, targetAccountId);
             return false;
+        }
+    }
+
+    private string GetClientIpAddress()
+    {
+        try
+        {
+            return _signInManager.Context?.Connection?.RemoteIpAddress?.ToString() ?? "unknown";
+        }
+        catch
+        {
+            return "unknown";
+        }
+    }
+
+    private string GetClientUserAgent()
+    {
+        try
+        {
+            return _signInManager.Context?.Request?.Headers["User-Agent"].ToString() ?? "unknown";
+        }
+        catch
+        {
+            return "unknown";
         }
     }
 }
