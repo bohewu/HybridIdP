@@ -6,6 +6,15 @@
     "requiredPermission": "Required Permission",
     "contactAdmin": "Please contact your administrator if you believe you should have access."
   },
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No"
+  },
   "admin": {
     "dashboard": {
       "title": "Admin Dashboard",
@@ -1140,6 +1149,26 @@
       "create": "You do not have permission to create API resources.",
       "update": "You do not have permission to update API resources.",
       "delete": "You do not have permission to delete API resources."
+    }
+  },
+  "myAccount": {
+    "title": "My Account",
+    "myRoles": "My Roles",
+    "linkedAccounts": "Linked Accounts",
+    "active": "Active",
+    "currentAccount": "Current",
+    "switchToRole": "Switch to Role",
+    "switchToAccount": "Switch to Account",
+    "username": "Username",
+    "passwordRequired": "Password Required",
+    "passwordRequiredDesc": "Switching to \"{role}\" role requires password confirmation",
+    "password": "Password",
+    "enterPassword": "Enter your password",
+    "confirmSwitchAccount": "Switch to account {email}?",
+    "errors": {
+      "loadFailed": "Failed to load account information",
+      "switchRoleFailed": "Failed to switch role",
+      "switchAccountFailed": "Failed to switch account"
     }
   },
   "modal": {

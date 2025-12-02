@@ -1,3 +1,6 @@
+/* Import shared spacing utilities (pure CSS) */
+@import './spacing.css';
+
 /* Admin Shared Styles (converted from Tailwind @apply to plain CSS for lint compatibility) */
 
 .nav-item {
@@ -24,6 +27,3 @@
   padding-left: 0.625rem;
 }
 .nav-item svg { flex-shrink: 0; }
-
-/* Import shared spacing utilities (pure CSS) */
-@import './spacing.css';

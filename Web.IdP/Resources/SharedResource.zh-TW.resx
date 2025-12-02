@@ -165,6 +165,9 @@
   <data name="AdminConsole" xml:space="preserve">
     <value>管理控制台</value>
   </data>
+  <data name="MyAccount" xml:space="preserve">
+    <value>我的帳戶</value>
+  </data>
   <!-- Index Page - App Launcher -->
   <data name="DisconnectApp" xml:space="preserve">
     <value>中斷連接</value>

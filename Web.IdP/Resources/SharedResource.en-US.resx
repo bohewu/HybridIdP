@@ -168,6 +168,9 @@
   <data name="AdminConsole" xml:space="preserve">
     <value>Admin Console</value>
   </data>
+  <data name="MyAccount" xml:space="preserve">
+    <value>My Account</value>
+  </data>
   <!-- Index Page - App Launcher -->
   <data name="DisconnectApp" xml:space="preserve">
     <value>Disconnect</value>

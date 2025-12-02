@@ -5,6 +5,15 @@
     "requiredPermission": "需要的權限",
     "contactAdmin": "如果您認為您應該有存取權限，請聯絡系統管理員。"
   },
+  "common": {
+    "loading": "載入中...",
+    "cancel": "取消",
+    "confirm": "確認",
+    "save": "儲存",
+    "close": "關閉",
+    "yes": "是",
+    "no": "否"
+  },
   "admin": {
     "dashboard": {
       "title": "管理儀表板",
@@ -1141,6 +1150,26 @@
       "create": "您沒有權限建立 API 資源。",
       "update": "您沒有權限更新 API 資源。",
       "delete": "您沒有權限刪除 API 資源。"
+    }
+  },
+  "myAccount": {
+    "title": "我的帳戶",
+    "myRoles": "我的角色",
+    "linkedAccounts": "關聯帳戶",
+    "active": "目前",
+    "currentAccount": "目前帳戶",
+    "switchToRole": "切換至此角色",
+    "switchToAccount": "切換至此帳戶",
+    "username": "使用者名稱",
+    "passwordRequired": "需要密碼確認",
+    "passwordRequiredDesc": "切換至「{role}」角色需要輸入密碼以確認身份",
+    "password": "密碼",
+    "enterPassword": "請輸入您的密碼",
+    "confirmSwitchAccount": "確定要切換至帳戶 {email} 嗎？",
+    "errors": {
+      "loadFailed": "載入帳戶資訊失敗",
+      "switchRoleFailed": "切換角色失敗",
+      "switchAccountFailed": "切換帳戶失敗"
     }
   },
   "modal": {
