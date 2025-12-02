@@ -120,7 +120,7 @@ test.describe('Admin - People Account Linking', () => {
     expect(linkedAccounts).toHaveLength(0)
   })
 
-  test.skip('Multi-account login - two accounts linked to same verified person', async ({ page, context }) => {
+  test('Multi-account login - two accounts linked to same verified person', async ({ page, context }) => {
     // Create person with verified identity
     const personData = {
       firstName: 'MultiAccount',
@@ -179,7 +179,7 @@ test.describe('Admin - People Account Linking', () => {
     await page2.close()
   })
 
-  test.skip('Link account shows person identity in account profile', async ({ page, context }) => {
+  test('Link account shows person identity in account profile', async ({ page, context }) => {
     // Create person with verified Resident Certificate
     const personData = {
       firstName: 'ProfileTest',
