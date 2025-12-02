@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <MigrationsNamespace>Infrastructure.Migrations.SqlServer.Migrations</MigrationsNamespace>
   </PropertyGroup>
 
   <ItemGroup>

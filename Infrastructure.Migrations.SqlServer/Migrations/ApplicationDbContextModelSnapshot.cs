@@ -4,19 +4,16 @@ using Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Infrastructure.Migrations.SqlServer
+namespace Infrastructure.Migrations.SqlServer.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251129020038_Phase10_1_AddPersonEntity")]
-    partial class Phase10_1_AddPersonEntity
+    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -432,6 +429,16 @@ namespace Infrastructure.Migrations.SqlServer
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("IdentityDocumentType")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("IdentityVerifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("IdentityVerifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("JobTitle")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -454,9 +461,17 @@ namespace Infrastructure.Migrations.SqlServer
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("NationalId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Nickname")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PassportNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("PictureUrl")
                         .HasMaxLength(500)
@@ -465,6 +480,10 @@ namespace Infrastructure.Migrations.SqlServer
                     b.Property<string>("ProfileUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ResidentCertificateNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("TimeZone")
                         .HasMaxLength(100)
@@ -479,6 +498,18 @@ namespace Infrastructure.Migrations.SqlServer
                     b.HasIndex("EmployeeId")
                         .IsUnique()
                         .HasFilter("[EmployeeId] IS NOT NULL");
+
+                    b.HasIndex("NationalId")
+                        .IsUnique()
+                        .HasFilter("[NationalId] IS NOT NULL");
+
+                    b.HasIndex("PassportNumber")
+                        .IsUnique()
+                        .HasFilter("[PassportNumber] IS NOT NULL");
+
+                    b.HasIndex("ResidentCertificateNumber")
+                        .IsUnique()
+                        .HasFilter("[ResidentCertificateNumber] IS NOT NULL");
 
                     b.ToTable("Persons");
                 });
