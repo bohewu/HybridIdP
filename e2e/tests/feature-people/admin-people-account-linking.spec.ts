@@ -122,12 +122,13 @@ test.describe('Admin - People Account Linking', () => {
 
   test('Multi-account login - two accounts linked to same verified person', async ({ page, context }) => {
     // Create person with verified identity
+    const timestamp = Date.now()
     const personData = {
       firstName: 'MultiAccount',
       lastName: 'OnePerson',
-      employeeId: `EMP${Date.now()}`,
+      employeeId: `EMP${timestamp}`,
       identityDocumentType: 'Passport' as const,
-      passportNumber: '300123456'
+      passportNumber: `3${String(timestamp).slice(-8)}`
     }
 
     const person = await createPersonWithIdentity(page, personData)
@@ -136,7 +137,6 @@ test.describe('Admin - People Account Linking', () => {
     await verifyPersonIdentity(page, person.id)
 
     // Create two user accounts
-    const timestamp = Date.now()
     const user1Email = `multi1-${timestamp}@example.com`
     const user2Email = `multi2-${timestamp}@example.com`
     
@@ -181,12 +181,13 @@ test.describe('Admin - People Account Linking', () => {
 
   test('Link account shows person identity in account profile', async ({ page, context }) => {
     // Create person with verified Resident Certificate
+    const timestamp = Date.now()
     const personData = {
       firstName: 'ProfileTest',
       lastName: 'ShowIdentity',
-      employeeId: `EMP${Date.now()}`,
+      employeeId: `EMP${timestamp}`,
       identityDocumentType: 'ResidentCertificate' as const,
-      residentCertificateNumber: 'AA12345678'
+      residentCertificateNumber: `AA${String(timestamp).slice(-8)}`
     }
 
     const person = await createPersonWithIdentity(page, personData)

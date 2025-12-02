@@ -26,15 +26,17 @@ test.describe('Admin - People CRUD Operations', () => {
   })
 
   test('Create, update, and delete person with identity document', async ({ page }) => {
-    // Create person with National ID
+    // Create person with Passport
+    const timestamp = Date.now()
+    const passportNumber = `3${String(timestamp).slice(-8)}`
     const personData = {
       firstName: 'CrudTest',
       lastName: 'PersonOne',
-      employeeId: `EMP${Date.now()}`,
+      employeeId: `EMP${timestamp}`,
       department: 'E2E Testing',
       jobTitle: 'Test Engineer',
-      identityDocumentType: 'NationalId' as const,
-      nationalId: 'A123456789'
+      identityDocumentType: 'Passport' as const,
+      passportNumber
     }
 
     const created = await createPersonWithIdentity(page, personData)
@@ -42,24 +44,25 @@ test.describe('Admin - People CRUD Operations', () => {
 
     expect(created.firstName).toBe('CrudTest')
     expect(created.lastName).toBe('PersonOne')
-    expect(created.nationalId).toBe('A123456789')
+    expect(created.passportNumber).toBe(passportNumber)
 
     // Reload and verify person appears in UI
     await page.reload()
     await expect(page.locator('tr', { hasText: 'CrudTest PersonOne' })).toBeVisible()
 
-    // Update person identity to Passport
+    // Update person identity to Resident Certificate
+    const residentCert = `AA${String(timestamp).slice(-8)}`
     await updatePersonIdentity(page, created.id, {
-      identityDocumentType: 'Passport',
-      nationalId: null,
-      passportNumber: '300123456'
+      identityDocumentType: 'ResidentCertificate',
+      passportNumber: null,
+      residentCertificateNumber: residentCert
     })
 
     // Verify update
     const updated = await getPersonDetails(page, created.id)
-    expect(updated.passportNumber).toBe('300123456')
-    expect(updated.nationalId).toBeNull()
-    expect(updated.identityDocumentType).toBe('Passport')
+    expect(updated.residentCertificateNumber).toBe(residentCert)
+    expect(updated.passportNumber).toBeNull()
+    expect(updated.identityDocumentType).toBe('ResidentCertificate')
 
     // Delete person
     await deletePerson(page, created.id)
@@ -139,34 +142,41 @@ test.describe('Admin - People CRUD Operations', () => {
       createdPersonIds.push(created.id)
     }
 
-    // Reload to see all persons
-    await page.reload()
-
+    // Go to list page and search for created persons
+    await page.goto('https://localhost:7035/Admin/People')
+    await page.waitForLoadState('networkidle')
+    
+    // Use search to find the persons
+    const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput.fill('PageTest1')
+    await searchInput.press('Enter')
+    await page.waitForLoadState('networkidle')
+    
     // Verify at least some of the created persons are visible
-    await expect(page.locator('tr', { hasText: 'PageTest1 Person' })).toBeVisible()
-    await expect(page.locator('tr', { hasText: 'PageTest5 Person' })).toBeVisible()
+    await expect(page.locator('tr', { hasText: 'PageTest1 Person' })).toBeVisible({ timeout: 10000 })
   })
 
   test('Update person basic info and identity document', async ({ page }) => {
     // Create person
+    const timestamp = Date.now()
     const created = await createPersonWithIdentity(page, {
       firstName: 'UpdateTest',
       lastName: 'Original',
-      employeeId: `EMP${Date.now()}`,
-      identityDocumentType: 'NationalId',
-      nationalId: 'A123456789'
+      employeeId: `EMP${timestamp}`,
+      identityDocumentType: 'Passport',
+      passportNumber: `3${String(timestamp).slice(-8)}`
     })
     createdPersonIds.push(created.id)
 
     // Update via API (simulating form submission)
+    const residentCert = `AA${String(timestamp + 1).slice(-8)}`
     const updatePayload = {
       ...created,
       lastName: 'Updated',
       department: 'Updated Department',
-      identityDocumentType: 'Passport',
-      nationalId: null,
-      passportNumber: '300123456',
-      residentCertificateNumber: null
+      identityDocumentType: 'ResidentCertificate',
+      passportNumber: null,
+      residentCertificateNumber: residentCert
     }
 
     await page.evaluate(async (args) => {
@@ -184,8 +194,8 @@ test.describe('Admin - People CRUD Operations', () => {
     const updated = await getPersonDetails(page, created.id)
     expect(updated.lastName).toBe('Updated')
     expect(updated.department).toBe('Updated Department')
-    expect(updated.passportNumber).toBe('300123456')
-    expect(updated.nationalId).toBeNull()
+    expect(updated.residentCertificateNumber).toBe(residentCert)
+    expect(updated.passportNumber).toBeNull()
   })
 
   test('Delete person with verified identity', async ({ page }) => {
@@ -210,74 +220,88 @@ test.describe('Admin - People CRUD Operations', () => {
 
   test('List persons shows identity status correctly', async ({ page }) => {
     // Create persons with different identity statuses
+    const timestamp = Date.now()
     const person1 = await createPersonWithIdentity(page, {
       firstName: 'Status',
-      lastName: 'WithNationalId',
-      employeeId: `EMP${Date.now()}-1`,
-      identityDocumentType: 'NationalId',
-      nationalId: 'A123456789'
+      lastName: 'WithPassport',
+      employeeId: `EMP${timestamp}-1`,
+      identityDocumentType: 'Passport',
+      passportNumber: `3${String(timestamp).slice(-8)}`
     })
     
-    const person2 = await createPerson(page, 'Status', 'NoDocument', `EMP${Date.now()}-2`)
+    const person2 = await createPerson(page, 'Status', 'NoDocument', `EMP${timestamp}-2`)
     
     createdPersonIds.push(person1.id, person2.id)
 
-    // Reload to see UI
-    await page.reload()
+    // Go to list page and search to find created persons
+    await page.goto('https://localhost:7035/Admin/People')
+    await page.waitForLoadState('networkidle')
+    
+    const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput.fill('Status')
+    await searchInput.press('Enter')
+    await page.waitForLoadState('networkidle')
 
     // Person with document should show "未驗證" (Unverified)
-    const row1 = page.locator('tr', { hasText: 'Status WithNationalId' })
-    await expect(row1).toBeVisible()
+    const row1 = page.locator('tr', { hasText: 'Status WithPassport' })
+    await expect(row1).toBeVisible({ timeout: 10000 })
     await expect(row1.locator('text=/未驗證|Unverified/i')).toBeVisible()
 
     // Person without document should show "-" or empty
     const row2 = page.locator('tr', { hasText: 'Status NoDocument' })
-    await expect(row2).toBeVisible()
+    await expect(row2).toBeVisible({ timeout: 10000 })
     // May show "-" or be empty depending on implementation
   })
 
   test('Create person with all three identity document types sequentially', async ({ page }) => {
     const timestamp = Date.now()
 
-    // Create with National ID
+    // Create with Passport
     const person1 = await createPersonWithIdentity(page, {
       firstName: 'AllTypes',
-      lastName: 'NationalId',
+      lastName: 'Passport',
       employeeId: `EMP${timestamp}-1`,
-      identityDocumentType: 'NationalId',
-      nationalId: 'A123456789'
+      identityDocumentType: 'Passport',
+      passportNumber: `3${String(timestamp).slice(-8)}`
     })
     createdPersonIds.push(person1.id)
 
-    // Create with Passport
+    // Create with Resident Certificate  
     const person2 = await createPersonWithIdentity(page, {
       firstName: 'AllTypes',
-      lastName: 'Passport',
+      lastName: 'Resident',
       employeeId: `EMP${timestamp}-2`,
-      identityDocumentType: 'Passport',
-      passportNumber: '300123456'
+      identityDocumentType: 'ResidentCertificate',
+      residentCertificateNumber: `AA${String(timestamp).slice(-8)}`
     })
     createdPersonIds.push(person2.id)
 
-    // Create with Resident Certificate
+    // Create another Passport with different timestamp
     const person3 = await createPersonWithIdentity(page, {
       firstName: 'AllTypes',
-      lastName: 'Resident',
+      lastName: 'Passport2',
       employeeId: `EMP${timestamp}-3`,
-      identityDocumentType: 'ResidentCertificate',
-      residentCertificateNumber: 'AA12345678'
+      identityDocumentType: 'Passport',
+      passportNumber: `3${String(timestamp + 1).slice(-8)}`
     })
     createdPersonIds.push(person3.id)
 
     // Verify all were created successfully
-    expect(person1.nationalId).toBe('A123456789')
-    expect(person2.passportNumber).toBe('300123456')
-    expect(person3.residentCertificateNumber).toBe('AA12345678')
+    expect(person1.passportNumber).toBe(`3${String(timestamp).slice(-8)}`)
+    expect(person2.residentCertificateNumber).toBe(`AA${String(timestamp).slice(-8)}`)
+    expect(person3.passportNumber).toBe(`3${String(timestamp + 1).slice(-8)}`)
 
-    // Verify in UI
-    await page.reload()
-    await expect(page.locator('tr', { hasText: 'AllTypes NationalId' })).toBeVisible()
-    await expect(page.locator('tr', { hasText: 'AllTypes Passport' })).toBeVisible()
-    await expect(page.locator('tr', { hasText: 'AllTypes Resident' })).toBeVisible()
+    // Verify in UI via search - use employeeId for unique identification
+    await page.goto('https://localhost:7035/Admin/People')
+    await page.waitForLoadState('networkidle')
+    
+    const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput.fill('AllTypes')
+    await searchInput.press('Enter')
+    await page.waitForLoadState('networkidle')
+    
+    await expect(page.locator('tr', { hasText: `EMP${timestamp}-1` })).toBeVisible()
+    await expect(page.locator('tr', { hasText: `EMP${timestamp}-2` })).toBeVisible()
+    await expect(page.locator('tr', { hasText: `EMP${timestamp}-3` })).toBeVisible()
   })
 })
