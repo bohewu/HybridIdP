@@ -3,13 +3,18 @@
 
 -- Step 1: Create required API scopes if they don't exist
 INSERT INTO "OpenIddictScopes" ("Id", "Name", "DisplayName", "Description", "ConcurrencyToken")
-VALUES 
-    (gen_random_uuid(), 'api:company:read', 'Read Company Data', 'Allows reading company information', gen_random_uuid()),
-    (gen_random_uuid(), 'api:company:write', 'Write Company Data', 'Allows creating and updating company information', gen_random_uuid()),
-    (gen_random_uuid(), 'api:inventory:read', 'Read Inventory Data', 'Allows reading inventory information', gen_random_uuid())
-ON CONFLICT ("Name") DO NOTHING;
+SELECT gen_random_uuid(), 'api:company:read', 'Read Company Data', 'Allows reading company information', gen_random_uuid()
+WHERE NOT EXISTS (SELECT 1 FROM "OpenIddictScopes" WHERE "Name" = 'api:company:read');
 
--- Step 2: Create TestClient application
+INSERT INTO "OpenIddictScopes" ("Id", "Name", "DisplayName", "Description", "ConcurrencyToken")
+SELECT gen_random_uuid(), 'api:company:write', 'Write Company Data', 'Allows creating and updating company information', gen_random_uuid()
+WHERE NOT EXISTS (SELECT 1 FROM "OpenIddictScopes" WHERE "Name" = 'api:company:write');
+
+INSERT INTO "OpenIddictScopes" ("Id", "Name", "DisplayName", "Description", "ConcurrencyToken")
+SELECT gen_random_uuid(), 'api:inventory:read', 'Read Inventory Data', 'Allows reading inventory information', gen_random_uuid()
+WHERE NOT EXISTS (SELECT 1 FROM "OpenIddictScopes" WHERE "Name" = 'api:inventory:read');
+
+-- Step 2: Create TestClient application if it doesn't exist
 INSERT INTO "OpenIddictApplications" (
     "Id",
     "ClientId",
@@ -20,7 +25,8 @@ INSERT INTO "OpenIddictApplications" (
     "RedirectUris",
     "PostLogoutRedirectUris",
     "Permissions"
-) VALUES (
+)
+SELECT 
     gen_random_uuid(),
     'testclient-public',
     'public',
@@ -30,8 +36,7 @@ INSERT INTO "OpenIddictApplications" (
     '["https://localhost:7001/signin-oidc"]',
     '["https://localhost:7001/signout-callback-oidc"]',
     '["ept:authorization","ept:token","ept:logout","gt:authorization_code","gt:refresh_token","response_type:code","scp:openid","scp:profile","scp:email","scp:roles","scp:api:company:read","scp:api:company:write","scp:api:inventory:read"]'
-)
-ON CONFLICT DO NOTHING;
+WHERE NOT EXISTS (SELECT 1 FROM "OpenIddictApplications" WHERE "ClientId" = 'testclient-public');
 
 -- Step 3: Verify scopes
 SELECT "Name", "DisplayName" FROM "OpenIddictScopes" 
