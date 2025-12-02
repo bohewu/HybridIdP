@@ -203,6 +203,7 @@ builder.Services.AddScoped<ISecurityPolicyService, SecurityPolicyService>();
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<ILoginHistoryService, LoginHistoryService>();
 builder.Services.AddScoped<IAuditService, AuditService>(); // Uses SettingsService for retention
+builder.Services.AddScoped<IAccountManagementService, AccountManagementService>(); // Phase 11.2
 builder.Services.AddScoped<IMonitoringService, MonitoringService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 // Domain Event Handlers

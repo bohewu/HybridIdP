@@ -14,6 +14,7 @@ namespace Web.IdP.Pages.Account;
 public class LoginModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILoginService _loginService;
     private readonly ITurnstileService _turnstileService;
     private readonly ILoginHistoryService _loginHistoryService;
@@ -25,6 +26,7 @@ public class LoginModel : PageModel
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
+        UserManager<ApplicationUser> userManager,
         ILoginService loginService,
         ITurnstileService turnstileService,
         ILoginHistoryService loginHistoryService,
@@ -35,6 +37,7 @@ public class LoginModel : PageModel
         IStringLocalizer<SharedResource> localizer)
     {
         _signInManager = signInManager;
+        _userManager = userManager;
         _loginService = loginService;
         _turnstileService = turnstileService;
         _loginHistoryService = loginHistoryService;
@@ -136,9 +139,31 @@ public class LoginModel : PageModel
                     }
                 }
 
-                await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
-                _logger.LogInformation("User '{UserName}' signed in successfully.", result.User!.UserName);
-                return LocalRedirect(returnUrl);
+                // Phase 11.2: Check if user has multiple roles - redirect to SelectRole if needed
+                var userRoles = await _userManager.GetRolesAsync(result.User!);
+                
+                if (userRoles.Count > 1)
+                {
+                    // User has multiple roles - redirect to role selection page
+                    _logger.LogInformation("User '{UserName}' has {RoleCount} roles. Redirecting to role selection.", 
+                        result.User!.UserName, userRoles.Count);
+                    return RedirectToPage("/Account/SelectRole", new { userId = result.User!.Id, returnUrl });
+                }
+                else if (userRoles.Count == 1)
+                {
+                    // Single role - sign in directly
+                    await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
+                    _logger.LogInformation("User '{UserName}' signed in successfully with single role '{Role}'.", 
+                        result.User!.UserName, userRoles[0]);
+                    return LocalRedirect(returnUrl);
+                }
+                else
+                {
+                    // No roles assigned - deny access
+                    _logger.LogWarning("User '{UserName}' has no assigned roles. Access denied.", result.User!.UserName);
+                    ModelState.AddModelError(string.Empty, _localizer["NoRolesAssigned"]);
+                    return Page();
+                }
 
             case LoginStatus.LockedOut:
                 _logger.LogWarning("Login failed for user '{Login}': Account is locked out.", Input.Login);
