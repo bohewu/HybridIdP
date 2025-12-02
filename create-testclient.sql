@@ -1,6 +1,15 @@
 -- Create TestClient OAuth Application for E2E Testing
 -- This client is used by the TestClient application (https://localhost:7001)
 
+-- Step 1: Create required API scopes if they don't exist
+INSERT INTO "OpenIddictScopes" ("Id", "Name", "DisplayName", "Description", "ConcurrencyToken")
+VALUES 
+    (gen_random_uuid(), 'api:company:read', 'Read Company Data', 'Allows reading company information', gen_random_uuid()),
+    (gen_random_uuid(), 'api:company:write', 'Write Company Data', 'Allows creating and updating company information', gen_random_uuid()),
+    (gen_random_uuid(), 'api:inventory:read', 'Read Inventory Data', 'Allows reading inventory information', gen_random_uuid())
+ON CONFLICT ("Name") DO NOTHING;
+
+-- Step 2: Create TestClient application
 INSERT INTO "OpenIddictApplications" (
     "Id",
     "ClientId",
@@ -20,11 +29,16 @@ INSERT INTO "OpenIddictApplications" (
     gen_random_uuid(),
     '["https://localhost:7001/signin-oidc"]',
     '["https://localhost:7001/signout-callback-oidc"]',
-    '["ept:authorization","ept:token","ept:logout","gt:authorization_code","gt:refresh_token","scp:openid","scp:profile","scp:email","scp:roles","scp:api:company:read","scp:api:inventory:read"]'
+    '["ept:authorization","ept:token","ept:logout","gt:authorization_code","gt:refresh_token","response_type:code","scp:openid","scp:profile","scp:email","scp:roles","scp:api:company:read","scp:api:company:write","scp:api:inventory:read"]'
 )
 ON CONFLICT DO NOTHING;
 
--- Verify
+-- Step 3: Verify scopes
+SELECT "Name", "DisplayName" FROM "OpenIddictScopes" 
+WHERE "Name" IN ('openid', 'profile', 'email', 'roles', 'api:company:read', 'api:company:write', 'api:inventory:read')
+ORDER BY "Name";
+
+-- Step 4: Verify client
 SELECT "ClientId", "DisplayName", "ClientType", "RedirectUris", "Permissions" 
 FROM "OpenIddictApplications" 
 WHERE "ClientId" = 'testclient-public';
