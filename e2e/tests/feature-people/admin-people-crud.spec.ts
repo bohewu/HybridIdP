@@ -88,6 +88,135 @@ test.describe('Admin - People CRUD Operations', () => {
     await expect(page.locator('tr', { hasText: 'Simple Person' })).toBeVisible()
   })
 
+  test('Create and update person with email and phone number', async ({ page }) => {
+    const timestamp = Date.now()
+    
+    // Create person via API with email and phone
+    const response = await page.request.post('https://localhost:7035/api/admin/people', {
+      data: {
+        firstName: 'Contact',
+        lastName: 'TestPerson',
+        employeeId: `EMP${timestamp}`,
+        email: `test${timestamp}@example.com`,
+        phoneNumber: '+886-912-345-678',
+        identityDocumentType: 'None'
+      }
+    })
+    expect(response.ok()).toBeTruthy()
+    const created = await response.json()
+    createdPersonIds.push(created.id)
+
+    // Verify email and phone were saved
+    expect(created.email).toBe(`test${timestamp}@example.com`)
+    expect(created.phoneNumber).toBe('+886-912-345-678')
+
+    // Update email and phone via API
+    const updateResponse = await page.request.put(`https://localhost:7035/api/admin/people/${created.id}`, {
+      data: {
+        firstName: 'Contact',
+        lastName: 'TestPerson',
+        employeeId: `EMP${timestamp}`,
+        email: `updated${timestamp}@example.com`,
+        phoneNumber: '+886-987-654-321',
+        identityDocumentType: 'None'
+      }
+    })
+    expect(updateResponse.ok()).toBeTruthy()
+    const updated = await updateResponse.json()
+
+    // Verify email and phone were updated
+    expect(updated.email).toBe(`updated${timestamp}@example.com`)
+    expect(updated.phoneNumber).toBe('+886-987-654-321')
+
+    // Reload from API to confirm persistence
+    const getResponse = await page.request.get(`https://localhost:7035/api/admin/people/${created.id}`)
+    expect(getResponse.ok()).toBeTruthy()
+    const reloaded = await getResponse.json()
+    
+    expect(reloaded.email).toBe(`updated${timestamp}@example.com`)
+    expect(reloaded.phoneNumber).toBe('+886-987-654-321')
+  })
+
+  test('Create person with email only, then add phone number', async ({ page }) => {
+    const timestamp = Date.now()
+    
+    // Create with email only
+    const response = await page.request.post('https://localhost:7035/api/admin/people', {
+      data: {
+        firstName: 'EmailOnly',
+        lastName: 'Person',
+        employeeId: `EMP${timestamp}`,
+        email: `emailonly${timestamp}@example.com`,
+        identityDocumentType: 'None'
+      }
+    })
+    expect(response.ok()).toBeTruthy()
+    const created = await response.json()
+    createdPersonIds.push(created.id)
+
+    expect(created.email).toBe(`emailonly${timestamp}@example.com`)
+    expect(created.phoneNumber).toBeNull()
+
+    // Add phone number
+    const updateResponse = await page.request.put(`https://localhost:7035/api/admin/people/${created.id}`, {
+      data: {
+        firstName: 'EmailOnly',
+        lastName: 'Person',
+        employeeId: `EMP${timestamp}`,
+        email: `emailonly${timestamp}@example.com`,
+        phoneNumber: '+886-911-222-333',
+        identityDocumentType: 'None'
+      }
+    })
+    expect(updateResponse.ok()).toBeTruthy()
+    const updated = await updateResponse.json()
+
+    expect(updated.email).toBe(`emailonly${timestamp}@example.com`)
+    expect(updated.phoneNumber).toBe('+886-911-222-333')
+  })
+
+  test('Update person to remove email and phone (set to null)', async ({ page }) => {
+    const timestamp = Date.now()
+    
+    // Create with email and phone
+    const response = await page.request.post('https://localhost:7035/api/admin/people', {
+      data: {
+        firstName: 'RemoveContact',
+        lastName: 'Person',
+        employeeId: `EMP${timestamp}`,
+        email: `remove${timestamp}@example.com`,
+        phoneNumber: '+886-933-444-555',
+        identityDocumentType: 'None'
+      }
+    })
+    expect(response.ok()).toBeTruthy()
+    const created = await response.json()
+    createdPersonIds.push(created.id)
+
+    // Update with empty strings (should be normalized to null)
+    const updateResponse = await page.request.put(`https://localhost:7035/api/admin/people/${created.id}`, {
+      data: {
+        firstName: 'RemoveContact',
+        lastName: 'Person',
+        employeeId: `EMP${timestamp}`,
+        email: '',
+        phoneNumber: '',
+        identityDocumentType: 'None'
+      }
+    })
+    expect(updateResponse.ok()).toBeTruthy()
+    const updated = await updateResponse.json()
+
+    // Verify they are null (not empty strings)
+    expect(updated.email).toBeNull()
+    expect(updated.phoneNumber).toBeNull()
+
+    // Reload to confirm
+    const reloaded = await getPersonDetails(page, created.id)
+    expect(reloaded.email).toBeNull()
+    expect(reloaded.phoneNumber).toBeNull()
+  })
+
   test('Search for person by name', async ({ page }) => {
     // Create multiple persons
     const timestamp = Date.now()

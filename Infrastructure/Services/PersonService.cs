@@ -217,13 +217,19 @@ public class PersonService : IPersonService
             person.ResidentCertificateNumber != existingPerson.ResidentCertificateNumber;
 
         // Update fields
+        // Contact Information
+        existingPerson.Email = person.Email;
+        existingPerson.PhoneNumber = person.PhoneNumber;
+        // Name Information
         existingPerson.FirstName = person.FirstName;
         existingPerson.MiddleName = person.MiddleName;
         existingPerson.LastName = person.LastName;
         existingPerson.Nickname = person.Nickname;
+        // Employment Information
         existingPerson.EmployeeId = person.EmployeeId;
         existingPerson.Department = person.Department;
         existingPerson.JobTitle = person.JobTitle;
+        // Profile Information
         existingPerson.ProfileUrl = person.ProfileUrl;
         existingPerson.PictureUrl = person.PictureUrl;
         existingPerson.Website = person.Website;
