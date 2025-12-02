@@ -1,11 +1,8 @@
 <template>
-  <div v-if="activeRole" class="role-badge">
-    <span class="role-icon">👤</span>
+  <a v-if="activeRole" :href="myAccountUrl" class="role-badge" :title="t('myAccount.title')">
+    <i class="bi bi-person-badge"></i>
     <span class="role-name">{{ activeRole }}</span>
-    <a :href="myAccountUrl" class="role-link" :title="t('myAccount.title')">
-      <span class="switch-icon">🔄</span>
-    </a>
-  </div>
+  </a>
 </template>
 
 <script setup lang="ts">
@@ -26,43 +23,35 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Google Material Design Style */
 .role-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 20px;
-  font-size: 0.9rem;
+  gap: 6px;
+  padding: 4px 12px;
+  background: #e8f0fe;
+  color: #1967d2;
+  border-radius: 16px;
+  font-size: 13px;
   font-weight: 500;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  font-family: 'Google Sans', 'Roboto', sans-serif;
+  text-decoration: none;
+  transition: background-color 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+  border: 1px solid #d2e3fc;
+  line-height: 20px;
 }
 
-.role-icon {
-  font-size: 1.1rem;
+.role-badge:hover {
+  background: #d2e3fc;
+  color: #1558b0;
+  text-decoration: none;
+}
+
+.role-badge i {
+  font-size: 16px;
 }
 
 .role-name {
-  letter-spacing: 0.5px;
-}
-
-.role-link {
-  display: flex;
-  align-items: center;
-  color: white;
-  text-decoration: none;
-  padding: 0.25rem;
-  border-radius: 50%;
-  transition: background 0.2s;
-}
-
-.role-link:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.switch-icon {
-  font-size: 1rem;
-  display: block;
+  letter-spacing: 0.25px;
 }
 </style>

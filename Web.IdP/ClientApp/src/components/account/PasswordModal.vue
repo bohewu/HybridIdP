@@ -240,9 +240,10 @@ function handleConfirm() {
 }
 
 .btn-primary:disabled {
-  background-color: rgba(26, 115, 232, 0.12);
-  color: rgba(255, 255, 255, 0.5);
+  background-color: #dadce0;
+  color: #80868b;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 @keyframes fadeIn {
