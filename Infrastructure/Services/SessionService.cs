@@ -237,8 +237,10 @@ public class SessionService : ISessionService
 
     private async Task<RefreshResultDto> RefreshInternalAsync(Guid userId, string authorizationId, string presentedRefreshToken, string? ipAddress, string? userAgent)
     {
-        // Locate session record
-        var session = await _db.UserSessions.FirstOrDefaultAsync(s => s.AuthorizationId == authorizationId && s.UserId == userId);
+        // Locate session record (Phase 11.1: Include ActiveRole navigation)
+        var session = await _db.UserSessions
+            .Include(s => s.ActiveRole)
+            .FirstOrDefaultAsync(s => s.AuthorizationId == authorizationId && s.UserId == userId);
         if (session is null)
         {
             // Treat missing session as no-op with reuse detection false.
@@ -334,7 +336,10 @@ public class SessionService : ISessionService
 
     private async Task<RevokeChainResultDto> RevokeChainInternalAsync(Guid userId, string authorizationId, string reason)
     {
-        var session = await _db.UserSessions.FirstOrDefaultAsync(s => s.AuthorizationId == authorizationId && s.UserId == userId);
+        // Phase 11.1: Include ActiveRole navigation
+        var session = await _db.UserSessions
+            .Include(s => s.ActiveRole)
+            .FirstOrDefaultAsync(s => s.AuthorizationId == authorizationId && s.UserId == userId);
         if (session is null)
         {
             return new RevokeChainResultDto(authorizationId, 0, true);

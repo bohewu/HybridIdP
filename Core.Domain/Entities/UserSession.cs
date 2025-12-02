@@ -1,4 +1,5 @@
 using System;
+using Core.Domain;
 
 namespace Core.Domain.Entities;
 
@@ -57,4 +58,22 @@ public class UserSession
     public string? DeviceInfo { get; set; }
     public string? IpAddress { get; set; }
     public string? UserAgent { get; set; }
+
+    /// <summary>
+    /// Active role identifier for this session (Phase 11: Role Switching).
+    /// User must select a role on login; this determines their permissions for the session.
+    /// Required field - every session must have an active role.
+    /// </summary>
+    public Guid ActiveRoleId { get; set; }
+
+    /// <summary>
+    /// Timestamp of the last role switch for this session.
+    /// NULL if the role has never been switched (initial selection).
+    /// </summary>
+    public DateTime? LastRoleSwitchUtc { get; set; }
+
+    /// <summary>
+    /// Navigation property to the active role.
+    /// </summary>
+    public ApplicationRole? ActiveRole { get; set; }
 }

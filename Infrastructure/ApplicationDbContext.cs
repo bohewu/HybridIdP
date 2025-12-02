@@ -191,6 +191,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.Property(e => e.IpAddress).HasMaxLength(45);
             entity.Property(e => e.UserAgent).HasMaxLength(500);
             entity.Property(e => e.RevocationReason).HasMaxLength(500);
+            
+            // Phase 11.1: Active role for session (required)
+            entity.Property(e => e.ActiveRoleId).IsRequired();
+            entity.HasIndex(e => e.ActiveRoleId);
+            
+            // Configure FK relationship with ApplicationRole
+            entity.HasOne(e => e.ActiveRole)
+                .WithMany()
+                .HasForeignKey(e => e.ActiveRoleId)
+                .OnDelete(DeleteBehavior.Restrict); // Prevent role deletion if sessions exist
         });
 
         // Configure ClientRequiredScope entity

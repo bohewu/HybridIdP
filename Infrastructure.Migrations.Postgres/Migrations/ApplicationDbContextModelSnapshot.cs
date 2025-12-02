@@ -792,6 +792,9 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Property<DateTime?>("AbsoluteExpiresUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("ActiveRoleId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("AuthorizationId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -823,6 +826,9 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Property<DateTime>("LastActivityUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("LastRoleSwitchUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("PreviousRefreshTokenHash")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -851,6 +857,8 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ActiveRoleId");
 
                     b.HasIndex("AuthorizationId")
                         .IsUnique();
@@ -1212,6 +1220,17 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .IsRequired();
 
                     b.Navigation("UserClaim");
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.UserSession", b =>
+                {
+                    b.HasOne("Core.Domain.ApplicationRole", "ActiveRole")
+                        .WithMany()
+                        .HasForeignKey("ActiveRoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ActiveRole");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
