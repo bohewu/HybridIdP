@@ -8,6 +8,7 @@ namespace Infrastructure.Authorization;
 
 /// <summary>
 /// Authorization handler for permission-based access control
+/// Phase 11.4: Modified to check only ActiveRoleId permissions (no role aggregation)
 /// </summary>
 public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
 {
@@ -22,38 +23,56 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
+        // Phase 11.4: Get the active role from claims
+        // The active role is set during login/role selection and stored in the session
+        var activeRoleClaim = context.User.Claims
+            .FirstOrDefault(c => c.Type == "active_role");
+
+        string? activeRoleName = null;
+
+        if (activeRoleClaim != null)
+        {
+            // Active role is explicitly set in claims (preferred for Phase 11)
+            activeRoleName = activeRoleClaim.Value;
+        }
+        else
+        {
+            // Fallback: If no active_role claim, use the first role claim
+            // This maintains backward compatibility for sessions created before Phase 11
+            activeRoleName = context.User.Claims
+                .FirstOrDefault(c => c.Type == ClaimTypes.Role)
+                ?.Value;
+        }
+
+        if (string.IsNullOrEmpty(activeRoleName))
+        {
+            // No active role found - deny access
+            return;
+        }
+
         // Admin role has all permissions
-        if (context.User.IsInRole(AuthConstants.Roles.Admin))
+        if (activeRoleName == AuthConstants.Roles.Admin)
         {
             context.Succeed(requirement);
             return;
         }
 
-        // Get user's roles
-        var userRoles = context.User.Claims
-            .Where(c => c.Type == ClaimTypes.Role)
-            .Select(c => c.Value)
-            .ToList();
-
-        // Check if any of the user's roles have the required permission
-        foreach (var roleName in userRoles)
+        // Check if the active role has the required permission
+        var role = await _roleManager.FindByNameAsync(activeRoleName);
+        if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
         {
-            var role = await _roleManager.FindByNameAsync(roleName);
-            if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
-            {
-                var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(p => p.Trim())
-                    .ToList();
+            var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(p => p.Trim())
+                .ToList();
 
-                if (rolePermissions.Contains(requirement.Permission))
-                {
-                    context.Succeed(requirement);
-                    return;
-                }
+            if (rolePermissions.Contains(requirement.Permission))
+            {
+                context.Succeed(requirement);
+                return;
             }
         }
 
-        // Permission not found
+        // Permission not found in active role
         // Don't call context.Fail() - let other handlers run
     }
 }

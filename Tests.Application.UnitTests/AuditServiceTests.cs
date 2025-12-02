@@ -32,7 +32,7 @@ public class AuditServiceTests : IDisposable
         _eventPublisherMock = new Mock<IDomainEventPublisher>();
         _settingsServiceMock = new Mock<ISettingsService>();
         _settingsServiceMock.Setup(s => s.GetValueAsync<int>("Audit.RetentionDays", It.IsAny<CancellationToken>())).ReturnsAsync(0);
-        _auditService = new AuditService(_dbContext, _eventPublisherMock.Object, _settingsServiceMock.Object);
+        _auditService = new AuditService(_dbContext, _dbContext, _eventPublisherMock.Object, _settingsServiceMock.Object);
     }
 
     public void Dispose()

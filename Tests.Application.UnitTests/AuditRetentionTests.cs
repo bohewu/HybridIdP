@@ -51,7 +51,7 @@ namespace Tests.Application.UnitTests
         private AuditService CreateService(FakeSettingsService settings, ApplicationDbContext db)
         {
             var publisher = new FakeDomainEventPublisher();
-            return new AuditService(db, publisher, settings);
+            return new AuditService(db, db, publisher, settings);
         }
 
         [Fact]

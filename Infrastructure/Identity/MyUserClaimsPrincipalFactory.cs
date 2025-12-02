@@ -92,16 +92,26 @@ public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Applicati
             identity.AddClaim(new Claim(AuthConstants.Claims.Department, department));
         }
 
-        // Add permission claims from user's roles
+        // Phase 11.4: Add active_role claim and permissions based on active role only
         var userRoles = await UserManager.GetRolesAsync(user);
+        
+        // For single-role users, automatically set active_role
+        if (userRoles.Count == 1)
+        {
+            identity.AddClaim(new Claim("active_role", userRoles.First()));
+        }
+        // For multi-role users, the active_role will be set after role selection in SelectRole page
+
+        // Phase 11.4: Only add permissions for the active role (not all roles)
+        var activeRole = userRoles.Count == 1 ? userRoles.First() : null;
         var permissions = new HashSet<string>();
 
-        foreach (var roleName in userRoles)
+        if (activeRole != null)
         {
-            var role = await RoleManager.FindByNameAsync(roleName);
+            // Single role or active role selected - only use that role's permissions
+            var role = await RoleManager.FindByNameAsync(activeRole);
             if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
             {
-                // Parse permissions from the role's Permissions property (comma-separated string)
                 var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
                     .Select(p => p.Trim())
                     .Where(p => !string.IsNullOrEmpty(p));
@@ -109,6 +119,26 @@ public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Applicati
                 foreach (var permission in rolePermissions)
                 {
                     permissions.Add(permission);
+                }
+            }
+        }
+        else
+        {
+            // Multi-role user without active role selected (backward compatibility)
+            // This occurs before role selection page - aggregate all roles temporarily
+            foreach (var roleName in userRoles)
+            {
+                var role = await RoleManager.FindByNameAsync(roleName);
+                if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
+                {
+                    var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(p => p.Trim())
+                        .Where(p => !string.IsNullOrEmpty(p));
+                    
+                    foreach (var permission in rolePermissions)
+                    {
+                        permissions.Add(permission);
+                    }
                 }
             }
         }

@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using Core.Application;
 using Core.Domain;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -128,9 +130,9 @@ public class SelectRoleModel : PageModel
         // Verify user has the selected role
         var userRoles = await _userManager.GetRolesAsync(user);
         var selectedRole = await _accountManagementService.GetMyAvailableRolesAsync(UserId);
-        var roleExists = selectedRole.Any(r => r.RoleId == Input.SelectedRoleId);
+        var roleInfo = selectedRole.FirstOrDefault(r => r.RoleId == Input.SelectedRoleId);
 
-        if (!roleExists)
+        if (roleInfo == null)
         {
             _logger.LogWarning("SelectRole: User {UserId} attempted to select unassigned role {RoleId}", 
                 UserId, Input.SelectedRoleId);
@@ -144,7 +146,26 @@ public class SelectRoleModel : PageModel
         // Sign in user with selected role context
         await _signInManager.SignInAsync(user, isPersistent: true);
 
-        _logger.LogInformation("User {UserId} selected role {RoleId} for session", UserId, Input.SelectedRoleId);
+        // Phase 11.4: Add active_role claim after sign-in
+        var principal = await _signInManager.CreateUserPrincipalAsync(user);
+        var identity = (ClaimsIdentity)principal.Identity!;
+        
+        // Remove any existing active_role claim and add the selected one
+        var existingActiveRoleClaim = identity.FindFirst("active_role");
+        if (existingActiveRoleClaim != null)
+        {
+            identity.RemoveClaim(existingActiveRoleClaim);
+        }
+        identity.AddClaim(new Claim("active_role", roleInfo.RoleName));
+
+        // Update the sign-in with new claims
+        await HttpContext.SignInAsync(
+            IdentityConstants.ApplicationScheme,
+            principal,
+            new AuthenticationProperties { IsPersistent = true });
+
+        _logger.LogInformation("User {UserId} selected role {RoleName} ({RoleId}) for session", 
+            UserId, roleInfo.RoleName, Input.SelectedRoleId);
 
         return LocalRedirect(ReturnUrl);
     }

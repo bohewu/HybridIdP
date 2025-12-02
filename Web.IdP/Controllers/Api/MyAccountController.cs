@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -18,17 +19,20 @@ namespace Web.IdP.Controllers.Api;
 public class MyAccountController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly IAccountManagementService _accountManagementService;
     private readonly ISessionService _sessionService;
     private readonly ILogger<MyAccountController> _logger;
 
     public MyAccountController(
         UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
         IAccountManagementService accountManagementService,
         ISessionService sessionService,
         ILogger<MyAccountController> logger)
     {
         _userManager = userManager;
+        _roleManager = roleManager;
         _accountManagementService = accountManagementService;
         _sessionService = sessionService;
         _logger = logger;
@@ -110,6 +114,34 @@ public class MyAccountController : ControllerBase
                 Success = false,
                 Error = "Failed to switch role. Check if you have permission and provided correct password for Admin role."
             });
+        }
+
+        // Phase 11.4: Update active_role claim in the current authentication session
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user != null)
+        {
+            var role = await _roleManager.FindByIdAsync(request.RoleId.ToString());
+            
+            if (role != null)
+            {
+                var identity = (ClaimsIdentity)User.Identity!;
+                
+                // Remove old active_role claim and add new one
+                var existingActiveRoleClaim = identity.FindFirst("active_role");
+                if (existingActiveRoleClaim != null)
+                {
+                    identity.RemoveClaim(existingActiveRoleClaim);
+                }
+                identity.AddClaim(new Claim("active_role", role.Name!));
+
+                // Update authentication cookie
+                await HttpContext.SignInAsync(
+                    IdentityConstants.ApplicationScheme,
+                    new ClaimsPrincipal(identity),
+                    new AuthenticationProperties { IsPersistent = true });
+
+                _logger.LogInformation("Updated active_role claim to {RoleName} for user {UserId}", role.Name, userId);
+            }
         }
 
         return Ok(new SwitchRoleResponse
