@@ -39,89 +39,108 @@ const { t } = useI18n();
 </script>
 
 <style scoped>
+/* Google Material Design Style */
 .account-list {
-  display: grid;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .account-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  border: 2px solid #e8e8e8;
-  border-radius: 12px;
-  transition: all 0.3s;
-  background: linear-gradient(to right, #ffffff, #f8f9fa);
+  padding: 16px 24px;
+  border-bottom: 1px solid #e8eaed;
+  transition: background-color 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
   cursor: pointer;
+  min-height: 72px;
 }
 
-.account-card.current {
-  border-color: #17a2b8;
-  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-  box-shadow: 0 4px 12px rgba(23, 162, 184, 0.2);
+.account-card:last-child {
+  border-bottom: none;
 }
 
 .account-card:hover:not(.current) {
-  border-color: #667eea;
-  background: linear-gradient(to right, #f8f9ff, #ffffff);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-  transform: translateX(4px);
+  background-color: #f8f9fa;
+}
+
+.account-card.current {
+  background-color: #e8f0fe;
 }
 
 .account-info {
   flex: 1;
+  min-width: 0;
 }
 
 .account-info h4 {
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 4px 0;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 1.2rem;
-  color: #333;
-  font-weight: 600;
+  gap: 8px;
+  font-size: 14px;
+  color: #202124;
+  font-weight: 500;
+  font-family: 'Google Sans', 'Roboto', sans-serif;
 }
 
 .account-info p {
   margin: 0;
-  font-size: 0.9rem;
-  color: #666;
+  font-size: 13px;
+  color: #5f6368;
+  font-family: 'Roboto', sans-serif;
 }
 
 .account-card.current .account-info h4 {
-  color: #0c5460;
+  color: #1967d2;
 }
 
 .badge {
-  font-size: 0.75rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 20px;
-  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  background-color: #1a73e8;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-family: 'Google Sans', 'Roboto', sans-serif;
 }
 
 .btn-secondary {
-  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 8px;
+  background-color: #fff;
+  border: 1px solid #dadce0;
+  padding: 8px 24px;
+  border-radius: 4px;
   font-weight: 500;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
-  color: white;
+  transition: background-color 0.2s cubic-bezier(0.4, 0.0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0.0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+  box-shadow: none;
+  color: #1a73e8;
+  font-size: 14px;
+  font-family: 'Google Sans', 'Roboto', sans-serif;
+  letter-spacing: 0.25px;
+  text-transform: none;
+  height: 36px;
 }
 
 .btn-secondary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
-  background: linear-gradient(135deg, #5a6268 0%, #545b62 100%);
+  background-color: #f8f9fa;
+  border-color: #dadce0;
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+}
+
+.btn-secondary:active {
+  background-color: #f1f3f4;
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 2px 6px 2px rgba(60,64,67,.15);
 }
 
 @media (max-width: 576px) {
   .account-card {
     flex-direction: column;
     align-items: flex-start;
-    gap: 1rem;
+    gap: 12px;
+    padding: 16px;
   }
   
   .account-actions {
