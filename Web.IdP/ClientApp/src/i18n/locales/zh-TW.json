@@ -303,9 +303,22 @@
         "nationalIdHint": "中華民國國民身分證格式",
         "passportNumber": "護照號碼",
         "passportPlaceholder": "例如：300123456",
+        "passportHint": "6-12 位英數字元",
         "residentCertificate": "居留證號碼",
         "residentCertPlaceholder": "例如：AA12345678",
+        "residentCertHint": "10-12 位英數字元",
         "identityVerified": "身分已於以下時間驗證"
+      },
+      "validation": {
+        "nationalIdRequired": "選擇國民身分證時，身分證字號為必填項",
+        "nationalIdFormat": "身分證字號格式不正確（應為 1 個英文字母 + 9 個數字）",
+        "nationalIdInvalidLetter": "身分證字號開頭字母無效",
+        "nationalIdChecksum": "身分證字號檢查碼錯誤，請確認號碼是否正確",
+        "passportRequired": "選擇護照時，護照號碼為必填項",
+        "passportFormat": "護照號碼格式不正確（應為 6-12 位英數字元）",
+        "residentCertRequired": "選擇居留證時，居留證號碼為必填項",
+        "residentCertFormat": "居留證號碼格式不正確（應為 10-12 位英數字元）",
+        "onlyOneDocumentType": "請只填寫一種證件類型的號碼"
       },
       "linkedAccounts": {
         "title": "連結帳號",

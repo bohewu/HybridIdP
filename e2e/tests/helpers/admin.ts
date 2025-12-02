@@ -749,6 +749,106 @@ export async function getAvailableUsers(page: Page, searchTerm?: string) {
   }, searchTerm || '');
 }
 
+// Person identity document helpers (Phase 10.6)
+export async function createPersonWithIdentity(
+  page: Page,
+  personData: {
+    firstName: string;
+    lastName: string;
+    employeeId?: string;
+    identityDocumentType?: 'NationalId' | 'Passport' | 'ResidentCertificate';
+    nationalId?: string;
+    passportNumber?: string;
+    residentCertificateNumber?: string;
+    department?: string;
+    jobTitle?: string;
+  }
+) {
+  const payload = {
+    firstName: personData.firstName,
+    lastName: personData.lastName,
+    employeeId: personData.employeeId || null,
+    department: personData.department || 'E2E Department',
+    jobTitle: personData.jobTitle || 'E2E Tester',
+    identityDocumentType: personData.identityDocumentType || null,
+    nationalId: personData.nationalId || null,
+    passportNumber: personData.passportNumber || null,
+    residentCertificateNumber: personData.residentCertificateNumber || null
+  };
+  
+  return await page.evaluate(async (p) => {
+    const r = await fetch('/api/admin/people', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    });
+    if (!r.ok) {
+      const errorText = await r.text();
+      throw new Error(`Failed to create person with identity: ${r.status} - ${errorText}`);
+    }
+    return r.json();
+  }, payload);
+}
+
+export async function updatePersonIdentity(
+  page: Page,
+  personId: string,
+  identityData: {
+    identityDocumentType?: 'NationalId' | 'Passport' | 'ResidentCertificate' | null;
+    nationalId?: string | null;
+    passportNumber?: string | null;
+    residentCertificateNumber?: string | null;
+  }
+) {
+  // First get existing person data
+  const existingPerson = await getPersonDetails(page, personId);
+  
+  const payload = {
+    ...existingPerson,
+    identityDocumentType: identityData.identityDocumentType !== undefined ? identityData.identityDocumentType : existingPerson.identityDocumentType,
+    nationalId: identityData.nationalId !== undefined ? identityData.nationalId : existingPerson.nationalId,
+    passportNumber: identityData.passportNumber !== undefined ? identityData.passportNumber : existingPerson.passportNumber,
+    residentCertificateNumber: identityData.residentCertificateNumber !== undefined ? identityData.residentCertificateNumber : existingPerson.residentCertificateNumber
+  };
+  
+  return await page.evaluate(async (args) => {
+    const r = await fetch(`/api/admin/people/${args.personId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args.payload)
+    });
+    if (!r.ok) {
+      const errorText = await r.text();
+      throw new Error(`Failed to update person identity: ${r.status} - ${errorText}`);
+    }
+    return r.json();
+  }, { personId, payload });
+}
+
+export async function verifyPersonIdentity(page: Page, personId: string) {
+  return await page.evaluate(async (id) => {
+    const r = await fetch(`/api/admin/people/${id}/verify-identity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!r.ok) {
+      const errorText = await r.text();
+      throw new Error(`Failed to verify person identity: ${r.status} - ${errorText}`);
+    }
+    return r.json();
+  }, personId);
+}
+
+export async function getPersonDetails(page: Page, personId: string) {
+  return await page.evaluate(async (id) => {
+    const r = await fetch(`/api/admin/people/${id}`);
+    if (!r.ok) {
+      throw new Error(`Failed to get person details: ${r.status}`);
+    }
+    return r.json();
+  }, personId);
+}
+
 export default {
   loginAsAdminViaIdP,
   login,
@@ -779,5 +879,9 @@ export default {
     deletePerson,
     linkAccountToPerson,
     unlinkAccountFromPerson,
-    getAvailableUsers
+    getAvailableUsers,
+    createPersonWithIdentity,
+    updatePersonIdentity,
+    verifyPersonIdentity,
+    getPersonDetails
 }

@@ -303,9 +303,22 @@
         "nationalIdHint": "Taiwan ROC ID format",
         "passportNumber": "Passport Number",
         "passportPlaceholder": "e.g., 300123456",
+        "passportHint": "6-12 alphanumeric characters",
         "residentCertificate": "Resident Certificate",
         "residentCertPlaceholder": "e.g., AA12345678",
+        "residentCertHint": "10-12 alphanumeric characters",
         "identityVerified": "Identity verified on"
+      },
+      "validation": {
+        "nationalIdRequired": "National ID is required when document type is selected",
+        "nationalIdFormat": "Invalid National ID format (should be 1 letter + 9 digits)",
+        "nationalIdInvalidLetter": "Invalid National ID starting letter",
+        "nationalIdChecksum": "National ID checksum failed, please verify the number",
+        "passportRequired": "Passport number is required when document type is selected",
+        "passportFormat": "Invalid passport format (should be 6-12 alphanumeric characters)",
+        "residentCertRequired": "Resident certificate is required when document type is selected",
+        "residentCertFormat": "Invalid resident certificate format (should be 10-12 alphanumeric characters)",
+        "onlyOneDocumentType": "Please fill in only one document type"
       },
       "linkedAccounts": {
         "title": "Linked Accounts",

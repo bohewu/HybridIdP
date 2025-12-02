@@ -1,9 +1,11 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseModal from '@/components/common/BaseModal.vue'
+import { useIdentityValidation } from '@/composables/useIdentityValidation'
 
 const { t } = useI18n()
+const { validateTaiwanNationalId, validatePassportNumber, validateResidentCertificate } = useIdentityValidation()
 
 const props = defineProps({
 	person: {
@@ -17,6 +19,13 @@ const emit = defineEmits(['close', 'save'])
 const isEdit = computed(() => !!props.person)
 const saving = ref(false)
 const error = ref(null)
+
+// Identity validation errors
+const identityErrors = ref({
+	nationalId: null,
+	passportNumber: null,
+	residentCertificateNumber: null
+})
 
 // Form fields
 const formData = ref({
@@ -72,10 +81,45 @@ if (props.person) {
 	}
 }
 
+// Real-time validation watchers
+watch(() => formData.value.nationalId, (newValue) => {
+	if (newValue && formData.value.identityDocumentType === 'NationalId') {
+		const result = validateTaiwanNationalId(newValue)
+		identityErrors.value.nationalId = result.error
+	} else {
+		identityErrors.value.nationalId = null
+	}
+})
+
+watch(() => formData.value.passportNumber, (newValue) => {
+	if (newValue && formData.value.identityDocumentType === 'Passport') {
+		const result = validatePassportNumber(newValue)
+		identityErrors.value.passportNumber = result.error
+	} else {
+		identityErrors.value.passportNumber = null
+	}
+})
+
+watch(() => formData.value.residentCertificateNumber, (newValue) => {
+	if (newValue && formData.value.identityDocumentType === 'ResidentCertificate') {
+		const result = validateResidentCertificate(newValue)
+		identityErrors.value.residentCertificateNumber = result.error
+	} else {
+		identityErrors.value.residentCertificateNumber = null
+	}
+})
+
+// Clear validation errors when document type changes
+watch(() => formData.value.identityDocumentType, () => {
+	identityErrors.value.nationalId = null
+	identityErrors.value.passportNumber = null
+	identityErrors.value.residentCertificateNumber = null
+})
+
 const handleSubmit = async () => {
 	error.value = null
 
-	// Validation
+	// Basic validation
 	if (!formData.value.firstName?.trim()) {
 		error.value = t('admin.persons.errors.firstNameRequired')
 		return
@@ -83,6 +127,41 @@ const handleSubmit = async () => {
 	if (!formData.value.lastName?.trim()) {
 		error.value = t('admin.persons.errors.lastNameRequired')
 		return
+	}
+
+	// Identity document validation
+	if (formData.value.identityDocumentType !== 'None') {
+		if (formData.value.identityDocumentType === 'NationalId') {
+			if (!formData.value.nationalId?.trim()) {
+				error.value = t('admin.persons.validation.nationalIdRequired')
+				return
+			}
+			const result = validateTaiwanNationalId(formData.value.nationalId)
+			if (!result.valid) {
+				error.value = result.error
+				return
+			}
+		} else if (formData.value.identityDocumentType === 'Passport') {
+			if (!formData.value.passportNumber?.trim()) {
+				error.value = t('admin.persons.validation.passportRequired')
+				return
+			}
+			const result = validatePassportNumber(formData.value.passportNumber)
+			if (!result.valid) {
+				error.value = result.error
+				return
+			}
+		} else if (formData.value.identityDocumentType === 'ResidentCertificate') {
+			if (!formData.value.residentCertificateNumber?.trim()) {
+				error.value = t('admin.persons.validation.residentCertRequired')
+				return
+			}
+			const result = validateResidentCertificate(formData.value.residentCertificateNumber)
+			if (!result.valid) {
+				error.value = result.error
+				return
+			}
+		}
 	}
 
 	saving.value = true
@@ -282,8 +361,16 @@ const handleClose = () => {
 									<input id="nationalId" v-model="formData.nationalId" type="text"
 										:placeholder="t('admin.persons.form.nationalIdPlaceholder')"
 										maxlength="20"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-									<p class="mt-1 text-xs text-gray-500">{{ t('admin.persons.form.nationalIdHint') }}</p>
+										:class="[
+											'mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm',
+											identityErrors.nationalId 
+												? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+												: 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+										]" />
+									<p v-if="identityErrors.nationalId" class="mt-1 text-xs text-red-600">
+										{{ identityErrors.nationalId }}
+									</p>
+									<p v-else class="mt-1 text-xs text-gray-500">{{ t('admin.persons.form.nationalIdHint') }}</p>
 								</div>
 
 								<div>
@@ -293,7 +380,16 @@ const handleClose = () => {
 									<input id="passportNumber" v-model="formData.passportNumber" type="text"
 										:placeholder="t('admin.persons.form.passportPlaceholder')"
 										maxlength="20"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+										:class="[
+											'mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm',
+											identityErrors.passportNumber 
+												? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+												: 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+										]" />
+									<p v-if="identityErrors.passportNumber" class="mt-1 text-xs text-red-600">
+										{{ identityErrors.passportNumber }}
+									</p>
+									<p v-else class="mt-1 text-xs text-gray-500">{{ t('admin.persons.form.passportHint') }}</p>
 								</div>
 
 								<div>
@@ -303,7 +399,16 @@ const handleClose = () => {
 									<input id="residentCertificateNumber" v-model="formData.residentCertificateNumber" type="text"
 										:placeholder="t('admin.persons.form.residentCertPlaceholder')"
 										maxlength="20"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+										:class="[
+											'mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm',
+											identityErrors.residentCertificateNumber 
+												? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+												: 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+										]" />
+									<p v-if="identityErrors.residentCertificateNumber" class="mt-1 text-xs text-red-600">
+										{{ identityErrors.residentCertificateNumber }}
+									</p>
+									<p v-else class="mt-1 text-xs text-gray-500">{{ t('admin.persons.form.residentCertHint') }}</p>
 								</div>
 							</div>
 
