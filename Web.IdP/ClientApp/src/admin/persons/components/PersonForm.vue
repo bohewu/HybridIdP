@@ -129,6 +129,15 @@ const handleSubmit = async () => {
 		return
 	}
 
+	// Email format validation
+	if (formData.value.email?.trim()) {
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+		if (!emailRegex.test(formData.value.email.trim())) {
+			error.value = t('admin.persons.errors.invalidEmail')
+			return
+		}
+	}
+
 	// Identity document validation
 	if (formData.value.identityDocumentType !== 'None') {
 		if (formData.value.identityDocumentType === 'NationalId') {

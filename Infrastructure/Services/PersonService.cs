@@ -461,6 +461,17 @@ public class PersonService : IPersonService
         string? residentCertificateNumber,
         Guid? excludePersonId = null)
     {
+        // Normalize empty strings to null for proper comparison
+        nationalId = string.IsNullOrWhiteSpace(nationalId) ? null : nationalId;
+        passportNumber = string.IsNullOrWhiteSpace(passportNumber) ? null : passportNumber;
+        residentCertificateNumber = string.IsNullOrWhiteSpace(residentCertificateNumber) ? null : residentCertificateNumber;
+
+        // If no identity documents provided, skip uniqueness check
+        if (nationalId == null && passportNumber == null && residentCertificateNumber == null)
+        {
+            return (true, null);
+        }
+
         // Check if any identity document already exists
         var existingPerson = await _context.Persons
             .Where(p => excludePersonId == null || p.Id != excludePersonId)
