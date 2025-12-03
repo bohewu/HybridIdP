@@ -103,6 +103,13 @@ body {
   font-size: 0.875rem;
 }
 
+/* Dropdown menu active state */
+.dropdown-item.active,
+.dropdown-item:active {
+  background-color: #e8f0fe !important;
+  color: #1967d2 !important;
+}
+
 /* Main Content Area */
 main {
   flex: 1;
