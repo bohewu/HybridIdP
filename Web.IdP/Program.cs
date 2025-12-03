@@ -18,6 +18,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Exporter.Prometheus;
+using Web.IdP.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,6 +66,12 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
 // Configure cookie authentication to return 401/403 for API endpoints instead of redirecting
 builder.Services.ConfigureApplicationCookie(options =>
 {
+    // Security: Set secure cookie attributes
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.Name = ".HybridAuthIdP.Identity";
+    
     options.Events.OnRedirectToLogin = context =>
     {
         if (context.Request.Path.StartsWithSegments("/api") || 
@@ -133,6 +140,24 @@ builder.Services.AddOpenIddict()
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 
+
+// Configure session security
+builder.Services.AddSession(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.Name = ".HybridAuthIdP.Session";
+});
+
+// Configure antiforgery tokens security
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.Name = ".HybridAuthIdP.Antiforgery";
+});
 
 builder.Services.AddMvc()
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
@@ -285,6 +310,9 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Add security headers middleware
+app.UseSecurityHeaders();
 
 // Use Vite development server in development mode
 if (app.Environment.IsDevelopment())

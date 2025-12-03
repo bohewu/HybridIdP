@@ -406,6 +406,120 @@ main {
   color: #5f6368;
 }
 
+/* Homepage icon containers */
+.home-icon-container {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.home-icon-container.authorization {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.home-icon-container.linked-accounts {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.home-icon-container i {
+  font-size: 2.5rem;
+  color: white;
+}
+
+/* Homepage hover card effects */
+.hover-card {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.hover-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+.hover-card .card-body {
+  min-height: 350px;
+}
+
+.hover-card .icon-container {
+  transition: transform 0.3s ease;
+}
+
+.hover-card:hover .icon-container {
+  transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+  .hover-card .card-body {
+    min-height: auto;
+    padding: 2rem 1.5rem !important;
+  }
+
+  .icon-container {
+    width: 64px !important;
+    height: 64px !important;
+  }
+
+  .icon-container i {
+    font-size: 2rem !important;
+  }
+}
+
+/* Account avatar */
+.account-avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 1.25rem;
+}
+
+/* Scope icon */
+.scope-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Admin layout width constraint */
+.admin-nav-width {
+  width: 140px;
+}
+
+/* App icon gradients for Authorizations page */
+.app-icon.gradient-0 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.app-icon.gradient-1 {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.app-icon.gradient-2 {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.app-icon.gradient-3 {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.app-icon.gradient-4 {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.app-icon.gradient-5 {
+  background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+}
+
+.app-icon.gradient-6 {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+.app-icon.gradient-7 {
+  background: linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%);
+}
+
 /* Responsive: Desktop and up */
 @media (min-width: 576px) {
   .user-name {

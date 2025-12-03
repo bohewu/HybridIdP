@@ -22,8 +22,7 @@
                     <div class="card h-100 @(account.IsCurrentAccount ? "border-primary" : "")">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div class="user-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
-                                     style="width: 48px; height: 48px; font-size: 1.25rem;">
+                                <div class="user-avatar account-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center">
                                     @{
                                         var initial = string.IsNullOrEmpty(account.Email) ? "?" : account.Email.Substring(0, 1).ToUpper();
                                     }
@@ -80,7 +79,10 @@
                                         <input type="hidden" name="targetAccountId" value="@account.UserId" />
                                         <button type="button" class="btn btn-sm btn-outline-primary switch-account-btn" 
                                                 data-account-id="@account.UserId"
-                                                data-account-email="@account.Email">
+                                                data-account-email="@account.Email"
+                                                data-confirm-message="@Localizer["ConfirmSwitchAccount"]"
+                                                data-error-message="@Localizer["SwitchAccountError"]"
+                                                data-failed-message="@Localizer["SwitchAccountFailed"]">
                                             @Localizer["SwitchAccount"]
                                         </button>
                                     </form>
@@ -102,48 +104,5 @@
 </div>
 
 @section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Handle account switching
-            const switchButtons = document.querySelectorAll('.switch-account-btn');
-            
-            switchButtons.forEach(button => {
-                button.addEventListener('click', async function(e) {
-                    e.preventDefault();
-                    
-                    const accountId = this.dataset.accountId;
-                    const accountEmail = this.dataset.accountEmail;
-                    
-                    if (!confirm(`@Localizer["ConfirmSwitchAccount"]`.replace('{0}', accountEmail))) {
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch('/api/my/switch-account', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                targetAccountId: accountId,
-                                reason: 'User requested account switch from UI'
-                            })
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            // Reload page to show new account
-                            window.location.reload();
-                        } else {
-                            alert(data.error || '@Localizer["SwitchAccountFailed"]');
-                        }
-                    } catch (error) {
-                        console.error('Error switching account:', error);
-                        alert('@Localizer["SwitchAccountError"]');
-                    }
-                });
-            });
-        });
-    </script>
+    <script src="~/js/linked-accounts.js" asp-append-version="true"></script>
 }

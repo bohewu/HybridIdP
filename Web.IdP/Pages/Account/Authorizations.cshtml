@@ -36,7 +36,7 @@
                 {
                     <div class="app-card-wrapper" data-app-name="@app.DisplayName.ToLower()">
                         <a href="@app.LoginUrl" class="app-card" title="@app.DisplayName">
-                            <div class="app-icon" style="@GetAppIconStyle(app)">
+                            <div class="app-icon @GetAppIconClass(app)">
                                 @GetAppInitial(app)
                             </div>
                             <div class="app-name">@app.DisplayName</div>
@@ -72,23 +72,13 @@
         return string.IsNullOrEmpty(name) ? "?" : name.Substring(0, 1).ToUpper();
     }
 
-    private string GetAppIconStyle(dynamic app)
+    private string GetAppIconClass(dynamic app)
     {
-        // Generate color based on app name hash
+        // Generate color class based on app name hash
         string name = app.DisplayName ?? "";
         int hash = name.GetHashCode();
-        var colors = new[] {
-            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-            "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-            "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-            "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-            "linear-gradient(135deg, #30cfd0 0%, #330867 100%)",
-            "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
-            "linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%)"
-        };
-        int index = Math.Abs(hash) % colors.Length;
-        return $"background: {colors[index]};";
+        int index = Math.Abs(hash) % 8; // 8 gradient classes (0-7)
+        return $"gradient-{index}";
     }
 }
 
