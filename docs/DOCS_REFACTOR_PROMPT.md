@@ -22,10 +22,10 @@ Refactor the `docs/` directory to reduce file count, remove obsolete documentati
 - `SECURITY_HARDENING.md` (9KB) - Security implementation (Phase 11.6)
 - `README.md` (13KB) - Entry point
 
-**Important Reference (CONSOLIDATE):**
+**Important Reference (KEEP or CONSOLIDATE):**
 - `AUTHENTICATION_INTEGRATION.md` (19KB) - Merge key points into ARCHITECTURE.md
 - `PERSON_MULTI_ACCOUNT_ARCHITECTURE.md` (13KB) - Merge into ARCHITECTURE.md or FEATURES.md
-- `SSO_ENTRY_PORTAL_ARCHITECTURE.md` (17KB) - Merge into ARCHITECTURE.md
+- `SSO_ENTRY_PORTAL_ARCHITECTURE.md` (17KB) - **KEEP for Phase 12 planning**, extract TODOs to TODOS.md
 
 **Phase Documents (ARCHIVE MOST):**
 - Phase 1-9: Completed, can be archived (keep only brief summary in PROJECT_PROGRESS.md)
@@ -78,7 +78,7 @@ mv docs/backlog-and-debt.md docs/TODOS.md
 
 **Important:** Update TODOS.md to include:
 1. Current items from backlog-and-debt.md
-2. **Phase 12 planning items** (extract from `phase-12-admin-api-hr-integration.md`):
+2. **Phase 12 planning items** (extract from `phase-12-admin-api-hr-integration.md` and `SSO_ENTRY_PORTAL_ARCHITECTURE.md`):
    - **Phase 12.1**: Admin API Endpoints (Person CRUD, User management, Role assignment)
    - **Phase 12.2**: OAuth 2.0 Client Credentials flow for machine-to-machine auth
    - **Phase 12.3**: Webhook support for real-time HR sync events
@@ -87,6 +87,12 @@ mv docs/backlog-and-debt.md docs/TODOS.md
    - **Phase 12.6**: API rate limiting and IP whitelisting
    - **Phase 12.7**: Reconciliation API for periodic full sync
    - **Phase 12.8**: External IdP integration (LDAP/AD federation)
+   - **Phase 12.9**: SSO Entry Portal (統一應用程式入口)
+     - Create standalone SSO Portal app (Next.js/React/Vue)
+     - Register as OIDC client to IdP
+     - Display app catalog with role-based filtering
+     - Implement "Launch" buttons for seamless SSO
+     - Application catalog management
 3. Extract any outstanding TODOs from PROJECT_STATUS.md before archiving
 4. Update last-updated date to 2025-12-03
 5. Add section "## Completed Phases" with summary of Phase 1-11.6
@@ -124,6 +130,7 @@ mv docs/backlog-and-debt.md docs/TODOS.md
 - `phase-10-person-identity.md` (31KB) - Recent major feature
 - `phase-11-account-role-management.md` (24KB) - Recent major feature
 - `phase-12-admin-api-hr-integration.md` (19KB) - Future planning
+- `SSO_ENTRY_PORTAL_ARCHITECTURE.md` (17KB) - Future planning (Phase 12.9)
 
 **Archive to docs/archive/phases/:**
 - phase-1 through phase-9 documents
