@@ -160,26 +160,26 @@ Update the main README.md to reference the new consolidated structure:
 
 **Essential Reading:**
 - [README.md](README.md) - Project overview and quick start
-- [ARCHITECTURE_CONSOLIDATED.md](docs/ARCHITECTURE_CONSOLIDATED.md) - System architecture and design
-- [FEATURES_AND_CAPABILITIES.md](docs/FEATURES_AND_CAPABILITIES.md) - Complete feature reference
-- [DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md) - Setup and development workflow
-- [SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md) - Security implementation details
-- [DATABASE_CONFIGURATION.md](docs/DATABASE_CONFIGURATION.md) - Database setup
+-- [ARCHITECTURE_CONSOLIDATED.md](./ARCHITECTURE_CONSOLIDATED.md) - System architecture and design
+-- [FEATURES_AND_CAPABILITIES.md](./FEATURES_AND_CAPABILITIES.md) - Complete feature reference
+-- [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) - Setup and development workflow
+-- [SECURITY_HARDENING.md](./SECURITY_HARDENING.md) - Security implementation details
+-- [DATABASE_CONFIGURATION.md](./DATABASE_CONFIGURATION.md) - Database setup
 
 **Progress & Planning:**
-- [PROJECT_PROGRESS.md](docs/PROJECT_PROGRESS.md) - Development progress and milestones
-- [TODOS.md](docs/TODOS.md) - Active backlog and technical debt
+-- [PROJECT_PROGRESS.md](./PROJECT_PROGRESS.md) - Development progress and milestones
+-- [TODOS.md](./TODOS.md) - Active backlog and technical debt
 
 **Testing:**
-- [E2E_LOCAL_SETUP.md](docs/E2E_LOCAL_SETUP.md) - E2E testing setup
+-- [E2E_LOCAL_SETUP.md](./E2E_LOCAL_SETUP.md) - E2E testing setup
 
 **Recent Features (Reference):**
-- [phase-10-person-identity.md](docs/phase-10-person-identity.md) - Person & Identity system
-- [phase-11-account-role-management.md](docs/phase-11-account-role-management.md) - Account management
-- [phase-12-admin-api-hr-integration.md](docs/phase-12-admin-api-hr-integration.md) - Future: API & HR integration
+-- [phase-10-person-identity.md](./phase-10-person-identity.md) - Person & Identity system
+-- [phase-11-account-role-management.md](./phase-11-account-role-management.md) - Account management
+-- [phase-12-admin-api-hr-integration.md](./phase-12-admin-api-hr-integration.md) - Future: API & HR integration
 
 **Archives:**
-- [docs/archive/](docs/archive/) - Historical documentation and completed phases
+- [docs/archive/](./archive/) - Historical documentation and completed phases
 ```
 
 ## 📊 Expected Results

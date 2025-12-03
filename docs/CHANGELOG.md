@@ -9,7 +9,7 @@ This file tracks notable changes and releases for HybridAuth IdP.
 - Admin UI: Client Required Scopes configuration and UI improvements
 - E2E tests: All 102 tests passing; feature-auth: 16/16 passing
 
-> See `docs/phase-9-scope-authorization.md` and `docs/PROJECT_PROGRESS.md` for details.
+> See `./archive/phases/phase-9-scope-authorization.md` and `./PROJECT_PROGRESS.md` for details.
 
 ---
 

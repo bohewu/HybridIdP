@@ -33,11 +33,9 @@
   - 運維與監控要點
 
 ### 測試功能時
-
 **第四步：參考 [`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md) 中的測試指南**
 - 📖 **用途：** 開發和測試指南
 - 🎯 **適合：** 啟動環境、執行測試
-- ⏱️ **閱讀時間：** 3-5 分鐘
 - 📌 **包含內容：**
   - 環境啟動步驟
   - 測試流程
@@ -46,16 +44,10 @@
 ### E2E 測試（Playwright）
 
 專案包含 Playwright E2E 測試，並提供 `e2e/README.md`，內含完整使用說明與 Postgres 專用 helper（`scripts/run-e2e-postgres.ps1`）。推薦在本機使用 Postgres E2E runner（會執行容器、遷移、Admin-API seeding 以及 Playwright 測試）：
-
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -NormalizePermissions -SeedApiResources -TimeoutSeconds 600
 ```
-
-更多細節請參閱： `e2e/README.md`。
 
 ### 查看功能與未來計畫
 
-**隨時查看 [`FEATURES_AND_CAPABILITIES.md`](./FEATURES_AND_CAPABILITIES.md)**
 - 📖 **用途：** 已實作功能概覽與未來增強摘要
 - 🎯 **適合：** 了解特定功能（如 Turnstile、MFA）的快速參考
 - ⏱️ **閱讀時間：** 3-5 分鐘
@@ -93,7 +85,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -Up
 
 | 文件 | 用途 | 何時查閱 |
 |------|--------|----------|
-| [`idp_req_details.md`](./idp_req_details.md) | 完整需求文件 | 需要細節規格時 |
+| [`idp_req_details.md`](./archive/historical/idp_req_details.md) | 完整需求文件 | 需要細節規格時 |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 架構決策與技術棧詳解 | 了解架構原因時 |
 | [`FEATURES_AND_CAPABILITIES.md`](./FEATURES_AND_CAPABILITIES.md) | 功能細節與未來增強 | 實作特定功能時 |
 | [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) | 資料庫設定與部署 | 設定環境、切換資料庫、Production 部署時 |

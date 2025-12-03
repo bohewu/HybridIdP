@@ -8,27 +8,27 @@ last-updated: 2025-12-02
 
 此檔案為快速進度總覽，列出每個 Phase 的完成狀態與指向詳細說明的連結。
 
-- Phase 1 — PostgreSQL & EF Core: 100% — `docs/phase-1-database-ef-core.md`
-- Phase 2 — OpenIddict & OIDC Flow: 100% — `docs/phase-2-openiddict-oidc.md`
-- Phase 3 — Admin UI: 100% — `docs/admin-ui-phase-3.md`
-- Phase 4 — User/Role/Client & Permissions: 100% — `docs/phase-4-user-role-client.md`
-- Phase 5 — Security / i18n / Consent / API Resources: 96% — `docs/phase-5-security-i18n-consent.md`
-- Phase 6 — Code Quality & Tests: 90% — `docs/phase-6-code-quality-tests.md`
-- Phase 7 — Audit & Monitoring: 100% — `docs/phase-7-audit-monitoring.md`
-- Phase 8 — e2e Test Refactor: 100% — `docs/phase-8-e2e-refactor.md`
-- Phase 9 — Scope Authorization & Management: 100% — `docs/phase-9-roadmap.md`
-- Phase 10 — Person & Identity: 100% ✅ (Phase 10.1-10.5 All Complete) — `docs/phase-10-person-identity.md`
-- Phase 11 — Role & Account Switching: 100% ✅ (Phase 11.6 Complete) — `docs/phase-11-account-role-management.md`
-  - Phase 11.6: Homepage Refactoring & Security Hardening ✅ — `docs/phase-11-6-remove-role-switch-refactor-homepage.md`, `docs/SECURITY_HARDENING.md`
+-- Phase 1 — PostgreSQL & EF Core: 100% — `./archive/phases/phase-1-database-ef-core.md`
+-- Phase 2 — OpenIddict & OIDC Flow: 100% — `./archive/phases/phase-2-openiddict-oidc.md`
+-- Phase 3 — Admin UI: 100% — `./archive/phases/admin-ui-phase-3.md`
+-- Phase 4 — User/Role/Client & Permissions: 100% — `./archive/phases/phase-4-user-role-client.md`
+-- Phase 5 — Security / i18n / Consent / API Resources: 96% — `./archive/phases/phase-5-security-i18n-consent.md`
+-- Phase 6 — Code Quality & Tests: 90% — `./archive/phases/phase-6-code-quality-tests.md`
+-- Phase 7 — Audit & Monitoring: 100% — `./archive/phases/phase-7-audit-monitoring.md`
+-- Phase 8 — e2e Test Refactor: 100% — `./archive/phases/phase-8-e2e-refactor.md`
+-- Phase 9 — Scope Authorization & Management: 100% — `./archive/phases/phase-9-roadmap.md`
+-- Phase 10 — Person & Identity: 100% ✅ (Phase 10.1-10.5 All Complete) — `./phase-10-person-identity.md`
+-- Phase 11 — Role & Account Switching: 100% ✅ (Phase 11.6 Complete) — `./phase-11-account-role-management.md`
+   - Phase 11.6: Homepage Refactoring & Security Hardening ✅ — `./archive/phases/phase-11-6-remove-role-switch-refactor-homepage.md`, `./SECURITY_HARDENING.md`
 
-Backlog & Technical Debt: `docs/backlog-and-debt.md`
+Backlog & Technical Debt: `./TODOS.md`
 
 Notes & Guidelines: `docs/notes-and-guidelines.md`
 
 說明：
 
 - 每個 Phase 檔案包含該 Phase 的摘要、已完成要點與重要檔案路徑。
-- 如需更完整的歷史紀錄或截圖證據，請參閱 `docs/PROJECT_STATUS.md`（Archive）。
+-- 如需更完整的歷史紀錄或截圖證據，請參閱 `./archive/historical/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
 
