@@ -613,6 +613,72 @@ public class AccountManagementServiceTests
     }
 
     [Fact]
+    public async Task SwitchRoleAsync_ToSameRole_ShouldFail()
+    {
+        // Arrange: User attempting to switch to their currently active role
+        var userId = Guid.NewGuid();
+        var personId = Guid.NewGuid();
+        var adminRoleId = Guid.NewGuid();
+        var authorizationId = Guid.NewGuid().ToString();
+
+        var person = new Person
+        {
+            Id = personId,
+            FirstName = "Sam",
+            LastName = "SameRole",
+            Birthdate = "1991-03-15",
+            Locale = "en-US"
+        };
+
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            UserName = "sam@example.com",
+            Email = "sam@example.com",
+            PersonId = personId,
+            Person = person
+        };
+
+        var adminRole = new ApplicationRole { Id = adminRoleId, Name = "Admin", NormalizedName = "ADMIN" };
+
+        var session = new UserSession
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            AuthorizationId = authorizationId,
+            ActiveRoleId = adminRoleId, // Currently in Admin role
+            CreatedUtc = DateTime.UtcNow
+        };
+
+        _db.Persons.Add(person);
+        _db.Users.Add(user);
+        _db.Roles.Add(adminRole);
+        _db.UserRoles.Add(new IdentityUserRole<Guid> { UserId = userId, RoleId = adminRoleId });
+        _db.UserSessions.Add(session);
+        await _db.SaveChangesAsync();
+
+        var password = "Admin@123";
+        _userManagerMock.Setup(x => x.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+        _userManagerMock.Setup(x => x.CheckPasswordAsync(user, password))
+            .ReturnsAsync(true);
+
+        // Act: Attempt to switch to the same role (Admin -> Admin)
+        var result = await _service.SwitchRoleAsync(userId, authorizationId, adminRoleId, password);
+
+        // Assert
+        Assert.False(result); // Should fail - cannot switch to the same role
+        var unchangedSession = await _db.UserSessions.FirstOrDefaultAsync(s => s.AuthorizationId == authorizationId);
+        Assert.Equal(adminRoleId, unchangedSession.ActiveRoleId); // Role should remain unchanged
+        Assert.Null(unchangedSession.LastRoleSwitchUtc); // LastRoleSwitchUtc should not be set
+        
+        // Verify audit service was not called
+        _auditServiceMock.Verify(
+            x => x.LogRoleSwitchAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task SwitchToAccountAsync_WithSamePersonId_ShouldSucceedAndAuditLog()
     {
         // Arrange: Two accounts belonging to same person

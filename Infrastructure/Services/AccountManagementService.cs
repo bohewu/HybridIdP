@@ -185,6 +185,13 @@ public class AccountManagementService : IAccountManagementService
 
             var oldRoleId = session.ActiveRoleId;
 
+            // Prevent switching to the same role
+            if (oldRoleId == roleId)
+            {
+                _logger.LogWarning("User {UserId} attempted to switch to the same role {RoleId}", userId, roleId);
+                return false;
+            }
+
             // Update session with new role
             session.ActiveRoleId = roleId;
             session.LastRoleSwitchUtc = DateTime.UtcNow;
