@@ -657,5 +657,5 @@ PUT  /api/admin/clients/{id}/required-scopes → Set required scopes
 ### Related Documentation
 
 - [SCOPE_AUTHORIZATION.md](./SCOPE_AUTHORIZATION.md) - Developer guide for using scope-based authorization
-- [phase-9-scope-authorization.md](./phase-9-scope-authorization.md) - Implementation details and verification
+- [phase-9-scope-authorization.md](./archive/phases/phase-9-scope-authorization.md) - Implementation details and verification
 - [E2E Testing Guide](../e2e/README.md) - Testing scope authorization flows

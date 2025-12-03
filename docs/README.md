@@ -83,7 +83,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -Up
 | 文件 | 用途 | 更新頻率 | Token 大小 |
 |------|------|----------|-----------|
 | [`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md) | 開發工作流程、規範、測試指南 | 穩定 | ~2000 行 |
-| [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) | 專案進度、待辦事項、已完成摘要 | 每 Phase 更新 | ~1000 行 |
+| [`PROJECT_PROGRESS.md`](./PROJECT_PROGRESS.md) | 專案進度、待辦事項、已完成摘要 | 每 Phase 更新 | ~1000 行 |
 | [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) | 資料庫設定、Migration、部署 | 穩定 | ~600 行 |
 
 **總 Token 消耗（核心文件）：** ~3600 行
@@ -179,7 +179,7 @@ git commit -m "docs: Update progress - Phase 4.5 completed"
 
 ### 給開發者
 
-1. **首次接觸專案：** 按順序閱讀 DEVELOPMENT_GUIDE.md → ARCHITECTURE.md → PROJECT_STATUS.md
+1. **首次接觸專案：** 按順序閱讀 `DEVELOPMENT_GUIDE.md` → `ARCHITECTURE.md` → `PROJECT_PROGRESS.md`
 2. **日常開發：** 只需查看 PROJECT_STATUS.md 和 DEVELOPMENT_GUIDE.md
 3. **需要細節：** 再查閱 `docs/archive/historical/idp_req_details.md` 或 `FEATURES_AND_CAPABILITIES.md` 相關 Phase
 

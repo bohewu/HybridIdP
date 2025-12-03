@@ -791,7 +791,7 @@ dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDb
 ## 🔗 相關文件
 
 - [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) - 開發工作流程
-- [PROJECT_STATUS.md](./PROJECT_STATUS.md) - 專案進度
+- [PROJECT_STATUS.md](./archive/historical/PROJECT_STATUS.md) - 專案進度 (archived)
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - 架構說明
 
 ---
