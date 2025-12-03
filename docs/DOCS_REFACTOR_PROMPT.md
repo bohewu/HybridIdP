@@ -61,8 +61,9 @@ Refactor the `docs/` directory to reduce file count, remove obsolete documentati
 - `phase-9-scope-authorization.md` (21KB) - Consolidate with SCOPE_AUTHORIZATION.md
 
 **Planning Documents (KEEP):**
-- `backlog-and-debt.md` (1.5KB) - **MUST KEEP** - Rename to `TODOS.md`
+- `backlog-and-debt.md` (1.5KB) - **MUST KEEP** - Rename to `TODOS.md` and add Phase 12 items
 - `notes-and-guidelines.md` (0.5KB) - Keep or merge into DEVELOPMENT_GUIDE.md
+- `phase-12-admin-api-hr-integration.md` (19KB) - **Extract TODOs** to TODOS.md, then keep for reference
 
 **Large/Obsolete:**
 - `idp_req_details.md` (60KB!) - Archive (historical requirements, no longer relevant)
@@ -74,6 +75,21 @@ Refactor the `docs/` directory to reduce file count, remove obsolete documentati
 # Rename and update backlog
 mv docs/backlog-and-debt.md docs/TODOS.md
 ```
+
+**Important:** Update TODOS.md to include:
+1. Current items from backlog-and-debt.md
+2. **Phase 12 planning items** (extract from `phase-12-admin-api-hr-integration.md`):
+   - **Phase 12.1**: Admin API Endpoints (Person CRUD, User management, Role assignment)
+   - **Phase 12.2**: OAuth 2.0 Client Credentials flow for machine-to-machine auth
+   - **Phase 12.3**: Webhook support for real-time HR sync events
+   - **Phase 12.4**: Bulk operations API (batch user provisioning, bulk role updates)
+   - **Phase 12.5**: Audit logging for all admin API operations
+   - **Phase 12.6**: API rate limiting and IP whitelisting
+   - **Phase 12.7**: Reconciliation API for periodic full sync
+   - **Phase 12.8**: External IdP integration (LDAP/AD federation)
+3. Extract any outstanding TODOs from PROJECT_STATUS.md before archiving
+4. Update last-updated date to 2025-12-03
+5. Add section "## Completed Phases" with summary of Phase 1-11.6
 
 ### Step 2: Consolidate Architecture Documents
 **Create: `ARCHITECTURE_CONSOLIDATED.md`** (merge and keep essentials from):
@@ -218,9 +234,10 @@ docs/
 5. **Move to archive** - relocate old phase docs and large historical files
 6. **Delete obsolete files** - implementation prompts, test results
 7. **Update README.md** - reflect new structure
-8. **Rename backlog-and-debt.md → TODOS.md**
-9. **Update PROJECT_PROGRESS.md** - remove excessive historical detail, keep only recent updates
-10. **Commit:** `git commit -m "docs: refactor documentation structure - consolidate to 15 essential files"`
+8. **Rename backlog-and-debt.md → TODOS.md** and add Phase 12 items
+9. **Extract TODOs from PROJECT_STATUS.md** before archiving
+10. **Update PROJECT_PROGRESS.md** - remove excessive historical detail, keep only recent updates
+11. **Commit:** `git commit -m "docs: refactor documentation structure - consolidate to 15 essential files"`
 
 ## ⚠️ Important Notes
 
