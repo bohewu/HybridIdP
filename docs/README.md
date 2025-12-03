@@ -274,7 +274,7 @@ Token 消耗: ~1500 行 × 每次
 ```text
 新 session 閱讀:
 - DEVELOPMENT_GUIDE.md (約 1000 行)
-- PROJECT_STATUS.md (約 500 行)
+- PROJECT_PROGRESS.md (約 500 行)
 = 約 1500 行
 
 開發時查閱:
@@ -287,7 +287,7 @@ Token 消耗: ~700 行 × 每次
 
 **實際節省更多：**
 
-- 熟悉專案後，只需 PROJECT_STATUS.md (500 行)
+- 熟悉專案後，只需 PROJECT_PROGRESS.md (500 行)
 - 查閱範本時，只看需要的 section
 - 節省可達 **60-70%**
 
@@ -297,12 +297,12 @@ Token 消耗: ~700 行 × 每次
 
 ### 文件同步
 
-- ✅ **DO:** 完成 Phase 立即更新 [`PROJECT_STATUS.md`](./PROJECT_STATUS.md)
+-- ✅ **DO:** 完成 Phase 立即更新 [`PROJECT_PROGRESS.md`](./PROJECT_PROGRESS.md)
 - ❌ **DON'T:** 累積多個 Phase 再一次更新
 
 ### 保持簡潔
 
-- ✅ **DO:** [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) 中的已完成摘要使用 3-5 行摘要
+- ✅ **DO:** [`PROJECT_PROGRESS.md`](./PROJECT_PROGRESS.md) 中的已完成摘要使用 3-5 行摘要
 - ❌ **DON'T:** 複製完整程式碼到文件中
 
 ### Tailwind CSS 警告
@@ -333,7 +333,7 @@ Token 消耗: ~700 行 × 每次
 ### 常見問題
 
 **Q: 下一步要做什麼？**
-→ 查看 [`PROJECT_STATUS.md`](./PROJECT_STATUS.md)
+→ 查看 [`PROJECT_PROGRESS.md`](./PROJECT_PROGRESS.md)
 
 **Q: 怎麼實作 API？**
 → 查看 [`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md) > API 實作範本
@@ -354,7 +354,7 @@ Token 消耗: ~700 行 × 每次
 → 查看 [`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md) > 最常見錯誤
 
 **Q: 需要完整需求？**
-→ 查看 [`idp_req_details.md`](./idp_req_details.md) 對應 Phase
+→ 查看 [`idp_req_details.md`](./archive/historical/idp_req_details.md) 對應 Phase
 
 ---
 
