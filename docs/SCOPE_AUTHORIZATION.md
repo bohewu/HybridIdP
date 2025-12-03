@@ -391,8 +391,8 @@ PUT    /api/admin/clients/{id}/required-scopes
 ## Related Documentation
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture and design decisions
-- [FEATURES.md](./FEATURES.md) - Complete feature list
-- [phase-9-scope-authorization.md](./phase-9-scope-authorization.md) - Implementation details
+- [FEATURES_AND_CAPABILITIES.md](./FEATURES_AND_CAPABILITIES.md) - Complete feature list
+- [phase-9-scope-authorization.md](./archive/phases/phase-9-scope-authorization.md) - Implementation details
 - [E2E Testing Guide](../e2e/README.md) - Testing scope authorization flows
 
 ## Security Considerations

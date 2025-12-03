@@ -97,12 +97,12 @@
 
 ### 完成一個 Phase 後
 
-**步驟 1：更新 [`PROJECT_STATUS.md`](./PROJECT_STATUS.md)**
+**步驟 1：更新 [`PROJECT_PROGRESS.md`](./PROJECT_PROGRESS.md)**
 ```markdown
 - [x] Phase 4.5: Role Management UI  # 標記為完成
 ```
 
-**步驟 2：更新 [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) 中的已完成摘要**
+**步驟 2：更新 [`PROJECT_PROGRESS.md`](./PROJECT_PROGRESS.md) 中的已完成摘要**
 ```markdown
 ## Phase 4.5: Role Management UI ✅
 
@@ -123,7 +123,7 @@
 
 **步驟 3：Commit**
 ```bash
-git add docs/PROJECT_STATUS.md
+git add docs/PROJECT_PROGRESS.md
 git commit -m "docs: Update progress - Phase 4.5 completed"
 ```
 
@@ -328,7 +328,7 @@ Token 消耗: ~700 行 × 每次
 1. **[`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md)** - 流程、實作、測試問題？
 2. **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** - 架構、技術棧問題？
 3. **[`FEATURES_AND_CAPABILITIES.md`](./FEATURES_AND_CAPABILITIES.md)** - 特定功能問題？
-4. **[`idp_req_details.md`](./idp_req_details.md)** - 需求細節？
+4. **[`idp_req_details.md`](./archive/historical/idp_req_details.md)** - 需求細節？
 
 ### 常見問題
 
