@@ -57,19 +57,19 @@
                                          User.HasClaim("permission", Permissions.Roles.Read))
                                     {
                                         <li>
-                                            <a class="dropdown-item" href="/Admin">
+                                            <a class="dropdown-item" asp-page="/Admin/Index">
                                                 <i class="bi bi-speedometer2"></i> @Localizer["AdminConsole"]
                                             </a>
                                         </li>
                                         <li><hr class="dropdown-divider"></li>
                                     }
                                     <li>
-                                        <a class="dropdown-item" href="/Account/Authorizations">
+                                        <a class="dropdown-item" asp-page="/Account/Authorizations">
                                             <i class="bi bi-shield-check"></i> @Localizer["AuthorizationManagement"]
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item" href="/Account/LinkedAccounts">
+                                        <a class="dropdown-item" asp-page="/Account/LinkedAccounts">
                                             <i class="bi bi-person-lines-fill"></i> @Localizer["LinkedAccounts"]
                                         </a>
                                     </li>
