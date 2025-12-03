@@ -37,9 +37,6 @@
                     <ul class="navbar-nav align-items-sm-center">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <li class="nav-item me-2">
-                                <div id="role-badge-container"></div>
-                            </li>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle p-0" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <div class="user-profile">
@@ -67,10 +64,16 @@
                                         <li><hr class="dropdown-divider"></li>
                                     }
                                     <li>
-                                        <a class="dropdown-item" asp-page="/Account/MyAccount">
-                                            <i class="bi bi-person-circle"></i> @Localizer["MyAccount"]
+                                        <a class="dropdown-item" href="/Account/Authorizations">
+                                            <i class="bi bi-shield-check"></i> @Localizer["AuthorizationManagement"]
                                         </a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item" href="/Account/LinkedAccounts">
+                                            <i class="bi bi-person-lines-fill"></i> @Localizer["LinkedAccounts"]
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <a class="dropdown-item" asp-page="/Account/Logout">
                                             <i class="bi bi-box-arrow-right"></i> @Localizer["Logout"]
@@ -125,10 +128,5 @@
     <script src="~/js/language.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
-    
-    @if (User.Identity?.IsAuthenticated == true)
-    {
-        <script type="module" vite-src="~/src/roleBadge.js"></script>
-    }
 </body>
 </html>

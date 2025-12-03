@@ -3,4 +3,58 @@
   <data name="AbnormalLoginBlocked" xml:space="preserve">
     <value>Abnormal login detected and blocked. Please contact administrator if this is unexpected.</value>
   </data>
+  <data name="AuthorizationManagement" xml:space="preserve">
+    <value>Authorization Management</value>
+  </data>
+  <data name="AuthorizedApplications" xml:space="preserve">
+    <value>Authorized Applications</value>
+  </data>
+  <data name="LinkedAccountsManagement" xml:space="preserve">
+    <value>Linked Accounts Management</value>
+  </data>
+  <data name="ManageYourLinkedAccounts" xml:space="preserve">
+    <value>Manage your linked accounts</value>
+  </data>
+  <data name="ViewAndRevokeAuthorizations" xml:space="preserve">
+    <value>View and revoke app authorizations</value>
+  </data>
+  <data name="RevokeAuthorization" xml:space="preserve">
+    <value>Revoke Authorization</value>
+  </data>
+  <data name="HomePage" xml:space="preserve">
+    <value>Home Page</value>
+  </data>
+  <data name="LinkedAccounts" xml:space="preserve">
+    <value>Linked Accounts</value>
+  </data>
+  <data name="SwitchAccount" xml:space="preserve">
+    <value>Switch Account</value>
+  </data>
+  <data name="CurrentAccount" xml:space="preserve">
+    <value>Current Account</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Inactive" xml:space="preserve">
+    <value>Inactive</value>
+  </data>
+  <data name="NoLinkedAccountsAvailable" xml:space="preserve">
+    <value>No linked accounts available</value>
+  </data>
+  <data name="ConfirmSwitchAccount" xml:space="preserve">
+    <value>Are you sure you want to switch to account {0}?</value>
+  </data>
+  <data name="SwitchAccountFailed" xml:space="preserve">
+    <value>Failed to switch account</value>
+  </data>
+  <data name="SwitchAccountError" xml:space="preserve">
+    <value>An error occurred while switching accounts</value>
+  </data>
+  <data name="ViewDetails" xml:space="preserve">
+    <value>View Details</value>
+  </data>
+  <data name="WelcomeMessage" xml:space="preserve">
+    <value>Welcome to HybridAuth IdP</value>
+  </data>
 </root>

@@ -1,0 +1,149 @@
+@page
+@model Web.IdP.Pages.Account.LinkedAccountsModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["LinkedAccountsManagement"];
+}
+
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h2">@Localizer["LinkedAccounts"]</h1>
+            <p class="text-muted">@Localizer["ManageYourLinkedAccounts"]</p>
+        </div>
+    </div>
+
+    @if (Model.LinkedAccounts.Any())
+    {
+        <div class="row g-3">
+            @foreach (var account in Model.LinkedAccounts)
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 @(account.IsCurrentAccount ? "border-primary" : "")">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="user-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 48px; height: 48px; font-size: 1.25rem;">
+                                    @{
+                                        var initial = string.IsNullOrEmpty(account.Email) ? "?" : account.Email.Substring(0, 1).ToUpper();
+                                    }
+                                    @initial
+                                </div>
+                                @if (account.IsCurrentAccount)
+                                {
+                                    <span class="badge bg-primary">@Localizer["CurrentAccount"]</span>
+                                }
+                            </div>
+                            
+                            <h5 class="card-title mb-2">
+                                @if (!string.IsNullOrEmpty(account.UserName))
+                                {
+                                    @account.UserName
+                                }
+                                else
+                                {
+                                    @account.Email
+                                }
+                            </h5>
+                            
+                            <p class="card-text text-muted small mb-2">
+                                <i class="bi bi-envelope"></i> @account.Email
+                            </p>
+                            
+                            @if (account.Roles.Any())
+                            {
+                                <div class="mb-3">
+                                    @foreach (var role in account.Roles)
+                                    {
+                                        <span class="badge bg-secondary me-1">@role</span>
+                                    }
+                                </div>
+                            }
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    @if (account.IsActive)
+                                    {
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                        <span>@Localizer["Active"]</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-x-circle-fill text-danger"></i>
+                                        <span>@Localizer["Inactive"]</span>
+                                    }
+                                </small>
+                                
+                                @if (!account.IsCurrentAccount && account.IsActive)
+                                {
+                                    <form method="post" action="/api/my/switch-account" class="switch-account-form">
+                                        <input type="hidden" name="targetAccountId" value="@account.UserId" />
+                                        <button type="button" class="btn btn-sm btn-outline-primary switch-account-btn" 
+                                                data-account-id="@account.UserId"
+                                                data-account-email="@account.Email">
+                                            @Localizer["SwitchAccount"]
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            @Localizer["NoLinkedAccountsAvailable"]
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle account switching
+            const switchButtons = document.querySelectorAll('.switch-account-btn');
+            
+            switchButtons.forEach(button => {
+                button.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    
+                    const accountId = this.dataset.accountId;
+                    const accountEmail = this.dataset.accountEmail;
+                    
+                    if (!confirm(`@Localizer["ConfirmSwitchAccount"]`.replace('{0}', accountEmail))) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/api/my/switch-account', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                targetAccountId: accountId,
+                                reason: 'User requested account switch from UI'
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            // Reload page to show new account
+                            window.location.reload();
+                        } else {
+                            alert(data.error || '@Localizer["SwitchAccountFailed"]');
+                        }
+                    } catch (error) {
+                        console.error('Error switching account:', error);
+                        alert('@Localizer["SwitchAccountError"]');
+                    }
+                });
+            });
+        });
+    </script>
+}

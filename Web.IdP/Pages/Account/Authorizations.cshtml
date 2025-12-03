@@ -1,0 +1,97 @@
+@page
+@model Web.IdP.Pages.Account.AuthorizationsModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["AuthorizationManagement"];
+}
+
+<div class="app-launcher" 
+     data-disconnect-confirm="@Localizer["DisconnectAppConfirm"]"
+     data-disconnect-failed="@Localizer["DisconnectFailed"]"
+     data-disconnect-error="@Localizer["DisconnectError"]">
+    <div class="section-header">
+        <h1 class="section-title">@Localizer["AuthorizedApplications"]</h1>
+        <p class="text-muted">@Localizer["ViewAndRevokeAuthorizations"]</p>
+        <div class="app-controls">
+            <div class="search-box">
+                <i class="bi bi-search"></i>
+                <input type="text" id="appSearch" class="search-input" placeholder="@Localizer["SearchApps"]">
+            </div>
+            <div class="view-toggle">
+                <button class="toggle-btn active" data-view="grid" title="@Localizer["GridView"]">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                </button>
+                <button class="toggle-btn" data-view="list" title="@Localizer["ListView"]">
+                    <i class="bi bi-list-ul"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Applications != null && Model.Applications.Any())
+    {
+        <div class="app-container">
+            <div class="app-grid" id="appContainer">
+                @foreach (var app in Model.Applications)
+                {
+                    <div class="app-card-wrapper" data-app-name="@app.DisplayName.ToLower()">
+                        <a href="@app.LoginUrl" class="app-card" title="@app.DisplayName">
+                            <div class="app-icon" style="@GetAppIconStyle(app)">
+                                @GetAppInitial(app)
+                            </div>
+                            <div class="app-name">@app.DisplayName</div>
+                        </a>
+                        <button class="app-disconnect-btn" 
+                                data-app-id="@app.ApplicationId" 
+                                data-app-name="@app.DisplayName"
+                                title="@Localizer["RevokeAuthorization"]"
+                                type="button">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="bi bi-grid-3x3-gap"></i>
+            </div>
+            <div class="empty-state-title">@Localizer["NoAppsAvailable"]</div>
+            <div class="empty-state-description">@Localizer["NoAppsDescription"]</div>
+        </div>
+    }
+</div>
+
+@functions {
+    private string GetAppInitial(dynamic app)
+    {
+        string name = app.DisplayName ?? "";
+        return string.IsNullOrEmpty(name) ? "?" : name.Substring(0, 1).ToUpper();
+    }
+
+    private string GetAppIconStyle(dynamic app)
+    {
+        // Generate color based on app name hash
+        string name = app.DisplayName ?? "";
+        int hash = name.GetHashCode();
+        var colors = new[] {
+            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+            "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+            "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+            "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+            "linear-gradient(135deg, #30cfd0 0%, #330867 100%)",
+            "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+            "linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%)"
+        };
+        int index = Math.Abs(hash) % colors.Length;
+        return $"background: {colors[index]};";
+    }
+}
+
+@section Scripts {
+    <script src="~/js/app-launcher.js"></script>
+}

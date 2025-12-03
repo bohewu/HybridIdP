@@ -265,4 +265,55 @@
   <data name="AbnormalLoginBlocked" xml:space="preserve">
     <value>偵測到異常登入，已被阻擋。如有疑問，請聯繫管理員。</value>
   </data>
+  <data name="AuthorizationManagement" xml:space="preserve">
+    <value>授權管理</value>
+  </data>
+  <data name="AuthorizedApplications" xml:space="preserve">
+    <value>已授權的應用程式</value>
+  </data>
+  <data name="LinkedAccountsManagement" xml:space="preserve">
+    <value>帳號鏈結管理</value>
+  </data>
+  <data name="ManageYourLinkedAccounts" xml:space="preserve">
+    <value>管理您的鏈結帳號</value>
+  </data>
+  <data name="ViewAndRevokeAuthorizations" xml:space="preserve">
+    <value>查看和撤銷已授權的應用程式</value>
+  </data>
+  <data name="RevokeAuthorization" xml:space="preserve">
+    <value>撤銷授權</value>
+  </data>
+  <data name="LinkedAccounts" xml:space="preserve">
+    <value>鏈結帳號</value>
+  </data>
+  <data name="SwitchAccount" xml:space="preserve">
+    <value>切換帳號</value>
+  </data>
+  <data name="CurrentAccount" xml:space="preserve">
+    <value>目前帳號</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>啟用</value>
+  </data>
+  <data name="Inactive" xml:space="preserve">
+    <value>停用</value>
+  </data>
+  <data name="NoLinkedAccountsAvailable" xml:space="preserve">
+    <value>沒有可用的鏈結帳號</value>
+  </data>
+  <data name="ConfirmSwitchAccount" xml:space="preserve">
+    <value>確定要切換到帳號 {0} 嗎？</value>
+  </data>
+  <data name="SwitchAccountFailed" xml:space="preserve">
+    <value>切換帳號失敗</value>
+  </data>
+  <data name="SwitchAccountError" xml:space="preserve">
+    <value>切換帳號時發生錯誤</value>
+  </data>
+  <data name="ViewDetails" xml:space="preserve">
+    <value>查看詳情</value>
+  </data>
+  <data name="WelcomeMessage" xml:space="preserve">
+    <value>歡迎使用 HybridAuth IdP</value>
+  </data>
 </root>

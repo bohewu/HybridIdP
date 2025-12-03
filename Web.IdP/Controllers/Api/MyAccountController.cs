@@ -58,100 +58,6 @@ public class MyAccountController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/my/roles
-    /// Returns all roles assigned to the current user with active status
-    /// </summary>
-    [HttpGet("roles")]
-    [ProducesResponseType(typeof(IEnumerable<AvailableRoleDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetMyAvailableRoles()
-    {
-        var userId = GetCurrentUserId();
-        if (userId == Guid.Empty)
-        {
-            return Unauthorized();
-        }
-
-        var roles = await _accountManagementService.GetMyAvailableRolesAsync(userId);
-        return Ok(roles);
-    }
-
-    /// <summary>
-    /// POST /api/my/switch-role
-    /// Switch to a different role in the current session
-    /// Requires password for Admin role
-    /// </summary>
-    [HttpPost("switch-role")]
-    [ProducesResponseType(typeof(SwitchRoleResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> SwitchRole([FromBody] SwitchRoleRequest request)
-    {
-        var userId = GetCurrentUserId();
-        if (userId == Guid.Empty)
-        {
-            return Unauthorized();
-        }
-
-        // Get current session's authorization ID
-        var sessionAuthorizationId = User.FindFirstValue("session_id");
-        if (string.IsNullOrEmpty(sessionAuthorizationId))
-        {
-            _logger.LogWarning("User {UserId} attempted role switch without session ID", userId);
-            return BadRequest(new { error = "No active session found" });
-        }
-
-        var result = await _accountManagementService.SwitchRoleAsync(
-            userId,
-            sessionAuthorizationId,
-            request.RoleId,
-            request.Password);
-
-        if (!result)
-        {
-            return BadRequest(new SwitchRoleResponse
-            {
-                Success = false,
-                Error = "Failed to switch role. Check if you have permission and provided correct password for Admin role."
-            });
-        }
-
-        // Phase 11.4: Update active_role claim in the current authentication session
-        var user = await _userManager.FindByIdAsync(userId.ToString());
-        if (user != null)
-        {
-            var role = await _roleManager.FindByIdAsync(request.RoleId.ToString());
-            
-            if (role != null)
-            {
-                var identity = (ClaimsIdentity)User.Identity!;
-                
-                // Remove old active_role claim and add new one
-                var existingActiveRoleClaim = identity.FindFirst("active_role");
-                if (existingActiveRoleClaim != null)
-                {
-                    identity.RemoveClaim(existingActiveRoleClaim);
-                }
-                identity.AddClaim(new Claim("active_role", role.Name!));
-
-                // Update authentication cookie
-                await HttpContext.SignInAsync(
-                    IdentityConstants.ApplicationScheme,
-                    new ClaimsPrincipal(identity),
-                    new AuthenticationProperties { IsPersistent = true });
-
-                _logger.LogInformation("Updated active_role claim to {RoleName} for user {UserId}", role.Name, userId);
-            }
-        }
-
-        return Ok(new SwitchRoleResponse
-        {
-            Success = true,
-            NewRoleId = request.RoleId
-        });
-    }
-
-    /// <summary>
     /// POST /api/my/switch-account
     /// Switch to a different account linked to the same Person
     /// Will sign out and sign in as the target account
@@ -211,19 +117,6 @@ public class MyAccountController : ControllerBase
 }
 
 #region Request/Response Models
-
-public class SwitchRoleRequest
-{
-    public Guid RoleId { get; set; }
-    public string? Password { get; set; } // Required for Admin role
-}
-
-public class SwitchRoleResponse
-{
-    public bool Success { get; set; }
-    public Guid? NewRoleId { get; set; }
-    public string? Error { get; set; }
-}
 
 public class SwitchAccountRequest
 {

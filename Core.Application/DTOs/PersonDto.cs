@@ -92,14 +92,3 @@ public class PersonListResponseDto
 }
 
 /// <summary>
-/// DTO for available role information
-/// Phase 11.2: Account Management - Role Switching
-/// </summary>
-public class AvailableRoleDto
-{
-    public Guid RoleId { get; set; }
-    public string RoleName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public bool IsActive { get; set; } // True if this is the currently active role in the session
-    public bool RequiresPasswordConfirmation { get; set; } // True for Admin and other sensitive roles
-}

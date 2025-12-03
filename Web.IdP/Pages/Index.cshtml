@@ -5,92 +5,93 @@
     ViewData["Title"] = Localizer["HomePage"];
 }
 
-<div class="app-launcher" 
-     data-disconnect-confirm="@Localizer["DisconnectAppConfirm"]"
-     data-disconnect-failed="@Localizer["DisconnectFailed"]"
-     data-disconnect-error="@Localizer["DisconnectError"]">
-    <div class="section-header">
-        <h1 class="section-title">@Localizer["MyApplications"]</h1>
-        <div class="app-controls">
-            <div class="search-box">
-                <i class="bi bi-search"></i>
-                <input type="text" id="appSearch" class="search-input" placeholder="@Localizer["SearchApps"]">
-            </div>
-            <div class="view-toggle">
-                <button class="toggle-btn active" data-view="grid" title="@Localizer["GridView"]">
-                    <i class="bi bi-grid-3x3-gap"></i>
-                </button>
-                <button class="toggle-btn" data-view="list" title="@Localizer["ListView"]">
-                    <i class="bi bi-list-ul"></i>
-                </button>
-            </div>
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col text-center">
+            <h1 class="display-5 fw-bold">@Localizer["HomePage"]</h1>
+            <p class="lead text-muted">@Localizer["WelcomeMessage"]</p>
         </div>
     </div>
 
-    @if (Model.Applications != null && Model.Applications.Any())
-    {
-        <div class="app-container">
-            <div class="app-grid" id="appContainer">
-                @foreach (var app in Model.Applications)
-                {
-                    <div class="app-card-wrapper" data-app-name="@app.DisplayName.ToLower()">
-                        <a href="@app.LoginUrl" class="app-card" title="@app.DisplayName">
-                            <div class="app-icon" style="@GetAppIconStyle(app)">
-                                @GetAppInitial(app)
-                            </div>
-                            <div class="app-name">@app.DisplayName</div>
-                        </a>
-                        <button class="app-disconnect-btn" 
-                                data-app-id="@app.ApplicationId" 
-                                data-app-name="@app.DisplayName"
-                                title="@Localizer["DisconnectApp"]"
-                                type="button">
-                            <i class="bi bi-x-circle"></i>
-                        </button>
+    <div class="row g-4 justify-content-center">
+        <!-- Authorization Management Card -->
+        <div class="col-12 col-md-6 col-lg-5">
+            <a href="/Account/Authorizations" class="text-decoration-none">
+                <div class="card h-100 shadow-sm hover-card border-0">
+                    <div class="card-body d-flex flex-column align-items-center text-center p-5">
+                        <div class="icon-container mb-4" style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-shield-check text-white" style="font-size: 2.5rem;"></i>
+                        </div>
+                        <h3 class="card-title h4 mb-3">@Localizer["AuthorizationManagement"]</h3>
+                        <p class="card-text text-muted mb-4">@Localizer["ViewAndRevokeAuthorizations"]</p>
+                        <div class="mt-auto">
+                            <span class="btn btn-outline-primary">
+                                @Localizer["ViewDetails"] <i class="bi bi-arrow-right ms-2"></i>
+                            </span>
+                        </div>
                     </div>
-                }
-            </div>
+                </div>
+            </a>
         </div>
-    }
-    else
-    {
-        <div class="empty-state">
-            <div class="empty-state-icon">
-                <i class="bi bi-grid-3x3-gap"></i>
-            </div>
-            <div class="empty-state-title">@Localizer["NoAppsAvailable"]</div>
-            <div class="empty-state-description">@Localizer["NoAppsDescription"]</div>
+
+        <!-- Linked Accounts Management Card -->
+        <div class="col-12 col-md-6 col-lg-5">
+            <a href="/Account/LinkedAccounts" class="text-decoration-none">
+                <div class="card h-100 shadow-sm hover-card border-0">
+                    <div class="card-body d-flex flex-column align-items-center text-center p-5">
+                        <div class="icon-container mb-4" style="width: 80px; height: 80px; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-person-lines-fill text-white" style="font-size: 2.5rem;"></i>
+                        </div>
+                        <h3 class="card-title h4 mb-3">@Localizer["LinkedAccountsManagement"]</h3>
+                        <p class="card-text text-muted mb-4">@Localizer["ManageYourLinkedAccounts"]</p>
+                        <div class="mt-auto">
+                            <span class="btn btn-outline-success">
+                                @Localizer["ViewDetails"] <i class="bi bi-arrow-right ms-2"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </a>
         </div>
-    }
+    </div>
 </div>
 
-@functions {
-    private string GetAppInitial(dynamic app)
-    {
-        string name = app.DisplayName ?? "";
-        return string.IsNullOrEmpty(name) ? "?" : name.Substring(0, 1).ToUpper();
+<style>
+    .hover-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
     }
-
-    private string GetAppIconStyle(dynamic app)
-    {
-        // Generate color based on app name hash
-        string name = app.DisplayName ?? "";
-        int hash = name.GetHashCode();
-        var colors = new[] {
-            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-            "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-            "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-            "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-            "linear-gradient(135deg, #30cfd0 0%, #330867 100%)",
-            "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
-            "linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%)"
-        };
-        int index = Math.Abs(hash) % colors.Length;
-        return $"background: {colors[index]};";
+    
+    .hover-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
     }
-}
-
-@section Scripts {
-    <script src="~/js/app-launcher.js"></script>
-}
+    
+    .hover-card .card-body {
+        min-height: 350px;
+    }
+    
+    .hover-card .icon-container {
+        transition: transform 0.3s ease;
+    }
+    
+    .hover-card:hover .icon-container {
+        transform: scale(1.1);
+    }
+    
+    @@media (max-width: 768px) {
+        .hover-card .card-body {
+            min-height: auto;
+            padding: 2rem 1.5rem !important;
+        }
+        
+        .icon-container {
+            width: 64px !important;
+            height: 64px !important;
+        }
+        
+        .icon-container i {
+            font-size: 2rem !important;
+        }
+    }
+</style>
