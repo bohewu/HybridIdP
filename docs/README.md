@@ -14,25 +14,23 @@
 
 ### 開始開發前
 
-**第二步：查看 [`PROJECT_STATUS.md`](./PROJECT_STATUS.md)**
-- 📖 **用途：** 待辦事項和下一步計畫、已完成功能摘要
-- 🎯 **適合：** 確認當前任務、規劃下一步、了解專案歷史
+**第二步：查看 [`PROJECT_PROGRESS.md`](./PROJECT_PROGRESS.md) 與 [`TODOS.md`](./TODOS.md)**
+- 📖 **用途：** 待辦事項、下一步計畫與活躍 backlog
+- 🎯 **適合：** 確認當前任務、規劃下一步、了解近期進度
 - ⏱️ **閱讀時間：** 3-5 分鐘
-- 📌 **更新頻率：** 每完成一個 Phase 更新一次
+- 📌 **更新頻率：** `TODOS.md` 隨 sprint 更新，`PROJECT_PROGRESS.md` 用於里程碑摘要
 
 注意：專案已將大檔拆分以利維護與查閱。最新進度摘要請參見 `docs/PROJECT_PROGRESS.md`，各 Phase 的詳細說明已拆分至 `docs/phase-*.md`（例如 `docs/phase-5-security-i18n-consent.md`）。如需深入內容，請由 `PROJECT_PROGRESS.md` 點入對應 Phase 的檔案查閱。
 
-**第三步：參考 [`ARCHITECTURE.md`](./ARCHITECTURE.md)**
-- 📖 **用途：** 架構決策、技術棧詳解、安全考量
-- 🎯 **適合：** 實作 API、UI、理解系統設計時查閱
+**第三步：參考 [`ARCHITECTURE_CONSOLIDATED.md`](./ARCHITECTURE_CONSOLIDATED.md)**
+- 📖 **用途：** 綜合架構指引與設計決策摘要
+- 🎯 **適合：** 實作 API、UI、理解系統設計時快速查閱
 - ⏱️ **閱讀時間：** 按需查閱（不需全部閱讀）
 - 📌 **包含內容：**
   - Hybrid 架構說明
-  - 技術棧詳解
-  - 安全架構
-  - 樣式策略
-  - 效能考量
-  - MPA 結構
+  - 技術棧與整合要點
+  - 安全架構摘要
+  - 運維與監控要點
 
 ### 測試功能時
 
@@ -57,9 +55,9 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -Up
 
 ### 查看功能與未來計畫
 
-**隨時查看 [`FEATURES.md`](./FEATURES.md)**
-- 📖 **用途：** 已實作功能細節、未來增強功能
-- 🎯 **適合：** 了解特定功能（如 Turnstile、MFA）的實作細節和未來規劃
+**隨時查看 [`FEATURES_AND_CAPABILITIES.md`](./FEATURES_AND_CAPABILITIES.md)**
+- 📖 **用途：** 已實作功能概覽與未來增強摘要
+- 🎯 **適合：** 了解特定功能（如 Turnstile、MFA）的快速參考
 - ⏱️ **閱讀時間：** 3-5 分鐘
 - 📌 **更新頻率：** 新功能實作後更新
 
@@ -97,7 +95,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -Up
 |------|--------|----------|
 | [`idp_req_details.md`](./idp_req_details.md) | 完整需求文件 | 需要細節規格時 |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 架構決策與技術棧詳解 | 了解架構原因時 |
-| [`FEATURES.md`](./FEATURES.md) | 功能細節與未來增強 | 實作特定功能時 |
+| [`FEATURES_AND_CAPABILITIES.md`](./FEATURES_AND_CAPABILITIES.md) | 功能細節與未來增強 | 實作特定功能時 |
 | [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) | 資料庫設定與部署 | 設定環境、切換資料庫、Production 部署時 |
 | `docs/examples/` | 程式碼範例 | 實作時參考 |
 
@@ -183,7 +181,7 @@ git commit -m "docs: Update progress - Phase 4.5 completed"
 
 1. **首次接觸專案：** 按順序閱讀 DEVELOPMENT_GUIDE.md → ARCHITECTURE.md → PROJECT_STATUS.md
 2. **日常開發：** 只需查看 PROJECT_STATUS.md 和 DEVELOPMENT_GUIDE.md
-3. **需要細節：** 再查閱 idp_req_details.md 或 FEATURES.md 相關 Phase
+3. **需要細節：** 再查閱 `docs/archive/historical/idp_req_details.md` 或 `FEATURES_AND_CAPABILITIES.md` 相關 Phase
 
 ---
 
@@ -337,7 +335,7 @@ Token 消耗: ~700 行 × 每次
 
 1. **[`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md)** - 流程、實作、測試問題？
 2. **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** - 架構、技術棧問題？
-3. **[`FEATURES.md`](./FEATURES.md)** - 特定功能問題？
+3. **[`FEATURES_AND_CAPABILITIES.md`](./FEATURES_AND_CAPABILITIES.md)** - 特定功能問題？
 4. **[`idp_req_details.md`](./idp_req_details.md)** - 需求細節？
 
 ### 常見問題
