@@ -27,7 +27,7 @@ This file consolidates architecture guidance and key design decisions. It is a c
 ## Where to look for details
 - Full architecture content: `docs/ARCHITECTURE.md` (archived longer reference)
 - Authentication integration examples: `docs/AUTHENTICATION_INTEGRATION.md`
-- Person & identity details: `docs/phase-10-person-identity.md`
+-- Person & identity details: `./FEATURES_AND_CAPABILITIES.md#phase-10--person--identity-completed`
 
 ---
 _Generated as part of docs refactor — see `docs/archive/` for archived full documents._

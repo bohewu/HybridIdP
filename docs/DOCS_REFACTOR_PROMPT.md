@@ -174,9 +174,9 @@ Update the main README.md to reference the new consolidated structure:
 -- [E2E_LOCAL_SETUP.md](./E2E_LOCAL_SETUP.md) - E2E testing setup
 
 **Recent Features (Reference):**
--- [phase-10-person-identity.md](./phase-10-person-identity.md) - Person & Identity system
--- [phase-11-account-role-management.md](./phase-11-account-role-management.md) - Account management
--- [phase-12-admin-api-hr-integration.md](./phase-12-admin-api-hr-integration.md) - Future: API & HR integration
+- [FEATURES_AND_CAPABILITIES.md#phase-10--person--identity-completed](./FEATURES_AND_CAPABILITIES.md#phase-10--person--identity-completed) - Phase 10: Person & Identity
+- [FEATURES_AND_CAPABILITIES.md#phase-11--account--role-management-completed](./FEATURES_AND_CAPABILITIES.md#phase-11--account--role-management-completed) - Phase 11: Account & Role Management
+- [phase-12-admin-api-hr-integration.md](./phase-12-admin-api-hr-integration.md) - Future: API & HR integration
 
 **Archives:**
 - [docs/archive/](./archive/) - Historical documentation and completed phases

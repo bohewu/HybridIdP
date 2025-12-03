@@ -17,8 +17,8 @@ last-updated: 2025-12-02
 -- Phase 7 — Audit & Monitoring: 100% — `./archive/phases/phase-7-audit-monitoring.md`
 -- Phase 8 — e2e Test Refactor: 100% — `./archive/phases/phase-8-e2e-refactor.md`
 -- Phase 9 — Scope Authorization & Management: 100% — `./archive/phases/phase-9-roadmap.md`
--- Phase 10 — Person & Identity: 100% ✅ (Phase 10.1-10.5 All Complete) — `./phase-10-person-identity.md`
--- Phase 11 — Role & Account Switching: 100% ✅ (Phase 11.6 Complete) — `./phase-11-account-role-management.md`
+-- Phase 10 — Person & Identity: 100% ✅ (Phase 10.1-10.5 All Complete) — `./FEATURES_AND_CAPABILITIES.md#phase-10--person--identity-completed`
+-- Phase 11 — Role & Account Switching: 100% ✅ (Phase 11.6 Complete) — `./FEATURES_AND_CAPABILITIES.md#phase-11--account--role-management-completed`
    - Phase 11.6: Homepage Refactoring & Security Hardening ✅ — `./archive/phases/phase-11-6-remove-role-switch-refactor-homepage.md`, `./SECURITY_HARDENING.md`
 
 Backlog & Technical Debt: `./TODOS.md`
