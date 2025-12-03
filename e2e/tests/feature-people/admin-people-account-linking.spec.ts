@@ -56,7 +56,7 @@ test.describe('Admin - People Account Linking', () => {
 
     // Create user account
     const userEmail = `linktest-${Date.now()}@example.com`
-    const user = await createUnlinkedUser(page, userEmail, 'TestPassword123!', [])
+    const user = await createUnlinkedUser(page, userEmail, 'TestPassword123!', ['User'])
     createdUserIds.push(user.id)
 
     // Link account to person
@@ -92,7 +92,7 @@ test.describe('Admin - People Account Linking', () => {
 
     // Create and link user
     const userEmail = `unlinktest-${Date.now()}@example.com`
-    const user = await createUnlinkedUser(page, userEmail, 'TestPassword123!', [])
+    const user = await createUnlinkedUser(page, userEmail, 'TestPassword123!', ['User'])
     createdUserIds.push(user.id)
 
     await linkAccountToPerson(page, person.id, user.id)
@@ -140,8 +140,8 @@ test.describe('Admin - People Account Linking', () => {
     const user1Email = `multi1-${timestamp}@example.com`
     const user2Email = `multi2-${timestamp}@example.com`
     
-    const user1 = await createUnlinkedUser(page, user1Email, 'TestPassword123!', [])
-    const user2 = await createUnlinkedUser(page, user2Email, 'TestPassword123!', [])
+    const user1 = await createUnlinkedUser(page, user1Email, 'TestPassword123!', ['User'])
+    const user2 = await createUnlinkedUser(page, user2Email, 'TestPassword123!', ['User'])
     
     createdUserIds.push(user1.id, user2.id)
 
@@ -197,7 +197,7 @@ test.describe('Admin - People Account Linking', () => {
 
     // Create user
     const userEmail = `profile-${Date.now()}@example.com`
-    const user = await createUnlinkedUser(page, userEmail, 'TestPassword123!', [])
+    const user = await createUnlinkedUser(page, userEmail, 'TestPassword123!', ['User'])
     createdUserIds.push(user.id)
 
     // Link account
@@ -267,7 +267,7 @@ test.describe('Admin - People Account Linking', () => {
     const users = []
     for (let i = 1; i <= 3; i++) {
       const email = `multilink${i}-${timestamp}@example.com`
-      const user = await createUnlinkedUser(page, email, 'TestPassword123!', [])
+      const user = await createUnlinkedUser(page, email, 'TestPassword123!', ['User'])
       users.push(user)
       createdUserIds.push(user.id)
     }

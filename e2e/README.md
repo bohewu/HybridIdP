@@ -1,3 +1,29 @@
+# E2E tests (Playwright) — Quick guide
+
+This folder contains Playwright-based end-to-end tests for HybridAuth IdP.
+
+Key points / best practices
+- Prefer tests in `tests/feature-people` for person/account workflows — those are the canonical, actively maintained scenarios.
+- Use helpers in `tests/helpers/admin.ts` for API-driven operations (create users, persons, link accounts, etc.). Do not modify `admin.ts` unless you're adding new stable helpers — it's used by many test suites.
+- When adding new tests for account linking / multi-account login, reuse the helpers and the `feature-people` patterns rather than duplicating full flows.
+
+Run tests
+- Run a single test file (headed or headless):
+  - Headless (fast):
+    npx playwright test tests/feature-people/admin-people-account-linking.spec.ts -g "Multi-account login - two accounts linked to same verified person"
+  - Headed (useful for debugging):
+    npx playwright test tests/feature-people/admin-people-account-linking.spec.ts -g "Multi-account login - two accounts linked to same verified person" --headed
+
+- Run a whole feature folder (headless, trace on failure):
+    npx playwright test tests/feature-people --workers=1 --trace=on
+
+Troubleshooting
+- If login fails in tests, check:
+  - Users are created with a role (the IdP currently denies sign-in for users with zero roles)
+  - User records have EmailConfirmed = true and IsActive = true when created by test helpers
+  - The test environment has the IdP accessible at `https://localhost:7035` and the TestClient at `https://localhost:7001` if used
+
+If in doubt, re-use the working `feature-people` tests as your example. They cover person, identity, linked accounts, and multi-account login thoroughly.
 # E2E Tests (Playwright)
 
 This folder contains Playwright tests for the HybridIdP solution.
