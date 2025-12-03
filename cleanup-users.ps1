@@ -4,35 +4,35 @@ Write-Host "🧹 Cleaning up test users and persons..." -ForegroundColor Cyan
 
 # Step 1: Delete persons not linked to admin
 $deletePersons = @"
-DELETE FROM persons 
-WHERE Id NOT IN (
-    SELECT PersonId FROM AspNetUsers 
-    WHERE Email = 'admin@hybridauth.local' AND PersonId IS NOT NULL
+DELETE FROM "Persons"
+WHERE "Id" NOT IN (
+    SELECT "PersonId" FROM "AspNetUsers"
+    WHERE "Email" = 'admin@hybridauth.local' AND "PersonId" IS NOT NULL
 );
 "@
 
 # Step 2: Delete user roles for non-admin users
 $deleteUserRoles = @"
-DELETE FROM aspnetuserroles 
-WHERE UserId IN (
-    SELECT Id FROM AspNetUsers 
-    WHERE Email != 'admin@hybridauth.local'
+DELETE FROM "AspNetUserRoles"
+WHERE "UserId" IN (
+    SELECT "Id" FROM "AspNetUsers"
+    WHERE "Email" != 'admin@hybridauth.local'
 );
 "@
 
 # Step 3: Delete non-admin users
 $deleteUsers = @"
-DELETE FROM AspNetUsers 
-WHERE Email != 'admin@hybridauth.local';
+DELETE FROM "AspNetUsers"
+WHERE "Email" != 'admin@hybridauth.local';
 "@
 
 # Step 4: Verify remaining data
 $verifyUsers = @"
-SELECT Email, UserName, PersonId FROM aspnetusers;
+SELECT "Email", "UserName", "PersonId" FROM "AspNetUsers";
 "@
 
 $verifyPersons = @"
-SELECT Id, FirstName, LastName, EmployeeId, NationalId, PassportNumber, ResidentCertificateNumber, IdentityVerifiedAt FROM persons;
+SELECT "Id", "FirstName", "LastName", "EmployeeId", "NationalId", "PassportNumber", "ResidentCertificateNumber", "IdentityVerifiedAt" FROM "Persons";
 "@
 
 Write-Host "`n👤 Deleting persons (except admin's person)..." -ForegroundColor Yellow
