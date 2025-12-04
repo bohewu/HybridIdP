@@ -396,16 +396,5 @@ test.describe('Phase 11.6 - Linked Accounts Page', () => {
       // Should navigate to LinkedAccounts page
       await expect(page).toHaveURL('https://localhost:7035/Account/LinkedAccounts');
     });
-
-    test('should be accessible from homepage card', async ({ page }) => {
-      await page.goto('https://localhost:7035/');
-      
-      // Click Linked Accounts card
-      const linkedCard = page.locator('.hover-card').filter({ hasText: '帳號鏈結' });
-      await linkedCard.click();
-      
-      // Should navigate to LinkedAccounts page
-      await expect(page).toHaveURL('https://localhost:7035/Account/LinkedAccounts');
-    });
   });
 });

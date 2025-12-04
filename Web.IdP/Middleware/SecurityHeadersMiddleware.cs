@@ -16,6 +16,13 @@ public class SecurityHeadersMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // Skip security headers for OAuth/OpenIdConnect endpoints to avoid CSP conflicts
+        if (context.Request.Path.StartsWithSegments("/connect"))
+        {
+            await _next(context);
+            return;
+        }
+
         // Content Security Policy (CSP)
         // Allow Bootstrap CDN, Bootstrap Icons CDN, Cloudflare Turnstile, and self
         var scriptSrc = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com";
