@@ -371,25 +371,29 @@ test.describe('ApplicationManager UI Access', () => {
     
     // Wait for page to load
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000); // Give time for dialog to render if it will appear
     
-    // Check if Access Denied dialog appeared
+    // Should not be redirected to AccessDenied page
+    expect(page.url()).not.toContain('AccessDenied');
+    expect(page.url()).toContain('/Admin/Clients');
+    
+    // Wait for Vue app to load (check for vue-app-container or any Vue-rendered content)
+    await page.waitForSelector('#app', { timeout: 10000 });
+    
+    // Give Vue app time to mount and render (Vite HMR can be slow)
+    await page.waitForTimeout(2000);
+    
+    // Check if Access Denied dialog appeared (frontend permission cache issue)
     const accessDeniedDialog = page.locator('dialog:has-text("Access Denied")');
     const hasAccessDenied = await accessDeniedDialog.count().then(c => c > 0);
     
-    // If Access Denied dialog shows, it's a frontend cache issue - skip the UI assertion
     if (hasAccessDenied) {
       console.warn('\n⚠️  Access Denied dialog appeared - frontend permission cache issue');
       console.warn('   Backend permissions are correct (verified by API tests)');
       console.warn('   To fix: Clear browser cache or restart IdP server\n');
-      // Early return - treat as passed since backend permissions are verified
       return;
     }
     
-    // Should not be redirected to AccessDenied page
-    expect(page.url()).not.toContain('AccessDenied');
-    
-    // Should see the clients management UI
+    // Should see the clients management UI with ApplicationManager layout
     const createButton = page.locator('button:has-text("Create New Client")');
     await expect(createButton).toBeVisible({ timeout: 10000 });
   });
@@ -402,13 +406,21 @@ test.describe('ApplicationManager UI Access', () => {
     
     // Wait for page to load
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000); // Give time for dialog to render if it will appear
     
-    // Check if Access Denied dialog appeared
+    // Should not be redirected to AccessDenied page
+    expect(page.url()).not.toContain('AccessDenied');
+    expect(page.url()).toContain('/Admin/Scopes');
+    
+    // Wait for Vue app to load (check for vue-app-container or any Vue-rendered content)
+    await page.waitForSelector('#app', { timeout: 10000 });
+    
+    // Give Vue app time to mount and render (Vite HMR can be slow)
+    await page.waitForTimeout(2000);
+    
+    // Check if Access Denied dialog appeared (frontend permission cache issue)
     const accessDeniedDialog = page.locator('dialog:has-text("Access Denied")');
     const hasAccessDenied = await accessDeniedDialog.count().then(c => c > 0);
     
-    // If Access Denied dialog shows, it's a frontend cache issue - skip the UI assertion
     if (hasAccessDenied) {
       console.warn('\n⚠️  Access Denied dialog appeared - frontend permission cache issue');
       console.warn('   Backend permissions are correct (verified by API tests)');
@@ -416,11 +428,9 @@ test.describe('ApplicationManager UI Access', () => {
       return;
     }
     
-    // Should not be redirected to AccessDenied page
-    expect(page.url()).not.toContain('AccessDenied');
-    
-    // Should see the scopes management UI
+    // Should see the scopes management UI with ApplicationManager layout
     const createButton = page.locator('button:has-text("Create New Scope")');
     await expect(createButton).toBeVisible({ timeout: 10000 });
   });
+});
 });
