@@ -51,14 +51,20 @@
                                     </div>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                    @if (User.IsInRole(Roles.Admin) ||
-                                         User.HasClaim("permission", Permissions.Users.Read) || 
-                                         User.HasClaim("permission", Permissions.Clients.Read) || 
-                                         User.HasClaim("permission", Permissions.Roles.Read))
+                                    @if (User.IsInRole(Roles.Admin))
                                     {
                                         <li>
                                             <a class="dropdown-item" asp-page="/Admin/Index">
                                                 <i class="bi bi-speedometer2"></i> @Localizer["AdminConsole"]
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                    }
+                                    else if (User.IsInRole(Roles.ApplicationManager))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item" asp-page="/ApplicationManager/Index">
+                                                <i class="bi bi-diagram-3"></i> @Localizer["ApplicationManager"]
                                             </a>
                                         </li>
                                         <li><hr class="dropdown-divider"></li>

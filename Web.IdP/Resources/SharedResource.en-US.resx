@@ -326,4 +326,67 @@
   <data name="WelcomeMessage" xml:space="preserve">
     <value>Welcome to HybridAuth IdP</value>
   </data>
+  <data name="ApplicationManager" xml:space="preserve">
+    <value>Application Manager</value>
+  </data>
+  <data name="ApplicationManagement" xml:space="preserve">
+    <value>Application Management</value>
+  </data>
+  <data name="ManageYourApplicationsAndScopes" xml:space="preserve">
+    <value>Manage your applications and scopes</value>
+  </data>
+  <data name="MyClients" xml:space="preserve">
+    <value>My Clients</value>
+  </data>
+  <data name="MyScopes" xml:space="preserve">
+    <value>My Scopes</value>
+  </data>
+  <data name="ManageClients" xml:space="preserve">
+    <value>Manage Clients</value>
+  </data>
+  <data name="ManageScopes" xml:space="preserve">
+    <value>Manage Scopes</value>
+  </data>
+  <data name="QuickStart" xml:space="preserve">
+    <value>Quick Start</value>
+  </data>
+  <data name="ViewGuide" xml:space="preserve">
+    <value>View Guide</value>
+  </data>
+  <data name="QuickActions" xml:space="preserve">
+    <value>Quick Actions</value>
+  </data>
+  <data name="CreateClient" xml:space="preserve">
+    <value>Create Client</value>
+  </data>
+  <data name="CreateScope" xml:space="preserve">
+    <value>Create Scope</value>
+  </data>
+  <data name="ViewAllClients" xml:space="preserve">
+    <value>View All Clients</value>
+  </data>
+  <data name="ViewAllScopes" xml:space="preserve">
+    <value>View All Scopes</value>
+  </data>
+  <data name="GettingStarted" xml:space="preserve">
+    <value>Getting Started</value>
+  </data>
+  <data name="CreateClientDescription" xml:space="preserve">
+    <value>Register a new OAuth/OIDC client application</value>
+  </data>
+  <data name="ConfigureScopes" xml:space="preserve">
+    <value>Configure Scopes</value>
+  </data>
+  <data name="ConfigureScopesDescription" xml:space="preserve">
+    <value>Define the scopes your clients can request</value>
+  </data>
+  <data name="IntegrateApplication" xml:space="preserve">
+    <value>Integrate Application</value>
+  </data>
+  <data name="IntegrateApplicationDescription" xml:space="preserve">
+    <value>Connect your application using the client credentials</value>
+  </data>
+  <data name="Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
 </root>

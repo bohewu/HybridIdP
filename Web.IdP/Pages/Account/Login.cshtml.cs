@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -151,8 +152,13 @@ public class LoginModel : PageModel
                 }
                 else if (userRoles.Count == 1)
                 {
-                    // Single role - sign in directly
-                    await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
+                    // Single role - sign in with active_role claim
+                    var claims = new List<System.Security.Claims.Claim>
+                    {
+                        new System.Security.Claims.Claim("active_role", userRoles[0])
+                    };
+                    
+                    await _signInManager.SignInWithClaimsAsync(result.User!, isPersistent: Input.RememberMe, claims);
                     _logger.LogInformation("User '{UserName}' signed in successfully with single role '{Role}'.", 
                         result.User!.UserName, userRoles[0]);
                     return LocalRedirect(returnUrl);

@@ -57,4 +57,70 @@
   <data name="WelcomeMessage" xml:space="preserve">
     <value>Welcome to HybridAuth IdP</value>
   </data>
+  <data name="ApplicationManager" xml:space="preserve">
+    <value>應用程式管理員</value>
+  </data>
+  <data name="ApplicationManagement" xml:space="preserve">
+    <value>應用程式管理</value>
+  </data>
+  <data name="ManageYourApplicationsAndScopes" xml:space="preserve">
+    <value>管理您的應用程式和範圍</value>
+  </data>
+  <data name="MyClients" xml:space="preserve">
+    <value>我的客戶端</value>
+  </data>
+  <data name="MyScopes" xml:space="preserve">
+    <value>我的範圍</value>
+  </data>
+  <data name="ManageClients" xml:space="preserve">
+    <value>管理客戶端</value>
+  </data>
+  <data name="ManageScopes" xml:space="preserve">
+    <value>管理範圍</value>
+  </data>
+  <data name="QuickStart" xml:space="preserve">
+    <value>快速開始</value>
+  </data>
+  <data name="Documentation" xml:space="preserve">
+    <value>文件</value>
+  </data>
+  <data name="ViewGuide" xml:space="preserve">
+    <value>查看指南</value>
+  </data>
+  <data name="QuickActions" xml:space="preserve">
+    <value>快速操作</value>
+  </data>
+  <data name="CreateClient" xml:space="preserve">
+    <value>建立客戶端</value>
+  </data>
+  <data name="CreateScope" xml:space="preserve">
+    <value>建立範圍</value>
+  </data>
+  <data name="ViewAllClients" xml:space="preserve">
+    <value>查看所有客戶端</value>
+  </data>
+  <data name="ViewAllScopes" xml:space="preserve">
+    <value>查看所有範圍</value>
+  </data>
+  <data name="GettingStarted" xml:space="preserve">
+    <value>入門指南</value>
+  </data>
+  <data name="CreateClientDescription" xml:space="preserve">
+    <value>註冊新的 OAuth/OIDC 客戶端應用程式</value>
+  </data>
+  <data name="ConfigureScopes" xml:space="preserve">
+    <value>設定範圍</value>
+  </data>
+  <data name="ConfigureScopesDescription" xml:space="preserve">
+    <value>定義客戶端可以請求的範圍</value>
+  </data>
+  <data name="IntegrateApplication" xml:space="preserve">
+    <value>整合應用程式</value>
+  </data>
+  <data name="IntegrateApplicationDescription" xml:space="preserve">
+    <value>使用客戶端憑證連接您的應用程式</value>
+  </data>
+  <data name="Ok" xml:space="preserve">
+    <value>確定</value>
+  </data>
 </root>

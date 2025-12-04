@@ -682,7 +682,8 @@
     "edit": "編輯",
     "view": "檢視",
     "manage": "管理",
-    "saveRoles": "儲存角色"
+    "saveRoles": "儲存角色",
+    "ok": "確定"
   },
   "searchPlaceholder": "搜尋...",
   "filterOptions": {

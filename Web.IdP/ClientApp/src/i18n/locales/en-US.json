@@ -682,7 +682,8 @@
     "edit": "Edit",
     "view": "View",
     "manage": "Manage",
-    "saveRoles": "Save Roles"
+    "saveRoles": "Save Roles",
+    "ok": "OK"
   },
   "searchPlaceholder": "Search...",
   "filterOptions": {

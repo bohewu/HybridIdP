@@ -1,0 +1,169 @@
+@page
+@model Web.IdP.Pages.ApplicationManager.IndexModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Pages/Shared/_ApplicationManagerLayout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>@Localizer["Welcome"], @Model.UserName</h2>
+            <p class="text-muted">@Localizer["ManageYourApplicationsAndScopes"]</p>
+        </div>
+    </div>
+
+    @* Summary Cards *@
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                                <i class="bi bi-pc-display fs-4 text-primary"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="h4 mb-0">@Model.ClientCount</h3>
+                            <p class="text-muted mb-0">@Localizer["MyClients"]</p>
+                        </div>
+                    </div>
+                    <a href="/Admin/Clients" class="btn btn-sm btn-outline-primary w-100">
+                        <i class="bi bi-arrow-right-circle"></i> @Localizer["ManageClients"]
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                                <i class="bi bi-shield-lock fs-4 text-success"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="h4 mb-0">@Model.ScopeCount</h3>
+                            <p class="text-muted mb-0">@Localizer["MyScopes"]</p>
+                        </div>
+                    </div>
+                    <a href="/Admin/Scopes" class="btn btn-sm btn-outline-success w-100">
+                        <i class="bi bi-arrow-right-circle"></i> @Localizer["ManageScopes"]
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-info bg-opacity-10 p-3">
+                                <i class="bi bi-info-circle fs-4 text-info"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="h6 mb-0">@Localizer["QuickStart"]</h3>
+                            <p class="text-muted mb-0">@Localizer["Documentation"]</p>
+                        </div>
+                    </div>
+                    <a href="#" class="btn btn-sm btn-outline-info w-100">
+                        <i class="bi bi-book"></i> @Localizer["ViewGuide"]
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Quick Actions *@
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning"></i> @Localizer["QuickActions"]
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-3">
+                            <a href="/Admin/Clients" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-plus-circle"></i> @Localizer["CreateClient"]
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <a href="/Admin/Scopes" class="btn btn-outline-success w-100">
+                                <i class="bi bi-plus-circle"></i> @Localizer["CreateScope"]
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <a href="/Admin/Clients" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-list-ul"></i> @Localizer["ViewAllClients"]
+                            </a>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <a href="/Admin/Scopes" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-list-ul"></i> @Localizer["ViewAllScopes"]
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Getting Started Guide *@
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-compass"></i> @Localizer["GettingStarted"]
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span class="badge bg-primary rounded-circle p-2" style="width: 32px; height: 32px;">1</span>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6>@Localizer["CreateClient"]</h6>
+                                    <p class="text-muted small mb-0">@Localizer["CreateClientDescription"]</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span class="badge bg-primary rounded-circle p-2" style="width: 32px; height: 32px;">2</span>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6>@Localizer["ConfigureScopes"]</h6>
+                                    <p class="text-muted small mb-0">@Localizer["ConfigureScopesDescription"]</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span class="badge bg-primary rounded-circle p-2" style="width: 32px; height: 32px;">3</span>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6>@Localizer["IntegrateApplication"]</h6>
+                                    <p class="text-muted small mb-0">@Localizer["IntegrateApplicationDescription"]</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
