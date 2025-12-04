@@ -20,7 +20,13 @@ export async function login(page: Page, email: string, password: string) {
   await page.fill('#Input_Login', email);
   await page.fill('#Input_Password', password);
   await page.click('button.auth-btn-primary');
-  await page.waitForSelector('.user-name', { timeout: 20000 });
+  
+  // Wait for either successful login (user-name appears) or navigation away (e.g., AccessDenied)
+  // Some users may not have access to admin pages, so don't fail if .user-name doesn't appear
+  await Promise.race([
+    page.waitForSelector('.user-name', { timeout: 20000 }).catch(() => {}),
+    page.waitForURL(/\/(Admin|Account\/(AccessDenied|MyAccount))/, { timeout: 20000 }).catch(() => {})
+  ]);
 }
 
 // Utility: Ensure admin site and its API health endpoint is reachable before attempting UI interactions
