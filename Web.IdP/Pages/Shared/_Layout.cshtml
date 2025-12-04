@@ -1,7 +1,12 @@
 ﻿@using Microsoft.AspNetCore.Localization
 @using Core.Domain.Constants
 @using static Core.Domain.Constants.AuthConstants
+@using Core.Domain
+@using Microsoft.AspNetCore.Identity
+@using Web.IdP.Helpers
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<ApplicationRole> RoleManager
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -37,6 +42,17 @@
                     <ul class="navbar-nav align-items-sm-center">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
+                            @{
+                                // Get user permissions for menu visibility
+                                var userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User);
+                                var hasAdminPermissions = User.IsInRole(Roles.Admin) || 
+                                    userPermissions.Contains(Permissions.Users.Read) ||
+                                    userPermissions.Contains(Permissions.Roles.Read) ||
+                                    userPermissions.Contains(Permissions.Settings.Read);
+                                var hasClientScopePermissions = 
+                                    userPermissions.Contains(Permissions.Clients.Read) ||
+                                    userPermissions.Contains(Permissions.Scopes.Read);
+                            }
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle p-0" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <div class="user-profile">
@@ -51,7 +67,8 @@
                                     </div>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                    @if (User.IsInRole(Roles.Admin))
+                                    @* Show Admin Console if user is Admin or has admin-level permissions *@
+                                    @if (User.IsInRole(Roles.Admin) && hasAdminPermissions)
                                     {
                                         <li>
                                             <a class="dropdown-item" asp-page="/Admin/Index">
@@ -60,7 +77,8 @@
                                         </li>
                                         <li><hr class="dropdown-divider"></li>
                                     }
-                                    else if (User.IsInRole(Roles.ApplicationManager))
+                                    @* Show ApplicationManager if user has client/scope read permissions (but not Admin role) *@
+                                    else if (hasClientScopePermissions && !User.IsInRole(Roles.Admin))
                                     {
                                         <li>
                                             <a class="dropdown-item" asp-page="/ApplicationManager/Index">
