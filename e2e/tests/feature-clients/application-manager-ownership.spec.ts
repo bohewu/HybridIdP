@@ -363,6 +363,69 @@ test.describe('ApplicationManager UI Access', () => {
   // Tests verify ApplicationManager can access /Admin/Clients and /Admin/Scopes
   // with ApplicationManager layout (not full Admin menu)
   
-  // UI tests removed - backend permissions validated by API tests above
-  // Frontend Vue app loading is environment-dependent and causes flaky tests
+  test('ApplicationManager can access Admin Clients page', async ({ page }) => {
+    await loginAsApplicationManager(page);
+    
+    // Navigate to Admin Clients page
+    await page.goto('https://localhost:7035/Admin/Clients');
+    
+    // Wait for page to load
+    await page.waitForLoadState('networkidle');
+    
+    // Should not be redirected to AccessDenied page
+    expect(page.url()).not.toContain('AccessDenied');
+    expect(page.url()).toContain('/Admin/Clients');
+    
+    // Wait for Vue app to load and permissions to be checked
+    await page.waitForSelector('#app', { timeout: 10000 });
+    
+    // Give Vue app time to mount, load permissions, and render
+    await page.waitForTimeout(3000);
+    
+    // Check if Access Denied dialog appeared (should not happen with fixed permission constants)
+    const accessDeniedDialog = page.locator('dialog:has-text("Access Denied")');
+    const hasAccessDenied = await accessDeniedDialog.count().then(c => c > 0);
+    
+    if (hasAccessDenied) {
+      // If Access Denied still shows, it's a real bug - fail the test
+      throw new Error('Access Denied dialog appeared - permission check failed!');
+    }
+    
+    // Should see the clients management UI with ApplicationManager layout
+    const createButton = page.locator('button:has-text("Create New Client")');
+    await expect(createButton).toBeVisible({ timeout: 10000 });
+  });
+
+  test('ApplicationManager can access Admin Scopes page', async ({ page }) => {
+    await loginAsApplicationManager(page);
+    
+    // Navigate to Admin Scopes page
+    await page.goto('https://localhost:7035/Admin/Scopes');
+    
+    // Wait for page to load
+    await page.waitForLoadState('networkidle');
+    
+    // Should not be redirected to AccessDenied page
+    expect(page.url()).not.toContain('AccessDenied');
+    expect(page.url()).toContain('/Admin/Scopes');
+    
+    // Wait for Vue app to load and permissions to be checked
+    await page.waitForSelector('#app', { timeout: 10000 });
+    
+    // Give Vue app time to mount, load permissions, and render
+    await page.waitForTimeout(3000);
+    
+    // Check if Access Denied dialog appeared (should not happen with fixed permission constants)
+    const accessDeniedDialog = page.locator('dialog:has-text("Access Denied")');
+    const hasAccessDenied = await accessDeniedDialog.count().then(c => c > 0);
+    
+    if (hasAccessDenied) {
+      // If Access Denied still shows, it's a real bug - fail the test
+      throw new Error('Access Denied dialog appeared - permission check failed!');
+    }
+    
+    // Should see the scopes management UI with ApplicationManager layout
+    const createButton = page.locator('button:has-text("Create New Scope")');
+    await expect(createButton).toBeVisible({ timeout: 10000 });
+  });
 });
