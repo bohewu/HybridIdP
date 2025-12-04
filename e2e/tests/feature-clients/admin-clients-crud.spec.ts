@@ -62,6 +62,8 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
   await waitForDebounce(page, 600); // Wait for search debounce
   const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
   await addOpenIdBtn.waitFor({ state: 'visible', timeout: 10000 });
+  await addOpenIdBtn.click(); // Actually click to add the scope!
+  await page.waitForTimeout(500); // Wait for scope to be added
 
   // Make sure at least one grant type is checked
   await page.check('input[id="gt:authorization_code"]');
