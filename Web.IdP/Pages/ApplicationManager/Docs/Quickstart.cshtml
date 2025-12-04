@@ -11,12 +11,31 @@
     <h2>1. 登入</h2>
     <p>使用 ApplicationManager 帳號登入。</p>
 
-    <h2>2. 管理 My Clients / My Scopes</h2>
-    <p>在儀表板中，請使用 'My Clients' 或 'My Scopes' 進行管理。</p>
+    <h2>2. 檢視你的 Clients 與 Scopes</h2>
+    <p>在 Dashboard 上可以看到「My Clients」與「My Scopes」摘要，點選對應按鈕可進入管理頁面。</p>
 
-    <h2>3. 建立與管理 Clients</h2>
-    <p>前往 <a asp-page="/Admin/Clients">Clients</a> 以建立或編輯您的 Clients（僅限您有權限的資源）。</p>
+    <h2>3. 建立新的 Client</h2>
+    <ol>
+        <li>點選 <strong>Manage Clients → Create Client</strong>。</li>
+        <li>填寫 Client 名稱、Redirect URI，並設定需要的 scopes。</li>
+        <li>儲存後，系統會顯示 ClientId 與（如有）Client Secret，請妥善保管。</li>
+    </ol>
+
+    <h2>4. 建立 Scope</h2>
+    <ol>
+        <li>點選 <strong>Manage Scopes → Create Scope</strong>。</li>
+        <li>填寫 scope 名稱與描述，選擇是否為可選 scope。</li>
+    </ol>
+
+    <h2>5. 整合範例 (簡略)</h2>
+    <p>在應用程式端 (client) 設定 OAuth2/OIDC，使用產生的 ClientId，Redirect URI 與需要的 scopes（例如 <code>openid profile clients.read</code>）。</p>
+
+    <h2>6. 常見問題與排除</h2>
+    <ul>
+        <li>若看到 Access Denied：請確認你已登入的帳號擁有 <code>clients.read</code> 或 <code>scopes.read</code> 權限。</li>
+        <li>若看不到文件：請聯絡系統管理員或使用頁面右下的 Support 連結。</li>
+    </ul>
 
     <hr>
-    <p class="text-muted small">如需更多細節請聯絡系統管理員。</p>
+    <p class="text-muted small">如需更詳細的操作說明，請聯絡系統管理員。</p>
 </div>

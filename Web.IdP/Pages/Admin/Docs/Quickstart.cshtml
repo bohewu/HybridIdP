@@ -1,29 +1,28 @@
 @page
 @model Web.IdP.Pages.Admin.Docs.QuickstartModel
-@using Microsoft.AspNetCore.Authorization
 @{
     ViewData["Title"] = "Admin 快速開始";
 }
 
 <div class="container p-4">
     <h1>Admin — 快速開始</h1>
-    <p>此頁面為管理員專用的快速開始指南，僅對擁有管理權限的使用者可見。</p>
+    <p>此文件為具有管理權限的使用者專用，包含系統配置與權限管理的基本操作。</p>
 
-    <h2>1. 登入</h2>
-    <p>使用具備 Admin 權限的帳號登入系統（管理員帳號）。</p>
+    <h2>1. 登入並進入管理控制台</h2>
+    <p>使用管理者帳號登入後，點選上方選單中的 <strong>Admin</strong> 進入管理介面。</p>
 
-    <h2>2. 檢視系統儀表板</h2>
-    <p>在 Dashboard 中可以快速檢視系統狀態、最近活動與審計紀錄。</p>
+    <h2>2. 管理使用者與角色</h2>
+    <ol>
+        <li>在 <strong>Users</strong> 連結中搜尋或建立使用者。</li>
+        <li>在使用者頁面中指派角色或直接管理 Claims/Permissions。</li>
+    </ol>
 
-    <h2>3. 管理 Clients / Scopes</h2>
-    <p>前往 <a asp-page="/Admin/Clients">Clients</a> 或 <a asp-page="/Admin/Scopes">Scopes</a> 進行 CRUD 操作。</p>
+    <h2>3. 管理 Clients/Scopes</h2>
+    <p>管理 Client、Scope 與 API Resource 的設定，包含建立、更新與刪除。</p>
 
-    <h2>4. 使用者與角色</h2>
-    <p>前往 <a asp-page="/Admin/Users">Users</a> 與 <a asp-page="/Admin/Roles">Roles</a> 管理帳號與角色。</p>
-
-    <h2>5. 安全與稽核</h2>
-    <p>稽核資料在 <a asp-page="/Admin/Audit">Audit</a>，安全策略在 <a asp-page="/Admin/SecurityPolicies">Security Policies</a>。</p>
+    <h2>4. 審計與日誌</h2>
+    <p>查看最近的登入記錄與系統異常，必要時導出日誌與審計資訊。</p>
 
     <hr>
-    <p class="text-muted small">若需更詳細操作步驟，請聯絡系統維運或參考內部文件。</p>
+    <p class="text-muted small">如需深入指南，請聯絡平台負責人或參閱內部文件。</p>
 </div>
