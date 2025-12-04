@@ -42,15 +42,13 @@
                     <ul class="navbar-nav align-items-sm-center">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            @{
                                 // Get user permissions for menu visibility
                                 var userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User);
                                 var hasAdminPermissions = User.IsInRole(Roles.Admin);
                                 var hasClientScopePermissions = 
-                                    User.IsInRole(Roles.ApplicationManager) ||
-                                    userPermissions.Contains(Permissions.Clients.Read) ||
-                                    userPermissions.Contains(Permissions.Scopes.Read);
-                            }
+                                User.IsInRole(Roles.ApplicationManager) ||
+                                userPermissions.Contains(Permissions.Clients.Read) ||
+                                userPermissions.Contains(Permissions.Scopes.Read);
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle p-0" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <div class="user-profile">
@@ -139,6 +137,10 @@
                 <div>
                     <a asp-area="" asp-page="/Privacy">
                         <i class="bi bi-shield-check"></i> @Localizer["Privacy"]
+                    </a>
+                    <span class="mx-2">|</span>
+                    <a href="/docs/quickstart-applicationmanager.html" target="_blank" class="text-decoration-none text-muted">
+                        <i class="bi bi-journal-text"></i> @Localizer["Documentation"]
                     </a>
                 </div>
             </div>
