@@ -140,35 +140,43 @@ public class LoginModel : PageModel
                     }
                 }
 
-                // Phase 11.2: Check if user has multiple roles - redirect to SelectRole if needed
+                // Sign in user (role claims are automatically added by Identity)
+                await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
+                _logger.LogInformation("User '{UserName}' signed in successfully.", result.User!.UserName);
+                
+                // Get user roles to determine redirect
                 var userRoles = await _userManager.GetRolesAsync(result.User!);
                 
-                if (userRoles.Count > 1)
+                if (userRoles.Count == 0)
                 {
-                    // User has multiple roles - redirect to role selection page
-                    _logger.LogInformation("User '{UserName}' has {RoleCount} roles. Redirecting to role selection.", 
-                        result.User!.UserName, userRoles.Count);
-                    return RedirectToPage("/Account/SelectRole", new { userId = result.User!.Id, returnUrl });
+                    // No roles assigned - deny access
+                    await _signInManager.SignOutAsync();
+                    _logger.LogWarning("User '{UserName}' has no assigned roles. Access denied.", result.User!.UserName);
+                    ModelState.AddModelError(string.Empty, _localizer["NoRolesAssigned"]);
+                    return Page();
                 }
-                else if (userRoles.Count == 1)
+                
+                // Determine redirect based on role (Admin takes precedence)
+                if (returnUrl != Url.Content("~/"))
                 {
-                    // Single role - sign in with active_role claim
-                    var claims = new List<System.Security.Claims.Claim>
-                    {
-                        new System.Security.Claims.Claim("active_role", userRoles[0])
-                    };
-                    
-                    await _signInManager.SignInWithClaimsAsync(result.User!, isPersistent: Input.RememberMe, claims);
-                    _logger.LogInformation("User '{UserName}' signed in successfully with single role '{Role}'.", 
-                        result.User!.UserName, userRoles[0]);
+                    // If there's a specific return URL, use it
                     return LocalRedirect(returnUrl);
                 }
                 else
                 {
-                    // No roles assigned - deny access
-                    _logger.LogWarning("User '{UserName}' has no assigned roles. Access denied.", result.User!.UserName);
-                    ModelState.AddModelError(string.Empty, _localizer["NoRolesAssigned"]);
-                    return Page();
+                    // Default redirect based on role priority: Admin > ApplicationManager > default
+                    if (userRoles.Contains(Core.Domain.Constants.AuthConstants.Roles.Admin))
+                    {
+                        return RedirectToPage("/Admin/Index");
+                    }
+                    else if (userRoles.Contains(Core.Domain.Constants.AuthConstants.Roles.ApplicationManager))
+                    {
+                        return RedirectToPage("/ApplicationManager/Index");
+                    }
+                    else
+                    {
+                        return LocalRedirect(returnUrl);
+                    }
                 }
 
             case LoginStatus.LockedOut:

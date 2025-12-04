@@ -9,6 +9,12 @@ $sql = @"
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 
+-- Remove client ownerships created by non-admin users
+DELETE FROM [ClientOwnerships]
+WHERE [CreatedByUserId] IN (
+    SELECT [Id] FROM [AspNetUsers] WHERE [Email] != 'admin@hybridauth.local'
+);
+
 -- Remove user role entries for non-admin users
 DELETE FROM [AspNetUserRoles]
 WHERE [UserId] IN (

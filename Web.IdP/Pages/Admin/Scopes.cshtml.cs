@@ -9,5 +9,16 @@ public class ScopesModel : PageModel
 {
     public void OnGet()
     {
+        // Dynamic layout switching: Admin role takes precedence
+        if (User.IsInRole(AuthConstants.Roles.Admin))
+        {
+            // Use default _AdminLayout (via _ViewStart.cshtml)
+            // No need to set Layout explicitly
+        }
+        else if (User.IsInRole(AuthConstants.Roles.ApplicationManager))
+        {
+            // Use ApplicationManager layout for ApplicationManager users
+            Layout = "~/Pages/Shared/_ApplicationManagerLayout.cshtml";
+        }
     }
 }

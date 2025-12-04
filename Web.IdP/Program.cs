@@ -180,6 +180,22 @@ builder.Services.AddAuthorization(options =>
             policy.Requirements.Add(new Infrastructure.Authorization.PermissionRequirement(permission)));
     }
 
+    // Register HasAnyAdminAccess policy for shared admin landing pages
+    // Allows access if user has ANY admin-level permission (clients, scopes, users, roles, etc.)
+    options.AddPolicy("HasAnyAdminAccess", policy =>
+    {
+        policy.Requirements.Add(new Infrastructure.Authorization.HasAnyPermissionRequirement(
+            Core.Domain.Constants.Permissions.Clients.Read,
+            Core.Domain.Constants.Permissions.Scopes.Read,
+            Core.Domain.Constants.Permissions.Users.Read,
+            Core.Domain.Constants.Permissions.Roles.Read,
+            Core.Domain.Constants.Permissions.Persons.Read,
+            Core.Domain.Constants.Permissions.Claims.Read,
+            Core.Domain.Constants.Permissions.Settings.Read,
+            Core.Domain.Constants.Permissions.Audit.Read
+        ));
+    });
+
     // Register Prometheus metrics IP whitelist policy
     options.AddPolicy("PrometheusMetrics", policy =>
     {
@@ -190,6 +206,10 @@ builder.Services.AddAuthorization(options =>
 // Register permission authorization handler
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, 
     Infrastructure.Authorization.PermissionAuthorizationHandler>();
+
+// Register HasAnyPermission authorization handler
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+    Infrastructure.Authorization.HasAnyPermissionAuthorizationHandler>();
 
 // Register IP whitelist authorization handler
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,

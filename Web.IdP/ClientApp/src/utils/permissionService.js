@@ -8,15 +8,29 @@ class PermissionService {
     this.permissions = [];
     this.isAdmin = false;
     this.loaded = false;
+    this.lastLoadTime = null;
+    this.cacheTimeoutMs = 5 * 60 * 1000; // 5 minutes cache
   }
 
   /**
    * Load current user's permissions from the server
+   * @param {boolean} forceReload - Force reload even if cached
    */
-  async loadPermissions() {
+  async loadPermissions(forceReload = false) {
+    // Check if we can use cached permissions
+    if (!forceReload && this.loaded && this.lastLoadTime) {
+      const now = Date.now();
+      const cacheAge = now - this.lastLoadTime;
+      if (cacheAge < this.cacheTimeoutMs) {
+        console.log('Using cached permissions (age: ' + Math.round(cacheAge / 1000) + 's)');
+        return true;
+      }
+    }
+
     try {
       const response = await fetch('/api/admin/permissions/current', {
-        credentials: 'include'
+        credentials: 'include',
+        cache: 'no-store' // Don't cache the response
       });
       
       if (response.ok) {
@@ -24,6 +38,7 @@ class PermissionService {
         this.permissions = data.permissions || [];
         this.isAdmin = data.isAdmin || false;
         this.loaded = true;
+        this.lastLoadTime = Date.now();
         console.log('Permissions loaded:', this.permissions);
         return true;
       } else {
@@ -31,6 +46,7 @@ class PermissionService {
         this.permissions = [];
         this.isAdmin = false;
         this.loaded = true;
+        this.lastLoadTime = Date.now();
         return false;
       }
     } catch (error) {
@@ -38,8 +54,18 @@ class PermissionService {
       this.permissions = [];
       this.isAdmin = false;
       this.loaded = true;
+      this.lastLoadTime = Date.now();
       return false;
     }
+  }
+
+  /**
+   * Reload permissions from server (force refresh cache)
+   * Use this after login or role changes
+   */
+  async reloadPermissions() {
+    console.log('Reloading permissions (forced)...');
+    return await this.loadPermissions(true);
   }
 
   /**
@@ -93,11 +119,25 @@ class PermissionService {
 
   /**
    * Clear cached permissions
+   * Use this on logout or when user session ends
    */
   clear() {
+    console.log('Clearing permissions cache...');
     this.permissions = [];
     this.isAdmin = false;
     this.loaded = false;
+    this.lastLoadTime = null;
+  }
+
+  /**
+   * Check if cache is stale and should be refreshed
+   * @returns {boolean}
+   */
+  isCacheStale() {
+    if (!this.loaded || !this.lastLoadTime) return true;
+    const now = Date.now();
+    const cacheAge = now - this.lastLoadTime;
+    return cacheAge >= this.cacheTimeoutMs;
   }
 }
 

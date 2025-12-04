@@ -360,11 +360,10 @@ test.describe('ApplicationManager Ownership - Scopes', () => {
 });
 
 test.describe('ApplicationManager UI Access', () => {
-  // Note: These UI tests may fail due to frontend permission caching issues
-  // The API tests (above) already verify that backend permissions work correctly
-  // To fix UI test failures: restart browser or clear application cookies
+  // Tests verify ApplicationManager can access /Admin/Clients and /Admin/Scopes
+  // with ApplicationManager layout (not full Admin menu)
   
-  test.skip('ApplicationManager can access Admin Clients page', async ({ page }) => {
+  test('ApplicationManager can access Admin Clients page', async ({ page }) => {
     await loginAsApplicationManager(page);
     
     // Navigate to Admin Clients page
@@ -395,7 +394,7 @@ test.describe('ApplicationManager UI Access', () => {
     await expect(createButton).toBeVisible({ timeout: 10000 });
   });
 
-  test.skip('ApplicationManager can access Admin Scopes page', async ({ page }) => {
+  test('ApplicationManager can access Admin Scopes page', async ({ page }) => {
     await loginAsApplicationManager(page);
     
     // Navigate to Admin Scopes page
