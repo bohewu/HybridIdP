@@ -67,15 +67,14 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
   await page.check('input[id="gt:authorization_code"]');
 
   // Submit the form (Create Client)
-  // Submit button is in modal footer with dynamic text (Create/Update Client)
-  // Use selector that finds submit button with client-related text
-  const submitButton = page.locator('button[type="submit"]').filter({ hasText: /create|update|建立|更新/i });
-  await submitButton.waitFor({ state: 'visible', timeout: 10000 });
+  // Wait for form to be fully interactive before submitting
+  await page.waitForTimeout(500);
   
-  // Click submit and wait for both the POST and the subsequent GET (list refresh)
+  // The submit button is in the modal footer with text "Create Client" or "新增用戶端"
+  // Click it and wait for the POST request to complete
   const [postResponse] = await Promise.all([
-    page.waitForResponse(resp => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST'),
-    submitButton.click()
+    page.waitForResponse(resp => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST', { timeout: 30000 }),
+    page.locator('button[type="submit"]').filter({ hasText: /Create Client|新增用戶端/i }).click()
   ]);
   
   expect(postResponse.ok()).toBeTruthy();

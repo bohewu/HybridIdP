@@ -38,9 +38,9 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   await page.click('button[type="submit"]');
 
   // Wait for SecretDisplayModal to appear with the secret input
-  // The input is readonly text input in the modal with bg-gray-50 styling
-  await page.waitForSelector('input[type="text"][readonly].bg-gray-50', { timeout: 10000, state: 'visible' });
-  const secretInput = page.locator('input[type="text"][readonly].bg-gray-50');
+  // The secret is in a readonly text input inside the modal
+  await page.waitForSelector('input[type="text"][readonly]', { timeout: 10000, state: 'visible' });
+  const secretInput = page.locator('input[type="text"][readonly]').first();
   await expect(secretInput).toBeVisible();
 
   // Read the generated client secret from modal
@@ -64,8 +64,8 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   expect(actionResult.clicked).toBeTruthy();
   
   // Wait for the SecretDisplayModal to appear with the regenerated secret
-  await page.waitForSelector('input[type="text"][readonly].bg-gray-50', { timeout: 10000, state: 'visible' });
-  const newSecretInput = page.locator('input[type="text"][readonly].bg-gray-50');
+  await page.waitForSelector('input[type="text"][readonly]', { timeout: 10000, state: 'visible' });
+  const newSecretInput = page.locator('input[type="text"][readonly]').first();
   await expect(newSecretInput).toBeVisible();
   const regenerated = await newSecretInput.inputValue();
   expect(regenerated.length).toBeGreaterThan(16);
