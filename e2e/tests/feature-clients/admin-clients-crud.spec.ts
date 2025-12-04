@@ -66,15 +66,13 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
   // Make sure at least one grant type is checked
   await page.check('input[id="gt:authorization_code"]');
 
-  // Submit the form (Create Client)
-  // Wait for form to be fully interactive before submitting
-  await page.waitForTimeout(500);
+  // Submit the form (Create Client) using test-id
+  const submitButton = page.locator('[data-test-id="client-form-submit"]');
+  await submitButton.waitFor({ state: 'visible', timeout: 10000 });
   
-  // The submit button is in the modal footer with text "Create Client" or "新增用戶端"
-  // Click it and wait for the POST request to complete
   const [postResponse] = await Promise.all([
     page.waitForResponse(resp => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST', { timeout: 30000 }),
-    page.locator('button[type="submit"]').filter({ hasText: /Create Client|新增用戶端/i }).click()
+    submitButton.click()
   ]);
   
   expect(postResponse.ok()).toBeTruthy();

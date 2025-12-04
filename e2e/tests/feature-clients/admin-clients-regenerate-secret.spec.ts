@@ -35,12 +35,14 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
   if (await addOpenIdBtn.count() > 0) await addOpenIdBtn.click();
   await page.check('input[id="gt:authorization_code"]');
-  await page.click('button[type="submit"]');
+  // Submit button with test-id
+  const submitButton = page.locator('[data-test-id="client-form-submit"]');
+  await submitButton.waitFor({ state: 'visible', timeout: 10000 });
+  await submitButton.click();
 
-  // Wait for SecretDisplayModal to appear with the secret input
-  // The secret is in a readonly text input inside the modal
-  await page.waitForSelector('input[type="text"][readonly]', { timeout: 10000, state: 'visible' });
-  const secretInput = page.locator('input[type="text"][readonly]').first();
+  // Wait for SecretDisplayModal to appear - use test-id for the secret input
+  const secretInput = page.locator('[data-test-id="client-secret-input"]');
+  await secretInput.waitFor({ state: 'visible', timeout: 10000 });
   await expect(secretInput).toBeVisible();
 
   // Read the generated client secret from modal
@@ -63,9 +65,9 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   const actionResult = await adminHelpers.searchAndClickAction(page, 'clients', clientId, 'Regenerate', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
   expect(actionResult.clicked).toBeTruthy();
   
-  // Wait for the SecretDisplayModal to appear with the regenerated secret
-  await page.waitForSelector('input[type="text"][readonly]', { timeout: 10000, state: 'visible' });
-  const newSecretInput = page.locator('input[type="text"][readonly]').first();
+  // Wait for the SecretDisplayModal to appear with the regenerated secret - use test-id
+  const newSecretInput = page.locator('[data-test-id="client-secret-input"]');
+  await newSecretInput.waitFor({ state: 'visible', timeout: 10000 });
   await expect(newSecretInput).toBeVisible();
   const regenerated = await newSecretInput.inputValue();
   expect(regenerated.length).toBeGreaterThan(16);
