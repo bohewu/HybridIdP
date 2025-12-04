@@ -148,13 +148,16 @@ test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page 
   await editDisplayNameInput.clear();
   await editDisplayNameInput.fill(updatedDisplayName);
 
-  // Submit update
+  // Submit button is in modal footer, use page-level selector
+  const updateButton = page.locator('button[type="submit"]').filter({ hasText: /save|儲存/i });
+  await updateButton.waitFor({ state: 'visible', timeout: 10000 });
+  
   const updateResponsePromise = waitForApiResponse(page, `/api/admin/claims/${responseData.id}`, {
     method: 'PUT',
     timeout: 10000
   });
   
-  await page.locator('form button[type="submit"]').click();
+  await updateButton.click();
   await updateResponsePromise;
   
   await waitForDebounce(page, 1000);
