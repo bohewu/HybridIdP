@@ -433,4 +433,3 @@ test.describe('ApplicationManager UI Access', () => {
     await expect(createButton).toBeVisible({ timeout: 10000 });
   });
 });
-});
