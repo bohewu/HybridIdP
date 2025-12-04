@@ -318,6 +318,38 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.ToTable("AuditEvents");
                 });
 
+            modelBuilder.Entity("Core.Domain.Entities.ClientOwnership", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByPersonId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId")
+                        .IsUnique();
+
+                    b.HasIndex("CreatedByPersonId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.ToTable("ClientOwnerships");
+                });
+
             modelBuilder.Entity("Core.Domain.Entities.ClientRequiredScope", b =>
                 {
                     b.Property<int>("Id")
@@ -641,6 +673,38 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .IsUnique();
 
                     b.ToTable("ScopeExtensions");
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.ScopeOwnership", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByPersonId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ScopeId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByPersonId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ScopeId")
+                        .IsUnique();
+
+                    b.ToTable("ScopeOwnerships");
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.SecurityPolicy", b =>
@@ -1200,6 +1264,25 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Navigation("ApiResource");
                 });
 
+            modelBuilder.Entity("Core.Domain.Entities.ClientOwnership", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.Person", "CreatedByPerson")
+                        .WithMany()
+                        .HasForeignKey("CreatedByPersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Core.Domain.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByPerson");
+
+                    b.Navigation("CreatedByUser");
+                });
+
             modelBuilder.Entity("Core.Domain.Entities.LoginHistory", b =>
                 {
                     b.HasOne("Core.Domain.ApplicationUser", "User")
@@ -1220,6 +1303,25 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .IsRequired();
 
                     b.Navigation("UserClaim");
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.ScopeOwnership", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.Person", "CreatedByPerson")
+                        .WithMany()
+                        .HasForeignKey("CreatedByPersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Core.Domain.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByPerson");
+
+                    b.Navigation("CreatedByUser");
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.UserSession", b =>

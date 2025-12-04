@@ -32,6 +32,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<Person> Persons => Set<Person>();
+    public DbSet<ClientOwnership> ClientOwnerships => Set<ClientOwnership>();
+    public DbSet<ScopeOwnership> ScopeOwnerships => Set<ScopeOwnership>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -271,6 +273,52 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .WithOne(u => u.Person)
                 .HasForeignKey(u => u.PersonId)
                 .OnDelete(DeleteBehavior.SetNull); // When person is deleted, set PersonId to null in users
+        });
+
+        // Configure ClientOwnership entity (Phase 13)
+        builder.Entity<ClientOwnership>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ClientId).IsUnique(); // One client can only have one owner
+            entity.Property(e => e.ClientId).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.CreatedByPersonId).IsRequired();
+            entity.Property(e => e.CreatedByUserId).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            
+            // Configure relationship with Person
+            entity.HasOne(e => e.CreatedByPerson)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByPersonId)
+                .OnDelete(DeleteBehavior.Cascade); // When person is deleted, remove ownership records
+            
+            // Configure relationship with ApplicationUser
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict); // Don't allow user deletion if they created clients
+        });
+
+        // Configure ScopeOwnership entity (Phase 13)
+        builder.Entity<ScopeOwnership>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ScopeId).IsUnique(); // One scope can only have one owner
+            entity.Property(e => e.ScopeId).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.CreatedByPersonId).IsRequired();
+            entity.Property(e => e.CreatedByUserId).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            
+            // Configure relationship with Person
+            entity.HasOne(e => e.CreatedByPerson)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByPersonId)
+                .OnDelete(DeleteBehavior.Cascade); // When person is deleted, remove ownership records
+            
+            // Configure relationship with ApplicationUser
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict); // Don't allow user deletion if they created scopes
         });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.
