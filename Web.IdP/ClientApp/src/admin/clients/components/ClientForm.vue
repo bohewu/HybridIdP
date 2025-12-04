@@ -609,6 +609,7 @@ const closeSecretModal = () => {
 
     <template #footer>
       <button
+        data-test-id="client-form-submit"
         type="submit"
         @click="handleSubmit"
         :disabled="submitting"

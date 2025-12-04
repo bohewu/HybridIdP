@@ -53,8 +53,12 @@ const handleClose = () => {
         <div class="mt-3 sm:ml-4 sm:mt-0 w-full">
           <p class="text-sm text-gray-500">{{ t('clients.secretModal.message') }}</p>
           <div class="mt-4 relative">
-            <input type="text" :value="secret" readonly
-                   class="block w-full rounded-md border-gray-300 bg-gray-50 py-2 pl-3 pr-24 text-gray-900 shadow-sm sm:text-sm font-mono" />
+            <input 
+              data-test-id="client-secret-input"
+              type="text" 
+              :value="secret" 
+              readonly
+              class="block w-full rounded-md border-gray-300 bg-gray-50 py-2 pl-3 pr-24 text-gray-900 shadow-sm sm:text-sm font-mono" />
             <button type="button" @click="copySecret(secret)"
                     class="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-indigo-600 hover:text-indigo-900">
               {{ secretCopied ? t('clients.secretModal.copied') : t('clients.secretModal.copy') }}
