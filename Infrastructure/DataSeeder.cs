@@ -59,7 +59,8 @@ public static class DataSeeder
 
         foreach (var role in roles)
         {
-            if (!await roleManager.RoleExistsAsync(role.Name))
+            var existingRole = await roleManager.FindByNameAsync(role.Name);
+            if (existingRole == null)
             {
                 await roleManager.CreateAsync(new ApplicationRole 
                 { 
@@ -68,6 +69,13 @@ public static class DataSeeder
                     Description = role.Description,
                     Permissions = role.Permissions
                 });
+            }
+            else if (!string.IsNullOrEmpty(role.Permissions) && existingRole.Permissions != role.Permissions)
+            {
+                // Update existing role's permissions if they differ (e.g., ApplicationManager role)
+                existingRole.Permissions = role.Permissions;
+                existingRole.Description = role.Description;
+                await roleManager.UpdateAsync(existingRole);
             }
         }
     }

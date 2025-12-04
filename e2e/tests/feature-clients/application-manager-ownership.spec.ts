@@ -117,6 +117,9 @@ async function getVisibleScopes(page: Page): Promise<any[]> {
   });
 }
 
+// Use serial mode to ensure tests run in order within each describe block
+test.describe.configure({ mode: 'serial' });
+
 test.describe('ApplicationManager Ownership - Clients', () => {
   const timestamp = Date.now();
   const appManagerClientId = `e2e-appmgr-client-${timestamp}`;
@@ -361,11 +364,29 @@ test.describe('ApplicationManager UI Access', () => {
     // Navigate to Admin Clients page
     await page.goto('https://localhost:7035/Admin/Clients');
     
-    // Should not be redirected to AccessDenied
+    // Wait for page to load
+    await page.waitForLoadState('networkidle');
+    
+    // Check if Access Denied dialog appeared (indicates missing permissions)
+    const accessDeniedDialog = page.locator('dialog:has-text("Access Denied")');
+    const hasAccessDenied = await accessDeniedDialog.isVisible().catch(() => false);
+    
+    if (hasAccessDenied) {
+      // This means ApplicationManager role doesn't have correct permissions yet
+      // The test should fail with a clear message
+      throw new Error('ApplicationManager role does not have clients.read permission. Please ensure DataSeeder has run to update the role permissions.');
+    }
+    
+    // Should not be redirected to AccessDenied page
     expect(page.url()).not.toContain('AccessDenied');
     
-    // Should see the clients management UI
-    await expect(page.locator('button:has-text("Create New Client")')).toBeVisible({ timeout: 10000 });
+    // Should see the clients management UI (wait for loading to complete)
+    await page.waitForSelector('[data-test="csm-available-search"], button:has-text("Create New Client"), .client-list', { timeout: 15000 }).catch(() => {});
+    
+    // Check for Create button or loaded client list
+    const createButton = page.locator('button:has-text("Create New Client")');
+    const isCreateVisible = await createButton.isVisible().catch(() => false);
+    expect(isCreateVisible).toBeTruthy();
   });
 
   test('ApplicationManager can access Admin Scopes page', async ({ page }) => {
@@ -374,10 +395,26 @@ test.describe('ApplicationManager UI Access', () => {
     // Navigate to Admin Scopes page
     await page.goto('https://localhost:7035/Admin/Scopes');
     
-    // Should not be redirected to AccessDenied
+    // Wait for page to load
+    await page.waitForLoadState('networkidle');
+    
+    // Check if Access Denied dialog appeared
+    const accessDeniedDialog = page.locator('dialog:has-text("Access Denied")');
+    const hasAccessDenied = await accessDeniedDialog.isVisible().catch(() => false);
+    
+    if (hasAccessDenied) {
+      throw new Error('ApplicationManager role does not have scopes.read permission. Please ensure DataSeeder has run to update the role permissions.');
+    }
+    
+    // Should not be redirected to AccessDenied page
     expect(page.url()).not.toContain('AccessDenied');
     
-    // Should see the scopes management UI
-    await expect(page.locator('button:has-text("Create New Scope")')).toBeVisible({ timeout: 10000 });
+    // Should see the scopes management UI (wait for loading to complete)
+    await page.waitForSelector('button:has-text("Create New Scope"), .scope-list', { timeout: 15000 }).catch(() => {});
+    
+    // Check for Create button
+    const createButton = page.locator('button:has-text("Create New Scope")');
+    const isCreateVisible = await createButton.isVisible().catch(() => false);
+    expect(isCreateVisible).toBeTruthy();
   });
 });
