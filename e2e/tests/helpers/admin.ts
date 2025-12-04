@@ -10,7 +10,8 @@ export async function loginAsAdminViaIdP(page: Page) {
   await page.fill('#Input_Login', 'admin@hybridauth.local');
   await page.fill('#Input_Password', 'Admin@123');
   await page.click('button.auth-btn-primary');
-  await page.waitForSelector('.user-name', { timeout: 20000 });
+  // Wait for admin layout to load (admin is redirected to /Admin after login)
+  await page.waitForSelector('.user-info-name, .user-name', { timeout: 20000 });
 }
 export async function login(page: Page, email: string, password: string) {
   // Go directly to login page
