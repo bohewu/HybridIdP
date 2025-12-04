@@ -10,7 +10,7 @@ namespace Infrastructure;
 
 public static class DataSeeder
 {
-    public static async Task SeedAsync(IServiceProvider serviceProvider)
+    public static async Task SeedAsync(IServiceProvider serviceProvider, bool seedTestUsers = false)
     {
         using var scope = serviceProvider.CreateScope();
         
@@ -36,6 +36,13 @@ public static class DataSeeder
 
         // Seed user claims and scope-to-claims mappings (Phase 3.9A)
         await SeedUserClaimsAsync(context, scopeManager);
+
+        // Seed test users for E2E testing (only in development/test environments)
+        if (seedTestUsers)
+        {
+            await SeedApplicationManagerTestUserAsync(userManager, roleManager, context);
+            await SeedMultiRoleTestUserAsync(userManager, roleManager, context);
+        }
 
         // Note: Test client seeding removed in Phase 3.2 - use Admin API to manage clients dynamically
         // await SeedTestApplicationAsync(applicationManager);
@@ -144,6 +151,122 @@ public static class DataSeeder
                     await context.SaveChangesAsync();
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Seeds ApplicationManager test user for E2E testing of ownership-based access control.
+    /// Credentials: appmanager@hybridauth.local / AppManager@123
+    /// </summary>
+    private static async Task SeedApplicationManagerTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
+        ApplicationDbContext context)
+    {
+        const string email = "appmanager@hybridauth.local";
+        const string password = "AppManager@123";
+        
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null)
+        {
+            return; // User already exists
+        }
+
+        // Create Person entity first (required for ownership tracking)
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "App",
+            LastName = "Manager",
+            Email = email,
+            NationalId = "B987654321", // Test NationalId
+            IdentityDocumentType = IdentityDocumentTypes.NationalId,
+            IdentityVerifiedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        };
+        
+        context.Persons.Add(person);
+        await context.SaveChangesAsync();
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "App",
+            LastName = "Manager",
+            IsActive = true
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(user, AuthConstants.Roles.ApplicationManager);
+            
+            // Update Person.CreatedBy
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Seeds multi-role test user for E2E testing of role switching.
+    /// Credentials: multitest@hybridauth.local / MultiTest@123
+    /// </summary>
+    private static async Task SeedMultiRoleTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
+        ApplicationDbContext context)
+    {
+        const string email = "multitest@hybridauth.local";
+        const string password = "MultiTest@123";
+        
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null)
+        {
+            return; // User already exists
+        }
+
+        // Create Person entity
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Multi",
+            LastName = "Test",
+            Email = email,
+            NationalId = "C123456789", // Test NationalId
+            IdentityDocumentType = IdentityDocumentTypes.NationalId,
+            IdentityVerifiedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        };
+        
+        context.Persons.Add(person);
+        await context.SaveChangesAsync();
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Multi",
+            LastName = "Test",
+            IsActive = true
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
+            // Assign both Admin and User roles for role switching tests
+            await userManager.AddToRoleAsync(user, AuthConstants.Roles.Admin);
+            await userManager.AddToRoleAsync(user, AuthConstants.Roles.User);
+            
+            // Update Person.CreatedBy
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
         }
     }
 

@@ -346,7 +346,7 @@ app.MapHub<Infrastructure.Hubs.MonitoringHub>("/monitoringHub");
 app.MapRazorPages()
    .WithStaticAssets();
 
-// Seed the database
-await DataSeeder.SeedAsync(app.Services);
+// Seed the database (seed test users only in development environment)
+await DataSeeder.SeedAsync(app.Services, seedTestUsers: app.Environment.IsDevelopment());
 
 app.Run();
