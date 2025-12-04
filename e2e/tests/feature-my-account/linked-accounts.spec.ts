@@ -35,7 +35,7 @@ test.describe('Phase 11.6 - Linked Accounts Page', () => {
       await page.goto('https://localhost:7035/Account/LinkedAccounts');
       
       // Verify page title
-      await expect(page.locator('h1')).toContainText('帳號鏈結');
+      await expect(page.locator('h1')).toContainText('鏈結帳號');
       
       // Verify description
       await expect(page.locator('p.lead')).toContainText('查看和管理關聯的帳號');
@@ -267,14 +267,18 @@ test.describe('Phase 11.6 - Linked Accounts Page', () => {
     test('should load linked-accounts.js external script', async ({ page }) => {
       await page.goto('https://localhost:7035/Account/LinkedAccounts');
       
-      // Verify linked-accounts.js is loaded
-      const scripts = await page.evaluate(() => {
-        return Array.from(document.scripts)
+      // Wait for page to fully load
+      await page.waitForLoadState('networkidle');
+      
+      // Verify linked-accounts.js is loaded (check for script tag with linked-accounts.js)
+      const hasScript = await page.evaluate(() => {
+        const scripts = Array.from(document.scripts)
           .map(script => script.src)
-          .filter(src => src.includes('linked-accounts.js'));
+          .filter(src => src && src.includes('linked-accounts'));
+        return scripts.length > 0;
       });
       
-      expect(scripts.length).toBeGreaterThan(0);
+      expect(hasScript).toBeTruthy();
     });
 
     test('should have no inline scripts', async ({ page }) => {

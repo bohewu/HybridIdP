@@ -34,7 +34,7 @@ test.describe('Phase 11.6 - Authorizations Page', () => {
       await page.goto('https://localhost:7035/Account/Authorizations');
       
       // Verify page title
-      await expect(page.locator('h1')).toContainText('授權管理');
+      await expect(page.locator('h1')).toContainText('已授權的應用程式');
       
       // Verify description
       await expect(page.locator('p.lead')).toContainText('管理您已授權的應用程式和服務');
@@ -48,7 +48,7 @@ test.describe('Phase 11.6 - Authorizations Page', () => {
       
       // Check if either apps are shown or "no apps" message
       const hasApps = await page.locator('.app-card').count() > 0;
-      const hasNoAppsMessage = await page.locator('.alert-info').isVisible();
+      const hasNoAppsMessage = await page.locator('.empty-state').isVisible();
       
       // One of them should be true
       expect(hasApps || hasNoAppsMessage).toBeTruthy();

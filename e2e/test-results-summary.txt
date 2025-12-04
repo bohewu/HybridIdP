@@ -1,0 +1,2257 @@
+
+Running 186 tests using 3 workers
+
+
+--- PAGE TEXT START ---
+蝜?銝剜?
+English
+E2E Test Product 1764652017790
+Login
+
+Sign in to continue
+
+Email or Username
+Password
+Remember me?
+Login
+Don't have an account? Register
+--- PAGE TEXT END ---
+
+  ??   1 [chromium] ??tests\debug\authorize-headed.spec.ts:5:5 ??debug: open /connect/authorize in headed browser and capture page (1.1s)
+  ??   3 [chromium] ??tests\feature-api-resources\api-resources-negative.spec.ts:14:7 ??Admin - API Resources negative tests ??Validation error - missing required name field (2.7s)
+  ??   4 [chromium] ??tests\feature-api-resources\api-resources-negative.spec.ts:28:7 ??Admin - API Resources negative tests ??Duplicate resource name shows error (3.1s)
+  ??   5 [chromium] ??tests\feature-api-resources\api-resources-negative.spec.ts:52:7 ??Admin - API Resources negative tests ??Invalid baseUrl format shows validation error (2.8s)
+  ??   6 [chromium] ??tests\feature-audit\audit-log-viewer.spec.ts:4:5 ??Admin - Audit Log viewer (load and pagination) (1.8s)
+  ??   7 [chromium] ??tests\feature-audit\audit-log-viewer.spec.ts:38:5 ??Admin - Audit Log filters (filter by event type) (3.8s)
+  ??   8 [chromium] ??tests\feature-audit\audit-log-viewer.spec.ts:73:5 ??Admin - Audit Log filters (search by user) (3.9s)
+Date filter inputs not found
+  ??  10 [chromium] ??tests\feature-audit\audit-log-viewer.spec.ts:131:5 ??Admin - Audit Log date range filter (1.5s)
+  ??   9 [chromium] ??tests\feature-audit\audit-log-viewer.spec.ts:103:5 ??Admin - Audit Log refresh functionality (3.6s)
+  ??  11 [chromium] ??tests\feature-auth\consent-required-scopes.spec.ts:11:7 ??Consent Page - Required Scopes ??Required scope displays as disabled checkbox with badge (1.9s)
+  ??  12 [chromium] ??tests\feature-auth\consent-required-scopes.spec.ts:61:7 ??Consent Page - Required Scopes ??Unchecking optional scope excludes it from granted scopes (2.8s)
+Tampering test - removed hidden input: {
+  removedHidden: [33mtrue[39m,
+  remaining: [
+    { type: [32m'checkbox'[39m, value: [32m'api:company:read'[39m, checked: [33mtrue[39m },
+    { type: [32m'checkbox'[39m, value: [32m'api:inventory:read'[39m, checked: [33mtrue[39m },
+    { type: [32m'checkbox'[39m, value: [32m'email'[39m, checked: [33mtrue[39m },
+    { type: [32m'checkbox'[39m, value: [32m'profile'[39m, checked: [33mtrue[39m },
+    { type: [32m'checkbox'[39m, value: [32m'roles'[39m, checked: [33mtrue[39m }
+  ]
+}
+  ??  13 [chromium] ??tests\feature-auth\consent-required-scopes.spec.ts:102:7 ??Consent Page - Required Scopes ??Tampering detection - removing required scope returns 400 (2.6s)
+  ??  15 [chromium] ??tests\feature-auth\consent-required-scopes.spec.ts:243:7 ??Consent Page - Required Scopes ??Client without required scopes shows all checkboxes as enabled (2.4s)
+  ??  14 [chromium] ??tests\feature-auth\consent-required-scopes.spec.ts:188:7 ??Consent Page - Required Scopes ??Multiple required scopes all display as disabled (2.9s)
+  ??  16 [chromium] ??tests\feature-auth\login.spec.ts:3:5 ??login flow: IdP login (admin) and authenticated state (791ms)
+  ??  17 [chromium] ??tests\feature-auth\logout.spec.ts:17:5 ??TestClient logout clears session and OIDC logout works (1.8s)
+  ??  19 [chromium] ??tests\feature-auth\scope-authorization-flow.spec.ts:137:7 ??Scope Authorization Flow - Admin UI Integration ??Required scope validation - cannot mark non-allowed scope as required (1.5s)
+[TEST] Client GUID: 0ca01db5-eb01-44d7-2b6c-08de32d1dd48
+[TEST] Current required scopes: [ [32m'openid'[39m ]
+[TEST] PUT required scopes result: {
+  ok: [33mtrue[39m,
+  status: [33m200[39m,
+  body: [32m'{"message":"Required scopes updated successfully."}'[39m
+}
+[TEST] Required scopes confirmed in DB: [ [32m'openid'[39m, [32m'api:company:read'[39m ]
+  ??  20 [chromium] ??tests\feature-auth\scope-authorization-flow.spec.ts:181:7 ??Scope Authorization Flow - Admin UI Integration ??Userinfo endpoint scope handler verification (2.4s)
+  ??   2 [chromium] ??tests\feature-api-resources\api-resources-crud.spec.ts:4:5 ??Admin - API Resources CRUD (create, update, delete resource) (24.6s)
+  ??  21 [chromium] ??tests\feature-auth\scope-authorization-flow.spec.ts:237:7 ??Scope Authorization Flow - Admin UI Integration ??Required scope persists across client edit sessions (2.0s)
+[TEST] Clearing existing consents for admin user...
+[SETUP] clientGuid: 0ca01db5-eb01-44d7-2b6c-08de32d1dd48
+[SETUP] setClientRequiredScopes result: [33mtrue[39m
+[SETUP] currentRequiredScopes after set: [ [32m'openid'[39m ]
+  ??  22 [chromium] ??tests\feature-auth\scope-authorization-flow.spec.ts:260:7 ??Scope Authorization Flow - Admin UI Integration ??Client scope manager UI shows required toggle state correctly (4.5s)
+  ??  23 [chromium] ??tests\feature-auth\testclient-login-consent.spec.ts:48:5 ??TestClient login + consent redirects back to profile (2.8s)
+  ??  24 [chromium] ??tests\feature-auth\userinfo-scope-enforcement.spec.ts:10:7 ??Userinfo Endpoint - Scope Protection ??Userinfo returns 200 with openid scope and correct claims (3.1s)
+  ??  26 [chromium] ??tests\feature-auth\userinfo-scope-enforcement.spec.ts:153:7 ??Userinfo Endpoint - Scope Protection ??Userinfo endpoint validates Bearer token format (1.2s)
+  ??  18 [chromium] ??tests\feature-auth\scope-authorization-flow.spec.ts:11:7 ??Scope Authorization Flow - Admin UI Integration ??Admin marks scope as required ??consent shows scope as disabled and checked (15.0s)
+Authorization failed as expected without openid scope
+  ??  25 [chromium] ??tests\feature-auth\userinfo-scope-enforcement.spec.ts:70:7 ??Userinfo Endpoint - Scope Protection ??Userinfo returns 403 without openid scope (7.8s)
+  ??  28 [chromium] ??tests\feature-claims\claims-crud.spec.ts:191:5 ??Admin - Claims (standard claim protection) (2.9s)
+available scopes response: {
+  items: [
+    {
+      id: [32m'8ab9a6f8-321c-42e6-9796-c2a29e62ff96'[39m,
+      name: [32m'api:company:read'[39m,
+      displayName: [32m'Read Company Data'[39m,
+      description: [32m'Allows reading company information'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'5b7b160e-e476-44aa-8bfd-3ff52df01bf1'[39m,
+      name: [32m'api:company:write'[39m,
+      displayName: [32m'Write Company Data'[39m,
+      description: [32m'Allows creating and updating company information'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'b29ecca0-e222-4d21-b5d2-1e522cf1ad0a'[39m,
+      name: [32m'api:inventory:read'[39m,
+      displayName: [32m'Read Inventory Data'[39m,
+      description: [32m'Allows reading inventory information'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'f4ce0dc6-128a-42bb-4c31-08de316041b8'[39m,
+      name: [32m'diag-scope-1764651862380'[39m,
+      displayName: [32m'diag-scope-1764651862380'[39m,
+      description: [32m'diagnostic'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'd8d6e7fd-79d3-4895-3b80-08de32cde6ad'[39m,
+      name: [32m'diag-scope-1764808905244'[39m,
+      displayName: [32m'diag-scope-1764808905244'[39m,
+      description: [32m'diagnostic'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'eefab34e-6ffb-4c5b-85fe-08de32d25bec'[39m,
+      name: [32m'diag-scope-1764810819946'[39m,
+      displayName: [32m'diag-scope-1764810819946'[39m,
+      description: [32m'diagnostic'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'476d902a-999d-4603-8640-08de32d25bec'[39m,
+      name: [32m'diag-scope-1764811526440'[39m,
+      displayName: [32m'diag-scope-1764811526440'[39m,
+      description: [32m'diagnostic'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'd82c9f48-5c06-446f-8682-08de32d25bec'[39m,
+      name: [32m'diag-scope-1764812785391'[39m,
+      displayName: [32m'diag-scope-1764812785391'[39m,
+      description: [32m'diagnostic'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'12718ff5-62bb-46a9-86c4-08de32d25bec'[39m,
+      name: [32m'diag-scope-1764817267260'[39m,
+      displayName: [32m'diag-scope-1764817267260'[39m,
+      description: [32m'diagnostic'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'067ee0e0-bcaa-4333-8706-08de32d25bec'[39m,
+      name: [32m'diag-scope-1764817826013'[39m,
+      displayName: [32m'diag-scope-1764817826013'[39m,
+      description: [32m'diagnostic'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'e96b37a5-2e0c-41d6-4c6f-08de316041b8'[39m,
+      name: [32m'e2e-confirm-scope-1764652052547'[39m,
+      displayName: [32m'e2e-confirm-scope-1764652052547'[39m,
+      description: [32m'E2E scope e2e-confirm-scope-1764652052547'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'c3ddd9bf-7f38-4d6b-3bc1-08de32cde6ad'[39m,
+      name: [32m'e2e-confirm-scope-1764809329288'[39m,
+      displayName: [32m'e2e-confirm-scope-1764809329288'[39m,
+      description: [32m'E2E scope e2e-confirm-scope-1764809329288'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'5168be37-5510-4e1d-863f-08de32d25bec'[39m,
+      name: [32m'e2e-confirm-scope-1764811255151'[39m,
+      displayName: [32m'e2e-confirm-scope-1764811255151'[39m,
+      description: [32m'E2E scope e2e-confirm-scope-1764811255151'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'8c899457-8258-47c1-8681-08de32d25bec'[39m,
+      name: [32m'e2e-confirm-scope-1764811814619'[39m,
+      displayName: [32m'e2e-confirm-scope-1764811814619'[39m,
+      description: [32m'E2E scope e2e-confirm-scope-1764811814619'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'6be1d7f7-ab5d-4efa-86c3-08de32d25bec'[39m,
+      name: [32m'e2e-confirm-scope-1764813085199'[39m,
+      displayName: [32m'e2e-confirm-scope-1764813085199'[39m,
+      description: [32m'E2E scope e2e-confirm-scope-1764813085199'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'646c8249-1b0e-4436-8705-08de32d25bec'[39m,
+      name: [32m'e2e-confirm-scope-1764817577532'[39m,
+      displayName: [32m'e2e-confirm-scope-1764817577532'[39m,
+      description: [32m'E2E scope e2e-confirm-scope-1764817577532'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'f4de6e01-1e9d-4b63-4c2e-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-1'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-1'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-1'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'd24c8d28-5cdd-4a86-4c38-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-10'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-10'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-10'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'3d526e61-3f8c-4157-4c39-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-11'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-11'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-11'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'5b884dfb-3189-4b55-4c3a-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-12'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-12'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-12'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'2f367328-f791-48b4-4c3b-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-13'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-13'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-13'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'6c42f40d-2538-4647-4c3c-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-14'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-14'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-14'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'13eaa18c-bf3f-4153-4c3d-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-15'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-15'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-15'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'a9f0017c-1db2-4a8b-4c2f-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-2'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-2'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-2'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'5a441fbc-6283-4e4d-4c30-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-3'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-3'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-3'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'8272dddf-55e9-49da-4c32-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-4'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-4'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-4'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'c7f3cce8-3203-4c78-4c33-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-5'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-5'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-5'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'd6a70975-066f-4fd7-4c34-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-6'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-6'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-6'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'35766309-98af-4f2f-4c35-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-7'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-7'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-7'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'28507e36-d522-4a50-4c36-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-8'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-8'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-8'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'c4b96b7a-4b53-4260-4c37-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651862166-9'[39m,
+      displayName: [32m'E2E e2e-csm-1764651862166-9'[39m,
+      description: [32m'E2E description e2e-csm-1764651862166-9'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'407204d5-fce9-437f-4c3e-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-1'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-1'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-1'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'9e1158b3-d51a-4995-4c49-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-10'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-10'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-10'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'fbfd117f-28fc-4a46-4c4b-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-11'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-11'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-11'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'23997e30-0d84-4827-4c4e-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-12'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-12'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-12'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'6e459122-0b06-4a11-4c51-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-13'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-13'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-13'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'55566f69-931d-4bb3-4c54-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-14'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-14'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-14'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'6e356c45-6355-4eed-4c57-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-15'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-15'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-15'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'030d67e5-2fbb-40e1-4c3f-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-2'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-2'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-2'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'e39e1048-e8e9-443c-4c40-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-3'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-3'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-3'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'09bee095-fe4a-4ae7-4c41-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-4'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-4'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-4'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'1c5aae89-02ac-4da5-4c42-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-5'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-5'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-5'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'86f88be6-82ed-449e-4c43-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-6'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-6'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-6'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'e9e80865-f997-4430-4c44-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-7'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-7'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-7'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'2977db42-4c8a-4ac6-4c45-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-8'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-8'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-8'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'35793074-2189-4d3a-4c47-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651868943-9'[39m,
+      displayName: [32m'E2E e2e-csm-1764651868943-9'[39m,
+      description: [32m'E2E description e2e-csm-1764651868943-9'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'5e52f530-de06-464d-4c46-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-1'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-1'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-1'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'23f926d5-ada6-426b-4c5d-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-10'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-10'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-10'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'468e4067-09c8-4ef4-4c5f-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-11'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-11'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-11'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'78c02155-870a-4ec5-4c61-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-12'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-12'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-12'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'1335637e-414e-4b8b-4c63-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-13'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-13'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-13'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'f0a15591-4ff3-4f38-4c65-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-14'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-14'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-14'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'7261001b-1ac9-45e8-4c67-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-15'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-15'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-15'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'94698ca9-adf5-4561-4c48-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-2'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-2'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-2'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'7c8423bd-cf75-4ae3-4c4a-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-3'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-3'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-3'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'9493baa5-4fa9-4890-4c4d-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-4'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-4'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-4'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'a3514057-4072-4cd4-4c50-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-5'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-5'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-5'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'4424750c-69a2-42a8-4c53-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-6'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-6'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-6'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'09b8b96a-5463-4c06-4c56-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-7'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-7'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-7'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'2ff69171-1cd4-4b5f-4c59-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-8'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-8'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-8'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'31c1d31c-5078-4429-4c5b-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869667-9'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869667-9'[39m,
+      description: [32m'E2E description e2e-csm-1764651869667-9'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'70ba25f5-8594-4177-4c4c-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-1'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-1'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-1'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'95220950-3837-435c-4c62-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-10'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-10'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-10'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'12daba93-d312-4362-4c64-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-11'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-11'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-11'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'3399b2bb-55a0-499e-4c66-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-12'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-12'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-12'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'feea455c-f470-4a96-4c68-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-13'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-13'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-13'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'ef900bbf-e061-40d3-4c69-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-14'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-14'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-14'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'85386b73-f9ee-4cf4-4c6a-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-15'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-15'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-15'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'f55ed559-290d-4e42-4c4f-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-2'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-2'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-2'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'd65758c1-27ce-496c-4c52-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-3'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-3'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-3'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'167a7dc2-873c-43af-4c55-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-4'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-4'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-4'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'c7f17c9e-0648-44c4-4c58-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-5'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-5'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-5'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'9e72c822-0393-4e05-4c5a-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-6'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-6'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-6'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'25fd9fc5-bc5c-4b36-4c5c-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-7'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-7'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-7'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'e06bb375-be83-4209-4c5e-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-8'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-8'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-8'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'41bb8f1c-caf7-415e-4c60-08de316041b8'[39m,
+      name: [32m'e2e-csm-1764651869876-9'[39m,
+      displayName: [32m'E2E e2e-csm-1764651869876-9'[39m,
+      description: [32m'E2E description e2e-csm-1764651869876-9'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'b4780fd4-e898-4fb4-3b81-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-1'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-1'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-1'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'5aec0429-2f09-4fe2-3b8a-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-10'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-10'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-10'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'95736694-c530-4aad-3b8b-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-11'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-11'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-11'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'c98389f7-0147-4a3e-3b8c-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-12'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-12'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-12'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'f7d04762-a104-4134-3b8d-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-13'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-13'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-13'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'fc910799-7b79-4c9f-3b8e-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-14'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-14'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-14'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'45d41f8e-f188-4d4a-3b8f-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-15'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-15'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-15'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'93620b0f-5ccf-4a59-3b82-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-2'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-2'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-2'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'11f22048-fac9-4125-3b83-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-3'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-3'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-3'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'eb62b6e5-64c3-4c1f-3b84-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-4'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-4'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-4'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'4eebbdc4-23af-40d8-3b85-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-5'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-5'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-5'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'b0e947e2-f753-402b-3b86-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-6'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-6'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-6'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'12e2af5d-db12-4c1a-3b87-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-7'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-7'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-7'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'29e0e1a6-43ea-49fc-3b88-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-8'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-8'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-8'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'bd3a608a-76a7-4506-3b89-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808908136-9'[39m,
+      displayName: [32m'E2E e2e-csm-1764808908136-9'[39m,
+      description: [32m'E2E description e2e-csm-1764808908136-9'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'afa7ce03-6944-44d7-3b90-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808914074-1'[39m,
+      displayName: [32m'E2E e2e-csm-1764808914074-1'[39m,
+      description: [32m'E2E description e2e-csm-1764808914074-1'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'c2946658-777f-4a7f-3b99-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808914074-10'[39m,
+      displayName: [32m'E2E e2e-csm-1764808914074-10'[39m,
+      description: [32m'E2E description e2e-csm-1764808914074-10'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'84add751-6adb-402c-3b9a-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808914074-11'[39m,
+      displayName: [32m'E2E e2e-csm-1764808914074-11'[39m,
+      description: [32m'E2E description e2e-csm-1764808914074-11'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'9b903afe-fe9f-4429-3b9b-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808914074-12'[39m,
+      displayName: [32m'E2E e2e-csm-1764808914074-12'[39m,
+      description: [32m'E2E description e2e-csm-1764808914074-12'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'bd31d3bb-efcf-426a-3b9c-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808914074-13'[39m,
+      displayName: [32m'E2E e2e-csm-1764808914074-13'[39m,
+      description: [32m'E2E description e2e-csm-1764808914074-13'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'af6f7d86-bf23-4042-3b9d-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808914074-14'[39m,
+      displayName: [32m'E2E e2e-csm-1764808914074-14'[39m,
+      description: [32m'E2E description e2e-csm-1764808914074-14'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'06d79441-82a6-4889-3b9e-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808914074-15'[39m,
+      displayName: [32m'E2E e2e-csm-1764808914074-15'[39m,
+      description: [32m'E2E description e2e-csm-1764808914074-15'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'91a986fa-0094-4194-3b91-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808914074-2'[39m,
+      displayName: [32m'E2E e2e-csm-1764808914074-2'[39m,
+      description: [32m'E2E description e2e-csm-1764808914074-2'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    },
+    {
+      id: [32m'2e42a985-8892-4eb1-3b92-08de32cde6ad'[39m,
+      name: [32m'e2e-csm-1764808914074-3'[39m,
+      displayName: [32m'E2E e2e-csm-1764808914074-3'[39m,
+      description: [32m'E2E description e2e-csm-1764808914074-3'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m
+    }
+  ],
+  totalCount: [33m429[39m
+}
+  ??  27 [chromium] ??tests\feature-claims\claims-crud.spec.ts:5:5 ??Admin - Claims CRUD (create, update, delete custom claim) (18.6s)
+  ??  31 [chromium] ??tests\feature-clients\admin-clients-negative.spec.ts:80:7 ??Admin - Clients negative tests ??Duplicate clientId shows error (4.2s)
+  ??  30 [chromium] ??tests\feature-clients\admin-clients-negative.spec.ts:13:7 ??Admin - Clients negative tests ??Validation error - missing required fields (22.4s)
+  ??  29 [chromium] ??tests\feature-clients\admin-clients-crud.spec.ts:5:5 ??Admin - Clients CRUD (create, update, delete client) (34.2s)
+  ??  33 [chromium] ??tests\feature-clients\admin-clients-permissions.spec.ts:43:5 ??Admin - Clients permission denied when role assigned by id (23.3s)
+  ??  32 [chromium] ??tests\feature-clients\admin-clients-permissions.spec.ts:4:5 ??Admin - Clients permission denied (create/update/delete) (27.4s)
+  ??  34 [chromium] ??tests\feature-clients\admin-clients-regenerate-secret.spec.ts:4:5 ??Admin - Regenerate secret for confidential client (13.0s)
+  ??  35 [chromium] ??tests\feature-clients\client-scope-manager-diagnostic.spec.ts:6:5 ??Diagnostic - capture network when toggling required scope (7.0s)
+  ??  36 [chromium] ??tests\feature-clients\client-scope-manager.spec.ts:64:7 ??ClientScopeManager - UI interactions and persistence ??add available scope -> selected + persisted (8.1s)
+  ??  38 [chromium] ??tests\feature-clients\client-scope-manager.spec.ts:175:7 ??ClientScopeManager - UI interactions and persistence ??remove selected scope clears required and persists (7.2s)
+  ??  39 [chromium] ??tests\feature-clients\client-scope-manager.spec.ts:212:7 ??ClientScopeManager - UI interactions and persistence ??pagination and search in available list work (8.7s)
+  ??  37 [chromium] ??tests\feature-clients\client-scope-manager.spec.ts:104:7 ??ClientScopeManager - UI interactions and persistence ??toggle required on selected scope is persisted (28.2s)
+  ??  42 [chromium] ??tests\feature-dashboard\dashboard-metrics.spec.ts:21:7 ??Dashboard Metrics ??totalUsers increases after creating a new user (1.3s)
+  ??  43 [chromium] ??tests\feature-dashboard\dashboard-metrics.spec.ts:42:7 ??Dashboard Metrics ??totalScopes increases after creating a new scope (1.2s)
+  ??  40 [chromium] ??tests\feature-dashboard\activity-dashboard-loading.spec.ts:5:7 ??Monitoring / ActivityDashboard loading ??shows loading indicator while stats API is delayed (45.6s)
+  ??  41 [chromium] ??tests\feature-dashboard\dashboard-loading-directive.spec.ts:5:7 ??Dashboard main page loading (v-loading) ??shows page-level loading overlay when dashboard stats are slow (45.7s)
+Monitoring SPA root not found; falling back to Dashboard overlay test
+  ??  46 [chromium] ??tests\feature-monitoring\monitoring-page-loading.spec.ts:8:7 ??Monitoring main page loading (v-loading) ??shows page-level overlay while permissions API is delayed (7.4s)
+  ??  47 [chromium] ??tests\feature-my-account\authorizations.spec.ts:23:9 ??Phase 11.6 - Authorizations Page ??Page Layout and Content ??should display Authorizations page with correct title (5.6s)
+  ??  48 [chromium] ??tests\feature-my-account\authorizations.spec.ts:33:9 ??Phase 11.6 - Authorizations Page ??Page Layout and Content ??should display authorized applications list (1.4s)
+  ??  44 [chromium] ??tests\feature-dashboard\monitoring-loading.spec.ts:5:7 ??Monitoring / SecurityMetrics loading ??shows loading indicator while system-metrics API is delayed (48.6s)
+  ??  50 [chromium] ??tests\feature-my-account\authorizations.spec.ts:76:9 ??Phase 11.6 - Authorizations Page ??Page Layout and Content ??should display app name and client ID (567ms)
+  ??  51 [chromium] ??tests\feature-my-account\authorizations.spec.ts:94:9 ??Phase 11.6 - Authorizations Page ??Page Layout and Content ??should display scopes with icons (581ms)
+  ??  52 [chromium] ??tests\feature-my-account\authorizations.spec.ts:124:9 ??Phase 11.6 - Authorizations Page ??Page Layout and Content ??should display authorization date (578ms)
+  ??  53 [chromium] ??tests\feature-my-account\authorizations.spec.ts:141:9 ??Phase 11.6 - Authorizations Page ??Revoke Authorization ??should display revoke button for each app (563ms)
+  ??  54 [chromium] ??tests\feature-my-account\authorizations.spec.ts:157:9 ??Phase 11.6 - Authorizations Page ??Revoke Authorization ??should show confirmation dialog when clicking revoke (618ms)
+  ??  55 [chromium] ??tests\feature-my-account\authorizations.spec.ts:186:9 ??Phase 11.6 - Authorizations Page ??Revoke Authorization ??should not revoke when confirmation is cancelled (579ms)
+  ??  56 [chromium] ??tests\feature-my-account\authorizations.spec.ts:212:9 ??Phase 11.6 - Authorizations Page ??Responsive Design ??should display apps in grid on desktop (618ms)
+  ??  49 [chromium] ??tests\feature-my-account\authorizations.spec.ts:47:9 ??Phase 11.6 - Authorizations Page ??Page Layout and Content ??should display app cards with gradient icons (CSS classes, no inline styles) (5.6s)
+  ??  57 [chromium] ??tests\feature-my-account\authorizations.spec.ts:232:9 ??Phase 11.6 - Authorizations Page ??Responsive Design ??should stack apps vertically on mobile (668ms)
+  ??  58 [chromium] ??tests\feature-my-account\authorizations.spec.ts:253:9 ??Phase 11.6 - Authorizations Page ??CSP Compliance ??should have no inline styles on app icons (889ms)
+  ??  59 [chromium] ??tests\feature-my-account\authorizations.spec.ts:266:9 ??Phase 11.6 - Authorizations Page ??CSP Compliance ??should load gradient styles from CSS file (908ms)
+  ??  61 [chromium] ??tests\feature-my-account\authorizations.spec.ts:306:9 ??Phase 11.6 - Authorizations Page ??Navigation ??should have back to homepage link (811ms)
+  ??  60 [chromium] ??tests\feature-my-account\authorizations.spec.ts:289:9 ??Phase 11.6 - Authorizations Page ??CSP Compliance ??should have no CSP violations (1.3s)
+  ??  62 [chromium] ??tests\feature-my-account\authorizations.spec.ts:316:9 ??Phase 11.6 - Authorizations Page ??Navigation ??should be accessible from user dropdown menu (1.1s)
+  ??  63 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:23:9 ??Phase 11.6 - Homepage Refactoring ??Homepage Layout ??should display two navigation cards on homepage (865ms)
+  ??  64 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:35:9 ??Phase 11.6 - Homepage Refactoring ??Homepage Layout ??should display Authorization Management card with correct styling (843ms)
+  ??  65 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:53:9 ??Phase 11.6 - Homepage Refactoring ??Homepage Layout ??should display Linked Accounts card with correct styling (875ms)
+  ??  67 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:96:9 ??Phase 11.6 - Homepage Refactoring ??Navigation from Homepage ??should navigate to Authorizations page when clicking Authorization card (1.0s)
+  ??  66 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:71:9 ??Phase 11.6 - Homepage Refactoring ??Homepage Layout ??should have hover effect on cards (1.5s)
+  ??  68 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:110:9 ??Phase 11.6 - Homepage Refactoring ??Navigation from Homepage ??should navigate to LinkedAccounts page when clicking Linked Accounts card (907ms)
+  ??  69 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:126:9 ??Phase 11.6 - Homepage Refactoring ??Responsive Design ??should display cards in column layout on mobile (873ms)
+  ??  70 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:146:9 ??Phase 11.6 - Homepage Refactoring ??Responsive Design ??should display cards side by side on desktop (939ms)
+  ??  71 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:165:9 ??Phase 11.6 - Homepage Refactoring ??Responsive Design ??should adjust icon size on mobile (915ms)
+  ??  73 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:206:9 ??Phase 11.6 - Homepage Refactoring ??CSP Compliance ??should load external CSS from site.css (no inline styles) (728ms)
+  ??  72 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:187:9 ??Phase 11.6 - Homepage Refactoring ??CSP Compliance ??should have no CSP violations on homepage (1.3s)
+  ??  74 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:218:9 ??Phase 11.6 - Homepage Refactoring ??CSP Compliance ??should load external JS from menu.js (no inline scripts) (730ms)
+  ??  75 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:230:9 ??Phase 11.6 - Homepage Refactoring ??CSP Compliance ??should have security headers in response (850ms)
+  ??  76 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:248:9 ??Phase 11.6 - Homepage Refactoring ??Menu Active State ??should highlight active menu item on Authorizations page (1.0s)
+  ??  77 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:260:9 ??Phase 11.6 - Homepage Refactoring ??Menu Active State ??should highlight active menu item on LinkedAccounts page (1.0s)
+  ??  78 [chromium] ??tests\feature-my-account\homepage-refactor.spec.ts:272:9 ??Phase 11.6 - Homepage Refactoring ??Menu Active State ??should not highlight menu items on homepage (940ms)
+  ??  80 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:34:9 ??Phase 11.6 - Linked Accounts Page ??Page Layout and Content ??should display linked accounts list (1.2s)
+  ??  81 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:48:9 ??Phase 11.6 - Linked Accounts Page ??Page Layout and Content ??should display account cards with avatars (CSS classes, no inline styles) (604ms)
+  ??  82 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:70:9 ??Phase 11.6 - Linked Accounts Page ??Page Layout and Content ??should display account information (639ms)
+  ??  83 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:88:9 ??Phase 11.6 - Linked Accounts Page ??Page Layout and Content ??should display account status (Active/Inactive) (586ms)
+  ??  84 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:110:9 ??Phase 11.6 - Linked Accounts Page ??Page Layout and Content ??should display role badges (601ms)
+  ??  79 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:24:9 ??Phase 11.6 - Linked Accounts Page ??Page Layout and Content ??should display LinkedAccounts page with correct title (5.8s)
+  ??  86 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:153:9 ??Phase 11.6 - Linked Accounts Page ??Account Switching ??should display switch button for non-current active accounts (754ms)
+  ??  87 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:169:9 ??Phase 11.6 - Linked Accounts Page ??Account Switching ??should not display switch button for current account (726ms)
+  ??  85 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:128:9 ??Phase 11.6 - Linked Accounts Page ??Page Layout and Content ??should indicate current account (4.6s)
+  ??  88 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:185:9 ??Phase 11.6 - Linked Accounts Page ??Account Switching ??should not display switch button for inactive accounts (806ms)
+  ??  45 [chromium] ??tests\feature-dashboard\realtime-alerts-loading.spec.ts:5:7 ??Monitoring / RealTimeAlerts loading ??shows loading indicator while alerts API is delayed (45.6s)
+  ??  89 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:205:9 ??Phase 11.6 - Linked Accounts Page ??Account Switching ??should show confirmation dialog when clicking switch account (1.1s)
+  ??  90 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:232:9 ??Phase 11.6 - Linked Accounts Page ??Account Switching ??should not switch when confirmation is cancelled (1.7s)
+  ??  92 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:270:9 ??Phase 11.6 - Linked Accounts Page ??External JavaScript ??should have no inline scripts (1.1s)
+  ??  91 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:257:9 ??Phase 11.6 - Linked Accounts Page ??External JavaScript ??should load linked-accounts.js external script (1.8s)
+  ??  93 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:278:9 ??Phase 11.6 - Linked Accounts Page ??External JavaScript ??should pass localized messages via data attributes (857ms)
+  ??  94 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:304:9 ??Phase 11.6 - Linked Accounts Page ??Responsive Design ??should display accounts in grid on desktop (888ms)
+  ??  95 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:345:9 ??Phase 11.6 - Linked Accounts Page ??CSP Compliance ??should have no inline styles on avatars (966ms)
+  ??  96 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:358:9 ??Phase 11.6 - Linked Accounts Page ??CSP Compliance ??should have no CSP violations (1.4s)
+  ??  97 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:375:9 ??Phase 11.6 - Linked Accounts Page ??Navigation ??should have back to homepage link (812ms)
+  ??  98 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:324:9 ??Phase 11.6 - Linked Accounts Page ??Responsive Design ??should stack accounts vertically on mobile (1.4s)
+  ??  99 [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:385:9 ??Phase 11.6 - Linked Accounts Page ??Navigation ??should be accessible from user dropdown menu (1.3s)
+  ?? 100 [chromium] ??tests\feature-people\admin-people-account-linking.spec.ts:40:7 ??Admin - People Account Linking ??Link account to person with verified identity (3.2s)
+  ?? 101 [chromium] ??tests\feature-people\admin-people-account-linking.spec.ts:77:7 ??Admin - People Account Linking ??Unlink account from person maintains identity verification (2.8s)
+  ?? 104 [chromium] ??tests\feature-people\admin-people-account-linking.spec.ts:222:7 ??Admin - People Account Linking ??Get available users excludes already-linked users (2.7s)
+  ?? 102 [chromium] ??tests\feature-people\admin-people-account-linking.spec.ts:123:7 ??Admin - People Account Linking ??Multi-account login - two accounts linked to same verified person (6.1s)
+  ?? 103 [chromium] ??tests\feature-people\admin-people-account-linking.spec.ts:182:7 ??Admin - People Account Linking ??Link account shows person identity in account profile (4.1s)
+  ?? 106 [chromium] ??tests\feature-people\admin-people-account-linking.spec.ts:301:7 ??Admin - People Account Linking ??Cannot link same user to multiple persons (2.6s)
+  ?? 105 [chromium] ??tests\feature-people\admin-people-account-linking.spec.ts:252:7 ??Admin - People Account Linking ??Link multiple accounts and unlink one preserves others (3.6s)
+  ?? 109 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:91:7 ??Admin - People CRUD Operations ??Create and update person with email and phone number (1.9s)
+  ?? 110 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:140:7 ??Admin - People CRUD Operations ??Create person with email only, then add phone number (1.3s)
+  ?? 111 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:178:7 ??Admin - People CRUD Operations ??Update person to remove email and phone (set to null) (1.5s)
+  ?? 107 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:28:7 ??Admin - People CRUD Operations ??Create, update, and delete person with identity document (7.5s)
+  ?? 108 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:76:7 ??Admin - People CRUD Operations ??Create person without identity document (7.0s)
+  ?? 112 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:220:7 ??Admin - People CRUD Operations ??Search for person by name (3.4s)
+  ?? 113 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:249:7 ??Admin - People CRUD Operations ??Search for person by employee ID (3.1s)
+  ?? 114 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:288:7 ??Admin - People CRUD Operations ??Update person basic info and identity document (1.7s)
+  ?? 116 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:330:7 ??Admin - People CRUD Operations ??Delete person with verified identity (2.3s)
+  ?? 115 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:266:7 ??Admin - People CRUD Operations ??Pagination - create multiple persons and verify list (3.7s)
+  ?? 117 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:350:7 ??Admin - People CRUD Operations ??List persons shows identity status correctly (3.0s)
+  ?? 118 [chromium] ??tests\feature-people\admin-people-crud.spec.ts:385:7 ??Admin - People CRUD Operations ??Create person with all three identity document types sequentially (3.3s)
+  ?? 119 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:73:7 ??Admin - People Identity Verification ??Create person with valid Taiwan National ID (2.9s)
+  ?? 120 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:100:7 ??Admin - People Identity Verification ??Create person with valid Passport Number (2.8s)
+  ?? 121 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:127:7 ??Admin - People Identity Verification ??Create person with valid Resident Certificate (2.9s)
+  ?? 123 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:188:7 ??Admin - People Identity Verification ??Cannot verify identity without identity document (2.2s)
+  ?? 124 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:205:7 ??Admin - People Identity Verification ??Update person identity document type resets verification (2.2s)
+  ?? 125 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:240:7 ??Admin - People Identity Verification ??Attempt to create duplicate person with same National ID fails (1.9s)
+  ?? 126 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:269:7 ??Admin - People Identity Verification ??Attempt to create duplicate person with same Passport Number fails (1.6s)
+  ?? 122 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:154:7 ??Admin - People Identity Verification ??Verify person identity with National ID successfully (8.2s)
+  ?? 128 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:324:7 ??Admin - People Identity Verification ??Verify identity button is hidden for already verified person (7.3s)
+  ?? 127 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:298:7 ??Admin - People Identity Verification ??Verify identity button is visible for unverified person with document (7.5s)
+  ?? 129 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:354:7 ??Admin - People Identity Verification ??Person without identity document does not show verify button (7.1s)
+  ?? 132 [chromium] ??tests\feature-roles\roles-negative.spec.ts:6:5 ??Admin - Role create (duplicate name) should show validation error in UI (2.3s)
+  ?? 133 [chromium] ??tests\feature-roles\roles-negative.spec.ts:48:5 ??Admin - Role create via API with invalid permission should return 400 (1.1s)
+  ?? 130 [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:376:7 ??Admin - People Identity Verification ??Multiple document types: National ID checksum validation variants (7.9s)
+  ?? 135 [chromium] ??tests\feature-scopes\scopes-crud.spec.ts:4:5 ??Admin - Scopes CRUD (create, update, delete scope) (24.4s)
+  ?? 136 [chromium] ??tests\feature-scopes\scopes-negative.spec.ts:14:7 ??Admin - Scopes negative tests ??Validation error - missing required fields (1.5s)
+  ?? 137 [chromium] ??tests\feature-scopes\scopes-negative.spec.ts:28:7 ??Admin - Scopes negative tests ??Validation error - invalid scope name format (1.6s)
+  ?? 138 [chromium] ??tests\feature-scopes\scopes-negative.spec.ts:70:7 ??Admin - Scopes negative tests ??Duplicate scope name shows error (1.7s)
+  ?? 139 [chromium] ??tests\feature-scopes\scopes-negative.spec.ts:110:7 ??Admin - Scopes negative tests ??Empty display name is allowed but name is required (3.7s)
+  ?? 140 [chromium] ??tests\feature-security\security-policies-crud.spec.ts:4:5 ??Admin - Security Policies CRUD (password requirements) (1.8s)
+  ?? 141 [chromium] ??tests\feature-security\security-policies-crud.spec.ts:64:5 ??Admin - Security Policies validation (min/max bounds) (1.3s)
+  ?? 142 [chromium] ??tests\feature-security\security-policies-crud.spec.ts:85:5 ??Admin - Security Policies (account lockout configuration) (2.7s)
+No Delete button found in roles-negative row fallback
+  ?? 134 [chromium] ??tests\feature-roles\roles-negative.spec.ts:72:5 ??Admin - Role delete is blocked when users are assigned (48.4s)
+  ?? 131 [chromium] ??tests\feature-roles\roles-crud.spec.ts:4:5 ??Admin - Roles CRUD (create, update, delete role) (55.9s)
+  ?? 145 [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:129:7 ??User Sessions Management ??Non-admin user cannot revoke sessions (permission denied) (23.0s)
+  ?? 143 [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:48:7 ??User Sessions Management ??List sessions and revoke single session (1.0m)
+  ?? 147 [chromium] ??tests\feature-settings\settings-crud.spec.ts:4:5 ??Admin - Settings CRUD (branding settings) (1.9s)
+  ?? 148 [chromium] ??tests\feature-settings\settings-crud.spec.ts:47:5 ??Admin - Settings validation (empty fields) (1.3s)
+  ?? 149 [chromium] ??tests\feature-users\admin-users-crud.spec.ts:7:5 ??Admin - Users CRUD (create, update, deactivate/reactivate, delete) (3.5s)
+  ?? 144 [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:92:7 ??User Sessions Management ??Revoke all sessions removes all authorizations (1.0m)
+  ?? 151 [chromium] ??tests\feature-users\admin-users-error.spec.ts:10:7 ??Admin - Users error cases ??Update user returns validation error for duplicate email (2.0s)
+  ?? 152 [chromium] ??tests\feature-users\admin-users-error.spec.ts:42:7 ??Admin - Users error cases ??ID-based roles assign endpoint returns not found for unknown role ids (1.4s)
+  ?? 150 [chromium] ??tests\feature-users\admin-users-crud.spec.ts:133:5 ??Admin - Users permission denied (create/update/delete) (22.9s)
+  ?? 154 [chromium] ??tests\feature-users\admin-users-negative.spec.ts:40:7 ??Admin - Users negative validation ??Duplicate email shows validation error (1.3s)
+  ?? 155 [chromium] ??tests\feature-users\admin-users-negative.spec.ts:52:7 ??Admin - Users negative validation ??Invalid email format rejected (1.1s)
+  ?? 156 [chromium] ??tests\feature-users\admin-users-negative.spec.ts:62:7 ??Admin - Users negative validation ??Weak password rejected (complexity) (1.2s)
+  ?? 153 [chromium] ??tests\feature-users\admin-users-error.spec.ts:69:7 ??Admin - Users error cases ??Non-admin user cannot update another user (permission denied) via ID-based endpoint (22.6s)
+  ?? 157 [chromium] ??tests\feature-users\admin-users-negative.spec.ts:71:7 ??Admin - Users negative validation ??Missing required fields rejected (1.2s)
+  ?? 158 [chromium] ??tests\feature-users\admin-users-negative.spec.ts:90:7 ??Admin - Users negative validation ??Empty password rejected (1.2s)
+  ?? 159 [chromium] ??tests\feature-users\admin-users-negative.spec.ts:80:7 ??Admin - Users negative validation ??Whitespace email rejected (1.4s)
+  ?? 160 [chromium] ??tests\feature-users\admin-users-negative.spec.ts:99:7 ??Admin - Users negative validation ??Excessively long email rejected (1.3s)
+  ?? 161 [chromium] ??tests\feature-users\admin-users-negative.spec.ts:110:7 ??Admin - Users negative validation ??Duplicate userName with different email rejected (1.3s)
+  ?? 162 [chromium] ??tests\feature-users\admin-users-role-assignment.spec.ts:5:7 ??Admin - User Role Assignment API ??Should assign roles using role IDs endpoint (1.5s)
+  ?? 163 [chromium] ??tests\feature-users\admin-users-role-assignment.spec.ts:58:7 ??Admin - User Role Assignment API ??Should return error for invalid role ID (1.3s)
+  ?? 164 [chromium] ??tests\feature-users\admin-users-role-assignment.spec.ts:103:7 ??Admin - User Role Assignment API ??Should maintain backward compatibility with name-based endpoint (1.3s)
+  ?? 165 [chromium] ??tests\feature-users\admin-users-role-assignment.spec.ts:153:7 ??Admin - User Role Assignment API ??Should allow switching between ID and name-based endpoints (1.8s)
+  ?? 166 [chromium] ??tests\feature-users\admin-users-role-assignment.spec.ts:214:7 ??Admin - User Role Assignment Negative Tests ??Should return 404 for non-existent user (1.3s)
+  ?? 167 [chromium] ??tests\feature-users\admin-users-role-assignment.spec.ts:240:7 ??Admin - User Role Assignment Negative Tests ??Should return error for malformed role ID (1.4s)
+  ?? 168 [chromium] ??tests\feature-users\admin-users-role-assignment.spec.ts:282:7 ??Admin - User Role Assignment Negative Tests ??Should return error for mixed valid and invalid role IDs (1.6s)
+  ?? 170 [chromium] ??tests\feature-users\admin-users-role-assignment.spec.ts:401:7 ??Admin - User Role Assignment Negative Tests ??Should reject duplicate role IDs gracefully (1.5s)
+  ?? 169 [chromium] ??tests\feature-users\admin-users-role-assignment.spec.ts:338:7 ??Admin - User Role Assignment Negative Tests ??Should succeed with empty role IDs array (removes all roles) (1.7s)
+  ?? 171 [chromium] ??tests\feature-users\role-permissions-claims.spec.ts:16:7 ??Role Permissions in User Claims - E2E Integration ??Should include role and permissions in user claims after login (3.4s)
+  ?? 173 [chromium] ??tests\helpers\admin.spec.ts:13:7 ??Admin helper utilities ??loginAsAdminViaIdP logs in the admin (1.4s)
+  ?? 172 [chromium] ??tests\feature-users\role-permissions-claims.spec.ts:134:7 ??Role Permissions in User Claims - E2E Integration ??Should reflect permission changes after role reassignment (5.1s)
+  ?? 174 [chromium] ??tests\helpers\admin.spec.ts:20:7 ??Admin helper utilities ??createRole and deleteRole work via API (1.4s)
+  ?? 175 [chromium] ??tests\helpers\admin.spec.ts:38:7 ??Admin helper utilities ??createUserWithRole and deleteUser work via API (1.5s)
+  ?? 176 [chromium] ??tests\helpers\admin.spec.ts:55:7 ??Admin helper utilities ??createUserWithRole accepts role id as identifier (1.6s)
+  ?? 177 [chromium] ??tests\helpers\admin.spec.ts:73:7 ??Admin helper utilities ??deleteClientViaApiFallback and regenerateSecretViaApi (confidential) smoke (1.6s)
+  ?? 146 [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:155:7 ??User Sessions Management ??User cannot revoke another user's session (1.4m)
+  ?? 178 [chromium] ??tests\helpers\admin.spec.ts:120:7 ??Admin helper utilities ??searchListForItem can find a client using the search input and API wait (2.0s)
+  ?? 180 [chromium] ??tests\helpers\admin.spec.ts:216:9 ??Admin helper utilities ??updateUser accepts role ids and assigns roles via ID-based endpoint (1.7s)
+  ?? 181 [chromium] ??tests\helpers\admin.spec.ts:191:9 ??Admin helper utilities ??updateUser modifies user properties via API (1.7s)
+  ?? 182 [chromium] ??tests\helpers\admin.spec.ts:236:9 ??Admin helper utilities ??updateUser accepts mixed role identifiers (names + ids) and assigns roles (1.6s)
+  ?? 183 [chromium] ??tests\helpers\admin.spec.ts:260:9 ??Admin helper utilities ??updateUser returns error when a provided role id does not exist (1.4s)
+  ?? 185 [chromium] ??tests\helpers\admin.spec.ts:310:9 ??Admin helper utilities ??getDashboardStats returns dashboard metrics (1.2s)
+  ?? 184 [chromium] ??tests\helpers\admin.spec.ts:286:9 ??Admin helper utilities ??updateUser returns error when provided role id is malformed (1.6s)
+  ?? 186 [chromium] ??tests\helpers\admin.spec.ts:321:9 ??Admin helper utilities ??waitForSessionRevocation polls until session is revoked (1.4s)
+  ?? 179 [chromium] ??tests\helpers\admin.spec.ts:156:7 ??Admin helper utilities ??searchAndConfirmAction deletes a created scope and returns API response (23.4s)
+
+
+  1) [chromium] ??tests\feature-auth\scope-authorization-flow.spec.ts:11:7 ??Scope Authorization Flow - Admin UI Integration ??Admin marks scope as required ??consent shows scope as disabled and checked 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeAttached[2m([22m[2m)[22m failed
+
+    Locator: locator('input[type="hidden"][name="granted_scopes"][value="api:company:read"]')
+    Expected: attached
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeAttached" with timeout 5000ms[22m
+    [2m  - waiting for locator('input[type="hidden"][name="granted_scopes"][value="api:company:read"]')[22m
+
+
+      115 |       const displayCheckbox = userPage.locator('input[type="checkbox"][value="api:company:read"]');
+      116 |       
+    > 117 |       await expect(hiddenInput).toBeAttached();
+          |                                 ^
+      118 |       await expect(displayCheckbox).toBeDisabled();
+      119 |       await expect(displayCheckbox).toBeChecked();
+      120 |
+        at C:\repos\HybridIdP\e2e\tests\feature-auth\scope-authorization-flow.spec.ts:117:33
+
+    Error Context: test-results\tests-feature-auth-scope-a-b0540-ope-as-disabled-and-checked-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-auth-scope-a-b0540-ope-as-disabled-and-checked-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-auth-scope-a-b0540-ope-as-disabled-and-checked-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  2) [chromium] ??tests\feature-claims\claims-crud.spec.ts:5:5 ??Admin - Claims CRUD (create, update, delete custom claim) 
+
+    TimeoutError: page.waitForResponse: Timeout 15000ms exceeded while waiting for event "response"
+
+       at tests\helpers\timing.ts:116
+
+      114 |   const { method = 'GET', timeout = 10000, status = 200 } = options;
+      115 |   
+    > 116 |   const response = await page.waitForResponse(
+          |                               ^
+      117 |     (resp) => {
+      118 |       const urlMatches = typeof urlPattern === 'string' 
+      119 |         ? resp.url().includes(urlPattern)
+        at waitForApiResponse (C:\repos\HybridIdP\e2e\tests\helpers\timing.ts:116:31)
+        at C:\repos\HybridIdP\e2e\tests\feature-claims\claims-crud.spec.ts:100:45
+
+    Error: page.evaluate: Target page, context or browser has been closed
+
+      172 |   } finally {
+      173 |     // Restore original Administrator role permissions
+    > 174 |     await page.evaluate(async (args) => {
+          |                ^
+      175 |       const roleDetailResp = await fetch(`/api/admin/roles/${args.roleId}`);
+      176 |       const roleDetail = await roleDetailResp.json();
+      177 |       
+        at C:\repos\HybridIdP\e2e\tests\feature-claims\claims-crud.spec.ts:174:16
+
+    Error Context: test-results\tests-feature-claims-claim-c5861-update-delete-custom-claim--chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-claims-claim-c5861-update-delete-custom-claim--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-claims-claim-c5861-update-delete-custom-claim--chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  3) [chromium] ??tests\feature-clients\admin-clients-crud.spec.ts:5:5 ??Admin - Clients CRUD (create, update, delete client) 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mnot[2m.[22mtoBeNull[2m()[22m
+
+    Received: [31mnull[39m
+
+      85 |   });
+      86 |   
+    > 87 |   expect(found).not.toBeNull();
+         |                     ^
+      88 |   if (found) {
+      89 |     await expect(found).toBeVisible({ timeout: 5000 });
+      90 |   } else {
+        at C:\repos\HybridIdP\e2e\tests\feature-clients\admin-clients-crud.spec.ts:87:21
+
+    Error Context: test-results\tests-feature-clients-admi-1c41a-reate-update-delete-client--chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-clients-admi-1c41a-reate-update-delete-client--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-clients-admi-1c41a-reate-update-delete-client--chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  4) [chromium] ??tests\feature-clients\admin-clients-permissions.spec.ts:4:5 ??Admin - Clients permission denied (create/update/delete) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('button:has-text("Create New Client")')
+    Expected: [32m0[39m
+    Received: [31m1[39m
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 5000ms[22m
+    [2m  - waiting for locator('button:has-text("Create New Client")')[22m
+    [2m    9 ? locator resolved to 1 element[22m
+    [2m      - unexpected value "1"[22m
+
+
+      22 |   if (await page.url().includes('/Admin/Clients')) {
+      23 |     const createBtn = page.locator('button:has-text("Create New Client")');
+    > 24 |     await expect(createBtn).toHaveCount(0);
+         |                             ^
+      25 |   } else {
+      26 |     // Expect Access Denied content
+      27 |     const deniedHeading = page.locator('main h2:has-text("Access Denied")');
+        at C:\repos\HybridIdP\e2e\tests\feature-clients\admin-clients-permissions.spec.ts:24:29
+
+    Error Context: test-results\tests-feature-clients-admi-990fe-enied-create-update-delete--chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-clients-admi-990fe-enied-create-update-delete--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-clients-admi-990fe-enied-create-update-delete--chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  5) [chromium] ??tests\feature-clients\admin-clients-regenerate-secret.spec.ts:4:5 ??Admin - Regenerate secret for confidential client 
+
+    TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('div.fixed input[readonly]').first() to be visible[22m
+
+
+      43 |   
+      44 |   // Wait for any input to appear in the modal (secret might not have font-mono class yet)
+    > 45 |   await page.locator('div.fixed input[readonly]').first().waitFor({ state: 'visible', timeout: 10000 });
+         |                                                           ^
+      46 |
+      47 |   // Read the generated client secret from modal
+      48 |   const secretInput = page.locator('div.fixed input[readonly]').first();
+        at C:\repos\HybridIdP\e2e\tests\feature-clients\admin-clients-regenerate-secret.spec.ts:45:59
+
+    Error Context: test-results\tests-feature-clients-admi-11046-ret-for-confidential-client-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-clients-admi-11046-ret-for-confidential-client-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-clients-admi-11046-ret-for-confidential-client-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  6) [chromium] ??tests\feature-my-account\authorizations.spec.ts:23:9 ??Phase 11.6 - Authorizations Page ??Page Layout and Content ??should display Authorizations page with correct title 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('h1')
+    Expected substring: [32m"??蝞∠?"[39m
+    Received string:    [31m"Authorized Applications"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('h1')[22m
+    [2m    9 ? locator resolved to <h1 class="section-title">Authorized Applications</h1>[22m
+    [2m      - unexpected value "Authorized Applications"[22m
+
+
+      25 |       
+      26 |       // Verify page title
+    > 27 |       await expect(page.locator('h1')).toContainText('??蝞∠?');
+         |                                        ^
+      28 |       
+      29 |       // Verify description
+      30 |       await expect(page.locator('p.lead')).toContainText('蝞∠??典歇?????函?撘???');
+        at C:\repos\HybridIdP\e2e\tests\feature-my-account\authorizations.spec.ts:27:40
+
+    Error Context: test-results\tests-feature-my-account-a-0aa5f-ons-page-with-correct-title-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-my-account-a-0aa5f-ons-page-with-correct-title-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-my-account-a-0aa5f-ons-page-with-correct-title-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  7) [chromium] ??tests\feature-my-account\authorizations.spec.ts:33:9 ??Phase 11.6 - Authorizations Page ??Page Layout and Content ??should display authorized applications list 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+      42 |       
+      43 |       // One of them should be true
+    > 44 |       expect(hasApps || hasNoAppsMessage).toBeTruthy();
+         |                                           ^
+      45 |     });
+      46 |
+      47 |     test('should display app cards with gradient icons (CSS classes, no inline styles)', async ({ page }) => {
+        at C:\repos\HybridIdP\e2e\tests\feature-my-account\authorizations.spec.ts:44:43
+
+    Error Context: test-results\tests-feature-my-account-a-0441f-uthorized-applications-list-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-my-account-a-0441f-uthorized-applications-list-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-my-account-a-0441f-uthorized-applications-list-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  8) [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:24:9 ??Phase 11.6 - Linked Accounts Page ??Page Layout and Content ??should display LinkedAccounts page with correct title 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('h1')
+    Expected substring: [32m"撣唾???"[39m
+    Received string:    [31m"Linked Accounts"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 5000ms[22m
+    [2m  - waiting for locator('h1')[22m
+    [2m    9 ? locator resolved to <h1 class="h2">Linked Accounts</h1>[22m
+    [2m      - unexpected value "Linked Accounts"[22m
+
+
+      26 |       
+      27 |       // Verify page title
+    > 28 |       await expect(page.locator('h1')).toContainText('撣唾???');
+         |                                        ^
+      29 |       
+      30 |       // Verify description
+      31 |       await expect(page.locator('p.lead')).toContainText('?亦??恣???舐?撣唾?');
+        at C:\repos\HybridIdP\e2e\tests\feature-my-account\linked-accounts.spec.ts:28:40
+
+    Error Context: test-results\tests-feature-my-account-l-e22d6-nts-page-with-correct-title-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-my-account-l-e22d6-nts-page-with-correct-title-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-my-account-l-e22d6-nts-page-with-correct-title-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  9) [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:257:9 ??Phase 11.6 - Linked Accounts Page ??External JavaScript ??should load linked-accounts.js external script 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeGreaterThan[2m([22m[32mexpected[39m[2m)[22m
+
+    Expected: > [32m0[39m
+    Received:   [31m0[39m
+
+      265 |       });
+      266 |       
+    > 267 |       expect(scripts.length).toBeGreaterThan(0);
+          |                              ^
+      268 |     });
+      269 |
+      270 |     test('should have no inline scripts', async ({ page }) => {
+        at C:\repos\HybridIdP\e2e\tests\feature-my-account\linked-accounts.spec.ts:267:30
+
+    Error Context: test-results\tests-feature-my-account-l-b8522-accounts-js-external-script-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-my-account-l-b8522-accounts-js-external-script-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-my-account-l-b8522-accounts-js-external-script-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  10) [chromium] ??tests\feature-people\admin-people-crud.spec.ts:28:7 ??Admin - People CRUD Operations ??Create, update, and delete person with identity document 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('tr').filter({ hasText: 'CrudTest PersonOne' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('tr').filter({ hasText: 'CrudTest PersonOne' })[22m
+
+
+      49 |     // Reload and verify person appears in UI
+      50 |     await page.reload()
+    > 51 |     await expect(page.locator('tr', { hasText: 'CrudTest PersonOne' })).toBeVisible()
+         |                                                                         ^
+      52 |
+      53 |     // Update person identity to Resident Certificate
+      54 |     const residentCert = `AA${String(timestamp).slice(-8)}`
+        at C:\repos\HybridIdP\e2e\tests\feature-people\admin-people-crud.spec.ts:51:73
+
+    Error Context: test-results\tests-feature-people-admin-fd189-rson-with-identity-document-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-people-admin-fd189-rson-with-identity-document-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-people-admin-fd189-rson-with-identity-document-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  11) [chromium] ??tests\feature-people\admin-people-crud.spec.ts:76:7 ??Admin - People CRUD Operations ??Create person without identity document 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('tr').filter({ hasText: 'Simple Person' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('tr').filter({ hasText: 'Simple Person' })[22m
+
+
+      86 |     // Verify in UI
+      87 |     await page.reload()
+    > 88 |     await expect(page.locator('tr', { hasText: 'Simple Person' })).toBeVisible()
+         |                                                                    ^
+      89 |   })
+      90 |
+      91 |   test('Create and update person with email and phone number', async ({ page }) => {
+        at C:\repos\HybridIdP\e2e\tests\feature-people\admin-people-crud.spec.ts:88:68
+
+    Error Context: test-results\tests-feature-people-admin-800fd-n-without-identity-document-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-people-admin-800fd-n-without-identity-document-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-people-admin-800fd-n-without-identity-document-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  12) [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:154:7 ??Admin - People Identity Verification ??Verify person identity with National ID successfully 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('tr').filter({ hasText: 'TestUser ToVerify' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('tr').filter({ hasText: 'TestUser ToVerify' })[22m
+
+
+      180 |     await page.reload()
+      181 |     const row = page.locator('tr', { hasText: 'TestUser ToVerify' })
+    > 182 |     await expect(row).toBeVisible()
+          |                       ^
+      183 |     
+      184 |     // Check for verified badge/status (may be in Chinese "撌脤?霅? or English "Verified")
+      185 |     await expect(row.locator('text=/撌脤?霅Verified/i')).toBeVisible()
+        at C:\repos\HybridIdP\e2e\tests\feature-people\admin-people-identity-verification.spec.ts:182:23
+
+    Error Context: test-results\tests-feature-people-admin-901af-th-National-ID-successfully-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-people-admin-901af-th-National-ID-successfully-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-people-admin-901af-th-National-ID-successfully-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  13) [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:240:7 ??Admin - People Identity Verification ??Attempt to create duplicate person with same National ID fails 
+
+    Error: page.evaluate: Error: Failed to create person with identity: 400 - Person with this identity document already exists (PersonId: 2949be06-51ec-43f3-919f-ab79074344c1)
+        at eval (eval at evaluate (:290:30), <anonymous>:11:13)
+        at async <anonymous>:316:30
+        at eval (eval at evaluate (:290:30), <anonymous>:11:13)
+        at async <anonymous>:316:30
+        at createPersonWithIdentity (C:\repos\HybridIdP\e2e\tests\helpers\admin.ts:798:21)
+        at C:\repos\HybridIdP\e2e\tests\feature-people\admin-people-identity-verification.spec.ts:252:52
+
+    Error Context: test-results\tests-feature-people-admin-de3d0-with-same-National-ID-fails-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-people-admin-de3d0-with-same-National-ID-fails-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-people-admin-de3d0-with-same-National-ID-fails-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  14) [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:298:7 ??Admin - People Identity Verification ??Verify identity button is visible for unverified person with document 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('tr').filter({ hasText: 'TestUser UnverifiedDoc' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('tr').filter({ hasText: 'TestUser UnverifiedDoc' })[22m
+
+
+      314 |     
+      315 |     const row = page.locator('tr', { hasText: 'TestUser UnverifiedDoc' })
+    > 316 |     await expect(row).toBeVisible()
+          |                       ^
+      317 |
+      318 |     // Verify button should be visible (look for button with verify icon or title)
+      319 |     // The button might have title attribute or specific icon
+        at C:\repos\HybridIdP\e2e\tests\feature-people\admin-people-identity-verification.spec.ts:316:23
+
+    Error Context: test-results\tests-feature-people-admin-5ed43-rified-person-with-document-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-people-admin-5ed43-rified-person-with-document-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-people-admin-5ed43-rified-person-with-document-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  15) [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:324:7 ??Admin - People Identity Verification ??Verify identity button is hidden for already verified person 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('tr').filter({ hasText: 'TestUser AlreadyVerified' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('tr').filter({ hasText: 'TestUser AlreadyVerified' })[22m
+
+
+      342 |     
+      343 |     const row = page.locator('tr', { hasText: 'TestUser AlreadyVerified' })
+    > 344 |     await expect(row).toBeVisible()
+          |                       ^
+      345 |
+      346 |     // Verify button should NOT be visible
+      347 |     const verifyButton = row.locator('button[title*="撽?"], button[title*="Verify"]')
+        at C:\repos\HybridIdP\e2e\tests\feature-people\admin-people-identity-verification.spec.ts:344:23
+
+    Error Context: test-results\tests-feature-people-admin-ec615-for-already-verified-person-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-people-admin-ec615-for-already-verified-person-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-people-admin-ec615-for-already-verified-person-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  16) [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:354:7 ??Admin - People Identity Verification ??Person without identity document does not show verify button 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('tr').filter({ hasText: 'TestUser NoDocNoButton' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('tr').filter({ hasText: 'TestUser NoDocNoButton' })[22m
+
+
+      367 |     
+      368 |     const row = page.locator('tr', { hasText: 'TestUser NoDocNoButton' })
+    > 369 |     await expect(row).toBeVisible()
+          |                       ^
+      370 |
+      371 |     // Verify button should NOT be visible
+      372 |     const verifyButton = row.locator('button[title*="撽?"], button[title*="Verify"]')
+        at C:\repos\HybridIdP\e2e\tests\feature-people\admin-people-identity-verification.spec.ts:369:23
+
+    Error Context: test-results\tests-feature-people-admin-e85bd-does-not-show-verify-button-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-people-admin-e85bd-does-not-show-verify-button-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-people-admin-e85bd-does-not-show-verify-button-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  17) [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:376:7 ??Admin - People Identity Verification ??Multiple document types: National ID checksum validation variants 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('tr').filter({ hasText: 'Valid1 NationalIdTest' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('tr').filter({ hasText: 'Valid1 NationalIdTest' })[22m
+
+
+      401 |     await page.reload()
+      402 |     for (const { firstName } of validIds) {
+    > 403 |       await expect(page.locator('tr', { hasText: `${firstName} NationalIdTest` })).toBeVisible()
+          |                                                                                    ^
+      404 |     }
+      405 |   })
+      406 | })
+        at C:\repos\HybridIdP\e2e\tests\feature-people\admin-people-identity-verification.spec.ts:403:84
+
+    Error Context: test-results\tests-feature-people-admin-3c25e-hecksum-validation-variants-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-people-admin-3c25e-hecksum-validation-variants-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-people-admin-3c25e-hecksum-validation-variants-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  18) [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:48:7 ??User Sessions Management ??List sessions and revoke single session 
+
+    TimeoutError: page.waitForURL: Timeout 60000ms exceeded.
+    =========================== logs ===========================
+    waiting for navigation to "**/Account/Profile" until "load"
+    ============================================================
+
+       at tests\helpers\admin.ts:649
+
+      647 |
+      648 |     // Wait for redirect back to TestClient profile or root
+    > 649 |     await page.waitForURL('**/Account/Profile', { timeout: 60000 });
+          |                ^
+      650 |   }
+      651 |
+      652 |   export async function getDashboardStats(page: Page) {
+        at Object.loginViaTestClient (C:\repos\HybridIdP\e2e\tests\helpers\admin.ts:649:16)
+        at C:\repos\HybridIdP\e2e\tests\feature-sessions\user-sessions-management.spec.ts:60:5
+
+    Error Context: test-results\tests-feature-sessions-use-5b49b-s-and-revoke-single-session-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-sessions-use-5b49b-s-and-revoke-single-session-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-sessions-use-5b49b-s-and-revoke-single-session-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  19) [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:92:7 ??User Sessions Management ??Revoke all sessions removes all authorizations 
+
+    TimeoutError: page.waitForURL: Timeout 60000ms exceeded.
+    =========================== logs ===========================
+    waiting for navigation to "**/Account/Profile" until "load"
+    ============================================================
+
+       at tests\helpers\admin.ts:649
+
+      647 |
+      648 |     // Wait for redirect back to TestClient profile or root
+    > 649 |     await page.waitForURL('**/Account/Profile', { timeout: 60000 });
+          |                ^
+      650 |   }
+      651 |
+      652 |   export async function getDashboardStats(page: Page) {
+        at loginViaTestClient (C:\repos\HybridIdP\e2e\tests\helpers\admin.ts:649:16)
+        at Object.createMultipleSessions (C:\repos\HybridIdP\e2e\tests\helpers\admin.ts:615:9)
+        at C:\repos\HybridIdP\e2e\tests\feature-sessions\user-sessions-management.spec.ts:101:22
+
+    Error Context: test-results\tests-feature-sessions-use-33558--removes-all-authorizations-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-sessions-use-33558--removes-all-authorizations-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-sessions-use-33558--removes-all-authorizations-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  20) [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:129:7 ??User Sessions Management ??Non-admin user cannot revoke sessions (permission denied) 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
+
+    Expected value: [32m200[39m
+    Received array: [31m[401, 403][39m
+
+      144 |       return r.status;
+      145 |     }, created.id);
+    > 146 |     expect([401,403]).toContain(result);
+          |                       ^
+      147 |
+      148 |     // Cleanup
+      149 |     await page.goto('https://localhost:7035/Account/Logout');
+        at C:\repos\HybridIdP\e2e\tests\feature-sessions\user-sessions-management.spec.ts:146:23
+
+    Error Context: test-results\tests-feature-sessions-use-6aff7-sessions-permission-denied--chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-sessions-use-6aff7-sessions-permission-denied--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-sessions-use-6aff7-sessions-permission-denied--chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  21) [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:155:7 ??User Sessions Management ??User cannot revoke another user's session 
+
+    TimeoutError: page.waitForURL: Timeout 60000ms exceeded.
+    =========================== logs ===========================
+    waiting for navigation to "**/Account/Profile" until "load"
+    ============================================================
+
+       at tests\helpers\admin.ts:649
+
+      647 |
+      648 |     // Wait for redirect back to TestClient profile or root
+    > 649 |     await page.waitForURL('**/Account/Profile', { timeout: 60000 });
+          |                ^
+      650 |   }
+      651 |
+      652 |   export async function getDashboardStats(page: Page) {
+        at Object.loginViaTestClient (C:\repos\HybridIdP\e2e\tests\helpers\admin.ts:649:16)
+        at C:\repos\HybridIdP\e2e\tests\feature-sessions\user-sessions-management.spec.ts:175:5
+
+    Error Context: test-results\tests-feature-sessions-use-70d56-voke-another-user-s-session-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-sessions-use-70d56-voke-another-user-s-session-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-sessions-use-70d56-voke-another-user-s-session-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  22) [chromium] ??tests\feature-users\admin-users-crud.spec.ts:133:5 ??Admin - Users permission denied (create/update/delete) 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
+
+    Expected value: [32m400[39m
+    Received array: [31m[401, 403][39m
+
+      162 |     return resp.status;
+      163 |   });
+    > 164 |   expect([401,403]).toContain(apiStatus);
+          |                     ^
+      165 |
+      166 |   // Cleanup
+      167 |   await page.goto('https://localhost:7035/Account/Logout');
+        at C:\repos\HybridIdP\e2e\tests\feature-users\admin-users-crud.spec.ts:164:21
+
+    Error Context: test-results\tests-feature-users-admin--210e1-enied-create-update-delete--chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-users-admin--210e1-enied-create-update-delete--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-users-admin--210e1-enied-create-update-delete--chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  23) [chromium] ??tests\feature-users\admin-users-error.spec.ts:69:7 ??Admin - Users error cases ??Non-admin user cannot update another user (permission denied) via ID-based endpoint 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
+
+    Expected value: [32m200[39m
+    Received array: [31m[401, 403][39m
+
+      93 |     }, { uid: targetUser.id, ids: [adminRole.id] });
+      94 |
+    > 95 |     expect([401,403]).toContain(attempt.status);
+         |                       ^
+      96 |
+      97 |     // Cleanup
+      98 |     await page.goto('https://localhost:7035/Account/Logout');
+        at C:\repos\HybridIdP\e2e\tests\feature-users\admin-users-error.spec.ts:95:23
+
+    Error Context: test-results\tests-feature-users-admin--a7a02-enied-via-ID-based-endpoint-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-users-admin--a7a02-enied-via-ID-based-endpoint-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-users-admin--a7a02-enied-via-ID-based-endpoint-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  23 failed
+    [chromium] ??tests\feature-auth\scope-authorization-flow.spec.ts:11:7 ??Scope Authorization Flow - Admin UI Integration ??Admin marks scope as required ??consent shows scope as disabled and checked 
+    [chromium] ??tests\feature-claims\claims-crud.spec.ts:5:5 ??Admin - Claims CRUD (create, update, delete custom claim) 
+    [chromium] ??tests\feature-clients\admin-clients-crud.spec.ts:5:5 ??Admin - Clients CRUD (create, update, delete client) 
+    [chromium] ??tests\feature-clients\admin-clients-permissions.spec.ts:4:5 ??Admin - Clients permission denied (create/update/delete) 
+    [chromium] ??tests\feature-clients\admin-clients-regenerate-secret.spec.ts:4:5 ??Admin - Regenerate secret for confidential client 
+    [chromium] ??tests\feature-my-account\authorizations.spec.ts:23:9 ??Phase 11.6 - Authorizations Page ??Page Layout and Content ??should display Authorizations page with correct title 
+    [chromium] ??tests\feature-my-account\authorizations.spec.ts:33:9 ??Phase 11.6 - Authorizations Page ??Page Layout and Content ??should display authorized applications list 
+    [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:24:9 ??Phase 11.6 - Linked Accounts Page ??Page Layout and Content ??should display LinkedAccounts page with correct title 
+    [chromium] ??tests\feature-my-account\linked-accounts.spec.ts:257:9 ??Phase 11.6 - Linked Accounts Page ??External JavaScript ??should load linked-accounts.js external script 
+    [chromium] ??tests\feature-people\admin-people-crud.spec.ts:28:7 ??Admin - People CRUD Operations ??Create, update, and delete person with identity document 
+    [chromium] ??tests\feature-people\admin-people-crud.spec.ts:76:7 ??Admin - People CRUD Operations ??Create person without identity document 
+    [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:154:7 ??Admin - People Identity Verification ??Verify person identity with National ID successfully 
+    [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:240:7 ??Admin - People Identity Verification ??Attempt to create duplicate person with same National ID fails 
+    [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:298:7 ??Admin - People Identity Verification ??Verify identity button is visible for unverified person with document 
+    [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:324:7 ??Admin - People Identity Verification ??Verify identity button is hidden for already verified person 
+    [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:354:7 ??Admin - People Identity Verification ??Person without identity document does not show verify button 
+    [chromium] ??tests\feature-people\admin-people-identity-verification.spec.ts:376:7 ??Admin - People Identity Verification ??Multiple document types: National ID checksum validation variants 
+    [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:48:7 ??User Sessions Management ??List sessions and revoke single session 
+    [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:92:7 ??User Sessions Management ??Revoke all sessions removes all authorizations 
+    [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:129:7 ??User Sessions Management ??Non-admin user cannot revoke sessions (permission denied) 
+    [chromium] ??tests\feature-sessions\user-sessions-management.spec.ts:155:7 ??User Sessions Management ??User cannot revoke another user's session 
+    [chromium] ??tests\feature-users\admin-users-crud.spec.ts:133:5 ??Admin - Users permission denied (create/update/delete) 
+    [chromium] ??tests\feature-users\admin-users-error.spec.ts:69:7 ??Admin - Users error cases ??Non-admin user cannot update another user (permission denied) via ID-based endpoint 
+  163 passed (7.1m)
