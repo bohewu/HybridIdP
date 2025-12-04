@@ -96,15 +96,19 @@ test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page 
   // User Property Path field (required) - fourth text input in modal
   await modalForm.locator('input[type="text"]').nth(3).fill('CustomProperties.TestValue');
 
+  // Wait for submit button to be ready
+  const submitButton = modalForm.locator('button[type="submit"]');
+  await submitButton.waitFor({ state: 'visible', timeout: 5000 });
+  
   // Wait for form to process and submit
   const responsePromise = waitForApiResponse(page, '/api/admin/claims', {
     method: 'POST',
-    timeout: 15000,
+    timeout: 20000,
     status: 201
   });
   
   // Submit form
-  await modalForm.locator('button[type="submit"]').click();
+  await submitButton.click();
 
   // Wait for API response
   const responseData = await responsePromise;

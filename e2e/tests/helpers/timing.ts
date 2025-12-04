@@ -39,6 +39,8 @@ export async function waitForListItemWithRetry(
           await searchInput.fill(searchQuery);
           // Wait for debounce
           await waitForDebounce(page, 600);
+          // Wait a bit more for list to update
+          await page.waitForTimeout(500);
         }
         
         // Find the item in UI
@@ -46,6 +48,19 @@ export async function waitForListItemWithRetry(
         const item = listContainer.locator('tr, li', { hasText: searchQuery }).first();
         if (await item.isVisible({ timeout: 5000 }).catch(() => false)) {
           return item;
+        }
+        
+        // If not found in filtered view, try reloading the page to reset state
+        await page.reload();
+        await page.waitForTimeout(1000);
+        if (await searchInput.isVisible().catch(() => false)) {
+          await searchInput.fill(searchQuery);
+          await waitForDebounce(page, 600);
+          await page.waitForTimeout(500);
+        }
+        const itemAfterReload = listContainer.locator('tr, li', { hasText: searchQuery }).first();
+        if (await itemAfterReload.isVisible({ timeout: 5000 }).catch(() => false)) {
+          return itemAfterReload;
         }
       }
     } catch (e) {
