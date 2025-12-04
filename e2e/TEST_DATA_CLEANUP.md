@@ -39,7 +39,23 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\cleanup-claims-mssql.ps1
 - When you see "Claim already exists" errors
 - To remove accumulated test claim data
 
-### 3. Clean Users and Persons (PostgreSQL)
+### 3. Clean Roles (MSSQL)
+```powershell
+cd C:\repos\HybridIdP
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\cleanup-roles-mssql.ps1
+```
+
+**What it does:**
+- Removes all test roles with `e2e_` prefix from `AspNetRoles` table
+- Cleans up related `AspNetRoleClaims` and `AspNetUserRoles` first
+- Shows count of roles before and after cleanup
+
+**When to use:**
+- Before running Role management tests
+- When you see "Role already exists" errors
+- To remove accumulated test role data
+
+### 4. Clean Users and Persons (PostgreSQL)
 ```powershell
 cd C:\repos\HybridIdP
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\cleanup-users-postgres.ps1
