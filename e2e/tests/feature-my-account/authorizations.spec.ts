@@ -32,12 +32,13 @@ test.describe('Phase 11.6 - Authorizations Page', () => {
   test.describe('Page Layout and Content', () => {
     test('should display Authorizations page with correct title', async ({ page }) => {
       await page.goto('https://localhost:7035/Account/Authorizations');
+      await page.waitForLoadState('networkidle');
       
       // Verify page title
       await expect(page.locator('h1')).toContainText('已授權的應用程式');
       
       // Verify description
-      await expect(page.locator('p.lead')).toContainText('管理您已授權的應用程式和服務');
+      await expect(page.locator('p.text-muted')).toContainText('查看和撤銷已授權的應用程式');
     });
 
     test('should display authorized applications list', async ({ page }) => {

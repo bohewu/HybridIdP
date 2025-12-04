@@ -33,12 +33,13 @@ test.describe('Phase 11.6 - Linked Accounts Page', () => {
   test.describe('Page Layout and Content', () => {
     test('should display LinkedAccounts page with correct title', async ({ page }) => {
       await page.goto('https://localhost:7035/Account/LinkedAccounts');
+      await page.waitForLoadState('networkidle');
       
       // Verify page title
       await expect(page.locator('h1')).toContainText('鏈結帳號');
       
       // Verify description
-      await expect(page.locator('p.lead')).toContainText('查看和管理關聯的帳號');
+      await expect(page.locator('p.text-muted')).toContainText('管理您的鏈結帳號');
     });
 
     test('should display linked accounts list', async ({ page }) => {
