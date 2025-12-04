@@ -19,13 +19,15 @@ public class ClientServiceTests
 {
     private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
     private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
+    private readonly Mock<IApplicationDbContext> _mockContext;
     private readonly ClientService _clientService;
 
     public ClientServiceTests()
     {
         _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
         _mockEventPublisher = new Mock<IDomainEventPublisher>();
-        _clientService = new ClientService(_mockApplicationManager.Object, _mockEventPublisher.Object);
+        _mockContext = new Mock<IApplicationDbContext>();
+        _clientService = new ClientService(_mockApplicationManager.Object, _mockEventPublisher.Object, _mockContext.Object);
     }
 
     #region GetClientsAsync Tests

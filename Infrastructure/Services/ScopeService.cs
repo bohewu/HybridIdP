@@ -28,14 +28,32 @@ public class ScopeService : IScopeService
         _eventPublisher = eventPublisher;
     }
 
-    public async Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort)
+    public async Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerPersonId = null)
     {
         var scopes = new List<ScopeSummary>();
         var scopeExtensions = await _db.ScopeExtensions.ToDictionaryAsync(se => se.ScopeId);
         
+        // Get owned scope IDs if filtering by owner
+        HashSet<string>? ownedScopeIds = null;
+        if (ownerPersonId.HasValue)
+        {
+            ownedScopeIds = (await _db.ScopeOwnerships
+                .Where(so => so.CreatedByPersonId == ownerPersonId.Value)
+                .Select(so => so.ScopeId)
+                .ToListAsync())
+                .ToHashSet();
+        }
+        
         await foreach (var scope in _scopeManager.ListAsync())
         {
             var id = await _scopeManager.GetIdAsync(scope);
+            
+            // Skip if filtering by owner and this scope is not owned by them
+            if (ownedScopeIds != null && !ownedScopeIds.Contains(id!))
+            {
+                continue;
+            }
+            
             var name = await _scopeManager.GetNameAsync(scope);
             var displayName = await _scopeManager.GetDisplayNameAsync(scope);
             var description = await _scopeManager.GetDescriptionAsync(scope);
@@ -122,7 +140,7 @@ public class ScopeService : IScopeService
         };
     }
 
-    public async Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request)
+    public async Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request, Guid? creatorUserId = null, Guid? creatorPersonId = null)
     {
         // Check if scope already exists
         var existing = await _scopeManager.FindByNameAsync(request.Name);
@@ -172,6 +190,21 @@ public class ScopeService : IScopeService
                 Category = request.Category
             };
             _db.ScopeExtensions.Add(extension);
+            await _db.SaveChangesAsync(CancellationToken.None);
+        }
+        
+        // Create ownership record if creator info is provided
+        if (creatorPersonId.HasValue && creatorUserId.HasValue)
+        {
+            var ownership = new ScopeOwnership
+            {
+                Id = Guid.NewGuid(),
+                ScopeId = id!,
+                CreatedByPersonId = creatorPersonId.Value,
+                CreatedByUserId = creatorUserId.Value,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.ScopeOwnerships.Add(ownership);
             await _db.SaveChangesAsync(CancellationToken.None);
         }
         
@@ -457,5 +490,11 @@ public class ScopeService : IScopeService
             Rejected = rejectedOrdered,
             IsPartialGrant = rejectedOrdered.Count > 0
         };
+    }
+
+    public async Task<bool> IsScopeOwnedByPersonAsync(string scopeId, Guid personId)
+    {
+        return await _db.ScopeOwnerships
+            .AnyAsync(so => so.ScopeId == scopeId && so.CreatedByPersonId == personId);
     }
 }

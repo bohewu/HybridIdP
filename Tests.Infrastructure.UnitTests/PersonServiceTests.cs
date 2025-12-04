@@ -3,6 +3,7 @@ using Core.Domain;
 using Core.Domain.Entities;
 using Infrastructure;
 using Infrastructure.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -19,6 +20,7 @@ public class PersonServiceTests : IDisposable
     private readonly DbContextOptions<ApplicationDbContext> _options;
     private readonly Mock<ILogger<PersonService>> _loggerMock;
     private readonly Mock<IAuditService> _auditServiceMock;
+    private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
 
     public PersonServiceTests()
     {
@@ -28,6 +30,16 @@ public class PersonServiceTests : IDisposable
 
         _loggerMock = new Mock<ILogger<PersonService>>();
         _auditServiceMock = new Mock<IAuditService>();
+        
+        // Create UserManager mock
+        var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
+        _userManagerMock = new Mock<UserManager<ApplicationUser>>(
+            userStoreMock.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+    }
+    
+    private PersonService CreateService(ApplicationDbContext context)
+    {
+        return new PersonService(context, _loggerMock.Object, _auditServiceMock.Object, _userManagerMock.Object);
     }
 
     public void Dispose()
@@ -42,7 +54,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -68,7 +80,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person1 = new Person { FirstName = "John", LastName = "Doe", EmployeeId = "EMP001" };
         await service.CreatePersonAsync(person1);
@@ -85,7 +97,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var created = await service.CreatePersonAsync(person);
@@ -105,7 +117,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         // Act
         var result = await service.GetPersonByIdAsync(Guid.NewGuid());
@@ -119,7 +131,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe", EmployeeId = "EMP001" };
         await service.CreatePersonAsync(person);
@@ -138,7 +150,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe", EmployeeId = "EMP001" };
         var created = await service.CreatePersonAsync(person);
@@ -169,7 +181,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person1 = new Person { FirstName = "John", LastName = "Doe", EmployeeId = "EMP001" };
         await service.CreatePersonAsync(person1);
@@ -189,7 +201,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var created = await service.CreatePersonAsync(person);
@@ -209,7 +221,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         // Act
         var result = await service.DeletePersonAsync(Guid.NewGuid());
@@ -223,7 +235,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         await service.CreatePersonAsync(new Person { FirstName = "Alice", LastName = "Anderson" });
         await service.CreatePersonAsync(new Person { FirstName = "Bob", LastName = "Brown" });
@@ -244,7 +256,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         for (int i = 0; i < 10; i++)
         {
@@ -270,7 +282,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         await service.CreatePersonAsync(new Person { FirstName = "John", LastName = "Doe" });
         await service.CreatePersonAsync(new Person { FirstName = "Jane", LastName = "Smith" });
@@ -289,7 +301,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         await service.CreatePersonAsync(new Person 
         { 
@@ -317,7 +329,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         await service.CreatePersonAsync(new Person { FirstName = "John", LastName = "Doe" });
         await service.CreatePersonAsync(new Person { FirstName = "Jane", LastName = "Smith" });
@@ -336,7 +348,7 @@ public class PersonServiceTests : IDisposable
         using var context = new ApplicationDbContext(_options);
         await context.Database.EnsureCreatedAsync();
         
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var createdPerson = await service.CreatePersonAsync(person);
@@ -367,7 +379,7 @@ public class PersonServiceTests : IDisposable
         using var context = new ApplicationDbContext(_options);
         await context.Database.EnsureCreatedAsync();
         
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person1 = new Person { FirstName = "John", LastName = "Doe" };
         var createdPerson1 = await service.CreatePersonAsync(person1);
@@ -406,7 +418,7 @@ public class PersonServiceTests : IDisposable
         using var context = new ApplicationDbContext(_options);
         await context.Database.EnsureCreatedAsync();
         
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var createdPerson = await service.CreatePersonAsync(person);
@@ -441,7 +453,7 @@ public class PersonServiceTests : IDisposable
         using var context = new ApplicationDbContext(_options);
         await context.Database.EnsureCreatedAsync();
         
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var user = new ApplicationUser
         {
@@ -466,7 +478,7 @@ public class PersonServiceTests : IDisposable
         using var context = new ApplicationDbContext(_options);
         await context.Database.EnsureCreatedAsync();
         
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var createdPerson = await service.CreatePersonAsync(person);
@@ -485,7 +497,7 @@ public class PersonServiceTests : IDisposable
         using var context = new ApplicationDbContext(_options);
         await context.Database.EnsureCreatedAsync();
         
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var createdPerson = await service.CreatePersonAsync(person);
@@ -517,7 +529,7 @@ public class PersonServiceTests : IDisposable
         using var context = new ApplicationDbContext(_options);
         await context.Database.EnsureCreatedAsync();
         
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var createdPerson = await service.CreatePersonAsync(person);
@@ -557,7 +569,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -586,7 +598,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var created = await service.CreatePersonAsync(person);
@@ -620,7 +632,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var created = await service.CreatePersonAsync(person);
@@ -648,7 +660,7 @@ public class PersonServiceTests : IDisposable
         using var context = new ApplicationDbContext(_options);
         await context.Database.EnsureCreatedAsync();
         
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var createdPerson = await service.CreatePersonAsync(person);
@@ -686,7 +698,7 @@ public class PersonServiceTests : IDisposable
         using var context = new ApplicationDbContext(_options);
         await context.Database.EnsureCreatedAsync();
         
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person { FirstName = "John", LastName = "Doe" };
         var createdPerson = await service.CreatePersonAsync(person);
@@ -725,7 +737,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -747,7 +759,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -767,7 +779,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person1 = new Person
         {
@@ -795,7 +807,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -815,7 +827,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -835,7 +847,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -871,7 +883,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -895,7 +907,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         // Act
         var (success, errorMessage) = await service.CheckPersonUniquenessAsync("A123456789", null, null);
@@ -910,7 +922,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -934,7 +946,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -962,7 +974,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         // Act
         var result = await service.VerifyPersonIdentityAsync(Guid.NewGuid(), Guid.NewGuid());
@@ -976,7 +988,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {
@@ -998,7 +1010,7 @@ public class PersonServiceTests : IDisposable
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var service = new PersonService(context, _loggerMock.Object, _auditServiceMock.Object);
+        var service = CreateService(context);
 
         var person = new Person
         {

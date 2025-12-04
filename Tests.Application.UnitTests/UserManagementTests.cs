@@ -6,6 +6,7 @@ using Infrastructure;
 using Infrastructure.Services;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.AspNetCore.Identity;
@@ -13,6 +14,55 @@ using Moq;
 using Xunit;
 
 namespace Tests.Application.UnitTests;
+
+// Helper classes for async EF Core mock queries
+internal class TestAsyncQueryProvider<T> : IAsyncQueryProvider
+{
+    private readonly IQueryProvider _inner;
+
+    internal TestAsyncQueryProvider(IQueryProvider inner)
+    {
+        _inner = inner;
+    }
+
+    public IQueryable CreateQuery(Expression expression) => new TestAsyncEnumerable<T>(expression);
+    public IQueryable<TElement> CreateQuery<TElement>(Expression expression) => new TestAsyncEnumerable<TElement>(expression);
+    public object? Execute(Expression expression) => _inner.Execute(expression);
+    public TResult Execute<TResult>(Expression expression) => _inner.Execute<TResult>(expression);
+    public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
+    {
+        var resultType = typeof(TResult).GetGenericArguments()[0];
+        var executeMethod = typeof(IQueryProvider).GetMethod(nameof(IQueryProvider.Execute), 1, new[] { typeof(Expression) })!;
+        var result = executeMethod.MakeGenericMethod(resultType).Invoke(_inner, new object[] { expression });
+        return (TResult)typeof(Task).GetMethod(nameof(Task.FromResult))!.MakeGenericMethod(resultType).Invoke(null, new[] { result })!;
+    }
+}
+
+internal class TestAsyncEnumerable<T> : EnumerableQuery<T>, IAsyncEnumerable<T>, IQueryable<T>
+{
+    public TestAsyncEnumerable(IEnumerable<T> enumerable) : base(enumerable) { }
+    public TestAsyncEnumerable(Expression expression) : base(expression) { }
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => new TestAsyncEnumerator<T>(this.AsEnumerable().GetEnumerator());
+    IQueryProvider IQueryable.Provider => new TestAsyncQueryProvider<T>(this);
+}
+
+internal class TestAsyncEnumerator<T> : IAsyncEnumerator<T>
+{
+    private readonly IEnumerator<T> _inner;
+
+    public TestAsyncEnumerator(IEnumerator<T> inner)
+    {
+        _inner = inner;
+    }
+
+    public T Current => _inner.Current;
+    public ValueTask<bool> MoveNextAsync() => new ValueTask<bool>(_inner.MoveNext());
+    public ValueTask DisposeAsync()
+    {
+        _inner.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}
 
 public class UserManagementTests
 {
@@ -55,6 +105,35 @@ public class UserManagementTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         return new ApplicationDbContext(options);
+    }
+
+    // Helper to setup mock UserManager.Users property for async EF queries
+    private void SetupMockUsers(params ApplicationUser[] users)
+    {
+        var usersQueryable = users.AsQueryable();
+        
+        var mockSet = new Mock<DbSet<ApplicationUser>>();
+        mockSet.As<IAsyncEnumerable<ApplicationUser>>()
+            .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
+            .Returns(new TestAsyncEnumerator<ApplicationUser>(usersQueryable.GetEnumerator()));
+        
+        mockSet.As<IQueryable<ApplicationUser>>()
+            .Setup(m => m.Provider)
+            .Returns(new TestAsyncQueryProvider<ApplicationUser>(usersQueryable.Provider));
+        
+        mockSet.As<IQueryable<ApplicationUser>>()
+            .Setup(m => m.Expression)
+            .Returns(usersQueryable.Expression);
+        
+        mockSet.As<IQueryable<ApplicationUser>>()
+            .Setup(m => m.ElementType)
+            .Returns(usersQueryable.ElementType);
+        
+        mockSet.As<IQueryable<ApplicationUser>>()
+            .Setup(m => m.GetEnumerator())
+            .Returns(usersQueryable.GetEnumerator());
+
+        _mockUserManager.Setup(m => m.Users).Returns(mockSet.Object);
     }
 
     [Fact]
@@ -390,6 +469,8 @@ public class UserManagementTests
         };
         var roles = new List<string> { "Admin", "User" };
 
+        SetupMockUsers(user);
+
         _mockUserManager
             .Setup(x => x.FindByIdAsync(userId.ToString()))
             .ReturnsAsync(user);
@@ -423,6 +504,8 @@ public class UserManagementTests
     {
         // Arrange
         var userId = Guid.NewGuid();
+        SetupMockUsers(); // Empty users for "not found" scenario
+        
         _mockUserManager
             .Setup(x => x.FindByIdAsync(userId.ToString()))
             .ReturnsAsync((ApplicationUser?)null);
@@ -449,6 +532,8 @@ public class UserManagementTests
             Email = "test@example.com",
             UserName = "testuser"
         };
+
+        SetupMockUsers(user);
 
         _mockUserManager
             .Setup(x => x.FindByIdAsync(userId.ToString()))
@@ -491,6 +576,8 @@ public class UserManagementTests
             UserName = "testuser"
         };
 
+        SetupMockUsers(user);
+
         _mockUserManager
             .Setup(x => x.FindByIdAsync(userId.ToString()))
             .ReturnsAsync(user);
@@ -525,6 +612,8 @@ public class UserManagementTests
             Email = "test@example.com",
             UserName = "testuser"
         };
+
+        SetupMockUsers(user);
 
         _mockUserManager
             .Setup(x => x.FindByIdAsync(userId.ToString()))
@@ -562,6 +651,8 @@ public class UserManagementTests
         };
         var roles = new List<string> { "Admin", "User" };
 
+        SetupMockUsers(user);
+
         _mockUserManager
             .Setup(x => x.FindByIdAsync(userId.ToString()))
             .ReturnsAsync(user);
@@ -594,6 +685,8 @@ public class UserManagementTests
             Email = "test@example.com",
             UserName = "testuser"
         };
+
+        SetupMockUsers(user);
 
         _mockUserManager
             .Setup(x => x.FindByIdAsync(userId.ToString()))
@@ -649,6 +742,8 @@ public class UserManagementTests
             UserName = "testuser"
         };
 
+        SetupMockUsers(user);
+
         _mockUserManager
             .Setup(x => x.FindByIdAsync(userId.ToString()))
             .ReturnsAsync(user);
@@ -701,6 +796,8 @@ public class UserManagementTests
 
         var role1 = new ApplicationRole { Id = roleId1, Name = "Admin" };
         var role2 = new ApplicationRole { Id = roleId2, Name = "User" };
+
+        SetupMockUsers(user);
 
         _mockUserManager
             .Setup(x => x.FindByIdAsync(userId.ToString()))
@@ -827,6 +924,8 @@ public class UserManagementTests
 
         var role = new ApplicationRole { Id = roleId, Name = "Admin" };
 
+        SetupMockUsers(user);
+
         _mockUserManager
             .Setup(x => x.FindByIdAsync(userId.ToString()))
             .ReturnsAsync(user);
@@ -857,7 +956,7 @@ public class UserManagementTests
         Assert.Empty(errors);
         
         // Verify that it properly delegates to AssignRolesAsync by checking the underlying operations
-        _mockUserManager.Verify(x => x.FindByIdAsync(userId.ToString()), Times.Once);
+        // Note: FindByIdAsync is no longer used, Users.FirstOrDefaultAsync is used instead
         _mockUserManager.Verify(x => x.GetRolesAsync(user), Times.Once);
         _mockUserManager.Verify(x => x.RemoveFromRolesAsync(user, It.Is<IEnumerable<string>>(r => r.Contains("User"))), Times.Once);
         _mockUserManager.Verify(x => x.AddToRolesAsync(user, It.Is<IEnumerable<string>>(r => r.Contains("Admin"))), Times.Once);

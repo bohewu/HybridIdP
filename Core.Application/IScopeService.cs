@@ -6,9 +6,26 @@ namespace Core.Application
 {
     public interface IScopeService
     {
-        Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort);
+        /// <summary>
+        /// Get paginated, filtered, and sorted list of scopes.
+        /// </summary>
+        /// <param name="skip">Number of records to skip</param>
+        /// <param name="take">Number of records to take</param>
+        /// <param name="search">Search term</param>
+        /// <param name="sort">Sort field and direction</param>
+        /// <param name="ownerPersonId">Optional: Filter by owner PersonId (for ApplicationManager role)</param>
+        Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerPersonId = null);
+        
         Task<ScopeSummary?> GetScopeByIdAsync(string id);
-        Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request);
+        
+        /// <summary>
+        /// Create a new scope.
+        /// </summary>
+        /// <param name="request">Scope creation request</param>
+        /// <param name="creatorUserId">The ApplicationUser ID creating this scope</param>
+        /// <param name="creatorPersonId">The Person ID owning this scope (for ownership tracking)</param>
+        Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request, Guid? creatorUserId = null, Guid? creatorPersonId = null);
+        
         Task<bool> UpdateScopeAsync(string id, UpdateScopeRequest request);
         Task<bool> DeleteScopeAsync(string id);
 
@@ -40,5 +57,10 @@ namespace Core.Application
         /// <param name="grantedScopes">Scopes explicitly granted/consented by the user (may be null/empty).</param>
         /// <returns>Classification result including partial grant indicator.</returns>
         ScopeClassificationResult ClassifyScopes(IEnumerable<string> requestedScopes, IEnumerable<ScopeSummary> availableScopes, IEnumerable<string>? grantedScopes);
+
+        /// <summary>
+        /// Check if a user (by PersonId) owns a specific scope.
+        /// </summary>
+        Task<bool> IsScopeOwnedByPersonAsync(string scopeId, Guid personId);
     }
 }

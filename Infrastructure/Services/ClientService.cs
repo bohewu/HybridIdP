@@ -1,7 +1,9 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Domain.Entities;
 using Core.Domain.Events;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using System.Security.Cryptography;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -13,11 +15,16 @@ public class ClientService : IClientService
 {
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IDomainEventPublisher _eventPublisher;
+    private readonly IApplicationDbContext _context;
 
-    public ClientService(IOpenIddictApplicationManager applicationManager, IDomainEventPublisher eventPublisher)
+    public ClientService(
+        IOpenIddictApplicationManager applicationManager, 
+        IDomainEventPublisher eventPublisher,
+        IApplicationDbContext context)
     {
         _applicationManager = applicationManager;
         _eventPublisher = eventPublisher;
+        _context = context;
     }
 
     public async Task<(IEnumerable<ClientSummary> items, int totalCount)> GetClientsAsync(
@@ -25,14 +32,33 @@ public class ClientService : IClientService
         int take,
         string? search,
         string? type,
-        string? sort)
+        string? sort,
+        Guid? ownerPersonId = null)
     {
         var summaries = new List<ClientSummary>();
+
+        // Get owned client IDs if filtering by owner
+        HashSet<string>? ownedClientIds = null;
+        if (ownerPersonId.HasValue)
+        {
+            ownedClientIds = (await _context.ClientOwnerships
+                .Where(co => co.CreatedByPersonId == ownerPersonId.Value)
+                .Select(co => co.ClientId)
+                .ToListAsync())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
 
         await foreach (var application in _applicationManager.ListAsync())
         {
             var id = await _applicationManager.GetIdAsync(application);
             var clientId = await _applicationManager.GetClientIdAsync(application);
+            
+            // Skip if filtering by owner and this client is not owned
+            if (ownedClientIds != null && !ownedClientIds.Contains(clientId!))
+            {
+                continue;
+            }
+            
             var displayName = await _applicationManager.GetDisplayNameAsync(application);
             var clientType = await _applicationManager.GetClientTypeAsync(application);
             var consentType = await _applicationManager.GetConsentTypeAsync(application);
@@ -133,7 +159,7 @@ public class ClientService : IClientService
         };
     }
 
-    public async Task<CreateClientResponse> CreateClientAsync(CreateClientRequest request)
+    public async Task<CreateClientResponse> CreateClientAsync(CreateClientRequest request, Guid? creatorUserId = null, Guid? creatorPersonId = null)
     {
         if (string.IsNullOrWhiteSpace(request.ClientId))
         {
@@ -261,6 +287,20 @@ public class ClientService : IClientService
 
         var application = await _applicationManager.CreateAsync(descriptor);
         var id = await _applicationManager.GetIdAsync(application);
+
+        // Create ownership record if creator info provided
+        if (creatorUserId.HasValue && creatorPersonId.HasValue)
+        {
+            var ownership = new ClientOwnership
+            {
+                ClientId = request.ClientId,
+                CreatedByUserId = creatorUserId.Value,
+                CreatedByPersonId = creatorPersonId.Value,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.ClientOwnerships.Add(ownership);
+            await _context.SaveChangesAsync(CancellationToken.None);
+        }
 
         // Publish domain event
         await _eventPublisher.PublishAsync(new ClientCreatedEvent(id!, request.ClientId));
@@ -442,5 +482,24 @@ public class ClientService : IClientService
         await _eventPublisher.PublishAsync(new ClientSecretChangedEvent(id.ToString(), clientId!));
 
         return newSecret;
+    }
+
+    public async Task<bool> IsClientOwnedByPersonAsync(Guid clientId, Guid personId)
+    {
+        // First get the clientId string from the application
+        var application = await _applicationManager.FindByIdAsync(clientId.ToString());
+        if (application == null)
+        {
+            return false;
+        }
+
+        var clientIdStr = await _applicationManager.GetClientIdAsync(application);
+        if (string.IsNullOrEmpty(clientIdStr))
+        {
+            return false;
+        }
+
+        return await _context.ClientOwnerships
+            .AnyAsync(co => co.ClientId == clientIdStr && co.CreatedByPersonId == personId);
     }
 }

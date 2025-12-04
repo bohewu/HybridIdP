@@ -19,6 +19,8 @@ public interface IApplicationDbContext
     DbSet<AuditEvent> AuditEvents { get; }
     DbSet<UserSession> UserSessions { get; }
     DbSet<Person> Persons { get; }
+    DbSet<ClientOwnership> ClientOwnerships { get; }
+    DbSet<ScopeOwnership> ScopeOwnerships { get; }
     // Add other DbSet properties for your domain entities here
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
