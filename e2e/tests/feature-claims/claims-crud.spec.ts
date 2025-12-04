@@ -96,9 +96,10 @@ test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page 
   // User Property Path field (required) - fourth text input in modal
   await modalForm.locator('input[type="text"]').nth(3).fill('CustomProperties.TestValue');
 
-  // Wait for submit button to be ready
-  const submitButton = modalForm.locator('button[type="submit"]');
-  await submitButton.waitFor({ state: 'visible', timeout: 5000 });
+  // Submit button is in the modal footer, outside the form element
+  // Use page-level selector with text filter for the save button
+  const submitButton = page.locator('button[type="submit"]').filter({ hasText: /save|儲存/i });
+  await submitButton.waitFor({ state: 'visible', timeout: 10000 });
   
   // Wait for form to process and submit
   const responsePromise = waitForApiResponse(page, '/api/admin/claims', {

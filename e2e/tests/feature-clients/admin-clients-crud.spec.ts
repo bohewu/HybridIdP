@@ -67,7 +67,13 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
   await page.check('input[id="gt:authorization_code"]');
 
   // Submit the form (Create Client)
-  await page.click('button[type="submit"]');
+  // Click submit and wait for both the POST and the subsequent GET (list refresh)
+  const [postResponse] = await Promise.all([
+    page.waitForResponse(resp => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST'),
+    page.click('button[type="submit"]')
+  ]);
+  
+  expect(postResponse.ok()).toBeTruthy();
 
   // Close secret modal if shown
   const closeBtn = page.locator('button:has-text("Close")');
@@ -75,13 +81,17 @@ test('Admin - Clients CRUD (create, update, delete client)', async ({ page }) =>
     await closeBtn.click();
   }
 
-  // Wait a moment for modal to close
-  await page.waitForTimeout(1000);
+  // Wait for the list refresh GET request after modal closes
+  await page.waitForResponse(resp => 
+    resp.url().includes('/api/admin/clients') && 
+    resp.request().method() === 'GET' &&
+    resp.url().includes('skip=') // Ensure it's the paginated list endpoint
+  , { timeout: 10000 });
 
-  // Wait for the client to appear in the list using improved timing helper
+  // Now search for the client in the list using improved timing helper
   const found = await waitForListItemWithRetry(page, 'clients', clientId, { 
     listSelector: 'ul[role="list"], table tbody', 
-    timeout: 30000 
+    timeout: 15000 
   });
   
   expect(found).not.toBeNull();

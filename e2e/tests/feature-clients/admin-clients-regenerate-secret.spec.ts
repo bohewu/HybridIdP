@@ -37,16 +37,13 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   await page.check('input[id="gt:authorization_code"]');
   await page.click('button[type="submit"]');
 
-  // Wait for secret modal to appear and render
-  await page.waitForSelector('div.fixed', { timeout: 10000, state: 'visible' });
-  await page.waitForTimeout(1000); // Allow modal animation to complete
-  
-  // Wait for any input to appear in the modal - try multiple selectors
-  const secretInput = page.locator('div.fixed input[readonly], div.fixed input[type="text"][readonly], div.fixed input.font-mono').first();
-  await secretInput.waitFor({ state: 'visible', timeout: 10000 });
+  // Wait for SecretDisplayModal to appear
+  // The input has classes: "block w-full ... font-mono" and attributes: type="text" readonly
+  await page.waitForSelector('input[type="text"][readonly].font-mono', { timeout: 10000, state: 'visible' });
+  const secretInput = page.locator('input[type="text"][readonly].font-mono');
+  await expect(secretInput).toBeVisible();
 
   // Read the generated client secret from modal
-  await expect(secretInput).toBeVisible({ timeout: 5000 });
   const firstSecret = await secretInput.inputValue();
   expect(firstSecret.length).toBeGreaterThan(16);
 
@@ -66,13 +63,10 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   const actionResult = await adminHelpers.searchAndClickAction(page, 'clients', clientId, 'Regenerate', { listSelector: 'ul[role="list"], table tbody', timeout: 20000 });
   expect(actionResult.clicked).toBeTruthy();
   
-  // Wait for modal and secret input to appear
-  await page.waitForSelector('div.fixed', { timeout: 10000, state: 'visible' });
-  await page.waitForTimeout(500); // Allow modal animation
-  
-  // Try multiple selectors for the secret input (modal structure may vary)
-  const newSecretInput = page.locator('div.fixed input[readonly]').first();
-  await expect(newSecretInput).toBeVisible({ timeout: 10000 });
+  // Wait for the SecretDisplayModal to appear with the regenerated secret
+  await page.waitForSelector('input[type="text"][readonly].font-mono', { timeout: 10000, state: 'visible' });
+  const newSecretInput = page.locator('input[type="text"][readonly].font-mono');
+  await expect(newSecretInput).toBeVisible();
   const regenerated = await newSecretInput.inputValue();
   expect(regenerated.length).toBeGreaterThan(16);
   expect(regenerated).not.toBe(firstSecret);
