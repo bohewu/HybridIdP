@@ -38,8 +38,8 @@ test.describe('Phase 11.6 - Linked Accounts Page', () => {
       // Verify page title
       await expect(page.locator('h1')).toContainText('鏈結帳號');
       
-      // Verify description
-      await expect(page.locator('p.text-muted')).toContainText('管理您的鏈結帳號');
+      // Verify description (use first p.text-muted which is the page description)
+      await expect(page.locator('p.text-muted').first()).toContainText('管理您的鏈結帳號');
     });
 
     test('should display linked accounts list', async ({ page }) => {
