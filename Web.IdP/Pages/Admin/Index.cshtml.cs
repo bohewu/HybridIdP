@@ -9,14 +9,9 @@ namespace Web.IdP.Pages.Admin;
 [Authorize(Policy = "HasAnyAdminAccess")]
 public class IndexModel : PageModel
 {
-    public IActionResult OnGet()
+    public void OnGet()
     {
-        // Redirect ApplicationManager (non-Admin) users to their own dashboard
-        if (User.IsInRole(AuthConstants.Roles.ApplicationManager) && !User.IsInRole(AuthConstants.Roles.Admin))
-        {
-            return RedirectToPage("/ApplicationManager/Index");
-        }
-        
-        return Page();
+        // Users access this page via menu navigation from index
+        // Authorization policy ensures only users with admin permissions can access
     }
 }

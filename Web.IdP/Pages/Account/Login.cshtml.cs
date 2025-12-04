@@ -144,40 +144,9 @@ public class LoginModel : PageModel
                 await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
                 _logger.LogInformation("User '{UserName}' signed in successfully.", result.User!.UserName);
                 
-                // Get user roles to determine redirect
-                var userRoles = await _userManager.GetRolesAsync(result.User!);
-                
-                if (userRoles.Count == 0)
-                {
-                    // No roles assigned - deny access
-                    await _signInManager.SignOutAsync();
-                    _logger.LogWarning("User '{UserName}' has no assigned roles. Access denied.", result.User!.UserName);
-                    ModelState.AddModelError(string.Empty, _localizer["NoRolesAssigned"]);
-                    return Page();
-                }
-                
-                // Determine redirect based on role (Admin takes precedence)
-                if (returnUrl != Url.Content("~/"))
-                {
-                    // If there's a specific return URL, use it
-                    return LocalRedirect(returnUrl);
-                }
-                else
-                {
-                    // Default redirect based on role priority: Admin > ApplicationManager > default
-                    if (userRoles.Contains(Core.Domain.Constants.AuthConstants.Roles.Admin))
-                    {
-                        return RedirectToPage("/Admin/Index");
-                    }
-                    else if (userRoles.Contains(Core.Domain.Constants.AuthConstants.Roles.ApplicationManager))
-                    {
-                        return RedirectToPage("/ApplicationManager/Index");
-                    }
-                    else
-                    {
-                        return LocalRedirect(returnUrl);
-                    }
-                }
+                // Always redirect to returnUrl (default is ~/ index page)
+                // Users will navigate to Admin/ApplicationManager portals via menu
+                return LocalRedirect(returnUrl);
 
             case LoginStatus.LockedOut:
                 _logger.LogWarning("Login failed for user '{Login}': Account is locked out.", Input.Login);
