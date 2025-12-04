@@ -23,7 +23,23 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\cleanup-users-mssql.ps1
 - Before running Identity Verification tests
 - When you see "Person not found" or "User already exists" errors
 
-### 2. Clean Users and Persons (PostgreSQL)
+### 2. Clean Claims (MSSQL)
+```powershell
+cd C:\repos\HybridIdP
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\cleanup-claims-mssql.ps1
+```
+
+**What it does:**
+- Removes all test claims with `e2e_` prefix from `UserClaims` table
+- Cleans up related `ScopeClaims` references first
+- Shows count of claims before and after cleanup
+
+**When to use:**
+- Before running Claims CRUD tests
+- When you see "Claim already exists" errors
+- To remove accumulated test claim data
+
+### 3. Clean Users and Persons (PostgreSQL)
 ```powershell
 cd C:\repos\HybridIdP
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\cleanup-users-postgres.ps1
