@@ -34,15 +34,29 @@
     hideConsent();
   }
 
-  document.addEventListener('DOMContentLoaded', function(){
+  function showBanner(){
     var consent = getCookie('cookie_consent');
     if (!consent){
       var container = document.createElement('div');
       container.innerHTML = document.getElementById('cookie-consent-template').innerHTML;
-      document.body.appendChild(container);
-      document.getElementById('cookie-consent-accept').addEventListener('click', accept);
-      document.getElementById('cookie-consent-decline').addEventListener('click', decline);
-      document.getElementById('cookie-consent-close').addEventListener('click', hideConsent);
+      // Prepend so it appears quickly (helpful on login page)
+      if (document.body.firstChild) document.body.insertBefore(container, document.body.firstChild);
+      else document.body.appendChild(container);
+      var a = document.getElementById('cookie-consent-accept');
+      var d = document.getElementById('cookie-consent-decline');
+      var c = document.getElementById('cookie-consent-close');
+      if (a) a.addEventListener('click', accept);
+      if (d) d.addEventListener('click', decline);
+      if (c) c.addEventListener('click', hideConsent);
     }
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    showBanner();
   });
+
+  // If script loaded after DOMContentLoaded, try to show immediately
+  if (document.readyState === 'interactive' || document.readyState === 'complete'){
+    try { showBanner(); } catch(e){}
+  }
 })();

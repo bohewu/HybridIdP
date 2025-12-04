@@ -1,9 +1,9 @@
 @* Simple cookie consent partial. It expects the JS template below to be present when DOMContentLoaded *@
 <div id="cookie-consent-template" style="display:none">
-  <div id="cookie-consent-banner">
+  <div id="cookie-consent-banner" role="dialog" aria-live="polite" aria-label="Cookie 同意提示">
     <div>
-      <strong>Cookie 使用與同意</strong>
-      <p class="small text-muted">我們使用 Cookie 提供最佳體驗。請選擇是否同意非必要 Cookie。</p>
+      <strong>Cookie 與隱私</strong>
+      <p class="small text-muted">我們只使用必要的 Cookie 以維持登入與安全。非必要 Cookie 僅在您同意後啟用。系統目前不使用第三方分析 Cookie。</p>
       <div class="cc-actions">
         <button id="cookie-consent-decline" class="btn btn-outline-secondary btn-sm">拒絕</button>
         <button id="cookie-consent-accept" class="btn btn-primary btn-sm">接受</button>
