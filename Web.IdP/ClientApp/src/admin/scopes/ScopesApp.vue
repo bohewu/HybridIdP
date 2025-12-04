@@ -133,8 +133,8 @@ const handlePageSizeChange = (newSize) => {
 }
 
 onMounted(async () => {
-  // Load permissions
-  await permissionService.loadPermissions()
+  // Force reload permissions to ensure fresh data (cache might be stale after login)
+  await permissionService.reloadPermissions()
   
   canRead.value = permissionService.hasPermission(Permissions.Scopes.READ)
   canCreate.value = permissionService.hasPermission(Permissions.Scopes.CREATE)
