@@ -45,11 +45,9 @@
                             @{
                                 // Get user permissions for menu visibility
                                 var userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User);
-                                var hasAdminPermissions = User.IsInRole(Roles.Admin) || 
-                                    userPermissions.Contains(Permissions.Users.Read) ||
-                                    userPermissions.Contains(Permissions.Roles.Read) ||
-                                    userPermissions.Contains(Permissions.Settings.Read);
+                                var hasAdminPermissions = User.IsInRole(Roles.Admin);
                                 var hasClientScopePermissions = 
+                                    User.IsInRole(Roles.ApplicationManager) ||
                                     userPermissions.Contains(Permissions.Clients.Read) ||
                                     userPermissions.Contains(Permissions.Scopes.Read);
                             }

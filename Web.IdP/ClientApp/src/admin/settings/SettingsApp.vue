@@ -15,8 +15,8 @@ const error = ref(null)
 onMounted(async () => {
   try {
     await permissionService.loadPermissions()
-    hasReadPermission.value = permissionService.hasPermission('Permissions.Settings.Read')
-    hasUpdatePermission.value = permissionService.hasPermission('Permissions.Settings.Update')
+    hasReadPermission.value = permissionService.hasPermission(Permissions.Settings.Read)
+    hasUpdatePermission.value = permissionService.hasPermission(Permissions.Settings.Update)
   } catch (err) {
     console.error('Failed to load permissions:', err)
     error.value = t('admin.settings.loadingError', { message: err.message })

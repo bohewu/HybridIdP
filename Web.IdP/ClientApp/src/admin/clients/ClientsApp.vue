@@ -73,7 +73,7 @@ const fetchClients = async () => {
 const handleCreate = () => {
   if (!canCreate.value) {
     deniedMessage.value = t('clients.accessDenied.create')
-    deniedPermission.value = Permissions.Clients.CREATE
+    deniedPermission.value = Permissions.Clients.Create
     showAccessDenied.value = true
     return
   }
@@ -84,7 +84,7 @@ const handleCreate = () => {
 const handleEdit = async (client) => {
   if (!canUpdate.value) {
     deniedMessage.value = t('clients.accessDenied.update')
-    deniedPermission.value = Permissions.Clients.UPDATE
+    deniedPermission.value = Permissions.Clients.Update
     showAccessDenied.value = true
     return
   }
@@ -108,7 +108,7 @@ const handleEdit = async (client) => {
 const handleDelete = async (clientId) => {
   if (!canDelete.value) {
     deniedMessage.value = t('clients.accessDenied.delete')
-    deniedPermission.value = Permissions.Clients.DELETE
+    deniedPermission.value = Permissions.Clients.Delete
     showAccessDenied.value = true
     return
   }
@@ -156,14 +156,14 @@ onMounted(async () => {
   // Force reload permissions to ensure fresh data (cache might be stale after login)
   await permissionService.reloadPermissions()
   
-  canRead.value = permissionService.hasPermission(Permissions.Clients.READ)
-  canCreate.value = permissionService.hasPermission(Permissions.Clients.CREATE)
-  canUpdate.value = permissionService.hasPermission(Permissions.Clients.UPDATE)
-  canDelete.value = permissionService.hasPermission(Permissions.Clients.DELETE)
+  canRead.value = permissionService.hasPermission(Permissions.Clients.Read)
+  canCreate.value = permissionService.hasPermission(Permissions.Clients.Create)
+  canUpdate.value = permissionService.hasPermission(Permissions.Clients.Update)
+  canDelete.value = permissionService.hasPermission(Permissions.Clients.Delete)
   
   if (!canRead.value) {
     deniedMessage.value = 'You do not have permission to view clients.'
-    deniedPermission.value = Permissions.Clients.READ
+    deniedPermission.value = Permissions.Clients.Read
     showAccessDenied.value = true
     return
   }

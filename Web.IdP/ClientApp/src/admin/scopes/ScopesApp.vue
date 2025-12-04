@@ -66,7 +66,7 @@ const fetchScopes = async () => {
 const handleCreate = () => {
   if (!canCreate.value) {
     deniedMessage.value = t('scopes.accessDenied.create')
-    deniedPermission.value = Permissions.Scopes.CREATE
+    deniedPermission.value = Permissions.Scopes.Create
     showAccessDenied.value = true
     return
   }
@@ -77,7 +77,7 @@ const handleCreate = () => {
 const handleEdit = (scope) => {
   if (!canUpdate.value) {
     deniedMessage.value = t('scopes.accessDenied.update')
-    deniedPermission.value = Permissions.Scopes.UPDATE
+    deniedPermission.value = Permissions.Scopes.Update
     showAccessDenied.value = true
     return
   }
@@ -85,10 +85,10 @@ const handleEdit = (scope) => {
   showForm.value = true
 }
 
-const handleDelete = async (scopeName) => {
+const handleDelete = async (scopeId) => {
   if (!canDelete.value) {
     deniedMessage.value = t('scopes.accessDenied.delete')
-    deniedPermission.value = Permissions.Scopes.DELETE
+    deniedPermission.value = Permissions.Scopes.Delete
     showAccessDenied.value = true
     return
   }
@@ -136,14 +136,14 @@ onMounted(async () => {
   // Force reload permissions to ensure fresh data (cache might be stale after login)
   await permissionService.reloadPermissions()
   
-  canRead.value = permissionService.hasPermission(Permissions.Scopes.READ)
-  canCreate.value = permissionService.hasPermission(Permissions.Scopes.CREATE)
-  canUpdate.value = permissionService.hasPermission(Permissions.Scopes.UPDATE)
-  canDelete.value = permissionService.hasPermission(Permissions.Scopes.DELETE)
+  canRead.value = permissionService.hasPermission(Permissions.Scopes.Read)
+  canCreate.value = permissionService.hasPermission(Permissions.Scopes.Create)
+  canUpdate.value = permissionService.hasPermission(Permissions.Scopes.Update)
+  canDelete.value = permissionService.hasPermission(Permissions.Scopes.Delete)
   
   if (!canRead.value) {
     deniedMessage.value = 'You do not have permission to view scopes.'
-    deniedPermission.value = Permissions.Scopes.READ
+    deniedPermission.value = Permissions.Scopes.Read
     showAccessDenied.value = true
     return
   }
