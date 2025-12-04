@@ -185,8 +185,14 @@ const handleVerifyIdentity = async (person) => {
 }
 
 const handleFormSave = async () => {
+  const isCreateMode = !selectedPerson.value
   showForm.value = false
   selectedPerson.value = null
+  // Only reset search and page when creating new person, not when editing
+  if (isCreateMode) {
+    search.value = ''
+    page.value = 1
+  }
   await fetchPersons()
 }
 
