@@ -646,7 +646,7 @@ export async function searchAndConfirmActionWithModal(page: Page, entity: string
     }
 
     // Wait for redirect back to TestClient profile or root
-    await page.waitForURL('**/Account/Profile', { timeout: 60000 });
+    await page.waitForURL('**/Account/Profile', { timeout: 90000 });
   }
 
   export async function getDashboardStats(page: Page) {

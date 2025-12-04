@@ -129,7 +129,9 @@ test.describe('Scope Authorization Flow - Admin UI Integration', () => {
       console.log('[TEST] Successfully verified that required scope appears as disabled and checked on consent page');
     } finally {
       // Cleanup: restore original required scopes (only openid)
-      await scopeHelpers.setClientRequiredScopes(page, clientGuid, ['openid']);
+      if (page && !page.isClosed()) {
+        await scopeHelpers.setClientRequiredScopes(page, clientGuid, ['openid']);
+      }
       await userContext.close().catch(() => {});
     }
   });

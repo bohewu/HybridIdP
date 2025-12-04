@@ -171,20 +171,22 @@ test('Admin - Claims CRUD (create, update, delete custom claim)', async ({ page 
     await expect(claimsTable).not.toContainText(claimName, { timeout: 10000 });
   } finally {
     // Restore original Administrator role permissions
-    await page.evaluate(async (args) => {
-      const roleDetailResp = await fetch(`/api/admin/roles/${args.roleId}`);
-      const roleDetail = await roleDetailResp.json();
-      
-      await fetch(`/api/admin/roles/${args.roleId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: roleDetail.name,
-          description: roleDetail.description,
-          permissions: args.originalPerms
-        })
-      });
-    }, { roleId: adminRoleId, originalPerms: originalPermissions });
+    if (page && !page.isClosed()) {
+      await page.evaluate(async (args) => {
+        const roleDetailResp = await fetch(`/api/admin/roles/${args.roleId}`);
+        const roleDetail = await roleDetailResp.json();
+        
+        await fetch(`/api/admin/roles/${args.roleId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: roleDetail.name,
+            description: roleDetail.description,
+            permissions: args.originalPerms
+          })
+        });
+      }, { roleId: adminRoleId, originalPerms: originalPermissions });
+    }
   }
 });
 
