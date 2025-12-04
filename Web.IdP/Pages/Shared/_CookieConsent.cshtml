@@ -1,0 +1,17 @@
+@* Simple cookie consent partial. It expects the JS template below to be present when DOMContentLoaded *@
+<div id="cookie-consent-template" style="display:none">
+  <div id="cookie-consent-banner">
+    <div>
+      <strong>Cookie 使用與同意</strong>
+      <p class="small text-muted">我們使用 Cookie 提供最佳體驗。請選擇是否同意非必要 Cookie。</p>
+      <div class="cc-actions">
+        <button id="cookie-consent-decline" class="btn btn-outline-secondary btn-sm">拒絕</button>
+        <button id="cookie-consent-accept" class="btn btn-primary btn-sm">接受</button>
+        <a id="cookie-consent-close" href="#" class="btn btn-link btn-sm">關閉</a>
+      </div>
+      <div class="mt-2"><a href="/docs/privacy.html" target="_blank">隱私權政策</a></div>
+    </div>
+  </div>
+</div>
+<link rel="stylesheet" href="~/css/cookie-consent.css" asp-append-version="true" />
+<script src="~/js/cookie-consent.js" asp-append-version="true"></script>
