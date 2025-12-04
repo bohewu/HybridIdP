@@ -144,7 +144,17 @@ class PermissionService {
 // Create singleton instance
 const permissionService = new PermissionService();
 
-// Permission constants (should match backend)
+/**
+ * Permission constants (MUST match backend)
+ * 
+ * ⚠️ IMPORTANT: Use PascalCase keys, NOT UPPERCASE!
+ * ✅ Correct: Permissions.Clients.Read
+ * ❌ Wrong:   Permissions.Clients.READ
+ * 
+ * The values are lowercase to match backend format: "clients.read"
+ * 
+ * @type {Object.<string, Object.<string, string>>}
+ */
 export const Permissions = {
   Clients: {
     Read: 'clients.read',

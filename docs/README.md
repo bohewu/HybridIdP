@@ -53,6 +53,20 @@
 - ⏱️ **閱讀時間：** 3-5 分鐘
 - 📌 **更新頻率：** 新功能實作後更新
 
+### 實作權限控制功能
+
+**查看 [`PERMISSION_SYSTEM.md`](./PERMISSION_SYSTEM.md)**
+- 📖 **用途：** Permission 常數使用規範、命名慣例、防錯措施
+- 🎯 **適合：** 實作權限檢查、新增 permission、troubleshooting Access Denied 問題
+- ⏱️ **閱讀時間：** 5-8 分鐘
+- ⚠️ **重要：** Permission 常數必須使用 PascalCase（`Permissions.Clients.Read`），絕不能用 UPPERCASE（`Permissions.Clients.READ` 會是 undefined）
+- 📌 **包含內容：**
+  - ✅ 正確用法與 ❌ 錯誤用法範例
+  - 所有可用的 Permission 列表
+  - Vue 元件中的常見模式
+  - Troubleshooting 指南
+  - 防護措施說明（ESLint、TypeScript、單元測試）
+
 ### 設定資料庫
 
 **查看 [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md)**
@@ -89,6 +103,7 @@
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 架構決策與技術棧詳解 | 了解架構原因時 |
 | [`FEATURES_AND_CAPABILITIES.md`](./FEATURES_AND_CAPABILITIES.md) | 功能細節與未來增強 | 實作特定功能時 |
 | [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) | 資料庫設定與部署 | 設定環境、切換資料庫、Production 部署時 |
+| [`PERMISSION_SYSTEM.md`](./PERMISSION_SYSTEM.md) | Permission 系統規範與防錯 | 實作權限檢查、troubleshooting Access Denied |
 | `docs/examples/` | 程式碼範例 | 實作時參考 |
 
 ---
