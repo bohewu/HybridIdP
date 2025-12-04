@@ -13,12 +13,12 @@ public class ClientsModel : PageModel
         if (User.IsInRole(AuthConstants.Roles.Admin))
         {
             // Use default _AdminLayout (via _ViewStart.cshtml)
-            // No need to set Layout explicitly
+            ViewData["DynamicLayout"] = "_AdminLayout";
         }
         else if (User.IsInRole(AuthConstants.Roles.ApplicationManager))
         {
             // Use ApplicationManager layout for ApplicationManager users
-            Layout = "~/Pages/Shared/_ApplicationManagerLayout.cshtml";
+            ViewData["DynamicLayout"] = "~/Pages/Shared/_ApplicationManagerLayout.cshtml";
         }
     }
 }

@@ -4,6 +4,10 @@
 @{
     ViewData["Title"] = Localizer["Scopes"].Value;
     ViewData["Breadcrumb"] = Localizer["Scopes"].Value;
+    if (ViewData["DynamicLayout"] != null)
+    {
+        Layout = ViewData["DynamicLayout"]?.ToString();
+    }
 }
 
 <div id="app" class="vue-app-container"></div>
