@@ -11,6 +11,16 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Phase 11.6 - Authorizations Page', () => {
   test.beforeEach(async ({ page }) => {
+    // Set locale to zh-TW for Chinese language tests
+    await page.context().addCookies([{
+      name: '.AspNetCore.Culture',
+      value: 'c=zh-TW|uic=zh-TW',
+      domain: 'localhost',
+      path: '/',
+      secure: true,
+      httpOnly: false
+    }]);
+    
     // Login as admin user
     await page.goto('https://localhost:7035/Account/Login');
     await page.fill('#Input_Login', 'admin@hybridauth.local');
