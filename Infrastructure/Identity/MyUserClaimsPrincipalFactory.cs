@@ -78,6 +78,12 @@ public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Applicati
 
         var identity = await base.GenerateClaimsAsync(user);
 
+        // Add PersonId claim if user has an associated Person
+        if (user.PersonId.HasValue)
+        {
+            identity.AddClaim(new Claim(AuthConstants.Claims.PersonId, user.PersonId.Value.ToString()));
+        }
+
         // Ensure preferred_username claim for downstream clients
         var preferredUsername = user.Email ?? user.UserName ?? string.Empty;
         if (!string.IsNullOrEmpty(preferredUsername) && !identity.HasClaim(c => c.Type == AuthConstants.Claims.PreferredUsername))

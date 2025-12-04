@@ -4,12 +4,14 @@ using Core.Domain.Constants;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Web.IdP.Api;
 
 /// <summary>
 /// Scopes CRUD endpoints split from AdminController.
 /// Routes preserved: api/admin/scopes/*
+/// Admin sees all scopes, ApplicationManager sees only their own scopes.
 /// </summary>
 [ApiController]
 [Route("api/admin/scopes")]
@@ -25,6 +27,7 @@ public class ScopesController : ControllerBase
 
     /// <summary>
     /// Get all OIDC scopes with filtering, sorting, and pagination.
+    /// Admin sees all scopes, ApplicationManager sees only their own scopes.
     /// </summary>
     [HttpGet]
     [HasPermission(Permissions.Scopes.Read)]
@@ -34,7 +37,10 @@ public class ScopesController : ControllerBase
         [FromQuery] string? search = null,
         [FromQuery] string? sort = null)
     {
-        var (items, totalCount) = await _scopeService.GetScopesAsync(skip, take, search, sort);
+        // Admin sees all scopes, non-Admin sees only their own
+        Guid? ownerPersonId = IsAdmin() ? null : GetCurrentPersonId();
+        
+        var (items, totalCount) = await _scopeService.GetScopesAsync(skip, take, search, sort, ownerPersonId);
         return Ok(new { items, totalCount });
     }
 
@@ -67,7 +73,10 @@ public class ScopesController : ControllerBase
 
         try
         {
-            var result = await _scopeService.CreateScopeAsync(request);
+            var userId = GetCurrentUserId();
+            var personId = GetCurrentPersonId();
+            
+            var result = await _scopeService.CreateScopeAsync(request, userId, personId);
             return CreatedAtAction(nameof(Get), new { id = result.Id }, new
             {
                 id = result.Id,
@@ -166,4 +175,25 @@ public class ScopesController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    #region Helper Methods
+
+    private Guid? GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
+    private Guid? GetCurrentPersonId()
+    {
+        var personIdClaim = User.FindFirst(AuthConstants.Claims.PersonId)?.Value;
+        return Guid.TryParse(personIdClaim, out var personId) ? personId : null;
+    }
+
+    private bool IsAdmin()
+    {
+        return User.IsInRole(AuthConstants.Roles.Admin);
+    }
+
+    #endregion
 }

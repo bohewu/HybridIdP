@@ -1,8 +1,10 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Domain.Constants;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using DomainPermissions = Core.Domain.Constants.Permissions;
 
 namespace Web.IdP.Api;
@@ -28,6 +30,7 @@ public class ClientsController : ControllerBase
 
     /// <summary>
     /// Get OIDC clients with server-side paging, filtering and sorting.
+    /// Admin sees all clients, ApplicationManager sees only their own clients.
     /// </summary>
     [HttpGet]
     [HasPermission(DomainPermissions.Clients.Read)]
@@ -38,7 +41,10 @@ public class ClientsController : ControllerBase
         [FromQuery] string? type = null,
         [FromQuery] string? sort = null)
     {
-        var (items, totalCount) = await _clientService.GetClientsAsync(skip, take, search, type, sort);
+        // Admin sees all clients, non-Admin sees only their own
+        Guid? ownerPersonId = IsAdmin() ? null : GetCurrentPersonId();
+        
+        var (items, totalCount) = await _clientService.GetClientsAsync(skip, take, search, type, sort, ownerPersonId);
         return Ok(new { items, totalCount });
     }
 
@@ -82,7 +88,10 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            var response = await _clientService.CreateClientAsync(request);
+            var userId = GetCurrentUserId();
+            var personId = GetCurrentPersonId();
+            
+            var response = await _clientService.CreateClientAsync(request, userId, personId);
             return CreatedAtAction(nameof(GetClient), new { id = response.Id }, new
             {
                 id = response.Id,
@@ -295,6 +304,27 @@ public class ClientsController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    #region Helper Methods
+
+    private Guid? GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
+    private Guid? GetCurrentPersonId()
+    {
+        var personIdClaim = User.FindFirst(AuthConstants.Claims.PersonId)?.Value;
+        return Guid.TryParse(personIdClaim, out var personId) ? personId : null;
+    }
+
+    private bool IsAdmin()
+    {
+        return User.IsInRole(AuthConstants.Roles.Admin);
+    }
+
+    #endregion
 }
 
 public class SetAllowedScopesRequest

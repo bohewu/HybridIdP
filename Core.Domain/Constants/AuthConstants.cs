@@ -68,6 +68,11 @@ public static class AuthConstants
         /// Department claim for organizational grouping.
         /// </summary>
         public const string Department = "department";
+
+        /// <summary>
+        /// Person ID claim linking user to their Person record.
+        /// </summary>
+        public const string PersonId = "person_id";
     }
 
     /// <summary>
