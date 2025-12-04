@@ -12,8 +12,10 @@ public class PrivacyModel : PageModel
         _logger = logger;
     }
 
-    public void OnGet()
-    {
-    }
+    public IActionResult OnGet()
+        {
+            // Redirect to the public privacy page under /docs
+            return Redirect("/docs/privacy.html");
+        }
 }
 
