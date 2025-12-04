@@ -237,7 +237,7 @@ const getSortIcon = (field) => {
 
                   <!-- Manage Sessions button - show if canUpdate or canRead -->
                   <button
-                    v-if="canUpdate || canDelete || true" @click="emit('manage-sessions', user)"
+                    v-if="canUpdate || canRead" @click="emit('manage-sessions', user)"
                     class="inline-flex items-center px-3 py-1.5 border border-purple-300 text-purple-700 text-sm font-medium rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                     :title="$t('admin.users.manageSessions')"
                   >
