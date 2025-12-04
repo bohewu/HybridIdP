@@ -36,6 +36,30 @@ Prerequisites:
   - IdP: <https://localhost:7035>
   - TestClient: <https://localhost:7001>
 
+## ⚠️ Important: Clean Test Data Before Running Tests
+
+**Before running E2E tests, clean up accumulated test data to avoid conflicts and ensure consistent results.**
+
+Run cleanup scripts from the repository root:
+
+```powershell
+cd C:\repos\HybridIdP
+
+# Clean all test data (recommended)
+.\cleanup-users-mssql.ps1    # Remove test users/persons
+.\cleanup-claims-mssql.ps1   # Remove test claims (e2e_*)
+.\cleanup-roles-mssql.ps1    # Remove test roles (e2e_*)
+.\cleanup-scopes-mssql.ps1   # Remove test scopes (e2e_*, diag-scope_*)
+```
+
+**When to clean:**
+- Before running full test suite
+- Before running specific feature tests (People, Claims, Roles, Scopes, Clients)
+- When seeing "already exists" or "not found" errors
+- After failed test runs that left orphaned data
+
+See [TEST_DATA_CLEANUP.md](./TEST_DATA_CLEANUP.md) for detailed cleanup documentation.
+
 Check if apps are already running:
 
 PowerShell (recommended for this repo):

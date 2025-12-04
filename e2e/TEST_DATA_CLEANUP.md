@@ -55,7 +55,23 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\cleanup-roles-mssql.ps1
 - When you see "Role already exists" errors
 - To remove accumulated test role data
 
-### 4. Clean Users and Persons (PostgreSQL)
+### 4. Clean Scopes (MSSQL)
+```powershell
+cd C:\repos\HybridIdP
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\cleanup-scopes-mssql.ps1
+```
+
+**What it does:**
+- Removes all test scopes with `e2e_` or `diag-scope_` prefix from `OpenIddictScopes` table
+- Shows count of scopes before and after cleanup
+
+**When to use:**
+- Before running Scope management tests
+- Before running Client tests (since clients reference scopes)
+- When you see "Scope already exists" errors
+- To remove accumulated test scope data
+
+### 5. Clean Users and Persons (PostgreSQL)
 ```powershell
 cd C:\repos\HybridIdP
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\cleanup-users-postgres.ps1
