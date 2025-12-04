@@ -399,7 +399,10 @@ public class UserManagementService : IUserManagementService
         Guid userId,
         IEnumerable<string> roles)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await _userManager.Users
+            .Include(u => u.Person)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+            
         if (user == null)
         {
             return (false, new[] { "User not found" });
@@ -409,6 +412,16 @@ public class UserManagementService : IUserManagementService
         var rolesToRemove = currentRoles.Except(roles).ToList();
         var rolesToAdd = roles.Except(currentRoles).ToList();
 
+        // Get all sibling accounts (same PersonId) for role synchronization
+        List<ApplicationUser> siblingAccounts = new();
+        if (user.PersonId.HasValue)
+        {
+            siblingAccounts = await _userManager.Users
+                .Where(u => u.PersonId == user.PersonId.Value && u.Id != userId)
+                .ToListAsync();
+        }
+
+        // Remove roles from main user and siblings
         if (rolesToRemove.Any())
         {
             var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
@@ -416,14 +429,37 @@ public class UserManagementService : IUserManagementService
             {
                 return (false, removeResult.Errors.Select(e => e.Description));
             }
+
+            // Sync removal to siblings
+            foreach (var sibling in siblingAccounts)
+            {
+                var siblingCurrentRoles = await _userManager.GetRolesAsync(sibling);
+                var siblingRolesToRemove = siblingCurrentRoles.Intersect(rolesToRemove).ToList();
+                if (siblingRolesToRemove.Any())
+                {
+                    await _userManager.RemoveFromRolesAsync(sibling, siblingRolesToRemove);
+                }
+            }
         }
 
+        // Add roles to main user and siblings
         if (rolesToAdd.Any())
         {
             var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
             if (!addResult.Succeeded)
             {
                 return (false, addResult.Errors.Select(e => e.Description));
+            }
+
+            // Sync addition to siblings
+            foreach (var sibling in siblingAccounts)
+            {
+                var siblingCurrentRoles = await _userManager.GetRolesAsync(sibling);
+                var siblingRolesToAdd = rolesToAdd.Except(siblingCurrentRoles).ToList();
+                if (siblingRolesToAdd.Any())
+                {
+                    await _userManager.AddToRolesAsync(sibling, siblingRolesToAdd);
+                }
             }
 
             // Publish events for added roles

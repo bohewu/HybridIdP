@@ -43,19 +43,23 @@ public static class DataSeeder
 
     private static async Task SeedRolesAsync(RoleManager<ApplicationRole> roleManager)
     {
-        string[] roles = { AuthConstants.Roles.Admin, AuthConstants.Roles.User };
+        var roles = new[]
+        {
+            new { Name = AuthConstants.Roles.Admin, Description = "Administrator with full system access", Permissions = string.Empty },
+            new { Name = AuthConstants.Roles.User, Description = "Standard user role", Permissions = string.Empty },
+            new { Name = AuthConstants.Roles.ApplicationManager, Description = "Application Manager - can manage OAuth clients and scopes they own", Permissions = "clients.read,clients.create,clients.update,clients.delete,scopes.read,scopes.create,scopes.update,scopes.delete" }
+        };
 
         foreach (var role in roles)
         {
-            if (!await roleManager.RoleExistsAsync(role))
+            if (!await roleManager.RoleExistsAsync(role.Name))
             {
                 await roleManager.CreateAsync(new ApplicationRole 
                 { 
-                    Name = role,
+                    Name = role.Name,
                     IsSystem = true,
-                    Description = role == AuthConstants.Roles.Admin 
-                        ? "Administrator with full system access" 
-                        : "Standard user role"
+                    Description = role.Description,
+                    Permissions = role.Permissions
                 });
             }
         }

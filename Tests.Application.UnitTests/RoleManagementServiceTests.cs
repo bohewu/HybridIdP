@@ -443,4 +443,67 @@ public class RoleManagementServiceTests
             e.PermissionChanges.Contains("users.read") && 
             e.PermissionChanges.Contains("roles.read"))), Times.Once);
     }
+
+    [Fact]
+    public async Task DeleteRole_ApplicationManagerSystemRole_ShouldFail()
+    {
+        // Arrange
+        var appManagerRole = new ApplicationRole 
+        { 
+            Id = Guid.NewGuid(), 
+            Name = Core.Domain.Constants.AuthConstants.Roles.ApplicationManager, 
+            IsSystem = true 
+        };
+        var service = CreateService(new[] { appManagerRole }, out var roleMgr, out _, out _);
+        roleMgr.Setup(x => x.FindByIdAsync(appManagerRole.Id.ToString())).ReturnsAsync(appManagerRole);
+
+        // Act
+        var (success, errors) = await service.DeleteRoleAsync(appManagerRole.Id);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Cannot delete system roles", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DeleteRole_AdminSystemRole_ShouldFail()
+    {
+        // Arrange
+        var adminRole = new ApplicationRole 
+        { 
+            Id = Guid.NewGuid(), 
+            Name = Core.Domain.Constants.AuthConstants.Roles.Admin, 
+            IsSystem = true 
+        };
+        var service = CreateService(new[] { adminRole }, out var roleMgr, out _, out _);
+        roleMgr.Setup(x => x.FindByIdAsync(adminRole.Id.ToString())).ReturnsAsync(adminRole);
+
+        // Act
+        var (success, errors) = await service.DeleteRoleAsync(adminRole.Id);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Cannot delete system roles", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task DeleteRole_UserSystemRole_ShouldFail()
+    {
+        // Arrange
+        var userRole = new ApplicationRole 
+        { 
+            Id = Guid.NewGuid(), 
+            Name = Core.Domain.Constants.AuthConstants.Roles.User, 
+            IsSystem = true 
+        };
+        var service = CreateService(new[] { userRole }, out var roleMgr, out _, out _);
+        roleMgr.Setup(x => x.FindByIdAsync(userRole.Id.ToString())).ReturnsAsync(userRole);
+
+        // Act
+        var (success, errors) = await service.DeleteRoleAsync(userRole.Id);
+
+        // Assert
+        Assert.False(success);
+        Assert.Contains(errors, e => e.Contains("Cannot delete system roles", StringComparison.OrdinalIgnoreCase));
+    }
 }

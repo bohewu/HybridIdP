@@ -4,6 +4,7 @@ using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Infrastructure.Validators;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -14,21 +15,25 @@ namespace Infrastructure.Services;
 /// Phase 10.2: Person Service & API
 /// Phase 10.5: Added audit trail for all CRUD operations
 /// Phase 10.6: Added identity document validation and verification
+/// Phase 13: Added role synchronization for multi-account scenarios
 /// </summary>
 public class PersonService : IPersonService
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<PersonService> _logger;
     private readonly IAuditService _auditService;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public PersonService(
         IApplicationDbContext context,
         ILogger<PersonService> logger,
-        IAuditService auditService)
+        IAuditService auditService,
+        UserManager<ApplicationUser> userManager)
     {
         _context = context;
         _logger = logger;
         _auditService = auditService;
+        _userManager = userManager;
     }
 
     public async Task<Person?> GetPersonByIdAsync(Guid personId)
@@ -360,6 +365,29 @@ public class PersonService : IPersonService
         user.PersonId = personId;
         user.ModifiedAt = DateTime.UtcNow;
         user.ModifiedBy = modifiedBy;
+
+        // Sync roles from existing accounts in the same Person
+        var existingAccounts = await _context.Users
+            .Where(u => u.PersonId == personId && u.Id != userId)
+            .ToListAsync();
+            
+        if (existingAccounts.Any())
+        {
+            // Get roles from the first existing account to replicate
+            var sourceAccount = existingAccounts.First();
+            var sourceRoles = await _userManager.GetRolesAsync(sourceAccount);
+            if (sourceRoles.Any())
+            {
+                var currentUserRoles = await _userManager.GetRolesAsync(user);
+                var rolesToAdd = sourceRoles.Except(currentUserRoles).ToList();
+                if (rolesToAdd.Any())
+                {
+                    await _userManager.AddToRolesAsync(user, rolesToAdd);
+                    _logger.LogInformation("Synced {RoleCount} roles from existing Person accounts to user {UserId}: {Roles}", 
+                        rolesToAdd.Count, userId, string.Join(", ", rolesToAdd));
+                }
+            }
+        }
 
         await _context.SaveChangesAsync(CancellationToken.None);
 

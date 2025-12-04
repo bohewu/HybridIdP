@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Core.Domain.Events;
 using Infrastructure;
@@ -826,6 +827,193 @@ public class UserManagementServiceTests : IDisposable
 
         // Assert
         _mockUserManager.Verify(m => m.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+    }
+
+    #endregion
+
+    #region Person-Level Role Synchronization Tests
+
+    [Fact]
+    public async Task AssignRolesAsync_ShouldSyncRolesToSiblingAccounts_WhenPersonIdExists()
+    {
+        // Arrange - Create person with two ApplicationUsers
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789",
+            IdentityDocumentType = IdentityDocumentTypes.NationalId,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Persons.Add(person);
+        await _context.SaveChangesAsync();
+
+        var user1 = new ApplicationUser 
+        { 
+            Email = "john.google@test.com", 
+            UserName = "john.google",
+            PersonId = person.Id
+        };
+        var user2 = new ApplicationUser 
+        { 
+            Email = "john.microsoft@test.com", 
+            UserName = "john.microsoft",
+            PersonId = person.Id
+        };
+        await _userManager.CreateAsync(user1);
+        await _userManager.CreateAsync(user2);
+        
+        // Create roles
+        await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
+        await _roleManager.CreateAsync(new ApplicationRole { Name = "User" });
+
+        // Act - Assign Admin role to user1
+        var (success, errors) = await _service.AssignRolesAsync(user1.Id, new[] { "Admin" });
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        
+        // Verify both users have the Admin role
+        var user1Roles = await _userManager.GetRolesAsync(user1);
+        var user2Roles = await _userManager.GetRolesAsync(user2);
+        
+        Assert.Contains("Admin", user1Roles);
+        Assert.Contains("Admin", user2Roles);
+    }
+
+    [Fact]
+    public async Task AssignRolesAsync_ShouldRemoveRolesFromSiblingAccounts_WhenRoleRemoved()
+    {
+        // Arrange - Create person with two ApplicationUsers, both with Admin role
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Jane",
+            LastName = "Smith",
+            NationalId = "B987654321",
+            IdentityDocumentType = IdentityDocumentTypes.NationalId,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Persons.Add(person);
+        await _context.SaveChangesAsync();
+
+        var user1 = new ApplicationUser 
+        { 
+            Email = "jane.google@test.com", 
+            UserName = "jane.google",
+            PersonId = person.Id
+        };
+        var user2 = new ApplicationUser 
+        { 
+            Email = "jane.github@test.com", 
+            UserName = "jane.github",
+            PersonId = person.Id
+        };
+        await _userManager.CreateAsync(user1);
+        await _userManager.CreateAsync(user2);
+        
+        // Create roles
+        await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
+        await _roleManager.CreateAsync(new ApplicationRole { Name = "User" });
+        
+        // Assign Admin role to both
+        await _userManager.AddToRoleAsync(user1, "Admin");
+        await _userManager.AddToRoleAsync(user2, "Admin");
+
+        // Act - Remove Admin role from user1 by assigning only User role
+        var (success, errors) = await _service.AssignRolesAsync(user1.Id, new[] { "User" });
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        
+        // Verify both users lost Admin and have User
+        var user1Roles = await _userManager.GetRolesAsync(user1);
+        var user2Roles = await _userManager.GetRolesAsync(user2);
+        
+        Assert.DoesNotContain("Admin", user1Roles);
+        Assert.DoesNotContain("Admin", user2Roles);
+        Assert.Contains("User", user1Roles);
+        Assert.Contains("User", user2Roles);
+    }
+
+    [Fact]
+    public async Task AssignRolesAsync_ShouldNotSyncRoles_WhenUserHasNoPersonId()
+    {
+        // Arrange - Create user without PersonId
+        var user = new ApplicationUser 
+        { 
+            Email = "orphan@test.com", 
+            UserName = "orphan",
+            PersonId = null
+        };
+        await _userManager.CreateAsync(user);
+        
+        // Create role
+        await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
+
+        // Act - Assign Admin role
+        var (success, errors) = await _service.AssignRolesAsync(user.Id, new[] { "Admin" });
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        
+        // Verify user has the role
+        var userRoles = await _userManager.GetRolesAsync(user);
+        Assert.Contains("Admin", userRoles);
+    }
+
+    [Fact]
+    public async Task AssignRolesAsync_ShouldSyncMultipleRoles_WhenPersonHasThreeAccounts()
+    {
+        // Arrange - Create person with three ApplicationUsers
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Multi",
+            LastName = "Account",
+            NationalId = "C111222333",
+            IdentityDocumentType = IdentityDocumentTypes.NationalId,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Persons.Add(person);
+        await _context.SaveChangesAsync();
+
+        var user1 = new ApplicationUser { Email = "multi1@test.com", UserName = "multi1", PersonId = person.Id };
+        var user2 = new ApplicationUser { Email = "multi2@test.com", UserName = "multi2", PersonId = person.Id };
+        var user3 = new ApplicationUser { Email = "multi3@test.com", UserName = "multi3", PersonId = person.Id };
+        
+        await _userManager.CreateAsync(user1);
+        await _userManager.CreateAsync(user2);
+        await _userManager.CreateAsync(user3);
+        
+        // Create roles
+        await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
+        await _roleManager.CreateAsync(new ApplicationRole { Name = "User" });
+        await _roleManager.CreateAsync(new ApplicationRole { Name = Core.Domain.Constants.AuthConstants.Roles.ApplicationManager });
+
+        // Act - Assign multiple roles to user1
+        var (success, errors) = await _service.AssignRolesAsync(user1.Id, new[] { "Admin", Core.Domain.Constants.AuthConstants.Roles.ApplicationManager });
+
+        // Assert
+        Assert.True(success);
+        Assert.Empty(errors);
+        
+        // Verify all three users have both roles
+        var user1Roles = await _userManager.GetRolesAsync(user1);
+        var user2Roles = await _userManager.GetRolesAsync(user2);
+        var user3Roles = await _userManager.GetRolesAsync(user3);
+        
+        Assert.Contains("Admin", user1Roles);
+        Assert.Contains("Admin", user2Roles);
+        Assert.Contains("Admin", user3Roles);
+        
+        Assert.Contains(Core.Domain.Constants.AuthConstants.Roles.ApplicationManager, user1Roles);
+        Assert.Contains(Core.Domain.Constants.AuthConstants.Roles.ApplicationManager, user2Roles);
+        Assert.Contains(Core.Domain.Constants.AuthConstants.Roles.ApplicationManager, user3Roles);
     }
 
     #endregion

@@ -20,6 +20,11 @@ public static class AuthConstants
         /// Standard user role for regular authenticated users.
         /// </summary>
         public const string User = "User";
+        
+        /// <summary>
+        /// Application Manager role - can manage OAuth clients and scopes they own.
+        /// </summary>
+        public const string ApplicationManager = "ApplicationManager";
     }
 
     /// <summary>
