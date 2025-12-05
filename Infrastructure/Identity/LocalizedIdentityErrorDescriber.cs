@@ -7,7 +7,7 @@ namespace HybridIdP.Infrastructure.Identity
     {
         private readonly IStringLocalizer _localizer;
 
-        public LocalizedIdentityErrorDescriber(IStringLocalizer<Web.IdP.IdentityErrorResource> localizer)
+        public LocalizedIdentityErrorDescriber(IStringLocalizer<IdentityErrorResource> localizer)
         {
             _localizer = localizer;
         }
