@@ -15,17 +15,31 @@ function Get-AuthSession {
     $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
     
     try {
-        # Get the login page first (to get any tokens/cookies)
+        # Get the login page first (to get any tokens/cookies and hidden form fields)
         $response = Invoke-WebRequest -Uri $loginUrl -SessionVariable session -SkipCertificateCheck -ErrorAction Stop
-        
-        # Perform login
-        $loginBody = @{
-            "Input.Login" = $AdminEmail
-            "Input.Password" = $AdminPassword
-            "Input.RememberMe" = "false"
+
+        # Parse form inputs (including antiforgery token) and submit the form
+        $form = @{}
+        $inputPattern = @'
+<input\s+[^>]*name=["'](?<name>[^"']+)["'][^>]*value=["'](?<value>[^"']*)["'][^>]*>
+'@
+        foreach ($m in [regex]::Matches($response.Content, $inputPattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+            $n = $m.Groups['name'].Value; $v = $m.Groups['value'].Value
+            if (-not [string]::IsNullOrEmpty($n)) { $form[$n] = $v }
         }
-        
-        $response = Invoke-WebRequest -Uri $loginUrl -Method Post -Body $loginBody -SessionVariable session -SkipCertificateCheck -ErrorAction Stop
+
+        # Ensure our credentials are in the form (override defaults if present)
+        $form['Input.Login'] = $AdminEmail
+        $form['Input.Password'] = $AdminPassword
+        $form['Input.RememberMe'] = 'false'
+
+        # Submit the login form
+        $response = Invoke-WebRequest -Uri $loginUrl -Method Post -Body $form -WebSession $session -ContentType "application/x-www-form-urlencoded" -SkipCertificateCheck -ErrorAction Stop
+
+        # If response content still contains "Login" phrase, treat as failure
+        if ($response.Content -match '<title>.*Login.*</title>' -or $response.StatusCode -ge 400) {
+            throw "Login response indicates authentication did not succeed"
+        }
         
         return $session
     }
