@@ -60,8 +60,8 @@
   <data name="WelcomeBack" xml:space="preserve">
     <value>Welcome back!</value>
   </data>
-  <data name="BackToAppLauncher" xml:space="preserve">
-    <value>Back to App Launcher</value>
+  <data name="BackToHome" xml:space="preserve">
+    <value>Back to Home</value>
   </data>
   <data name="PrivacyPolicy" xml:space="preserve">
     <value>Privacy Policy</value>
