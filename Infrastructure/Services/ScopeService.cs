@@ -72,7 +72,8 @@ public class ScopeService : IScopeService
                 IconUrl = extension?.IconUrl,
                 IsRequired = extension?.IsRequired ?? false,
                 DisplayOrder = extension?.DisplayOrder ?? 0,
-                Category = extension?.Category
+                Category = extension?.Category,
+                IsPublic = extension?.IsPublic ?? false
             });
         }
         
@@ -135,7 +136,8 @@ public class ScopeService : IScopeService
             IconUrl = extension?.IconUrl,
             IsRequired = extension?.IsRequired ?? false,
             DisplayOrder = extension?.DisplayOrder ?? 0,
-            Category = extension?.Category
+            Category = extension?.Category,
+            IsPublic = extension?.IsPublic ?? false
 #pragma warning restore CS8601
         };
     }
@@ -177,7 +179,8 @@ public class ScopeService : IScopeService
             !string.IsNullOrWhiteSpace(request.IconUrl) ||
             request.IsRequired ||
             request.DisplayOrder != 0 ||
-            !string.IsNullOrWhiteSpace(request.Category))
+            !string.IsNullOrWhiteSpace(request.Category) ||
+            request.IsPublic)
         {
             var extension = new ScopeExtension
             {
@@ -187,7 +190,8 @@ public class ScopeService : IScopeService
                 IconUrl = request.IconUrl,
                 IsRequired = request.IsRequired,
                 DisplayOrder = request.DisplayOrder,
-                Category = request.Category
+                Category = request.Category,
+                IsPublic = request.IsPublic
             };
             _db.ScopeExtensions.Add(extension);
             await _db.SaveChangesAsync(CancellationToken.None);
@@ -220,7 +224,8 @@ public class ScopeService : IScopeService
             IconUrl = request.IconUrl,
             IsRequired = request.IsRequired,
             DisplayOrder = request.DisplayOrder,
-            Category = request.Category
+            Category = request.Category,
+            IsPublic = request.IsPublic
         };
 
         await _eventPublisher.PublishAsync(new ScopeCreatedEvent(id!, request.Name));
@@ -260,7 +265,8 @@ public class ScopeService : IScopeService
                 !string.IsNullOrWhiteSpace(request.IconUrl) ||
                 request.IsRequired == true ||
                 request.DisplayOrder != null ||
-                !string.IsNullOrWhiteSpace(request.Category))
+                !string.IsNullOrWhiteSpace(request.Category) ||
+                request.IsPublic == true)
             {
                 extension = new ScopeExtension
                 {
@@ -270,7 +276,8 @@ public class ScopeService : IScopeService
                     IconUrl = request.IconUrl,
                     IsRequired = request.IsRequired ?? false,
                     DisplayOrder = request.DisplayOrder ?? 0,
-                    Category = request.Category
+                    Category = request.Category,
+                    IsPublic = request.IsPublic ?? false
                 };
                 _db.ScopeExtensions.Add(extension);
             }
@@ -289,6 +296,8 @@ public class ScopeService : IScopeService
                 extension.DisplayOrder = request.DisplayOrder.Value;
             if (request.Category != null)
                 extension.Category = request.Category;
+            if (request.IsPublic.HasValue)
+                extension.IsPublic = request.IsPublic.Value;
         }
         
         await _db.SaveChangesAsync(CancellationToken.None);

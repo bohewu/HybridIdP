@@ -18,6 +18,7 @@ public sealed class ScopeSummary
     public bool IsRequired { get; set; } = false;
     public int DisplayOrder { get; set; } = 0;
     public string? Category { get; set; }
+    public bool IsPublic { get; set; } = false;
 }
 
 /// <summary>
@@ -34,7 +35,8 @@ public record CreateScopeRequest(
     string? IconUrl = null,
     bool IsRequired = false,
     int DisplayOrder = 0,
-    string? Category = null
+    string? Category = null,
+    bool IsPublic = false
 );
 
 /// <summary>
@@ -51,5 +53,6 @@ public record UpdateScopeRequest(
     string? IconUrl = null,
     bool? IsRequired = null,
     int? DisplayOrder = null,
-    string? Category = null
+    string? Category = null,
+    bool? IsPublic = null
 );

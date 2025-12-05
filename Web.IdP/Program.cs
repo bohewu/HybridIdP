@@ -127,11 +127,19 @@ builder.Services.AddOpenIddict()
         // Enable the authorization and token endpoints
         options.SetAuthorizationEndpointUris("/connect/authorize")
                .SetTokenEndpointUris("/connect/token")
-               .SetUserInfoEndpointUris("/connect/userinfo");
+               .SetUserInfoEndpointUris("/connect/userinfo")
+               .SetIntrospectionEndpointUris("/connect/introspect")
+               .SetRevocationEndpointUris("/connect/revoke");
 
         // Enable the authorization code flow
         options.AllowAuthorizationCodeFlow()
                .RequireProofKeyForCodeExchange();
+        
+        // Enable refresh token flow (OpenIddict uses rolling tokens by default)
+        options.AllowRefreshTokenFlow();
+        
+        // Enable client credentials flow for M2M authentication
+        options.AllowClientCredentialsFlow();
 
         // Register the signing and encryption credentials
         options.AddDevelopmentEncryptionCertificate()
@@ -140,6 +148,7 @@ builder.Services.AddOpenIddict()
         // Register the ASP.NET Core host and configure the ASP.NET Core-specific options
         options.UseAspNetCore()
                .EnableAuthorizationEndpointPassthrough()
+               .EnableTokenEndpointPassthrough()
                .EnableUserInfoEndpointPassthrough()
                .EnableStatusCodePagesIntegration();
     })

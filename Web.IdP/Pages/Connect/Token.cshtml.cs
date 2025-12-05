@@ -20,17 +20,20 @@ public class TokenModel : PageModel
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly IApiResourceService _apiResourceService;
+    private readonly IAuditService _auditService;
 
     public TokenModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         RoleManager<ApplicationRole> roleManager,
-        IApiResourceService apiResourceService)
+        IApiResourceService apiResourceService,
+        IAuditService auditService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _roleManager = roleManager;
         _apiResourceService = apiResourceService;
+        _auditService = auditService;
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -44,6 +47,34 @@ public class TokenModel : PageModel
         {
             // Retrieve the claims principal stored in the authorization code/refresh token
             claimsPrincipal = (await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)).Principal!;
+        }
+        else if (request.IsClientCredentialsGrantType())
+        {
+            // Client credentials grant for M2M authentication
+            // Subject is the client_id (service account principal)
+            var m2mClientId = request.ClientId;
+            
+            // Create the claims-based identity for the service account
+            var identity = new ClaimsIdentity(
+                authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                nameType: Claims.Name,
+                roleType: Claims.Role);
+
+            // Set subject to client_id for M2M clients
+            identity.SetClaim(Claims.Subject, m2mClientId)
+                    .SetClaim(Claims.Name, m2mClientId);
+            
+            // Add audience (aud) claims from API Resources associated with requested scopes
+            var requestedScopes = request.GetScopes();
+            var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
+            if (audiences.Any())
+            {
+                identity.SetAudiences(audiences.ToImmutableArray());
+            }
+
+            identity.SetDestinations(GetDestinations);
+
+            claimsPrincipal = new ClaimsPrincipal(identity);
         }
         else if (request.IsPasswordGrantType())
         {
@@ -106,6 +137,26 @@ public class TokenModel : PageModel
         {
             throw new InvalidOperationException("The specified grant type is not supported.");
         }
+
+        // Log token issuance for audit
+        var grantType = request.GrantType ?? "unknown";
+        var userId = claimsPrincipal.GetClaim(Claims.Subject);
+        var clientId = request.ClientId;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+        await _auditService.LogEventAsync(
+            eventType: "token_issued",
+            userId: userId,
+            details: System.Text.Json.JsonSerializer.Serialize(new
+            {
+                grant_type = grantType,
+                client_id = clientId,
+                scopes = request.GetScopes().ToList()
+            }),
+            ipAddress: ipAddress,
+            userAgent: userAgent
+        );
 
         // Returning a SignInResult will ask OpenIddict to issue the appropriate access/identity tokens
         return SignIn(claimsPrincipal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);

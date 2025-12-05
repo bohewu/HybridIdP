@@ -47,4 +47,11 @@ public class ScopeExtension
     /// Category for grouping on consent screen (e.g., "Profile", "API Access", "Custom")
     /// </summary>
     public string? Category { get; set; }
+
+    /// <summary>
+    /// Whether this scope is publicly visible and can be requested by public clients and M2M clients.
+    /// Default is false. OIDC scopes (openid, profile, email, roles) should be true.
+    /// API scopes should typically be false to prevent M2M clients from accessing user-centric scopes.
+    /// </summary>
+    public bool IsPublic { get; set; } = false;
 }

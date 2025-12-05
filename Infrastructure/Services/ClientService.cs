@@ -16,15 +16,18 @@ public class ClientService : IClientService
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly IApplicationDbContext _context;
+    private readonly IOpenIddictScopeManager _scopeManager;
 
     public ClientService(
         IOpenIddictApplicationManager applicationManager, 
         IDomainEventPublisher eventPublisher,
-        IApplicationDbContext context)
+        IApplicationDbContext context,
+        IOpenIddictScopeManager scopeManager)
     {
         _applicationManager = applicationManager;
         _eventPublisher = eventPublisher;
         _context = context;
+        _scopeManager = scopeManager;
     }
 
     public async Task<(IEnumerable<ClientSummary> items, int totalCount)> GetClientsAsync(
@@ -285,6 +288,36 @@ public class ClientService : IClientService
             }
         }
 
+        // Phase 13.2: Validate M2M clients cannot request public (OIDC) scopes
+        var isM2MClient = descriptor.Permissions.Contains(Permissions.GrantTypes.ClientCredentials);
+        if (isM2MClient)
+        {
+            // Get all requested scopes
+            var requestedScopes = descriptor.Permissions
+                .Where(p => p.StartsWith(Permissions.Prefixes.Scope))
+                .Select(p => p.Substring(Permissions.Prefixes.Scope.Length))
+                .ToList();
+
+            // Check if any requested scope is public
+            foreach (var scopeName in requestedScopes)
+            {
+                var scope = await _scopeManager.FindByNameAsync(scopeName);
+                if (scope != null)
+                {
+                    var scopeId = await _scopeManager.GetIdAsync(scope);
+                    var extension = await _context.ScopeExtensions
+                        .FirstOrDefaultAsync(se => se.ScopeId == scopeId);
+                    
+                    if (extension?.IsPublic == true)
+                    {
+                        throw new InvalidOperationException(
+                            $"M2M clients (client_credentials grant) cannot request public scope '{scopeName}'. " +
+                            "Public scopes are user-centric (openid, profile, email, roles) and should not be used by service accounts.");
+                    }
+                }
+            }
+        }
+
         var application = await _applicationManager.CreateAsync(descriptor);
         var id = await _applicationManager.GetIdAsync(application);
 
@@ -412,6 +445,36 @@ public class ClientService : IClientService
                 if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.IdToken))
                 {
                     descriptor.Permissions.Add(Permissions.ResponseTypes.IdToken);
+                }
+            }
+
+            // Phase 13.2: Validate M2M clients cannot request public (OIDC) scopes
+            var isM2MClient = descriptor.Permissions.Contains(Permissions.GrantTypes.ClientCredentials);
+            if (isM2MClient)
+            {
+                // Get all requested scopes
+                var requestedScopes = descriptor.Permissions
+                    .Where(p => p.StartsWith(Permissions.Prefixes.Scope))
+                    .Select(p => p.Substring(Permissions.Prefixes.Scope.Length))
+                    .ToList();
+
+                // Check if any requested scope is public
+                foreach (var scopeName in requestedScopes)
+                {
+                    var scope = await _scopeManager.FindByNameAsync(scopeName);
+                    if (scope != null)
+                    {
+                        var scopeId = await _scopeManager.GetIdAsync(scope);
+                        var extension = await _context.ScopeExtensions
+                            .FirstOrDefaultAsync(se => se.ScopeId == scopeId);
+                        
+                        if (extension?.IsPublic == true)
+                        {
+                            throw new InvalidOperationException(
+                                $"M2M clients (client_credentials grant) cannot request public scope '{scopeName}'. " +
+                                "Public scopes are user-centric (openid, profile, email, roles) and should not be used by service accounts.");
+                        }
+                    }
                 }
             }
 
