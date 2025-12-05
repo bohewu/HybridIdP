@@ -243,6 +243,7 @@ builder.Services.AddScoped<ISessionService, SessionService>();
 // Settings + Branding services
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IBrandingService, BrandingService>();
 builder.Services.AddScoped<ISecurityPolicyService, SecurityPolicyService>();
 builder.Services.AddScoped<ILoginService, LoginService>();

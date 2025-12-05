@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import permissionService, { Permissions } from '@/utils/permissionService'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import BrandingSettings from './components/BrandingSettings.vue'
+import EmailSettings from './components/EmailSettings.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 const { t } = useI18n()
 
@@ -60,15 +61,8 @@ onMounted(async () => {
         <!-- Branding Settings -->
         <BrandingSettings :can-update="hasUpdatePermission" />
 
-        <!-- Future sections placeholder -->
-        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-2">
-            Email Settings
-          </h2>
-          <p class="text-sm text-gray-500">
-            Coming soon: SMTP configuration, email templates
-          </p>
-        </div>
+        <!-- Email Settings -->
+        <EmailSettings :can-update="hasUpdatePermission" />
       </div>
     </div>
   </div>

@@ -2,6 +2,13 @@
 
 This file tracks notable changes and releases for HybridAuth IdP.
 
+## 2025-12-05 — Email Settings Feature — Completed ✅
+- Implemented `IEmailService` using MailKit/MimeKit.
+- Added Email Settings section in Admin UI (Host, Port, Credentials, SSL, From Address).
+- Added "Test Email" functionality in Admin UI.
+- Secured settings storage with `ISettingsService`.
+- Added unit tests for EmailService logic.
+
 ## 2025-11-29 — Phase 9 — Scope Authorization & Management — Completed ✅
 - Completed Phase 9.7: E2E tests and documentation for scope authorization flows
 - Fixed critical OAuth consent POST bug (scope inputs inside form, resolved redirect loop)

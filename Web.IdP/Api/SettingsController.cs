@@ -11,10 +11,12 @@ namespace Web.IdP.Api;
 public class SettingsController : ControllerBase
 {
     private readonly ISettingsService _settings;
+    private readonly IEmailService _emailService;
 
-    public SettingsController(ISettingsService settings)
+    public SettingsController(ISettingsService settings, IEmailService emailService)
     {
         _settings = settings;
+        _emailService = emailService;
     }
 
     /// <summary>
@@ -80,6 +82,28 @@ public class SettingsController : ControllerBase
     }
 
     /// <summary>
+    /// POST /api/admin/settings/email/test
+    /// Send a test email using provided settings.
+    /// </summary>
+    [HttpPost("email/test")]
+    [Authorize(Policy = Permissions.Settings.Update)]
+    public async Task<IActionResult> TestEmail([FromBody] TestMailSettingsRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.To))
+            return BadRequest(new { error = "Recipient email is required" });
+
+        try
+        {
+            await _emailService.SendTestEmailAsync(request.Settings, request.To);
+            return Ok(new { message = "Test email sent successfully" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = $"Failed to send email: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
     /// POST /api/admin/settings/invalidate
     /// Invalidate cache for a specific key or prefix.
     /// Body: { "key": "..." } or empty for full cache clear.
@@ -98,3 +122,8 @@ public class SettingsController : ControllerBase
 
 public record UpdateSettingRequest(string Value);
 public record InvalidateCacheRequest(string? Key);
+public record TestMailSettingsRequest
+{
+    public Core.Application.MailSettingsDto Settings { get; set; } = new();
+    public string To { get; set; } = string.Empty;
+}
