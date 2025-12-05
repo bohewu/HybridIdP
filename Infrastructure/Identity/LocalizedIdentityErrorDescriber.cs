@@ -7,7 +7,7 @@ namespace HybridIdP.Infrastructure.Identity
     {
         private readonly IStringLocalizer _localizer;
 
-        public LocalizedIdentityErrorDescriber(IStringLocalizer<SharedResource> localizer)
+        public LocalizedIdentityErrorDescriber(IStringLocalizer<Web.IdP.IdentityErrorResource> localizer)
         {
             _localizer = localizer;
         }
@@ -83,10 +83,5 @@ namespace HybridIdP.Infrastructure.Identity
                 Description = _localizer["PasswordRequiresUpper"]
             };
         }
-    }
-
-    // This is a marker class for IStringLocalizer to find the SharedResource.resx files
-    public class SharedResource
-    {
     }
 }

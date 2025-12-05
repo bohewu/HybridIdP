@@ -220,51 +220,6 @@
     <value>版權所有</value>
   </data>
 
-  <data name="DuplicateEmail" xml:space="preserve">
-    <value>電子郵件 '{0}' 已被使用。</value>
-  </data>
-  <data name="PasswordTooShort" xml:space="preserve">
-    <value>密碼長度至少為 {0} 個字元。</value>
-  </data>
-  <data name="InvalidUserName" xml:space="preserve">
-    <value>使用者名稱 '{0}' 無效。</value>
-  </data>
-  <data name="DefaultError" xml:space="preserve">
-    <value>發生未知錯誤。</value>
-  </data>
-  <data name="PasswordRequiresNonAlphanumeric" xml:space="preserve">
-    <value>密碼必須至少包含一個非英數字元。</value>
-  </data>
-  <data name="PasswordRequiresDigit" xml:space="preserve">
-    <value>密碼必須至少包含一個數字 ('0'-'9')。</value>
-  </data>
-  <data name="PasswordRequiresLower" xml:space="preserve">
-    <value>密碼必須至少包含一個小寫字母 ('a'-'z')。</value>
-  </data>
-  <data name="PasswordRequiresUpper" xml:space="preserve">
-    <value>密碼必須至少包含一個大寫字母 ('A'-'Z')。</value>
-  </data>
-  <data name="UserAccountLockedOut" xml:space="preserve">
-    <value>此帳戶已被鎖定，請稍後再試。</value>
-  </data>
-  <data name="PasswordExpired" xml:space="preserve">
-    <value>您的密碼已過期。密碼必須每 {0} 天更換一次。</value>
-  </data>
-  <data name="PasswordChangeTooSoon" xml:space="preserve">
-    <value>您無法太快再次更換密碼。請至少等待 {0} 天。</value>
-  </data>
-  <data name="InvalidLoginAttempt" xml:space="preserve">
-    <value>登入嘗試無效。</value>
-  </data>
-  <data name="CompleteCaptcha" xml:space="preserve">
-    <value>請完成 CAPTCHA 驗證。</value>
-  </data>
-  <data name="CaptchaValidationFailed" xml:space="preserve">
-    <value>CAPTCHA 驗證失敗，請重試。</value>
-  </data>
-  <data name="AbnormalLoginBlocked" xml:space="preserve">
-    <value>偵測到異常登入，已被阻擋。如有疑問，請聯繫管理員。</value>
-  </data>
   <!-- Monitoring -->
   <data name="admin.monitoring.securityMetrics.gauges" xml:space="preserve">
     <value>系統儀表</value>
