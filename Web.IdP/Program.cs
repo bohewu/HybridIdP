@@ -20,6 +20,8 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Exporter.Prometheus;
 using Web.IdP.Middleware;
 
+using Quartz;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -34,6 +36,16 @@ var databaseProvider = Environment.GetEnvironmentVariable("DATABASE_PROVIDER")
 var connectionString = databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase)
     ? builder.Configuration.GetConnectionString("PostgreSqlConnection") ?? throw new InvalidOperationException("Connection string 'PostgreSqlConnection' not found.")
     : builder.Configuration.GetConnectionString("SqlServerConnection") ?? throw new InvalidOperationException("Connection string 'SqlServerConnection' not found.");
+
+// Configure Quartz.NET
+builder.Services.AddQuartz(options =>
+{
+    options.UseSimpleTypeLoader();
+    options.UseInMemoryStore();
+});
+
+// Register the Quartz.NET hosted service
+builder.Services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -105,6 +117,9 @@ builder.Services.AddOpenIddict()
         options.UseEntityFrameworkCore()
             .UseDbContext<ApplicationDbContext>()
             .ReplaceDefaultEntities<Guid>();
+
+        // Enable Quartz.NET integration
+        options.UseQuartz();
     })
     // Register the OpenIddict server components
     .AddServer(options =>
