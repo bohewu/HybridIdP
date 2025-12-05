@@ -49,7 +49,6 @@ const availablePermissions = computed(() => [
   { value: 'gt:refresh_token', labelKey: 'refreshToken', category: 'grantTypes' },
   { value: 'gt:device_code', labelKey: 'deviceCode', category: 'grantTypes' },
   { value: 'gt:password', labelKey: 'password', category: 'grantTypes' },
-  { value: 'gt:implicit', labelKey: 'implicit', category: 'grantTypes' },
   // Scopes
   { value: 'scp:openid', labelKey: 'openid', category: 'scopes' },
   { value: 'scp:profile', labelKey: 'profile', category: 'scopes' },
