@@ -61,6 +61,9 @@
   <data name="Register" xml:space="preserve">
     <value>Register</value>
   </data>
+  <data name="Create your account" xml:space="preserve">
+    <value>Create your account</value>
+  </data>
   <data name="Email" xml:space="preserve">
     <value>Email</value>
   </data>

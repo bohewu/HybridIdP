@@ -265,6 +265,16 @@
   <data name="AbnormalLoginBlocked" xml:space="preserve">
     <value>偵測到異常登入，已被阻擋。如有疑問，請聯繫管理員。</value>
   </data>
+  <!-- Monitoring -->
+  <data name="admin.monitoring.securityMetrics.gauges" xml:space="preserve">
+    <value>系統儀表</value>
+  </data>
+  <data name="admin.monitoring.securityMetrics.counters" xml:space="preserve">
+    <value>系統計數器</value>
+  </data>
+  <data name="admin.monitoring.securityMetrics.histograms" xml:space="preserve">
+    <value>系統直方圖</value>
+  </data>
   <data name="AuthorizationManagement" xml:space="preserve">
     <value>授權管理</value>
   </data>

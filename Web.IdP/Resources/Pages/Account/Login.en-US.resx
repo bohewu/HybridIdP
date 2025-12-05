@@ -61,6 +61,9 @@
   <data name="Login" xml:space="preserve">
     <value>Login</value>
   </data>
+  <data name="Sign in to continue" xml:space="preserve">
+    <value>Sign in to continue</value>
+  </data>
   <data name="Email" xml:space="preserve">
     <value>Email</value>
   </data>

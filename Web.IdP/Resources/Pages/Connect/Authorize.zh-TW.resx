@@ -64,6 +64,9 @@
   <data name="Access your roles" xml:space="preserve">
     <value>存取您的角色</value>
   </data>
+  <data name="Required" xml:space="preserve">
+    <value>必要</value>
+  </data>
   <data name="By allowing access, you agree to share the requested information with this application." xml:space="preserve">
     <value>允許存取即表示您同意與此應用程式分享所請求的資訊。</value>
   </data>

@@ -46,6 +46,18 @@
   <data name="This application will be able to:" xml:space="preserve">
     <value>This application will be able to:</value>
   </data>
+  <data name="Verify your identity" xml:space="preserve">
+    <value>Verify your identity</value>
+  </data>
+  <data name="Access your email address" xml:space="preserve">
+    <value>Access your email address</value>
+  </data>
+  <data name="Access your profile information" xml:space="preserve">
+    <value>Access your profile information</value>
+  </data>
+  <data name="Access your roles" xml:space="preserve">
+    <value>Access your roles</value>
+  </data>
   <data name="Required" xml:space="preserve">
     <value>Required</value>
   </data>

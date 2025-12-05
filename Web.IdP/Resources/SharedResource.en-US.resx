@@ -24,6 +24,9 @@
   <data name="Scopes" xml:space="preserve">
     <value>Scopes</value>
   </data>
+  <data name="Resources" xml:space="preserve">
+    <value>API Resources</value>
+  </data>
   <data name="Claims" xml:space="preserve">
     <value>Claims</value>
   </data>
@@ -264,6 +267,9 @@
   </data>
   <data name="CaptchaValidationFailed" xml:space="preserve">
     <value>CAPTCHA validation failed, please try again.</value>
+  </data>
+  <data name="AbnormalLoginBlocked" xml:space="preserve">
+    <value>Abnormal login detected and blocked. If you have questions, please contact the administrator.</value>
   </data>
   <!-- Monitoring -->
   <data name="admin.monitoring.securityMetrics.gauges" xml:space="preserve">
