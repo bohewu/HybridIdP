@@ -42,6 +42,9 @@ public static class DataSeeder
         {
             await SeedApplicationManagerTestUserAsync(userManager, roleManager, context);
             await SeedMultiRoleTestUserAsync(userManager, roleManager, context);
+            
+            // Seed Device Flow test client for manual verification
+            await SeedTestDeviceClientAsync(applicationManager);
         }
 
         // Note: Test client seeding removed in Phase 3.2 - use Admin API to manage clients dynamically
@@ -405,14 +408,42 @@ public static class DataSeeder
                 RedirectUris =
                 {
                     new Uri("https://localhost:5001/signin-oidc"),
-                        new Uri("https://localhost:7001/signin-oidc"),
-                        new Uri("https://localhost:7170/signin-oidc")
+                    new Uri("https://localhost:7001/signin-oidc"),
+                    new Uri("https://localhost:7170/signin-oidc")
                 },
                 PostLogoutRedirectUris =
                 {
                     new Uri("https://localhost:5001/signout-callback-oidc"),
-                        new Uri("https://localhost:7001/signout-callback-oidc"),
-                        new Uri("https://localhost:7170/signout-callback-oidc")
+                    new Uri("https://localhost:7001/signout-callback-oidc"),
+                    new Uri("https://localhost:7170/signout-callback-oidc")
+                }
+            });
+        }
+    }
+
+    private static async Task SeedTestDeviceClientAsync(IOpenIddictApplicationManager applicationManager)
+    {
+        const string clientId = "testclient-device";
+
+        if (await applicationManager.FindByClientIdAsync(clientId) == null)
+        {
+            await applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
+            {
+                ClientId = clientId,
+                DisplayName = "Device Flow Test Client",
+                ClientType = OpenIddictConstants.ClientTypes.Public,
+                ConsentType = OpenIddictConstants.ConsentTypes.Explicit,
+                Permissions =
+                {
+                    OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization,
+                    OpenIddictConstants.Permissions.Endpoints.Token,
+                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
+                    OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                    OpenIddictConstants.Permissions.Scopes.Email,
+                    OpenIddictConstants.Permissions.Scopes.Profile,
+                    OpenIddictConstants.Permissions.Scopes.Roles,
+                    $"{OpenIddictConstants.Permissions.Prefixes.Scope}openid",
+                    $"{OpenIddictConstants.Permissions.Prefixes.Scope}offline_access"
                 }
             });
         }
