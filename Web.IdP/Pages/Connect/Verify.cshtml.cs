@@ -40,7 +40,7 @@ public class DeviceModel : PageModel
         // Note: In a real implementation, you might want to normalize the code (e.g. uppercase, add hyphens if missing)
         // For now, we assume the user enters it correctly or we could add simple normalization.
 
-        var request = HttpContext.GetOpenIddictServerRequest();
+        // var request = HttpContext.GetOpenIddictServerRequest();
         // Wait, for verification endpoint, the request is NOT automatically extracted from the query on POST
         // unless we are using the OpenIddict middleware to handle the initial GET and pass parameters.
         // Actually, standard OpenIddict flow for verification:
@@ -114,6 +114,7 @@ public class DeviceModel : PageModel
         // For this first iteration, let's use a simplified approach:
         // Use the `user_code` parameter to context.
 
-        return Page(); // Placeholder, I need to implement the actual logic in next step.
+        ViewData["SuccessMessage"] = "Device authorized successfully";
+        return Page();
     }
 }

@@ -11,6 +11,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Razor;
 using OpenIddict.Abstractions;
+using OpenIddict.Server;
+using OpenIddict.Server.AspNetCore;
 using Vite.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using Web.IdP.Options;
@@ -130,16 +132,15 @@ builder.Services.AddOpenIddict()
                .SetUserInfoEndpointUris("/connect/userinfo")
                .SetIntrospectionEndpointUris("/connect/introspect")
                .SetRevocationEndpointUris("/connect/revoke")
-               .SetDeviceEndpointUris("/connect/device")
-               .SetVerificationEndpointUris("/connect/verify");
+               .SetDeviceAuthorizationEndpointUris("/connect/device")
+               .SetEndUserVerificationEndpointUris("/connect/verify");
 
         // Enable the authorization code flow
         options.AllowAuthorizationCodeFlow()
                .RequireProofKeyForCodeExchange();
 
-        // Enable refresh token flow (OpenIddict uses rolling tokens by default, but we make it explicit)
-        options.AllowRefreshTokenFlow()
-               .UseRollingRefreshTokens();
+        // Enable refresh token flow (OpenIddict uses rolling tokens by default)
+        options.AllowRefreshTokenFlow();
 
         // Enable client credentials flow for M2M authentication
         options.AllowClientCredentialsFlow();
@@ -156,7 +157,8 @@ builder.Services.AddOpenIddict()
                .EnableAuthorizationEndpointPassthrough()
                .EnableTokenEndpointPassthrough()
                .EnableUserInfoEndpointPassthrough()
-                .EnableStatusCodePagesIntegration();
+               .EnableEndUserVerificationEndpointPassthrough()
+               .EnableStatusCodePagesIntegration();
     })
     // Register the OpenIddict validation components
     .AddValidation(options =>
