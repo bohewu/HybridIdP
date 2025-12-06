@@ -280,6 +280,7 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserInfoService, UserInfoService>();
 builder.Services.AddScoped<IIntrospectionService, IntrospectionService>();
 builder.Services.AddScoped<IRevocationService, RevocationService>();
+builder.Services.AddScoped<IDeviceFlowService, DeviceFlowService>();
 
 
 // Settings + Branding services
