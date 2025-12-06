@@ -5,6 +5,7 @@ test.describe('Device Authorization Flow', () => {
     const clientId = `device-test-${Date.now()}`;
 
     test('should complete full device flow', async ({ page, request }) => {
+        test.setTimeout(60000); // Increase timeout to 60s for polling
         // 1. Setup: Create Device Client via Admin UI/API
         await page.goto('https://localhost:7035/admin/clients');
         await loginAsUser(page, 'admin@hybridauth.local', 'Admin@123');
@@ -73,9 +74,36 @@ test.describe('Device Authorization Flow', () => {
         }
         await page.click('button[type="submit"]');
 
-        // Verify Success Message
-        await expect(page.locator('text=Device authorized successfully')).toBeVisible();
+        // Verify Success Message (wait for redirect to home)
+        await expect(page).toHaveURL('https://localhost:7035/', { timeout: 15000 });
 
-        // 4. Poll for Token (Skipped)
+        // 4. Poll for Token
+        let tokenResponse;
+        for (let i = 0; i < 10; i++) {
+            tokenResponse = await request.post('https://localhost:7035/connect/token', {
+                form: {
+                    grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+                    client_id: clientId,
+                    device_code: device_code
+                },
+                ignoreHTTPSErrors: true
+            });
+
+            if (tokenResponse.ok()) break;
+
+            // If pending, wait and retry
+            const error = await tokenResponse.json();
+            if (error.error === 'authorization_pending') {
+                await page.waitForTimeout(2000); // Wait 2s
+                continue;
+            } else {
+                // If other error, fail
+                throw new Error(`Token exchange failed: ${JSON.stringify(error)}`);
+            }
+        }
+
+        expect(tokenResponse?.ok()).toBeTruthy();
+        const tokenData = await tokenResponse?.json();
+        expect(tokenData.access_token).toBeTruthy();
     });
 });

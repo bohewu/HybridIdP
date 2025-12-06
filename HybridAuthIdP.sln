@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure.Migrations.S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure.Migrations.Postgres", "Infrastructure.Migrations.Postgres\Infrastructure.Migrations.Postgres.csproj", "{8499F8EA-CEBC-4F9B-AEEE-1A000667E966}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Web.IdP.UnitTests", "Tests.Web.IdP.UnitTests\Tests.Web.IdP.UnitTests.csproj", "{602A5E88-4F7D-489E-88DA-51DCB4970CCB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,6 +155,18 @@ Global
 		{8499F8EA-CEBC-4F9B-AEEE-1A000667E966}.Release|x64.Build.0 = Release|Any CPU
 		{8499F8EA-CEBC-4F9B-AEEE-1A000667E966}.Release|x86.ActiveCfg = Release|Any CPU
 		{8499F8EA-CEBC-4F9B-AEEE-1A000667E966}.Release|x86.Build.0 = Release|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Debug|x64.Build.0 = Debug|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Debug|x86.Build.0 = Debug|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Release|x64.ActiveCfg = Release|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Release|x64.Build.0 = Release|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Release|x86.ActiveCfg = Release|Any CPU
+		{602A5E88-4F7D-489E-88DA-51DCB4970CCB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
