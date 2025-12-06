@@ -1,8 +1,11 @@
-@page
-@model Web.IdP.Pages.Connect.AuthorizeModel
+@using Microsoft.AspNetCore.Mvc.Localization
+@using Web.IdP.Services
 @inject IViewLocalizer Localizer
+@model List<ScopeInfo>
+
 @{
     ViewData["Title"] = Localizer["Authorize Application"];
+    var applicationName = ViewData["ApplicationName"] as string;
 }
 
 <div class="container">
@@ -13,12 +16,12 @@
                     <h2 class="card-title text-center mb-4">@ViewData["Title"]</h2>
                     
                     <div class="alert alert-info" role="alert">
-                        <strong>@Model.ApplicationName</strong> @Localizer["is requesting access to your account"]
+                        <strong>@applicationName</strong> @Localizer["is requesting access to your account"]
                     </div>
 
-                    <form method="post">
+                    <form method="post" action="@Url.Action("Authorize")">
                         @* Preserve original authorize request parameters in the POST body *@
-                        @foreach (var kvp in Request.Query)
+                        @foreach (var kvp in Context.Request.Query)
                         {
                             foreach (var val in kvp.Value)
                             {
@@ -26,14 +29,14 @@
                             }
                         }
                         
-                        @if (Model.ScopeInfos.Any())
+                        @if (Model != null && Model.Any())
                         {
                             <div class="mb-4">
                                 <h5>@Localizer["This application will be able to:"]</h5>
                                 
                                 @* Group scopes by category *@
                                 @{
-                                    var groupedScopes = Model.ScopeInfos.GroupBy(s => s.Category ?? "General").OrderBy(g => g.Key).ToArray();
+                                    var groupedScopes = Model.GroupBy(s => s.Category ?? "General").OrderBy(g => g.Key).ToArray();
                                 }
                                 
                                 @foreach (var group in groupedScopes)

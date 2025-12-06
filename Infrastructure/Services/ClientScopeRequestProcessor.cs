@@ -8,7 +8,7 @@ using Core.Application.DTOs;
 
 namespace Infrastructure.Services
 {
-    public class ClientScopeRequestProcessor
+    public class ClientScopeRequestProcessor : IClientScopeRequestProcessor
     {
         private readonly IClientAllowedScopesService _allowedScopesService;
         private readonly IAuditService _auditService;

@@ -21,6 +21,7 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Exporter.Prometheus;
 using Web.IdP.Middleware;
+using Web.IdP.Services;
 
 using Quartz;
 
@@ -269,9 +270,14 @@ builder.Services.AddScoped<ILocalizationService, LocalizationService>();
 builder.Services.AddScoped<IApiResourceService, ApiResourceService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IClientAllowedScopesService, ClientAllowedScopesService>();
-builder.Services.AddScoped<ClientScopeRequestProcessor>();
+builder.Services.AddScoped<IClientScopeRequestProcessor, ClientScopeRequestProcessor>();
 builder.Services.AddScoped<IClaimsService, ClaimsService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
+
+// connect services
+builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
+
+
 // Settings + Branding services
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ISettingsService, SettingsService>();

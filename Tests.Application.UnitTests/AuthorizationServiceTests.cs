@@ -1,0 +1,166 @@
+using Xunit;
+using Moq;
+using Core.Application;
+using OpenIddict.Abstractions;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Core.Domain;
+using Infrastructure;
+using Microsoft.Extensions.Logging;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Web.IdP.Services;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System;
+using OpenIddict.Server.AspNetCore;
+using System.Threading;
+using System.Collections.Immutable;
+
+namespace Tests.Application.UnitTests
+{
+    public class AuthorizationServiceTests
+    {
+        private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
+        private readonly Mock<IOpenIddictAuthorizationManager> _mockAuthorizationManager;
+        private readonly Mock<IOpenIddictScopeManager> _mockScopeManager;
+        private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
+        private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
+        private readonly Mock<IApplicationDbContext> _mockDb;
+        private readonly Mock<IApiResourceService> _mockApiResourceService;
+        private readonly Mock<ILocalizationService> _mockLocalizationService;
+        private readonly Mock<IScopeService> _mockScopeService;
+        private readonly Mock<IAuditService> _mockAuditService;
+        private readonly Mock<IClientAllowedScopesService> _mockClientAllowedScopesService;
+        private readonly Mock<IClientScopeRequestProcessor> _mockClientScopeProcessor;
+        private readonly Mock<ILogger<AuthorizationService>> _mockLogger;
+        private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
+        private readonly AuthorizationService _authorizationService;
+
+        public AuthorizationServiceTests()
+        {
+            _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
+            _mockAuthorizationManager = new Mock<IOpenIddictAuthorizationManager>();
+            _mockScopeManager = new Mock<IOpenIddictScopeManager>();
+            _mockUserManager = MockUserManager();
+            _mockRoleManager = MockRoleManager();
+            _mockDb = new Mock<IApplicationDbContext>();
+            _mockApiResourceService = new Mock<IApiResourceService>();
+            _mockLocalizationService = new Mock<ILocalizationService>();
+            _mockScopeService = new Mock<IScopeService>();
+            _mockAuditService = new Mock<IAuditService>();
+            _mockClientAllowedScopesService = new Mock<IClientAllowedScopesService>();
+            _mockClientScopeProcessor = new Mock<IClientScopeRequestProcessor>();
+            _mockLogger = new Mock<ILogger<AuthorizationService>>();
+            _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
+
+            _authorizationService = new AuthorizationService(
+                _mockApplicationManager.Object,
+                _mockAuthorizationManager.Object,
+                _mockScopeManager.Object,
+                _mockUserManager.Object,
+                _mockRoleManager.Object,
+                _mockDb.Object,
+                _mockApiResourceService.Object,
+                _mockLocalizationService.Object,
+                _mockScopeService.Object,
+                _mockAuditService.Object,
+                _mockClientAllowedScopesService.Object,
+                _mockClientScopeProcessor.Object,
+                _mockLogger.Object,
+                _mockHttpContextAccessor.Object
+            );
+        }
+
+        private static Mock<UserManager<ApplicationUser>> MockUserManager()
+        {
+            var store = new Mock<IUserStore<ApplicationUser>>();
+            return new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
+        }
+
+        private static Mock<RoleManager<ApplicationRole>> MockRoleManager()
+        {
+            var store = new Mock<IRoleStore<ApplicationRole>>();
+            return new Mock<RoleManager<ApplicationRole>>(store.Object, null, null, null, null);
+        }
+
+
+        [Fact]
+        public async Task HandleAuthorizeRequestAsync_ShouldChallenge_WhenUserNotAuthenticated()
+        {
+            // Arrange
+            var user = new ClaimsPrincipal(new ClaimsIdentity()); // Unauthenticated
+            _mockLogger.Setup(x => x.Log(
+                It.IsAny<LogLevel>(),
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()));
+
+            var request = new OpenIddictRequest();
+            var context = new DefaultHttpContext();
+            
+            var httpContextAccessor = new Mock<IHttpContextAccessor>();
+            httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+             var authService = new AuthorizationService(
+                _mockApplicationManager.Object,
+                _mockAuthorizationManager.Object,
+                _mockScopeManager.Object,
+                _mockUserManager.Object,
+                _mockRoleManager.Object,
+                _mockDb.Object,
+                _mockApiResourceService.Object,
+                _mockLocalizationService.Object,
+                _mockScopeService.Object,
+                _mockAuditService.Object,
+                _mockClientAllowedScopesService.Object,
+                _mockClientScopeProcessor.Object,
+                _mockLogger.Object,
+                httpContextAccessor.Object
+            );
+
+            // Act
+            var result = await authService.HandleAuthorizeRequestAsync(user, request, null);
+
+            // Assert
+            var challengeResult = Assert.IsType<ChallengeResult>(result);
+            Assert.Contains(IdentityConstants.ApplicationScheme, challengeResult.AuthenticationSchemes);
+        }
+
+        [Fact]
+        public async Task HandleAuthorizeRequestAsync_ShouldThrow_WhenRequestIsNull()
+        {
+             // Arrange
+            var user = new ClaimsPrincipal(new ClaimsIdentity("Test"));
+            var context = new DefaultHttpContext();
+            // No OpenIddict feature set
+            
+            var httpContextAccessor = new Mock<IHttpContextAccessor>();
+            httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+             var authService = new AuthorizationService(
+                _mockApplicationManager.Object,
+                _mockAuthorizationManager.Object,
+                _mockScopeManager.Object,
+                _mockUserManager.Object,
+                _mockRoleManager.Object,
+                _mockDb.Object,
+                _mockApiResourceService.Object,
+                _mockLocalizationService.Object,
+                _mockScopeService.Object,
+                _mockAuditService.Object,
+                _mockClientAllowedScopesService.Object,
+                _mockClientScopeProcessor.Object,
+                _mockLogger.Object,
+                httpContextAccessor.Object
+            );
+
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentNullException>(() => authService.HandleAuthorizeRequestAsync(user, null!, null));
+        }
+
+        
+    }
+}

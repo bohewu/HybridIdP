@@ -1,0 +1,20 @@
+  正在判斷要還原的專案...
+  所有專案都在最新狀態，可進行還原。
+  Core.Domain -> C:\repos\HybridIdP\Core.Domain\bin\Debug\net10.0\Core.Domain.dll
+  Core.Application -> C:\repos\HybridIdP\Core.Application\bin\Debug\net10.0\Core.Application.dll
+  Infrastructure -> C:\repos\HybridIdP\Infrastructure\bin\Debug\net10.0\Infrastructure.dll
+  Infrastructure.Migrations.SqlServer -> C:\repos\HybridIdP\Infrastructure.Migrations.SqlServer\bin\Debug\net10.0\Infrastructure.Migrations.SqlServer.dll
+  Infrastructure.Migrations.Postgres -> C:\repos\HybridIdP\Infrastructure.Migrations.Postgres\bin\Debug\net10.0\Infrastructure.Migrations.Postgres.dll
+C:\repos\HybridIdP\Web.IdP\Controllers\AuthorizationController.cs(44,69): error CS1061: 'IAuthorizationService' 未包含 'ApplicationName' 的定義，也找不到可接受類型 'IAuthorizationService' 第一個引數的可存取擴充方法 'ApplicationName' (是否遺漏 using 指示詞或組件參考?) [C:\repos\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\repos\HybridIdP\Web.IdP\Controllers\AuthorizationController.cs(45,51): error CS1061: 'IAuthorizationService' 未包含 'ScopeInfos' 的定義，也找不到可接受類型 'IAuthorizationService' 第一個引數的可存取擴充方法 'ScopeInfos' (是否遺漏 using 指示詞或組件參考?) [C:\repos\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\repos\HybridIdP\Web.IdP\Controllers\AuthorizationController.cs(34,102): warning CS8620: 因為參考型別的可 NULL 性有所差異，所以無法針對 'Task<IActionResult> IAuthorizationService.HandleAuthorizeSubmitAsync(ClaimsPrincipal? user, OpenIddictRequest request, string? submit, string[]? grantedScopes)' 內類型 'string[]' 的參數 'grantedScopes' 使用類型 'string?[]' 的引數。 [C:\repos\HybridIdP\Web.IdP\Web.IdP.csproj]
+
+建置失敗。
+
+C:\repos\HybridIdP\Web.IdP\Controllers\AuthorizationController.cs(34,102): warning CS8620: 因為參考型別的可 NULL 性有所差異，所以無法針對 'Task<IActionResult> IAuthorizationService.HandleAuthorizeSubmitAsync(ClaimsPrincipal? user, OpenIddictRequest request, string? submit, string[]? grantedScopes)' 內類型 'string[]' 的參數 'grantedScopes' 使用類型 'string?[]' 的引數。 [C:\repos\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\repos\HybridIdP\Web.IdP\Controllers\AuthorizationController.cs(44,69): error CS1061: 'IAuthorizationService' 未包含 'ApplicationName' 的定義，也找不到可接受類型 'IAuthorizationService' 第一個引數的可存取擴充方法 'ApplicationName' (是否遺漏 using 指示詞或組件參考?) [C:\repos\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\repos\HybridIdP\Web.IdP\Controllers\AuthorizationController.cs(45,51): error CS1061: 'IAuthorizationService' 未包含 'ScopeInfos' 的定義，也找不到可接受類型 'IAuthorizationService' 第一個引數的可存取擴充方法 'ScopeInfos' (是否遺漏 using 指示詞或組件參考?) [C:\repos\HybridIdP\Web.IdP\Web.IdP.csproj]
+    1 個警告
+    2 個錯誤
+
+經過時間 00:00:02.13
