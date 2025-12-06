@@ -1,109 +1,104 @@
 import { test, expect } from '@playwright/test';
+import { spawn } from 'child_process';
+import * as path from 'path';
 import { loginAsUser } from './helpers/auth-helper';
 
-test.describe('Device Authorization Flow', () => {
-    const clientId = `device-test-${Date.now()}`;
+// Fix __dirname for ESM if needed, or ignore if CommonJS is target
+// But for now let's use relative path from cwd or assume __dirname is available via node types
+// If __dirname is missing in type check, we can define it or use process.cwd()
+const __dirname = path.resolve(); 
 
-    test('should complete full device flow', async ({ page, request }) => {
-        test.setTimeout(60000); // Increase timeout to 60s for polling
-        // 1. Setup: Create Device Client via Admin UI/API
-        await page.goto('https://localhost:7035/admin/clients');
-        await loginAsUser(page, 'admin@hybridauth.local', 'Admin@123');
+test.describe('Device Flow E2E', () => {
+    test('should complete device flow using TestClient.Device', async ({ page }) => {
+        test.setTimeout(60000); // Give it time
 
-        await page.evaluate(async (cId) => {
-            // Create Client
-            const res = await fetch('/api/admin/clients', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    clientId: cId,
-                    displayName: 'Device Flow Test Client',
-                    applicationType: 'native',
-                    type: 'public',
-                    consentType: 'explicit',
-                    redirectUris: [],
-                    permissions: [
-                        'ept:device', 'ept:token',
-                        'gt:urn:ietf:params:oauth:grant-type:device_code',
-                        'gt:refresh_token',
-                        'scp:openid', 'scp:profile', 'scp:email'
-                    ]
-                })
-            });
-            if (!res.ok) throw new Error(await res.text());
-            const data = await res.json();
-
-            // Add Scopes
-            await fetch(`/api/admin/clients/${data.id}/scopes`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ scopes: ['openid', 'profile', 'email'] })
-            });
-        }, clientId);
-
-        // Logout Admin
-        await page.goto('https://localhost:7035/logout');
-
-        // 2. Initiate Device Flow
-        const deviceResponse = await request.post('https://localhost:7035/connect/device', {
-            form: {
-                client_id: clientId,
-                scope: 'openid profile email'
-            },
-            ignoreHTTPSErrors: true
+        // __dirname is e2e/ relative to root if running from there, or e2e/tests depending on how we resolved it.
+        // process.cwd() is usually c:\repos\HybridIdP\e2e when running `npx playwright test`
+        // TestClient.Device is at c:\repos\HybridIdP\TestClient.Device
+        // So we need to go up one level from e2e.
+        const clientProject = path.resolve(process.cwd(), '../TestClient.Device');
+        
+        // Spawn the console client
+        console.log(`Starting TestClient.Device in ${clientProject}`);
+        
+        // We use 'dotnet run'
+        const clientProcess = spawn('dotnet', ['run', '--', '--no-browser'], {
+            cwd: clientProject,
+            shell: true
         });
 
-        expect(deviceResponse.ok()).toBeTruthy();
-        const deviceData = await deviceResponse.json();
-        const { device_code, user_code, verification_uri } = deviceData;
+        let userCode = '';
+        let verificationUri = '';
+        let accessToken = '';
+        let outputBuffer = '';
 
-        expect(device_code).toBeTruthy();
-        expect(user_code).toBeTruthy();
+        // Promise to wait for User Code
+        const userCodePromise = new Promise<void>((resolve, reject) => {
+            clientProcess.stdout.on('data', (data: any) => {
+                const text = data.toString();
+                outputBuffer += text;
+                console.log('[Client]:', text.trim());
 
-        // 3. User Authorization
-        const verifyUrl = verification_uri.startsWith('http') ? verification_uri : `https://localhost:7035${verification_uri}`;
-        await page.goto(verifyUrl);
+                // Parse User Code
+                // Expected: "User Code:        XXXX-XXXX-XXXX"
+                const codeMatch = text.match(/User Code:\s+([A-Z0-9-]+)/);
+                if (codeMatch) {
+                    userCode = codeMatch[1];
+                    console.log('Detected User Code:', userCode);
+                }
 
-        // Login as User
-        await loginAsUser(page, 'testuser@hybridauth.local', 'Test@123');
-
-        // Enter User Code
-        const codeInput = page.locator('input[name="UserCode"]');
-        if (await codeInput.isVisible() && await codeInput.inputValue() === '') {
-            await codeInput.fill(user_code);
-        }
-        await page.click('button[type="submit"]');
-
-        // Verify Success Message (wait for redirect to home)
-        await expect(page).toHaveURL('https://localhost:7035/', { timeout: 15000 });
-
-        // 4. Poll for Token
-        let tokenResponse;
-        for (let i = 0; i < 10; i++) {
-            tokenResponse = await request.post('https://localhost:7035/connect/token', {
-                form: {
-                    grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-                    client_id: clientId,
-                    device_code: device_code
-                },
-                ignoreHTTPSErrors: true
+                // Check for completion/token
+                if (text.includes('Access Token received')) {
+                    accessToken = text;
+                   // Don't resolve here, we resolve code first
+                }
+                
+                if (userCode && !verificationUri) {
+                    // Just to be safe, assume logic flows
+                    resolve();
+                }
             });
 
-            if (tokenResponse.ok()) break;
+            clientProcess.stderr.on('data', (data: any) => {
+                console.error('[Client Error]:', data.toString());
+            });
+            
+            clientProcess.on('error', (err: any) => reject(err));
+            clientProcess.on('exit', (code: any) => {
+                if (code !== 0 && code !== null) console.log(`Client exited with code ${code}`);
+            });
+        });
 
-            // If pending, wait and retry
-            const error = await tokenResponse.json();
-            if (error.error === 'authorization_pending') {
-                await page.waitForTimeout(2000); // Wait 2s
-                continue;
-            } else {
-                // If other error, fail
-                throw new Error(`Token exchange failed: ${JSON.stringify(error)}`);
-            }
+        // Wait for code
+        await userCodePromise;
+        expect(userCode).toBeTruthy();
+        
+        // 2. Go to Verification URI (Verified manually as https://localhost:7035/connect/verify)
+        await page.goto('https://localhost:7035/connect/verify');
+        
+        // 3. Enter Code
+        await page.fill('input[name="user_code"]', userCode);
+        await page.click('button[type="submit"]');
+        
+        // 4. Login if needed
+        // Check if we are redirected to login
+        const loginInput = page.locator('#Input_Login');
+        if (await loginInput.isVisible()) {
+            console.log('Login required, logging in...');
+            // Use helper - use Admin account which we know exists
+            await loginAsUser(page, 'admin@hybridauth.local', 'Admin@123');
         }
 
-        expect(tokenResponse?.ok()).toBeTruthy();
-        const tokenData = await tokenResponse?.json();
-        expect(tokenData.access_token).toBeTruthy();
+        // 5. Consent (if enabled)
+        // Check for common consent markers
+        if (await page.locator('text=Approve').isVisible() || await page.locator('text=Allow').isVisible()) {
+             console.log('Waiting more for token...');
+             await new Promise(r => setTimeout(r, 5000));
+        }
+
+        expect(outputBuffer).toContain('Access Token received');
+        
+        // Kill process
+        clientProcess.kill();
     });
 });
