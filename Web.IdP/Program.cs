@@ -277,6 +277,7 @@ builder.Services.AddScoped<ISessionService, SessionService>();
 // connect services
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IUserInfoService, UserInfoService>();
 
 
 // Settings + Branding services
