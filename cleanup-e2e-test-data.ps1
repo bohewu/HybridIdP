@@ -63,12 +63,12 @@ Write-Host "✅ Authenticated successfully" -ForegroundColor Green
 # Clean up users
 Write-Host "`n👤 Cleaning up E2E test users..." -ForegroundColor Yellow
 try {
-    $usersResponse = Invoke-RestMethod -Uri "$IdPUrl/api/admin/users?search=e2e-&take=1000" -WebSession $session -SkipCertificateCheck
+    $usersResponse = Invoke-RestMethod -Uri "$IdPUrl/api/admin/users?take=1000" -WebSession $session -SkipCertificateCheck
     $users = if ($usersResponse.items) { $usersResponse.items } else { @() }
     
     $deletedUsers = 0
     foreach ($user in $users) {
-        if ($user.email -like "e2e-*") {
+        if ($user.email -like "e2e-*" -or $user.email -like "m2m-*") {
             try {
                 Invoke-RestMethod -Uri "$IdPUrl/api/admin/users/$($user.id)" -Method Delete -WebSession $session -SkipCertificateCheck -ErrorAction SilentlyContinue | Out-Null
                 $deletedUsers++
@@ -88,12 +88,12 @@ catch {
 # Clean up roles
 Write-Host "`n👥 Cleaning up E2E test roles..." -ForegroundColor Yellow
 try {
-    $rolesResponse = Invoke-RestMethod -Uri "$IdPUrl/api/admin/roles?search=e2e-&take=1000" -WebSession $session -SkipCertificateCheck
+    $rolesResponse = Invoke-RestMethod -Uri "$IdPUrl/api/admin/roles?take=1000" -WebSession $session -SkipCertificateCheck
     $roles = if ($rolesResponse.items) { $rolesResponse.items } else { @() }
     
     $deletedRoles = 0
     foreach ($role in $roles) {
-        if ($role.name -like "e2e-*") {
+        if ($role.name -like "e2e-*" -or $role.name -like "m2m-*") {
             try {
                 Invoke-RestMethod -Uri "$IdPUrl/api/admin/roles/$($role.id)" -Method Delete -WebSession $session -SkipCertificateCheck -ErrorAction SilentlyContinue | Out-Null
                 $deletedRoles++
@@ -113,12 +113,12 @@ catch {
 # Clean up clients
 Write-Host "`n🔑 Cleaning up E2E test clients..." -ForegroundColor Yellow
 try {
-    $clientsResponse = Invoke-RestMethod -Uri "$IdPUrl/api/admin/clients?search=e2e-&take=1000" -WebSession $session -SkipCertificateCheck
+    $clientsResponse = Invoke-RestMethod -Uri "$IdPUrl/api/admin/clients?take=1000" -WebSession $session -SkipCertificateCheck
     $clients = if ($clientsResponse.items) { $clientsResponse.items } else { @() }
     
     $deletedClients = 0
     foreach ($client in $clients) {
-        if ($client.clientId -like "e2e-*") {
+        if ($client.clientId -like "e2e-*" -or $client.clientId -like "m2m-*") {
             try {
                 Invoke-RestMethod -Uri "$IdPUrl/api/admin/clients/$($client.id)" -Method Delete -WebSession $session -SkipCertificateCheck -ErrorAction SilentlyContinue | Out-Null
                 $deletedClients++
@@ -138,12 +138,12 @@ catch {
 # Clean up scopes
 Write-Host "`n🔍 Cleaning up E2E test scopes..." -ForegroundColor Yellow
 try {
-    $scopesResponse = Invoke-RestMethod -Uri "$IdPUrl/api/admin/scopes?search=e2e-&take=1000" -WebSession $session -SkipCertificateCheck
+    $scopesResponse = Invoke-RestMethod -Uri "$IdPUrl/api/admin/scopes?take=1000" -WebSession $session -SkipCertificateCheck
     $scopes = if ($scopesResponse.items) { $scopesResponse.items } else { @() }
     
     $deletedScopes = 0
     foreach ($scope in $scopes) {
-        if ($scope.name -like "e2e-*") {
+        if ($scope.name -like "e2e-*" -or $scope.name -like "m2m-*") {
             try {
                 Invoke-RestMethod -Uri "$IdPUrl/api/admin/scopes/$($scope.id)" -Method Delete -WebSession $session -SkipCertificateCheck -ErrorAction SilentlyContinue | Out-Null
                 $deletedScopes++
@@ -163,12 +163,12 @@ catch {
 # Clean up API resources
 Write-Host "`n🌐 Cleaning up E2E test API resources..." -ForegroundColor Yellow
 try {
-    $resourcesResponse = Invoke-RestMethod -Uri "$IdPUrl/api/admin/resources?search=e2e-&take=1000" -WebSession $session -SkipCertificateCheck
+    $resourcesResponse = Invoke-RestMethod -Uri "$IdPUrl/api/admin/resources?take=1000" -WebSession $session -SkipCertificateCheck
     $resources = if ($resourcesResponse.items) { $resourcesResponse.items } else { @() }
     
     $deletedResources = 0
     foreach ($resource in $resources) {
-        if ($resource.name -like "e2e-*") {
+        if ($resource.name -like "e2e-*" -or $resource.name -like "m2m-*") {
             try {
                 Invoke-RestMethod -Uri "$IdPUrl/api/admin/resources/$($resource.id)" -Method Delete -WebSession $session -SkipCertificateCheck -ErrorAction SilentlyContinue | Out-Null
                 $deletedResources++
