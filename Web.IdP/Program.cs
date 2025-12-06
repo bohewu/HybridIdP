@@ -29,8 +29,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddViteServices();
 
 // Database provider selection: prioritize environment variable, then appsettings
-var databaseProvider = Environment.GetEnvironmentVariable("DATABASE_PROVIDER") 
-    ?? builder.Configuration["DatabaseProvider"] 
+var databaseProvider = Environment.GetEnvironmentVariable("DATABASE_PROVIDER")
+    ?? builder.Configuration["DatabaseProvider"]
     ?? "SqlServer";
 
 var connectionString = databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase)
@@ -51,12 +51,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     if (databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
     {
-        options.UseNpgsql(connectionString, sqlOptions => 
+        options.UseNpgsql(connectionString, sqlOptions =>
             sqlOptions.MigrationsAssembly("Infrastructure.Migrations.Postgres"));
     }
     else
     {
-        options.UseSqlServer(connectionString, sqlOptions => 
+        options.UseSqlServer(connectionString, sqlOptions =>
             sqlOptions.MigrationsAssembly("Infrastructure.Migrations.SqlServer"));
     }
     // Ignore EF Core "PendingModelChangesWarning" at startup so migrations can be applied
@@ -83,10 +83,10 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.Name = ".HybridAuthIdP.Identity";
-    
+
     options.Events.OnRedirectToLogin = context =>
     {
-        if (context.Request.Path.StartsWithSegments("/api") || 
+        if (context.Request.Path.StartsWithSegments("/api") ||
             context.Request.Path.StartsWithSegments("/metrics"))
         {
             context.Response.StatusCode = 401;
@@ -97,7 +97,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
     options.Events.OnRedirectToAccessDenied = context =>
     {
-        if (context.Request.Path.StartsWithSegments("/api") || 
+        if (context.Request.Path.StartsWithSegments("/api") ||
             context.Request.Path.StartsWithSegments("/metrics"))
         {
             context.Response.StatusCode = 403;
@@ -129,17 +129,23 @@ builder.Services.AddOpenIddict()
                .SetTokenEndpointUris("/connect/token")
                .SetUserInfoEndpointUris("/connect/userinfo")
                .SetIntrospectionEndpointUris("/connect/introspect")
-               .SetRevocationEndpointUris("/connect/revoke");
+               .SetRevocationEndpointUris("/connect/revoke")
+               .SetDeviceEndpointUris("/connect/device")
+               .SetVerificationEndpointUris("/connect/verify");
 
         // Enable the authorization code flow
         options.AllowAuthorizationCodeFlow()
                .RequireProofKeyForCodeExchange();
-        
-        // Enable refresh token flow (OpenIddict uses rolling tokens by default)
-        options.AllowRefreshTokenFlow();
-        
+
+        // Enable refresh token flow (OpenIddict uses rolling tokens by default, but we make it explicit)
+        options.AllowRefreshTokenFlow()
+               .UseRollingRefreshTokens();
+
         // Enable client credentials flow for M2M authentication
         options.AllowClientCredentialsFlow();
+
+        // Enable device authorization flow
+        options.AllowDeviceAuthorizationFlow();
 
         // Register the signing and encryption credentials
         options.AddDevelopmentEncryptionCertificate()
@@ -150,7 +156,7 @@ builder.Services.AddOpenIddict()
                .EnableAuthorizationEndpointPassthrough()
                .EnableTokenEndpointPassthrough()
                .EnableUserInfoEndpointPassthrough()
-               .EnableStatusCodePagesIntegration();
+                .EnableStatusCodePagesIntegration();
     })
     // Register the OpenIddict validation components
     .AddValidation(options =>
@@ -228,7 +234,7 @@ builder.Services.AddAuthorization(options =>
 });
 
 // Register permission authorization handler
-builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, 
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
     Infrastructure.Authorization.PermissionAuthorizationHandler>();
 
 // Register HasAnyPermission authorization handler

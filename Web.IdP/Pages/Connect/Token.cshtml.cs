@@ -53,7 +53,7 @@ public class TokenModel : PageModel
             // Client credentials grant for M2M authentication
             // Subject is the client_id (service account principal)
             var m2mClientId = request.ClientId;
-            
+
             // Create the claims-based identity for the service account
             var identity = new ClaimsIdentity(
                 authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
@@ -63,7 +63,7 @@ public class TokenModel : PageModel
             // Set subject to client_id for M2M clients
             identity.SetClaim(Claims.Subject, m2mClientId)
                     .SetClaim(Claims.Name, m2mClientId);
-            
+
             // Add audience (aud) claims from API Resources associated with requested scopes
             var requestedScopes = request.GetScopes();
             var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
@@ -74,7 +74,14 @@ public class TokenModel : PageModel
 
             identity.SetDestinations(GetDestinations);
 
+            identity.SetDestinations(GetDestinations);
+
             claimsPrincipal = new ClaimsPrincipal(identity);
+        }
+        else if (request.GrantType == GrantTypes.DeviceCode)
+        {
+            // Retrieve the claims principal associated with the device code
+            claimsPrincipal = (await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)).Principal!;
         }
         else if (request.IsPasswordGrantType())
         {
@@ -176,7 +183,7 @@ public class TokenModel : PageModel
                 var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
                     .Select(p => p.Trim())
                     .Where(p => !string.IsNullOrEmpty(p));
-                
+
                 foreach (var permission in rolePermissions)
                 {
                     permissions.Add(permission);
