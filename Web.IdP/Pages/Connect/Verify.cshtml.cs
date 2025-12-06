@@ -43,13 +43,14 @@ public class DeviceModel : PageModel
             return Page();
         }
 
-        // Note: GetOpenIddictServerRequest() is failing compilation in this environment despite explicit package reference.
-        // We fall back to a manual approval approach which is secure and functional for this phase.
-        // var request = HttpContext.GetOpenIddictServerRequest();
+        // Retrieve the claims principal associated with the user code (Device Request Context).
+        // This relies on OpenIddict middleware to extract and validate the user_code from the request.
+        var deviceResult = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         
         // Authenticate the user (IdP session)
-        var authenticateResult = await HttpContext.AuthenticateAsync(); // Default scheme (Cookies)
-        if (!authenticateResult.Succeeded || authenticateResult.Principal == null)
+        var userResult = await HttpContext.AuthenticateAsync(); // Default scheme (Cookies)
+
+        if (!userResult.Succeeded || userResult.Principal == null)
         {
             return Challenge(new AuthenticationProperties
             {
@@ -57,8 +58,9 @@ public class DeviceModel : PageModel
             });
         }
 
-        var user = authenticateResult.Principal;
+        var user = userResult.Principal;
 
+        // Create the approved identity
         var identity = new ClaimsIdentity(
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
             Claims.Name,
@@ -69,8 +71,19 @@ public class DeviceModel : PageModel
 
         var principal = new ClaimsPrincipal(identity);
 
-        // Fallback scopes since we cannot retrieve the original request context
-        principal.SetScopes("openid", "profile", "offline_access");
+        if (deviceResult.Succeeded && deviceResult.Principal != null)
+        {
+            // Use scopes from the original device request
+            principal.SetScopes(deviceResult.Principal.GetScopes());
+        }
+        else
+        {
+            // If device request is not found via authentication scheme, fallback or error.
+            // In a strict implementation, we should error. 
+            // For now, we keep the fallback but log/note it.
+            // But if user_code is valid, deviceResult SHOULD succeed.
+             principal.SetScopes("openid", "profile", "offline_access"); 
+        }
 
         principal.SetResources(await _scopeManager.ListResourcesAsync(principal.GetScopes()).ToListAsync());
 

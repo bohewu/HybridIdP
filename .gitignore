@@ -43,4 +43,4 @@ Web.IdP/wwwroot/dist/
 
 # Test scripts
 test-*.ps1
-test-*.md
+test-*.mdreferences/
