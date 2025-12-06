@@ -51,4 +51,11 @@ public class DeviceController : Controller
 
         return actionResult;
     }
+
+    [HttpGet("~/connect/verify/success")]
+    [Authorize]
+    public IActionResult Success()
+    {
+        return View();
+    }
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="SuccessTitle" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="SuccessHeader" xml:space="preserve">
+    <value>Success!</value>
+  </data>
+  <data name="SuccessMessage" xml:space="preserve">
+    <value>You have successfully signed in. You can now close this window.</value>
+  </data>
+  <data name="SuccessNote" xml:space="preserve">
+    <value>You can return to your application.</value>
+  </data>
+</root>

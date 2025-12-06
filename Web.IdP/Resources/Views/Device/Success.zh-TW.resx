@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="SuccessTitle" xml:space="preserve">
+    <value>成功</value>
+  </data>
+  <data name="SuccessHeader" xml:space="preserve">
+    <value>驗證成功！</value>
+  </data>
+  <data name="SuccessMessage" xml:space="preserve">
+    <value>您已成功登入，現在可以關閉此視窗。</value>
+  </data>
+  <data name="SuccessNote" xml:space="preserve">
+    <value>您可以返回您的應用程式。</value>
+  </data>
+</root>

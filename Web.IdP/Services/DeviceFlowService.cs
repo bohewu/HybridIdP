@@ -122,7 +122,7 @@ public class DeviceFlowService : IDeviceFlowService
 
             var properties = new AuthenticationProperties
             {
-                RedirectUri = "/"
+                RedirectUri = "/connect/verify/success"
             };
 
             _logger.LogInformation("Device flow authorization approved for user {UserId}", user.Id);

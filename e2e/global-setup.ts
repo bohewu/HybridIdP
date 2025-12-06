@@ -47,7 +47,7 @@ export default async function globalSetup() {
     await page.fill('#Input_Login', adminEmail);
     await page.fill('#Input_Password', adminPassword);
     await page.click('button.auth-btn-primary');
-    await page.waitForSelector('.user-name', { timeout: 20000 });
+    await page.waitForSelector('.user-name, .user-info-name', { timeout: 20000 });
 
     // Find existing testclient-public
     const client = await page.evaluate(async () => {

@@ -1,0 +1,28 @@
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IViewLocalizer Localizer
+@{
+    ViewData["Title"] = Localizer["SuccessTitle"];
+}
+
+<div class="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-light font-sans py-5">
+    <div class="card shadow-sm border-0" style="max-width: 500px; width: 100%;">
+        <div class="card-body p-4 p-sm-5 text-center">
+            <div class="mb-4 text-success">
+                <i class="bi bi-check-circle-fill" style="font-size: 4rem;"></i>
+            </div>
+            
+            <h2 class="fw-bold text-dark mb-3">
+                @Localizer["SuccessHeader"]
+            </h2>
+            
+            <p class="text-secondary mb-4">
+                @Localizer["SuccessMessage"]
+            </p>
+
+            <div class="alert alert-info d-flex align-items-center mb-0 text-start" role="alert">
+                 <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                <small>@Localizer["SuccessNote"]</small>
+            </div>
+        </div>
+    </div>
+</div>
