@@ -81,7 +81,7 @@ public class DeviceModel : PageModel
         return Page();
     }
 
-    [Authorize, ValidateAntiForgeryToken]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> OnPostAsync()
     {
         // Retrieve the profile of the logged in user.

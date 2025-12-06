@@ -18,6 +18,7 @@ namespace Tests.Application.UnitTests;
 public class ClientServiceTests
 {
     private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
+    private readonly Mock<IOpenIddictScopeManager> _mockScopeManager;
     private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
     private readonly Mock<IApplicationDbContext> _mockContext;
     private readonly ClientService _clientService;
@@ -25,9 +26,10 @@ public class ClientServiceTests
     public ClientServiceTests()
     {
         _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
+        _mockScopeManager = new Mock<IOpenIddictScopeManager>();
         _mockEventPublisher = new Mock<IDomainEventPublisher>();
         _mockContext = new Mock<IApplicationDbContext>();
-        _clientService = new ClientService(_mockApplicationManager.Object, _mockEventPublisher.Object, _mockContext.Object);
+        _clientService = new ClientService(_mockApplicationManager.Object, _mockEventPublisher.Object, _mockContext.Object, _mockScopeManager.Object);
     }
 
     #region GetClientsAsync Tests

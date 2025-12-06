@@ -111,7 +111,7 @@ public class DeviceModelTests
         var result = await _sut.OnPostAsync();
 
         // Assert
-        var signInResult = Assert.IsType<SignInResult>(result);
+        var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
         Assert.Equal(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, signInResult.AuthenticationScheme);
         Assert.NotNull(signInResult.Properties);
         Assert.Equal("/", signInResult.Properties.RedirectUri); // Verify RedirectUri fix
