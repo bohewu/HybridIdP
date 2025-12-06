@@ -13,6 +13,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="OpenIddict.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="OpenIddict.Server.AspNetCore" Version="7.2.0" />
     <PackageReference Include="Vite.AspNetCore" Version="2.4.1" />
     
     <!-- OpenTelemetry packages for observability -->
