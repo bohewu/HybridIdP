@@ -1,25 +1,26 @@
 @page "/connect/verify"
 @model Web.IdP.Pages.Connect.DeviceModel
 @{
-    ViewData["Title"] = "Device Authorization";
+    ViewData["Title"] = "Device Activation";
 }
 
-<div class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900 font-sans">
     <div class="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Connect your device
+        <!-- Brand / Header -->
+        <h2 class="mt-6 text-center text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
+            Activate your device
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Enter the code displayed on your device
+            Enter the code displayed on your device.
         </p>
     </div>
 
-    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div class="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-[400px]">
+        <div class="bg-white dark:bg-gray-800 py-8 px-6 shadow-md rounded-lg sm:px-8 border border-gray-200 dark:border-gray-700">
             <form method="post">
                 @if (ViewData["SuccessMessage"] != null)
                 {
-                    <div class="rounded-md bg-green-50 p-4 mb-4">
+                    <div class="rounded-md bg-green-50 p-4 mb-5 border border-green-200">
                         <div class="flex">
                             <div class="flex-shrink-0">
                                 <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
@@ -34,28 +35,50 @@
                         </div>
                     </div>
                 }
-                <div asp-validation-summary="All" class="text-red-600 mb-4"></div>
 
-                <div>
-                    <label asp-for="UserCode" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Device Code
-                    </label>
-                    <div class="mt-1">
-                        <input asp-for="UserCode" 
-                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm uppercase tracking-widest text-center font-mono" 
-                               placeholder="XXXX-kwXK" 
-                               maxlength="9"
-                               autofocus />
+                <div asp-validation-summary="ModelOnly" class="rounded-md bg-red-50 p-3 mb-5 border border-red-200 text-sm text-red-700"></div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label asp-for="UserCode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            User code
+                        </label>
+                        <div class="relative rounded-md shadow-sm">
+                            <input asp-for="UserCode" 
+                                   class="block w-full px-4 py-3 border border-gray-300 rounded-md text-center text-lg font-mono tracking-[0.2em] uppercase placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white" 
+                                   placeholder="XXXX-XXXX-XXXX" 
+                                   maxlength="15"
+                                   autofocus 
+                                   autocomplete="off" />
+                        </div>
+                        <span asp-validation-for="UserCode" class="text-red-600 text-xs mt-1 block"></span>
                     </div>
-                    <span asp-validation-for="UserCode" class="text-red-600 text-sm"></span>
-                </div>
 
-                <div class="mt-6">
-                    <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Submit
+                    <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                        Continue
                     </button>
+                    
+                    <div class="text-center mt-4">
+                        <a href="/" class="text-xs font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                            Cancel
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
+        <p class="mt-6 text-center text-xs text-gray-500 dark:text-gray-400">
+            Powered by HybridAuth
+        </p>
     </div>
 </div>
+
+<script>
+    // Simple auto-formatting for user code (XXXX-XXXX-XXXX)
+    const input = document.getElementById('UserCode');
+    input.addEventListener('input', function(e) {
+        let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (value.length > 4) value = value.slice(0, 4) + '-' + value.slice(4);
+        if (value.length > 9) value = value.slice(0, 9) + '-' + value.slice(9);
+        e.target.value = value;
+    });
+</script>

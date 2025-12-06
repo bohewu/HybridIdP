@@ -66,10 +66,10 @@ public class DeviceModelTests
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme))
             .ReturnsAsync(AuthenticateResult.Success(deviceTicket));
 
-        // 2. Mock User Session Authentication (Cookies)
+        // 2. Mock User Session Authentication (Cookies) - SIMULATING REAL ASP.NET IDENTITY PRINCIPAL
         var userIdentity = new ClaimsIdentity("Cookies");
-        userIdentity.AddClaim(OpenIddictConstants.Claims.Subject, "user-123");
-        userIdentity.AddClaim(OpenIddictConstants.Claims.Name, "testuser");
+        userIdentity.AddClaim(ClaimTypes.NameIdentifier, "user-123"); // Identity uses NameIdentifier, not "sub"
+        userIdentity.AddClaim(ClaimTypes.Name, "testuser");
         
         var userTicket = new AuthenticationTicket(
             new ClaimsPrincipal(userIdentity), 

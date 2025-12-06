@@ -66,8 +66,7 @@ public class DeviceModel : PageModel
             Claims.Name,
             Claims.Role);
 
-        identity.AddClaim(Claims.Subject, user.GetClaim(Claims.Subject)!);
-        identity.AddClaim(Claims.Name, user.GetClaim(Claims.Name)!);
+        // Claims added after scope resolution to ensure fallback logic is available
 
         var principal = new ClaimsPrincipal(identity);
 
@@ -78,11 +77,26 @@ public class DeviceModel : PageModel
         }
         else
         {
-            // If device request is not found via authentication scheme, fallback or error.
-            // In a strict implementation, we should error. 
-            // For now, we keep the fallback but log/note it.
-            // But if user_code is valid, deviceResult SHOULD succeed.
+            // Fallback scopes if device request context is missing (should not happen if flow is correct)
              principal.SetScopes("openid", "profile", "offline_access"); 
+        }
+
+        // Safely retrieve the user subject and name, handling the difference between 
+        // OpenIddict claims ("sub") and ASP.NET Core Identity claims (ClaimTypes.NameIdentifier)
+        var subject = user.GetClaim(Claims.Subject) ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var name = user.GetClaim(Claims.Name) ?? user.FindFirst(ClaimTypes.Name)?.Value ?? user.Identity?.Name;
+
+        if (string.IsNullOrEmpty(subject))
+        {
+             // This should never happen for an authenticated user
+             ModelState.AddModelError("", "User authentication failed. Missing subject claim.");
+             return Page();
+        }
+
+        identity.AddClaim(Claims.Subject, subject);
+        if (!string.IsNullOrEmpty(name))
+        {
+            identity.AddClaim(Claims.Name, name);
         }
 
         principal.SetResources(await _scopeManager.ListResourcesAsync(principal.GetScopes()).ToListAsync());
@@ -91,7 +105,10 @@ public class DeviceModel : PageModel
         {
             [OpenIddictServerAspNetCoreConstants.Properties.Error] = null,
             [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = null
-        });
+        })
+        {
+            RedirectUri = "/"
+        };
 
         return SignIn(principal, properties, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
