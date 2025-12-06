@@ -344,4 +344,7 @@
   <data name="Ok" xml:space="preserve">
     <value>確定</value>
   </data>
+  <data name="InvalidLoginAttempt" xml:space="preserve">
+    <value>登入失敗，請檢查您的登入資訊。</value>
+  </data>
 </root>

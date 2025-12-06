@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="Title" xml:space="preserve">
+    <value>Device Activation</value>
+  </data>
+  <data name="Header" xml:space="preserve">
+    <value>Activate your device</value>
+  </data>
+  <data name="Instruction" xml:space="preserve">
+    <value>Enter the code displayed on your device.</value>
+  </data>
+  <data name="UserCodeLabel" xml:space="preserve">
+    <value>User code</value>
+  </data>
+  <data name="ContinueButton" xml:space="preserve">
+    <value>Continue</value>
+  </data>
+  <data name="CancelLink" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Footer" xml:space="preserve">
+    <value>Powered by HybridAuth</value>
+  </data>
+  <data name="UserCodeRequired" xml:space="preserve">
+    <value>The user code is required.</value>
+  </data>
+  <data name="MissingSubject" xml:space="preserve">
+    <value>User authentication failed. Missing subject claim.</value>
+  </data>
+  <data name="InvalidUserCode" xml:space="preserve">
+    <value>The specified user code is not valid. Please make sure you typed it correctly.</value>
+  </data>
+  <data name="InvalidClient" xml:space="preserve">
+    <value>The client application cannot be found.</value>
+  </data>
+  <data name="AppRequestAccess" xml:space="preserve">
+    <value>{0} is requesting access to your account.</value>
+  </data>
+  <data name="UserRetrievalFailed" xml:space="preserve">
+    <value>The user details cannot be retrieved.</value>
+  </data>
+  <data name="ServerError" xml:space="preserve">
+    <value>An unexpected error occurred.</value>
+  </data>
+</root>

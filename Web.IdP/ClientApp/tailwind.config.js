@@ -3,6 +3,7 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{vue,js,ts,jsx,tsx}",
+    "../Pages/**/*.cshtml"
   ],
   theme: {
     // Match Bootstrap 5 breakpoints for consistency

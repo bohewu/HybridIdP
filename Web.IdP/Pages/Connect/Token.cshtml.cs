@@ -11,9 +11,12 @@ using System.Collections.Immutable;
 using System.Security.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using Core.Application;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Web.IdP.Pages.Connect;
 
+
+[IgnoreAntiforgeryToken] // OAuth flows use state parameter for CSRF protection
 public class TokenModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -21,19 +24,22 @@ public class TokenModel : PageModel
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly IApiResourceService _apiResourceService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<TokenModel> _logger;
 
     public TokenModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         RoleManager<ApplicationRole> roleManager,
         IApiResourceService apiResourceService,
-        IAuditService auditService)
+        IAuditService auditService,
+        ILogger<TokenModel> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _roleManager = roleManager;
         _apiResourceService = apiResourceService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -80,8 +86,103 @@ public class TokenModel : PageModel
         }
         else if (request.GrantType == GrantTypes.DeviceCode)
         {
-            // Retrieve the claims principal associated with the device code
-            claimsPrincipal = (await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)).Principal!;
+            _logger.LogInformation("Processing device code grant");
+            try
+            {
+            // Retrieve the claims principal stored in the device code.
+            var result = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+
+            if (result.Principal == null)
+            {
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The device code is invalid or has expired."
+                    }));
+            }
+
+            var subject = result.Principal.GetClaim(Claims.Subject);
+            if (string.IsNullOrEmpty(subject))
+            {
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The device code is missing the subject claim."
+                    }));
+            }
+
+            // Retrieve the user profile corresponding to the device code.
+            var user = await _userManager.FindByIdAsync(subject);
+            if (user == null)
+            {
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The token is no longer valid."
+                    }));
+            }
+
+            // Ensure the user is still allowed to sign in.
+            if (!await _signInManager.CanSignInAsync(user))
+            {
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The user is no longer allowed to sign in."
+                    }));
+            }
+
+            // Create new identity with the correct authenticationType
+            var identity = new ClaimsIdentity(result.Principal.Claims,
+                authenticationType: Microsoft.IdentityModel.Tokens.TokenValidationParameters.DefaultAuthenticationType,
+                nameType: Claims.Name,
+                roleType: Claims.Role);
+
+            // Override the user claims present in the principal in case they changed.
+            identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
+                    .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
+                    .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
+                    .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
+                    .SetClaims(Claims.Role, (await _userManager.GetRolesAsync(user)).ToImmutableArray());
+
+            // Copy scopes from the original principal
+            identity.SetScopes(result.Principal.GetScopes());
+
+            // Add permission claims
+            await AddPermissionClaimsAsync(identity, user);
+
+            // Add audience claims from API resources
+            var requestedScopes = result.Principal.GetScopes().ToList();
+            var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
+            if (audiences.Any())
+            {
+                identity.SetAudiences(audiences.ToImmutableArray());
+            }
+
+            identity.SetDestinations(GetDestinations);
+
+            claimsPrincipal = new ClaimsPrincipal(identity);
+            _logger.LogInformation("Device code grant: ClaimsPrincipal created successfully with subject {Subject}", claimsPrincipal.GetClaim(Claims.Subject));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing device code grant");
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.ServerError,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "An error occurred processing the device code."
+                    }));
+            }
         }
         else if (request.IsPasswordGrantType())
         {
