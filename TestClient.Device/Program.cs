@@ -53,16 +53,23 @@ class Program
             Console.WriteLine($"User Code:        {userCode}");
             Console.WriteLine($"Verification URL: {verificationUri}");
             Console.WriteLine("--------------------------------------------------------");
-            Console.WriteLine("Opening browser...");
 
-            try
+            if (!args.Contains("--no-browser"))
             {
-                Process.Start(new ProcessStartInfo(verificationUri!) { UseShellExecute = true });
+                Console.WriteLine("Opening browser...");
+                try
+                {
+                    Process.Start(new ProcessStartInfo(verificationUri!) { UseShellExecute = true });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Could not open browser automatically: {ex.Message}");
+                    Console.WriteLine("Please open the URL manually.");
+                }
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine($"Could not open browser automatically: {ex.Message}");
-                Console.WriteLine("Please open the URL manually.");
+                Console.WriteLine("Browser auto-open disabled.");
             }
 
             Console.WriteLine("Waiting for user approval...");
@@ -94,11 +101,8 @@ class Program
             var response = await HttpClient.PostAsync($"{Authority}/connect/token", request);
             var content = await response.Content.ReadAsStringAsync();
             
-            // Debug: Show raw response when not successful JSON
             if (string.IsNullOrWhiteSpace(content))
             {
-                Console.WriteLine($"\n[DEBUG] Empty response with status {response.StatusCode}");
-                Console.WriteLine($"[DEBUG] Headers: {string.Join(", ", response.Headers.Select(h => $"{h.Key}={string.Join(",", h.Value)}"))}");
                 await Task.Delay(interval * 1000);
                 continue;
             }
@@ -110,8 +114,7 @@ class Program
             }
             catch (JsonException)
             {
-                Console.WriteLine($"\n[DEBUG] Non-JSON response with status {response.StatusCode}:");
-                Console.WriteLine($"[DEBUG] Content: {content[..Math.Min(500, content.Length)]}");
+                Console.WriteLine($"\n[DEBUG] Non-JSON response with status {response.StatusCode}: {content[..Math.Min(100, content.Length)]}");
                 return;
             }
             
@@ -123,7 +126,7 @@ class Program
                 {
                     Console.WriteLine("");
                     Console.WriteLine("--------------------------------------------------------");
-                    Console.WriteLine("Device Flow Completed Successfully!", ConsoleColor.Green);
+                    Console.WriteLine("Device Flow Completed Successfully!");
                     Console.WriteLine("Access Token received.");
                     
                     if (root.TryGetProperty("access_token", out var tokenProp))
