@@ -46,7 +46,20 @@ namespace Web.IdP.Services
             if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType())
             {
                 // Retrieve the claims principal stored in the authorization code/refresh token
-                claimsPrincipal = schemePrincipal ?? throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
+                var principal = schemePrincipal ?? throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
+                
+                // Create a new ClaimsPrincipal to avoid side effects
+                // and ensure destinations are set correctly for the new token
+                var identity = new ClaimsIdentity(
+                    principal.Claims,
+                    principal.Identity?.AuthenticationType,
+                    Claims.Name,
+                    Claims.Role);
+
+                // Re-apply destinations
+                identity.SetDestinations(GetDestinations);
+                
+                claimsPrincipal = new ClaimsPrincipal(identity);
             }
             else if (request.IsClientCredentialsGrantType())
             {
@@ -71,6 +84,9 @@ namespace Web.IdP.Services
                 {
                     identity.SetAudiences(audiences.ToImmutableArray());
                 }
+
+                // Set the scopes on the identity, excluding 'openid' for client_credentials
+                identity.SetScopes(requestedScopes.Where(s => s != Scopes.OpenId));
 
                 identity.SetDestinations(GetDestinations);
 
@@ -301,6 +317,7 @@ namespace Web.IdP.Services
             {
                 case Claims.Name:
                 case Claims.Email:
+                case Claims.Subject:
                     yield return Destinations.AccessToken;
                     yield return Destinations.IdentityToken;
                     yield break;

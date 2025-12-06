@@ -278,6 +278,8 @@ builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserInfoService, UserInfoService>();
+builder.Services.AddScoped<IIntrospectionService, IntrospectionService>();
+builder.Services.AddScoped<IRevocationService, RevocationService>();
 
 
 // Settings + Branding services

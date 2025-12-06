@@ -373,6 +373,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             {
                 case Claims.Name:
                 case Claims.Email:
+                case Claims.Subject:
                     yield return Destinations.AccessToken;
                     yield return Destinations.IdentityToken;
                     yield break;
