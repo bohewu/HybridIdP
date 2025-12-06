@@ -1,20 +1,34 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Xunit;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Tests.Infrastructure.IntegrationTests;
+
+/// <summary>
+/// Custom WebApplicationFactory that sets Development environment
+/// to trigger test data seeding (including testclient-m2m)
+/// and allow HTTP for testing (DisableTransportSecurityRequirement is in Program.cs)
+/// </summary>
+public class DevelopmentWebApplicationFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Development");
+    }
+}
 
 /// <summary>
 /// Phase 13 OAuth Flow Integration Tests
 /// Tests Client Credentials, Introspection, and Revocation flows at the HTTP level
 /// </summary>
-public class OAuthFlowIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+public class OAuthFlowIntegrationTests : IClassFixture<DevelopmentWebApplicationFactory>
 {
     private readonly HttpClient _client;
     private const string M2M_CLIENT_ID = "testclient-m2m";
     private const string M2M_CLIENT_SECRET = "m2m-test-secret-2024";
 
-    public OAuthFlowIntegrationTests(WebApplicationFactory<Program> factory)
+    public OAuthFlowIntegrationTests(DevelopmentWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }
@@ -35,8 +49,8 @@ public class OAuthFlowIntegrationTests : IClassFixture<WebApplicationFactory<Pro
         var response = await _client.PostAsync("/connect/token", request);
 
         // Assert
-        response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, $"Token request failed with {response.StatusCode}: {content}");
         var tokenResponse = JsonSerializer.Deserialize<JsonElement>(content);
         
         Assert.True(tokenResponse.TryGetProperty("access_token", out var accessToken));
