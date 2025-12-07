@@ -181,7 +181,7 @@ onMounted(() => {
             <!-- Monitoring Toggle -->
             <div class="form-control mb-6">
                 <label class="label cursor-pointer justify-start gap-4">
-                    <span class="label-text font-bold text-gray-700">{{ t('admin.settings.monitoring.enable') }}</span>
+                    <span class="label-text font-bold text-gray-700 mr-4">{{ t('admin.settings.monitoring.enable') }}</span>
                     <input type="checkbox" class="toggle toggle-primary" v-model="settings.monitoringEnabled" :disabled="!canUpdate" />
                 </label>
                 <p class="text-sm text-gray-500 mt-1">{{ t('admin.settings.monitoring.enable_desc') }}</p>
@@ -193,34 +193,52 @@ onMounted(() => {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <!-- Activity Interval -->
                 <div class="form-control w-full">
-                    <label class="label">
-                        <span class="label-text font-medium text-gray-700">{{ t('admin.settings.monitoring.activity_interval') }}</span>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ t('admin.settings.monitoring.activity_interval') }}
                     </label>
-                    <div class="join">
-                        <input type="number" class="input input-bordered w-full join-item" v-model.number="settings.activityInterval" min="1" :disabled="!canUpdate" />
-                        <span class="btn btn-static join-item bg-base-200">{{ t('admin.settings.monitoring.seconds') }}</span>
+                    <div class="flex items-center gap-2">
+                        <input
+                            type="number"
+                            v-model.number="settings.activityInterval"
+                            min="1"
+                            :disabled="!canUpdate"
+                            class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
+                        />
+                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('admin.settings.monitoring.seconds') }}</span>
                     </div>
                 </div>
 
                 <!-- Security Interval -->
                 <div class="form-control w-full">
-                    <label class="label">
-                        <span class="label-text font-medium text-gray-700">{{ t('admin.settings.monitoring.security_interval') }}</span>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ t('admin.settings.monitoring.security_interval') }}
                     </label>
-                    <div class="join">
-                        <input type="number" class="input input-bordered w-full join-item" v-model.number="settings.securityInterval" min="1" :disabled="!canUpdate" />
-                        <span class="btn btn-static join-item bg-base-200">{{ t('admin.settings.monitoring.seconds') }}</span>
+                    <div class="flex items-center gap-2">
+                        <input
+                            type="number"
+                            v-model.number="settings.securityInterval"
+                            min="1"
+                            :disabled="!canUpdate"
+                            class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
+                        />
+                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('admin.settings.monitoring.seconds') }}</span>
                     </div>
                 </div>
 
                 <!-- Metrics Interval -->
                 <div class="form-control w-full">
-                    <label class="label">
-                        <span class="label-text font-medium text-gray-700">{{ t('admin.settings.monitoring.metrics_interval') }}</span>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ t('admin.settings.monitoring.metrics_interval') }}
                     </label>
-                    <div class="join">
-                        <input type="number" class="input input-bordered w-full join-item" v-model.number="settings.metricsInterval" min="1" :disabled="!canUpdate" />
-                        <span class="btn btn-static join-item bg-base-200">{{ t('admin.settings.monitoring.seconds') }}</span>
+                     <div class="flex items-center gap-2">
+                        <input
+                            type="number"
+                            v-model.number="settings.metricsInterval"
+                            min="1"
+                            :disabled="!canUpdate"
+                            class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
+                        />
+                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('admin.settings.monitoring.seconds') }}</span>
                     </div>
                 </div>
             </div>
@@ -236,11 +254,15 @@ onMounted(() => {
                     {{ t('admin.settings.cancelButton') }}
                 </button>
                 <button 
-                    class="btn btn-primary" 
+                    data-testid="save-settings-btn"
+                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center" 
                     @click="saveSettings" 
                     :disabled="saving || loading || !hasChanges">
-                    <span v-if="saving" class="loading loading-spinner"></span>
-                    {{ t('common.save') }}
+                    <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {{ saving ? t('admin.settings.saving') : t('admin.settings.saveButton') }}
                 </button>
             </div>
         </div>

@@ -63,3 +63,51 @@ test('Admin - Settings validation (empty fields)', async ({ page }) => {
 
   expect(hasError).toBeTruthy();
 });
+
+test('Admin - System Monitoring Settings', async ({ page }) => {
+  await adminHelpers.loginAsAdminViaIdP(page);
+
+  // Navigate to Settings page
+  await page.goto('https://localhost:7035/Admin/Settings');
+  
+  // Wait for monitoring section
+  // Uses the i18n key "admin.settings.system.title" -> "System Monitoring" (en-US)
+  // Or "Enable Monitoring" toggle
+  await page.waitForSelector('text=System Monitoring', { timeout: 15000 });
+
+  // Verify visibility of key elements
+  await expect(page.getByText('System Monitoring')).toBeVisible();
+  await expect(page.getByText('Enable Monitoring')).toBeVisible();
+  await expect(page.getByText('Activity Interval')).toBeVisible();
+  
+  // Check input types for intervals
+  // They are now standard inputs, type number
+  const activityInput = page.locator('input[type="number"]').first();
+  await expect(activityInput).toBeVisible();
+
+  // Test Interaction: Toggle monitoring (enable/disable)
+  // The toggle is now a standard checkbox input styled with classes, but still Type="checkbox"
+  // It is the first checkbox in the monitoring section
+  const enableToggle = page.locator('input[type="checkbox"]').first(); 
+  
+  // Force click because the input itself might be covered by styled label or have opacity 0 with DaisyUI/Tailwind
+  // But we can check if it is checked
+  const wasEnabled = await enableToggle.isChecked();
+  
+  // Click the label associated or just force click the input
+  await enableToggle.click({ force: true });
+  
+  // Wait for button to be enabled (hasChanges = true)
+  await expect(page.locator('button[data-testid="save-settings-btn"]:not([disabled])')).toBeVisible();
+
+  // Save
+  await page.click('button[data-testid="save-settings-btn"]');
+  
+  // Expect success message
+  await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
+
+  // Restore state
+  await enableToggle.click({ force: true });
+  await page.click('button[data-testid="save-settings-btn"]');
+  await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
+});
