@@ -21,7 +21,7 @@ last-updated: 2025-12-02
 -- Phase 11 — Role & Account Switching: 100% ✅ (Phase 11.6 Complete) — `./FEATURES_AND_CAPABILITIES.md#phase-11--account--role-management-completed`
    - Phase 11.6: Homepage Refactoring & Security Hardening ✅ — `./archive/phases/phase-11-6-remove-role-switch-refactor-homepage.md`, `./SECURITY_HARDENING.md`
 -- Phase 12 — Admin API & HR Integration: 📋 Planned — `./phase-12-admin-api-hr-integration.md`
--- Phase 13 — OAuth Flow Enhancement: 100% ✅ — `./docs/phase-13-oauth-flow-enhancement.md`
+-- Phase 13 — OAuth Flow Enhancement: 100% ✅ — `./archive/phases/phase-13-oauth-flow-enhancement.md`
 
 Backlog & Technical Debt: `./TODOS.md`
 
