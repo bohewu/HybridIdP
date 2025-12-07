@@ -353,9 +353,15 @@ builder.Services.AddSignalR();
 // todo: 未來可以在安全設定裡面設定是否啟用，及秒數
 builder.Services.AddHostedService<Infrastructure.BackgroundServices.MonitoringBackgroundService>();
 
+// Register AppInfo Options
+builder.Services.Configure<AppInfoOptions>(builder.Configuration.GetSection(AppInfoOptions.Section));
+
 // Configure OpenTelemetry
-var serviceName = "HybridAuthIdP";
-var serviceVersion = "1.0.0";
+var appInfoOptions = new AppInfoOptions();
+builder.Configuration.GetSection(AppInfoOptions.Section).Bind(appInfoOptions);
+
+var serviceName = appInfoOptions.ServiceName;
+var serviceVersion = appInfoOptions.ServiceVersion;
 
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource

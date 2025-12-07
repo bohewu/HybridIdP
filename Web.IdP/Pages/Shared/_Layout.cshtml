@@ -4,15 +4,18 @@
 @using Core.Domain
 @using Microsoft.AspNetCore.Identity
 @using Web.IdP.Helpers
+@using Microsoft.Extensions.Options
+@using Web.IdP.Options
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<ApplicationRole> RoleManager
+@inject IOptions<BrandingOptions> BrandingOptions
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - HybridAuth IdP</title>
+    <title>@ViewData["Title"] - @BrandingOptions.Value.ProductName</title>
     @if (User.Identity?.IsAuthenticated == true)
     {
         var activeRole = User.Claims.FirstOrDefault(c => c.Type == "active_role")?.Value 
@@ -32,7 +35,7 @@
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm google-navbar">
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-page="/Index">
-                    <i class="bi bi-shield-lock"></i> HybridAuth IdP
+                    <i class="bi bi-shield-lock"></i> @BrandingOptions.Value.ProductName
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
