@@ -45,6 +45,9 @@ public static class DataSeeder
             
             // Seed Device Flow test client for manual verification
             await SeedTestDeviceClientAsync(applicationManager);
+            
+            // Seed M2M test client for system tests
+            await SeedTestM2mClientAsync(applicationManager, scopeManager);
         }
 
         // Note: Test client seeding removed in Phase 3.2 - use Admin API to manage clients dynamically
@@ -447,4 +450,61 @@ public static class DataSeeder
                 }
             });
         }
+    }
+
+    /// <summary>
+    /// Seeds M2M test client for system tests.
+    /// ClientId: testclient-m2m
+    /// ClientSecret: m2m-test-secret-2024
+    /// Supports: client_credentials grant with api:company:read, api:company:write scopes
+    /// </summary>
+    private static async Task SeedTestM2mClientAsync(
+        IOpenIddictApplicationManager applicationManager,
+        IOpenIddictScopeManager scopeManager)
+    {
+        const string clientId = "testclient-m2m";
+        const string clientSecret = "m2m-test-secret-2024";
+
+        // Seed required API scopes first
+        var apiScopes = new[]
+        {
+            new { Name = "api:company:read", DisplayName = "Read Company Data", Description = "Allows reading company information" },
+            new { Name = "api:company:write", DisplayName = "Write Company Data", Description = "Allows modifying company information" }
+        };
+
+        foreach (var scope in apiScopes)
+        {
+            if (await scopeManager.FindByNameAsync(scope.Name) == null)
+            {
+                await scopeManager.CreateAsync(new OpenIddictScopeDescriptor
+                {
+                    Name = scope.Name,
+                    DisplayName = scope.DisplayName,
+                    Description = scope.Description
+                });
+            }
+        }
+
+        // Seed M2M client
+        if (await applicationManager.FindByClientIdAsync(clientId) == null)
+        {
+            await applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
+            {
+                ClientId = clientId,
+                ClientSecret = clientSecret,
+                DisplayName = "M2M Test Client",
+                ClientType = OpenIddictConstants.ClientTypes.Confidential,
+                ConsentType = OpenIddictConstants.ConsentTypes.Implicit, // No consent for M2M
+                Permissions =
+                {
+                    OpenIddictConstants.Permissions.Endpoints.Token,
+                    OpenIddictConstants.Permissions.Endpoints.Introspection,
+                    OpenIddictConstants.Permissions.Endpoints.Revocation,
+                    OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
+                    $"{OpenIddictConstants.Permissions.Prefixes.Scope}api:company:read",
+                    $"{OpenIddictConstants.Permissions.Prefixes.Scope}api:company:write"
+                }
+            });
+        }
+    }
 }
