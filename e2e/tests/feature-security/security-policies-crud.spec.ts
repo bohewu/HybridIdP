@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import adminHelpers from '../helpers/admin';
 
+test.describe.configure({ mode: 'serial' });
+
 test('Admin - Security Policies CRUD (password requirements)', async ({ page }) => {
   await adminHelpers.loginAsAdminViaIdP(page);
 
@@ -95,6 +97,7 @@ test('Admin - Security Policies (account lockout configuration)', async ({ page 
 
   // Update lockout duration to a different value
   await page.fill('#lockoutDuration', newValue);
+  await page.locator('#lockoutDuration').press('Tab');
 
   // Wait for form to become dirty and save button to be enabled
   await page.waitForTimeout(500);
@@ -110,8 +113,8 @@ test('Admin - Security Policies (account lockout configuration)', async ({ page 
 
   // Restore
   await page.fill('#lockoutDuration', originalLockoutDuration);
+  await page.locator('#lockoutDuration').press('Tab');
   await page.waitForTimeout(500);
-  await page.locator('button[data-testid="save-policy-btn"]:not([disabled])').click({ timeout: 10000 });
   await page.locator('button[data-testid="save-policy-btn"]:not([disabled])').click({ timeout: 10000 });
   await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
 });
@@ -137,10 +140,8 @@ test('Admin - Security Policies (boolean toggles)', async ({ page }) => {
   //   <dd><label class="flex items-center ..."><input type="checkbox" ...></label></dd>
   // </div>
   
-  // Strategy: Find the text "Require Uppercase", go up to the row, then find the checkbox input
-  const labelElement = page.getByText('Require Uppercase');
-  const row = page.locator('div, .py-4, .sm:grid', { has: labelElement }).first();
-  const checkbox = row.locator('input[type="checkbox"]');
+  // Strategy: Require Uppercase is the first checkbox on the page
+  const checkbox = page.locator('input[type="checkbox"]').first();
   
   // Get initial state
   const isCheckedInitial = await checkbox.isChecked();
@@ -149,9 +150,8 @@ test('Admin - Security Policies (boolean toggles)', async ({ page }) => {
   await checkbox.click({ force: true });
   
   // Verify state changed
-  // Wait a bit for reactivity if needed, though click should suffice
-  const isCheckedAfter = await checkbox.isChecked();
-  expect(isCheckedAfter).toBe(!isCheckedInitial);
+  // Use expect(...).toBeChecked() which retries until condition is met
+  await expect(checkbox).toBeChecked({ checked: !isCheckedInitial });
   
   // Save
   // Use explicit text "Save Policy" to avoid ambiguity
