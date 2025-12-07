@@ -9,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Net.Http;
 using System;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options; // Added
+using Core.Application.Options; // Added
 
 namespace Infrastructure.Services;
 
@@ -19,15 +20,20 @@ public class MonitoringService : IMonitoringService
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IHubContext<Infrastructure.Hubs.MonitoringHub> _hubContext;
-    private readonly IConfiguration _configuration;
+    private readonly ObservabilityOptions _options; // Changed
 
-    public MonitoringService(IApplicationDbContext db, IDomainEventPublisher eventPublisher, IHttpClientFactory httpClientFactory, IHubContext<Infrastructure.Hubs.MonitoringHub> hubContext, IConfiguration configuration)
+    public MonitoringService(
+        IApplicationDbContext db, 
+        IDomainEventPublisher eventPublisher, 
+        IHttpClientFactory httpClientFactory, 
+        IHubContext<Infrastructure.Hubs.MonitoringHub> hubContext, 
+        IOptions<ObservabilityOptions> options) // Changed
     {
         _db = db;
         _eventPublisher = eventPublisher;
         _httpClientFactory = httpClientFactory;
         _hubContext = hubContext;
-        _configuration = configuration;
+        _options = options.Value; // Changed
     }
 
     public async Task<ActivityStatsDto> GetActivityStatsAsync()
@@ -237,7 +243,7 @@ public class MonitoringService : IMonitoringService
         try
         {
             var client = _httpClientFactory.CreateClient();
-            var baseUrl = _configuration["Monitoring:MetricsBaseUrl"] ?? _configuration["Observability:MetricsBaseUrl"] ?? "https://localhost:7035";
+            var baseUrl = _options.MetricsBaseUrl; // Changed
             var response = await client.GetAsync($"{baseUrl.TrimEnd('/')}/metrics");
             response.EnsureSuccessStatusCode();
             

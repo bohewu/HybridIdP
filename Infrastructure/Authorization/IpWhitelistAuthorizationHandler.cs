@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options; // Added
 using System.Net;
+using Core.Application.Options; // Added
 
 namespace Infrastructure.Authorization;
 
@@ -14,16 +16,16 @@ namespace Infrastructure.Authorization;
 public class IpWhitelistAuthorizationHandler : AuthorizationHandler<IpWhitelistRequirement>
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IConfiguration _configuration;
+    private readonly IOptionsMonitor<ObservabilityOptions> _options; // Changed to IOptionsMonitor for dynamic updates
     private readonly ILogger<IpWhitelistAuthorizationHandler> _logger;
 
     public IpWhitelistAuthorizationHandler(
         IHttpContextAccessor httpContextAccessor,
-        IConfiguration configuration,
+        IOptionsMonitor<ObservabilityOptions> options, // Changed
         ILogger<IpWhitelistAuthorizationHandler> logger)
     {
         _httpContextAccessor = httpContextAccessor;
-        _configuration = configuration;
+        _options = options; // Changed
         _logger = logger;
     }
 
@@ -46,7 +48,7 @@ public class IpWhitelistAuthorizationHandler : AuthorizationHandler<IpWhitelistR
         }
 
         // Read allowed IPs from configuration dynamically
-        var allowedIPs = _configuration.GetSection("Observability:AllowedIPs").Get<string[]>() ?? Array.Empty<string>();
+        var allowedIPs = _options.CurrentValue.AllowedIPs; // Changed
 
         _logger.LogInformation("Checking IP whitelist: RemoteIP={RemoteIp}, AllowedIPs={AllowedIPs}", 
             remoteIp, string.Join(", ", allowedIPs));

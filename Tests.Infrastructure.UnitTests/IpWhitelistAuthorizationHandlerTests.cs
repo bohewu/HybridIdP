@@ -1,50 +1,38 @@
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using System.Net;
 using System.Security.Claims;
 using Xunit;
+using Core.Application.Options;
 
 namespace Tests.Infrastructure.UnitTests;
 
 public class IpWhitelistAuthorizationHandlerTests
 {
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
-    private readonly Mock<IConfiguration> _mockConfiguration;
+    private readonly Mock<IOptionsMonitor<ObservabilityOptions>> _mockOptions;
     private readonly Mock<ILogger<IpWhitelistAuthorizationHandler>> _mockLogger;
     private IpWhitelistAuthorizationHandler _handler = null!;
 
     public IpWhitelistAuthorizationHandlerTests()
     {
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
-        _mockConfiguration = new Mock<IConfiguration>();
+        _mockOptions = new Mock<IOptionsMonitor<ObservabilityOptions>>();
         _mockLogger = new Mock<ILogger<IpWhitelistAuthorizationHandler>>();
     }
 
     private void SetupAllowedIPs(params string[] allowedIPs)
     {
-        // Create mock IConfigurationSection that acts like an array
-        var configSectionChildren = allowedIPs.Select((ip, index) => 
-        {
-            var childSection = new Mock<IConfigurationSection>();
-            childSection.Setup(x => x.Value).Returns(ip);
-            childSection.Setup(x => x.Key).Returns(index.ToString());
-            childSection.Setup(x => x.Path).Returns($"Observability:AllowedIPs:{index}");
-            return childSection.Object;
-        }).ToList();
-
-        var configSection = new Mock<IConfigurationSection>();
-        configSection.Setup(x => x.GetChildren()).Returns(configSectionChildren);
-        configSection.Setup(x => x.Value).Returns((string?)null);
-        
-        _mockConfiguration.Setup(x => x.GetSection("Observability:AllowedIPs")).Returns(configSection.Object);
+        var options = new ObservabilityOptions { AllowedIPs = allowedIPs };
+        _mockOptions.Setup(x => x.CurrentValue).Returns(options);
         
         _handler = new IpWhitelistAuthorizationHandler(
             _mockHttpContextAccessor.Object,
-            _mockConfiguration.Object,
+            _mockOptions.Object,
             _mockLogger.Object);
     }
 

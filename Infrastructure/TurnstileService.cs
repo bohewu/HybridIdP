@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Core.Application;
-using Microsoft.Extensions.Configuration;
+using Core.Application.Options; // Added
+using Microsoft.Extensions.Options; // Added
 using Microsoft.Extensions.Logging;
 using System.Net.Http;
 
@@ -9,29 +10,29 @@ namespace Infrastructure;
 public class TurnstileService : ITurnstileService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IConfiguration _configuration;
+    private readonly TurnstileOptions _options; // Changed
     private readonly ILogger<TurnstileService> _logger;
 
     public TurnstileService(
         IHttpClientFactory httpClientFactory,
-        IConfiguration configuration,
+        IOptions<TurnstileOptions> options, // Changed
         ILogger<TurnstileService> logger)
     {
         _httpClientFactory = httpClientFactory;
-        _configuration = configuration;
+        _options = options.Value; // Changed
         _logger = logger;
     }
 
     public async Task<bool> ValidateTokenAsync(string token, string? remoteIp = null)
     {
-        var enabled = _configuration.GetValue<bool>("Turnstile:Enabled");
+        var enabled = _options.Enabled; // Changed
         if (!enabled)
         {
             _logger.LogInformation("Turnstile is disabled. Skipping validation.");
             return true; // Pass validation when disabled
         }
 
-        var secretKey = _configuration["Turnstile:SecretKey"];
+        var secretKey = _options.SecretKey; // Changed
         if (string.IsNullOrEmpty(secretKey))
         {
             _logger.LogWarning("Turnstile SecretKey is not configured. Validation will fail.");

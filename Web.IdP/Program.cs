@@ -16,6 +16,7 @@ using OpenIddict.Server.AspNetCore;
 using Vite.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using Web.IdP.Options;
+using Core.Application.Options;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
@@ -209,6 +210,19 @@ builder.Services.AddMvc()
 
 // Branding options
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
+
+// Register Turnstile Options
+builder.Services.Configure<TurnstileOptions>(builder.Configuration.GetSection(TurnstileOptions.Section));
+
+// Register Observability Options
+builder.Services.Configure<ObservabilityOptions>(options =>
+{
+    // Bind "Monitoring" section if available (legacy support)
+    builder.Configuration.GetSection(ObservabilityOptions.MonitoringSection).Bind(options);
+    
+    // Bind "Observability" section, overriding any overlapping values
+    builder.Configuration.GetSection(ObservabilityOptions.ObservabilitySection).Bind(options);
+});
 
 // Register HttpContextAccessor for IP-based authorization
 builder.Services.AddHttpContextAccessor();

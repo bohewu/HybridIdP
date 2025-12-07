@@ -11,7 +11,8 @@ using Moq;
 using System.Net.Http;
 using Microsoft.AspNetCore.SignalR;
 using System.Threading;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Core.Application.Options;
 
 namespace Tests.Application.UnitTests;
 
@@ -21,6 +22,7 @@ public class MonitoringServiceTests : IDisposable
     private readonly MonitoringService _monitoringService;
     private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
     private readonly Mock<IHubContext<Infrastructure.Hubs.MonitoringHub>> _hubContextMock;
+    private readonly Mock<IOptions<ObservabilityOptions>> _optionsMock;
 
     public MonitoringServiceTests()
     {
@@ -39,14 +41,14 @@ public class MonitoringServiceTests : IDisposable
         // Mock HubContext
         _hubContextMock = new Mock<IHubContext<Infrastructure.Hubs.MonitoringHub>>();
         
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string,string>
-            {
-                {"Monitoring:MetricsBaseUrl", "https://localhost:7035"}
-            })
-            .Build();
+        // Mock Options
+        _optionsMock = new Mock<IOptions<ObservabilityOptions>>();
+        _optionsMock.Setup(x => x.Value).Returns(new ObservabilityOptions
+        {
+            MetricsBaseUrl = "https://localhost:7035"
+        });
 
-        _monitoringService = new MonitoringService(_dbContext, null!, _httpClientFactoryMock.Object, _hubContextMock.Object, configuration);
+        _monitoringService = new MonitoringService(_dbContext, null!, _httpClientFactoryMock.Object, _hubContextMock.Object, _optionsMock.Object);
     }
 
     public void Dispose()

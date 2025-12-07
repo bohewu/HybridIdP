@@ -4,11 +4,13 @@ using Core.Application.DTOs;
 using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Core.Application.Options; // Added
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options; // Added
 
 namespace Web.IdP.Pages.Account;
 
@@ -21,7 +23,7 @@ public class LoginModel : PageModel
     private readonly ILoginHistoryService _loginHistoryService;
     private readonly INotificationService _notificationService;
     private readonly ISecurityPolicyService _securityPolicyService;
-    private readonly IConfiguration _configuration;
+    private readonly TurnstileOptions _turnstileOptions; // Changed
     private readonly ILogger<LoginModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -33,7 +35,7 @@ public class LoginModel : PageModel
         ILoginHistoryService loginHistoryService,
         INotificationService notificationService,
         ISecurityPolicyService securityPolicyService,
-        IConfiguration configuration,
+        IOptions<TurnstileOptions> turnstileOptions, // Changed
         ILogger<LoginModel> logger,
         IStringLocalizer<SharedResource> localizer)
     {
@@ -44,7 +46,7 @@ public class LoginModel : PageModel
         _loginHistoryService = loginHistoryService;
         _notificationService = notificationService;
         _securityPolicyService = securityPolicyService;
-        _configuration = configuration;
+        _turnstileOptions = turnstileOptions.Value; // Changed
         _logger = logger;
         _localizer = localizer;
     }
@@ -54,8 +56,8 @@ public class LoginModel : PageModel
 
     public string? ReturnUrl { get; set; }
     
-    public bool TurnstileEnabled => _configuration.GetValue<bool>("Turnstile:Enabled");
-    public string TurnstileSiteKey => _configuration["Turnstile:SiteKey"] ?? string.Empty;
+    public bool TurnstileEnabled => _turnstileOptions.Enabled; // Changed
+    public string TurnstileSiteKey => _turnstileOptions.SiteKey; // Changed
 
     public class InputModel
     {
