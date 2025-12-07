@@ -295,6 +295,67 @@ const loading = ref(true)
 
 ---
 
+## 💻 程式碼規範與模式 (Coding Standards & Patterns)
+
+### Configuration Management - Options Pattern
+
+我們嚴格遵守 **Options Pattern** 來管理設定，禁止在 Service 或 UI Model 中直接使用 `IConfiguration`。
+
+**為什麼？**
+- **類型安全 (Type Safety)**：避免魔法字串 (magic strings) 並確保類型的正確性。
+- **驗證 (Validation)**：允許在啟動時驗證設定值。
+- **可測試性 (Testability)**：在單元測試中使用 `IOptions<T>` 更容易模擬設定。
+- **關注點分離 (Separation of Concerns)**：將設定邏輯與業務邏輯解耦。
+
+**實作方式：**
+
+1.  **定義 Option Class** (位於 `Core.Application/Options/`)：
+    ```csharp
+    public class MyFeatureOptions
+    {
+        public const string Section = "MyFeature";
+        public bool Enabled { get; set; }
+        public string HeaderValue { get; set; } = string.Empty;
+    }
+    ```
+
+2.  **在 `Web.IdP/Program.cs` 註冊與綁定**：
+    ```csharp
+    builder.Services.Configure<MyFeatureOptions>(builder.Configuration.GetSection(MyFeatureOptions.Section));
+    ```
+
+3.  **在 Service 中注入**：
+    ```csharp
+    public class MyService
+    {
+        private readonly MyFeatureOptions _options;
+
+        public MyService(IOptions<MyFeatureOptions> options)
+        {
+            _options = options.Value;
+        }
+    }
+    ```
+
+4.  **在 Authorization Handler 中注入** (如果需要動態更新)：
+    ```csharp
+    public class MyHandler
+    {
+        private readonly IOptionsMonitor<MyFeatureOptions> _options;
+
+        public MyHandler(IOptionsMonitor<MyFeatureOptions> options)
+        {
+            _options = options;
+        }
+        
+        // 使用 _options.CurrentValue
+    }
+    ```
+
+**注意**：如果你發現現有代碼直接使用 `IConfiguration`，請將其重構為 Options Pattern。
+
+---
+
 ## ⚠️ 關鍵注意事項
 
 ### 🔴 Tailwind CSS Setup - 每個 Vue SPA 必須
