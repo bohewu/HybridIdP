@@ -136,18 +136,29 @@ builder.Services.AddOpenIddict()
                .SetDeviceAuthorizationEndpointUris("/connect/device")
                .SetEndUserVerificationEndpointUris("/connect/verify");
 
+        // Bind TokenOptions
+        var tokenOptions = new Web.IdP.Options.TokenOptions();
+        builder.Configuration.GetSection(Web.IdP.Options.TokenOptions.SectionName).Bind(tokenOptions);
+
         // Enable the authorization code flow
         options.AllowAuthorizationCodeFlow()
                .RequireProofKeyForCodeExchange();
 
         // Enable refresh token flow (OpenIddict uses rolling tokens by default)
-        options.AllowRefreshTokenFlow();
+        options.AllowRefreshTokenFlow()
+               // Set refresh token lifetime
+               .SetRefreshTokenLifetime(TimeSpan.FromMinutes(tokenOptions.RefreshTokenLifetimeMinutes));
+
+        // Set access token lifetime
+        options.SetAccessTokenLifetime(TimeSpan.FromMinutes(tokenOptions.AccessTokenLifetimeMinutes));
 
         // Enable client credentials flow for M2M authentication
         options.AllowClientCredentialsFlow();
 
         // Enable device authorization flow
-        options.AllowDeviceAuthorizationFlow();
+        options.AllowDeviceAuthorizationFlow()
+               // Set device code lifetime
+               .SetDeviceCodeLifetime(TimeSpan.FromMinutes(tokenOptions.DeviceCodeLifetimeMinutes));
 
         // Register the signing and encryption credentials
         options.AddDevelopmentEncryptionCertificate()
@@ -326,7 +337,7 @@ builder.Services.AddSignalR();
 
 // Add Monitoring Background Service
 // todo: 未來可以在安全設定裡面設定是否啟用，及秒數
-// builder.Services.AddHostedService<Infrastructure.BackgroundServices.MonitoringBackgroundService>();
+builder.Services.AddHostedService<Infrastructure.BackgroundServices.MonitoringBackgroundService>();
 
 // Configure OpenTelemetry
 var serviceName = "HybridAuthIdP";

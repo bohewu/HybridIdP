@@ -48,23 +48,39 @@ public class MonitoringBackgroundService : BackgroundService
                 // Create a scope for dependency injection
                 using var scope = serviceProvider.CreateScope();
                 var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+                var settingsService = scope.ServiceProvider.GetRequiredService<ISettingsService>();
 
-                // Update Activity Stats (every 5 seconds)
-                if (now - lastActivityStatsUpdate >= activityStatsInterval)
+                // Check if monitoring is enabled (default to true)
+                var isEnabled = await settingsService.GetValueAsync<bool>(Core.Domain.Constants.MonitoringSettings.Enabled);
+                // If setting doesn't exist (null), treat as true (default)
+                if (await settingsService.GetValueAsync(Core.Domain.Constants.MonitoringSettings.Enabled) != null && !isEnabled) 
+                {
+                    // Monitoring disabled, sleep and continue
+                    await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                    continue;
+                }
+
+                // Get dynamic intervals (with defaults)
+                var activityInterval = TimeSpan.FromSeconds(await settingsService.GetValueAsync<int>(Core.Domain.Constants.MonitoringSettings.ActivityIntervalSeconds) is int a && a > 0 ? a : 5);
+                var securityInterval = TimeSpan.FromSeconds(await settingsService.GetValueAsync<int>(Core.Domain.Constants.MonitoringSettings.SecurityIntervalSeconds) is int s && s > 0 ? s : 10);
+                var metricsInterval = TimeSpan.FromSeconds(await settingsService.GetValueAsync<int>(Core.Domain.Constants.MonitoringSettings.MetricsIntervalSeconds) is int m && m > 0 ? m : 15);
+
+                // Update Activity Stats
+                if (now - lastActivityStatsUpdate >= activityInterval)
                 {
                     await BroadcastActivityStatsAsync(monitoringService);
                     lastActivityStatsUpdate = now;
                 }
 
-                // Update Security Alerts (every 10 seconds)
-                if (now - lastSecurityAlertsUpdate >= securityAlertsInterval)
+                // Update Security Alerts
+                if (now - lastSecurityAlertsUpdate >= securityInterval)
                 {
                     await BroadcastSecurityAlertsAsync(monitoringService);
                     lastSecurityAlertsUpdate = now;
                 }
 
-                // Update System Metrics (every 15 seconds)
-                if (now - lastSystemMetricsUpdate >= systemMetricsInterval)
+                // Update System Metrics
+                if (now - lastSystemMetricsUpdate >= metricsInterval)
                 {
                     await BroadcastSystemMetricsAsync(monitoringService);
                     lastSystemMetricsUpdate = now;
