@@ -17,6 +17,17 @@ class Program
 
     static async Task Main(string[] args)
     {
+        string? outputPath = null;
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i] == "--output" && i + 1 < args.Length)
+            {
+                outputPath = args[i + 1];
+            }
+        }
+
+        var testResult = new TestResult { Success = false };
+
         Console.WriteLine($"Requesting Device Code from {Authority}...");
 
         try
@@ -36,6 +47,8 @@ class Program
                 Console.WriteLine($"Error requesting device code: {response.StatusCode}");
                 Console.WriteLine("Raw Response:");
                 Console.WriteLine(content);
+                testResult.Message = $"Error requesting device code: {response.StatusCode}";
+                await WriteResultAsync(outputPath, testResult);
                 return;
             }
 
@@ -75,16 +88,18 @@ class Program
             Console.WriteLine("Waiting for user approval...");
 
             // 2. Poll for Token
-            await PollForTokenAsync(deviceCode!, interval, expiresIn);
+            await PollForTokenAsync(deviceCode!, interval, expiresIn, outputPath, testResult);
 
         }
         catch (Exception ex)
         {
             Console.WriteLine($"An error occurred: {ex.Message}");
+            testResult.Message = ex.Message;
+            await WriteResultAsync(outputPath, testResult);
         }
     }
 
-    private static async Task PollForTokenAsync(string deviceCode, int interval, int expiresIn)
+    private static async Task PollForTokenAsync(string deviceCode, int interval, int expiresIn, string? outputPath, TestResult testResult)
     {
         var startTime = DateTime.UtcNow;
         var timeout = startTime.AddSeconds(expiresIn);
@@ -136,6 +151,10 @@ class Program
                         Console.WriteLine($"Refresh Token: {refreshProp.GetString()![..20]}...");
                     
                     Console.WriteLine("--------------------------------------------------------");
+                    
+                    testResult.Success = true;
+                    testResult.Message = "Device Flow Completed Successfully";
+                    await WriteResultAsync(outputPath, testResult);
                     return;
                 }
                 else
@@ -160,6 +179,9 @@ class Program
                         Console.WriteLine("");
                         Console.WriteLine($"Error: {error}");
                         Console.WriteLine(content);
+                        
+                        testResult.Message = $"Token Error: {error}";
+                        await WriteResultAsync(outputPath, testResult);
                         return;
                     }
                 }
@@ -168,5 +190,23 @@ class Program
 
         Console.WriteLine("");
         Console.WriteLine("Device Flow Timeout.");
+        testResult.Message = "Device Flow Timeout";
+        await WriteResultAsync(outputPath, testResult);
     }
+
+    private static async Task WriteResultAsync(string? outputPath, TestResult result)
+    {
+        if (!string.IsNullOrEmpty(outputPath))
+        {
+            var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(outputPath, json);
+            Console.WriteLine($"Result written to {outputPath}");
+        }
+    }
+}
+
+public class TestResult
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
 }

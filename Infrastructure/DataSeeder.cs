@@ -433,15 +433,16 @@ public static class DataSeeder
             await applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
             {
                 ClientId = clientId,
-                DisplayName = "Device Flow Test Client",
                 ClientType = OpenIddictConstants.ClientTypes.Public,
-                ConsentType = OpenIddictConstants.ConsentTypes.Explicit,
+                ConsentType = OpenIddictConstants.ConsentTypes.Implicit,
+                DisplayName = "Device Test Client",
                 Permissions =
                 {
+                    OpenIddictConstants.Permissions.Endpoints.Authorization,
                     OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization,
                     OpenIddictConstants.Permissions.Endpoints.Token,
                     OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                    OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                    OpenIddictConstants.Permissions.ResponseTypes.Code,
                     OpenIddictConstants.Permissions.Scopes.Email,
                     OpenIddictConstants.Permissions.Scopes.Profile,
                     OpenIddictConstants.Permissions.Scopes.Roles,
