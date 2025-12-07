@@ -423,7 +423,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Protect Prometheus metrics endpoint with IP whitelist authorization
-if (builder.Configuration.GetValue<bool>("Observability:PrometheusEnabled"))
+var observabilityOptions = new ObservabilityOptions();
+builder.Configuration.GetSection(ObservabilityOptions.MonitoringSection).Bind(observabilityOptions);
+builder.Configuration.GetSection(ObservabilityOptions.ObservabilitySection).Bind(observabilityOptions);
+
+if (observabilityOptions.PrometheusEnabled)
 {
     app.MapPrometheusScrapingEndpoint()
         .RequireAuthorization("PrometheusMetrics");

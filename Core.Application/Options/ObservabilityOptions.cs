@@ -7,4 +7,5 @@ public class ObservabilityOptions
 
     public string MetricsBaseUrl { get; set; } = "https://localhost:7035";
     public string[] AllowedIPs { get; set; } = Array.Empty<string>();
+    public bool PrometheusEnabled { get; set; } // Added
 }

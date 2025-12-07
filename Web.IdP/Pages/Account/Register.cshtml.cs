@@ -6,6 +6,8 @@ using Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Options; // Added
+using Core.Application.Options; // Added
 
 namespace Web.IdP.Pages.Account;
 
@@ -14,7 +16,7 @@ public class RegisterModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ITurnstileService _turnstileService;
-    private readonly IConfiguration _configuration;
+    private readonly TurnstileOptions _turnstileOptions; // Changed
     private readonly ILogger<RegisterModel> _logger;
     private readonly IApplicationDbContext _context;
     private readonly IAuditService _auditService;
@@ -23,7 +25,7 @@ public class RegisterModel : PageModel
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ITurnstileService turnstileService,
-        IConfiguration configuration,
+        IOptions<TurnstileOptions> turnstileOptions, // Changed
         ILogger<RegisterModel> logger,
         IApplicationDbContext context,
         IAuditService auditService)
@@ -31,7 +33,7 @@ public class RegisterModel : PageModel
         _userManager = userManager;
         _signInManager = signInManager;
         _turnstileService = turnstileService;
-        _configuration = configuration;
+        _turnstileOptions = turnstileOptions.Value; // Changed
         _logger = logger;
         _context = context;
         _auditService = auditService;
@@ -42,8 +44,8 @@ public class RegisterModel : PageModel
 
     public string? ReturnUrl { get; set; }
     
-    public bool TurnstileEnabled => _configuration.GetValue<bool>("Turnstile:Enabled");
-    public string TurnstileSiteKey => _configuration["Turnstile:SiteKey"] ?? string.Empty;
+    public bool TurnstileEnabled => _turnstileOptions.Enabled; // Changed
+    public string TurnstileSiteKey => _turnstileOptions.SiteKey; // Changed
 
     public class InputModel
     {
