@@ -21,12 +21,17 @@ public static class SettingKeys
 
     public static class Email
     {
-        public const string SmtpHost = "email.smtp.host";
-        public const string SmtpPort = "email.smtp.port";
-        public const string SmtpUsername = "email.smtp.username";
-        public const string SmtpPassword = "email.smtp.password";
-        public const string SmtpEnableSsl = "email.smtp.enableSsl";
-        public const string FromAddress = "email.fromAddress";
-        public const string FromName = "email.fromName";
+        public const string SmtpHost = "Mail.Host";
+        public const string SmtpPort = "Mail.Port";
+        public const string SmtpUsername = "Mail.Username";
+        public const string SmtpPassword = "Mail.Password";
+        public const string SmtpEnableSsl = "Mail.EnableSsl";
+        public const string FromAddress = "Mail.FromAddress";
+        public const string FromName = "Mail.FromName";
+    }
+
+    public static class Audit
+    {
+        public const string RetentionDays = "Audit.RetentionDays";
     }
 }

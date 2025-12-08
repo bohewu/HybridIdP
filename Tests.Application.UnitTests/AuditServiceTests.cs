@@ -2,6 +2,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
 using Core.Domain.Events;
+using Core.Domain.Constants; // Added
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +32,7 @@ public class AuditServiceTests : IDisposable
         _dbContext = new ApplicationDbContext(options);
         _eventPublisherMock = new Mock<IDomainEventPublisher>();
         _settingsServiceMock = new Mock<ISettingsService>();
-        _settingsServiceMock.Setup(s => s.GetValueAsync<int>("Audit.RetentionDays", It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        _settingsServiceMock.Setup(s => s.GetValueAsync<int>(SettingKeys.Audit.RetentionDays, It.IsAny<CancellationToken>())).ReturnsAsync(0);
         _auditService = new AuditService(_dbContext, _dbContext, _eventPublisherMock.Object, _settingsServiceMock.Object);
     }
 

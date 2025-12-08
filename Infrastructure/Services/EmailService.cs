@@ -6,6 +6,8 @@ using MailKit.Net.Smtp;
 using MimeKit;
 using Microsoft.Extensions.Logging;
 
+using Core.Domain.Constants;
+
 namespace Infrastructure.Services;
 
 public class EmailService : IEmailService
@@ -22,15 +24,15 @@ public class EmailService : IEmailService
     public async Task<MailSettingsDto> GetMailSettingsAsync(CancellationToken ct = default)
     {
         var settings = new MailSettingsDto();
-        settings.Host = await _settings.GetValueAsync<string>("Mail.Host", ct) ?? "";
-        var portStr = await _settings.GetValueAsync<string>("Mail.Port", ct);
+        settings.Host = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpHost, ct) ?? "";
+        var portStr = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpPort, ct);
         settings.Port = int.TryParse(portStr, out var port) ? port : 587;
-        settings.Username = await _settings.GetValueAsync<string>("Mail.Username", ct) ?? "";
-        settings.Password = await _settings.GetValueAsync<string>("Mail.Password", ct) ?? "";
-        var sslStr = await _settings.GetValueAsync<string>("Mail.EnableSsl", ct);
+        settings.Username = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpUsername, ct) ?? "";
+        settings.Password = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpPassword, ct) ?? "";
+        var sslStr = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpEnableSsl, ct);
         settings.EnableSsl = bool.TryParse(sslStr, out var ssl) ? ssl : true;
-        settings.FromAddress = await _settings.GetValueAsync<string>("Mail.FromAddress", ct) ?? "";
-        settings.FromName = await _settings.GetValueAsync<string>("Mail.FromName", ct) ?? "";
+        settings.FromAddress = await _settings.GetValueAsync<string>(SettingKeys.Email.FromAddress, ct) ?? "";
+        settings.FromName = await _settings.GetValueAsync<string>(SettingKeys.Email.FromName, ct) ?? "";
         
         return settings;
     }
