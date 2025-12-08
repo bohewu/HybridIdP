@@ -10,8 +10,8 @@
   <div class="px-4 py-6">
     <!-- Page Header -->
     <PageHeader 
-      :title="$t('admin.roles.pageTitle')"
-      :subtitle="$t('admin.roles.pageSubtitle')"
+      :title="$t('roles.pageTitle')"
+      :subtitle="$t('roles.pageSubtitle')"
     >
       <template #actions>
         <button
@@ -23,7 +23,7 @@
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          {{ $t('admin.roles.createButton') }}
+          {{ $t('roles.createButton') }}
         </button>
       </template>
     </PageHeader>
@@ -33,13 +33,13 @@
     </div>
 
     <div class="bg-white shadow-sm rounded-lg border border-gray-200"
-         v-loading="{ loading: loading, overlay: true, message: $t('admin.roles.loadingMessage') }">
+         v-loading="{ loading: loading, overlay: true, message: $t('roles.loadingMessage') }">
       <!-- Filter Section -->
       <div class="p-4 border-b border-gray-200">
         <div class="flex flex-col md:flex-row md:items-center gap-3">
           <!-- Search Input -->
           <div class="flex-1">
-            <SearchInput v-model="search" :placeholder="$t('admin.roles.searchPlaceholder')" />
+            <SearchInput v-model="search" :placeholder="$t('roles.searchPlaceholder')" />
           </div>
           
           <!-- Sort and Apply -->
@@ -48,15 +48,15 @@
               v-model="sortBy"
               class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
             >
-              <option value="name">{{ $t('admin.roles.sortOptions.name') }}</option>
-              <option value="createdat">{{ $t('admin.roles.sortOptions.created') }}</option>
+              <option value="name">{{ $t('roles.sortOptions.name') }}</option>
+              <option value="createdat">{{ $t('roles.sortOptions.created') }}</option>
             </select>
             <select
               v-model="sortDirection"
               class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
             >
-              <option value="asc">{{ $t('admin.roles.sortDirection.asc') }}</option>
-              <option value="desc">{{ $t('admin.roles.sortDirection.desc') }}</option>
+              <option value="asc">{{ $t('roles.sortDirection.asc') }}</option>
+              <option value="desc">{{ $t('roles.sortDirection.desc') }}</option>
             </select>
           </div>
         </div>
@@ -67,18 +67,18 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('admin.roles.table.name') }}</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('admin.roles.table.description') }}</th>
-                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('admin.roles.table.permissions') }}</th>
-                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('admin.roles.table.users') }}</th>
-                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('admin.roles.table.system') }}</th>
-                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('admin.roles.table.actions') }}</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('roles.table.name') }}</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('roles.table.description') }}</th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('roles.table.permissions') }}</th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('roles.table.users') }}</th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('roles.table.system') }}</th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('roles.table.actions') }}</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-if="!loading && roles.length === 0">
                 <td colspan="6" class="px-6 py-4">
-                  <div class="text-center text-gray-500">{{ $t('admin.roles.noRolesMessage') }}</div>
+                  <div class="text-center text-gray-500">{{ $t('roles.noRolesMessage') }}</div>
                 </td>
               </tr>
               <tr v-for="r in roles" :key="r.id" v-show="!loading" class="hover:bg-gray-50">
@@ -96,7 +96,7 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
                   <span v-if="r.isSystem" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                    {{ $t('admin.roles.badges.system') }}
+                    {{ $t('roles.badges.system') }}
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -105,7 +105,7 @@
                       v-if="canUpdate"
                       class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                       @click="onEdit(r)"
-                      :title="$t('admin.roles.actions.edit')"
+                      :title="$t('roles.actions.edit')"
                     >
                       <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -115,13 +115,13 @@
                       v-if="canDelete"
                       class="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-700 text-sm font-medium rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                       @click="onDelete(r)"
-                      :title="$t('admin.roles.actions.delete')"
+                      :title="$t('roles.actions.delete')"
                     >
                       <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
-                    <span v-if="!canUpdate && !canDelete" class="text-xs text-gray-400 italic">{{ $t('admin.roles.actions.noActions') }}</span>
+                    <span v-if="!canUpdate && !canDelete" class="text-xs text-gray-400 italic">{{ $t('roles.actions.noActions') }}</span>
                   </div>
                 </td>
               </tr>

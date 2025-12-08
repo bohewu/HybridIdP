@@ -32,7 +32,10 @@ test('Admin - Regenerate secret for confidential client', async ({ page }) => {
   // Add openid scope via scope manager (Client scope UI replaced checkboxes with a manager)
   await page.waitForSelector('[data-test="csm-available-item"]', { timeout: 10000 });
   await page.fill('[data-test="csm-available-search"]', 'openid');
-  const addOpenIdBtn = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).locator('button').first();
+  // Wait for the item to be visible after search to avoid race condition with debounce
+  const openIdItem = page.locator('[data-test="csm-available-item"]', { hasText: /openid/i }).first();
+  await openIdItem.waitFor({ state: 'visible', timeout: 5000 });
+  const addOpenIdBtn = openIdItem.locator('button').first();
   if (await addOpenIdBtn.count() > 0) await addOpenIdBtn.click();
   await page.check('input[id="gt:authorization_code"]');
   // Submit button with test-id

@@ -41,7 +41,7 @@ const fetchLinkedAccounts = async () => {
     }
     linkedAccounts.value = await response.json()
   } catch (e) {
-    error.value = t('admin.persons.linkedAccounts.errors.loadFailed', { message: e.message })
+    error.value = t('persons.linkedAccounts.errors.loadFailed', { message: e.message })
     console.error('Error fetching linked accounts:', e)
   } finally {
     loading.value = false
@@ -63,7 +63,7 @@ const fetchAvailableUsers = async () => {
     }
     availableUsers.value = await response.json()
   } catch (e) {
-    error.value = t('admin.persons.linkedAccounts.errors.loadAvailableFailed', { message: e.message })
+    error.value = t('persons.linkedAccounts.errors.loadAvailableFailed', { message: e.message })
     console.error('Error fetching available users:', e)
   } finally {
     loading.value = false
@@ -83,7 +83,7 @@ const handleSearchUsers = () => {
 
 const handleLinkAccount = async () => {
   if (!selectedUserId.value) {
-    error.value = t('admin.persons.linkedAccounts.errors.noUserSelected')
+    error.value = t('persons.linkedAccounts.errors.noUserSelected')
     return
   }
   
@@ -108,9 +108,9 @@ const handleLinkAccount = async () => {
     selectedUserId.value = null
     await fetchLinkedAccounts()
     emit('updated')
-    alert(t('admin.persons.linkedAccounts.alerts.linkSuccess'))
+    alert(t('persons.linkedAccounts.alerts.linkSuccess'))
   } catch (e) {
-    error.value = t('admin.persons.linkedAccounts.errors.linkFailed', { message: e.message })
+    error.value = t('persons.linkedAccounts.errors.linkFailed', { message: e.message })
     console.error('Error linking account:', e)
   } finally {
     linking.value = false
@@ -118,7 +118,7 @@ const handleLinkAccount = async () => {
 }
 
 const handleUnlinkAccount = async (account) => {
-  if (!confirm(t('admin.persons.linkedAccounts.confirmations.unlink', { email: account.email }))) {
+  if (!confirm(t('persons.linkedAccounts.confirmations.unlink', { email: account.email }))) {
     return
   }
   
@@ -136,9 +136,9 @@ const handleUnlinkAccount = async (account) => {
     
     await fetchLinkedAccounts()
     emit('updated')
-    alert(t('admin.persons.linkedAccounts.alerts.unlinkSuccess'))
+    alert(t('persons.linkedAccounts.alerts.unlinkSuccess'))
   } catch (e) {
-    error.value = t('admin.persons.linkedAccounts.errors.unlinkFailed', { message: e.message })
+    error.value = t('persons.linkedAccounts.errors.unlinkFailed', { message: e.message })
     console.error('Error unlinking account:', e)
   } finally {
     loading.value = false
@@ -159,7 +159,7 @@ const handleCloseLinkDialog = () => {
 <template>
   <BaseModal
     :show="true"
-    :title="t('admin.persons.linkedAccounts.title')"
+    :title="t('persons.linkedAccounts.title')"
     size="lg"
     :show-close-icon="true"
     :close-on-backdrop="false"
@@ -169,7 +169,7 @@ const handleCloseLinkDialog = () => {
   >
     <template #body>
       <p class="text-sm text-gray-500 mb-4">
-        {{ t('admin.persons.linkedAccounts.personName', { name: `${person.firstName} ${person.lastName}` }) }}
+        {{ t('persons.linkedAccounts.personName', { name: `${person.firstName} ${person.lastName}` }) }}
       </p>
 
       <!-- Error Message -->
@@ -186,7 +186,7 @@ const handleCloseLinkDialog = () => {
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          {{ t('admin.persons.linkedAccounts.linkAccount') }}
+          {{ t('persons.linkedAccounts.linkAccount') }}
         </button>
       </div>
 
@@ -195,7 +195,7 @@ const handleCloseLinkDialog = () => {
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
-        <p class="mt-2 text-sm text-gray-500">{{ t('admin.persons.linkedAccounts.noAccounts') }}</p>
+        <p class="mt-2 text-sm text-gray-500">{{ t('persons.linkedAccounts.noAccounts') }}</p>
       </div>
 
       <div v-else>
@@ -207,10 +207,10 @@ const handleCloseLinkDialog = () => {
                 <p class="text-sm text-gray-500">{{ account.userName }}</p>
                 <div class="mt-1 flex items-center space-x-2 text-xs text-gray-500">
                   <span :class="account.isActive ? 'text-green-600' : 'text-red-600'">
-                    {{ account.isActive ? t('admin.persons.linkedAccounts.active') : t('admin.persons.linkedAccounts.inactive') }}
+                    {{ account.isActive ? t('persons.linkedAccounts.active') : t('persons.linkedAccounts.inactive') }}
                   </span>
                   <span v-if="account.lastLoginDate">
-                    • {{ t('admin.persons.linkedAccounts.lastLogin') }}: {{ new Date(account.lastLoginDate).toLocaleDateString() }}
+                    • {{ t('persons.linkedAccounts.lastLogin') }}: {{ new Date(account.lastLoginDate).toLocaleDateString() }}
                   </span>
                 </div>
               </div>
@@ -219,7 +219,7 @@ const handleCloseLinkDialog = () => {
                 @click="handleUnlinkAccount(account)"
                 class="ml-4 inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               >
-                {{ t('admin.persons.linkedAccounts.unlink') }}
+                {{ t('persons.linkedAccounts.unlink') }}
               </button>
             </div>
           </li>
@@ -233,7 +233,7 @@ const handleCloseLinkDialog = () => {
         @click="handleClose"
         class="inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:w-auto"
       >
-        {{ t('admin.persons.close') }}
+        {{ t('persons.close') }}
       </button>
     </template>
   </BaseModal>
@@ -241,7 +241,7 @@ const handleCloseLinkDialog = () => {
   <!-- Link Account Dialog (nested) -->
   <BaseModal
     :show="showLinkDialog"
-    :title="t('admin.persons.linkedAccounts.selectUser')"
+    :title="t('persons.linkedAccounts.selectUser')"
     size="md"
     :show-close-icon="true"
     :close-on-backdrop="false"
@@ -257,7 +257,7 @@ const handleCloseLinkDialog = () => {
           <input
             v-model="searchTerm"
             type="text"
-            :placeholder="t('admin.persons.linkedAccounts.searchUsers')"
+            :placeholder="t('persons.linkedAccounts.searchUsers')"
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             @keyup.enter="handleSearchUsers"
           />
@@ -265,7 +265,7 @@ const handleCloseLinkDialog = () => {
             @click="handleSearchUsers"
             class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            {{ t('admin.persons.linkedAccounts.search') }}
+            {{ t('persons.linkedAccounts.search') }}
           </button>
         </div>
       </div>
@@ -276,7 +276,7 @@ const handleCloseLinkDialog = () => {
       </div>
 
       <div v-else-if="availableUsers.length === 0" class="text-center py-8">
-        <p class="text-sm text-gray-500">{{ t('admin.persons.linkedAccounts.noAvailableUsers') }}</p>
+        <p class="text-sm text-gray-500">{{ t('persons.linkedAccounts.noAvailableUsers') }}</p>
       </div>
 
       <div v-else class="max-h-64 overflow-y-auto">
@@ -315,7 +315,7 @@ const handleCloseLinkDialog = () => {
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        {{ linking ? t('admin.persons.linkedAccounts.linking') : t('admin.persons.linkedAccounts.link') }}
+        {{ linking ? t('persons.linkedAccounts.linking') : t('persons.linkedAccounts.link') }}
       </button>
       <button
         type="button"
@@ -323,7 +323,7 @@ const handleCloseLinkDialog = () => {
         :disabled="linking"
         class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {{ t('admin.persons.cancel') }}
+        {{ t('persons.cancel') }}
       </button>
     </template>
   </BaseModal>

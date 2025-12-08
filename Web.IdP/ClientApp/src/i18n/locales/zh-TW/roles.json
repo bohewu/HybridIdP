@@ -1,0 +1,78 @@
+{
+  "pageTitle": "角色管理",
+  "pageSubtitle": "管理使用者的角色和權限",
+  "createButton": "新增角色",
+  "searchPlaceholder": "搜尋名稱/描述",
+  "sortBy": "排序方式",
+  "sortOptions": {
+    "name": "名稱",
+    "created": "建立時間"
+  },
+  "sortDirection": {
+    "asc": "升冪",
+    "desc": "降冪"
+  },
+  "applyButton": "套用",
+  "loadingMessage": "載入中...",
+  "noRolesMessage": "沒有找到角色",
+  "table": {
+    "name": "名稱",
+    "description": "描述",
+    "permissions": "權限",
+    "users": "使用者",
+    "system": "系統",
+    "actions": "操作"
+  },
+  "badges": {
+    "system": "系統"
+  },
+  "actions": {
+    "edit": "編輯角色",
+    "delete": "刪除角色",
+    "noActions": "無操作"
+  },
+  "pagination": {
+    "total": "總計：{count}",
+    "prev": "上一頁",
+    "next": "下一頁"
+  },
+  "createModal": {
+    "title": "新增角色",
+    "roleName": "角色名稱",
+    "roleNameRequired": "必填",
+    "roleNamePlaceholder": "例如：內容編輯者",
+    "description": "描述",
+    "descriptionPlaceholder": "角色的選擇性描述",
+    "permissions": "權限",
+    "loadingPermissions": "載入權限中...",
+    "selectedCount": "已選擇：{count} 個權限",
+    "createButton": "新增角色",
+    "creating": "新增中...",
+    "cancel": "取消"
+  },
+  "editModal": {
+    "title": "編輯角色",
+    "systemRole": "系統角色",
+    "note": "注意：",
+    "systemRoleInfo": "這是系統角色。名稱無法變更，但您可以修改其權限。",
+    "systemRoleNameWarning": "系統角色名稱無法變更",
+    "descriptionPlaceholder": "角色的選擇性描述",
+    "updateButton": "更新角色",
+    "updating": "更新中..."
+  },
+  "deleteModal": {
+    "title": "刪除角色",
+    "message": "確定要刪除角色「{name}」嗎？",
+    "warning": "此操作無法復原。",
+    "systemRoleProtected": "系統角色保護：",
+    "systemRoleInfo": "這是系統角色，無法刪除。系統角色對應用程式的安全模型至關重要。",
+    "usersAssigned": "使用者已指派：",
+    "usersAssignedInfo": "此角色目前已指派給 {count} 位使用者。您無法刪除已指派使用者的角色。",
+    "reassignWarning": "請在刪除此角色之前重新指派或移除這些使用者。",
+    "roleHas": "此角色擁有：",
+    "permissionCount": "{count} 個權限",
+    "deleteButton": "刪除",
+    "deleting": "刪除中...",
+    "close": "關閉"
+  }
+}

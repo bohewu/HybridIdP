@@ -36,7 +36,7 @@ onMounted(async () => {
   // Show access denied if user doesn't have read permission
   if (!canRead.value) {
     showAccessDenied.value = true
-    deniedMessage.value = t('admin.persons.noPermission')
+    deniedMessage.value = t('persons.noPermission')
     deniedPermission.value = Permissions.Persons.Read
     return
   }
@@ -75,7 +75,7 @@ const fetchPersons = async () => {
     persons.value = data.persons || []
     totalCount.value = data.totalCount ?? persons.value.length
   } catch (e) {
-    error.value = t('admin.persons.errors.loadFailed', { message: e.message })
+    error.value = t('persons.errors.loadFailed', { message: e.message })
     console.error('Error fetching persons:', e)
   } finally {
     loading.value = false
@@ -107,7 +107,7 @@ const handleEdit = (person) => {
 const handleManageAccounts = (person) => {
   if (!canRead.value) {
     showAccessDenied.value = true
-    deniedMessage.value = t('admin.persons.noPermission')
+    deniedMessage.value = t('persons.noPermission')
     deniedPermission.value = Permissions.Persons.Read
     return
   }
@@ -123,7 +123,7 @@ const handleDelete = async (person) => {
     return
   }
   
-  if (!confirm(t('admin.persons.confirmations.delete', { name: `${person.firstName} ${person.lastName}` }))) {
+  if (!confirm(t('persons.confirmations.delete', { name: `${person.firstName} ${person.lastName}` }))) {
     return
   }
   
@@ -137,9 +137,9 @@ const handleDelete = async (person) => {
     }
     
     await fetchPersons()
-    alert(t('admin.persons.alerts.deleteSuccess'))
+    alert(t('persons.alerts.deleteSuccess'))
   } catch (e) {
-    alert(t('admin.persons.errors.deleteFailed', { message: e.message }))
+    alert(t('persons.errors.deleteFailed', { message: e.message }))
     console.error('Error deleting person:', e)
   }
 }
@@ -158,11 +158,11 @@ const handleVerifyIdentity = async (person) => {
   }
 
   if (!person.nationalId && !person.passportNumber && !person.residentCertificateNumber) {
-    alert(t('admin.persons.errors.noIdentityDocument'))
+    alert(t('persons.errors.noIdentityDocument'))
     return
   }
 
-  if (!confirm(t('admin.persons.confirmations.verifyIdentity', { name: `${person.firstName} ${person.lastName}` }))) {
+  if (!confirm(t('persons.confirmations.verifyIdentity', { name: `${person.firstName} ${person.lastName}` }))) {
     return
   }
 
@@ -177,9 +177,9 @@ const handleVerifyIdentity = async (person) => {
     }
 
     await fetchPersons()
-    alert(t('admin.persons.alerts.verifySuccess'))
+    alert(t('persons.alerts.verifySuccess'))
   } catch (e) {
-    alert(t('admin.persons.errors.verifyFailed', { message: e.message }))
+    alert(t('persons.errors.verifyFailed', { message: e.message }))
     console.error('Error verifying identity:', e)
   }
 }
@@ -233,8 +233,8 @@ watch([page, pageSize, search], () => {
     <div class="px-4 py-6">
       <!-- Page Header -->
       <PageHeader 
-        :title="$t('admin.persons.pageTitle')" 
-        :subtitle="$t('admin.persons.pageSubtitle')"
+        :title="$t('persons.pageTitle')" 
+        :subtitle="$t('persons.pageSubtitle')"
       >
         <template #actions>
           <button
@@ -246,7 +246,7 @@ watch([page, pageSize, search], () => {
             <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            {{ t('admin.persons.createPerson') }}
+            {{ t('persons.createPerson') }}
           </button>
         </template>
       </PageHeader>
@@ -282,7 +282,7 @@ watch([page, pageSize, search], () => {
               <input
                 v-model="search"
                 type="text"
-                :placeholder="t('admin.persons.search')"
+                :placeholder="t('persons.search')"
                 class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
               />
             </div>
@@ -292,7 +292,7 @@ watch([page, pageSize, search], () => {
         <!-- Loading State -->
         <div v-if="loading" class="flex justify-center items-center py-12">
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-          <span class="ml-3 text-gray-600">{{ t('admin.persons.loading') }}</span>
+          <span class="ml-3 text-gray-600">{{ t('persons.loading') }}</span>
         </div>
 
         <!-- Empty State -->
@@ -300,7 +300,7 @@ watch([page, pageSize, search], () => {
           <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          <p class="mt-2 text-sm text-gray-600">{{ t('admin.persons.noPersons') }}</p>
+          <p class="mt-2 text-sm text-gray-600">{{ t('persons.noPersons') }}</p>
         </div>
 
         <!-- Persons Table -->
@@ -309,25 +309,25 @@ watch([page, pageSize, search], () => {
             <thead class="bg-gray-50">
               <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ t('admin.persons.table.name') }}
+                  {{ t('persons.table.name') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ t('admin.persons.table.employeeId') }}
+                  {{ t('persons.table.employeeId') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ t('admin.persons.table.department') }}
+                  {{ t('persons.table.department') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ t('admin.persons.table.jobTitle') }}
+                  {{ t('persons.table.jobTitle') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ t('admin.persons.table.linkedAccounts') }}
+                  {{ t('persons.table.linkedAccounts') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ t('admin.persons.table.identityStatus') }}
+                  {{ t('persons.table.identityStatus') }}
                 </th>
                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ t('admin.persons.table.actions') }}
+                  {{ t('persons.table.actions') }}
                 </th>
               </tr>
             </thead>
@@ -373,10 +373,10 @@ watch([page, pageSize, search], () => {
                     <svg class="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                     </svg>
-                    {{ t('admin.persons.verified') }}
+                    {{ t('persons.verified') }}
                   </span>
                   <span v-else-if="person.nationalId || person.passportNumber || person.residentCertificateNumber" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                    {{ t('admin.persons.unverified') }}
+                    {{ t('persons.unverified') }}
                   </span>
                   <span v-else class="text-sm text-gray-400">-</span>
                 </td>
@@ -386,7 +386,7 @@ watch([page, pageSize, search], () => {
                       v-if="canRead"
                       @click="handleManageAccounts(person)"
                       class="text-indigo-600 hover:text-indigo-900"
-                      :title="t('admin.persons.manageAccounts')"
+                      :title="t('persons.manageAccounts')"
                     >
                       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -396,7 +396,7 @@ watch([page, pageSize, search], () => {
                       v-if="canUpdate && !person.identityVerifiedAt && (person.nationalId || person.passportNumber || person.residentCertificateNumber)"
                       @click="handleVerifyIdentity(person)"
                       class="text-green-600 hover:text-green-900"
-                      :title="t('admin.persons.verifyIdentity')"
+                      :title="t('persons.verifyIdentity')"
                     >
                       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -406,7 +406,7 @@ watch([page, pageSize, search], () => {
                       v-if="canUpdate"
                       @click="handleEdit(person)"
                       class="text-gray-600 hover:text-gray-900"
-                      :title="t('admin.persons.edit')"
+                      :title="t('persons.edit')"
                     >
                       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -416,7 +416,7 @@ watch([page, pageSize, search], () => {
                       v-if="canDelete"
                       @click="handleDelete(person)"
                       class="text-red-600 hover:text-red-900"
-                      :title="t('admin.persons.delete')"
+                      :title="t('persons.delete')"
                     >
                       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

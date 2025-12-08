@@ -25,7 +25,7 @@ const validate = () => {
   const newErrors = {}
   
   if (!props.isEditMode && !password.value) {
-    newErrors.password = t('admin.users.passwordRequired')
+    newErrors.password = t('users.passwordRequired')
   } else if (password.value) {
     const complexityErrors = validatePasswordComplexity(password.value)
     if (complexityErrors.length > 0) {
@@ -34,9 +34,9 @@ const validate = () => {
   }
   
   if (password.value && password.value !== confirmPassword.value) {
-    newErrors.confirmPassword = t('admin.users.passwordsDoNotMatch')
+    newErrors.confirmPassword = t('users.passwordsDoNotMatch')
   } else if (!props.isEditMode && !confirmPassword.value) {
-    newErrors.confirmPassword = t('admin.users.confirmPasswordRequired')
+    newErrors.confirmPassword = t('users.confirmPasswordRequired')
   }
   
   errors.value = newErrors
@@ -50,19 +50,19 @@ const validatePasswordComplexity = (pwd) => {
   if (!props.policy) return []
 
   if (props.policy.minPasswordLength && pwd.length < props.policy.minPasswordLength) {
-    validationErrors.push(t('admin.users.passwordErrors.minLength', { n: props.policy.minPasswordLength }))
+    validationErrors.push(t('users.passwordErrors.minLength', { n: props.policy.minPasswordLength }))
   }
   if (props.policy.requireUppercase && !/[A-Z]/.test(pwd)) {
-    validationErrors.push(t('admin.users.passwordErrors.uppercase'))
+    validationErrors.push(t('users.passwordErrors.uppercase'))
   }
   if (props.policy.requireLowercase && !/[a-z]/.test(pwd)) {
-    validationErrors.push(t('admin.users.passwordErrors.lowercase'))
+    validationErrors.push(t('users.passwordErrors.lowercase'))
   }
   if (props.policy.requireDigit && !/[0-9]/.test(pwd)) {
-    validationErrors.push(t('admin.users.passwordErrors.digit'))
+    validationErrors.push(t('users.passwordErrors.digit'))
   }
   if (props.policy.requireNonAlphanumeric && !/[^A-Za-z0-9]/.test(pwd)) {
-    validationErrors.push(t('admin.users.passwordErrors.specialChar'))
+    validationErrors.push(t('users.passwordErrors.specialChar'))
   }
   return validationErrors
 }
@@ -72,31 +72,31 @@ const passwordRequirements = computed(() => {
   const reqs = []
   if (props.policy.minPasswordLength > 0) {
     reqs.push({
-      text: t('admin.users.passwordReqs.minLength', { n: props.policy.minPasswordLength }),
+      text: t('users.passwordReqs.minLength', { n: props.policy.minPasswordLength }),
       valid: password.value.length >= props.policy.minPasswordLength
     })
   }
   if (props.policy.requireUppercase) {
     reqs.push({
-      text: t('admin.users.passwordReqs.uppercase'),
+      text: t('users.passwordReqs.uppercase'),
       valid: /[A-Z]/.test(password.value)
     })
   }
   if (props.policy.requireLowercase) {
     reqs.push({
-      text: t('admin.users.passwordReqs.lowercase'),
+      text: t('users.passwordReqs.lowercase'),
       valid: /[a-z]/.test(password.value)
     })
   }
   if (props.policy.requireDigit) {
     reqs.push({
-      text: t('admin.users.passwordReqs.digit'),
+      text: t('users.passwordReqs.digit'),
       valid: /[0-9]/.test(password.value)
     })
   }
   if (props.policy.requireNonAlphanumeric) {
     reqs.push({
-      text: t('admin.users.passwordReqs.specialChar'),
+      text: t('users.passwordReqs.specialChar'),
       valid: /[^A-Za-z0-9]/.test(password.value)
     })
   }
@@ -113,7 +113,7 @@ defineExpose({ validate })
       <!-- Password -->
       <div>
         <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
-          {{ $t('admin.users.password') }}
+          {{ $t('users.password') }}
           <span v-if="!isEditMode" class="text-red-600">*</span>
         </label>
         <input
@@ -124,19 +124,19 @@ defineExpose({ validate })
             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
             :class="{ 'border-red-500': errors.password }"
             :required="!isEditMode"
-            :placeholder="$t('admin.users.password')"
+            :placeholder="$t('users.password')"
             @input="validate"
         />
         <p v-if="errors.password" class="mt-1.5 text-sm text-red-600">{{ errors.password }}</p>
         <p v-if="isEditMode" class="mt-1.5 text-xs text-gray-500">
-          {{ $t('admin.users.leaveBlankToKeepCurrent') }}
+          {{ $t('users.leaveBlankToKeepCurrent') }}
         </p>
       </div>
 
       <!-- Confirm Password -->
       <div>
         <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1.5">
-          {{ $t('admin.users.confirmPassword') }}
+          {{ $t('users.confirmPassword') }}
           <span v-if="!isEditMode" class="text-red-600">*</span>
         </label>
         <input
@@ -147,7 +147,7 @@ defineExpose({ validate })
             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
             :class="{ 'border-red-500': errors.confirmPassword }"
             :required="!isEditMode"
-            :placeholder="$t('admin.users.confirmPassword')"
+            :placeholder="$t('users.confirmPassword')"
             @input="validate"
         />
         <p v-if="errors.confirmPassword" class="mt-1.5 text-sm text-red-600">
@@ -159,7 +159,7 @@ defineExpose({ validate })
     <!-- Password Requirements Info Box -->
     <div v-if="password || !isEditMode" class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
       <p class="text-sm font-medium text-blue-900 mb-2">
-        {{ $t('admin.users.passwordMustContain') }}
+        {{ $t('users.passwordMustContain') }}
       </p>
       <ul class="text-sm text-blue-800 space-y-1">
         <li v-for="(req, index) in passwordRequirements" :key="index" class="flex items-center">

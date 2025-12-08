@@ -45,7 +45,7 @@ const fetchLoginHistory = async () => {
     total.value = loginHistory.value.length
     pages.value = Math.ceil(total.value / pageSize.value) || 1
   } catch (e) {
-    error.value = t('admin.users.loginHistory.errors.loadFailed')
+    error.value = t('users.loginHistory.errors.loadFailed')
     console.error('Error loading login history:', e)
   } finally {
     loading.value = false
@@ -54,7 +54,7 @@ const fetchLoginHistory = async () => {
 
 const approveLogin = async (loginHistoryId, ipAddress) => {
   if (!props.canUpdate) return
-  if (!confirm(t('admin.users.loginHistory.confirm.approve', { ip: ipAddress }))) return
+  if (!confirm(t('users.loginHistory.confirm.approve', { ip: ipAddress }))) return
   
   approving.value = true
   try {
@@ -65,10 +65,10 @@ const approveLogin = async (loginHistoryId, ipAddress) => {
     if (!response.ok && response.status !== 204) {
       throw new Error(`HTTP ${response.status}`)
     }
-    alert(t('admin.users.loginHistory.alerts.approveSuccess'))
+    alert(t('users.loginHistory.alerts.approveSuccess'))
     await fetchLoginHistory()
   } catch (e) {
-    alert(t('admin.users.loginHistory.alerts.approveFailed', { message: e.message }))
+    alert(t('users.loginHistory.alerts.approveFailed', { message: e.message }))
     console.error('Error approving login:', e)
   } finally {
     approving.value = false
@@ -93,21 +93,21 @@ const handleClose = () => {
 }
 
 const formatDate = (dt) => {
-  if (!dt) return t('admin.users.loginHistory.tableHeaders.loginTime')
+  if (!dt) return t('users.loginHistory.tableHeaders.loginTime')
   return new Date(dt).toLocaleString()
 }
 
 const getStatusBadge = (login) => {
   if (!login.isSuccessful) {
-    return { class: 'bg-red-100 text-red-800', label: t('admin.users.loginHistory.status.failed') }
+    return { class: 'bg-red-100 text-red-800', label: t('users.loginHistory.status.failed') }
   }
   if (login.isFlaggedAbnormal && !login.isApprovedByAdmin) {
-    return { class: 'bg-orange-100 text-orange-800', label: t('admin.users.loginHistory.status.abnormal') }
+    return { class: 'bg-orange-100 text-orange-800', label: t('users.loginHistory.status.abnormal') }
   }
   if (login.isApprovedByAdmin) {
-    return { class: 'bg-green-100 text-green-800', label: t('admin.users.loginHistory.status.approved') }
+    return { class: 'bg-green-100 text-green-800', label: t('users.loginHistory.status.approved') }
   }
-  return { class: 'bg-blue-100 text-blue-800', label: t('admin.users.loginHistory.status.success') }
+  return { class: 'bg-blue-100 text-blue-800', label: t('users.loginHistory.status.success') }
 }
 
 const paginatedHistory = computed(() => {
@@ -122,7 +122,7 @@ onMounted(() => fetchLoginHistory())
 <template>
   <BaseModal
     :show="true"
-    :title="t('admin.users.loginHistory.title')"
+    :title="t('users.loginHistory.title')"
     size="5xl"
     :loading="approving"
     :close-on-backdrop="false"
@@ -130,7 +130,7 @@ onMounted(() => fetchLoginHistory())
   >
     <template #body>
       <div class="text-sm text-gray-500 mb-4">
-        <span class="font-medium">{{ t('admin.users.loginHistory.userLabel') }}:</span> {{ user.email }}
+        <span class="font-medium">{{ t('users.loginHistory.userLabel') }}:</span> {{ user.email }}
       </div>
 
                 <!-- Filter: Show Abnormal Only -->
@@ -142,7 +142,7 @@ onMounted(() => fetchLoginHistory())
                       class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
                     >
                     <span class="ml-2 text-sm text-gray-700">
-                      {{ t('admin.users.loginHistory.showAbnormalOnly') }}
+                      {{ t('users.loginHistory.showAbnormalOnly') }}
                     </span>
                   </label>
                 </div>
@@ -153,11 +153,11 @@ onMounted(() => fetchLoginHistory())
                 </div>
 
                 <!-- Loading State -->
-                <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('admin.users.loginHistory.loading')" />
+                <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('users.loginHistory.loading')" />
 
                 <!-- Empty State -->
                 <div v-else-if="!loading && filteredHistory.length === 0" class="mt-4 text-center py-8">
-                  <p class="text-sm text-gray-500">{{ t('admin.users.loginHistory.empty') }}</p>
+                  <p class="text-sm text-gray-500">{{ t('users.loginHistory.empty') }}</p>
                 </div>
 
                 <!-- Table -->
@@ -166,22 +166,22 @@ onMounted(() => fetchLoginHistory())
                     <thead class="bg-gray-50">
                       <tr>
                         <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {{ t('admin.users.loginHistory.tableHeaders.loginTime') }}
+                          {{ t('users.loginHistory.tableHeaders.loginTime') }}
                         </th>
                         <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {{ t('admin.users.loginHistory.tableHeaders.ipAddress') }}
+                          {{ t('users.loginHistory.tableHeaders.ipAddress') }}
                         </th>
                         <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {{ t('admin.users.loginHistory.tableHeaders.userAgent') }}
+                          {{ t('users.loginHistory.tableHeaders.userAgent') }}
                         </th>
                         <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {{ t('admin.users.loginHistory.tableHeaders.riskScore') }}
+                          {{ t('users.loginHistory.tableHeaders.riskScore') }}
                         </th>
                         <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {{ t('admin.users.loginHistory.tableHeaders.status') }}
+                          {{ t('users.loginHistory.tableHeaders.status') }}
                         </th>
                         <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {{ t('admin.users.loginHistory.tableHeaders.actions') }}
+                          {{ t('users.loginHistory.tableHeaders.actions') }}
                         </th>
                       </tr>
                     </thead>
@@ -237,7 +237,7 @@ onMounted(() => fetchLoginHistory())
                             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                             </svg>
-                            {{ approving ? t('admin.users.loginHistory.buttons.approving') : t('admin.users.loginHistory.buttons.approve') }}
+                            {{ approving ? t('users.loginHistory.buttons.approving') : t('users.loginHistory.buttons.approve') }}
                           </button>
                           <span v-else class="text-xs text-gray-400">-</span>
                         </td>
@@ -253,22 +253,22 @@ onMounted(() => fetchLoginHistory())
                         :disabled="page === 1"
                         class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {{ t('admin.users.loginHistory.pagination.previous') }}
+                        {{ t('users.loginHistory.pagination.previous') }}
                       </button>
                       <button
                         @click="nextPage"
                         :disabled="page === pages"
                         class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {{ t('admin.users.loginHistory.pagination.next') }}
+                        {{ t('users.loginHistory.pagination.next') }}
                       </button>
                     </div>
                     <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                       <div>
                         <p class="text-sm text-gray-700">
-                          {{ t('admin.users.loginHistory.pagination.pageInfo', { page, pages }) }}
+                          {{ t('users.loginHistory.pagination.pageInfo', { page, pages }) }}
                           <span class="font-medium ml-2">
-                            {{ t('admin.users.loginHistory.pagination.total', { total: filteredHistory.length }) }}
+                            {{ t('users.loginHistory.pagination.total', { total: filteredHistory.length }) }}
                           </span>
                         </p>
                       </div>
@@ -279,7 +279,7 @@ onMounted(() => fetchLoginHistory())
                           class="block rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
                         >
                           <option v-for="size in pageSizeOptions" :key="size" :value="size">
-                            {{ size }} {{ t('admin.users.loginHistory.pagination.pageSize') }}
+                            {{ size }} {{ t('users.loginHistory.pagination.pageSize') }}
                           </option>
                         </select>
                         <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
@@ -288,7 +288,7 @@ onMounted(() => fetchLoginHistory())
                             :disabled="page === 1"
                             class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <span class="sr-only">{{ t('admin.users.loginHistory.pagination.previous') }}</span>
+                            <span class="sr-only">{{ t('users.loginHistory.pagination.previous') }}</span>
                             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                               <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
                             </svg>
@@ -298,7 +298,7 @@ onMounted(() => fetchLoginHistory())
                             :disabled="page === pages"
                             class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <span class="sr-only">{{ t('admin.users.loginHistory.pagination.next') }}</span>
+                            <span class="sr-only">{{ t('users.loginHistory.pagination.next') }}</span>
                             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                               <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                             </svg>
@@ -317,7 +317,7 @@ onMounted(() => fetchLoginHistory())
         :disabled="approving"
         class="inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {{ t('admin.users.loginHistory.buttons.close') }}
+        {{ t('users.loginHistory.buttons.close') }}
       </button>
     </template>
   </BaseModal>

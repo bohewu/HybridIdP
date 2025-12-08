@@ -1,0 +1,125 @@
+{
+  "pageTitle": "人員管理",
+  "pageSubtitle": "管理人員資料及連結帳號",
+  "createPerson": "建立人員",
+  "editPerson": "編輯人員",
+  "search": "依姓名、員工編號或部門搜尋...",
+  "loading": "正在載入人員...",
+  "noPersons": "找不到符合條件的人員。",
+  "noPermission": "您沒有權限檢視人員。",
+  "edit": "編輯",
+  "delete": "刪除",
+  "accounts": "帳號",
+  "manageAccounts": "管理連結帳號",
+  "linkedAccountsCount": "已連結 {count} 個帳號",
+  "verifyIdentity": "驗證身分",
+  "verified": "已驗證",
+  "unverified": "未驗證",
+  "close": "關閉",
+  "save": "儲存",
+  "saving": "儲存中...",
+  "cancel": "取消",
+  "table": {
+    "name": "姓名",
+    "employeeId": "員工編號",
+    "department": "部門",
+    "jobTitle": "職位",
+    "linkedAccounts": "連結帳號",
+    "identityStatus": "身分狀態",
+    "actions": "動作"
+  },
+  "form": {
+    "firstName": "名字",
+    "middleName": "中間名",
+    "lastName": "姓氏",
+    "nickname": "暱稱",
+    "email": "電子郵件",
+    "phoneNumber": "電話號碼",
+    "employeeId": "員工編號",
+    "department": "部門",
+    "jobTitle": "職位",
+    "gender": "性別",
+    "birthdate": "出生日期",
+    "address": "地址",
+    "timeZone": "時區",
+    "locale": "地區設定",
+    "personalInfo": "個人資訊",
+    "identityVerification": "身分驗證",
+    "identityDocumentType": "身分證件類型",
+    "documentTypes": {
+      "none": "無",
+      "nationalId": "國民身分證",
+      "passport": "護照",
+      "residentCertificate": "居留證"
+    },
+    "nationalId": "身分證字號",
+    "nationalIdPlaceholder": "例如：A123456789",
+    "nationalIdHint": "中華民國國民身分證格式",
+    "passportNumber": "護照號碼",
+    "passportPlaceholder": "例如：300123456",
+    "passportHint": "6-12 位英數字元",
+    "residentCertificate": "居留證號碼",
+    "residentCertPlaceholder": "例如：AA12345678",
+    "residentCertHint": "10-12 位英數字元",
+    "identityVerified": "身分已於以下時間驗證"
+  },
+  "validation": {
+    "nationalIdRequired": "選擇國民身分證時，身分證字號為必填項",
+    "nationalIdFormat": "身分證字號格式不正確（應為 1 個英文字母 + 9 個數字）",
+    "nationalIdInvalidLetter": "身分證字號開頭字母無效",
+    "nationalIdChecksum": "身分證字號檢查碼錯誤，請確認號碼是否正確",
+    "passportRequired": "選擇護照時，護照號碼為必填項",
+    "passportFormat": "護照號碼格式不正確（應為 6-12 位英數字元）",
+    "residentCertRequired": "選擇居留證時，居留證號碼為必填項",
+    "residentCertFormat": "居留證號碼格式不正確（應為 10-12 位英數字元）",
+    "onlyOneDocumentType": "請只填寫一種證件類型的號碼"
+  },
+  "linkedAccounts": {
+    "title": "連結帳號",
+    "personName": "人員：{name}",
+    "noAccounts": "此人員尚未連結任何帳號。",
+    "linkAccount": "連結帳號",
+    "unlink": "取消連結",
+    "active": "啟用中",
+    "inactive": "已停用",
+    "lastLogin": "最後登入",
+    "selectUser": "選擇要連結的使用者",
+    "searchUsers": "依電子郵件或使用者名稱搜尋...",
+    "search": "搜尋",
+    "noAvailableUsers": "找不到可用的使用者。所有使用者可能已連結。",
+    "link": "連結",
+    "linking": "連結中...",
+    "errors": {
+      "loadFailed": "載入連結帳號失敗：{message}",
+      "loadAvailableFailed": "載入可用使用者失敗：{message}",
+      "linkFailed": "連結帳號失敗：{message}",
+      "unlinkFailed": "取消連結帳號失敗：{message}",
+      "noUserSelected": "請選擇要連結的使用者。"
+    },
+    "alerts": {
+      "linkSuccess": "帳號已成功連結。",
+      "unlinkSuccess": "帳號已成功取消連結。"
+    },
+    "confirmations": {
+      "unlink": "您確定要取消連結帳號 {email} 與此人員的關聯嗎？"
+    }
+  },
+  "errors": {
+    "loadFailed": "載入人員失敗：{message}",
+    "saveFailed": "儲存人員失敗：{message}",
+    "deleteFailed": "刪除人員失敗：{message}",
+    "firstNameRequired": "名字為必填項。",
+    "lastNameRequired": "姓氏為必填項。",
+    "invalidEmail": "請輸入有效的電子郵件地址。",
+    "noIdentityDocument": "此人員沒有身分證件可供驗證。",
+    "verifyFailed": "驗證身分失敗：{message}"
+  },
+  "alerts": {
+    "deleteSuccess": "人員已成功刪除。",
+    "verifySuccess": "身分已成功驗證。"
+  },
+  "confirmations": {
+    "delete": "您確定要刪除 {name} 嗎？這將取消所有關聯帳號的連結，但不會刪除帳號本身。",
+    "verifyIdentity": "您確定要驗證 {name} 的身分嗎？此操作會將身分證件標記為已驗證。"
+  }
+}

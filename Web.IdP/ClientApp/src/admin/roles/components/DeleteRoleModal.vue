@@ -62,7 +62,7 @@ const handleClose = () => {
 <template>
   <BaseModal
     :show="true"
-    :title="$t('admin.roles.deleteModal.title')"
+    :title="$t('roles.deleteModal.title')"
     size="md"
     :show-close-icon="true"
     :close-on-backdrop="false"
@@ -94,7 +94,7 @@ const handleClose = () => {
                       </div>
                       <div class="ml-3">
                         <p class="text-sm text-yellow-700">
-                          <strong>{{ $t('admin.roles.deleteModal.systemRoleProtected') }}</strong> {{ $t('admin.roles.deleteModal.systemRoleInfo') }}
+                          <strong>{{ $t('roles.deleteModal.systemRoleProtected') }}</strong> {{ $t('roles.deleteModal.systemRoleInfo') }}
                         </p>
                       </div>
                     </div>
@@ -110,10 +110,10 @@ const handleClose = () => {
                       </div>
                       <div class="ml-3">
                         <p class="text-sm text-orange-700">
-                          <strong>{{ $t('admin.roles.deleteModal.usersAssigned') }}</strong> {{ $t('admin.roles.deleteModal.usersAssignedInfo', { count: role.userCount }) }}
+                          <strong>{{ $t('roles.deleteModal.usersAssigned') }}</strong> {{ $t('roles.deleteModal.usersAssignedInfo', { count: role.userCount }) }}
                         </p>
                         <p class="text-sm text-orange-700 mt-1">
-                          {{ $t('admin.roles.deleteModal.reassignWarning') }}
+                          {{ $t('roles.deleteModal.reassignWarning') }}
                         </p>
                       </div>
                     </div>
@@ -122,15 +122,15 @@ const handleClose = () => {
                   <!-- Normal Delete Confirmation -->
                   <div v-else>
                     <p class="text-sm text-gray-500">
-                      {{ $t('admin.roles.deleteModal.message', { name: role.name }) }}
+                      {{ $t('roles.deleteModal.message', { name: role.name }) }}
                     </p>
                     <p class="text-sm text-gray-500 mt-2">
-                      {{ $t('admin.roles.deleteModal.warning') }}
+                      {{ $t('roles.deleteModal.warning') }}
                     </p>
                     <div v-if="role.permissions && role.permissions.length > 0" class="mt-3 p-3 bg-gray-50 rounded">
-                      <p class="text-xs text-gray-600 mb-1">{{ $t('admin.roles.deleteModal.roleHas') }}</p>
+                      <p class="text-xs text-gray-600 mb-1">{{ $t('roles.deleteModal.roleHas') }}</p>
                       <ul class="text-xs text-gray-600 list-disc list-inside">
-                        <li>{{ $t('admin.roles.deleteModal.permissionCount', { count: role.permissions.length }) }}</li>
+                        <li>{{ $t('roles.deleteModal.permissionCount', { count: role.permissions.length }) }}</li>
                       </ul>
                     </div>
                   </div>
@@ -147,7 +147,7 @@ const handleClose = () => {
         :disabled="deleting"
         class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
       >
-        {{ deleting ? $t('admin.roles.deleteModal.deleting') : $t('admin.roles.deleteModal.deleteButton') }}
+        {{ deleting ? $t('roles.deleteModal.deleting') : $t('roles.deleteModal.deleteButton') }}
       </button>
       <button
         type="button"
@@ -155,7 +155,7 @@ const handleClose = () => {
         :disabled="deleting"
         class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
       >
-        {{ canDelete && role.userCount === 0 ? $t('admin.roles.createModal.cancel') : $t('admin.roles.deleteModal.close') }}
+        {{ canDelete && role.userCount === 0 ? $t('roles.createModal.cancel') : $t('roles.deleteModal.close') }}
       </button>
     </template>
   </BaseModal>
