@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import { SettingKeys } from '@/utils/settingKeys'
 
 const props = defineProps({
   canUpdate: {
@@ -63,13 +64,13 @@ const loadSettings = async () => {
     
     const getVal = (key, def) => settings.find(s => s.key === key)?.value || def
 
-    host.value = getVal('Mail.Host', '')
-    port.value = parseInt(getVal('Mail.Port', '587'))
-    username.value = getVal('Mail.Username', '')
-    password.value = getVal('Mail.Password', '')
-    enableSsl.value = getVal('Mail.EnableSsl', 'true') === 'true'
-    fromAddress.value = getVal('Mail.FromAddress', '')
-    fromName.value = getVal('Mail.FromName', '')
+    host.value = getVal(SettingKeys.Email.SmtpHost, '')
+    port.value = parseInt(getVal(SettingKeys.Email.SmtpPort, '587'))
+    username.value = getVal(SettingKeys.Email.SmtpUsername, '')
+    password.value = getVal(SettingKeys.Email.SmtpPassword, '')
+    enableSsl.value = getVal(SettingKeys.Email.SmtpEnableSsl, 'true') === 'true'
+    fromAddress.value = getVal(SettingKeys.Email.FromAddress, '')
+    fromName.value = getVal(SettingKeys.Email.FromName, '')
 
     originals.value = {
       host: host.value,
@@ -97,13 +98,13 @@ const saveSettings = async () => {
 
   try {
     const updates = [
-      { key: 'Mail.Host', value: host.value },
-      { key: 'Mail.Port', value: port.value.toString() },
-      { key: 'Mail.Username', value: username.value },
-      { key: 'Mail.Password', value: password.value },
-      { key: 'Mail.EnableSsl', value: enableSsl.value.toString() },
-      { key: 'Mail.FromAddress', value: fromAddress.value },
-      { key: 'Mail.FromName', value: fromName.value }
+      { key: SettingKeys.Email.SmtpHost, value: host.value },
+      { key: SettingKeys.Email.SmtpPort, value: port.value.toString() },
+      { key: SettingKeys.Email.SmtpUsername, value: username.value },
+      { key: SettingKeys.Email.SmtpPassword, value: password.value },
+      { key: SettingKeys.Email.SmtpEnableSsl, value: enableSsl.value.toString() },
+      { key: SettingKeys.Email.FromAddress, value: fromAddress.value },
+      { key: SettingKeys.Email.FromName, value: fromName.value }
     ]
 
     // Simply update all keys to ensure consistency

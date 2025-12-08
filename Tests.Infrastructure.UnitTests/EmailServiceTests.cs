@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
+using Core.Domain.Constants; // Added
+
 namespace Tests.Infrastructure.UnitTests;
 
 public class EmailServiceTests
@@ -31,13 +33,13 @@ public class EmailServiceTests
     public async Task GetSettingsAsync_ShouldRetrieveAllMailSettings()
     {
         // Arrange
-        _mockSettings.Setup(x => x.GetValueAsync<string>("Mail.Host", It.IsAny<CancellationToken>())).ReturnsAsync("smtp.example.com");
-        _mockSettings.Setup(x => x.GetValueAsync<string>("Mail.Port", It.IsAny<CancellationToken>())).ReturnsAsync("587");
-        _mockSettings.Setup(x => x.GetValueAsync<string>("Mail.Username", It.IsAny<CancellationToken>())).ReturnsAsync("user");
-        _mockSettings.Setup(x => x.GetValueAsync<string>("Mail.Password", It.IsAny<CancellationToken>())).ReturnsAsync("pass");
-        _mockSettings.Setup(x => x.GetValueAsync<string>("Mail.EnableSsl", It.IsAny<CancellationToken>())).ReturnsAsync("true");
-        _mockSettings.Setup(x => x.GetValueAsync<string>("Mail.FromAddress", It.IsAny<CancellationToken>())).ReturnsAsync("no-reply@example.com");
-        _mockSettings.Setup(x => x.GetValueAsync<string>("Mail.FromName", It.IsAny<CancellationToken>())).ReturnsAsync("Test Sender");
+        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.SmtpHost, It.IsAny<CancellationToken>())).ReturnsAsync("smtp.example.com");
+        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.SmtpPort, It.IsAny<CancellationToken>())).ReturnsAsync("587");
+        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.SmtpUsername, It.IsAny<CancellationToken>())).ReturnsAsync("user");
+        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.SmtpPassword, It.IsAny<CancellationToken>())).ReturnsAsync("pass");
+        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.SmtpEnableSsl, It.IsAny<CancellationToken>())).ReturnsAsync("true");
+        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.FromAddress, It.IsAny<CancellationToken>())).ReturnsAsync("no-reply@example.com");
+        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.FromName, It.IsAny<CancellationToken>())).ReturnsAsync("Test Sender");
 
         // Act
         // We need to expose the settings retrieval logic or test it indirectly.

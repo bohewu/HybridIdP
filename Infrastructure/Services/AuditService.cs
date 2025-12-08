@@ -2,6 +2,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
 using Core.Domain.Events;
+using Core.Domain.Constants; // Added
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -64,7 +65,7 @@ public class AuditService : IAuditService,
         await _db.SaveChangesAsync(CancellationToken.None);
 
         // Retention policy purge (config key: Audit.RetentionDays)
-        var retentionDays = await _settingsService.GetValueAsync<int>("Audit.RetentionDays", CancellationToken.None);
+        var retentionDays = await _settingsService.GetValueAsync<int>(SettingKeys.Audit.RetentionDays, CancellationToken.None);
         if (retentionDays > 0)
         {
             var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
