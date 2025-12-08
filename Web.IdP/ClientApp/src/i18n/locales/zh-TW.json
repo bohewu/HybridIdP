@@ -506,6 +506,11 @@
         "metrics_interval": "指標間隔",
         "seconds": "秒"
       },
+      "audit": {
+        "title": "稽核日誌保留",
+        "retention_days": "保留期限（天）",
+        "retention_days_desc": "稽核日誌保留的天數。0 代表永久保留。"
+      },
       "emailSection": "電子郵件設定",
       "emailSectionDesc": "設定外寄電子郵件的 SMTP 資訊。",
       "host": "SMTP 主機",
