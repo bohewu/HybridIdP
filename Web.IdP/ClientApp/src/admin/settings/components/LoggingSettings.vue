@@ -139,10 +139,11 @@ onMounted(() => {
             </div>
 
             <div class="form-control w-full max-w-sm">
-                <label class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="globalLevel" class="block text-sm font-medium text-gray-700 mb-1">
                     {{ t('admin.settings.logging.globalLevel') }}
                 </label>
                 <select 
+                    id="globalLevel"
                     v-model="currentLevel" 
                     :disabled="!canUpdate"
                     class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 h-10 px-3"

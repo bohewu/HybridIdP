@@ -18,13 +18,22 @@ public class LogSettingsSyncService : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var settingsService = scope.ServiceProvider.GetRequiredService<ISettingsService>();
-
-        var storedLevel = await settingsService.GetValueAsync<string>(SettingKey, cancellationToken);
-        if (!string.IsNullOrEmpty(storedLevel) && Enum.TryParse<LogEventLevel>(storedLevel, true, out var parsedLevel))
+        try
         {
-            _levelSwitch.MinimumLevel = parsedLevel;
+            using var scope = _serviceProvider.CreateScope();
+            var settingsService = scope.ServiceProvider.GetRequiredService<ISettingsService>();
+
+            var storedLevel = await settingsService.GetValueAsync<string>(SettingKey, cancellationToken);
+            if (!string.IsNullOrEmpty(storedLevel) && Enum.TryParse<LogEventLevel>(storedLevel, true, out var parsedLevel))
+            {
+                _levelSwitch.MinimumLevel = parsedLevel;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Fallback to default level if DB isn't ready or settings are missing
+            // We can't easily log here if the logger isn't injected, but we shouldn't crash startup.
+            // Console.WriteLine($"[LogSettingsSyncService] Failed to load log settings: {ex.Message}");
         }
     }
 
