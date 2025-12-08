@@ -4,6 +4,7 @@ using HybridIdP.Infrastructure.Identity;
 using Infrastructure;
 using Infrastructure.Identity;
 using Infrastructure.Services;
+using Infrastructure.Options;
 using Core.Application;
 using Core.Domain;
 using Core.Domain.Events;
@@ -355,6 +356,9 @@ builder.Services.AddHostedService<Infrastructure.BackgroundServices.MonitoringBa
 
 // Register AppInfo Options
 builder.Services.Configure<AppInfoOptions>(builder.Configuration.GetSection(AppInfoOptions.Section));
+
+// Register LegacyAuth Options
+builder.Services.Configure<LegacyAuthOptions>(builder.Configuration.GetSection(LegacyAuthOptions.SectionName));
 
 // Configure OpenTelemetry
 var appInfoOptions = new AppInfoOptions();

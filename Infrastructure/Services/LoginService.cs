@@ -97,7 +97,23 @@ public class LoginService : ILoginService
             return LoginResult.InvalidCredentials();
         }
 
-        var provisionedUser = await _jitProvisioningService.ProvisionUserAsync(legacyResult);
+        // Map LegacyUserDto to ExternalAuthResult
+        var externalAuth = new Core.Application.DTOs.ExternalAuthResult
+        {
+             Provider = "Legacy",
+             ProviderKey = legacyResult.ExternalId ?? login,
+             Email = legacyResult.Email,
+             DisplayName = legacyResult.FullName,
+             Department = legacyResult.Department,
+             JobTitle = legacyResult.JobTitle,
+             PhoneNumber = legacyResult.Phone,
+             NationalId = legacyResult.NationalId,
+             PassportNumber = legacyResult.PassportNumber,
+             ResidentCertificateNumber = legacyResult.ResidentCertificateNumber
+        };
+
+        var provisionedUser = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth);
+
         if (_logger.IsEnabled(LogLevel.Information))
         {
             _logger.LogInformation("User '{login}' authenticated via legacy auth and JIT provisioned.", login);
