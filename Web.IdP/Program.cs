@@ -24,6 +24,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Exporter.Prometheus;
 using Web.IdP.Middleware;
 using Web.IdP.Services;
+using Web.IdP.Constants;
 
 using Quartz;
 using HealthChecks.UI.Client;
@@ -107,7 +108,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.Name = ".HybridAuthIdP.Identity";
+    options.Cookie.Name = CookieConstants.IdentityCookieName;
 
     options.Events.OnRedirectToLogin = context =>
     {
@@ -213,7 +214,8 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.Name = ".HybridAuthIdP.Session";
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.Name = CookieConstants.SessionCookieName;
 });
 
 // Configure antiforgery tokens security
@@ -222,7 +224,8 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Strict;
-    options.Cookie.Name = ".HybridAuthIdP.Antiforgery";
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.Name = CookieConstants.AntiforgeryCookieName;
 });
 
 builder.Services.AddMvc()
@@ -230,7 +233,7 @@ builder.Services.AddMvc()
     .AddDataAnnotationsLocalization();
 
 // Branding options
-builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection("Branding"));
+builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection(BrandingOptions.Section));
 
 // Register Turnstile Options
 builder.Services.Configure<TurnstileOptions>(builder.Configuration.GetSection(TurnstileOptions.Section));
@@ -458,7 +461,7 @@ if (!string.IsNullOrEmpty(redisConnectionString))
     healthChecksBuilder.AddRedis(redisConnectionString);
 }
 
-// Add Health Checks UI
+// Add Health Checks UI - DISABLED due to incompatiblity with .NET 10 EF Core
 // builder.Services.AddHealthChecksUI(setup =>
 // {
 //     setup.SetEvaluationTimeInSeconds(60); // Configurable
@@ -517,6 +520,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
 });
 
+// Map Health Checks UI - DISABLED
 // app.MapHealthChecksUI(options =>
 // {
 //     options.UIPath = "/health-ui";

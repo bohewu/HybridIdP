@@ -43,6 +43,66 @@
         </div>
       </div>
 
+      <!-- System Health Widget -->
+      <div class="mb-8 bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">{{ $t('admin.dashboard.health.title') }}</h3>
+            <button 
+                @click="fetchHealth" 
+                :disabled="healthLoading"
+                class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                <svg v-if="healthLoading" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <svg v-else class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {{ $t('admin.dashboard.health.refresh') }}
+            </button>
+        </div>
+        
+        <div v-if="healthError" class="text-sm text-red-600 mb-4">
+            {{ healthError }}
+        </div>
+
+        <div v-if="healthData" class="space-y-4">
+            <!-- Overall Status -->
+            <div class="flex items-center p-4 rounded-lg" :class="healthData.status === 'Healthy' ? 'bg-green-50' : 'bg-red-50'">
+                <div class="flex-shrink-0">
+                    <svg v-if="healthData.status === 'Healthy'" class="h-8 w-8 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <svg v-else class="h-8 w-8 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-medium" :class="healthData.status === 'Healthy' ? 'text-green-800' : 'text-red-800'">
+                        {{ healthData.status }}
+                    </h3>
+                    <div class="text-sm" :class="healthData.status === 'Healthy' ? 'text-green-700' : 'text-red-700'">
+                        {{ t('admin.dashboard.health.lastUpdated', { time: new Date().toLocaleTimeString() }) }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Individual Checks -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div v-for="(entry, name) in healthData.entries" :key="name" class="border rounded-md p-3 flex items-center justify-between">
+                    <span class="font-medium text-gray-700">{{ name }}</span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                        :class="entry.status === 'Healthy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                        {{ entry.status }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div v-else-if="!healthLoading" class="text-gray-500 text-sm italic">
+            {{ t('admin.dashboard.health.noData') }}
+        </div>
+      </div>
+
       <!-- Monitoring Cards -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Activity Dashboard Card -->
@@ -141,6 +201,10 @@ const stats = ref({
   totalUsers: 0
 })
 
+const healthData = ref(null)
+const healthLoading = ref(false)
+const healthError = ref(null)
+
 const hubConnection = ref(null)
 
 const fetchStats = async () => {
@@ -168,6 +232,21 @@ const fetchStats = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const fetchHealth = async () => {
+    healthLoading.value = true
+    healthError.value = null
+    try {
+        const response = await fetch('/health')
+        if (!response.ok) throw new Error('Failed to fetch health status')
+        healthData.value = await response.json()
+    } catch (err) {
+        console.error('Health check failed:', err)
+        healthError.value = t('admin.dashboard.errors.healthFailed')
+    } finally {
+        healthLoading.value = false
+    }
 }
 
 const setupSignalR = async () => {
@@ -204,13 +283,8 @@ const cleanupSignalR = () => {
 }
 
 onMounted(async () => {
-  // Dashboard default: prefer v-loading overlay for page-level loading so the
-  // content remains visible and is visually less disruptive than replacing
-  // the DOM during load. The inline `LoadingIndicator` component is kept in
-  // the repo for localized / component-level usages but is not used at the
-  // top-level Dashboard page to avoid blanking the page contents.
-
   await fetchStats()
+  fetchHealth() // Don't await, let it load in background
   await setupSignalR()
 })
 

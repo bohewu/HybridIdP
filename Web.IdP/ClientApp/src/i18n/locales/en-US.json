@@ -26,6 +26,13 @@
         "totalScopes": "Total Scopes",
         "totalUsers": "Total Users"
       },
+      "health": {
+          "title": "System Health",
+          "refresh": "Refresh",
+          "lastUpdated": "Last updated: {time}",
+          "noData": "No health data available.",
+          "status": "Status"
+      },
       "cards": {
         "clients": {
           "title": "OIDC Clients",
@@ -46,7 +53,8 @@
       "errors": {
         "unauthorized": "Unauthorized - Please log in again",
         "accessDenied": "Access Denied - Admin role required",
-        "loadFailed": "Failed to load dashboard statistics"
+        "loadFailed": "Failed to load dashboard statistics",
+        "healthFailed": "Failed to load system health"
       }
     },
     "users": {
