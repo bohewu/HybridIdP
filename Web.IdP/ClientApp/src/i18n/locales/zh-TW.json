@@ -511,6 +511,12 @@
         "retention_days": "保留期限（天）",
         "retention_days_desc": "稽核日誌保留的天數。0 代表永久保留。"
       },
+      "logging": {
+        "title": "日誌設定",
+        "description": "動態設定應用程式日誌層級。",
+        "globalLevel": "全域日誌層級",
+        "globalLevelDesc": "設定所有輸出目標（控制台、檔案）的最低日誌層級。變更將立即生效。"
+      },
       "emailSection": "電子郵件設定",
       "emailSectionDesc": "設定外寄電子郵件的 SMTP 資訊。",
       "host": "SMTP 主機",

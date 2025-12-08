@@ -26,8 +26,28 @@ using Web.IdP.Middleware;
 using Web.IdP.Services;
 
 using Quartz;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
+using HealthChecks.NpgSql;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog
+var levelSwitch = new LoggingLevelSwitch();
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .MinimumLevel.ControlledBy(levelSwitch)
+    .WriteTo.Console());
+
+// Register LoggingLevelSwitch for injection
+builder.Services.AddSingleton(levelSwitch);
 
 // Add services to the container.
 // Add Vite services for Vue.js integration
@@ -354,6 +374,10 @@ builder.Services.AddSignalR();
 // todo: 未來可以在安全設定裡面設定是否啟用，及秒數
 builder.Services.AddHostedService<Infrastructure.BackgroundServices.MonitoringBackgroundService>();
 
+// Add Dynamic Logging Services
+builder.Services.AddScoped<IDynamicLoggingService, DynamicLoggingService>();
+builder.Services.AddHostedService<LogSettingsSyncService>();
+
 // Register AppInfo Options
 builder.Services.Configure<AppInfoOptions>(builder.Configuration.GetSection(AppInfoOptions.Section));
 
@@ -397,6 +421,47 @@ builder.Services.AddOpenTelemetry()
         .AddRuntimeInstrumentation()
         .AddProcessInstrumentation()
         .AddPrometheusExporter());
+
+// Add Health Checks
+var healthChecksBuilder = builder.Services.AddHealthChecks();
+
+if (databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+{
+    healthChecksBuilder.AddCheck("Database (PostgreSQL)", () =>
+    {
+        try
+        {
+            using var conn = new Npgsql.NpgsqlConnection(connectionString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+            cmd.ExecuteScalar();
+            return HealthCheckResult.Healthy();
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy(exception: ex);
+        }
+    }, tags: new[] { "db", "postgresql" });
+}
+else
+{
+    healthChecksBuilder.AddSqlServer(connectionString);
+}
+
+// Add Redis Health Check if connection string is available
+var redisConnectionString = builder.Configuration.GetConnectionString("RedisConnection");
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    healthChecksBuilder.AddRedis(redisConnectionString);
+}
+
+// Add Health Checks UI
+builder.Services.AddHealthChecksUI(setup =>
+{
+    setup.SetEvaluationTimeInSeconds(60); // Configurable
+    setup.AddHealthCheckEndpoint("HybridIdP Health", "/health");
+}).AddInMemoryStorage();
 
 var app = builder.Build();
 
@@ -442,6 +507,19 @@ if (observabilityOptions.PrometheusEnabled)
     app.MapPrometheusScrapingEndpoint()
         .RequireAuthorization("PrometheusMetrics");
 }
+
+// Map Health Checks Endpoints
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => true,
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+
+app.MapHealthChecksUI(options =>
+{
+    options.UIPath = "/health-ui";
+    options.ApiPath = "/health-ui-api";
+}).RequireAuthorization("HasAnyAdminAccess");
 
 app.MapStaticAssets();
 app.MapControllers(); // Map API controller endpoints
