@@ -76,7 +76,7 @@ test('Admin - System Monitoring Settings', async ({ page }) => {
   await page.waitForSelector('text=System Monitoring', { timeout: 15000 });
 
   // Verify visibility of key elements
-  await expect(page.getByText('System Monitoring')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'System Monitoring', level: 2 })).toBeVisible();
   await expect(page.getByText('Enable Monitoring')).toBeVisible();
   await expect(page.getByText('Activity Interval')).toBeVisible();
   
