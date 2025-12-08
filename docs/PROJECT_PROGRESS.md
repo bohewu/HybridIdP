@@ -22,6 +22,8 @@ last-updated: 2025-12-02
    - Phase 11.6: Homepage Refactoring & Security Hardening ✅ — `./archive/phases/phase-11-6-remove-role-switch-refactor-homepage.md`, `./SECURITY_HARDENING.md`
 -- Phase 12 — Admin API & HR Integration: 📋 Planned — `./phase-12-admin-api-hr-integration.md`
 -- Phase 13 — OAuth Flow Enhancement: 100% ✅ — `./archive/phases/phase-13-oauth-flow-enhancement.md`
+-- Phase 15 — Operational Excellence (Health & Logging): 📋 Planned — `./phase-15-operational.md`
+-- Phase 16 — Advanced User Support (Impersonation): 📋 Planned — `./phase-16-impersonation.md`
 
 Backlog & Technical Debt: `./TODOS.md`
 

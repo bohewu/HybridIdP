@@ -511,6 +511,12 @@
         "retention_days": "Retention Period (Days)",
         "retention_days_desc": "Number of days to keep audit logs. 0 means keep forever."
       },
+      "logging": {
+        "title": "Logging Settings",
+        "description": "Configure application logging levels dynamically.",
+        "globalLevel": "Global Log Level",
+        "globalLevelDesc": "Sets the minimum log level for all sinks (Console, File). Changes take effect immediately."
+      },
       "emailSection": "Email Settings",
       "emailSectionDesc": "Configure SMTP settings for outgoing emails.",
       "host": "SMTP Host",

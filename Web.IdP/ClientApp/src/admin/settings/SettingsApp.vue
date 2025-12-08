@@ -5,6 +5,7 @@ import permissionService, { Permissions } from '@/utils/permissionService'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import BrandingSettings from './components/BrandingSettings.vue'
 import EmailSettings from './components/EmailSettings.vue'
+import LoggingSettings from './components/LoggingSettings.vue'
 import SystemSettings from './components/SystemSettings.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 const { t } = useI18n()
@@ -64,6 +65,9 @@ onMounted(async () => {
 
         <!-- System Settings -->
         <SystemSettings :can-update="hasUpdatePermission" />
+
+        <!-- Logging Settings -->
+        <LoggingSettings :can-update="hasUpdatePermission" />
 
         <!-- Email Settings -->
         <EmailSettings :can-update="hasUpdatePermission" />
