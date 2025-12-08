@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import LoadingIndicator from '@/components/common/LoadingIndicator.vue';
+import { SettingKeys } from '@/utils/settingKeys';
 
 const props = defineProps({
   canUpdate: {
@@ -20,7 +21,8 @@ const settings = ref({
     monitoringEnabled: true,
     activityInterval: 5,
     securityInterval: 10,
-    metricsInterval: 15
+    metricsInterval: 15,
+    auditRetentionDays: 30
 });
 
 // Original state to track changes (optional, but good for UX)
@@ -30,35 +32,40 @@ const hasChanges = computed(() => {
     return settings.value.monitoringEnabled !== originalSettings.value.monitoringEnabled ||
            settings.value.activityInterval !== originalSettings.value.activityInterval ||
            settings.value.securityInterval !== originalSettings.value.securityInterval ||
-           settings.value.metricsInterval !== originalSettings.value.metricsInterval;
+           settings.value.metricsInterval !== originalSettings.value.metricsInterval ||
+           settings.value.auditRetentionDays !== originalSettings.value.auditRetentionDays;
 });
 
 const loadSettings = async () => {
     loading.value = true;
     error.value = null;
     try {
-        const response = await fetch('/api/admin/settings?prefix=Monitoring.', {
+        // Load Monitoring Settings
+        const monitoringPromise = fetch('/api/admin/settings?prefix=Monitoring.', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include'
-        });
+        }).then(r => r.json());
 
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        // Load Audit Settings (using prefix Audit.)
+        const auditPromise = fetch('/api/admin/settings?prefix=Audit.', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        }).then(r => r.json());
+
+        const [monitoringData, auditData] = await Promise.all([monitoringPromise, auditPromise]);
         
-        const data = await response.json();
-        
-        // Map response array to settings object
-        const enabledSetting = data.find(s => s.key === 'Monitoring.Enabled');
-        if (enabledSetting) settings.value.monitoringEnabled = enabledSetting.value.toLowerCase() === 'true';
+        // Map Monitoring Data
+        const getVal = (data, key, def) => data.find(s => s.key === key)?.value || def;
 
-        const activitySetting = data.find(s => s.key === 'Monitoring.ActivityIntervalSeconds');
-        if (activitySetting) settings.value.activityInterval = parseInt(activitySetting.value);
+        settings.value.monitoringEnabled = getVal(monitoringData, 'Monitoring.Enabled', 'true').toLowerCase() === 'true';
+        settings.value.activityInterval = parseInt(getVal(monitoringData, 'Monitoring.ActivityIntervalSeconds', '5'));
+        settings.value.securityInterval = parseInt(getVal(monitoringData, 'Monitoring.SecurityIntervalSeconds', '10'));
+        settings.value.metricsInterval = parseInt(getVal(monitoringData, 'Monitoring.MetricsIntervalSeconds', '15'));
 
-        const securitySetting = data.find(s => s.key === 'Monitoring.SecurityIntervalSeconds');
-        if (securitySetting) settings.value.securityInterval = parseInt(securitySetting.value);
-
-        const metricsSetting = data.find(s => s.key === 'Monitoring.MetricsIntervalSeconds');
-        if (metricsSetting) settings.value.metricsInterval = parseInt(metricsSetting.value);
+        // Map Audit Data
+        settings.value.auditRetentionDays = parseInt(getVal(auditData, SettingKeys.Audit.RetentionDays, '30'));
 
         // Save original copy
         originalSettings.value = { ...settings.value };
@@ -91,7 +98,8 @@ const saveSettings = async () => {
             updateSetting('Monitoring.Enabled', settings.value.monitoringEnabled.toString()),
             updateSetting('Monitoring.ActivityIntervalSeconds', settings.value.activityInterval.toString()),
             updateSetting('Monitoring.SecurityIntervalSeconds', settings.value.securityInterval.toString()),
-            updateSetting('Monitoring.MetricsIntervalSeconds', settings.value.metricsInterval.toString())
+            updateSetting('Monitoring.MetricsIntervalSeconds', settings.value.metricsInterval.toString()),
+            updateSetting(SettingKeys.Audit.RetentionDays, settings.value.auditRetentionDays.toString())
         ];
 
         const results = await Promise.all(updates);
@@ -100,12 +108,20 @@ const saveSettings = async () => {
         if (results.some(r => !r.ok)) throw new Error('One or more settings failed to save');
 
         // Invalidate cache
-        await fetch('/api/admin/settings/invalidate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ key: 'Monitoring.' })
-        });
+        await Promise.all([
+            fetch('/api/admin/settings/invalidate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ key: 'Monitoring.' })
+            }),
+            fetch('/api/admin/settings/invalidate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ key: 'Audit.' })
+            })
+        ]);
 
         // Update originals
         originalSettings.value = { ...settings.value };
@@ -178,6 +194,29 @@ onMounted(() => {
                 </div>
             </div>
 
+            <!-- Audit Retention Section -->
+            <div class="mb-6">
+                <h3 class="text-md font-medium text-gray-900 mb-2">{{ t('admin.settings.audit.title') }}</h3>
+                <div class="form-control w-full max-w-sm">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ t('admin.settings.audit.retention_days') }}
+                    </label>
+                    <input
+                        type="number"
+                        v-model.number="settings.auditRetentionDays"
+                        min="0"
+                        :disabled="!canUpdate"
+                        class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
+                    />
+                    <p class="mt-1 text-sm text-gray-500">{{ t('admin.settings.audit.retention_days_desc') }}</p>
+                </div>
+            </div>
+
+            <div class="divider my-4"></div>
+
+            <!-- Monitoring Section -->
+             <h3 class="text-md font-medium text-gray-900 mb-2">{{ t('admin.settings.system.title') }}</h3>
+
             <!-- Monitoring Toggle -->
             <div class="form-control mb-6">
                 <label class="label cursor-pointer justify-start gap-4">
@@ -186,8 +225,6 @@ onMounted(() => {
                 </label>
                 <p class="text-sm text-gray-500 mt-1">{{ t('admin.settings.monitoring.enable_desc') }}</p>
             </div>
-
-            <div class="divider my-4"></div>
 
             <!-- Intervals Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

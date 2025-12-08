@@ -506,6 +506,11 @@
         "metrics_interval": "Metrics Interval",
         "seconds": "seconds"
       },
+      "audit": {
+        "title": "Audit Log Retention",
+        "retention_days": "Retention Period (Days)",
+        "retention_days_desc": "Number of days to keep audit logs. 0 means keep forever."
+      },
       "emailSection": "Email Settings",
       "emailSectionDesc": "Configure SMTP settings for outgoing emails.",
       "host": "SMTP Host",
