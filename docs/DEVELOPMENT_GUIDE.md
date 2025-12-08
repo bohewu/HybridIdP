@@ -354,6 +354,35 @@ const loading = ref(true)
 
 **注意**：如果你發現現有代碼直接使用 `IConfiguration`，請將其重構為 Options Pattern。
 
+### Setting Keys Constants
+
+為了避免硬編碼字串並確保類型安全，所有系統設定鍵值必須定義為常數。
+
+1.  **Backend (C#)**:
+    *   在 `Core.Domain.Constants.SettingKeys` 類別中定義常數。
+    *   不要在 Service 中使用硬編碼字串 (例如 "Mail.Host")。
+    *   **範例**:
+        ```csharp
+        // ✅ Correct
+        var host = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpHost);
+
+        // ❌ Avoid
+        var host = await _settings.GetValueAsync<string>("Mail.Host");
+        ```
+
+2.  **Frontend (JS/Vue)**:
+    *   使用 `Web.IdP/ClientApp/src/utils/settingKeys.js` 中定義的常數。
+    *   新增設定時，請同時更新前後端的常數定義以保持一致。
+    *   **範例**:
+        ```javascript
+        // ✅ Correct
+        import { SettingKeys } from '@/utils/settingKeys'
+        host.value = getVal(SettingKeys.Email.SmtpHost, '')
+
+        // ❌ Avoid
+        host.value = getVal('Mail.Host', '')
+        ```
+
 ---
 
 ## ⚠️ 關鍵注意事項
