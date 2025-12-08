@@ -1,0 +1,32 @@
+  正在判斷要還原的專案...
+  所有專案都在最新狀態，可進行還原。
+  Tests.SystemTests -> C:\repos\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll
+C:\repos\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll 的測試回合 (.NETCoreApp,Version=v10.0)
+VSTest 版本 18.0.1 (x64)
+
+正在啟動測試執行，請稍候...
+總共有 1 個測試檔案與指定的模式相符。
+C:\repos\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.0)
+[xUnit.net 00:00:00.05]   Discovering: Tests.SystemTests
+[xUnit.net 00:00:00.07]   Discovered:  Tests.SystemTests
+[xUnit.net 00:00:00.09]   Starting:    Tests.SystemTests
+[xUnit.net 00:00:00.21]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:00.21]       Expected: Found
+[xUnit.net 00:00:00.21]       Actual:   OK
+[xUnit.net 00:00:00.21]       Stack Trace:
+[xUnit.net 00:00:00.22]         C:\repos\HybridIdP\Tests.SystemTests\LegacyAuthSystemTests.cs(45,0): at Tests.SystemTests.LegacyAuthSystemTests.Authenticate_LegacyUser_ReturnsSuccessAndProvisionsUser()
+[xUnit.net 00:00:00.22]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.22]   Finished:    Tests.SystemTests
+  失敗 Tests.SystemTests.LegacyAuthSystemTests.Authenticate_LegacyUser_ReturnsSuccessAndProvisionsUser [100 ms]
+  錯誤訊息:
+   Assert.Equal() Failure: Values differ
+Expected: Found
+Actual:   OK
+  堆疊追蹤:
+     at Tests.SystemTests.LegacyAuthSystemTests.Authenticate_LegacyUser_ReturnsSuccessAndProvisionsUser() in C:\repos\HybridIdP\Tests.SystemTests\LegacyAuthSystemTests.cs:line 45
+--- End of stack trace from previous location ---
+
+測試數總計: 1
+     失敗: 1
+ 時間總計: 0.6300 秒

@@ -198,12 +198,15 @@ public class JitProvisioningService : IJitProvisioningService
         var externalAuth = new ExternalAuthResult
         {
             Provider = "Legacy",
-            ProviderKey = dto.ExternalId ?? dto.Email ?? dto.IdCardNumber ?? Guid.NewGuid().ToString(),
+            ProviderKey = dto.ExternalId ?? dto.Email ?? dto.NationalId ?? Guid.NewGuid().ToString(),
             Email = dto.Email,
             FirstName = dto.FullName, // Legacy only has FullName
             PhoneNumber = dto.Phone,
             Department = dto.Department,
-            NationalId = dto.IdCardNumber
+            JobTitle = dto.JobTitle,
+            NationalId = dto.NationalId,
+            PassportNumber = dto.PassportNumber,
+            ResidentCertificateNumber = dto.ResidentCertificateNumber
         };
 
         return await ProvisionExternalUserAsync(externalAuth, cancellationToken);
