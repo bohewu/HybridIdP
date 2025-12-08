@@ -121,11 +121,11 @@ const handleSubmit = async () => {
 
 	// Basic validation
 	if (!formData.value.firstName?.trim()) {
-		error.value = t('admin.persons.errors.firstNameRequired')
+		error.value = t('persons.errors.firstNameRequired')
 		return
 	}
 	if (!formData.value.lastName?.trim()) {
-		error.value = t('admin.persons.errors.lastNameRequired')
+		error.value = t('persons.errors.lastNameRequired')
 		return
 	}
 
@@ -133,7 +133,7 @@ const handleSubmit = async () => {
 	if (formData.value.email?.trim()) {
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 		if (!emailRegex.test(formData.value.email.trim())) {
-			error.value = t('admin.persons.errors.invalidEmail')
+			error.value = t('persons.errors.invalidEmail')
 			return
 		}
 	}
@@ -142,7 +142,7 @@ const handleSubmit = async () => {
 	if (formData.value.identityDocumentType !== 'None') {
 		if (formData.value.identityDocumentType === 'NationalId') {
 			if (!formData.value.nationalId?.trim()) {
-				error.value = t('admin.persons.validation.nationalIdRequired')
+				error.value = t('persons.validation.nationalIdRequired')
 				return
 			}
 			const result = validateTaiwanNationalId(formData.value.nationalId)
@@ -152,7 +152,7 @@ const handleSubmit = async () => {
 			}
 		} else if (formData.value.identityDocumentType === 'Passport') {
 			if (!formData.value.passportNumber?.trim()) {
-				error.value = t('admin.persons.validation.passportRequired')
+				error.value = t('persons.validation.passportRequired')
 				return
 			}
 			const result = validatePassportNumber(formData.value.passportNumber)
@@ -162,7 +162,7 @@ const handleSubmit = async () => {
 			}
 		} else if (formData.value.identityDocumentType === 'ResidentCertificate') {
 			if (!formData.value.residentCertificateNumber?.trim()) {
-				error.value = t('admin.persons.validation.residentCertRequired')
+				error.value = t('persons.validation.residentCertRequired')
 				return
 			}
 			const result = validateResidentCertificate(formData.value.residentCertificateNumber)
@@ -197,7 +197,7 @@ const handleSubmit = async () => {
 
 		emit('save')
 	} catch (e) {
-		error.value = t('admin.persons.errors.saveFailed', { message: e.message })
+		error.value = t('persons.errors.saveFailed', { message: e.message })
 		console.error('Error saving person:', e)
 	} finally {
 		saving.value = false
@@ -210,7 +210,7 @@ const handleClose = () => {
 </script>
 
 <template>
-	<BaseModal :show="true" :title="isEdit ? t('admin.persons.editPerson') : t('admin.persons.createPerson')" size="xl"
+	<BaseModal :show="true" :title="isEdit ? t('persons.editPerson') : t('persons.createPerson')" size="xl"
 		:show-close-icon="true" :close-on-backdrop="false" :close-on-esc="true" :loading="saving" @close="handleClose">
 		<template #body>
 			<form @submit.prevent="handleSubmit">
@@ -225,28 +225,28 @@ const handleClose = () => {
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 							<div>
 								<label for="firstName" class="block text-sm font-medium text-gray-700">
-									{{ t('admin.persons.form.firstName') }} <span class="text-red-500">*</span>
+									{{ t('persons.form.firstName') }} <span class="text-red-500">*</span>
 								</label>
 								<input id="firstName" v-model="formData.firstName" type="text" required
-									:placeholder="t('admin.persons.form.firstName')"
+									:placeholder="t('persons.form.firstName')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 							</div>
 
 							<div>
 								<label for="middleName" class="block text-sm font-medium text-gray-700">
-									{{ t('admin.persons.form.middleName') }}
+									{{ t('persons.form.middleName') }}
 								</label>
 								<input id="middleName" v-model="formData.middleName" type="text"
-									:placeholder="t('admin.persons.form.middleName')"
+									:placeholder="t('persons.form.middleName')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 							</div>
 
 							<div>
 								<label for="lastName" class="block text-sm font-medium text-gray-700">
-									{{ t('admin.persons.form.lastName') }} <span class="text-red-500">*</span>
+									{{ t('persons.form.lastName') }} <span class="text-red-500">*</span>
 								</label>
 								<input id="lastName" v-model="formData.lastName" type="text" required
-									:placeholder="t('admin.persons.form.lastName')"
+									:placeholder="t('persons.form.lastName')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 							</div>
 						</div>
@@ -254,10 +254,10 @@ const handleClose = () => {
 						<!-- Nickname -->
 						<div>
 							<label for="nickname" class="block text-sm font-medium text-gray-700">
-								{{ t('admin.persons.form.nickname') }}
+								{{ t('persons.form.nickname') }}
 							</label>
 							<input id="nickname" v-model="formData.nickname" type="text"
-								:placeholder="t('admin.persons.form.nickname')"
+								:placeholder="t('persons.form.nickname')"
 								class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 						</div>
 
@@ -265,19 +265,19 @@ const handleClose = () => {
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
 								<label for="email" class="block text-sm font-medium text-gray-700">
-									{{ t('admin.persons.form.email') }}
+									{{ t('persons.form.email') }}
 								</label>
 								<input id="email" v-model="formData.email" type="email"
-									:placeholder="t('admin.persons.form.email')"
+									:placeholder="t('persons.form.email')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 							</div>
 
 							<div>
 								<label for="phoneNumber" class="block text-sm font-medium text-gray-700">
-									{{ t('admin.persons.form.phoneNumber') }}
+									{{ t('persons.form.phoneNumber') }}
 								</label>
 								<input id="phoneNumber" v-model="formData.phoneNumber" type="tel"
-									:placeholder="t('admin.persons.form.phoneNumber')"
+									:placeholder="t('persons.form.phoneNumber')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 							</div>
 						</div>
@@ -286,49 +286,49 @@ const handleClose = () => {
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 							<div>
 								<label for="employeeId" class="block text-sm font-medium text-gray-700">
-									{{ t('admin.persons.form.employeeId') }}
+									{{ t('persons.form.employeeId') }}
 								</label>
 								<input id="employeeId" v-model="formData.employeeId" type="text"
-									:placeholder="t('admin.persons.form.employeeId')"
+									:placeholder="t('persons.form.employeeId')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 							</div>
 
 							<div>
 								<label for="department" class="block text-sm font-medium text-gray-700">
-									{{ t('admin.persons.form.department') }}
+									{{ t('persons.form.department') }}
 								</label>
 								<input id="department" v-model="formData.department" type="text"
-									:placeholder="t('admin.persons.form.department')"
+									:placeholder="t('persons.form.department')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 							</div>
 
 							<div>
 								<label for="jobTitle" class="block text-sm font-medium text-gray-700">
-									{{ t('admin.persons.form.jobTitle') }}
+									{{ t('persons.form.jobTitle') }}
 								</label>
 								<input id="jobTitle" v-model="formData.jobTitle" type="text"
-									:placeholder="t('admin.persons.form.jobTitle')"
+									:placeholder="t('persons.form.jobTitle')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 							</div>
 						</div>
 
 						<!-- Personal Info (Optional) -->
 						<div class="border-t pt-4">
-							<h4 class="text-sm font-medium text-gray-700 mb-3">{{ t('admin.persons.form.personalInfo')
+							<h4 class="text-sm font-medium text-gray-700 mb-3">{{ t('persons.form.personalInfo')
 								}}</h4>
 							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 								<div>
 									<label for="gender" class="block text-sm font-medium text-gray-700">
-										{{ t('admin.persons.form.gender') }}
+										{{ t('persons.form.gender') }}
 									</label>
 									<input id="gender" v-model="formData.gender" type="text"
-										:placeholder="t('admin.persons.form.gender')"
+										:placeholder="t('persons.form.gender')"
 										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 								</div>
 
 								<div>
 									<label for="birthdate" class="block text-sm font-medium text-gray-700">
-										{{ t('admin.persons.form.birthdate') }}
+										{{ t('persons.form.birthdate') }}
 									</label>
 									<input id="birthdate" v-model="formData.birthdate" type="date"
 										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
@@ -337,29 +337,29 @@ const handleClose = () => {
 
 							<div class="mt-4">
 								<label for="address" class="block text-sm font-medium text-gray-700">
-									{{ t('admin.persons.form.address') }}
+									{{ t('persons.form.address') }}
 								</label>
 								<textarea id="address" v-model="formData.address" rows="2"
-									:placeholder="t('admin.persons.form.address')"
+									:placeholder="t('persons.form.address')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
 							</div>
 
 							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-4">
 								<div>
 									<label for="timeZone" class="block text-sm font-medium text-gray-700">
-										{{ t('admin.persons.form.timeZone') }}
+										{{ t('persons.form.timeZone') }}
 									</label>
 									<input id="timeZone" v-model="formData.timeZone" type="text"
-										:placeholder="t('admin.persons.form.timeZone')"
+										:placeholder="t('persons.form.timeZone')"
 										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 								</div>
 
 								<div>
 									<label for="locale" class="block text-sm font-medium text-gray-700">
-										{{ t('admin.persons.form.locale') }}
+										{{ t('persons.form.locale') }}
 									</label>
 									<input id="locale" v-model="formData.locale" type="text"
-										:placeholder="t('admin.persons.form.locale')"
+										:placeholder="t('persons.form.locale')"
 										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 								</div>
 							</div>
@@ -367,29 +367,29 @@ const handleClose = () => {
 
 						<!-- Phase 10.6: Identity Verification -->
 						<div class="border-t pt-4">
-							<h4 class="text-sm font-medium text-gray-700 mb-3">{{ t('admin.persons.form.identityVerification')
+							<h4 class="text-sm font-medium text-gray-700 mb-3">{{ t('persons.form.identityVerification')
 								}}</h4>
 							
 							<div class="mb-4">
 								<label for="identityDocumentType" class="block text-sm font-medium text-gray-700">
-									{{ t('admin.persons.form.identityDocumentType') }}
+									{{ t('persons.form.identityDocumentType') }}
 								</label>
 								<select id="identityDocumentType" v-model="formData.identityDocumentType"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-									<option value="None">{{ t('admin.persons.form.documentTypes.none') }}</option>
-									<option value="NationalId">{{ t('admin.persons.form.documentTypes.nationalId') }}</option>
-									<option value="Passport">{{ t('admin.persons.form.documentTypes.passport') }}</option>
-									<option value="ResidentCertificate">{{ t('admin.persons.form.documentTypes.residentCertificate') }}</option>
+									<option value="None">{{ t('persons.form.documentTypes.none') }}</option>
+									<option value="NationalId">{{ t('persons.form.documentTypes.nationalId') }}</option>
+									<option value="Passport">{{ t('persons.form.documentTypes.passport') }}</option>
+									<option value="ResidentCertificate">{{ t('persons.form.documentTypes.residentCertificate') }}</option>
 								</select>
 							</div>
 
 							<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 								<div>
 									<label for="nationalId" class="block text-sm font-medium text-gray-700">
-										{{ t('admin.persons.form.nationalId') }}
+										{{ t('persons.form.nationalId') }}
 									</label>
 									<input id="nationalId" v-model="formData.nationalId" type="text"
-										:placeholder="t('admin.persons.form.nationalIdPlaceholder')"
+										:placeholder="t('persons.form.nationalIdPlaceholder')"
 										maxlength="20"
 										:class="[
 											'mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm',
@@ -400,15 +400,15 @@ const handleClose = () => {
 									<p v-if="identityErrors.nationalId" class="mt-1 text-xs text-red-600">
 										{{ identityErrors.nationalId }}
 									</p>
-									<p v-else class="mt-1 text-xs text-gray-500">{{ t('admin.persons.form.nationalIdHint') }}</p>
+									<p v-else class="mt-1 text-xs text-gray-500">{{ t('persons.form.nationalIdHint') }}</p>
 								</div>
 
 								<div>
 									<label for="passportNumber" class="block text-sm font-medium text-gray-700">
-										{{ t('admin.persons.form.passportNumber') }}
+										{{ t('persons.form.passportNumber') }}
 									</label>
 									<input id="passportNumber" v-model="formData.passportNumber" type="text"
-										:placeholder="t('admin.persons.form.passportPlaceholder')"
+										:placeholder="t('persons.form.passportPlaceholder')"
 										maxlength="20"
 										:class="[
 											'mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm',
@@ -419,15 +419,15 @@ const handleClose = () => {
 									<p v-if="identityErrors.passportNumber" class="mt-1 text-xs text-red-600">
 										{{ identityErrors.passportNumber }}
 									</p>
-									<p v-else class="mt-1 text-xs text-gray-500">{{ t('admin.persons.form.passportHint') }}</p>
+									<p v-else class="mt-1 text-xs text-gray-500">{{ t('persons.form.passportHint') }}</p>
 								</div>
 
 								<div>
 									<label for="residentCertificateNumber" class="block text-sm font-medium text-gray-700">
-										{{ t('admin.persons.form.residentCertificate') }}
+										{{ t('persons.form.residentCertificate') }}
 									</label>
 									<input id="residentCertificateNumber" v-model="formData.residentCertificateNumber" type="text"
-										:placeholder="t('admin.persons.form.residentCertPlaceholder')"
+										:placeholder="t('persons.form.residentCertPlaceholder')"
 										maxlength="20"
 										:class="[
 											'mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm',
@@ -438,7 +438,7 @@ const handleClose = () => {
 									<p v-if="identityErrors.residentCertificateNumber" class="mt-1 text-xs text-red-600">
 										{{ identityErrors.residentCertificateNumber }}
 									</p>
-									<p v-else class="mt-1 text-xs text-gray-500">{{ t('admin.persons.form.residentCertHint') }}</p>
+									<p v-else class="mt-1 text-xs text-gray-500">{{ t('persons.form.residentCertHint') }}</p>
 								</div>
 							</div>
 
@@ -451,7 +451,7 @@ const handleClose = () => {
 									</div>
 									<div class="ml-3">
 										<p class="text-sm text-green-700">
-											{{ t('admin.persons.form.identityVerified') }}
+											{{ t('persons.form.identityVerified') }}
 											<span class="font-medium">{{ new Date(props.person.identityVerifiedAt).toLocaleDateString() }}</span>
 										</p>
 									</div>
@@ -473,11 +473,11 @@ const handleClose = () => {
 						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
 					</path>
 				</svg>
-				{{ saving ? t('admin.persons.saving') : t('admin.persons.save') }}
+				{{ saving ? t('persons.saving') : t('persons.save') }}
 			</button>
 			<button type="button" @click="handleClose" :disabled="saving"
 				class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed">
-				{{ t('admin.persons.cancel') }}
+				{{ t('persons.cancel') }}
 			</button>
 		</template>
 	</BaseModal>

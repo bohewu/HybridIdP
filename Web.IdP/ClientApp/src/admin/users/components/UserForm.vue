@@ -69,13 +69,13 @@ const validate = () => {
   errors.value = {}
   
   if (!form.value.email) {
-    errors.value.email = 'admin.users.emailRequired'
+    errors.value.email = 'users.emailRequired'
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
-    errors.value.email = 'admin.users.invalidEmail'
+    errors.value.email = 'users.invalidEmail'
   }
   
   if (!form.value.userName) {
-    errors.value.userName = 'admin.users.usernameRequired'
+    errors.value.userName = 'users.usernameRequired'
   }
   
   // Let the child component handle its own validation, but we can trigger it.
@@ -151,13 +151,13 @@ const handleSubmit = async () => {
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => null)
-      const errorMessage = errorData?.message || t('admin.users.errors.saveFailed')
+      const errorMessage = errorData?.message || t('users.errors.saveFailed')
       throw new Error(errorMessage)
     }
     
     emit('save')
   } catch (e) {
-    error.value = e.message || t('admin.users.errors.unknownSaveFailed')
+    error.value = e.message || t('users.errors.unknownSaveFailed')
     console.error('Error saving user:', e)
   } finally {
     saving.value = false
@@ -177,7 +177,7 @@ onMounted(() => {
 <template>
   <BaseModal
     :show="true"
-    :title="isEdit ? $t('admin.users.editUser') : $t('admin.users.createNewUser')"
+    :title="isEdit ? $t('users.editUser') : $t('users.createNewUser')"
     size="xl"
     :show-close-icon="true"
     :close-on-backdrop="false"
@@ -196,7 +196,7 @@ onMounted(() => {
                       <!-- Email -->
                       <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('admin.users.email') }} <span class="text-red-600">*</span>
+                          {{ $t('users.email') }} <span class="text-red-600">*</span>
                         </label>
                         <input
                             id="email"
@@ -206,17 +206,17 @@ onMounted(() => {
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors h-10 px-3"
                             :class="{ 'border-red-500': errors.email }"
                             required
-                            :placeholder="$t('admin.users.email')"
+                            :placeholder="$t('users.email')"
                         />
                         <p v-if="errors.email" class="mt-1.5 text-sm text-red-600">{{ $t(errors.email) }}</p>
                         <p v-if="isEdit" class="mt-1.5 text-xs text-gray-500">
-                          {{ $t('admin.users.emailCannotBeChanged') }}</p>
+                          {{ $t('users.emailCannotBeChanged') }}</p>
                       </div>
 
                       <!-- Username -->
                       <div>
                         <label for="userName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('admin.users.username') }} <span class="text-red-600">*</span>
+                          {{ $t('users.username') }} <span class="text-red-600">*</span>
                         </label>
                         <input
                             id="userName"
@@ -225,7 +225,7 @@ onMounted(() => {
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                             :class="{ 'border-red-500': errors.userName }"
                             required
-                            :placeholder="$t('admin.users.username')"
+                            :placeholder="$t('users.username')"
                         />
                         <p v-if="errors.userName" class="mt-1.5 text-sm text-red-600">{{ $t(errors.userName) }}</p>
                       </div>
@@ -233,91 +233,91 @@ onMounted(() => {
                       <!-- First Name -->
                       <div>
                         <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('admin.users.firstName') }}
+                          {{ $t('users.firstName') }}
                         </label>
                         <input
                             id="firstName"
                             v-model="form.firstName"
                             type="text"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                            :placeholder="$t('admin.users.firstName')"
+                            :placeholder="$t('users.firstName')"
                         />
                       </div>
 
                       <!-- Last Name -->
                       <div>
                         <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('admin.users.lastName') }}
+                          {{ $t('users.lastName') }}
                         </label>
                         <input
                             id="lastName"
                             v-model="form.lastName"
                             type="text"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                            :placeholder="$t('admin.users.lastName')"
+                            :placeholder="$t('users.lastName')"
                         />
                       </div>
 
                       <!-- Phone Number -->
                       <div>
                         <label for="phoneNumber" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('admin.users.phoneNumber') }}
+                          {{ $t('users.phoneNumber') }}
                         </label>
                         <input
                             id="phoneNumber"
                             v-model="form.phoneNumber"
                             type="tel"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                            :placeholder="$t('admin.users.phoneNumber')"
+                            :placeholder="$t('users.phoneNumber')"
                         />
                       </div>
 
                       <!-- Employee ID -->
                       <div>
                         <label for="employeeId" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('admin.users.employeeId') }}
+                          {{ $t('users.employeeId') }}
                         </label>
                         <input
                             id="employeeId"
                             v-model="form.employeeId"
                             type="text"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                            :placeholder="$t('admin.users.employeeId')"
+                            :placeholder="$t('users.employeeId')"
                         />
                       </div>
 
                       <!-- Department -->
                       <div>
                         <label for="department" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('admin.users.department') }}
+                          {{ $t('users.department') }}
                         </label>
                         <input
                             id="department"
                             v-model="form.department"
                             type="text"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                            :placeholder="$t('admin.users.department')"
+                            :placeholder="$t('users.department')"
                         />
                       </div>
 
                       <!-- Job Title -->
                       <div>
                         <label for="jobTitle" class="block text-sm font-medium text-gray-700 mb-1.5">
-                          {{ $t('admin.users.jobTitle') }}
+                          {{ $t('users.jobTitle') }}
                         </label>
                         <input
                             id="jobTitle"
                             v-model="form.jobTitle"
                             type="text"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
-                            :placeholder="$t('admin.users.jobTitle')"
+                            :placeholder="$t('users.jobTitle')"
                         />
                       </div>
                     </div>
 
           <div class="mt-6 pt-6 border-t border-gray-200">
             <h4 class="text-md font-medium text-gray-900 mb-5">
-              {{ isEdit ? $t('admin.users.changePasswordOptional') : $t('admin.users.password') }}
+              {{ isEdit ? $t('users.changePasswordOptional') : $t('users.password') }}
             </h4>
 
             <PasswordPolicyInput
@@ -346,7 +346,7 @@ onMounted(() => {
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
         {{
-          saving ? $t('admin.users.saving') : (isEdit ? $t('admin.users.updateUser') : $t('admin.users.createUser'))
+          saving ? $t('users.saving') : (isEdit ? $t('users.updateUser') : $t('users.createUser'))
         }}
       </button>
       <button
@@ -355,7 +355,7 @@ onMounted(() => {
         :disabled="saving"
         class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {{ $t('admin.users.cancel') }}
+        {{ $t('users.cancel') }}
       </button>
     </template>
   </BaseModal>

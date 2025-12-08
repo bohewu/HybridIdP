@@ -158,7 +158,7 @@ onMounted(() => {
 <template>
   <BaseModal
     :show="true"
-    :title="$t('admin.roles.createModal.title')"
+    :title="$t('roles.createModal.title')"
     size="lg"
     :show-close-icon="true"
     :close-on-backdrop="false"
@@ -176,7 +176,7 @@ onMounted(() => {
                     <!-- Role Name -->
                     <div class="mb-5">
                       <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('admin.roles.createModal.roleName') }} <span class="text-red-600">*</span>
+                        {{ $t('roles.createModal.roleName') }} <span class="text-red-600">*</span>
                       </label>
                       <input
                           id="name"
@@ -185,7 +185,7 @@ onMounted(() => {
                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
                           :class="{ 'border-red-500': errors.name }"
                           required
-                          :placeholder="$t('admin.roles.createModal.roleNamePlaceholder')"
+                          :placeholder="$t('roles.createModal.roleNamePlaceholder')"
                       />
                       <p v-if="errors.name" class="mt-1.5 text-sm text-red-600">{{ errors.name }}</p>
                     </div>
@@ -193,24 +193,24 @@ onMounted(() => {
                     <!-- Description -->
                     <div class="mb-5">
                       <label for="description" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('admin.roles.createModal.description') }}
+                        {{ $t('roles.createModal.description') }}
                       </label>
                       <textarea
                           id="description"
                           v-model="form.description"
                           rows="3"
                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors px-3 py-2"
-                          :placeholder="$t('admin.roles.createModal.descriptionPlaceholder')"
+                          :placeholder="$t('roles.createModal.descriptionPlaceholder')"
                       />
                     </div>
 
                     <!-- Permissions Selector -->
                     <div class="mb-5">
                       <label class="block text-sm font-medium text-gray-700 mb-2">
-                        {{ $t('admin.roles.createModal.permissions') }}
+                        {{ $t('roles.createModal.permissions') }}
                       </label>
                       <div v-if="loadingPermissions" class="text-center py-4 text-gray-500">
-                        {{ $t('admin.roles.createModal.loadingPermissions') }}
+                        {{ $t('roles.createModal.loadingPermissions') }}
                       </div>
                       <div v-else class="border border-gray-300 rounded-md p-4 max-h-96 overflow-y-auto bg-gray-50">
                         <div v-for="(group, key) in permissionGroups" :key="key" class="mb-4 last:mb-0">
@@ -251,7 +251,7 @@ onMounted(() => {
                         <!-- Selected Count -->
                         <div class="mt-4 pt-3 border-t border-gray-200">
                           <p class="text-sm text-gray-600">
-                            {{ $t('admin.roles.createModal.selectedCount', { count: form.permissions.length }) }}
+                            {{ $t('roles.createModal.selectedCount', { count: form.permissions.length }) }}
                           </p>
                         </div>
                       </div>
@@ -267,7 +267,7 @@ onMounted(() => {
         :disabled="saving || loadingPermissions"
         class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
       >
-        {{ saving ? $t('admin.roles.createModal.creating') : $t('admin.roles.createModal.createButton') }}
+        {{ saving ? $t('roles.createModal.creating') : $t('roles.createModal.createButton') }}
       </button>
       <button
         type="button"
@@ -275,7 +275,7 @@ onMounted(() => {
         :disabled="saving"
         class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto"
       >
-        {{ $t('admin.roles.createModal.cancel') }}
+        {{ $t('roles.createModal.cancel') }}
       </button>
     </template>
   </BaseModal>

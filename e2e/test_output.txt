@@ -1,0 +1,1036 @@
+
+Running 23 tests using 3 workers
+
+available scopes response: {
+  items: [
+    {
+      id: [32m'8ab9a6f8-321c-42e6-9796-c2a29e62ff96'[39m,
+      name: [32m'api:company:read'[39m,
+      displayName: [32m'Read Company Data'[39m,
+      description: [32m'Allows reading company information'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'5b7b160e-e476-44aa-8bfd-3ff52df01bf1'[39m,
+      name: [32m'api:company:write'[39m,
+      displayName: [32m'Write Company Data'[39m,
+      description: [32m'Allows creating and updating company information'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'b29ecca0-e222-4d21-b5d2-1e522cf1ad0a'[39m,
+      name: [32m'api:inventory:read'[39m,
+      displayName: [32m'Read Inventory Data'[39m,
+      description: [32m'Allows reading inventory information'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'e0ac0d53-014a-4937-b132-08de3666afd3'[39m,
+      name: [32m'diag-scope-1765204379719'[39m,
+      displayName: [32m'diag-scope-1765204379719'[39m,
+      description: [32m'diagnostic'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'4808d769-8422-440c-b133-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-1'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-1'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-1'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'6f6ab452-8a97-443b-b145-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-10'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-10'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-10'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'ceca22d1-ee3f-4c77-b147-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-11'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-11'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-11'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'8204166d-78fe-48e7-b149-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-12'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-12'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-12'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'7ac69496-5ec1-4edd-b14b-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-13'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-13'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-13'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'f20c2a1f-f0a4-4c97-b14d-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-14'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-14'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-14'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'7f897c72-17ae-4c19-b14f-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-15'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-15'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-15'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'178fb8fc-7768-4edb-b135-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-2'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-2'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-2'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'939f3d7e-e7f1-495e-b137-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-3'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-3'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-3'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'0e444d8b-dbac-495e-b139-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-4'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-4'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-4'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'6114766d-71a9-447d-b13b-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-5'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-5'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-5'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'11c0732c-a351-4ef3-b13d-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-6'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-6'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-6'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'74511da4-9b23-497d-b13f-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-7'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-7'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-7'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'2d56ff7a-6880-4f92-b141-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-8'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-8'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-8'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'e54951f8-3c41-4a1b-b143-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386054-9'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386054-9'[39m,
+      description: [32m'E2E description e2e-csm-1765204386054-9'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'5bc98718-35ef-49bc-b134-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-1'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-1'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-1'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'db43b3d3-9bb1-4ae4-b146-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-10'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-10'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-10'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'b1b9245c-3d23-4708-b148-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-11'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-11'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-11'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'30a04e19-377d-47df-b14a-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-12'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-12'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-12'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'9edede83-5b1c-477a-b14c-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-13'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-13'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-13'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'cbcaf819-8b01-4fc0-b14e-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-14'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-14'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-14'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'bc5d651f-c11f-4a91-b150-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-15'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-15'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-15'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'3756c653-1eab-47e6-b136-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-2'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-2'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-2'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'c18a2df0-4e55-47aa-b138-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-3'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-3'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-3'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'b77ea658-7c18-4ae7-b13a-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-4'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-4'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-4'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'32e0e6d9-bef4-40e1-b13c-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-5'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-5'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-5'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'43bab248-b2c0-4dd0-b13e-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-6'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-6'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-6'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'ae63be9a-f0b6-4aa4-b140-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-7'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-7'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-7'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'2e9fea72-e5cd-489b-b142-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-8'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-8'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-8'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'0d03ab40-d6d6-46d4-b144-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204386119-9'[39m,
+      displayName: [32m'E2E e2e-csm-1765204386119-9'[39m,
+      description: [32m'E2E description e2e-csm-1765204386119-9'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'78affe90-7b83-4146-b151-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-1'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-1'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-1'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'566d4b4b-ad23-4d69-b15a-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-10'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-10'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-10'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'cad6ebcb-48a4-40ef-b15b-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-11'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-11'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-11'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'7f795e9c-958f-4d8b-b15c-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-12'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-12'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-12'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'7d369f8a-3ab1-4159-b15d-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-13'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-13'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-13'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'0e1530c7-2394-4371-b15e-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-14'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-14'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-14'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'd2d92ff6-e618-4212-b15f-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-15'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-15'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-15'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'2c25ab40-229c-4714-b152-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-2'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-2'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-2'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'409ac532-44b7-4eab-b153-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-3'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-3'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-3'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'd2dec85f-89d9-4ee4-b154-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-4'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-4'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-4'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'f970d1ae-63ff-461e-b155-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-5'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-5'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-5'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'51dffda5-27f7-427f-b156-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-6'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-6'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-6'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'f52191ab-c48c-45fe-b157-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-7'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-7'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-7'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'aff92f27-9c71-4c11-b158-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-8'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-8'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-8'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'eb892b95-60f6-4fed-b159-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204388929-9'[39m,
+      displayName: [32m'E2E e2e-csm-1765204388929-9'[39m,
+      description: [32m'E2E description e2e-csm-1765204388929-9'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'bd7b07d1-942f-45d1-b160-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-1'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-1'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-1'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'c4aa3fa5-147b-4052-b169-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-10'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-10'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-10'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'282cdd40-c6f3-49bf-b16a-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-11'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-11'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-11'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'0df4a16f-6777-4039-b16b-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-12'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-12'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-12'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'114b1968-bcbf-4e11-b16c-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-13'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-13'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-13'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'8c3a7583-92d5-47d3-b16d-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-14'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-14'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-14'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'5db3f1d1-3d44-493a-b16e-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-15'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-15'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-15'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'64d6737c-2a8c-4768-b161-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-2'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-2'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-2'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'6a9c0934-7ccb-4204-b162-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-3'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-3'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-3'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'393bfca2-1a9a-4289-b163-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-4'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-4'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-4'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'1e9cdc88-7e7d-441a-b164-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-5'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-5'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-5'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'693af2b0-3442-4dbf-b165-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-6'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-6'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-6'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'0c06f456-8fc5-4bee-b166-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-7'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-7'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-7'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'59241070-17fe-4c84-b167-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-8'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-8'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-8'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'ecd2e01a-740a-4455-b168-08de3666afd3'[39m,
+      name: [32m'e2e-csm-1765204393487-9'[39m,
+      displayName: [32m'E2E e2e-csm-1765204393487-9'[39m,
+      description: [32m'E2E description e2e-csm-1765204393487-9'[39m,
+      resources: [],
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'7b572dcc-bf61-4760-9a34-08de313b196c'[39m,
+      name: [32m'email'[39m,
+      displayName: [32m'Email'[39m,
+      description: [32m'Email scope'[39m,
+      resources: [36m[Array][39m,
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'a481036b-3807-4c8a-9a33-08de313b196c'[39m,
+      name: [32m'openid'[39m,
+      displayName: [32m'OpenID'[39m,
+      description: [32m'OpenID scope'[39m,
+      resources: [36m[Array][39m,
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'f703d56b-d3d1-4860-9a35-08de313b196c'[39m,
+      name: [32m'profile'[39m,
+      displayName: [32m'Profile'[39m,
+      description: [32m'Profile scope'[39m,
+      resources: [36m[Array][39m,
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    },
+    {
+      id: [32m'9bdcc99d-0950-41ed-9a36-08de313b196c'[39m,
+      name: [32m'roles'[39m,
+      displayName: [32m'Roles'[39m,
+      description: [32m'User roles'[39m,
+      resources: [36m[Array][39m,
+      consentDisplayNameKey: [1mnull[22m,
+      consentDescriptionKey: [1mnull[22m,
+      iconUrl: [1mnull[22m,
+      isRequired: [33mfalse[39m,
+      displayOrder: [33m0[39m,
+      category: [1mnull[22m,
+      isPublic: [33mfalse[39m
+    }
+  ],
+  totalCount: [33m68[39m
+}
+  ??  3 [chromium] ??tests\feature-clients\admin-clients-negative.spec.ts:80:7 ??Admin - Clients negative tests ??Duplicate clientId shows error (5.5s)
+  ??  4 [chromium] ??tests\feature-clients\admin-clients-permissions.spec.ts:4:5 ??Admin - Clients permission denied (create/update/delete) (3.4s)
+  ??  5 [chromium] ??tests\feature-clients\admin-clients-permissions.spec.ts:43:5 ??Admin - Clients permission denied when role assigned by id (3.3s)
+  ??  2 [chromium] ??tests\feature-clients\admin-clients-negative.spec.ts:13:7 ??Admin - Clients negative tests ??Validation error - missing required fields (23.2s)
+  ??  6 [chromium] ??tests\feature-clients\admin-clients-regenerate-secret.spec.ts:4:5 ??Admin - Regenerate secret for confidential client (11.8s)
+  ??  7 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:139:7 ??ApplicationManager Ownership - Clients ??ApplicationManager can create and see their own client (1.2s)
+  -   9 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:153:7 ??ApplicationManager Ownership - Clients ??ApplicationManager cannot see clients created by Admin
+  -  10 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:172:7 ??ApplicationManager Ownership - Clients ??Admin can see all clients including ApplicationManager's
+  -  11 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:184:7 ??ApplicationManager Ownership - Clients ??ApplicationManager cannot delete Admin's client
+  -  12 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:215:7 ??ApplicationManager Ownership - Clients ??ApplicationManager can update their own client
+  -  13 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:260:7 ??ApplicationManager Ownership - Scopes ??ApplicationManager can create and see their own scope
+  -  14 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:274:7 ??ApplicationManager Ownership - Scopes ??ApplicationManager cannot see scopes created by Admin
+  -  15 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:293:7 ??ApplicationManager Ownership - Scopes ??Admin can see all scopes including ApplicationManager's
+  -  16 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:305:7 ??ApplicationManager Ownership - Scopes ??ApplicationManager cannot delete Admin's scope
+  -  17 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:333:7 ??ApplicationManager Ownership - Scopes ??ApplicationManager can update their own scope
+  -  18 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:366:7 ??ApplicationManager UI Access ??ApplicationManager can access Admin Clients page
+  -  19 [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:399:7 ??ApplicationManager UI Access ??ApplicationManager can access Admin Scopes page
+  ??  1 [chromium] ??tests\feature-clients\admin-clients-crud.spec.ts:5:5 ??Admin - Clients CRUD (create, update, delete client) (26.3s)
+  ??  8 [chromium] ??tests\feature-clients\client-scope-manager-diagnostic.spec.ts:6:5 ??Diagnostic - capture network when toggling required scope (6.6s)
+  ?? 20 [chromium] ??tests\feature-clients\client-scope-manager.spec.ts:104:7 ??ClientScopeManager - UI interactions and persistence ??toggle required on selected scope is persisted (7.5s)
+  ?? 22 [chromium] ??tests\feature-clients\client-scope-manager.spec.ts:175:7 ??ClientScopeManager - UI interactions and persistence ??remove selected scope clears required and persists (6.4s)
+  ?? 23 [chromium] ??tests\feature-clients\client-scope-manager.spec.ts:212:7 ??ClientScopeManager - UI interactions and persistence ??pagination and search in available list work (8.3s)
+  ?? 21 [chromium] ??tests\feature-clients\client-scope-manager.spec.ts:64:7 ??ClientScopeManager - UI interactions and persistence ??add available scope -> selected + persisted (17.1s)
+
+
+  1) [chromium] ??tests\feature-clients\admin-clients-regenerate-secret.spec.ts:4:5 ??Admin - Regenerate secret for confidential client 
+
+    TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-test-id="client-secret-input"]') to be visible[22m
+
+
+      43 |   // Wait for SecretDisplayModal to appear - use test-id for the secret input
+      44 |   const secretInput = page.locator('[data-test-id="client-secret-input"]');
+    > 45 |   await secretInput.waitFor({ state: 'visible', timeout: 10000 });
+         |                     ^
+      46 |   await expect(secretInput).toBeVisible();
+      47 |
+      48 |   // Read the generated client secret from modal
+        at C:\repos\HybridIdP\e2e\tests\feature-clients\admin-clients-regenerate-secret.spec.ts:45:21
+
+    Error Context: test-results\tests-feature-clients-admi-11046-ret-for-confidential-client-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-clients-admi-11046-ret-for-confidential-client-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-clients-admi-11046-ret-for-confidential-client-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  2) [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:139:7 ??ApplicationManager Ownership - Clients ??ApplicationManager can create and see their own client 
+
+    Error: page.evaluate: Error: Failed to create client: 403 - 
+        at eval (eval at evaluate (:290:30), <anonymous>:21:13)
+        at async <anonymous>:316:30
+        at eval (eval at evaluate (:290:30), <anonymous>:21:13)
+        at async <anonymous>:316:30
+        at createClientViaApi (C:\repos\HybridIdP\e2e\tests\feature-clients\application-manager-ownership.spec.ts:25:21)
+        at C:\repos\HybridIdP\e2e\tests\feature-clients\application-manager-ownership.spec.ts:143:27
+
+    Error Context: test-results\tests-feature-clients-appl-490f0-te-and-see-their-own-client-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ?????????????????????????????????????????????????????????
+    test-results\tests-feature-clients-appl-490f0-te-and-see-their-own-client-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tests-feature-clients-appl-490f0-te-and-see-their-own-client-chromium\trace.zip
+
+    ????????????????????????????????????????????????????????????????????????????????????????????????
+
+  2 failed
+    [chromium] ??tests\feature-clients\admin-clients-regenerate-secret.spec.ts:4:5 ??Admin - Regenerate secret for confidential client 
+    [chromium] ??tests\feature-clients\application-manager-ownership.spec.ts:139:7 ??ApplicationManager Ownership - Clients ??ApplicationManager can create and see their own client 
+  11 did not run
+  10 passed (46.1s)

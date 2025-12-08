@@ -42,7 +42,7 @@ onMounted(async () => {
   // Show access denied if user doesn't have read permission
   if (!canRead.value) {
     showAccessDenied.value = true
-    deniedMessage.value = t('admin.users.noPermission')
+    deniedMessage.value = t('users.noPermission')
     deniedPermission.value = Permissions.Users.Read
     return
   }
@@ -82,7 +82,7 @@ const fetchUsers = async () => {
     users.value = data.items || []
     totalCount.value = data.totalCount ?? users.value.length
   } catch (e) {
-    error.value = t('admin.users.errors.loadFailed', { message: e.message })
+    error.value = t('users.errors.loadFailed', { message: e.message })
     console.error('Error fetching users:', e)
   } finally {
     loading.value = false
@@ -142,7 +142,7 @@ const handleManageRoles = (user) => {
 const handleManageSessions = (user) => {
   if (!canRead.value) {
     showAccessDenied.value = true
-    deniedMessage.value = t('admin.users.noPermission')
+    deniedMessage.value = t('users.noPermission')
     deniedPermission.value = Permissions.Users.Read
     return
   }
@@ -153,7 +153,7 @@ const handleManageSessions = (user) => {
 const handleViewLoginHistory = (user) => {
   if (!canRead.value) {
     showAccessDenied.value = true
-    deniedMessage.value = t('admin.users.noPermission')
+    deniedMessage.value = t('users.noPermission')
     deniedPermission.value = Permissions.Users.Read
     return
   }
@@ -169,7 +169,7 @@ const handleDeactivate = async (user) => {
     return
   }
   
-  if (!confirm(t('admin.users.confirmations.deactivate', { email: user.email }))) {
+  if (!confirm(t('users.confirmations.deactivate', { email: user.email }))) {
     return
   }
   
@@ -183,9 +183,9 @@ const handleDeactivate = async (user) => {
     }
     
     await fetchUsers()
-    alert(t('admin.users.alerts.deactivatedSuccess'))
+    alert(t('users.alerts.deactivatedSuccess'))
   } catch (e) {
-    alert(t('admin.users.errors.deactivateFailed', { message: e.message }))
+    alert(t('users.errors.deactivateFailed', { message: e.message }))
     console.error('Error deactivating user:', e)
   }
 }
@@ -198,12 +198,12 @@ const handleDelete = async (user) => {
     return
   }
   
-  if (!confirm(t('admin.users.confirmations.deleteWarning', { email: user.email }))) {
+  if (!confirm(t('users.confirmations.deleteWarning', { email: user.email }))) {
     return
   }
   
   // Second confirmation for safety
-  if (!confirm(t('admin.users.confirmations.deleteFinal', { email: user.email }))) {
+  if (!confirm(t('users.confirmations.deleteFinal', { email: user.email }))) {
     return
   }
   
@@ -217,9 +217,9 @@ const handleDelete = async (user) => {
     }
     
     await fetchUsers()
-    alert(t('admin.users.alerts.deletedSuccess'))
+    alert(t('users.alerts.deletedSuccess'))
   } catch (e) {
-    alert(t('admin.users.errors.deleteFailed', { message: e.message }))
+    alert(t('users.errors.deleteFailed', { message: e.message }))
     console.error('Error deleting user:', e)
   }
 }
@@ -232,7 +232,7 @@ const handleReactivate = async (user) => {
     return
   }
   
-  if (!confirm(t('admin.users.confirmations.reactivate', { email: user.email }))) {
+  if (!confirm(t('users.confirmations.reactivate', { email: user.email }))) {
     return
   }
   
@@ -246,9 +246,9 @@ const handleReactivate = async (user) => {
     }
     
     await fetchUsers()
-    alert(t('admin.users.alerts.reactivatedSuccess'))
+    alert(t('users.alerts.reactivatedSuccess'))
   } catch (e) {
-    alert(t('admin.users.errors.reactivateFailed', { message: e.message }))
+    alert(t('users.errors.reactivateFailed', { message: e.message }))
     console.error('Error reactivating user:', e)
   }
 }
@@ -321,8 +321,8 @@ onMounted(() => {
     <div class="px-4 py-6">
       <!-- Page Header -->
       <PageHeader 
-        :title="$t('admin.users.pageTitle')" 
-        :subtitle="$t('admin.users.pageSubtitle')"
+        :title="$t('users.pageTitle')" 
+        :subtitle="$t('users.pageSubtitle')"
       >
         <template #actions>
           <button
@@ -334,7 +334,7 @@ onMounted(() => {
             <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            {{ t('admin.users.createUser') }}
+            {{ t('users.createUser') }}
           </button>
         </template>
       </PageHeader>
@@ -390,18 +390,18 @@ onMounted(() => {
         :user="selectedUser"
         :policy="securityPolicy"
         :labels="{
-          firstName: t('admin.users.firstName'),
-          lastName: t('admin.users.lastName'),
-          email: t('admin.users.email'),
-          password: t('admin.users.password'),
-          confirmPassword: t('admin.users.confirmPassword')
+          firstName: t('users.firstName'),
+          lastName: t('users.lastName'),
+          email: t('users.email'),
+          password: t('users.password'),
+          confirmPassword: t('users.confirmPassword')
         }"
         :placeholders="{
-          firstName: t('admin.users.firstName'),
-          lastName: t('admin.users.lastName'),
-          email: t('admin.users.email'),
-          password: t('admin.users.password'),
-          confirmPassword: t('admin.users.confirmPassword')
+          firstName: t('users.firstName'),
+          lastName: t('users.lastName'),
+          email: t('users.email'),
+          password: t('users.password'),
+          confirmPassword: t('users.confirmPassword')
         }"
         :validationMessages="{
           required: t('validation.required'),

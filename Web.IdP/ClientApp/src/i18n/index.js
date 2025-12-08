@@ -19,13 +19,35 @@ function getInitialLocale() {
   return 'zh-TW'
 }
 
+const legacyZhTw = JSON.parse(zhTWRaw)
+const legacyEnUs = JSON.parse(enUSRaw)
+
+// Load feature-based modules
+const zhTwModules = import.meta.glob('./locales/zh-TW/*.json', { eager: true })
+const enUsModules = import.meta.glob('./locales/en-US/*.json', { eager: true })
+
+function mergeModules(legacy, modules) {
+  const messages = { ...legacy }
+  
+  for (const path in modules) {
+    const moduleName = path.split('/').pop().replace('.json', '')
+    // If the file is common.json, merge at root level (or we can keep it strict)
+    // But for now, let's namespace everything by filename to avoid collisions
+    // EXCEPT common.json if we decide to have one.
+    // However, the plan is: admin.users -> users.json -> users.*
+    // So messages['users'] = content of users.json
+    messages[moduleName] = modules[path].default || modules[path]
+  }
+  return messages
+}
+
 const i18n = createI18n({
   legacy: false,
   locale: getInitialLocale(),
   fallbackLocale: 'en-US',
   messages: {
-    'zh-TW': JSON.parse(zhTWRaw),
-    'en-US': JSON.parse(enUSRaw)
+    'zh-TW': mergeModules(legacyZhTw, zhTwModules),
+    'en-US': mergeModules(legacyEnUs, enUsModules)
   }
 })
 // Phase 7.3: Added login history i18n keys

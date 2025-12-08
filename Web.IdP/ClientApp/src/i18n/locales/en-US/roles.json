@@ -1,0 +1,78 @@
+{
+  "pageTitle": "Role Management",
+  "pageSubtitle": "Manage roles and permissions for users",
+  "createButton": "Create Role",
+  "searchPlaceholder": "Search name/description",
+  "sortBy": "Sort By",
+  "sortOptions": {
+    "name": "Name",
+    "created": "Created"
+  },
+  "sortDirection": {
+    "asc": "Asc",
+    "desc": "Desc"
+  },
+  "applyButton": "Apply",
+  "loadingMessage": "Loading...",
+  "noRolesMessage": "No roles found",
+  "table": {
+    "name": "Name",
+    "description": "Description",
+    "permissions": "Permissions",
+    "users": "Users",
+    "system": "System",
+    "actions": "Actions"
+  },
+  "badges": {
+    "system": "System"
+  },
+  "actions": {
+    "edit": "Edit Role",
+    "delete": "Delete Role",
+    "noActions": "No actions"
+  },
+  "pagination": {
+    "total": "Total: {count}",
+    "prev": "Prev",
+    "next": "Next"
+  },
+  "createModal": {
+    "title": "Create New Role",
+    "roleName": "Role Name",
+    "roleNameRequired": "Required",
+    "roleNamePlaceholder": "e.g., Content Editor",
+    "description": "Description",
+    "descriptionPlaceholder": "Optional description of the role",
+    "permissions": "Permissions",
+    "loadingPermissions": "Loading permissions...",
+    "selectedCount": "Selected: {count} permission(s)",
+    "createButton": "Create Role",
+    "creating": "Creating...",
+    "cancel": "Cancel"
+  },
+  "editModal": {
+    "title": "Edit Role",
+    "systemRole": "System Role",
+    "note": "Note:",
+    "systemRoleInfo": "This is a system role. The name cannot be changed, but you can modify its permissions.",
+    "systemRoleNameWarning": "System role names cannot be changed",
+    "descriptionPlaceholder": "Optional description of the role",
+    "updateButton": "Update Role",
+    "updating": "Updating..."
+  },
+  "deleteModal": {
+    "title": "Delete Role",
+    "message": "Are you sure you want to delete the role \"{name}\"?",
+    "warning": "This action cannot be undone.",
+    "systemRoleProtected": "System Role Protected:",
+    "systemRoleInfo": "This is a system role and cannot be deleted. System roles are essential for the application's security model.",
+    "usersAssigned": "Users Assigned:",
+    "usersAssignedInfo": "This role is currently assigned to {count} user(s). You cannot delete a role that has users assigned to it.",
+    "reassignWarning": "Please reassign or remove these users from this role before deleting it.",
+    "roleHas": "This role has:",
+    "permissionCount": "{count} permission(s)",
+    "deleteButton": "Delete",
+    "deleting": "Deleting...",
+    "close": "Close"
+  }
+}

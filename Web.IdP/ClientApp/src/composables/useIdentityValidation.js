@@ -30,7 +30,7 @@ export function useIdentityValidation() {
     if (!/^[A-Z][0-9]{9}$/.test(value)) {
       return {
         valid: false,
-        error: t('admin.persons.validation.nationalIdFormat')
+        error: t('persons.validation.nationalIdFormat')
       }
     }
 
@@ -47,7 +47,7 @@ export function useIdentityValidation() {
     if (!letterValue) {
       return {
         valid: false,
-        error: t('admin.persons.validation.nationalIdInvalidLetter')
+        error: t('persons.validation.nationalIdInvalidLetter')
       }
     }
 
@@ -65,7 +65,7 @@ export function useIdentityValidation() {
     if (sum % 10 !== 0) {
       return {
         valid: false,
-        error: t('admin.persons.validation.nationalIdChecksum')
+        error: t('persons.validation.nationalIdChecksum')
       }
     }
 
@@ -88,7 +88,7 @@ export function useIdentityValidation() {
     if (!/^[A-Z0-9]{6,12}$/i.test(value)) {
       return {
         valid: false,
-        error: t('admin.persons.validation.passportFormat')
+        error: t('persons.validation.passportFormat')
       }
     }
 
@@ -111,7 +111,7 @@ export function useIdentityValidation() {
     if (!/^[A-Z0-9]{10,12}$/i.test(value)) {
       return {
         valid: false,
-        error: t('admin.persons.validation.residentCertFormat')
+        error: t('persons.validation.residentCertFormat')
       }
     }
 
@@ -127,7 +127,7 @@ export function useIdentityValidation() {
     // Validate based on selected document type
     if (documentType === 'NationalId') {
       if (!formData.nationalId) {
-        errors.push(t('admin.persons.validation.nationalIdRequired'))
+        errors.push(t('persons.validation.nationalIdRequired'))
       } else {
         const result = validateTaiwanNationalId(formData.nationalId)
         if (!result.valid) {
@@ -137,11 +137,11 @@ export function useIdentityValidation() {
       
       // Clear other document fields if present
       if (formData.passportNumber || formData.residentCertificateNumber) {
-        errors.push(t('admin.persons.validation.onlyOneDocumentType'))
+        errors.push(t('persons.validation.onlyOneDocumentType'))
       }
     } else if (documentType === 'Passport') {
       if (!formData.passportNumber) {
-        errors.push(t('admin.persons.validation.passportRequired'))
+        errors.push(t('persons.validation.passportRequired'))
       } else {
         const result = validatePassportNumber(formData.passportNumber)
         if (!result.valid) {
@@ -151,11 +151,11 @@ export function useIdentityValidation() {
       
       // Clear other document fields if present
       if (formData.nationalId || formData.residentCertificateNumber) {
-        errors.push(t('admin.persons.validation.onlyOneDocumentType'))
+        errors.push(t('persons.validation.onlyOneDocumentType'))
       }
     } else if (documentType === 'ResidentCertificate') {
       if (!formData.residentCertificateNumber) {
-        errors.push(t('admin.persons.validation.residentCertRequired'))
+        errors.push(t('persons.validation.residentCertRequired'))
       } else {
         const result = validateResidentCertificate(formData.residentCertificateNumber)
         if (!result.valid) {
@@ -165,7 +165,7 @@ export function useIdentityValidation() {
       
       // Clear other document fields if present
       if (formData.nationalId || formData.passportNumber) {
-        errors.push(t('admin.persons.validation.onlyOneDocumentType'))
+        errors.push(t('persons.validation.onlyOneDocumentType'))
       }
     }
 

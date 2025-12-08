@@ -90,7 +90,7 @@ const getSortIcon = (field) => {
         <div class="flex flex-col md:flex-row md:items-center gap-3">
           <!-- Search Input -->
           <div class="flex-1">
-            <SearchInput :model-value="search" @update:model-value="emit('update:search', $event)" :placeholder="t('admin.users.search')" />
+            <SearchInput :model-value="search" @update:model-value="emit('update:search', $event)" :placeholder="t('users.search')" />
           </div>
           
           <!-- Filter Options -->
@@ -100,23 +100,23 @@ const getSortIcon = (field) => {
               @change="emit('update:isActiveFilter', $event.target.value)"
               class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
             >
-              <option value="">{{ t('admin.users.all') }}</option>
-              <option value="true">{{ t('admin.users.active') }}</option>
-              <option value="false">{{ t('admin.users.inactive') }}</option>
+              <option value="">{{ t('users.all') }}</option>
+              <option value="true">{{ t('users.active') }}</option>
+              <option value="false">{{ t('users.inactive') }}</option>
             </select>
           </div>
         </div>
       </div>
 
       <!-- Loading State -->
-      <LoadingIndicator v-if="loading" :loading="loading" size="md" :message="$t('admin.users.loading')" />
+      <LoadingIndicator v-if="loading" :loading="loading" size="md" :message="$t('users.loading')" />
 
       <!-- Empty State -->
       <div v-else-if="users.length === 0" class="text-center py-12">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
         </svg>
-        <p class="mt-2 text-sm text-gray-600">{{ $t('admin.users.noUsers') }}</p>
+        <p class="mt-2 text-sm text-gray-600">{{ $t('users.noUsers') }}</p>
       </div>
 
       <!-- Users Table -->
@@ -216,7 +216,7 @@ const getSortIcon = (field) => {
                     v-if="canUpdate"
                     @click="emit('edit', user)"
                     class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    :title="$t('admin.users.edit')"
+                    :title="$t('users.edit')"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -228,7 +228,7 @@ const getSortIcon = (field) => {
                     v-if="canUpdate"
                     @click="emit('manage-roles', user)"
                     class="inline-flex items-center px-3 py-1.5 border border-blue-300 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    :title="$t('admin.users.manageRoles')"
+                    :title="$t('users.manageRoles')"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
@@ -239,7 +239,7 @@ const getSortIcon = (field) => {
                   <button
                     v-if="canUpdate || canRead" @click="emit('manage-sessions', user)"
                     class="inline-flex items-center px-3 py-1.5 border border-purple-300 text-purple-700 text-sm font-medium rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                    :title="$t('admin.users.manageSessions')"
+                    :title="$t('users.manageSessions')"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.5 8.5l5.5 5.5 5.5-5.5" />
@@ -251,7 +251,7 @@ const getSortIcon = (field) => {
                   <button
                     @click="emit('view-login-history', user)"
                     class="inline-flex items-center px-3 py-1.5 border border-cyan-300 text-cyan-700 text-sm font-medium rounded-md hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
-                    :title="$t('admin.users.loginHistory.title')"
+                    :title="$t('users.loginHistory.title')"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -263,7 +263,7 @@ const getSortIcon = (field) => {
                     v-if="user.isActive && canDelete"
                     @click="emit('deactivate', user)"
                     class="inline-flex items-center px-3 py-1.5 border border-orange-300 text-orange-700 text-sm font-medium rounded-md hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-                    :title="$t('userActions.deactivate')"
+                    :title="$t('users.actions.deactivate')"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
@@ -275,7 +275,7 @@ const getSortIcon = (field) => {
                     v-if="canDelete"
                     @click="emit('delete', user)"
                     class="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-700 text-sm font-medium rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    :title="$t('userActions.deletePermanently')"
+                    :title="$t('users.actions.deletePermanently')"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -287,7 +287,7 @@ const getSortIcon = (field) => {
                     v-if="!user.isActive && canUpdate"
                     @click="emit('reactivate', user)"
                     class="inline-flex items-center px-3 py-1.5 border border-green-300 text-green-700 text-sm font-medium rounded-md hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    :title="$t('userActions.reactivate')"
+                    :title="$t('users.actions.reactivate')"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -296,7 +296,7 @@ const getSortIcon = (field) => {
                   
                   <!-- Show message if no permissions -->
                   <span v-if="!canUpdate && !canDelete" class="text-xs text-gray-400 italic">
-                    {{ $t('admin.users.noActions') }}
+                    {{ $t('users.noActions') }}
                   </span>
                 </div>
               </td>
