@@ -25,8 +25,7 @@ public class JitProvisioningService : IJitProvisioningService
         CancellationToken cancellationToken = default)
     {
         // Validation
-        if (externalAuth == null)
-            throw new ArgumentNullException(nameof(externalAuth));
+        ArgumentNullException.ThrowIfNull(externalAuth);
         if (string.IsNullOrWhiteSpace(externalAuth.Provider))
             throw new ArgumentException("Provider is required", nameof(externalAuth));
         if (string.IsNullOrWhiteSpace(externalAuth.ProviderKey))
