@@ -372,6 +372,8 @@ builder.Services.AddSignalR();
 
 // Add Monitoring Background Service
 // todo: 未來可以在安全設定裡面設定是否啟用，及秒數
+// Add Monitoring Background Service
+// todo: 未來可以在安全設定裡面設定是否啟用，及秒數
 builder.Services.AddHostedService<Infrastructure.BackgroundServices.MonitoringBackgroundService>();
 
 // Add Dynamic Logging Services
@@ -457,11 +459,11 @@ if (!string.IsNullOrEmpty(redisConnectionString))
 }
 
 // Add Health Checks UI
-builder.Services.AddHealthChecksUI(setup =>
-{
-    setup.SetEvaluationTimeInSeconds(60); // Configurable
-    setup.AddHealthCheckEndpoint("HybridIdP Health", "/health");
-}).AddInMemoryStorage();
+// builder.Services.AddHealthChecksUI(setup =>
+// {
+//     setup.SetEvaluationTimeInSeconds(60); // Configurable
+//     setup.AddHealthCheckEndpoint("HybridIdP Health", "/health");
+// }).AddInMemoryStorage();
 
 var app = builder.Build();
 
@@ -515,11 +517,11 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
 });
 
-app.MapHealthChecksUI(options =>
-{
-    options.UIPath = "/health-ui";
-    options.ApiPath = "/health-ui-api";
-}).RequireAuthorization("HasAnyAdminAccess");
+// app.MapHealthChecksUI(options =>
+// {
+//     options.UIPath = "/health-ui";
+//     options.ApiPath = "/health-ui-api";
+// }).RequireAuthorization("HasAnyAdminAccess");
 
 app.MapStaticAssets();
 app.MapControllers(); // Map API controller endpoints

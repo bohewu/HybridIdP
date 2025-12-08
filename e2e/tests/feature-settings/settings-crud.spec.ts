@@ -111,3 +111,52 @@ test('Admin - System Monitoring Settings', async ({ page }) => {
   await page.click('button[data-testid="save-settings-btn"]');
   await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
 });
+
+test('Admin - Logging Settings', async ({ page }) => {
+  await adminHelpers.loginAsAdminViaIdP(page);
+
+  // Navigate to Settings page
+  await page.goto('https://localhost:7035/Admin/Settings');
+  
+  // Wait for page to load
+  await page.waitForURL(/\/Admin\/Settings/);
+  await page.waitForSelector('text=System Settings', { timeout: 15000 });
+
+  // Locate Logging Section
+  const loggingSection = page.locator('div:has-text("Logging Settings")').first();
+  await expect(loggingSection).toBeVisible();
+
+  // Find the select element for log level
+  const levelSelect = page.getByLabel('Global Log Level');
+  await expect(levelSelect).toBeVisible();
+
+  // Get current value
+  const originalLevel = await levelSelect.inputValue();
+  console.log(`Original Log Level: ${originalLevel}`);
+
+  // Change to 'Debug' (or 'Information' if it was Debug)
+  const newLevel = originalLevel === 'Debug' ? 'Information' : 'Debug';
+  await levelSelect.selectOption(newLevel);
+  
+  // Find the specific Save Changes button for logging settings
+  // Based on LoggingSettings.vue, button is enabled only when hasChanges is true
+  const enabledSaveButton = page.locator('button:has-text("Save Changes"):not([disabled])');
+  await expect(enabledSaveButton).toBeVisible();
+  
+  await enabledSaveButton.click();
+
+  // Wait for success message
+  await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
+
+  // Verify persistence
+  await page.reload();
+  await page.waitForSelector('text=Logging Settings', { timeout: 15000 });
+  
+  const reloadedSelect = page.getByLabel('Global Log Level');
+  await expect(reloadedSelect).toHaveValue(newLevel);
+
+  // Cleanup: Restore original level
+  await reloadedSelect.selectOption(originalLevel);
+  await enabledSaveButton.click();
+  await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
+});
