@@ -89,5 +89,9 @@
       "total": "總計: {total}",
       "pageSize": "每頁筆數"
     }
+  },
+  "validation": {
+    "nameRequired": "角色名稱為必填",
+    "nameLength": "角色名稱至少需要 2 個字元"
   }
 }

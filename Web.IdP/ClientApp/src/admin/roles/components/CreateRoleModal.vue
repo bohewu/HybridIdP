@@ -54,9 +54,9 @@ const validate = () => {
   errors.value = {}
   
   if (!form.value.name) {
-    errors.value.name = 'Role name is required'
+    errors.value.name = t('roles.validation.nameRequired')
   } else if (form.value.name.length < 2) {
-    errors.value.name = 'Role name must be at least 2 characters'
+    errors.value.name = t('roles.validation.nameLength')
   }
   
   return Object.keys(errors.value).length === 0

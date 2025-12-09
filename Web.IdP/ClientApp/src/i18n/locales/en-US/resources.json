@@ -49,7 +49,10 @@
     "scopesSelected": "{count} scope(s) selected",
     "createButton": "Create Resource",
     "saveButton": "Save Changes",
-    "cancelButton": "Cancel"
+    "cancelButton": "Cancel",
+    "validation": {
+      "nameRequired": "Name is required and cannot be empty."
+    }
   },
   "accessDenied": {
     "read": "You do not have permission to view API resources.",
