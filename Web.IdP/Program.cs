@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Localization;
+using Web.IdP.Infrastructure.Identity;
 using HybridIdP.Infrastructure.Identity;
 using Infrastructure;
 using Infrastructure.Identity;

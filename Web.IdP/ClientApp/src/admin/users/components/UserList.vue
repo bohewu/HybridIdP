@@ -2,6 +2,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
+import SearchInput from '@/components/common/SearchInput.vue'
+import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+import Pagination from '@/components/common/Pagination.vue'
 
 const { t } = useI18n()
 
@@ -14,9 +17,11 @@ const props = defineProps({
   sort: { type: String, default: '' },
   canUpdate: { type: Boolean, default: false },
   canDelete: { type: Boolean, default: false },
+  canRead: { type: Boolean, default: false },
   canImpersonate: { type: Boolean, default: false },
   search: { type: String, default: '' },
-  isActiveFilter: { type: String, default: '' }
+  isActiveFilter: { type: String, default: '' },
+  currentUserId: { type: String, default: null }
 })
 
 const emit = defineEmits([
@@ -212,8 +217,10 @@ const getSortIcon = (field) => {
                     </button>
                     <button
                       v-if="canImpersonate && user.isActive"
+                      :disabled="user.id === currentUserId"
                       @click="emit('impersonate', user); close()"
-                      class="text-left w-full block px-4 py-2 text-sm text-pink-700 hover:bg-pink-50"
+                      class="text-left w-full block px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      :class="user.id === currentUserId ? 'text-gray-400' : 'text-pink-700 hover:bg-pink-50'"
                     >
                       {{ t('users.actions.impersonate') }}
                     </button>

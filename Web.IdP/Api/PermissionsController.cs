@@ -47,7 +47,8 @@ public class PermissionsController : ControllerBase
                 return Ok(new
                 {
                     isAdmin = true,
-                    permissions = Permissions.GetAll()
+                    permissions = Permissions.GetAll(),
+                    userId = userId
                 });
             }
 
@@ -82,7 +83,8 @@ public class PermissionsController : ControllerBase
             return Ok(new
             {
                 isAdmin = false,
-                permissions = allPermissions.ToList()
+                permissions = allPermissions.ToList(),
+                userId = userId
             });
         }
         catch (Exception ex)

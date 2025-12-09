@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Localization;
+using Web.IdP;
 
-namespace HybridIdP.Infrastructure.Identity
+namespace Web.IdP.Infrastructure.Identity
 {
     public class LocalizedIdentityErrorDescriber : IdentityErrorDescriber
     {
-        private readonly IStringLocalizer _localizer;
+        private readonly IStringLocalizer<SharedResource> _localizer;
 
-        public LocalizedIdentityErrorDescriber(IStringLocalizer<IdentityErrorResource> localizer)
+        public LocalizedIdentityErrorDescriber(IStringLocalizer<SharedResource> localizer)
         {
             _localizer = localizer;
         }
@@ -83,5 +84,17 @@ namespace HybridIdP.Infrastructure.Identity
                 Description = _localizer["PasswordRequiresUpper"]
             };
         }
+        
+        // Extended Items from IdentityErrorDescriber usually needed
+        // Since we copied specific overrides only, we assume the base class handles others or they were not customized in the original file.
+        // However, I see more keys in RESX than overrides in the class:
+        // UserAccountLockedOut, PasswordExpired, PasswordChangeTooSoon, InvalidLoginAttempt...
+        // Wait, IdentityErrorDescriber DOES NOT have "InvalidLoginAttempt" methods. That might be used by App logic, not Identity itself?
+        // Let's check the original class again.
+        // Step 845 showed 86 lines. It implemented: DuplicateEmail, PasswordTooShort, InvalidUserName, DefaultError, PasswordRequiresNonAlphanumeric, PasswordRequiresDigit, PasswordRequiresLower, PasswordRequiresUpper.
+        // Use custom logic usage for others?
+        // It seems `LocalizedIdentityErrorDescriber` only overrides passwords/email/user validators.
+        // Login logic might use `SharedResource` directly if I update it?
+        // But `LocalIdentityErrorDescriber` is OK as is.
     }
 }
