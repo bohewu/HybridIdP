@@ -1,0 +1,79 @@
+{
+  "pageTitle": "User Claims Management",
+  "pageSubtitle": "Manage OIDC user claims that can be included in ID tokens and access tokens",
+  "createButton": "Create Claim",
+  "searchPlaceholder": "Search name, display name, or description",
+  "sortOptions": {
+    "name": "Name",
+    "displayName": "Display Name",
+    "claimType": "Claim Type",
+    "type": "Type"
+  },
+  "sortDirection": {
+    "asc": "Ascending",
+    "desc": "Descending"
+  },
+  "applyButton": "Apply",
+  "loadingMessage": "Loading claims...",
+  "errorLoading": "Error loading claims",
+  "tryAgain": "Try again",
+  "table": {
+    "name": "Name",
+    "displayName": "Display Name",
+    "claimType": "Claim Type",
+    "type": "Type",
+    "scopes": "Scopes",
+    "actions": "Actions"
+  },
+  "badges": {
+    "required": "Required",
+    "standard": "Standard",
+    "custom": "Custom"
+  },
+  "scopeCount": "{count} scope(s)",
+  "actions": {
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "emptyState": {
+    "title": "No claims",
+    "message": "Get started by creating a new claim."
+  },
+  "form": {
+    "createTitle": "Create Claim",
+    "editTitle": "Edit Claim",
+    "name": "Name",
+    "namePlaceholder": "e.g., department",
+    "displayName": "Display Name",
+    "displayNamePlaceholder": "e.g., Department",
+    "description": "Description",
+    "descriptionPlaceholder": "Description of what this claim represents",
+    "claimType": "Claim Type",
+    "claimTypePlaceholder": "e.g., department",
+    "claimTypeHelp": "The JWT claim name that appears in tokens",
+    "userPropertyPath": "User Property Path",
+    "userPropertyPathPlaceholder": "e.g., Department",
+    "userPropertyPathHelp": "Property path on ApplicationUser entity",
+    "dataType": "Data Type",
+    "dataTypes": {
+      "string": "String",
+      "boolean": "Boolean",
+      "integer": "Integer",
+      "dateTime": "DateTime",
+      "json": "JSON"
+    },
+    "isRequired": "Always include in tokens (Required)",
+    "standardNote": "Standard OIDC claims have limited editing. Only display name and description can be modified.",
+    "saving": "Saving...",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "confirmDelete": "Are you sure you want to delete the claim \"{name}\"?",
+  "deleteError": "Failed to delete claim",
+  "saveError": "Failed to save claim",
+  "pagination": {
+    "total": "Total: {count}",
+    "prev": "Prev",
+    "next": "Next"
+  }
+}

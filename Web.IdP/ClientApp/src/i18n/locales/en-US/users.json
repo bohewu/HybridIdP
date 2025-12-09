@@ -129,5 +129,14 @@
       "total": "Total: {total}",
       "pageSize": "Per page"
     }
+  },
+  "details": {
+    "id": "ID: {id}",
+    "noName": "N/A",
+    "noDepartment": "N/A",
+    "noRoles": "No roles assigned",
+    "active": "Active",
+    "inactive": "Inactive",
+    "never": "Never"
   }
 }

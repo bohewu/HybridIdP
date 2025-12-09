@@ -26,7 +26,7 @@ onMounted(async () => {
 
   if (!canRead.value) {
     showAccessDenied.value = true
-    deniedMessage.value = t('admin.monitoring.noPermission')
+    deniedMessage.value = t('monitoring.noPermission')
     deniedPermission.value = Permissions.Monitoring.Read
     return
   }
@@ -36,10 +36,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="monitoring-app" v-loading="{ loading: loading, overlay: true, message: t('admin.monitoring.loading') }">
+  <div class="monitoring-app" v-loading="{ loading: loading, overlay: true, message: t('monitoring.loading') }">
     <PageHeader
-      :title="t('admin.monitoring.title')"
-      :subtitle="t('admin.monitoring.subtitle')"
+      :title="t('monitoring.title')"
+      :subtitle="t('monitoring.subtitle')"
     />
 
     <div v-if="error" class="alert alert-danger">

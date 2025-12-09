@@ -40,7 +40,7 @@ const totalPages = computed(() => {
 })
 
 const formatDate = (dateString) => {
-  if (!dateString) return t('userDetails.never')
+  if (!dateString) return t('users.details.never')
   return new Date(dateString).toLocaleString()
 }
 
@@ -133,38 +133,8 @@ const getSortIcon = (field) => {
                   <span v-html="getSortIcon('userName')"></span>
                 </div>
               </th>
-              <th
-                @click="handleSort('email')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-              >
-                <div class="flex items-center space-x-1">
-                  <span>{{ $t('tableHeaders.email') }}</span>
-                  <span v-html="getSortIcon('email')"></span>
-                </div>
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('tableHeaders.name') }}
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('tableHeaders.department') }}
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('tableHeaders.roles') }}
-              </th>
-              <th
-                @click="handleSort('isActive')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-              >
-                <div class="flex items-center space-x-1">
-                  <span>{{ $t('tableHeaders.status') }}</span>
-                  <span v-html="getSortIcon('isActive')"></span>
-                </div>
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('tableHeaders.lastLogin') }}
-              </th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('tableHeaders.actions') }}
+                {{ $t('common.tableHeaders.actions') }}
               </th>
             </tr>
           </thead>
@@ -172,7 +142,7 @@ const getSortIcon = (field) => {
             <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ user.userName }}</div>
-                <div v-if="user.employeeId" class="text-sm text-gray-500">{{ t('userDetails.id', { id: user.employeeId }) }}</div>
+                <div v-if="user.employeeId" class="text-sm text-gray-500">{{ t('users.details.id', { id: user.employeeId }) }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">{{ user.email }}</div>
@@ -181,11 +151,11 @@ const getSortIcon = (field) => {
                 <div v-if="user.firstName || user.lastName" class="text-sm text-gray-900">
                   {{ user.firstName }} {{ user.lastName }}
                 </div>
-                <div v-else class="text-sm text-gray-400 italic">{{ $t('userDetails.noName') }}</div>
+                <div v-else class="text-sm text-gray-400 italic">{{ $t('users.details.noName') }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span v-if="user.department" class="text-sm text-gray-900">{{ user.department }}</span>
-                <span v-else class="text-sm text-gray-400">{{ t('userDetails.noDepartment') }}</span>
+                <span v-else class="text-sm text-gray-400">{{ t('users.details.noDepartment') }}</span>
               </td>
               <td class="px-6 py-4">
                 <div v-if="user.roles && user.roles.length > 0" class="flex flex-wrap gap-1">
@@ -197,13 +167,13 @@ const getSortIcon = (field) => {
                     {{ role }}
                   </span>
                 </div>
-                <span v-else class="text-sm text-gray-400">{{ $t('userDetails.noRoles') }}</span>
+                <span v-else class="text-sm text-gray-400">{{ $t('users.details.noRoles') }}</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getBadgeClass(user.isActive)]"
                 >
-                  {{ user.isActive ? $t('userDetails.active') : $t('userDetails.inactive') }}
+                  {{ user.isActive ? $t('users.details.active') : $t('users.details.inactive') }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

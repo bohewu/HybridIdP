@@ -92,7 +92,7 @@ const formatTimestamp = (timestamp) => {
     <LoadingIndicator v-if="loading" :loading="loading" size="sm" />
 
     <div v-else-if="alerts.length === 0" class="text-center py-8 text-gray-500">
-      {{ t('admin.monitoring.realTimeAlerts.noAlerts') }}
+      {{ t('monitoring.realTimeAlerts.noAlerts') }}
     </div>
 
     <div v-else class="space-y-3">

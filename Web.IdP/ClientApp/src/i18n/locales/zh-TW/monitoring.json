@@ -1,0 +1,28 @@
+{
+  "title": "安全監控儀表板",
+  "subtitle": "即時安全監控和活動儀表板",
+  "loading": "載入監控資料中...",
+  "noPermission": "您沒有權限檢視監控資料。",
+  "activityDashboard": {
+    "title": "活動儀表板",
+    "activeSessions": "活躍工作階段",
+    "totalLogins": "總登入次數",
+    "failedLogins": "失敗登入次數",
+    "riskScore": "風險評分"
+  },
+  "securityMetrics": {
+    "title": "安全指標",
+    "gauges": "儀表指標",
+    "counters": "計數器指標",
+    "histograms": "直方圖指標",
+    "loginAttempts": "登入嘗試",
+    "activeSessions": "活躍工作階段",
+    "failedLogins": "失敗登入",
+    "noGauges": "沒有可用的儀表指標",
+    "noCounters": "沒有可用的計數器指標"
+  },
+  "realTimeAlerts": {
+    "title": "即時警報",
+    "noAlerts": "沒有活躍警報"
+  }
+}
