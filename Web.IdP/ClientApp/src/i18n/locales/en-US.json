@@ -109,50 +109,6 @@
     "selectRoles": "Select roles to assign to the user",
     "systemRole": "System",
     "systemRoleTooltip": "This is a system-managed role and cannot be removed.",
-    "selectedRolesCount": "{count} role(s) selected",
-    "errors": {
-      "loadFailed": "Failed to load roles.",
-      "updateFailed": "Failed to update user roles."
-    }
-  },
-  "sessions": {
-    "title": "Manage User Sessions",
-    "userLabel": "User",
-    "loading": "Loading sessions...",
-    "empty": "No active sessions found for this user.",
-    "never": "Never",
-    "noClient": "Unknown",
-    "headers": {
-      "authorizationId": "Authorization ID",
-      "client": "Client",
-      "created": "Created",
-      "expires": "Expires",
-      "status": "Status",
-      "actions": "Actions"
-    },
-    "status": {
-      "active": "Active",
-      "revoked": "Revoked"
-    },
-    "buttons": {
-      "revokeAll": "Revoke All Sessions",
-      "revoking": "Revoking..."
-    },
-    "confirm": {
-      "revokeOne": "Are you sure you want to revoke this session?",
-      "revokeAll": "Are you sure you want to revoke ALL sessions for this user? They will be logged out from all devices."
-    },
-    "alerts": {
-      "revokedAll": "Revoked {count} session(s) successfully."
-    },
-    "errors": {
-      "loadFailed": "Failed to load user sessions.",
-      "revokeFailed": "Failed to revoke session.",
-      "revokeAllFailed": "Failed to revoke all sessions."
-    },
-    "pagination": {
-      "previous": "Previous",
-      "next": "Next",
       "pageInfo": "Page {page} of {pages}",
       "total": "Total: {total}",
       "pageSize": "Page size"
