@@ -1,0 +1,45 @@
+{
+    "title": "Manage User Sessions",
+    "userLabel": "User",
+    "loading": "Loading sessions...",
+    "empty": "No active sessions found for this user.",
+    "never": "Never",
+    "noClient": "Unknown",
+    "headers": {
+      "authorizationId": "Authorization ID",
+      "client": "Client",
+      "created": "Created",
+      "expires": "Expires",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked"
+    },
+    "buttons": {
+      "revokeAll": "Revoke All Sessions",
+      "revoking": "Revoking..."
+    },
+    "confirm": {
+      "revokeOne": "Are you sure you want to revoke this session?",
+      "revokeAll": "Are you sure you want to revoke ALL sessions for this user? They will be logged out from all devices."
+    },
+    "alerts": {
+      "revokedAll": "{count} sessions revoked successfully.",
+      "revokedOne": "Session revoked successfully.",
+      "revokeError": "Failed to revoke session(s)."
+    },
+    "errors": {
+      "loadFailed": "Failed to load user sessions.",
+      "revokeFailed": "Failed to revoke session.",
+      "revokeAllFailed": "Failed to revoke all sessions."
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageInfo": "Page {page} of {pages}",
+      "total": "Total: {total}",
+      "pageSize": "Page size"
+    }
+}
