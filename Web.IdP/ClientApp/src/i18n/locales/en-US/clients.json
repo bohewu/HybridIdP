@@ -140,7 +140,8 @@
       "createButton": "Create Client",
       "updateButton": "Update Client",
       "cancel": "Cancel",
-      "validationError": "Please correct the validation errors below."
+      "validationError": "Please correct the validation errors below.",
+      "saveFailed": "Failed to save client: {message}"
     },
     "secretModal": {
       "title": "Client Secret Generated",

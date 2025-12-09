@@ -100,7 +100,7 @@ const handleSubmit = async () => {
 
   // Client-side validation: ensure required Name is present
   if (!formData.value.name || formData.value.name.trim() === '') {
-    error.value = 'Name is required and cannot be empty.'
+    error.value = t('resources.form.validation.nameRequired')
     submitting.value = false
     // Focus the name input so the user sees validation
     // Use Vue template ref for focusing (avoids direct DOM access)

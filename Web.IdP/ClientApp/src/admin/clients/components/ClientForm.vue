@@ -270,7 +270,7 @@ const handleSubmit = async () => {
       emit('submit')
     }
   } catch (e) {
-    error.value = `Failed to save client: ${e.message}`
+    error.value = t('clients.form.saveFailed', { message: e.message })
     console.error('Error saving client:', e)
   } finally {
     submitting.value = false

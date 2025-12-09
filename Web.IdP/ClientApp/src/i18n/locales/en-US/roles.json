@@ -88,5 +88,9 @@
       "total": "Total: {total}",
       "pageSize": "Page size"
     }
+  },
+  "validation": {
+    "nameRequired": "Role name is required",
+    "nameLength": "Role name must be at least 2 characters"
   }
 }

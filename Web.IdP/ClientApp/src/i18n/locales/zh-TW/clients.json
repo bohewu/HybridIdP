@@ -141,7 +141,8 @@
       "createButton": "新增用戶端",
       "updateButton": "更新用戶端",
       "cancel": "取消",
-      "validationError": "請修正以下驗證錯誤。"
+      "validationError": "請修正以下驗證錯誤。",
+      "saveFailed": "儲存用戶端失敗：{message}"
     },
     "secretModal": {
       "title": "用戶端密鑰已產生",

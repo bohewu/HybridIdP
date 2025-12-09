@@ -49,7 +49,10 @@
     "scopesSelected": "已選擇 {count} 個範圍",
     "createButton": "建立資源",
     "saveButton": "儲存變更",
-    "cancelButton": "取消"
+    "cancelButton": "取消",
+    "validation": {
+      "nameRequired": "名稱為必填且不能為空。"
+    }
   },
   "accessDenied": {
     "read": "您沒有權限查看 API 資源。",
