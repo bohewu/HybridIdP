@@ -1,145 +1,64 @@
 {
-  "pageTitle": "User Management",
-  "pageSubtitle": "Manage user accounts, roles, and permissions",
+  "pageTitle": "Users",
+  "pageSubtitle": "Manage system users",
   "createUser": "Create User",
-  "search": "Search users by email, name, or ID...",
-  "all": "All Users",
-  "active": "Active Users",
-  "inactive": "Inactive Users",
+  "firstName": "First Name",
+  "lastName": "Last Name",
+  "email": "Email",
+  "password": "Password",
+  "confirmPassword": "Confirm Password",
+  "search": "Search users...",
+  "all": "All Status",
+  "active": "Active",
+  "inactive": "Inactive",
   "loading": "Loading users...",
-  "noUsers": "No users found matching your criteria.",
+  "noUsers": "No users found.",
   "noPermission": "You do not have permission to view users.",
-  "noActions": "No actions available",
   "edit": "Edit",
   "manageRoles": "Manage Roles",
   "manageSessions": "Manage Sessions",
-  "actions": {
-    "deactivate": "Deactivate",
-    "reactivate": "Reactivate",
-    "deletePermanently": "Delete Permanently",
-    "impersonate": "Login As"
-  },
-  "errors": {
-    "loadFailed": "Failed to load users: {message}",
-    "deactivateFailed": "Failed to deactivate user: {message}",
-    "reactivateFailed": "Failed to reactivate user: {message}",
-    "deleteFailed": "Failed to delete user: {message}",
-    "saveFailed": "Failed to save user. Please check the form for errors.",
-    "unknownSaveFailed": "An unknown error occurred while saving the user.",
-    "impersonateFailed": "Failed to impersonate user: {message}"
-  },
-  "confirmations": {
-    "deactivate": "Are you sure you want to deactivate user {email}?",
-    "reactivate": "Are you sure you want to reactivate user {email}?",
-    "deleteWarning": "Warning: This will permanently delete the user {email} and all associated data. This action cannot be undone.",
-    "deleteFinal": "Are you absolutely sure you want to delete user {email}?",
-    "impersonate": "Are you sure you want to login as user {user}? This will start a new session."
-  },
-  "alerts": {
-    "deactivatedSuccess": "User deactivated successfully.",
-    "reactivatedSuccess": "User reactivated successfully.",
-    "deletedSuccess": "User deleted successfully."
-  },
-  "editUser": "Edit User",
-  "createNewUser": "Create New User",
-  "email": "Email",
-  "username": "Username",
-  "firstName": "First Name",
-  "lastName": "Last Name",
-  "phoneNumber": "Phone Number",
-  "employeeId": "Employee ID",
-  "department": "Department",
-  "jobTitle": "Job Title",
-  "password": "Password",
-  "confirmPassword": "Confirm Password",
-  "emailCannotBeChanged": "Email cannot be changed after creation.",
-  "changePasswordOptional": "Change Password (optional)",
-  "leaveBlankToKeepCurrent": "Leave blank to keep current password.",
-  "passwordMustContain": "Password must contain:",
-  "atLeast6Characters": "At least 6 characters",
-  "atLeastOneUppercase": "At least one uppercase letter (A-Z)",
-  "atLeastOneLowercase": "At least one lowercase letter (a-z)",
-  "atLeastOneDigit": "At least one digit (0-9)",
-  "atLeastOneSpecialChar": "At least one special character (e.g., {'!@#$%'})",
-  "passwordStrength": "Password Strength",
-  "weak": "Weak",
-  "fair": "Fair",
-  "good": "Good",
-  "strong": "Strong",
-  "saving": "Saving...",
-  "updateUser": "Update User",
-  "cancel": "Cancel",
-  "emailRequired": "Email is required.",
-  "invalidEmail": "Please enter a valid email address.",
-  "usernameRequired": "Username is required.",
-  "passwordRequired": "Password is required.",
-  "confirmPasswordRequired": "Confirm Password is required.",
-  "passwordsDoNotMatch": "Passwords do not match.",
-  "passwordErrors": {
-    "minLength": "Password must be at least {n} characters long.",
-    "uppercase": "Password must contain an uppercase letter.",
-    "lowercase": "Password must contain a lowercase letter.",
-    "digit": "Password must contain a digit.",
-    "specialChar": "Password must contain a special character."
-  },
-  "passwordReqs": {
-    "minLength": "At least {n} characters",
-    "uppercase": "At least one uppercase letter (A-Z)",
-    "lowercase": "At least one lowercase letter (a-z)",
-    "digit": "At least one digit (0-9)",
-    "specialChar": "At least one special character (e.g., {'!@#$%'})"
-  },
-  "loginHistory": {
-    "title": "Login History",
-    "userLabel": "User",
-    "loading": "Loading login history...",
-    "empty": "No login history found for this user.",
-    "showAbnormalOnly": "Show Abnormal Only",
-    "tableHeaders": {
-      "loginTime": "Login Time",
-      "ipAddress": "IP Address",
-      "userAgent": "User Agent",
-      "status": "Status",
-      "riskScore": "Risk Score",
-      "actions": "Actions"
-    },
-    "status": {
-      "success": "Success",
-      "failed": "Failed",
-      "abnormal": "Abnormal",
-      "approved": "Approved",
-      "normal": "Normal"
-    },
-    "buttons": {
-      "approve": "Approve",
-      "approving": "Approving...",
-      "close": "Close"
-    },
-    "confirm": {
-      "approve": "Are you sure you want to approve this login from IP {ip}? This will add the IP to the whitelist for this user."
-    },
-    "alerts": {
-      "approveSuccess": "Login approved successfully. IP address added to whitelist.",
-      "approveFailed": "Failed to approve login: {message}"
-    },
-    "errors": {
-      "loadFailed": "Failed to load login history."
-    },
-    "pagination": {
-      "previous": "Previous",
-      "next": "Next",
-      "pageInfo": "Page {page} / {pages}",
-      "total": "Total: {total}",
-      "pageSize": "Per page"
-    }
-  },
   "details": {
     "id": "ID: {id}",
-    "noName": "N/A",
-    "noDepartment": "N/A",
-    "noRoles": "No roles assigned",
+    "noName": "No Name",
+    "noDepartment": "No Dept.",
+    "noRoles": "No Roles",
     "active": "Active",
     "inactive": "Inactive",
     "never": "Never"
+  },
+  "actions": {
+    "impersonate": "Login As",
+    "deactivate": "Deactivate",
+    "deletePermanently": "Delete Permanently",
+    "reactivate": "Reactivate",
+    "manageRoles": "Manage Roles",
+    "manageSessions": "Sessions",
+    "viewLoginHistory": "Login History"
+  },
+  "loginHistory": {
+    "title": "Login History"
+  },
+  "noActions": "No actions available",
+  "confirmations": {
+    "deactivate": "Are you sure you want to deactivate {email}?",
+    "deleteWarning": "Warning: Deleting {email} is permanent.",
+    "deleteFinal": "Are you absolutely sure?",
+    "reactivate": "Reactivate {email}?",
+    "impersonate": "Are you sure you want to impersonate {user}?"
+  },
+  "alerts": {
+    "deactivatedSuccess": "User deactivated successfully.",
+    "deletedSuccess": "User deleted successfully.",
+    "reactivatedSuccess": "User reactivated successfully."
+  },
+  "errors": {
+    "loadFailed": "Failed to load users: {message}",
+    "deactivateFailed": "Failed to deactivate: {message}",
+    "deleteFailed": "Failed to delete: {message}",
+    "reactivateFailed": "Failed to reactivate: {message}",
+    "impersonateFailed": "Failed to impersonate: {message}"
+  },
+  "tableHeaders": {
+      "username": "Username"
   }
 }
