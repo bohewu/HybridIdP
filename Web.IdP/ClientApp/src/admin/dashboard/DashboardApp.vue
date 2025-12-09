@@ -1,11 +1,11 @@
 <template>
   <div
     class="max-w-7xl mx-auto dashboard-root"
-    v-loading="{ loading: loading, overlay: true, message: t('admin.dashboard.loading') }">
+    v-loading="{ loading: loading, overlay: true, message: t('dashboard.loading') }">
     <!-- Header -->
     <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900">{{ $t('admin.dashboard.title') }}</h1>
-      <p class="mt-2 text-gray-600">{{ $t('admin.dashboard.subtitle') }}</p>
+      <h1 class="text-3xl font-bold text-gray-900">{{ $t('dashboard.title') }}</h1>
+      <p class="mt-2 text-gray-600">{{ $t('dashboard.subtitle') }}</p>
     </div>
 
     <!-- Page-level loading is now handled by the v-loading overlay so the
@@ -26,19 +26,19 @@
     <div v-if="!error">
       <!-- Quick Stats -->
       <div class="mb-8 bg-white rounded-lg shadow-sm p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('admin.dashboard.quickStats') }}</h3>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('dashboard.quickStats') }}</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg">
             <div class="text-3xl font-bold text-indigo-600">{{ stats.totalClients }}</div>
-            <div class="text-sm text-gray-600 mt-1">{{ $t('admin.dashboard.stats.totalClients') }}</div>
+            <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalClients') }}</div>
           </div>
           <div class="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
             <div class="text-3xl font-bold text-green-600">{{ stats.totalScopes }}</div>
-            <div class="text-sm text-gray-600 mt-1">{{ $t('admin.dashboard.stats.totalScopes') }}</div>
+            <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalScopes') }}</div>
           </div>
           <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
             <div class="text-3xl font-bold text-blue-600">{{ stats.totalUsers }}</div>
-            <div class="text-sm text-gray-600 mt-1">{{ $t('admin.dashboard.stats.totalUsers') }}</div>
+            <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalUsers') }}</div>
           </div>
         </div>
       </div>
@@ -46,7 +46,7 @@
       <!-- System Health Widget -->
       <div class="mb-8 bg-white rounded-lg shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">{{ $t('admin.dashboard.health.title') }}</h3>
+            <h3 class="text-lg font-semibold text-gray-900">{{ $t('dashboard.health.title') }}</h3>
             <button 
                 @click="fetchHealth" 
                 :disabled="healthLoading"
@@ -58,7 +58,7 @@
                 <svg v-else class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                {{ $t('admin.dashboard.health.refresh') }}
+                {{ $t('dashboard.health.refresh') }}
             </button>
         </div>
         
@@ -82,7 +82,7 @@
                         {{ healthData.status }}
                     </h3>
                     <div class="text-sm" :class="healthData.status === 'Healthy' ? 'text-green-700' : 'text-red-700'">
-                        {{ t('admin.dashboard.health.lastUpdated', { time: new Date().toLocaleTimeString() }) }}
+                        {{ t('dashboard.health.lastUpdated', { time: new Date().toLocaleTimeString() }) }}
                     </div>
                 </div>
             </div>
@@ -99,7 +99,7 @@
             </div>
         </div>
         <div v-else-if="!healthLoading" class="text-gray-500 text-sm italic">
-            {{ t('admin.dashboard.health.noData') }}
+            {{ t('dashboard.health.noData') }}
         </div>
       </div>
 
@@ -133,10 +133,10 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
             </svg>
           </div>
-          <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ $t('admin.dashboard.cards.clients.title') }}</h2>
-          <p class="text-sm text-gray-600 mb-4">{{ $t('admin.dashboard.cards.clients.description') }}</p>
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ $t('dashboard.cards.clients.title') }}</h2>
+          <p class="text-sm text-gray-600 mb-4">{{ $t('dashboard.cards.clients.description') }}</p>
           <a href="/Admin/Clients" class="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-medium text-sm mt-auto">
-            {{ $t('admin.dashboard.cards.clients.action') }}
+            {{ $t('dashboard.cards.clients.action') }}
             <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
             </svg>
@@ -150,10 +150,10 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
             </svg>
           </div>
-          <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ $t('admin.dashboard.cards.scopes.title') }}</h2>
-          <p class="text-sm text-gray-600 mb-4">{{ $t('admin.dashboard.cards.scopes.description') }}</p>
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ $t('dashboard.cards.scopes.title') }}</h2>
+          <p class="text-sm text-gray-600 mb-4">{{ $t('dashboard.cards.scopes.description') }}</p>
           <a href="/Admin/Scopes" class="inline-flex items-center text-green-600 hover:text-green-700 font-medium text-sm mt-auto">
-            {{ $t('admin.dashboard.cards.scopes.action') }}
+            {{ $t('dashboard.cards.scopes.action') }}
             <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
             </svg>
@@ -168,10 +168,10 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-1a6 6 0 00-9-5.197M17 20H7m10 0v-1a6 6 0 00-9-5.197M7 20H2v-1a6 6 0 019-5.197M12 11a4 4 0 100-8 4 4 0 000 8zm6 0a4 4 0 100-8 4 4 0 000 8zm-12 0a4 4 0 100-8 4 4 0 000 8z" />
             </svg>
           </div>
-          <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ $t('admin.dashboard.cards.users.title') }}</h2>
-          <p class="text-sm text-gray-600 mb-4">{{ $t('admin.dashboard.cards.users.description') }}</p>
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ $t('dashboard.cards.users.title') }}</h2>
+          <p class="text-sm text-gray-600 mb-4">{{ $t('dashboard.cards.users.description') }}</p>
           <a href="/Admin/Users" class="inline-flex items-center text-green-600 hover:text-green-700 font-medium text-sm mt-auto">
-            {{ $t('admin.dashboard.cards.users.action') }}
+            {{ $t('dashboard.cards.users.action') }}
             <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
             </svg>
@@ -216,11 +216,11 @@ const fetchStats = async () => {
     
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error(t('admin.dashboard.errors.unauthorized'))
+        throw new Error(t('dashboard.errors.unauthorized'))
       } else if (response.status === 403) {
-        throw new Error(t('admin.dashboard.errors.accessDenied'))
+        throw new Error(t('dashboard.errors.accessDenied'))
       } else {
-        throw new Error(`${t('admin.dashboard.errors.loadFailed')} (${response.status})`)
+        throw new Error(`${t('dashboard.errors.loadFailed')} (${response.status})`)
       }
     }
     
@@ -228,7 +228,7 @@ const fetchStats = async () => {
     stats.value = data
   } catch (err) {
     console.error('Dashboard stats error:', err)
-    error.value = err.message || t('admin.dashboard.errors.loadFailed')
+    error.value = err.message || t('dashboard.errors.loadFailed')
   } finally {
     loading.value = false
   }
@@ -243,7 +243,7 @@ const fetchHealth = async () => {
         healthData.value = await response.json()
     } catch (err) {
         console.error('Health check failed:', err)
-        healthError.value = t('admin.dashboard.errors.healthFailed')
+        healthError.value = t('dashboard.errors.healthFailed')
     } finally {
         healthLoading.value = false
     }

@@ -1,0 +1,41 @@
+{
+  "title": "Admin Dashboard",
+  "subtitle": "Welcome to the HybridAuth IdP Administration Interface",
+  "loading": "Loading...",
+  "quickStats": "Quick Stats",
+  "stats": {
+    "totalClients": "Total Clients",
+    "totalScopes": "Total Scopes",
+    "totalUsers": "Total Users"
+  },
+  "health": {
+      "title": "System Health",
+      "refresh": "Refresh",
+      "lastUpdated": "Last updated: {time}",
+      "noData": "No health data available.",
+      "status": "Status"
+  },
+  "cards": {
+    "clients": {
+      "title": "OIDC Clients",
+      "description": "Manage OpenID Connect client applications that can authenticate with this IdP.",
+      "action": "Manage Clients"
+    },
+    "scopes": {
+      "title": "OIDC Scopes",
+      "description": "Define scopes that control what information clients can access from user profiles.",
+      "action": "Manage Scopes"
+    },
+    "users": {
+      "title": "Users",
+      "description": "Manage user accounts, roles, and permissions for identity management.",
+      "action": "Manage Users"
+    }
+  },
+  "errors": {
+    "unauthorized": "Unauthorized - Please log in again",
+    "accessDenied": "Access Denied - Admin role required",
+    "loadFailed": "Failed to load dashboard statistics",
+    "healthFailed": "Failed to load system health"
+  }
+}
