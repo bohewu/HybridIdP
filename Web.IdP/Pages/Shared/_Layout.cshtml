@@ -110,7 +110,7 @@
                                         <li><hr class="dropdown-divider"></li>
                                     }
                                     @* Show ApplicationManager if user has client/scope read permissions (but not Admin role) *@
-                                    else if (hasClientScopePermissions && !User.IsInRole(Roles.Admin))
+                                    else if (hasClientScopePermissions)
                                     {
                                         <li>
                                             <a class="dropdown-item" asp-page="/ApplicationManager/Index">

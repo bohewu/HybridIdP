@@ -36,8 +36,18 @@
     "viewLoginHistory": "Login History"
   },
   "loginHistory": {
-    "title": "Login History"
+    "title": "Login History",
+    "status": {
+      "success": "Success",
+      "failure": "Failure"
+    },
+    "buttons": {
+      "close": "Close"
+    }
   },
+  "jobTitle": "Job Title",
+  "changePasswordOptional": "Change Password (Optional)",
+  "updateUser": "Update User",
   "noActions": "No actions available",
   "confirmations": {
     "deactivate": "Are you sure you want to deactivate {email}?",

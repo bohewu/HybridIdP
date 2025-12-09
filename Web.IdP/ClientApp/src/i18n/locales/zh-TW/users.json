@@ -36,8 +36,18 @@
     "viewLoginHistory": "登入紀錄"
   },
   "loginHistory": {
-    "title": "登入紀錄"
+    "title": "登入紀錄",
+    "status": {
+      "success": "成功",
+      "failure": "失敗"
+    },
+    "buttons": {
+      "close": "關閉"
+    }
   },
+  "jobTitle": "職稱",
+  "changePasswordOptional": "變更密碼 (選填)",
+  "updateUser": "更新使用者",
   "noActions": "無可用操作",
   "confirmations": {
     "deactivate": "確定要停用 {email} 嗎？",
