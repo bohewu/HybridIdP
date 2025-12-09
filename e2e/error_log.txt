@@ -1,0 +1,10 @@
+Test Failed: page.goto: net::ERR_CONNECTION_REFUSED at https://localhost:7001/
+Call log:
+[2m  - navigating to "https://localhost:7001/", waiting until "load"[22m
+
+Stack: page.goto: net::ERR_CONNECTION_REFUSED at https://localhost:7001/
+Call log:
+[2m  - navigating to "https://localhost:7001/", waiting until "load"[22m
+
+    at Object.loginViaTestClient (C:\repos\HybridIdP\e2e\tests\helpers\admin.ts:624:16)
+    at C:\repos\HybridIdP\e2e\tests\feature-sessions\user-sessions-management.spec.ts:66:28

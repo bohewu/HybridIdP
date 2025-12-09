@@ -383,6 +383,71 @@ const loading = ref(true)
         host.value = getVal('Mail.Host', '')
         ```
 
+### Internationalization (i18n) Rules
+
+前端開發必須遵守以下國際化規範，以確保代碼的一致性與可維護性。
+
+#### 1. 檔案結構與位置
+-   所有語系檔位於 `Web.IdP/ClientApp/src/locales/`
+-   主要檔案：
+    -   `en-US.json` (英文)
+    -   `zh-TW.json` (繁體中文)
+
+#### 2. Key Naming Conventions (鍵值命名規範)
+-   **嚴禁使用 Monolithic Keys**：不要將所有 key 堆在根目錄，也不要使用通用名稱如 `title`, `name`。
+-   **Feature-Based Nesting (功能巢狀結構)**：必須按照功能模組進行巢狀分類。
+    -   ✅ Correct: `admin.users.list.columns.email`
+    -   ❌ Avoid: `usersEmail`, `emailColumn`
+-   **CamelCase**: Key 名稱使用小駝峰式命名 (camelCase)。
+-   **Common Buttons/Actions**: 通用按鈕可放在 `common` 或 `actions` 下，但若有特定上下文應優先使用功能層級。
+
+**Example Structure:**
+```json
+{
+  "admin": {
+    "users": {
+      "title": "使用者管理",
+      "actions": {
+        "create": "新增使用者",
+        "delete": "刪除"
+      },
+      "validation": {
+        "emailRequired": "電子郵件為必填"
+      }
+    }
+  },
+  "common": {
+    "loading": "載入中...",
+    "save": "儲存",
+    "cancel": "取消"
+  }
+}
+```
+
+#### 3. Vue Component Usage (組件使用規範)
+-   **Composition API**: 必須使用 `useI18n` hook。
+-   **Destructuring**: 在 `setup` 中解構 `t` 函數。
+
+```javascript
+import { useI18n } from 'vue-i18n'
+
+setup() {
+    const { t } = useI18n()
+    
+    // Usage in script
+    const errorMessage = t('admin.users.validation.emailRequired')
+    
+    return { t }
+}
+```
+
+-   **Template Usage**:
+```html
+<button>{{ t('common.save') }}</button>
+<!-- 屬性綁定 -->
+<input :placeholder="t('admin.users.form.emailPlaceholder')" />
+```
+
 ---
 
 ## ⚠️ 關鍵注意事項
