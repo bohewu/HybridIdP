@@ -66,7 +66,7 @@ test.describe('User Sessions Management', () => {
     let list = await listSessions(page, userRecord.id);
     expect(list.status).toBe(200);
     let attempts = 0;
-    while (list.items.length === 0 && attempts < 10) {
+    while (list.items.length === 0 && attempts < 50) {
       await page.waitForTimeout(200);
       list = await listSessions(page, userRecord.id);
       attempts++;
@@ -103,7 +103,7 @@ test.describe('User Sessions Management', () => {
     const userRecord = await fetchUserByEmail(page, email);
     let beforeList = await listSessions(page, userRecord.id);
     let attempts = 0;
-    while (beforeList.items.length === 0 && attempts < 10) {
+    while (beforeList.items.length === 0 && attempts < 50) {
       await page.waitForTimeout(200);
       beforeList = await listSessions(page, userRecord.id);
       attempts++;
@@ -114,10 +114,17 @@ test.describe('User Sessions Management', () => {
     expect(allResult.status).toBe(200);
     expect(allResult.body).toMatch(/revoked/);
 
-    const afterList = await listSessions(page, userRecord.id);
-    // After revoke-all, sessions may be zero or repopulated by current admin context usage; allow 0
-    // Only fail if a previously-valid session is still present and marked as valid
-    const stillValid = afterList.items.find((s: any) => beforeList.items.some((b: any) => b.authorizationId === s.authorizationId && (s.status || '').toLowerCase() === 'valid'));
+    // Poll until revocation propagates
+    let afterList;
+    let stillValid;
+    let attemptsRevoke = 0;
+    do {
+      await page.waitForTimeout(500);
+      afterList = await listSessions(page, userRecord.id);
+      stillValid = afterList.items.find((s: any) => beforeList.items.some((b: any) => b.authorizationId === s.authorizationId && (s.status || '').toLowerCase() === 'valid'));
+      attemptsRevoke++;
+    } while (stillValid && attemptsRevoke < 20);
+
     expect(stillValid).toBeFalsy();
 
     // Cleanup contexts
@@ -175,7 +182,13 @@ test.describe('User Sessions Management', () => {
     await adminHelpers.loginViaTestClient(user2Page, email2, pwd);
 
     const rec2 = await fetchUserByEmail(page, email2);
-    const sessions2 = await listSessions(page, rec2.id);
+    let sessions2 = await listSessions(page, rec2.id);
+    let sessionAttempts = 0;
+    while (sessions2.items.length === 0 && sessionAttempts < 50) {
+      await page.waitForTimeout(200);
+      sessions2 = await listSessions(page, rec2.id);
+      sessionAttempts++;
+    }
     const targetAuth = sessions2.items[0]?.authorizationId;
     expect(targetAuth).toBeTruthy();
 

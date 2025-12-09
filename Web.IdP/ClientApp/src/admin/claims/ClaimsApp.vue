@@ -167,6 +167,7 @@
     <ClaimFormModal
       :show="showModal"
       :claim="editingClaim"
+      :error="modalError"
       @close="closeModal"
       @save="saveClaim"
     />
@@ -188,6 +189,7 @@ const loading = ref(true)
 const error = ref(null)
 const showModal = ref(false)
 const editingClaim = ref(null)
+const modalError = ref(null)
 
 // Pagination and filtering
 const search = ref('')
@@ -240,11 +242,13 @@ const handlePageSizeChange = (newSize) => {
 
 function openCreateModal() {
   editingClaim.value = null
+  modalError.value = null
   showModal.value = true
 }
 
 function openEditModal(claim) {
   editingClaim.value = claim
+  modalError.value = null
   showModal.value = true
 }
 
@@ -277,8 +281,8 @@ async function saveClaim(formData) {
     closeModal()
     await fetchClaims()
   } catch (err) {
-    error.value = err.message
-    throw err
+    modalError.value = err.message
+    // Do not throw back to form as we handled it via prop
   }
 }
 
