@@ -57,5 +57,21 @@
   "saving": "儲存中...",
   "cancelButton": "取消",
   "noChanges": "沒有變更需要儲存。",
-  "confirmCancel": "您有未儲存的變更，確定要取消嗎？"
+  "confirmCancel": "您有未儲存的變更，確定要取消嗎？",
+  "security": {
+    "title": "安全策略",
+    "description": "設定密碼複雜度與帳戶安全規則。",
+    "minPasswordLength": "最小密碼長度",
+    "requireUppercase": "需要大寫字母",
+    "requireLowercase": "需要小寫字母",
+    "requireDigit": "需要數字",
+    "requireNonAlphanumeric": "需要特殊符號",
+    "passwordHistoryCount": "密碼歷程記錄數 (0 為停用)",
+    "passwordExpirationDays": "密碼過期天數 (0 為停用)",
+    "minPasswordAgeDays": "最短密碼使用天數 (0 為停用)",
+    "maxFailedAccessAttempts": "鎖定前的最大失敗嘗試次數",
+    "lockoutDurationMinutes": "鎖定持續時間 (分鐘)",
+    "abnormalLoginHistoryCount": "異常登入檢查筆數",
+    "blockAbnormalLogin": "封鎖異常登入"
+  }
 }

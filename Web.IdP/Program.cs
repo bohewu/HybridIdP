@@ -323,6 +323,7 @@ builder.Services.AddScoped<IClientAllowedScopesService, ClientAllowedScopesServi
 builder.Services.AddScoped<IClientScopeRequestProcessor, ClientScopeRequestProcessor>();
 builder.Services.AddScoped<IClaimsService, ClaimsService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<IImpersonationService, ImpersonationService>();
 
 // connect services
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();

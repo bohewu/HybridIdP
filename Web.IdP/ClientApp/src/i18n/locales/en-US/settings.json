@@ -57,5 +57,21 @@
   "saving": "Saving...",
   "cancelButton": "Cancel",
   "noChanges": "No changes to save.",
-  "confirmCancel": "You have unsaved changes, are you sure you want to cancel?"
+  "confirmCancel": "You have unsaved changes, are you sure you want to cancel?",
+  "security": {
+    "title": "Security Policy",
+    "description": "Configure password complexity and account security rules.",
+    "minPasswordLength": "Minimum Password Length",
+    "requireUppercase": "Require Uppercase",
+    "requireLowercase": "Require Lowercase",
+    "requireDigit": "Require Digit",
+    "requireNonAlphanumeric": "Require Special Character",
+    "passwordHistoryCount": "Password History Count (0 to disable)",
+    "passwordExpirationDays": "Password Expiration Days (0 to disable)",
+    "minPasswordAgeDays": "Minimum Password Age Days (0 to disable)",
+    "maxFailedAccessAttempts": "Max Failed Attempts before Lockout",
+    "lockoutDurationMinutes": "Lockout Duration (Minutes)",
+    "abnormalLoginHistoryCount": "Abnormal Login Check Count",
+    "blockAbnormalLogin": "Block Abnormal Logins"
+  }
 }
