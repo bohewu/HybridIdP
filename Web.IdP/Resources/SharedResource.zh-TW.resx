@@ -380,9 +380,7 @@
   <data name="PasswordChangeTooSoon" xml:space="preserve">
     <value>您無法太快再次更換密碼。請至少等待 {0} 天。</value>
   </data>
-  <data name="InvalidLoginAttempt" xml:space="preserve">
-    <value>登入嘗試無效。</value>
-  </data>
+
   <data name="CompleteCaptcha" xml:space="preserve">
     <value>請完成 CAPTCHA 驗證。</value>
   </data>
