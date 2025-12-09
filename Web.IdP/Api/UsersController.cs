@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Microsoft.Extensions.Localization;
 using Web.IdP;
+using Web.IdP.Services;
 
 namespace Web.IdP.Api;
 
@@ -26,23 +27,23 @@ public class UsersController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ISessionService _sessionService;
     private readonly ILoginHistoryService _loginHistoryService;
-    private readonly IUserClaimsPrincipalFactory<ApplicationUser> _userClaimsPrincipalFactory;
     private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly IImpersonationService _impersonationService;
 
     public UsersController(
         IUserManagementService userManagementService,
         UserManager<ApplicationUser> userManager,
         ISessionService sessionService,
         ILoginHistoryService loginHistoryService,
-        IUserClaimsPrincipalFactory<ApplicationUser> userClaimsPrincipalFactory,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        IImpersonationService impersonationService)
     {
         _userManagementService = userManagementService;
         _userManager = userManager;
         _sessionService = sessionService;
         _loginHistoryService = loginHistoryService;
-        _userClaimsPrincipalFactory = userClaimsPrincipalFactory;
         _localizer = localizer;
+        _impersonationService = impersonationService;
     }
 
     /// <summary>
@@ -489,60 +490,36 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            var currentUserName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
-            
-            if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(currentUserName))
+            var currentUserIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserIdStr) || !Guid.TryParse(currentUserIdStr, out var currentUserId))
             {
                 return Unauthorized();
             }
 
-            // prevent self-impersonation to avoid confusion
-            if (string.Equals(currentUserId, id.ToString(), StringComparison.OrdinalIgnoreCase))
+            // Call Service
+            var (success, principal, error) = await _impersonationService.StartImpersonationAsync(currentUserId, id);
+
+            if (!success)
             {
-                return BadRequest(new { error = _localizer["CannotImpersonateYourself"].Value });
+                if (error == "User not found") return NotFound(new { error });
+                if (error == "Cannot impersonate another administrator") return Forbid();
+                return BadRequest(new { error });
             }
-
-            var targetUser = await _userManager.FindByIdAsync(id.ToString());
-            if (targetUser == null)
-            {
-                return NotFound(new { error = "User not found" });
-            }
-
-            // Security check: Prevent impersonating other admins to avoid privilege escalation or confusion
-            if (await _userManager.IsInRoleAsync(targetUser, AuthConstants.Roles.Admin))
-            {
-                   // For now, strict rule: Admin cannot impersonate another Admin
-                   return Forbid();
-            }
-
-            // Create principal for the target user
-            var principal = await _userClaimsPrincipalFactory.CreateAsync(targetUser);
-
-            // Add Actor claim to indicate impersonation
-            // The "act" claim represents the actor (the admin) who is acting on behalf of the subject (the user)
-            // Format: sub=admin_id, name=admin_name
-            // Note: We are adding this to the target user's identity
-            var identity = (ClaimsIdentity)principal.Identity!;
-            
-            // Construct the actor identity
-            var actorIdentity = new ClaimsIdentity();
-            actorIdentity.AddClaim(new Claim("sub", currentUserId));
-            actorIdentity.AddClaim(new Claim("name", currentUserName));
-            // You can add more claims to actor if needed
-
-            // In pure OIDC, 'act' is a nested claim. In ASP.NET Core Identity/Cookie, 
-            // the Actor property on ClaimsIdentity is the standard way to represent this.
-            identity.Actor = actorIdentity;
-            
-            // Also verify if we need to add a specific "act" claim for OpenIddict to pick it up in tokens
-            // OpenIddict usually maps identity.Actor to 'act' claim in tokens if configured.
-            // But for Cookie authentication (the immediate session), identity.Actor is sufficient for HttpContext.User.Actor.
 
             // Issue the cookie
-             await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+            await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal!, new AuthenticationProperties
+            {
+                IsPersistent = false
+            });
 
-            return Ok(new { success = true, targetUser = targetUser.Email });
+            // For response, we need target user email. 
+            // The service returns Principal, we can get Name from it or we might change Service to return User object too?
+            // The existing response wanted "targetUser: email".
+            // The Principal has Name (which is username).
+            // Let's look at the principal.Identity.Name.
+            var targetUserName = principal!.Identity?.Name;
+
+            return Ok(new { success = true, targetUser = targetUserName });
         }
         catch (Exception ex)
         {
@@ -558,41 +535,24 @@ public class UsersController : ControllerBase
     {
         try
         {
-            // Check for Actor property on the identity (standard ASP.NET Core Identity way)
-            // or "act" claim (standard OIDC way)
-            var currentIdentity = User.Identity as ClaimsIdentity;
-            if (currentIdentity == null)
+            var (success, principal, error) = await _impersonationService.RevertImpersonationAsync(User);
+
+            if (!success)
             {
-                return BadRequest(new { error = "Not authenticated." });
+                if (error == "Original user not found")
+                {
+                    // Force logout
+                    await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                    return Ok(new { message = "Original user not found, logged out." });
+                }
+                return BadRequest(new { error });
             }
 
-            // Check actor
-            if (currentIdentity.Actor == null)
-            {
-                 return BadRequest(new { error = _localizer["NotImpersonating"] });
-            }
-            
-            var actor = currentIdentity.Actor;
-            var originalUserSub = actor.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                                  ?? actor.FindFirst("sub")?.Value;
-
-            if (string.IsNullOrEmpty(originalUserSub))
-            {
-                return BadRequest(new { error = "Original user identifier not found." });
-            }
-
-            var originalUser = await _userManager.FindByIdAsync(originalUserSub);
-            if (originalUser == null)
-            {
-                await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-                return Ok(new { message = "Original user not found, logged out." });
-            }
-
-            // Create principal for original user
-            var principal = await _userClaimsPrincipalFactory.CreateAsync(originalUser);
-            
             // Restore the cookie
-            await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+            await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal!, new AuthenticationProperties
+            {
+                IsPersistent = false
+            });
 
             return Ok(new { message = "Impersonation stopped successfully" });
         }
