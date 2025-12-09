@@ -36,23 +36,24 @@
     {
         <div class="impersonation-banner bg-warning text-dark text-center py-2 fw-bold" style="position: sticky; top: 0; z-index: 1050;">
             <i class="bi bi-eye-fill me-2"></i>
-            You are currently viewing as <strong>@User.Identity.Name</strong>.
+            @string.Format(Localizer["ImpersonatingUser"], User.Identity.Name)
             <button onclick="revertImpersonation()" class="btn btn-sm btn-dark ms-3">
-                <i class="bi bi-arrow-return-left me-1"></i> Switch Back to Admin
+                <i class="bi bi-arrow-return-left me-1"></i> @Localizer["StopImpersonation"]
             </button>
         </div>
         <script>
             async function revertImpersonation() {
                 try {
-                    const response = await fetch('/api/account/impersonation/revert', { method: 'POST' });
+                    const response = await fetch('/api/admin/users/stop-impersonation', { method: 'POST' });
                     if (response.ok) {
                         window.location.reload();
                     } else {
-                        alert('Failed to switch back. Please try again.');
+                        const data = await response.json();
+                        alert(data.error || 'Failed to stop impersonation');
                     }
                 } catch (error) {
                     console.error('Error reverting impersonation:', error);
-                    alert('An error occurred.');
+                    alert('An error occurred');
                 }
             }
         </script>
