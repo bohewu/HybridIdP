@@ -32,13 +32,13 @@ const clearFilters = () => {
     <!-- Filters Card -->
     <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
       <div class="p-4 border-b border-gray-200">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('admin.audit.filters.title') }}</h3>
+        <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('audit.filters.title') }}</h3>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <!-- Date Range -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              {{ t('admin.audit.filters.startDate') }}
+              {{ t('audit.filters.startDate') }}
             </label>
             <input
               type="date"
@@ -50,7 +50,7 @@ const clearFilters = () => {
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              {{ t('admin.audit.filters.endDate') }}
+              {{ t('audit.filters.endDate') }}
             </label>
             <input
               type="date"
@@ -63,26 +63,26 @@ const clearFilters = () => {
           <!-- User Search -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              {{ t('admin.audit.filters.user') }}
+              {{ t('audit.filters.user') }}
             </label>
             <SearchInput
               :model-value="filters.userId"
               @update:model-value="filters.userId = $event; updateFilters()"
-              :placeholder="t('admin.audit.filters.userPlaceholder')"
+              :placeholder="t('audit.filters.userPlaceholder')"
             />
           </div>
 
           <!-- Event Type -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              {{ t('admin.audit.filters.eventType') }}
+              {{ t('audit.filters.eventType') }}
             </label>
             <select
               :value="filters.eventType"
               @change="filters.eventType = $event.target.value; updateFilters()"
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
-              <option value="">{{ t('admin.audit.filters.allEventTypes') }}</option>
+              <option value="">{{ t('audit.filters.allEventTypes') }}</option>
               <option value="UserCreated">UserCreated</option>
               <option value="UserUpdated">UserUpdated</option>
               <option value="UserDeleted">UserDeleted</option>
@@ -96,13 +96,13 @@ const clearFilters = () => {
           <!-- IP Address -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              {{ t('admin.audit.filters.ipAddress') }}
+              {{ t('audit.filters.ipAddress') }}
             </label>
             <input
               type="text"
               :value="filters.ipAddress"
               @input="filters.ipAddress = $event.target.value; updateFilters()"
-              :placeholder="t('admin.audit.filters.ipPlaceholder')"
+              :placeholder="t('audit.filters.ipPlaceholder')"
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
           </div>
@@ -110,12 +110,12 @@ const clearFilters = () => {
           <!-- General Search -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              {{ t('admin.audit.filters.search') }}
+              {{ t('audit.filters.search') }}
             </label>
             <SearchInput
               :model-value="filters.search"
               @update:model-value="filters.search = $event; updateFilters()"
-              :placeholder="t('admin.audit.filters.searchPlaceholder')"
+              :placeholder="t('audit.filters.searchPlaceholder')"
             />
           </div>
         </div>
@@ -126,7 +126,7 @@ const clearFilters = () => {
             @click="clearFilters"
             class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            {{ t('admin.audit.filters.clear') }}
+            {{ t('audit.filters.clear') }}
           </button>
         </div>
       </div>

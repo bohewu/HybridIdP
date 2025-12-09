@@ -42,7 +42,7 @@ onMounted(async () => {
 
   if (!canRead.value) {
     showAccessDenied.value = true
-    deniedMessage.value = t('admin.audit.noPermission')
+    deniedMessage.value = t('audit.noPermission')
     deniedPermission.value = Permissions.Audit.Read
     return
   }
@@ -102,13 +102,13 @@ const handleRefresh = () => {
 }
 
 const formatDate = (dateString) => {
-  if (!dateString) return t('admin.audit.never')
+  if (!dateString) return t('audit.never')
   return new Date(dateString).toLocaleString()
 }
 
 const handleExport = (format) => {
   if (auditEvents.value.length === 0) {
-    alert(t('admin.audit.export.noData'))
+    alert(t('audit.export.noData'))
     return
   }
 
@@ -121,11 +121,11 @@ const handleExport = (format) => {
 
 const exportToCsv = () => {
   const headers = [
-    t('tableHeaders.timestamp'),
-    t('tableHeaders.eventType'),
-    t('tableHeaders.user'),
-    t('tableHeaders.details'),
-    t('tableHeaders.ipAddress')
+    t('audit.tableHeaders.timestamp'),
+    t('audit.tableHeaders.eventType'),
+    t('audit.tableHeaders.user'),
+    t('audit.tableHeaders.details'),
+    t('audit.tableHeaders.ipAddress')
   ]
 
   const rows = auditEvents.value.map(event => [
@@ -142,11 +142,11 @@ const exportToCsv = () => {
 
 const exportToExcel = () => {
   const headers = [
-    t('tableHeaders.timestamp'),
-    t('tableHeaders.eventType'),
-    t('tableHeaders.user'),
-    t('tableHeaders.details'),
-    t('tableHeaders.ipAddress')
+    t('audit.tableHeaders.timestamp'),
+    t('audit.tableHeaders.eventType'),
+    t('audit.tableHeaders.user'),
+    t('audit.tableHeaders.details'),
+    t('audit.tableHeaders.ipAddress')
   ]
 
   const rows = auditEvents.value.map(event => [
@@ -164,7 +164,7 @@ const exportToExcel = () => {
 
 <template>
   <div class="audit-app px-4 py-6"
-       v-loading="{ loading: loading, overlay: true, message: $t('admin.audit.loading') }">
+       v-loading="{ loading: loading, overlay: true, message: $t('audit.loading') }">
     <AccessDeniedDialog
       v-if="showAccessDenied"
       :message="deniedMessage"
@@ -174,8 +174,8 @@ const exportToExcel = () => {
 
     <div v-else>
       <PageHeader 
-        :title="$t('admin.audit.pageTitle')" 
-        :subtitle="$t('admin.audit.pageSubtitle')"
+        :title="$t('audit.pageTitle')" 
+        :subtitle="$t('audit.pageSubtitle')"
       />
 
       <AuditLogFilters
