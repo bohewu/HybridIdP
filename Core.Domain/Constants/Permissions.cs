@@ -36,6 +36,7 @@ public static class Permissions
         public const string Create = "users.create";
         public const string Update = "users.update";
         public const string Delete = "users.delete";
+        public const string Impersonate = "users.impersonate";
     }
 
     /// <summary>
@@ -105,7 +106,7 @@ public static class Permissions
         {
             Clients.Read, Clients.Create, Clients.Update, Clients.Delete,
             Scopes.Read, Scopes.Create, Scopes.Update, Scopes.Delete,
-            Users.Read, Users.Create, Users.Update, Users.Delete,
+            Users.Read, Users.Create, Users.Update, Users.Delete, Users.Impersonate,
             Roles.Read, Roles.Create, Roles.Update, Roles.Delete,
             Claims.Read, Claims.Create, Claims.Update, Claims.Delete,
             Persons.Read, Persons.Create, Persons.Update, Persons.Delete,

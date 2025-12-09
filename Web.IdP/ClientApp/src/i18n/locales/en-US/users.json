@@ -16,7 +16,8 @@
   "actions": {
     "deactivate": "Deactivate",
     "reactivate": "Reactivate",
-    "deletePermanently": "Delete Permanently"
+    "deletePermanently": "Delete Permanently",
+    "impersonate": "Login As"
   },
   "errors": {
     "loadFailed": "Failed to load users: {message}",
@@ -24,13 +25,15 @@
     "reactivateFailed": "Failed to reactivate user: {message}",
     "deleteFailed": "Failed to delete user: {message}",
     "saveFailed": "Failed to save user. Please check the form for errors.",
-    "unknownSaveFailed": "An unknown error occurred while saving the user."
+    "unknownSaveFailed": "An unknown error occurred while saving the user.",
+    "impersonateFailed": "Failed to impersonate user: {message}"
   },
   "confirmations": {
     "deactivate": "Are you sure you want to deactivate user {email}?",
     "reactivate": "Are you sure you want to reactivate user {email}?",
     "deleteWarning": "Warning: This will permanently delete the user {email} and all associated data. This action cannot be undone.",
-    "deleteFinal": "Are you absolutely sure you want to delete user {email}?"
+    "deleteFinal": "Are you absolutely sure you want to delete user {email}?",
+    "impersonate": "Are you sure you want to login as user {user}? This will start a new session."
   },
   "alerts": {
     "deactivatedSuccess": "User deactivated successfully.",

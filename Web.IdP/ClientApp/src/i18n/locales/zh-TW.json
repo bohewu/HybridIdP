@@ -27,7 +27,8 @@
       "manageRoles": "您沒有管理使用者角色的權限。",
       "deactivate": "您沒有停用使用者的權限。",
       "delete": "您沒有刪除使用者的權限。",
-      "reactivate": "您沒有重新啟用使用者的權限。"
+      "reactivate": "您沒有重新啟用使用者的權限。",
+      "impersonate": "您沒有模擬使用者的權限。"
     }
   },
   "deniedMessages": {

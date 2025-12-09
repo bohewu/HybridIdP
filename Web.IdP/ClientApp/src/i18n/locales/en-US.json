@@ -27,7 +27,8 @@
       "manageRoles": "You don't have permission to manage user roles.",
       "deactivate": "You don't have permission to deactivate users.",
       "delete": "You don't have permission to delete users.",
-      "reactivate": "You don't have permission to reactivate users."
+      "reactivate": "You don't have permission to reactivate users.",
+      "impersonate": "You don't have permission to impersonate users."
     }
   },
   "myAccount": {

@@ -299,12 +299,17 @@ export async function searchListForItem(page: Page, entity: string, query: strin
   const listSelector = options?.listSelector ?? 'ul[role="list"]';
   const timeout = options?.timeout ?? 10000;
 
+  // Wait for the API to return (GET /api/admin/{entity}?search=...)
+  const apiRespPromise = waitForResponseJson(page, (r) => 
+    r.url().includes(`/api/admin/${entity}`) && 
+    r.url().includes(`search=${encodeURIComponent(query)}`) &&
+    r.request().method() === 'GET', timeout).catch(() => null);
+
   // Click/clear then fill to ensure it triggers the filter
   await page.fill(searchInput, '');
   await page.fill(searchInput, query);
 
-  // Wait for the API to return (GET /api/admin/{entity}?search=...)
-  const apiResp = await waitForResponseJson(page, (r) => r.url().includes(`/api/admin/${entity}`) && r.request().method() === 'GET', timeout).catch(() => null);
+  const apiResp = await apiRespPromise;
 
   let found = null as any;
   if (apiResp) {
@@ -346,7 +351,10 @@ export async function searchListForItemWithApi(page: Page, entity: string, query
   const timeout = options?.timeout ?? 10000;
 
   // Prepare to capture the GET /api/admin/{entity}?search... response that will be triggered below
-  const apiRespPromise = waitForResponseJson(page, (r) => r.url().includes(`/api/admin/${entity}?`) && r.request().method() === 'GET', timeout).catch(() => null);
+  const apiRespPromise = waitForResponseJson(page, (r) => 
+    r.url().includes(`/api/admin/${entity}?`) && 
+    r.url().includes(`search=${encodeURIComponent(query)}`) &&
+    r.request().method() === 'GET', timeout).catch(() => null);
   // Use existing searchListForItem flow to find the UI element (this will trigger a search GET)
   const locator = await searchListForItem(page, entity, query, { searchInputSelector: options?.searchInputSelector, listSelector: options?.listSelector, predicate: options?.predicate, timeout });
   // Also capture the API response from the GET (same one used by searchListForItem)

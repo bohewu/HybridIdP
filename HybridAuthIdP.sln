@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient.M2M", "TestClien
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.LegacyApi", "Tests.LegacyApi\Tests.LegacyApi.csproj", "{91320D71-017E-4DB4-9F46-A1698B521574}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient.Impersonation", "TestClient.Impersonation\TestClient.Impersonation.csproj", "{253370E9-9F0F-40B2-96F4-A251A1E92A5C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -223,6 +225,18 @@ Global
 		{91320D71-017E-4DB4-9F46-A1698B521574}.Release|x64.Build.0 = Release|Any CPU
 		{91320D71-017E-4DB4-9F46-A1698B521574}.Release|x86.ActiveCfg = Release|Any CPU
 		{91320D71-017E-4DB4-9F46-A1698B521574}.Release|x86.Build.0 = Release|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Debug|x64.Build.0 = Debug|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Debug|x86.Build.0 = Debug|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Release|x64.ActiveCfg = Release|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Release|x64.Build.0 = Release|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Release|x86.ActiveCfg = Release|Any CPU
+		{253370E9-9F0F-40B2-96F4-A251A1E92A5C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
