@@ -22,7 +22,7 @@ onMounted(async () => {
     hasUpdatePermission.value = permissionService.hasPermission(Permissions.Settings.Update)
   } catch (err) {
     console.error('Failed to load permissions:', err)
-    error.value = t('admin.settings.loadingError', { message: err.message })
+    error.value = t('settings.loadingError', { message: err.message })
   } finally {
     loading.value = false
   }
@@ -32,11 +32,11 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen bg-gray-50 py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
-         v-loading="{ loading: loading, overlay: true, message: t('admin.settings.loading') }">
+         v-loading="{ loading: loading, overlay: true, message: t('settings.loading') }">
       <!-- Header -->
     <PageHeader 
-      :title="$t('admin.settings.pageTitle')" 
-      :subtitle="$t('admin.settings.pageSubtitle')"
+      :title="$t('settings.pageTitle')" 
+      :subtitle="$t('settings.pageSubtitle')"
     >
     </PageHeader>
       

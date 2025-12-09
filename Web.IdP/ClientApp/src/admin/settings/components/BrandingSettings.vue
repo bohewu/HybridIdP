@@ -61,7 +61,7 @@ const loadSettings = async () => {
     originalProductName.value = productName.value
   } catch (err) {
     console.error('Failed to load branding settings:', err)
-    error.value = t('admin.settings.loadingError', { message: err.message })
+    error.value = t('settings.loadingError', { message: err.message })
   } finally {
     loading.value = false
   }
@@ -135,7 +135,7 @@ const saveSettings = async () => {
     }, 3000)
   } catch (err) {
     console.error('Failed to save settings:', err)
-    error.value = t('admin.settings.saveError', { message: err.message })
+    error.value = t('settings.saveError', { message: err.message })
   } finally {
     saving.value = false
   }
@@ -144,7 +144,7 @@ const saveSettings = async () => {
 // Cancel changes
 const cancelChanges = () => {
   if (hasChanges.value) {
-    if (!confirm(t('admin.settings.confirmCancel'))) {
+    if (!confirm(t('settings.confirmCancel'))) {
       return
     }
   }
@@ -162,15 +162,15 @@ onMounted(() => {
     <!-- Section Header -->
     <div class="border-b border-gray-200 p-4">
       <h2 class="text-lg font-semibold text-gray-900">
-        {{ t('admin.settings.brandingSection') }}
+        {{ t('settings.brandingSection') }}
       </h2>
       <p class="mt-1 text-sm text-gray-500">
-        {{ t('admin.settings.brandingSectionDesc') }}
+        {{ t('settings.brandingSectionDesc') }}
       </p>
     </div>
 
     <!-- Loading State -->
-    <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('admin.settings.loading')" />
+    <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('settings.loading')" />
 
     <!-- Form Content -->
     <div v-else class="p-4">
@@ -197,7 +197,7 @@ onMounted(() => {
             </svg>
           </div>
           <div class="ml-3">
-            <p class="text-sm text-green-700">{{ t('admin.settings.saveSuccess') }}</p>
+            <p class="text-sm text-green-700">{{ t('settings.saveSuccess') }}</p>
           </div>
         </div>
       </div>
@@ -207,36 +207,36 @@ onMounted(() => {
         <!-- App Name -->
         <div>
           <label for="appName" class="block text-sm font-medium text-gray-700 mb-1">
-            {{ t('admin.settings.appName') }}
+            {{ t('settings.appName') }}
           </label>
           <input
             id="appName"
             v-model="appName"
             type="text"
             :disabled="!canUpdate"
-            :placeholder="t('admin.settings.appNamePlaceholder')"
+            :placeholder="t('settings.appNamePlaceholder')"
             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
           <p class="mt-1 text-xs text-gray-500">
-            {{ t('admin.settings.appNameHelp') }}
+            {{ t('settings.appNameHelp') }}
           </p>
         </div>
 
         <!-- Product Name -->
         <div>
           <label for="productName" class="block text-sm font-medium text-gray-700 mb-1">
-            {{ t('admin.settings.productName') }}
+            {{ t('settings.productName') }}
           </label>
           <input
             id="productName"
             v-model="productName"
             type="text"
             :disabled="!canUpdate"
-            :placeholder="t('admin.settings.productNamePlaceholder')"
+            :placeholder="t('settings.productNamePlaceholder')"
             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
           <p class="mt-1 text-xs text-gray-500">
-            {{ t('admin.settings.productNameHelp') }}
+            {{ t('settings.productNameHelp') }}
           </p>
         </div>
       </div>
@@ -249,7 +249,7 @@ onMounted(() => {
           @click="cancelChanges"
           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ t('admin.settings.cancelButton') }}
+          {{ t('settings.cancelButton') }}
         </button>
         <button
           type="button"
@@ -261,7 +261,7 @@ onMounted(() => {
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          {{ saving ? t('admin.settings.saving') : t('admin.settings.saveButton') }}
+          {{ saving ? t('settings.saving') : t('settings.saveButton') }}
         </button>
       </div>
 

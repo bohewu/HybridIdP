@@ -1,0 +1,61 @@
+{
+  "pageTitle": "System Settings",
+  "pageSubtitle": "Manage system configuration and branding",
+  "loading": "Loading settings...",
+  "loadingError": "Failed to load settings: {message}",
+  "saveSuccess": "Settings saved successfully.",
+  "saveError": "Failed to save settings: {message}",
+  "brandingSection": "Branding Settings",
+  "brandingSectionDesc": "Customize application branding and display names",
+  "appName": "Application Name",
+  "appNamePlaceholder": "e.g., HybridAuth",
+  "appNameHelp": "Displayed in browser tab titles and admin interface",
+  "productName": "Product Name",
+  "productNamePlaceholder": "e.g., HybridAuth IdP",
+  "productNameHelp": "Displayed in page titles and branding",
+  "system": {
+    "title": "System Monitoring",
+    "description": "Configure background monitoring services."
+  },
+  "monitoring": {
+    "enable": "Enable Monitoring",
+    "enable_desc": "Main switch to enable or disable the background monitoring service.",
+    "activity_interval": "Activity Interval",
+    "security_interval": "Security Interval",
+    "metrics_interval": "Metrics Interval",
+    "seconds": "seconds"
+  },
+  "audit": {
+    "title": "Audit Log Retention",
+    "retention_days": "Retention Period (Days)",
+    "retention_days_desc": "Number of days to keep audit logs. 0 means keep forever."
+  },
+  "logging": {
+    "title": "Logging Settings",
+    "description": "Configure application logging levels dynamically.",
+    "globalLevel": "Global Log Level",
+    "globalLevelDesc": "Sets the minimum log level for all sinks (Console, File). Changes take effect immediately."
+  },
+  "emailSection": "Email Settings",
+  "emailSectionDesc": "Configure SMTP settings for outgoing emails.",
+  "host": "SMTP Host",
+  "port": "SMTP Port",
+  "username": "Username",
+  "password": "Password",
+  "enableSsl": "Enable SSL",
+  "fromAddress": "From Address",
+  "fromName": "From Name",
+  "testEmail": "Test Email",
+  "testEmailTitle": "Send Test Email",
+  "testEmailDesc": "Enter a recipient email address to send a test email using the current settings (saved or unsaved).",
+  "recipient": "Recipient Email",
+  "send": "Send",
+  "sending": "Sending...",
+  "testSuccess": "Test email sent successfully.",
+  "testError": "Failed to send test email: {message}",
+  "saveButton": "Save Changes",
+  "saving": "Saving...",
+  "cancelButton": "Cancel",
+  "noChanges": "No changes to save.",
+  "confirmCancel": "You have unsaved changes, are you sure you want to cancel?"
+}

@@ -49,7 +49,7 @@ const loadLevel = async () => {
         hasChanges.value = false;
     } catch (err) {
         console.error('Failed to load logging settings', err);
-        error.value = t('admin.settings.loadingError', { message: err.message });
+        error.value = t('settings.loadingError', { message: err.message });
     } finally {
         loading.value = false;
     }
@@ -82,7 +82,7 @@ const saveLevel = async () => {
 
     } catch (err) {
         console.error('Failed to save logging settings', err);
-        error.value = t('admin.settings.saveError', { message: err.message });
+        error.value = t('settings.saveError', { message: err.message });
     } finally {
         saving.value = false;
     }
@@ -103,11 +103,11 @@ onMounted(() => {
     <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <!-- Section Header -->
         <div class="border-b border-gray-200 p-4">
-            <h2 class="text-lg font-semibold text-gray-900">{{ t('admin.settings.logging.title') }}</h2>
-            <p class="mt-1 text-sm text-gray-500">{{ t('admin.settings.logging.description') }}</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ t('settings.logging.title') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ t('settings.logging.description') }}</p>
         </div>
 
-        <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('admin.settings.loading')" />
+        <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('settings.loading')" />
 
         <div v-else class="p-4">
              <!-- Error Alert -->
@@ -133,14 +133,14 @@ onMounted(() => {
                         </svg>
                     </div>
                     <div class="ml-3">
-                        <p class="text-sm text-green-700">{{ t('admin.settings.saveSuccess') }}</p>
+                        <p class="text-sm text-green-700">{{ t('settings.saveSuccess') }}</p>
                     </div>
                 </div>
             </div>
 
             <div class="form-control w-full max-w-sm">
                 <label for="globalLevel" class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ t('admin.settings.logging.globalLevel') }}
+                    {{ t('settings.logging.globalLevel') }}
                 </label>
                 <select 
                     id="globalLevel"
@@ -153,7 +153,7 @@ onMounted(() => {
                     </option>
                 </select>
                 <p class="mt-1 text-sm text-gray-500">
-                    {{ t('admin.settings.logging.globalLevelDesc') }}
+                    {{ t('settings.logging.globalLevelDesc') }}
                 </p>
             </div>
 
@@ -165,7 +165,7 @@ onMounted(() => {
                     @click="cancelChanges"
                     class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {{ t('admin.settings.cancelButton') }}
+                    {{ t('settings.cancelButton') }}
                 </button>
                 <button 
                     class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center" 
@@ -175,7 +175,7 @@ onMounted(() => {
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {{ saving ? t('admin.settings.saving') : t('admin.settings.saveButton') }}
+                    {{ saving ? t('settings.saving') : t('settings.saveButton') }}
                 </button>
             </div>
         </div>
