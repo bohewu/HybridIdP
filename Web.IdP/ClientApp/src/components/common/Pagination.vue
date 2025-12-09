@@ -6,20 +6,20 @@
         :disabled="page === 1"
         class="relative inline-flex items-center justify-center px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
       >
-        {{ $t('pagination.previous') }}
+        {{ $t('common.pagination.previous') }}
       </button>
       <button
         @click="emit('page-change', page + 1)"
         :disabled="page === totalPages"
         class="relative inline-flex items-center justify-center px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
       >
-        {{ $t('pagination.next') }}
+        {{ $t('common.pagination.next') }}
       </button>
     </div>
     <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
       <div>
         <p class="text-sm text-gray-700">
-          {{ $t('pagination.showing', { 
+          {{ $t('common.pagination.showing', { 
             from: (page - 1) * pageSize + 1, 
             to: Math.min(page * pageSize, totalCount), 
             total: totalCount 
@@ -32,10 +32,10 @@
           @change="emit('page-size-change', Number($event.target.value))"
           class="block px-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md transition-colors h-10"
         >
-          <option :value="10">{{ $t('pagination.perPage', { count: 10 }) }}</option>
-          <option :value="25">{{ $t('pagination.perPage', { count: 25 }) }}</option>
-          <option :value="50">{{ $t('pagination.perPage', { count: 50 }) }}</option>
-          <option :value="100">{{ $t('pagination.perPage', { count: 100 }) }}</option>
+          <option :value="10">{{ $t('common.pagination.perPage', { count: 10 }) }}</option>
+          <option :value="25">{{ $t('common.pagination.perPage', { count: 25 }) }}</option>
+          <option :value="50">{{ $t('common.pagination.perPage', { count: 50 }) }}</option>
+          <option :value="100">{{ $t('common.pagination.perPage', { count: 100 }) }}</option>
         </select>
         <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
           <button
@@ -43,7 +43,7 @@
             :disabled="page === 1"
             class="relative inline-flex items-center justify-center px-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
           >
-            <span class="sr-only">{{ $t('pagination.previous') }}</span>
+            <span class="sr-only">{{ $t('common.pagination.previous') }}</span>
             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
             </svg>
@@ -66,7 +66,7 @@
             :disabled="page === totalPages"
             class="relative inline-flex items-center justify-center px-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
           >
-            <span class="sr-only">{{ $t('pagination.next') }}</span>
+            <span class="sr-only">{{ $t('common.pagination.next') }}</span>
             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
             </svg>

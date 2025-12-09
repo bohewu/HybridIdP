@@ -1,0 +1,97 @@
+{
+  "loading": "載入中...",
+  "cancel": "取消",
+  "confirm": "確認",
+  "save": "儲存",
+  "close": "關閉",
+  "yes": "是",
+  "no": "否",
+  "accessDenied": {
+    "title": "拒絕存取",
+    "defaultMessage": "您沒有權限存取此資源。",
+    "requiredPermission": "需要的權限",
+    "contactAdmin": "如果您認為您應該有存取權限，請聯絡系統管理員。"
+  },
+  "validation": {
+    "required": "此欄位為必填項。",
+    "email": "請輸入有效的電子郵件地址。"
+  },
+  "buttons": {
+    "save": "儲存",
+    "saving": "儲存中...",
+    "cancel": "取消",
+    "close": "關閉",
+    "create": "建立",
+    "update": "更新",
+    "delete": "刪除",
+    "confirm": "確認",
+    "add": "新增",
+    "remove": "移除",
+    "edit": "編輯",
+    "view": "檢視",
+    "manage": "管理",
+    "saveRoles": "儲存角色",
+    "ok": "確定"
+  },
+  "searchPlaceholder": "搜尋...",
+  "filterOptions": {
+    "all": "所有狀態",
+    "activeOnly": "僅啟用",
+    "inactiveOnly": "僅停用"
+  },
+  "tableHeaders": {
+    "name": "名稱",
+    "clientId": "客戶端 ID",
+    "status": "狀態",
+    "actions": "操作",
+    "username": "使用者名稱",
+    "email": "電子郵件",
+    "department": "部門",
+    "roles": "角色",
+    "lastLogin": "上次登入",
+    "timestamp": "時間戳記",
+    "eventType": "事件類型",
+    "user": "使用者",
+    "details": "詳細資訊",
+    "ipAddress": "IP 位址"
+  },
+  "pagination": {
+    "previous": "上一頁",
+    "next": "下一頁",
+    "showing": "顯示第 {from} 至 {to} 項結果，共 {total} 項",
+    "perPage": "每頁 {count} 筆"
+  },
+  "modal": {
+    "close": "關閉"
+  },
+  "admin": {
+    "yes": "是",
+    "no": "否",
+    "enabled": "已啟用",
+    "disabled": "已停用",
+    "search": "搜尋...",
+    "noSearchResults": "找不到符合的結果",
+    "filter": "篩選",
+    "sort": "排序",
+    "actions": "操作",
+    "edit": "編輯",
+    "delete": "刪除",
+    "save": "儲存",
+    "cancel": "取消",
+    "close": "關閉",
+    "loading": "載入中...",
+    "error": "發生錯誤",
+    "success": "操作成功",
+    "confirm": "確認",
+    "pageInfo": "第 {page} 頁，共 {total} 頁"
+  },
+  "deniedMessages": {
+    "create": "您沒有新增使用者的權限。",
+    "edit": "您沒有編輯使用者的權限。",
+    "manageRoles": "您沒有管理使用者角色的權限。",
+    "deactivate": "您沒有停用使用者的權限。",
+    "delete": "您沒有刪除使用者的權限。",
+    "reactivate": "您沒有重新啟用使用者的權限。",
+    "view": "您沒有權限檢視此內容。"
+  }
+}

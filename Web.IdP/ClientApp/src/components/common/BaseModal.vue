@@ -161,7 +161,7 @@ const zIndexClass = computed(() => {
 
 // Close button aria-label
 const closeAriaLabel = computed(() => {
-  return t('modal.close', 'Close')
+  return t('common.modal.close', 'Close')
 })
 
 // Handle ESC key

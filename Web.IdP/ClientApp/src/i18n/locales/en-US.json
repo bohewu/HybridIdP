@@ -1,20 +1,6 @@
 
 {
-  "accessDenied": {
-    "title": "Access Denied",
-    "defaultMessage": "You do not have permission to access this resource.",
-    "requiredPermission": "Required Permission",
-    "contactAdmin": "Please contact your administrator if you believe you should have access."
-  },
-  "common": {
-    "loading": "Loading...",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "save": "Save",
-    "close": "Close",
-    "yes": "Yes",
-    "no": "No"
-  },
+
   "admin": {
 
 
@@ -132,11 +118,7 @@
     "ok": "OK"
   },
   "searchPlaceholder": "Search...",
-  "filterOptions": {
-    "all": "All Statuses",
-    "activeOnly": "Active Only",
-    "inactiveOnly": "Inactive Only"
-  },
+
   "tableHeaders": {
     "name": "Name",
     "clientId": "Client ID",
@@ -173,12 +155,7 @@
     "reactivate": "Reactivate User",
     "deletePermanently": "Delete User Permanently"
   },
-  "pagination": {
-    "previous": "Previous",
-    "next": "Next",
-    "showing": "Showing {from} to {to} of {total} results",
-    "perPage": "{count} / page"
-  },
+
 
 
   "claims": {
@@ -373,8 +350,5 @@
       "switchRoleFailed": "Failed to switch role",
       "switchAccountFailed": "Failed to switch account"
     }
-  },
-  "modal": {
-    "close": "Close"
   }
 }

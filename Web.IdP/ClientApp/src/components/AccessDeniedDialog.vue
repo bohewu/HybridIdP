@@ -39,7 +39,7 @@ const close = () => {
 <template>
   <BaseModal
     :show="show"
-    :title="t('accessDenied.title')"
+    :title="t('common.accessDenied.title')"
     size="md"
     :show-close-icon="true"
     :close-on-backdrop="true"
@@ -61,13 +61,13 @@ const close = () => {
         <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
           <div class="mt-2">
             <p class="text-sm text-gray-500">
-              {{ message || t('accessDenied.defaultMessage') }}
+              {{ message || t('common.accessDenied.defaultMessage') }}
             </p>
             <p v-if="requiredPermission" class="mt-2 text-xs text-gray-400">
-              {{ t('accessDenied.requiredPermission') }}: <code class="rounded bg-gray-100 px-2 py-1 text-gray-700">{{ requiredPermission }}</code>
+              {{ t('common.accessDenied.requiredPermission') }}: <code class="rounded bg-gray-100 px-2 py-1 text-gray-700">{{ requiredPermission }}</code>
             </p>
             <p v-if="contactAdmin" class="mt-2 text-xs text-gray-500">
-              {{ t('accessDenied.contactAdmin') }}
+              {{ t('common.accessDenied.contactAdmin') }}
             </p>
           </div>
         </div>
@@ -80,7 +80,7 @@ const close = () => {
         @click="close"
         class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
       >
-        {{ t('buttons.ok') }}
+        {{ t('common.buttons.ok') }}
       </button>
       <button 
         v-if="showCancel"
@@ -88,7 +88,7 @@ const close = () => {
         @click="close"
         class="mt-2.5 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
       >
-        {{ t('buttons.cancel') }}
+        {{ t('common.buttons.cancel') }}
       </button>
     </template>
   </BaseModal>

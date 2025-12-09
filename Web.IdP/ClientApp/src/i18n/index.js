@@ -34,7 +34,6 @@ function mergeModules(legacy, modules) {
     // If the file is common.json, merge at root level (or we can keep it strict)
     // But for now, let's namespace everything by filename to avoid collisions
     // EXCEPT common.json if we decide to have one.
-    // However, the plan is: admin.users -> users.json -> users.*
     // So messages['users'] = content of users.json
     messages[moduleName] = modules[path].default || modules[path]
   }
