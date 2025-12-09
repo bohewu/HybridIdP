@@ -256,20 +256,16 @@ const setupSignalR = async () => {
       .build()
 
     await hubConnection.value.start()
-    console.log('SignalR connected')
 
     // Listen for updates
     hubConnection.value.on('ActivityStatsUpdated', () => {
-      console.log('Activity stats updated')
       // Could refresh data here
     })
 
     hubConnection.value.on('SecurityAlertsUpdated', () => {
-      console.log('Security alerts updated')
     })
 
     hubConnection.value.on('SystemMetricsUpdated', () => {
-      console.log('System metrics updated')
     })
   } catch (err) {
     console.error('SignalR connection failed:', err)
