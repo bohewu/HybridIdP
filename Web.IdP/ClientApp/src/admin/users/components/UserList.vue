@@ -1,9 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import SearchInput from '@/components/common/SearchInput.vue'
-import Pagination from '@/components/common/Pagination.vue'
-import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 
 const { t } = useI18n()
 
@@ -131,12 +129,12 @@ const getSortIcon = (field) => {
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>{{ $t('tableHeaders.username') }}</span>
+                  <span>{{ $t('users.tableHeaders.username') }}</span>
                   <span v-html="getSortIcon('userName')"></span>
                 </div>
               </th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('common.tableHeaders.actions') }}
+                {{ $t('admin.common.actions') }}
               </th>
             </tr>
           </thead>
@@ -182,108 +180,73 @@ const getSortIcon = (field) => {
                 {{ formatDate(user.lastLoginDate) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-center">
-                <div class="inline-flex gap-1">
-                  <!-- Edit button - only show if canUpdate -->
-                  <button
-                    v-if="canUpdate"
-                    @click="emit('edit', user)"
-                    class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    :title="$t('users.edit')"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
-                  </button>
-                  
-                  <!-- Manage Roles button - only show if canUpdate -->
-                  <button
-                    v-if="canUpdate"
-                    @click="emit('manage-roles', user)"
-                    class="inline-flex items-center px-3 py-1.5 border border-blue-300 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    :title="$t('users.manageRoles')"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                    </svg>
-                  </button>
-
-                  <!-- Manage Sessions button - show if canUpdate or canRead -->
-                  <button
-                    v-if="canUpdate || canRead" @click="emit('manage-sessions', user)"
-                    class="inline-flex items-center px-3 py-1.5 border border-purple-300 text-purple-700 text-sm font-medium rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                    :title="$t('users.manageSessions')"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.5 8.5l5.5 5.5 5.5-5.5" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16v12H4z" />
-                    </svg>
-                  </button>
-
-                  <!-- Impersonate button - show if canImpersonate and user is active -->
-                  <button
-                    v-if="canImpersonate && user.isActive" 
-                    @click="emit('impersonate', user)"
-                    class="inline-flex items-center px-3 py-1.5 border border-pink-300 text-pink-700 text-sm font-medium rounded-md hover:bg-pink-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
-                    :title="$t('users.actions.impersonate')"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </button>
-
-                  <!-- View Login History button - show for all users -->
-                  <button
-                    @click="emit('view-login-history', user)"
-                    class="inline-flex items-center px-3 py-1.5 border border-cyan-300 text-cyan-700 text-sm font-medium rounded-md hover:bg-cyan-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
-                    :title="$t('users.loginHistory.title')"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </button>
-                  
-                  <!-- Deactivate button - only show if active and canDelete -->
-                  <button
-                    v-if="user.isActive && canDelete"
-                    @click="emit('deactivate', user)"
-                    class="inline-flex items-center px-3 py-1.5 border border-orange-300 text-orange-700 text-sm font-medium rounded-md hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-                    :title="$t('users.actions.deactivate')"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                    </svg>
-                  </button>
-                  
-                  <!-- Delete button - only show if canDelete (with warning) -->
-                  <button
-                    v-if="canDelete"
-                    @click="emit('delete', user)"
-                    class="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-700 text-sm font-medium rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    :title="$t('users.actions.deletePermanently')"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                  </button>
-                  
-                  <!-- Reactivate button - only show if inactive and canUpdate -->
-                  <button
-                    v-if="!user.isActive && canUpdate"
-                    @click="emit('reactivate', user)"
-                    class="inline-flex items-center px-3 py-1.5 border border-green-300 text-green-700 text-sm font-medium rounded-md hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    :title="$t('users.actions.reactivate')"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                  </button>
-                  
-                  <!-- Show message if no permissions -->
-                  <span v-if="!canUpdate && !canDelete" class="text-xs text-gray-400 italic">
-                    {{ $t('users.noActions') }}
-                  </span>
-                </div>
+                <ActionMenu>
+                  <template #trigger>
+                    <button class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                      </svg>
+                    </button>
+                  </template>
+                  <template #content="{ close }">
+                    <button
+                      v-if="canUpdate"
+                      @click="emit('edit', user); close()"
+                      class="text-left w-full block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      {{ t('users.edit') }}
+                    </button>
+                    <button
+                      v-if="canUpdate"
+                      @click="emit('manage-roles', user); close()"
+                      class="text-left w-full block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      {{ t('users.manageRoles') }}
+                    </button>
+                    <button
+                      v-if="canUpdate || canRead"
+                      @click="emit('manage-sessions', user); close()"
+                      class="text-left w-full block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      {{ t('users.manageSessions') }}
+                    </button>
+                    <button
+                      v-if="canImpersonate && user.isActive"
+                      @click="emit('impersonate', user); close()"
+                      class="text-left w-full block px-4 py-2 text-sm text-pink-700 hover:bg-pink-50"
+                    >
+                      {{ t('users.actions.impersonate') }}
+                    </button>
+                    <button
+                      @click="emit('view-login-history', user); close()"
+                      class="text-left w-full block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      {{ t('users.actions.viewLoginHistory') }}
+                    </button>
+                    <div class="border-t border-gray-100 my-1"></div>
+                    <button
+                      v-if="user.isActive && canDelete"
+                      @click="emit('deactivate', user); close()"
+                      class="text-left w-full block px-4 py-2 text-sm text-orange-600 hover:bg-orange-50"
+                    >
+                      {{ t('users.actions.deactivate') }}
+                    </button>
+                    <button
+                      v-if="!user.isActive && canUpdate"
+                      @click="emit('reactivate', user); close()"
+                      class="text-left w-full block px-4 py-2 text-sm text-green-600 hover:bg-green-50"
+                    >
+                      {{ t('users.actions.reactivate') }}
+                    </button>
+                    <button
+                      v-if="canDelete"
+                      @click="emit('delete', user); close()"
+                      class="text-left w-full block px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      {{ t('users.actions.deletePermanently') }}
+                    </button>
+                  </template>
+                </ActionMenu>
               </td>
             </tr>
           </tbody>

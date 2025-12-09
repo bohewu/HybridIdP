@@ -324,7 +324,9 @@ const handleImpersonate = async (user) => {
     })
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      const errData = await response.json().catch(() => ({}))
+      const errorMessage = errData.error || errData.message || `HTTP error! status: ${response.status}`
+      throw new Error(errorMessage)
     }
 
     // On success, reload the page to pick up the new identity cookies
@@ -438,6 +440,14 @@ onMounted(() => {
         }"
         @close="handleFormClose"
         @save="handleFormSave"
+      />
+
+      <RoleAssignment
+        v-if="showRoleDialog"
+        :user="selectedUser"
+        :can-update="canUpdate"
+        @close="handleRoleDialogClose"
+        @save="handleRolesSaved"
       />
 
       <UserSessions
