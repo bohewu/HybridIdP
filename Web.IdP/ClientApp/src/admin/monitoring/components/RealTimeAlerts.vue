@@ -45,12 +45,23 @@ const startSignalRConnection = async () => {
       .build()
 
     connection.value.on('SecurityAlertsUpdated', (updatedAlerts) => {
-      console.log('Received security alerts update:', updatedAlerts)
+      // console.log('Received security alerts update:', updatedAlerts)
       alerts.value = updatedAlerts
     })
 
+    connection.value.on('ReceiveSecurityAlerts', (updatedAlerts) => {
+      // console.log('Received security alerts update:', updatedAlerts)
+      alerts.value = updatedAlerts
+      loading.value = false
+    })
+
+    connection.value.onclose(() => {
+      // console.log('SignalR connection stopped')
+      loading.value = false
+    })
+
     await connection.value.start()
-    console.log('SignalR connection started for monitoring')
+    // console.log('SignalR connection started for monitoring')
   } catch (err) {
     console.error('SignalR connection failed:', err)
   }
@@ -59,7 +70,7 @@ const startSignalRConnection = async () => {
 const stopSignalRConnection = async () => {
   if (connection.value) {
     await connection.value.stop()
-    console.log('SignalR connection stopped')
+    // console.log('SignalR connection stopped')
   }
 }
 

@@ -184,7 +184,7 @@ const getSortIcon = (field) => {
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ formatDate(user.lastLoginDate) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-center align-middle">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <ActionMenu>
                   <template #trigger>
                     <button class="text-gray-400 hover:text-gray-600 focus:outline-none">

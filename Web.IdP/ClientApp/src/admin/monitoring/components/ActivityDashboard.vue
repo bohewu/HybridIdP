@@ -50,12 +50,12 @@ const startSignalRConnection = async () => {
       .build()
 
     connection.value.on('ActivityStatsUpdated', (updatedStats) => {
-      console.log('Received activity stats update:', updatedStats)
+      // console.log('Received activity stats update:', updatedStats)
       stats.value = updatedStats
     })
 
     await connection.value.start()
-    console.log('SignalR connection started for monitoring')
+    // console.log('SignalR connection started for monitoring')
   } catch (err) {
     console.error('SignalR connection failed:', err)
   }
@@ -64,7 +64,7 @@ const startSignalRConnection = async () => {
 const stopSignalRConnection = async () => {
   if (connection.value) {
     await connection.value.stop()
-    console.log('SignalR connection stopped')
+    // console.log('SignalR connection stopped')
   }
 }
 
