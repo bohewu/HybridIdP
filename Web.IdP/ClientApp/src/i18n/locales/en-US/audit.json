@@ -1,0 +1,40 @@
+{
+  "pageTitle": "Audit Log Viewer",
+  "pageSubtitle": "View and monitor system audit events for compliance and security",
+  "noPermission": "You do not have permission to view audit logs.",
+  "loading": "Loading audit events...",
+  "errorLoading": "Error loading audit events",
+  "noEvents": "No audit events found.",
+  "events": "Audit Events ({count})",
+  "refresh": "Refresh",
+  "never": "Never",
+  "system": "System",
+  "unknown": "Unknown",
+  "filters": {
+    "title": "Filters",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "user": "User",
+    "userPlaceholder": "Search by user ID or email...",
+    "eventType": "Event Type",
+    "allEventTypes": "All Event Types",
+    "ipAddress": "IP Address",
+    "ipPlaceholder": "Filter by IP address...",
+    "search": "General Search",
+    "searchPlaceholder": "Search in details...",
+    "clear": "Clear Filters"
+  },
+  "export": {
+    "title": "Export Audit Logs",
+    "csv": "Export as CSV",
+    "excel": "Export as Excel",
+    "noData": "No data to export"
+  },
+  "tableHeaders": {
+    "timestamp": "Timestamp",
+    "eventType": "Event Type",
+    "user": "User",
+    "details": "Details",
+    "ipAddress": "IP Address"
+  }
+}

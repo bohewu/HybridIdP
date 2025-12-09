@@ -1,0 +1,40 @@
+{
+  "pageTitle": "稽核日誌檢視器",
+  "pageSubtitle": "檢視和監控系統稽核事件以確保合規性和安全性",
+  "noPermission": "您沒有權限檢視稽核日誌。",
+  "loading": "載入稽核事件中...",
+  "errorLoading": "載入稽核事件時發生錯誤",
+  "noEvents": "未找到稽核事件。",
+  "events": "稽核事件 ({count})",
+  "refresh": "重新整理",
+  "never": "從未",
+  "system": "系統",
+  "unknown": "未知",
+  "filters": {
+    "title": "篩選器",
+    "startDate": "開始日期",
+    "endDate": "結束日期",
+    "user": "使用者",
+    "userPlaceholder": "依使用者 ID 或電子郵件搜尋...",
+    "eventType": "事件類型",
+    "allEventTypes": "所有事件類型",
+    "ipAddress": "IP 位址",
+    "ipPlaceholder": "依 IP 位址篩選...",
+    "search": "一般搜尋",
+    "searchPlaceholder": "在詳細資訊中搜尋...",
+    "clear": "清除篩選器"
+  },
+  "export": {
+    "title": "匯出稽核日誌",
+    "csv": "匯出為 CSV",
+    "excel": "匯出為 Excel",
+    "noData": "沒有資料可匯出"
+  },
+  "tableHeaders": {
+    "timestamp": "時間戳記",
+    "eventType": "事件類型",
+    "user": "使用者",
+    "details": "詳細資訊",
+    "ipAddress": "IP 位址"
+  }
+}

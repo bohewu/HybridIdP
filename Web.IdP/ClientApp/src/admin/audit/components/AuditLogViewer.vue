@@ -27,7 +27,7 @@ const totalPages = computed(() => {
 })
 
 const formatDate = (dateString) => {
-  if (!dateString) return t('admin.audit.never')
+  if (!dateString) return t('audit.never')
   return new Date(dateString).toLocaleString()
 }
 
@@ -88,25 +88,25 @@ const getSortIcon = (field) => {
             </svg>
           </div>
           <div class="ml-3">
-            <p class="text-sm text-red-800">{{ t('admin.audit.errorLoading') }}: {{ error }}</p>
+            <p class="text-sm text-red-800">{{ t('audit.errorLoading') }}: {{ error }}</p>
           </div>
         </div>
       </div>
 
       <!-- Loading State -->
-      <LoadingIndicator v-if="loading" :loading="loading" size="md" :message="t('admin.audit.loading')" />
+      <LoadingIndicator v-if="loading" :loading="loading" size="md" :message="t('audit.loading')" />
 
       <!-- Empty State -->
       <div v-else-if="auditEvents.length === 0" class="text-center py-12">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
         </svg>
-        <p class="mt-2 text-sm text-gray-600">{{ t('admin.audit.noEvents') }}</p>
+        <p class="mt-2 text-sm text-gray-600">{{ t('audit.noEvents') }}</p>
       </div>
 
       <!-- Table Header with Refresh -->
       <div v-if="!loading && auditEvents.length > 0" class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-        <h3 class="text-sm font-medium text-gray-900">{{ t('admin.audit.events', { count: totalCount }) }}</h3>
+        <h3 class="text-sm font-medium text-gray-900">{{ t('audit.events', { count: totalCount }) }}</h3>
         <button
           @click="emit('refresh')"
           class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -114,7 +114,7 @@ const getSortIcon = (field) => {
           <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
-          {{ t('admin.audit.refresh') }}
+          {{ t('audit.refresh') }}
         </button>
       </div>
 
@@ -127,7 +127,7 @@ const getSortIcon = (field) => {
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>{{ t('admin.audit.tableHeaders.timestamp') }}</span>
+                  <span>{{ t('audit.tableHeaders.timestamp') }}</span>
                   <span>^</span>
                 </div>
               </th>
@@ -136,7 +136,7 @@ const getSortIcon = (field) => {
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>{{ t('admin.audit.tableHeaders.eventType') }}</span>
+                  <span>{{ t('audit.tableHeaders.eventType') }}</span>
                   <span>^</span>
                 </div>
               </th>
@@ -145,15 +145,15 @@ const getSortIcon = (field) => {
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>{{ t('admin.audit.tableHeaders.user') }}</span>
+                  <span>{{ t('audit.tableHeaders.user') }}</span>
                   <span>^</span>
                 </div>
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ t('admin.audit.tableHeaders.details') }}
+                {{ t('audit.tableHeaders.details') }}
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ t('admin.audit.tableHeaders.ipAddress') }}
+                {{ t('audit.tableHeaders.ipAddress') }}
               </th>
             </tr>
           </thead>
@@ -170,13 +170,13 @@ const getSortIcon = (field) => {
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ event.user || t('admin.audit.system') }}
+                {{ event.user || t('audit.system') }}
               </td>
               <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" :title="event.details">
                 {{ event.details }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ event.ipAddress || t('admin.audit.unknown') }}
+                {{ event.ipAddress || t('audit.unknown') }}
               </td>
             </tr>
           </tbody>
