@@ -1,8 +1,8 @@
 <template>
   <div class="px-4 sm:px-6 lg:px-8 py-8"
-       v-loading="{ loading: loading, overlay: true, message: $t('admin.security.loading') }">
+       v-loading="{ loading: loading, overlay: true, message: $t('security.loading') }">
     <!-- Page Header -->
-    <PageHeader :title="$t('admin.security.pageTitle')" :subtitle="$t('admin.security.pageSubtitle')">
+    <PageHeader :title="$t('security.pageTitle')" :subtitle="$t('security.pageSubtitle')">
       <template #actions>
         <button
           type="button"
@@ -15,7 +15,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          {{ isSaving ? $t('admin.security.saving') : $t('admin.security.saveButton') }}
+          {{ isSaving ? $t('security.saving') : $t('security.saveButton') }}
         </button>
       </template>
     </PageHeader>
@@ -30,23 +30,23 @@
       <!-- Password Requirements -->
       <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <div class="px-4 py-5 sm:px-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('admin.security.passwordRequirements') }}</h3>
+          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('security.passwordRequirements') }}</h3>
         </div>
         <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
           <dl class="sm:divide-y sm:divide-gray-200">
-            <FormRow :label="$t('admin.security.minLength')" for-id="minLength">
+            <FormRow :label="$t('security.minLength')" for-id="minLength">
               <input type="number" id="minLength" v-model.number="policy.minPasswordLength" min="6" max="128" class="form-input-sm">
             </FormRow>
-            <FormRow :label="$t('admin.security.requireUppercase')">
+            <FormRow :label="$t('security.requireUppercase')">
               <ToggleSwitch v-model="policy.requireUppercase" />
             </FormRow>
-            <FormRow :label="$t('admin.security.requireLowercase')">
+            <FormRow :label="$t('security.requireLowercase')">
               <ToggleSwitch v-model="policy.requireLowercase" />
             </FormRow>
-            <FormRow :label="$t('admin.security.requireDigit')">
+            <FormRow :label="$t('security.requireDigit')">
               <ToggleSwitch v-model="policy.requireDigit" />
             </FormRow>
-            <FormRow :label="$t('admin.security.requireNonAlphanumeric')">
+            <FormRow :label="$t('security.requireNonAlphanumeric')">
               <ToggleSwitch v-model="policy.requireNonAlphanumeric" />
             </FormRow>
           </dl>
@@ -56,17 +56,17 @@
       <!-- Password History & Expiration -->
       <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <div class="px-4 py-5 sm:px-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('admin.security.passwordHistory') }}</h3>
+          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('security.passwordHistory') }}</h3>
         </div>
         <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
           <dl class="sm:divide-y sm:divide-gray-200">
-            <FormRow :label="$t('admin.security.historyCount')" for-id="historyCount" :help-text="$t('admin.security.historyCountHelp')">
+            <FormRow :label="$t('security.historyCount')" for-id="historyCount" :help-text="$t('security.historyCountHelp')">
               <input type="number" id="historyCount" v-model.number="policy.passwordHistoryCount" min="0" max="24" class="form-input-sm">
             </FormRow>
-            <FormRow :label="$t('admin.security.expirationDays')" for-id="expirationDays" :help-text="$t('admin.security.expirationDaysHelp')">
+            <FormRow :label="$t('security.expirationDays')" for-id="expirationDays" :help-text="$t('security.expirationDaysHelp')">
               <input type="number" id="expirationDays" v-model.number="policy.passwordExpirationDays" min="0" max="365" class="form-input-sm">
             </FormRow>
-            <FormRow :label="$t('admin.security.minAgeDays')" for-id="minAgeDays" :help-text="$t('admin.security.minAgeDaysHelp')">
+            <FormRow :label="$t('security.minAgeDays')" for-id="minAgeDays" :help-text="$t('security.minAgeDaysHelp')">
               <input type="number" id="minAgeDays" v-model.number="policy.minPasswordAgeDays" min="0" max="365" class="form-input-sm">
             </FormRow>
           </dl>
@@ -76,14 +76,14 @@
       <!-- Account Lockout -->
       <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <div class="px-4 py-5 sm:px-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('admin.security.accountLockout') }}</h3>
+          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('security.accountLockout') }}</h3>
         </div>
         <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
           <dl class="sm:divide-y sm:divide-gray-200">
-            <FormRow :label="$t('admin.security.maxFailedAttempts')" for-id="maxFailedAttempts" :help-text="$t('admin.security.maxFailedAttemptsHelp')">
+            <FormRow :label="$t('security.maxFailedAttempts')" for-id="maxFailedAttempts" :help-text="$t('security.maxFailedAttemptsHelp')">
               <input type="number" id="maxFailedAttempts" v-model.number="policy.maxFailedAccessAttempts" min="3" max="20" class="form-input-sm">
             </FormRow>
-            <FormRow :label="$t('admin.security.lockoutDuration')" for-id="lockoutDuration" :help-text="$t('admin.security.lockoutDurationHelp')">
+            <FormRow :label="$t('security.lockoutDuration')" for-id="lockoutDuration" :help-text="$t('security.lockoutDurationHelp')">
               <input type="number" id="lockoutDuration" v-model.number="policy.lockoutDurationMinutes" min="1" max="1440" class="form-input-sm">
             </FormRow>
           </dl>
@@ -93,14 +93,14 @@
       <!-- Abnormal Login Detection -->
       <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <div class="px-4 py-5 sm:px-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('admin.security.abnormalLoginDetection') }}</h3>
+          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('security.abnormalLoginDetection') }}</h3>
         </div>
         <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
           <dl class="sm:divide-y sm:divide-gray-200">
-            <FormRow :label="$t('admin.security.abnormalLoginHistoryCount')" for-id="abnormalLoginHistoryCount" :help-text="$t('admin.security.abnormalLoginHistoryCountHelp')">
+            <FormRow :label="$t('security.abnormalLoginHistoryCount')" for-id="abnormalLoginHistoryCount" :help-text="$t('security.abnormalLoginHistoryCountHelp')">
               <input type="number" id="abnormalLoginHistoryCount" v-model.number="policy.abnormalLoginHistoryCount" min="1" max="100" class="form-input-sm">
             </FormRow>
-            <FormRow :label="$t('admin.security.blockAbnormalLogin')" :help-text="$t('admin.security.blockAbnormalLoginHelp')">
+            <FormRow :label="$t('security.blockAbnormalLogin')" :help-text="$t('security.blockAbnormalLoginHelp')">
               <ToggleSwitch v-model="policy.blockAbnormalLogin" />
             </FormRow>
           </dl>
@@ -138,7 +138,7 @@ const fetchPolicy = async () => {
   try {
     const response = await fetch('/api/admin/security/policies');
     if (!response.ok) {
-      throw new Error(t('admin.security.loadingError', { message: `${response.status} ${response.statusText}` }));
+      throw new Error(t('security.loadingError', { message: `${response.status} ${response.statusText}` }));
     }
     const data = await response.json();
     policy.value = data;
@@ -162,10 +162,10 @@ const savePolicy = async () => {
     if (!response.ok) {
       const errorData = await response.json();
       const errorMessages = Object.values(errorData.errors || {}).flat().join(', ');
-      throw new Error(errorMessages || t('admin.security.saveError', { message: response.statusText }));
+      throw new Error(errorMessages || t('security.saveError', { message: response.statusText }));
     }
     originalPolicy.value = JSON.parse(JSON.stringify(policy.value)); // Update original state
-    notification.value = { message: t('admin.security.saveSuccess'), type: 'success' };
+    notification.value = { message: t('security.saveSuccess'), type: 'success' };
   } catch (e) {
     notification.value = { message: e.message, type: 'error' };
   } finally {
