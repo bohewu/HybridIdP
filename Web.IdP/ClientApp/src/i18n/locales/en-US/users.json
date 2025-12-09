@@ -58,6 +58,30 @@
   "changePasswordOptional": "Change Password (Optional)",
   "updateUser": "Update User",
   "noActions": "No actions available",
+  "employeeId": "Employee ID",
+  "cancel": "Cancel",
+  "saving": "Saving...",
+  "editUser": "Edit User",
+  "createNewUser": "Create New User",
+  "passwordRequired": "Password is required",
+  "confirmPasswordRequired": "Confirm Password is required",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "leaveBlankToKeepCurrent": "Leave blank to keep current password",
+  "passwordMustContain": "Password must contain:",
+  "passwordReqs": {
+    "minLength": "At least {n} characters",
+    "uppercase": "At least one uppercase letter",
+    "lowercase": "At least one lowercase letter",
+    "digit": "At least one digit",
+    "specialChar": "At least one special character"
+  },
+  "passwordErrors": {
+    "minLength": "Password must be at least {n} characters long",
+    "uppercase": "Password must contain at least one uppercase letter",
+    "lowercase": "Password must contain at least one lowercase letter",
+    "digit": "Password must contain at least one digit",
+    "specialChar": "Password must contain at least one special character"
+  },
   "confirmations": {
     "deactivate": "Are you sure you want to deactivate {email}?",
     "deleteWarning": "Warning: Deleting {email} is permanent.",
@@ -75,7 +99,9 @@
     "deactivateFailed": "Failed to deactivate: {message}",
     "deleteFailed": "Failed to delete: {message}",
     "reactivateFailed": "Failed to reactivate: {message}",
-    "impersonateFailed": "Failed to impersonate: {message}"
+    "impersonateFailed": "Failed to impersonate: {message}",
+    "saveFailed": "Failed to save user.",
+    "unknownSaveFailed": "An unknown error occurred while saving the user."
   },
   "tableHeaders": {
       "username": "Username"
