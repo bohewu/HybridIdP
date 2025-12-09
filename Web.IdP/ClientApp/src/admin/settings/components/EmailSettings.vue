@@ -83,7 +83,7 @@ const loadSettings = async () => {
     }
   } catch (err) {
     console.error('Failed to load email settings:', err)
-    error.value = t('admin.settings.loadingError', { message: err.message })
+    error.value = t('settings.loadingError', { message: err.message })
   } finally {
     loading.value = false
   }
@@ -140,14 +140,14 @@ const saveSettings = async () => {
     setTimeout(() => showSuccess.value = false, 3000)
   } catch (err) {
     console.error('Failed to save email settings:', err)
-    error.value = t('admin.settings.saveError', { message: err.message })
+    error.value = t('settings.saveError', { message: err.message })
   } finally {
     saving.value = false
   }
 }
 
 const cancelChanges = () => {
-  if (hasChanges.value && !confirm(t('admin.settings.confirmCancel'))) return
+  if (hasChanges.value && !confirm(t('settings.confirmCancel'))) return
   
   host.value = originals.value.host
   port.value = originals.value.port
@@ -196,7 +196,7 @@ const sendTestEmail = async () => {
         testRecipient.value = ''
     }, 2000)
   } catch (err) {
-    testError.value = t('admin.settings.testError', { message: err.message })
+    testError.value = t('settings.testError', { message: err.message })
   } finally {
     sendingTest.value = false
   }
@@ -209,75 +209,75 @@ onMounted(loadSettings)
   <div class="bg-white shadow-sm rounded-lg border border-gray-200 mt-6">
     <div class="border-b border-gray-200 p-4 flex justify-between items-center">
       <div>
-        <h2 class="text-lg font-semibold text-gray-900">{{ t('admin.settings.emailSection') }}</h2>
-        <p class="mt-1 text-sm text-gray-500">{{ t('admin.settings.emailSectionDesc') }}</p>
+        <h2 class="text-lg font-semibold text-gray-900">{{ t('settings.emailSection') }}</h2>
+        <p class="mt-1 text-sm text-gray-500">{{ t('settings.emailSectionDesc') }}</p>
       </div>
       <button 
         v-if="canUpdate"
         @click="showTestDialog = true"
         class="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100"
       >
-        {{ t('admin.settings.testEmail') }}
+        {{ t('settings.testEmail') }}
       </button>
     </div>
 
-    <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('admin.settings.loading')" />
+    <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('settings.loading')" />
 
     <div v-else class="p-4">
       <!-- Alerts -->
       <div v-if="error" class="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{{ error }}</div>
-      <div v-if="showSuccess" class="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">{{ t('admin.settings.saveSuccess') }}</div>
+      <div v-if="showSuccess" class="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">{{ t('settings.saveSuccess') }}</div>
 
       <!-- Form -->
       <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
         <div class="sm:col-span-4">
-          <label class="block text-sm font-medium text-gray-700">{{ t('admin.settings.host') }}</label>
+          <label class="block text-sm font-medium text-gray-700">{{ t('settings.host') }}</label>
           <input v-model="host" :disabled="!canUpdate" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="smtp.example.com" />
         </div>
 
         <div class="sm:col-span-2">
-          <label class="block text-sm font-medium text-gray-700">{{ t('admin.settings.port') }}</label>
+          <label class="block text-sm font-medium text-gray-700">{{ t('settings.port') }}</label>
           <input v-model.number="port" :disabled="!canUpdate" type="number" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="587" />
         </div>
 
         <div class="sm:col-span-3">
-          <label class="block text-sm font-medium text-gray-700">{{ t('admin.settings.username') }}</label>
+          <label class="block text-sm font-medium text-gray-700">{{ t('settings.username') }}</label>
           <input v-model="username" :disabled="!canUpdate" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="user@example.com" />
         </div>
 
         <div class="sm:col-span-3">
-          <label class="block text-sm font-medium text-gray-700">{{ t('admin.settings.password') }}</label>
+          <label class="block text-sm font-medium text-gray-700">{{ t('settings.password') }}</label>
           <input v-model="password" :disabled="!canUpdate" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="••••••••" />
         </div>
 
         <div class="sm:col-span-6">
             <div class="flex items-center">
                 <input id="enableSsl" v-model="enableSsl" :disabled="!canUpdate" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                <label for="enableSsl" class="ml-2 block text-sm text-gray-900">{{ t('admin.settings.enableSsl') }}</label>
+                <label for="enableSsl" class="ml-2 block text-sm text-gray-900">{{ t('settings.enableSsl') }}</label>
             </div>
         </div>
 
         <div class="sm:col-span-3">
-          <label class="block text-sm font-medium text-gray-700">{{ t('admin.settings.fromAddress') }}</label>
+          <label class="block text-sm font-medium text-gray-700">{{ t('settings.fromAddress') }}</label>
           <input v-model="fromAddress" :disabled="!canUpdate" type="email" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="no-reply@example.com" />
         </div>
 
         <div class="sm:col-span-3">
-          <label class="block text-sm font-medium text-gray-700">{{ t('admin.settings.fromName') }}</label>
+          <label class="block text-sm font-medium text-gray-700">{{ t('settings.fromName') }}</label>
           <input v-model="fromName" :disabled="!canUpdate" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="HybridAuth IdP" />
         </div>
       </div>
 
       <div v-if="canUpdate" class="mt-6 flex justify-end gap-3">
         <button @click="cancelChanges" :disabled="!hasChanges || saving" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50">
-          {{ t('admin.settings.cancelButton') }}
+          {{ t('settings.cancelButton') }}
         </button>
         <button @click="saveSettings" :disabled="!hasChanges || saving" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 disabled:opacity-50 flex items-center">
           <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          {{ saving ? t('admin.settings.saving') : t('admin.settings.saveButton') }}
+          {{ saving ? t('settings.saving') : t('settings.saveButton') }}
         </button>
       </div>
     </div>
@@ -285,7 +285,7 @@ onMounted(loadSettings)
     <!-- Test Email Modal -->
     <BaseModal 
       :show="showTestDialog" 
-      :title="t('admin.settings.testEmailTitle')"
+      :title="t('settings.testEmailTitle')"
       size="md"
       :show-close-icon="true"
       :close-on-backdrop="false"
@@ -295,9 +295,9 @@ onMounted(loadSettings)
     >
       <template #body>
         <div class="space-y-4">
-          <p class="text-sm text-gray-500">{{ t('admin.settings.testEmailDesc') }}</p>
+          <p class="text-sm text-gray-500">{{ t('settings.testEmailDesc') }}</p>
           <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t('admin.settings.recipient') }}</label>
+            <label class="block text-sm font-medium text-gray-700">{{ t('settings.recipient') }}</label>
             <input 
               v-model="testRecipient" 
               type="email" 
@@ -306,7 +306,7 @@ onMounted(loadSettings)
             />
           </div>
           <div v-if="testError" class="text-sm text-red-600 bg-red-50 p-2 rounded">{{ testError }}</div>
-          <div v-if="testSuccess" class="text-sm text-green-600 bg-green-50 p-2 rounded">{{ t('admin.settings.testSuccess') }}</div>
+          <div v-if="testSuccess" class="text-sm text-green-600 bg-green-50 p-2 rounded">{{ t('settings.testSuccess') }}</div>
         </div>
       </template>
 
@@ -316,7 +316,7 @@ onMounted(loadSettings)
           :disabled="!testRecipient || sendingTest" 
           class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
         >
-          {{ sendingTest ? t('admin.settings.sending') : t('admin.settings.send') }}
+          {{ sendingTest ? t('settings.sending') : t('settings.send') }}
         </button>
         <button 
           @click="showTestDialog = false" 

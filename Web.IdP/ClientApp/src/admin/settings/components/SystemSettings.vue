@@ -72,7 +72,7 @@ const loadSettings = async () => {
 
     } catch (err) {
         console.error('Failed to load settings', err);
-        error.value = t('admin.settings.loadingError', { message: err.message });
+        error.value = t('settings.loadingError', { message: err.message });
     } finally {
         loading.value = false;
     }
@@ -133,14 +133,14 @@ const saveSettings = async () => {
 
     } catch (err) {
         console.error('Failed to save settings', err);
-        error.value = t('admin.settings.saveError', { message: err.message });
+        error.value = t('settings.saveError', { message: err.message });
     } finally {
         saving.value = false;
     }
 };
 
 const cancelChanges = () => {
-    if (hasChanges.value && confirm(t('admin.settings.confirmCancel'))) {
+    if (hasChanges.value && confirm(t('settings.confirmCancel'))) {
          settings.value = { ...originalSettings.value };
     } else if (hasChanges.value) {
         // do nothing if not confirmed
@@ -158,12 +158,12 @@ onMounted(() => {
     <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <!-- Section Header -->
         <div class="border-b border-gray-200 p-4">
-            <h2 class="text-lg font-semibold text-gray-900">{{ t('admin.settings.system.title') }}</h2>
-            <p class="mt-1 text-sm text-gray-500">{{ t('admin.settings.system.description') }}</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ t('settings.system.title') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ t('settings.system.description') }}</p>
         </div>
 
         <!-- Loading State -->
-        <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('admin.settings.loading')" />
+        <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('settings.loading')" />
 
         <div v-else class="p-4">
             <!-- Error Alert -->
@@ -189,17 +189,17 @@ onMounted(() => {
                         </svg>
                     </div>
                     <div class="ml-3">
-                        <p class="text-sm text-green-700">{{ t('admin.settings.saveSuccess') }}</p>
+                        <p class="text-sm text-green-700">{{ t('settings.saveSuccess') }}</p>
                     </div>
                 </div>
             </div>
 
             <!-- Audit Retention Section -->
             <div class="mb-6">
-                <h3 class="text-md font-medium text-gray-900 mb-2">{{ t('admin.settings.audit.title') }}</h3>
+                <h3 class="text-md font-medium text-gray-900 mb-2">{{ t('settings.audit.title') }}</h3>
                 <div class="form-control w-full max-w-sm">
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ t('admin.settings.audit.retention_days') }}
+                        {{ t('settings.audit.retention_days') }}
                     </label>
                     <input
                         type="number"
@@ -208,22 +208,22 @@ onMounted(() => {
                         :disabled="!canUpdate"
                         class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
                     />
-                    <p class="mt-1 text-sm text-gray-500">{{ t('admin.settings.audit.retention_days_desc') }}</p>
+                    <p class="mt-1 text-sm text-gray-500">{{ t('settings.audit.retention_days_desc') }}</p>
                 </div>
             </div>
 
             <div class="divider my-4"></div>
 
             <!-- Monitoring Section -->
-             <h3 class="text-md font-medium text-gray-900 mb-2">{{ t('admin.settings.system.title') }}</h3>
+             <h3 class="text-md font-medium text-gray-900 mb-2">{{ t('settings.system.title') }}</h3>
 
             <!-- Monitoring Toggle -->
             <div class="form-control mb-6">
                 <label class="label cursor-pointer justify-start gap-4">
-                    <span class="label-text font-bold text-gray-700 mr-4">{{ t('admin.settings.monitoring.enable') }}</span>
+                    <span class="label-text font-bold text-gray-700 mr-4">{{ t('settings.monitoring.enable') }}</span>
                     <input type="checkbox" class="toggle toggle-primary" v-model="settings.monitoringEnabled" :disabled="!canUpdate" />
                 </label>
-                <p class="text-sm text-gray-500 mt-1">{{ t('admin.settings.monitoring.enable_desc') }}</p>
+                <p class="text-sm text-gray-500 mt-1">{{ t('settings.monitoring.enable_desc') }}</p>
             </div>
 
             <!-- Intervals Grid -->
@@ -231,7 +231,7 @@ onMounted(() => {
                 <!-- Activity Interval -->
                 <div class="form-control w-full">
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ t('admin.settings.monitoring.activity_interval') }}
+                        {{ t('settings.monitoring.activity_interval') }}
                     </label>
                     <div class="flex items-center gap-2">
                         <input
@@ -241,14 +241,14 @@ onMounted(() => {
                             :disabled="!canUpdate"
                             class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
                         />
-                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('admin.settings.monitoring.seconds') }}</span>
+                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('settings.monitoring.seconds') }}</span>
                     </div>
                 </div>
 
                 <!-- Security Interval -->
                 <div class="form-control w-full">
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ t('admin.settings.monitoring.security_interval') }}
+                        {{ t('settings.monitoring.security_interval') }}
                     </label>
                     <div class="flex items-center gap-2">
                         <input
@@ -258,14 +258,14 @@ onMounted(() => {
                             :disabled="!canUpdate"
                             class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
                         />
-                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('admin.settings.monitoring.seconds') }}</span>
+                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('settings.monitoring.seconds') }}</span>
                     </div>
                 </div>
 
                 <!-- Metrics Interval -->
                 <div class="form-control w-full">
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ t('admin.settings.monitoring.metrics_interval') }}
+                        {{ t('settings.monitoring.metrics_interval') }}
                     </label>
                      <div class="flex items-center gap-2">
                         <input
@@ -275,7 +275,7 @@ onMounted(() => {
                             :disabled="!canUpdate"
                             class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
                         />
-                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('admin.settings.monitoring.seconds') }}</span>
+                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('settings.monitoring.seconds') }}</span>
                     </div>
                 </div>
             </div>
@@ -288,7 +288,7 @@ onMounted(() => {
                     @click="cancelChanges"
                     class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {{ t('admin.settings.cancelButton') }}
+                    {{ t('settings.cancelButton') }}
                 </button>
                 <button 
                     data-testid="save-settings-btn"
@@ -299,7 +299,7 @@ onMounted(() => {
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {{ saving ? t('admin.settings.saving') : t('admin.settings.saveButton') }}
+                    {{ saving ? t('settings.saving') : t('settings.saveButton') }}
                 </button>
             </div>
         </div>
