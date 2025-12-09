@@ -91,7 +91,7 @@ onUnmounted(() => {
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.activeSessions }}</div>
-          <div class="stat-label">{{ t('admin.monitoring.activityDashboard.activeSessions') }}</div>
+          <div class="stat-label">{{ t('monitoring.activityDashboard.activeSessions') }}</div>
         </div>
       </div>
 
@@ -101,7 +101,7 @@ onUnmounted(() => {
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.totalLogins }}</div>
-          <div class="stat-label">{{ t('admin.monitoring.activityDashboard.totalLogins') }}</div>
+          <div class="stat-label">{{ t('monitoring.activityDashboard.totalLogins') }}</div>
         </div>
       </div>
 
@@ -111,7 +111,7 @@ onUnmounted(() => {
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.failedLogins }}</div>
-          <div class="stat-label">{{ t('admin.monitoring.activityDashboard.failedLogins') }}</div>
+          <div class="stat-label">{{ t('monitoring.activityDashboard.failedLogins') }}</div>
         </div>
       </div>
 
@@ -121,7 +121,7 @@ onUnmounted(() => {
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ stats.riskScore }}</div>
-          <div class="stat-label">{{ t('admin.monitoring.activityDashboard.riskScore') }}</div>
+          <div class="stat-label">{{ t('monitoring.activityDashboard.riskScore') }}</div>
         </div>
       </div>
     </div>

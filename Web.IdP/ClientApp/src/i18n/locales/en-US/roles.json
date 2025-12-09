@@ -74,5 +74,19 @@
     "deleteButton": "Delete",
     "deleting": "Deleting...",
     "close": "Close"
+  },
+  "assignment": {
+    "title": "Manage User Roles",
+    "userLabel": "User",
+    "loading": "Loading roles...",
+    "noRoles": "No roles available to assign.",
+    "selectRoles": "Select roles to assign to the user",
+    "systemRole": "System",
+    "systemRoleTooltip": "This is a system-managed role and cannot be removed.",
+    "pagination": {
+      "pageInfo": "Page {page} of {pages}",
+      "total": "Total: {total}",
+      "pageSize": "Page size"
+    }
   }
 }

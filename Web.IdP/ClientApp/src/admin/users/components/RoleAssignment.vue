@@ -32,7 +32,7 @@ const fetchRoles = async () => {
     // Pre-select user's current roles
     selectedRoles.value = props.user.roles || []
   } catch (e) {
-    error.value = t('roleAssignment.errors.loadFailed')
+    error.value = t('roles.assignment.errors.loadFailed')
     console.error('Error fetching roles:', e)
   } finally {
     loading.value = false
@@ -74,7 +74,7 @@ const handleSave = async () => {
     
     emit('save')
   } catch (e) {
-    error.value = t('roleAssignment.errors.updateFailed')
+    error.value = t('roles.assignment.errors.updateFailed')
     console.error('Error updating roles:', e)
   } finally {
     saving.value = false
@@ -94,7 +94,7 @@ onMounted(() => {
 <template>
   <BaseModal
     :show="true"
-    :title="t('roleAssignment.title')"
+    :title="t('roles.assignment.title')"
     size="md"
     :show-close-icon="true"
     :close-on-backdrop="false"
@@ -105,7 +105,7 @@ onMounted(() => {
     <template #body>
       <div class="mb-4 p-3 bg-gray-50 rounded-md">
         <p class="text-sm text-gray-700">
-          <span class="font-medium">{{ t('roleAssignment.userLabel') }}:</span> {{ user.email }}
+          <span class="font-medium">{{ t('roles.assignment.userLabel') }}:</span> {{ user.email }}
         </p>
       </div>
 
@@ -115,16 +115,16 @@ onMounted(() => {
       </div>
 
                 <!-- Loading State -->
-                <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('roleAssignment.loading')" />
+                <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('roles.assignment.loading')" />
 
                 <!-- No Roles -->
                 <div v-else-if="availableRoles.length === 0" class="bg-blue-50 border-l-4 border-blue-400 p-4">
-                  <p class="text-sm text-blue-700">{{ t('roleAssignment.noRoles') }}</p>
+                  <p class="text-sm text-blue-700">{{ t('roles.assignment.noRoles') }}</p>
                 </div>
 
                 <!-- Role List -->
                 <div v-else>
-                  <p class="text-sm font-medium text-gray-700 mb-3">{{ t('roleAssignment.selectRoles') }}:</p>
+                  <p class="text-sm font-medium text-gray-700 mb-3">{{ t('roles.assignment.selectRoles') }}:</p>
                   
                   <div class="max-h-[65vh] overflow-y-auto space-y-2 px-1">
                     <div
@@ -155,16 +155,16 @@ onMounted(() => {
                       <span
                         v-if="role.isSystem"
                         class="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700"
-                        :title="t('roleAssignment.systemRoleTooltip')"
+                        :title="t('roles.assignment.systemRoleTooltip')"
                       >
-                        {{ t('roleAssignment.systemRole') }}
+                        {{ t('roles.assignment.systemRole') }}
                       </span>
                     </div>
                   </div>
 
         <div v-if="selectedRoles.length > 0" class="mt-3">
           <p class="text-xs text-gray-500">
-            {{ t('roleAssignment.selectedRolesCount', { count: selectedRoles.length }) }}
+            {{ t('roles.assignment.selectedRolesCount', { count: selectedRoles.length }) }}
           </p>
         </div>
       </div>
@@ -181,7 +181,7 @@ onMounted(() => {
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        {{ saving ? t('buttons.saving') : t('buttons.saveRoles') }}
+        {{ saving ? t('common.buttons.saving') : t('common.buttons.saveRoles') }}
       </button>
       <button
         type="button"
@@ -189,7 +189,7 @@ onMounted(() => {
         :disabled="saving"
         class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {{ t('buttons.cancel') }}
+        {{ t('common.buttons.cancel') }}
       </button>
     </template>
   </BaseModal>

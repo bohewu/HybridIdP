@@ -153,5 +153,9 @@
       "create": "You do not have permission to create clients.",
       "update": "You do not have permission to update clients.",
       "delete": "You do not have permission to delete clients."
+    },
+    "details": {
+      "active": "Active",
+      "inactive": "Inactive"
     }
 }

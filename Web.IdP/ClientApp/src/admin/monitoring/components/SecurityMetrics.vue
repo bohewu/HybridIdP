@@ -90,35 +90,35 @@ onUnmounted(() => {
     <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Gauges -->
       <div class="metric-chart">
-        <h4 class="text-md font-medium mb-2">{{ t('admin.monitoring.securityMetrics.gauges') }}</h4>
+        <h4 class="text-md font-medium mb-2">{{ t('monitoring.securityMetrics.gauges') }}</h4>
         <div class="space-y-2">
           <div v-for="(value, key) in metrics.gauges" :key="key" class="flex justify-between">
             <span class="text-sm text-gray-600">{{ key }}</span>
             <span class="text-sm font-medium">{{ value.toFixed(2) }}</span>
           </div>
           <div v-if="Object.keys(metrics.gauges).length === 0" class="text-center text-gray-500 text-sm">
-            {{ t('admin.monitoring.securityMetrics.noGauges') }}
+            {{ t('monitoring.securityMetrics.noGauges') }}
           </div>
         </div>
       </div>
 
       <!-- Counters -->
       <div class="metric-chart">
-        <h4 class="text-md font-medium mb-2">{{ t('admin.monitoring.securityMetrics.counters') }}</h4>
+        <h4 class="text-md font-medium mb-2">{{ t('monitoring.securityMetrics.counters') }}</h4>
         <div class="space-y-2">
           <div v-for="(value, key) in metrics.counters" :key="key" class="flex justify-between">
             <span class="text-sm text-gray-600">{{ key }}</span>
             <span class="text-sm font-medium">{{ value }}</span>
           </div>
           <div v-if="Object.keys(metrics.counters).length === 0" class="text-center text-gray-500 text-sm">
-            {{ t('admin.monitoring.securityMetrics.noCounters') }}
+            {{ t('monitoring.securityMetrics.noCounters') }}
           </div>
         </div>
       </div>
 
       <!-- Histograms -->
       <div class="metric-chart" v-if="Object.keys(metrics.histograms).length > 0">
-        <h4 class="text-md font-medium mb-2">{{ t('admin.monitoring.securityMetrics.histograms') }}</h4>
+        <h4 class="text-md font-medium mb-2">{{ t('monitoring.securityMetrics.histograms') }}</h4>
         <div class="space-y-2">
           <div v-for="(values, key) in metrics.histograms" :key="key">
             <div class="text-sm text-gray-600 mb-1">{{ key }}</div>

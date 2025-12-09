@@ -1,0 +1,28 @@
+{
+  "title": "Security Monitoring Dashboard",
+  "subtitle": "Real-time security monitoring and activity dashboard",
+  "loading": "Loading monitoring data...",
+  "noPermission": "You do not have permission to view monitoring data.",
+  "activityDashboard": {
+    "title": "Activity Dashboard",
+    "activeSessions": "Active Sessions",
+    "totalLogins": "Total Logins",
+    "failedLogins": "Failed Logins",
+    "riskScore": "Risk Score"
+  },
+  "securityMetrics": {
+    "title": "Security Metrics",
+    "gauges": "Gauge Metrics",
+    "counters": "Counter Metrics",
+    "histograms": "Histogram Metrics",
+    "loginAttempts": "Login Attempts",
+    "activeSessions": "Active Sessions",
+    "failedLogins": "Failed Logins",
+    "noGauges": "No gauge metrics available",
+    "noCounters": "No counter metrics available"
+  },
+  "realTimeAlerts": {
+    "title": "Real-time Alerts",
+    "noAlerts": "No active alerts"
+  }
+}

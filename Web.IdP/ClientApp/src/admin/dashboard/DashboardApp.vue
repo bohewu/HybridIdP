@@ -107,20 +107,20 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Activity Dashboard Card -->
         <div class="bg-white rounded-lg shadow-sm p-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('admin.monitoring.activityDashboard.title') }}</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('monitoring.activityDashboard.title') }}</h3>
           <ActivityDashboard />
         </div>
 
         <!-- Security Metrics Card -->
         <div class="bg-white rounded-lg shadow-sm p-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('admin.monitoring.securityMetrics.title') }}</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('monitoring.securityMetrics.title') }}</h3>
           <SecurityMetrics />
         </div>
       </div>
 
       <!-- Real-time Alerts Card -->
       <div class="mt-6 bg-white rounded-lg shadow-sm p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('admin.monitoring.realTimeAlerts.title') }}</h3>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('monitoring.realTimeAlerts.title') }}</h3>
         <RealTimeAlerts />
       </div>
 

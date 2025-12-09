@@ -1,0 +1,60 @@
+{
+  "pageTitle": "API 資源管理",
+  "pageSubtitle": "管理 API 資源及其關聯的範圍",
+  "searchPlaceholder": "搜尋資源名稱或顯示名稱",
+  "createButton": "建立新資源",
+  "sortOptions": {
+    "nameAsc": "名稱 ↑",
+    "nameDesc": "名稱 ↓",
+    "displayNameAsc": "顯示名稱 ↑",
+    "displayNameDesc": "顯示名稱 ↓"
+  },
+  "loadingMessage": "載入 API 資源中...",
+  "noResourcesMessage": "找不到 API 資源。建立您的第一個 API 資源以開始使用。",
+  "noResources": "無資源",
+  "noDisplayName": "無顯示名稱",
+  "noScopes": "無範圍",
+  "confirmDelete": "您確定要刪除此 API 資源嗎？所有範圍關聯都將被移除。",
+  "table": {
+    "name": "資源名稱",
+    "displayName": "顯示名稱",
+    "baseUrl": "基礎 URL",
+    "scopes": "範圍",
+    "updated": "最後更新",
+    "actions": "操作",
+    "scopeCount": "個範圍"
+  },
+  "actions": {
+    "edit": "編輯",
+    "delete": "刪除",
+    "noActions": "無可用操作"
+  },
+  "form": {
+    "createTitle": "建立新 API 資源",
+    "editTitle": "編輯 API 資源",
+    "name": "資源名稱",
+    "namePlaceholder": "my-api",
+    "nameHelp": "此 API 資源的唯一識別碼（例如：company-api）",
+    "displayName": "顯示名稱",
+    "displayNamePlaceholder": "我的 API",
+    "description": "描述",
+    "descriptionPlaceholder": "API 資源的描述",
+    "baseUrl": "基礎 URL",
+    "baseUrlPlaceholder": "https://api.example.com",
+    "baseUrlHelp": "API 的基礎 URL（用於文件說明）",
+    "scopesTitle": "關聯的範圍",
+    "scopesHelp": "選擇屬於此 API 資源的範圍",
+    "loadingScopes": "載入可用範圍中...",
+    "noScopesAvailable": "沒有可用的範圍。請先建立範圍。",
+    "scopesSelected": "已選擇 {count} 個範圍",
+    "createButton": "建立資源",
+    "saveButton": "儲存變更",
+    "cancelButton": "取消"
+  },
+  "accessDenied": {
+    "read": "您沒有權限查看 API 資源。",
+    "create": "您沒有權限建立 API 資源。",
+    "update": "您沒有權限更新 API 資源。",
+    "delete": "您沒有權限刪除 API 資源。"
+  }
+}

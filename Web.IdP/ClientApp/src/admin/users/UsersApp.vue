@@ -396,26 +396,12 @@ onMounted(() => {
           password: t('users.password'),
           confirmPassword: t('users.confirmPassword')
         }"
-        :placeholders="{
-          firstName: t('users.firstName'),
-          lastName: t('users.lastName'),
-          email: t('users.email'),
-          password: t('users.password'),
-          confirmPassword: t('users.confirmPassword')
-        }"
         :validationMessages="{
-          required: t('validation.required'),
-          email: t('validation.email')
+          required: t('common.validation.required'),
+          email: t('common.validation.email')
         }"
         @close="handleFormClose"
         @save="handleFormSave"
-      />
-
-      <RoleAssignment
-        v-if="showRoleDialog"
-        :user="selectedUser"
-        @close="handleRoleDialogClose"
-        @save="handleRolesSaved"
       />
 
       <UserSessions

@@ -129,5 +129,14 @@
       "total": "總計：{total}",
       "pageSize": "每頁筆數"
     }
+  },
+  "details": {
+    "id": "ID: {id}",
+    "noName": "無",
+    "noDepartment": "無",
+    "noRoles": "未分配角色",
+    "active": "啟用",
+    "inactive": "停用",
+    "never": "從未"
   }
 }
