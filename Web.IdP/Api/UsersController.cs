@@ -24,25 +24,25 @@ public class UsersController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ISessionService _sessionService;
     private readonly ILoginHistoryService _loginHistoryService;
+    private readonly IUserClaimsPrincipalFactory<ApplicationUser> _userClaimsPrincipalFactory;
 
     public UsersController(
         IUserManagementService userManagementService,
         UserManager<ApplicationUser> userManager,
         ISessionService sessionService,
-        ILoginHistoryService loginHistoryService)
+        ILoginHistoryService loginHistoryService,
+        IUserClaimsPrincipalFactory<ApplicationUser> userClaimsPrincipalFactory)
     {
         _userManagementService = userManagementService;
         _userManager = userManager;
         _sessionService = sessionService;
         _loginHistoryService = loginHistoryService;
+        _userClaimsPrincipalFactory = userClaimsPrincipalFactory;
     }
 
     /// <summary>
     /// Get users with server-side paging, filtering and sorting.
     /// </summary>
-    /// <param name="skip">Number of items to skip (default: 0)</param>
-    /// <param name="take">Number of items to take (default: 25)</param>
-    /// <param name="search">Optional search string matched against email/name (case-insensitive)</param>
     /// <param name="role">Optional role filter</param>
     /// <param name="isActive">Optional active status filter</param>
     /// <param name="sortBy">Optional sort field: email, username, firstname, lastname, createdat (default: email)</param>
@@ -473,4 +473,76 @@ public class UsersController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while approving the abnormal login", details = ex.Message });
         }
     }
-}
+
+    /// <summary>
+    /// Start impersonation of a user.
+    /// </summary>
+    /// <param name="id">User ID to impersonate</param>
+    [HttpPost("{id}/impersonate")]
+    [HasPermission(Permissions.Users.Impersonate)]
+    public async Task<IActionResult> StartImpersonation(Guid id)
+    {
+        try
+        {
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var currentUserName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+            
+            if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(currentUserName))
+            {
+                return Unauthorized();
+            }
+
+            // prevent self-impersonation to avoid confusion
+            if (string.Equals(currentUserId, id.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { error = "Cannot impersonate yourself." });
+            }
+
+            var targetUser = await _userManager.FindByIdAsync(id.ToString());
+            if (targetUser == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            // Security check: Prevent impersonating other admins to avoid privilege escalation or confusion
+            if (await _userManager.IsInRoleAsync(targetUser, AuthConstants.Roles.Admin))
+            {
+                   // For now, strict rule: Admin cannot impersonate another Admin
+                   return Forbid();
+            }
+
+            // Create principal for the target user
+            var principal = await _userClaimsPrincipalFactory.CreateAsync(targetUser);
+
+            // Add Actor claim to indicate impersonation
+            // The "act" claim represents the actor (the admin) who is acting on behalf of the subject (the user)
+            // Format: sub=admin_id, name=admin_name
+            // Note: We are adding this to the target user's identity
+            var identity = (ClaimsIdentity)principal.Identity!;
+            
+            // Construct the actor identity
+            var actorIdentity = new ClaimsIdentity();
+            actorIdentity.AddClaim(new Claim("sub", currentUserId));
+            actorIdentity.AddClaim(new Claim("name", currentUserName));
+            // You can add more claims to actor if needed
+
+            // In pure OIDC, 'act' is a nested claim. In ASP.NET Core Identity/Cookie, 
+            // the Actor property on ClaimsIdentity is the standard way to represent this.
+            identity.Actor = actorIdentity;
+            
+            // Also verify if we need to add a specific "act" claim for OpenIddict to pick it up in tokens
+            // OpenIddict usually maps identity.Actor to 'act' claim in tokens if configured.
+            // But for Cookie authentication (the immediate session), identity.Actor is sufficient for HttpContext.User.Actor.
+
+            // Issue the cookie
+             await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+
+            return Ok(new { success = true, targetUser = targetUser.Email });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while starting impersonation", details = ex.Message });
+        }
+    }
+    }
+

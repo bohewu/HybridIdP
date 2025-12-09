@@ -32,6 +32,31 @@
     <link href="~/css/admin-layout.css" rel="stylesheet" asp-append-version="true">
 </head>
 <body class="admin-layout">
+    @if (User.Identity is System.Security.Claims.ClaimsIdentity claimsIdentity && claimsIdentity.Actor != null)
+    {
+        <div class="impersonation-banner bg-warning text-dark text-center py-2 fw-bold" style="position: sticky; top: 0; z-index: 1050;">
+            <i class="bi bi-eye-fill me-2"></i>
+            You are currently viewing as <strong>@User.Identity.Name</strong>.
+            <button onclick="revertImpersonation()" class="btn btn-sm btn-dark ms-3">
+                <i class="bi bi-arrow-return-left me-1"></i> Switch Back to Admin
+            </button>
+        </div>
+        <script>
+            async function revertImpersonation() {
+                try {
+                    const response = await fetch('/api/account/impersonation/revert', { method: 'POST' });
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Failed to switch back. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error reverting impersonation:', error);
+                    alert('An error occurred.');
+                }
+            }
+        </script>
+    }
     @* Sidebar *@
     <div class="sidebar">
         <div class="sidebar-sticky d-flex flex-column">

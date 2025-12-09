@@ -30,6 +30,7 @@ const canCreate = ref(false)
 const canUpdate = ref(false)
 const canDelete = ref(false)
 const canRead = ref(false)
+const canImpersonate = ref(false)
 
 // Load permissions on mount
 onMounted(async () => {
@@ -38,6 +39,7 @@ onMounted(async () => {
   canUpdate.value = permissionService.hasPermission(Permissions.Users.Update)
   canDelete.value = permissionService.hasPermission(Permissions.Users.Delete)
   canRead.value = permissionService.hasPermission(Permissions.Users.Read)
+  canImpersonate.value = permissionService.hasPermission(Permissions.Users.Impersonate)
   
   // Show access denied if user doesn't have read permission
   if (!canRead.value) {
@@ -303,9 +305,41 @@ watch([page, pageSize, search, isActiveFilter, sort], () => {
   fetchUsers()
 })
 
+
+const handleImpersonate = async (user) => {
+  if (!canImpersonate.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = t('deniedMessages.impersonate')
+    deniedPermission.value = Permissions.Users.Impersonate
+    return
+  }
+
+  if (!confirm(t('users.confirmations.impersonate', { user: user.email }))) {
+    return
+  }
+
+  try {
+    const response = await fetch(`/api/admin/users/${user.id}/impersonate`, {
+      method: 'POST'
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    // On success, reload the page to pick up the new identity cookies
+    // We redirect to home or dashboard as the user
+    window.location.href = '/'
+  } catch (e) {
+    alert(t('users.errors.impersonateFailed', { message: e.message }))
+    console.error('Error impersonating user:', e)
+  }
+}
+
 onMounted(() => {
   fetchUsers()
 })
+
 </script>
 
 <template>
@@ -371,11 +405,13 @@ onMounted(() => {
         :sort="sort"
         :can-update="canUpdate"
         :can-delete="canDelete"
+        :can-impersonate="canImpersonate"
         v-model:search="search"
         v-model:is-active-filter="isActiveFilter"
         @edit="handleEdit"
         @manage-roles="handleManageRoles"
         @manage-sessions="handleManageSessions"
+        @impersonate="handleImpersonate"
         @view-login-history="handleViewLoginHistory"
         @deactivate="handleDeactivate"
         @delete="handleDelete"
