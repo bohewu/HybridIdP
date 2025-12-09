@@ -95,6 +95,7 @@
     "selectRoles": "Select roles to assign to the user",
     "systemRole": "System",
     "systemRoleTooltip": "This is a system-managed role and cannot be removed.",
+    "pagination": {
       "pageInfo": "Page {page} of {pages}",
       "total": "Total: {total}",
       "pageSize": "Page size"

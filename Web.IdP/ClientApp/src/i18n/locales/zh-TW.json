@@ -94,6 +94,7 @@
     "selectRoles": "選取要指派給使用者的角色",
     "systemRole": "系統",
     "systemRoleTooltip": "這是系統管理的角色，無法移除。",
+    "pagination": {
       "next": "下一頁",
       "pageInfo": "第 {page} / {pages} 頁",
       "total": "總計: {total}",
