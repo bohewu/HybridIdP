@@ -36,12 +36,43 @@ public class SessionService : ISessionService
     {
         var items = new List<SessionDto>();
 
+        // Materialize tokens first to avoid open DataReader conflicts (MARS issues)
+        var allTokens = new List<object>();
+        await foreach (var token in _tokens.FindAsync(userId.ToString(), null, null, null))
+        {
+            allTokens.Add(token);
+        }
+
+        // Process tokens into dictionary
+        var tokensByAuthId = new Dictionary<string, List<object>>();
+        foreach (var token in allTokens)
+        {
+            try 
+            {
+                var authId = await _tokens.GetAuthorizationIdAsync(token, CancellationToken.None);
+                if (!string.IsNullOrEmpty(authId))
+                {
+                    if (!tokensByAuthId.ContainsKey(authId))
+                        tokensByAuthId[authId] = new List<object>();
+                    tokensByAuthId[authId].Add(token);
+                }
+            }
+            catch { /* ignore */ }
+        }
+
+        // Materialize authorizations first
+        var allAuths = new List<object>();
         await foreach (var authorization in _authorizations.FindAsync(
             subject: userId.ToString(),
             client: null,
             status: null,
             type: null,
             scopes: ImmutableArray<string>.Empty))
+        {
+            allAuths.Add(authorization);
+        }
+
+        foreach (var authorization in allAuths)
         {
             var id = await _authorizations.GetIdAsync(authorization, CancellationToken.None) ?? string.Empty;
 
@@ -71,29 +102,21 @@ public class SessionService : ISessionService
                     createdAt = creationOffset.Value.UtcDateTime;
 
                 // Attempt to discover an expiration based on associated tokens (choose latest valid token expiration)
-                if (clientId is not null)
+                if (clientId is not null && tokensByAuthId.TryGetValue(id, out var authTokens))
                 {
                     try
                     {
                         var candidateExpirations = new List<DateTimeOffset>();
-                        await foreach (var token in _tokens.FindAsync(
-                            subject: userId.ToString(),
-                            client: clientId,
-                            status: null,
-                            type: null))
+                        foreach (var token in authTokens)
                         {
                             try
                             {
-                                var tokenAuthId = await _tokens.GetAuthorizationIdAsync(token, CancellationToken.None);
-                                if (!string.IsNullOrEmpty(tokenAuthId) && tokenAuthId == id)
+                                var tokenStatus = await _tokens.GetStatusAsync(token, CancellationToken.None);
+                                if (string.Equals(tokenStatus, OpenIddictConstants.Statuses.Valid, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    var tokenStatus = await _tokens.GetStatusAsync(token, CancellationToken.None);
-                                    if (string.Equals(tokenStatus, OpenIddictConstants.Statuses.Valid, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        var expOffset = await _tokens.GetExpirationDateAsync(token, CancellationToken.None);
-                                        if (expOffset.HasValue)
-                                            candidateExpirations.Add(expOffset.Value);
-                                    }
+                                    var expOffset = await _tokens.GetExpirationDateAsync(token, CancellationToken.None);
+                                    if (expOffset.HasValue)
+                                        candidateExpirations.Add(expOffset.Value);
                                 }
                             }
                             catch { /* ignore token enrichment errors */ }
