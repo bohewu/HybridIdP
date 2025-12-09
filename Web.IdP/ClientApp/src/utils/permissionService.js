@@ -37,14 +37,16 @@ class PermissionService {
         const data = await response.json();
         this.permissions = data.permissions || [];
         this.isAdmin = data.isAdmin || false;
+        this.userId = data.userId;
         this.loaded = true;
         this.lastLoadTime = Date.now();
-        console.log('Permissions loaded:', this.permissions);
+        console.log('Permissions loaded:', this.permissions, 'User:', this.userId);
         return true;
       } else {
         console.warn('Failed to load permissions:', response.status);
         this.permissions = [];
         this.isAdmin = false;
+        this.userId = null;
         this.loaded = true;
         this.lastLoadTime = Date.now();
         return false;
@@ -125,6 +127,7 @@ class PermissionService {
     console.log('Clearing permissions cache...');
     this.permissions = [];
     this.isAdmin = false;
+    this.userId = null;
     this.loaded = false;
     this.lastLoadTime = null;
   }

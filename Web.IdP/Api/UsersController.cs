@@ -9,6 +9,8 @@ using System;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.Extensions.Localization;
+using Web.IdP;
 
 namespace Web.IdP.Api;
 
@@ -25,19 +27,22 @@ public class UsersController : ControllerBase
     private readonly ISessionService _sessionService;
     private readonly ILoginHistoryService _loginHistoryService;
     private readonly IUserClaimsPrincipalFactory<ApplicationUser> _userClaimsPrincipalFactory;
+    private readonly IStringLocalizer<SharedResource> _localizer;
 
     public UsersController(
         IUserManagementService userManagementService,
         UserManager<ApplicationUser> userManager,
         ISessionService sessionService,
         ILoginHistoryService loginHistoryService,
-        IUserClaimsPrincipalFactory<ApplicationUser> userClaimsPrincipalFactory)
+        IUserClaimsPrincipalFactory<ApplicationUser> userClaimsPrincipalFactory,
+        IStringLocalizer<SharedResource> localizer)
     {
         _userManagementService = userManagementService;
         _userManager = userManager;
         _sessionService = sessionService;
         _loginHistoryService = loginHistoryService;
         _userClaimsPrincipalFactory = userClaimsPrincipalFactory;
+        _localizer = localizer;
     }
 
     /// <summary>
@@ -495,7 +500,7 @@ public class UsersController : ControllerBase
             // prevent self-impersonation to avoid confusion
             if (string.Equals(currentUserId, id.ToString(), StringComparison.OrdinalIgnoreCase))
             {
-                return BadRequest(new { error = "Cannot impersonate yourself." });
+                return BadRequest(new { error = _localizer["CannotImpersonateYourself"].Value });
             }
 
             var targetUser = await _userManager.FindByIdAsync(id.ToString());
@@ -542,6 +547,58 @@ public class UsersController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { error = "An error occurred while starting impersonation", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Reverts impersonation and restores the original identity.
+    /// </summary>
+    [HttpPost("stop-impersonation")]
+    public async Task<IActionResult> StopImpersonation()
+    {
+        try
+        {
+            // Check for Actor property on the identity (standard ASP.NET Core Identity way)
+            // or "act" claim (standard OIDC way)
+            var currentIdentity = User.Identity as ClaimsIdentity;
+            if (currentIdentity == null)
+            {
+                return BadRequest(new { error = "Not authenticated." });
+            }
+
+            // Check actor
+            if (currentIdentity.Actor == null)
+            {
+                 return BadRequest(new { error = _localizer["NotImpersonating"] });
+            }
+            
+            var actor = currentIdentity.Actor;
+            var originalUserSub = actor.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                                  ?? actor.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(originalUserSub))
+            {
+                return BadRequest(new { error = "Original user identifier not found." });
+            }
+
+            var originalUser = await _userManager.FindByIdAsync(originalUserSub);
+            if (originalUser == null)
+            {
+                await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                return Ok(new { message = "Original user not found, logged out." });
+            }
+
+            // Create principal for original user
+            var principal = await _userClaimsPrincipalFactory.CreateAsync(originalUser);
+            
+            // Restore the cookie
+            await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+
+            return Ok(new { message = "Impersonation stopped successfully" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while stopping impersonation", details = ex.Message });
         }
     }
     }

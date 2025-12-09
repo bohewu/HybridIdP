@@ -31,6 +31,39 @@
     <link rel="stylesheet" href="~/Web.IdP.styles.css" asp-append-version="true" />
 </head>
 <body>
+    @if (User.Identity is System.Security.Claims.ClaimsIdentity claimsIdentity && claimsIdentity.Actor != null)
+    {
+        <div class="alert alert-warning text-center m-0 p-2 rounded-0 border-0 border-bottom border-warning" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            @string.Format(Localizer["ImpersonatingUser"], User.Identity.Name)
+            <button id="stopImpersonationBtn" class="btn btn-sm btn-outline-dark ms-3 fw-bold">
+                <i class="bi bi-x-circle me-1"></i>
+                @Localizer["StopImpersonation"]
+            </button>
+        </div>
+        <script>
+            document.getElementById('stopImpersonationBtn').addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/api/admin/users/stop-impersonation', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        const data = await response.json();
+                        alert(data.error || 'Failed to stop impersonation');
+                    }
+                } catch (error) {
+                    console.error('Error stopping impersonation:', error);
+                    alert('An error occurred');
+                }
+            });
+        </script>
+    }
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm google-navbar">
             <div class="container-fluid">

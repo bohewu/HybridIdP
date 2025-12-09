@@ -30,7 +30,9 @@ const canCreate = ref(false)
 const canUpdate = ref(false)
 const canDelete = ref(false)
 const canRead = ref(false)
+
 const canImpersonate = ref(false)
+const currentUserId = ref(null)
 
 // Load permissions on mount
 onMounted(async () => {
@@ -40,6 +42,7 @@ onMounted(async () => {
   canDelete.value = permissionService.hasPermission(Permissions.Users.Delete)
   canRead.value = permissionService.hasPermission(Permissions.Users.Read)
   canImpersonate.value = permissionService.hasPermission(Permissions.Users.Impersonate)
+  currentUserId.value = permissionService.userId
   
   // Show access denied if user doesn't have read permission
   if (!canRead.value) {
@@ -407,7 +410,9 @@ onMounted(() => {
         :sort="sort"
         :can-update="canUpdate"
         :can-delete="canDelete"
+        :can-read="canRead"
         :can-impersonate="canImpersonate"
+        :current-user-id="currentUserId"
         v-model:search="search"
         v-model:is-active-filter="isActiveFilter"
         @edit="handleEdit"
