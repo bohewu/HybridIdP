@@ -58,6 +58,30 @@
   "changePasswordOptional": "變更密碼 (選填)",
   "updateUser": "更新使用者",
   "noActions": "無可用操作",
+  "employeeId": "員工編號",
+  "cancel": "取消",
+  "saving": "儲存中...",
+  "editUser": "編輯使用者",
+  "createNewUser": "新增使用者",
+  "passwordRequired": "密碼為必填項",
+  "confirmPasswordRequired": "確認密碼為必填項",
+  "passwordsDoNotMatch": "密碼不相符",
+  "leaveBlankToKeepCurrent": "若不變更密碼請留空",
+  "passwordMustContain": "密碼必須包含：",
+  "passwordReqs": {
+    "minLength": "至少 {n} 個字元",
+    "uppercase": "至少一個大寫字母",
+    "lowercase": "至少一個小寫字母",
+    "digit": "至少一個數字",
+    "specialChar": "至少一個特殊字元"
+  },
+  "passwordErrors": {
+    "minLength": "密碼長度至少需 {n} 個字元",
+    "uppercase": "密碼必須包含至少一個大寫字母",
+    "lowercase": "密碼必須包含至少一個小寫字母",
+    "digit": "密碼必須包含至少一個數字",
+    "specialChar": "密碼必須包含至少一個特殊字元"
+  },
   "confirmations": {
     "deactivate": "確定要停用 {email} 嗎？",
     "deleteWarning": "警告：刪除 {email} 將無法復原。",
@@ -75,7 +99,9 @@
     "deactivateFailed": "停用失敗: {message}",
     "deleteFailed": "刪除失敗: {message}",
     "reactivateFailed": "重新啟用失敗: {message}",
-    "impersonateFailed": "模擬失敗: {message}"
+    "impersonateFailed": "模擬失敗: {message}",
+    "saveFailed": "儲存使用者失敗。",
+    "unknownSaveFailed": "儲存使用者時發生未知錯誤。"
   },
   "tableHeaders": {
       "username": "使用者名稱"
