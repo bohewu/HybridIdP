@@ -138,6 +138,42 @@ const getSortIcon = (field) => {
                   <span v-html="getSortIcon('userName')"></span>
                 </div>
               </th>
+              <th
+                @click="handleSort('email')"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              >
+                <div class="flex items-center space-x-1">
+                  <span>{{ $t('users.email') }}</span>
+                  <span v-html="getSortIcon('email')"></span>
+                </div>
+              </th>
+              <th
+                 @click="handleSort('firstName')"
+                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              >
+                 <div class="flex items-center space-x-1">
+                  <span>{{ $t('users.name') }}</span>
+                  <span v-html="getSortIcon('firstName')"></span>
+                </div>
+              </th>
+              <th
+                @click="handleSort('department')"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              >
+                 <div class="flex items-center space-x-1">
+                    <span>{{ $t('users.department') }}</span>
+                    <span v-html="getSortIcon('department')"></span>
+                 </div>
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {{ $t('users.roles') }}
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {{ $t('users.status') }}
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {{ $t('users.lastLogin') }}
+              </th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {{ $t('admin.common.actions') }}
               </th>
