@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseModal from '../../../components/common/BaseModal.vue'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['close', 'created'])
 
