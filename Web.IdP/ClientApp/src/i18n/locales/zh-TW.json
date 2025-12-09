@@ -1,19 +1,5 @@
 {
-  "accessDenied": {
-    "title": "拒絕存取",
-    "defaultMessage": "您沒有權限存取此資源。",
-    "requiredPermission": "需要的權限",
-    "contactAdmin": "如果您認為您應該有存取權限，請聯絡系統管理員。"
-  },
-  "common": {
-    "loading": "載入中...",
-    "cancel": "取消",
-    "confirm": "確認",
-    "save": "儲存",
-    "close": "關閉",
-    "yes": "是",
-    "no": "否"
-  },
+
   "admin": {
 
 
@@ -132,11 +118,7 @@
     "ok": "確定"
   },
   "searchPlaceholder": "搜尋...",
-  "filterOptions": {
-    "all": "所有狀態",
-    "activeOnly": "僅啟用",
-    "inactiveOnly": "僅停用"
-  },
+
   "tableHeaders": {
     "name": "名稱",
     "clientId": "客戶端 ID",
@@ -173,12 +155,7 @@
     "reactivate": "重新啟用使用者",
     "deletePermanently": "永久刪除使用者"
   },
-  "pagination": {
-    "previous": "上一頁",
-    "next": "下一頁",
-    "showing": "顯示第 {from} 至 {to} 項結果，共 {total} 項",
-    "perPage": "每頁 {count} 筆"
-  },
+
 
 
   "claims": {
@@ -373,8 +350,5 @@
       "switchRoleFailed": "切換角色失敗",
       "switchAccountFailed": "切換帳戶失敗"
     }
-  },
-  "modal": {
-    "close": "關閉"
   }
 }

@@ -1,0 +1,97 @@
+{
+  "loading": "Loading...",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "save": "Save",
+  "close": "Close",
+  "yes": "Yes",
+  "no": "No",
+  "accessDenied": {
+    "title": "Access Denied",
+    "defaultMessage": "You do not have permission to access this resource.",
+    "requiredPermission": "Required Permission",
+    "contactAdmin": "Please contact your administrator if you believe you should have access."
+  },
+  "validation": {
+    "required": "This field is required.",
+    "email": "Please enter a valid email address."
+  },
+  "buttons": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "close": "Close",
+    "create": "Create",
+    "update": "Update",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "add": "Add",
+    "remove": "Remove",
+    "edit": "Edit",
+    "view": "View",
+    "manage": "Manage",
+    "saveRoles": "Save Roles",
+    "ok": "OK"
+  },
+  "searchPlaceholder": "Search...",
+  "filterOptions": {
+    "all": "All Statuses",
+    "activeOnly": "Active Only",
+    "inactiveOnly": "Inactive Only"
+  },
+  "tableHeaders": {
+    "name": "Name",
+    "clientId": "Client ID",
+    "status": "Status",
+    "actions": "Actions",
+    "username": "Username",
+    "email": "Email",
+    "department": "Department",
+    "roles": "Roles",
+    "lastLogin": "Last Login",
+    "timestamp": "Timestamp",
+    "eventType": "Event Type",
+    "user": "User",
+    "details": "Details",
+    "ipAddress": "IP Address"
+  },
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next",
+    "showing": "Showing {from} to {to} of {total} results",
+    "perPage": "{count} / page"
+  },
+  "modal": {
+    "close": "Close"
+  },
+  "admin": {
+    "yes": "Yes",
+    "no": "No",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "search": "Search...",
+    "noSearchResults": "No matching results found",
+    "filter": "Filter",
+    "sort": "Sort",
+    "actions": "Actions",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Operation successful",
+    "confirm": "Confirm",
+    "pageInfo": "Page {page} of {total}"
+  },
+  "deniedMessages": {
+    "create": "You don't have permission to create users.",
+    "edit": "You don't have permission to edit users.",
+    "manageRoles": "You don't have permission to manage user roles.",
+    "deactivate": "You don't have permission to deactivate users.",
+    "delete": "You don't have permission to delete users.",
+    "reactivate": "You don't have permission to reactivate users.",
+    "view": "You do not have permission to view this content."
+  }
+}
