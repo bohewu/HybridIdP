@@ -178,6 +178,10 @@ test.describe('Admin - People Identity Verification', () => {
 
     // Reload page and check UI shows verified status
     await page.reload()
+    const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput.fill(personData.employeeId)
+    await searchInput.press('Enter')
+    await page.waitForLoadState('networkidle')
     const row = page.locator('tr', { hasText: 'TestUser ToVerify' })
     await expect(row).toBeVisible()
     
@@ -311,7 +315,10 @@ test.describe('Admin - People Identity Verification', () => {
 
     // Reload to see UI
     await page.reload()
-    
+    const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput.fill(personData.employeeId)
+    await searchInput.press('Enter')
+    await page.waitForLoadState('networkidle')
     const row = page.locator('tr', { hasText: 'TestUser UnverifiedDoc' })
     await expect(row).toBeVisible()
 
@@ -339,7 +346,10 @@ test.describe('Admin - People Identity Verification', () => {
 
     // Reload to see UI
     await page.reload()
-    
+    const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput.fill(personData.employeeId)
+    await searchInput.press('Enter')
+    await page.waitForLoadState('networkidle')
     const row = page.locator('tr', { hasText: 'TestUser AlreadyVerified' })
     await expect(row).toBeVisible()
 
@@ -364,7 +374,10 @@ test.describe('Admin - People Identity Verification', () => {
 
     // Reload to see UI
     await page.reload()
-    
+    const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput.fill(personData.employeeId)
+    await searchInput.press('Enter')
+    await page.waitForLoadState('networkidle')
     const row = page.locator('tr', { hasText: 'TestUser NoDocNoButton' })
     await expect(row).toBeVisible()
 

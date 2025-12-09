@@ -48,6 +48,10 @@ test.describe('Admin - People CRUD Operations', () => {
 
     // Reload and verify person appears in UI
     await page.reload()
+    const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput.fill('CrudTest')
+    await searchInput.press('Enter')
+    await page.waitForLoadState('networkidle')
     await expect(page.locator('tr', { hasText: 'CrudTest PersonOne' })).toBeVisible()
 
     // Update person identity to Resident Certificate
@@ -70,6 +74,10 @@ test.describe('Admin - People CRUD Operations', () => {
 
     // Reload and verify person is gone
     await page.reload()
+    const searchInput2 = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput2.fill('CrudTest')
+    await searchInput2.press('Enter')
+    await page.waitForLoadState('networkidle')
     await expect(page.locator('tr', { hasText: 'CrudTest PersonOne' })).not.toBeVisible()
   })
 
@@ -85,6 +93,10 @@ test.describe('Admin - People CRUD Operations', () => {
 
     // Verify in UI
     await page.reload()
+    const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput.fill('Simple')
+    await searchInput.press('Enter')
+    await page.waitForLoadState('networkidle')
     await expect(page.locator('tr', { hasText: 'Simple Person' })).toBeVisible()
   })
 
@@ -344,6 +356,10 @@ test.describe('Admin - People CRUD Operations', () => {
 
     // Verify deletion
     await page.reload()
+    const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]')
+    await searchInput.fill('DeleteTest')
+    await searchInput.press('Enter')
+    await page.waitForLoadState('networkidle')
     await expect(page.locator('tr', { hasText: 'DeleteTest VerifiedPerson' })).not.toBeVisible()
   })
 

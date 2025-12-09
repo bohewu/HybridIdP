@@ -145,8 +145,18 @@ const handleSubmit = async () => {
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`HTTP error! status: ${response.status}, ${errorText}`)
+        const errorText = await response.text()
+        let errorMessage = `HTTP error! status: ${response.status}`
+        try {
+            const errorJson = JSON.parse(errorText)
+            errorMessage = errorJson.message || errorJson.title || errorMessage
+        } catch {
+            // text content
+            if (errorText && errorText.length < 200) {
+                 errorMessage = errorText
+            }
+        }
+        throw new Error(errorMessage)
     }
 
     const savedScope = await response.json()
@@ -203,7 +213,7 @@ const saveScopeClaims = async (scopeId) => {
         <p class="text-sm text-red-700">{{ error }}</p>
       </div>
 
-      <form @submit.prevent="handleSubmit">
+      <form id="scope-form" @submit.prevent="handleSubmit">
         <div class="space-y-5">
           <!-- Scope Name -->
           <div class="mb-5">
@@ -423,7 +433,7 @@ const saveScopeClaims = async (scopeId) => {
     <template #footer>
       <button
         type="submit"
-        @click="handleSubmit"
+        form="scope-form"
         :disabled="submitting"
         class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
