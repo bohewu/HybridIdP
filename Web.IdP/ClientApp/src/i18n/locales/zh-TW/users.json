@@ -46,6 +46,15 @@
     }
   },
   "jobTitle": "職稱",
+  "emailCannotBeChanged": "建立後無法變更電子郵件",
+
+  "username": "使用者名稱",
+  "users": "使用者",
+  "department": "部門",
+  "phoneNumber": "電話號碼",
+  "usernameRequired": "使用者名稱為必填項",
+  "emailRequired": "電子郵件為必填項",
+  "invalidEmail": "電子郵件格式無效",
   "changePasswordOptional": "變更密碼 (選填)",
   "updateUser": "更新使用者",
   "noActions": "無可用操作",
