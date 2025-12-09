@@ -46,6 +46,15 @@
     }
   },
   "jobTitle": "Job Title",
+  "emailCannotBeChanged": "Email cannot be changed after creation",
+
+  "username": "Username",
+  "users": "Users",
+  "department": "Department",
+  "phoneNumber": "Phone Number",
+  "usernameRequired": "Username is required",
+  "emailRequired": "Email is required",
+  "invalidEmail": "Invalid email format",
   "changePasswordOptional": "Change Password (Optional)",
   "updateUser": "Update User",
   "noActions": "No actions available",
