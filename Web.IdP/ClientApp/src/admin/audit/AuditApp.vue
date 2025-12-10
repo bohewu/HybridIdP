@@ -140,7 +140,7 @@ const exportToCsv = () => {
   exportToCsvUtil(headers, rows, 'audit-events.csv')
 }
 
-const exportToExcel = () => {
+const exportToExcel = async () => {
   const headers = [
     t('audit.tableHeaders.timestamp'),
     t('audit.tableHeaders.eventType'),
@@ -158,7 +158,7 @@ const exportToExcel = () => {
   ])
 
   // Use shared export utility with true Excel format
-  exportToExcelUtil(headers, rows, 'audit-events.xlsx', 'Audit Events')
+  await exportToExcelUtil(headers, rows, 'audit-events.xlsx', 'Audit Events')
 }
 </script>
 
