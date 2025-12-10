@@ -1,9 +1,0 @@
-C:\repos\HybridIdP\Tests.Application.UnitTests\UsersControllerSessionsTests.cs(30,13): error CS0234: 命名空間 'Tests.Application.UnitTests.Options' 中沒有類型或命名空間名稱 'Create' (是否遺漏了組件參考?) [C:\repos\HybridIdP\Tests.Application.UnitTests\Tests.Application.UnitTests.csproj]
-C:\repos\HybridIdP\Tests.Application.UnitTests\RoleManagementServiceTests.cs(40,13): error CS0234: 命名空間 'Tests.Application.UnitTests.Options' 中沒有類型或命名空間名稱 'Create' (是否遺漏了組件參考?) [C:\repos\HybridIdP\Tests.Application.UnitTests\Tests.Application.UnitTests.csproj]
-C:\repos\HybridIdP\Tests.Application.UnitTests\UserManagementServiceTests.cs(47,31): error CS0234: 命名空間 'Tests.Application.UnitTests.Options' 中沒有類型或命名空間名稱 'Create' (是否遺漏了組件參考?) [C:\repos\HybridIdP\Tests.Application.UnitTests\Tests.Application.UnitTests.csproj]
-
-建置失敗。
-    43 個警告
-    3 個錯誤
-
-經過時間 00:00:03.10
