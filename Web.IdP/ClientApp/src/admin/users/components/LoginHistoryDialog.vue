@@ -93,8 +93,10 @@ const handleClose = () => {
 }
 
 const formatDate = (dt) => {
-  if (!dt) return t('users.loginHistory.tableHeaders.loginTime')
-  return new Date(dt).toLocaleString()
+  if (!dt) return '-'
+  // Append 'Z' if no timezone info to ensure UTC interpretation
+  const isoDate = dt.endsWith('Z') || dt.includes('+') ? dt : dt + 'Z'
+  return new Date(isoDate).toLocaleString()
 }
 
 const getStatusBadge = (login) => {

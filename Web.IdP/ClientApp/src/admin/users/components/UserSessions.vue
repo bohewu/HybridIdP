@@ -111,7 +111,9 @@ const handleClose = () => {
 
 const formatDate = (dt) => {
   if (!dt) return t('sessions.never')
-  return new Date(dt).toLocaleString()
+  // Append 'Z' if no timezone info to ensure UTC interpretation
+  const isoDate = dt.endsWith('Z') || dt.includes('+') ? dt : dt + 'Z'
+  return new Date(isoDate).toLocaleString()
 }
 
 onMounted(() => fetchSessions())
