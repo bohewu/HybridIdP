@@ -30,6 +30,7 @@ public class LoginModel : PageModel
     private readonly TurnstileOptions _turnstileOptions; // Changed
     private readonly ILogger<LoginModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly ITurnstileStateService _turnstileStateService; // Added
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
@@ -40,9 +41,10 @@ public class LoginModel : PageModel
         INotificationService notificationService,
         ISecurityPolicyService securityPolicyService,
         IDomainEventPublisher eventPublisher,
-        IOptions<TurnstileOptions> turnstileOptions, // Changed
+        IOptions<TurnstileOptions> turnstileOptions,
         ILogger<LoginModel> logger,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        ITurnstileStateService turnstileStateService) // Added
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -52,9 +54,10 @@ public class LoginModel : PageModel
         _notificationService = notificationService;
         _securityPolicyService = securityPolicyService;
         _eventPublisher = eventPublisher;
-        _turnstileOptions = turnstileOptions.Value; // Changed
+        _turnstileOptions = turnstileOptions.Value;
         _logger = logger;
         _localizer = localizer;
+        _turnstileStateService = turnstileStateService; // Added
     }
 
     [BindProperty]
@@ -62,7 +65,7 @@ public class LoginModel : PageModel
 
     public string? ReturnUrl { get; set; }
     
-    public bool TurnstileEnabled => _turnstileOptions.Enabled; // Changed
+    public bool TurnstileEnabled => _turnstileOptions.Enabled && _turnstileStateService.IsAvailable; // Changed
     public string TurnstileSiteKey => _turnstileOptions.SiteKey; // Changed
 
     public class InputModel
