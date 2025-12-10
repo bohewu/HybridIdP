@@ -44,3 +44,6 @@ Web.IdP/wwwroot/dist/
 # Test scripts
 test-*.ps1
 test-*.mdreferences/
+
+# Security scan reports
+security-reports/
