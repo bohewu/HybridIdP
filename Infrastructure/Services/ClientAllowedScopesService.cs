@@ -104,7 +104,7 @@ public class ClientAllowedScopesService : IClientAllowedScopesService
             .Select(crs => crs.ScopeId)
             .ToListAsync();
 
-        if (!requiredScopeIds.Any())
+        if (requiredScopeIds.Count == 0)
         {
             return Array.Empty<string>();
         }
@@ -144,7 +144,7 @@ public class ClientAllowedScopesService : IClientAllowedScopesService
         var allowedScopeSet = allowedScopes.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var invalidScopes = scopeNameList.Where(s => !allowedScopeSet.Contains(s)).ToList();
         
-        if (invalidScopes.Any())
+        if (invalidScopes.Count > 0)
         {
             throw new InvalidOperationException(
                 $"The following required scopes are not in the client's allowed scopes: {string.Join(", ", invalidScopes)}");

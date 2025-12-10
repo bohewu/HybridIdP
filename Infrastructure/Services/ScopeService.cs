@@ -399,7 +399,7 @@ public class ScopeService : IScopeService
         _db.ScopeClaims.RemoveRange(existingScopeClaims);
 
         // Add new scope claims
-        if (request.ClaimIds != null && request.ClaimIds.Any())
+        if (request.ClaimIds != null && request.ClaimIds.Count > 0)
         {
             foreach (var claimId in request.ClaimIds)
             {

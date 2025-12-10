@@ -272,7 +272,7 @@ public class ClaimsService : IClaimsService
         }
 
         // Check if claim is used by any scopes
-        if (claim.ScopeClaims.Any())
+        if (claim.ScopeClaims.Count > 0)
         {
             throw new InvalidOperationException(
                 $"Cannot delete claim '{claim.Name}' because it is used by {claim.ScopeClaims.Count} scope(s). " +
