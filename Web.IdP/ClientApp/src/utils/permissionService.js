@@ -22,7 +22,6 @@ class PermissionService {
       const now = Date.now();
       const cacheAge = now - this.lastLoadTime;
       if (cacheAge < this.cacheTimeoutMs) {
-        console.log('Using cached permissions (age: ' + Math.round(cacheAge / 1000) + 's)');
         return true;
       }
     }
@@ -40,10 +39,8 @@ class PermissionService {
         this.userId = data.userId;
         this.loaded = true;
         this.lastLoadTime = Date.now();
-        console.log('Permissions loaded:', this.permissions, 'User:', this.userId);
         return true;
       } else {
-        console.warn('Failed to load permissions:', response.status);
         this.permissions = [];
         this.isAdmin = false;
         this.userId = null;
@@ -52,7 +49,6 @@ class PermissionService {
         return false;
       }
     } catch (error) {
-      console.error('Error loading permissions:', error);
       this.permissions = [];
       this.isAdmin = false;
       this.loaded = true;
@@ -66,7 +62,6 @@ class PermissionService {
    * Use this after login or role changes
    */
   async reloadPermissions() {
-    console.log('Reloading permissions (forced)...');
     return await this.loadPermissions(true);
   }
 
@@ -124,7 +119,6 @@ class PermissionService {
    * Use this on logout or when user session ends
    */
   clear() {
-    console.log('Clearing permissions cache...');
     this.permissions = [];
     this.isAdmin = false;
     this.userId = null;
