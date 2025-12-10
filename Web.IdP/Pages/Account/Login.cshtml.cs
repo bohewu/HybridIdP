@@ -17,7 +17,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace Web.IdP.Pages.Account;
 
 [EnableRateLimiting("login")]
-public class LoginModel : PageModel
+public partial class LoginModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
@@ -145,7 +145,7 @@ public class LoginModel : PageModel
                     var policy = await _securityPolicyService.GetCurrentPolicyAsync();
                     if (policy.BlockAbnormalLogin)
                     {
-                        _logger.LogWarning("Abnormal login blocked for user '{UserName}' from IP {IpAddress}", result.User!.UserName, loginHistory.IpAddress);
+                        LogAbnormalLoginBlocked(result.User!.UserName, loginHistory.IpAddress);
                         ModelState.AddModelError(string.Empty, _localizer["AbnormalLoginBlocked"]);
                         return Page();
                     }
@@ -153,7 +153,7 @@ public class LoginModel : PageModel
 
                 // Sign in user (role claims are automatically added by Identity)
                 await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
-                _logger.LogInformation("User '{UserName}' signed in successfully.", result.User!.UserName);
+                LogUserSignedIn(result.User!.UserName);
                 
                 // Publish audit event for successful login
                 await _eventPublisher.PublishAsync(new LoginAttemptEvent(
@@ -171,7 +171,7 @@ public class LoginModel : PageModel
 
 
             case LoginStatus.LockedOut:
-                _logger.LogWarning("Login failed for user '{Login}': Account is locked out.", Input.Login);
+                LogUserLockedOut(Input.Login);
                 
                 // Publish audit event for locked out login attempt
                 await _eventPublisher.PublishAsync(new LoginAttemptEvent(
@@ -188,7 +188,7 @@ public class LoginModel : PageModel
 
             case LoginStatus.InvalidCredentials:
             default:
-                _logger.LogWarning("Login failed for user '{Login}': Invalid credentials.", Input.Login);
+                LogInvalidCredentials(Input.Login);
                 
                 // Publish audit event for failed login attempt
                 await _eventPublisher.PublishAsync(new LoginAttemptEvent(
@@ -204,4 +204,16 @@ public class LoginModel : PageModel
                 return Page();
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Abnormal login blocked for user '{UserName}' from IP {IpAddress}")]
+    partial void LogAbnormalLoginBlocked(string? userName, string? ipAddress);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User '{UserName}' signed in successfully.")]
+    partial void LogUserSignedIn(string? userName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Login failed for user '{Login}': Account is locked out.")]
+    partial void LogUserLockedOut(string login);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Login failed for user '{Login}': Invalid credentials.")]
+    partial void LogInvalidCredentials(string login);
 }

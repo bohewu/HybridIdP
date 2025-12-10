@@ -11,7 +11,7 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Web.IdP.Services;
 
-public class DeviceFlowService : IDeviceFlowService
+public partial class DeviceFlowService : IDeviceFlowService
 {
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly IOpenIddictApplicationManager _applicationManager;
@@ -73,32 +73,12 @@ public class DeviceFlowService : IDeviceFlowService
         var user = await _userManager.GetUserAsync(userPrincipal);
         if (user == null)
         {
-            _logger.LogError("Cannot retrieve user details during device verification.");
-             var vm = new DeviceVerificationViewModel 
-             {
+            LogUserRetrievalFailed();
+            return new BadRequestObjectResult(new DeviceVerificationViewModel
+            {
                  Error = Errors.ServerError,
                  ErrorDescription = _localizer["UserRetrievalFailed"]
-             };
-             // Logic in Controller should return View(vm) if result is not SignInResult
-             // But here we return IActionResult. 
-             // We can return BadRequestObjectResult or similar, or ViewResult? 
-             // Services typically shouldn't return ViewResult.
-             // Let's refactor interface to return a composite result or logic?
-             // Or, stick to IActionResult (SignInResult vs ViewResult). 
-             // For now, let's return a special ObjectResult that Controller can interpret, or throw exception?
-             // Replicating existing logic: it returns Page() with error. 
-             // So I should return the ViewModel with Error?
-             // Issue: I cannot return ViewModel as IActionResult seamlessly without Controller support.
-             // Strategy: Return Challenge? Or make interface return (IActionResult? result, DeviceVerificationViewModel? vm).
-             
-             // Simplest: Return a Forbidden/BadRequest, and Controller handles UI?
-             // But UI needs to show Error description.
-             // Let's change return type to `Task<DeviceVerificationResult>`
-             return new BadRequestObjectResult(new DeviceVerificationViewModel
-             {
-                 Error = Errors.ServerError,
-                 ErrorDescription = _localizer["UserRetrievalFailed"]
-             });
+            });
         }
 
         if (authenticateResult is { Succeeded: true } && !string.IsNullOrEmpty(authenticateResult.Principal.GetClaim(Claims.ClientId)))
@@ -125,7 +105,7 @@ public class DeviceFlowService : IDeviceFlowService
                 RedirectUri = "/connect/verify/success"
             };
 
-            _logger.LogInformation("Device flow authorization approved for user {UserId}", user.Id);
+            LogDeviceFlowApproved(user.Id);
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity), properties);
         }
 
@@ -172,4 +152,10 @@ public class DeviceFlowService : IDeviceFlowService
                 yield break;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Cannot retrieve user details during device verification.")]
+    partial void LogUserRetrievalFailed();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Device flow authorization approved for user {UserId}")]
+    partial void LogDeviceFlowApproved(Guid userId);
 }

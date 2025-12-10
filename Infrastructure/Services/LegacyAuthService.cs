@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services;
 
-public class LegacyAuthService : ILegacyAuthService
+public partial class LegacyAuthService : ILegacyAuthService
 {
     private readonly HttpClient _httpClient;
     private readonly LegacyAuthOptions _options;
@@ -43,7 +43,7 @@ public class LegacyAuthService : ILegacyAuthService
             
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Legacy auth API returned status code {StatusCode}", response.StatusCode);
+                LogLegacyApiError(response.StatusCode);
                 return new LegacyUserDto { IsAuthenticated = false };
             }
 
@@ -69,7 +69,7 @@ public class LegacyAuthService : ILegacyAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling legacy auth API");
+            LogLegacyApiException(ex);
             return new LegacyUserDto { IsAuthenticated = false };
         }
     }
@@ -85,4 +85,10 @@ public class LegacyAuthService : ILegacyAuthService
         public string? PassportNumber { get; set; }
         public string? ResidentCertificateNumber { get; set; }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Legacy auth API returned status code {StatusCode}")]
+    partial void LogLegacyApiError(System.Net.HttpStatusCode statusCode);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error calling legacy auth API")]
+    partial void LogLegacyApiException(Exception ex);
 }

@@ -12,7 +12,7 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Web.IdP.Services
 {
-    public class TokenService : ITokenService
+    public partial class TokenService : ITokenService
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
@@ -94,7 +94,7 @@ namespace Web.IdP.Services
             }
             else if (request.GrantType == GrantTypes.DeviceCode)
             {
-                _logger.LogInformation("Processing device code grant");
+                LogProcessingDeviceCodeGrant();
                 try
                 {
                     // Retrieve the claims principal stored in the device code.
@@ -176,11 +176,11 @@ namespace Web.IdP.Services
                     identity.SetDestinations(GetDestinations);
 
                     claimsPrincipal = new ClaimsPrincipal(identity);
-                    _logger.LogInformation("Device code grant: ClaimsPrincipal created successfully with subject {Subject}", claimsPrincipal.GetClaim(Claims.Subject));
+                    LogDeviceCodeGrantSuccess(claimsPrincipal.GetClaim(Claims.Subject));
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing device code grant");
+                    LogDeviceCodeGrantError(ex);
                     return new ForbidResult(
                         authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
                         properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -350,5 +350,14 @@ namespace Web.IdP.Services
                     yield break;
             }
         }
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Processing device code grant")]
+        partial void LogProcessingDeviceCodeGrant();
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Device code grant: ClaimsPrincipal created successfully with subject {Subject}")]
+        partial void LogDeviceCodeGrantSuccess(string? subject);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "Error processing device code grant")]
+        partial void LogDeviceCodeGrantError(Exception ex);
     }
 }

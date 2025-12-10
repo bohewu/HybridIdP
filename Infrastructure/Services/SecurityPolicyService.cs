@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services;
 
-public class SecurityPolicyService : ISecurityPolicyService
+public partial class SecurityPolicyService : ISecurityPolicyService
 {
     private readonly IApplicationDbContext _db;
     private readonly IMemoryCache _cache;
@@ -32,7 +32,7 @@ public class SecurityPolicyService : ISecurityPolicyService
 
         if (policy == null)
         {
-            _logger.LogInformation("No security policy found in database, creating a default one.");
+            LogNoSecurityPolicyFound();
             policy = new SecurityPolicy();
             await _db.SecurityPolicies.AddAsync(policy);
             await _db.SaveChangesAsync(default);
@@ -74,6 +74,12 @@ public class SecurityPolicyService : ISecurityPolicyService
         
         // Invalidate cache
         _cache.Remove(CurrentPolicyCacheKey);
-        _logger.LogInformation("Security policy updated by {UpdatedBy}", updatedBy);
+        LogSecurityPolicyUpdated(updatedBy);
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "No security policy found in database, creating a default one.")]
+    partial void LogNoSecurityPolicyFound();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Security policy updated by {UpdatedBy}")]
+    partial void LogSecurityPolicyUpdated(string updatedBy);
 }

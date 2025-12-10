@@ -18,7 +18,7 @@ namespace Infrastructure.Services;
 /// Phase 10.6: Added identity document validation and verification
 /// Phase 13: Added role synchronization for multi-account scenarios
 /// </summary>
-public class PersonService : IPersonService
+public partial class PersonService : IPersonService
 {
     private readonly IApplicationDbContext _context;
     private readonly ILogger<PersonService> _logger;
@@ -143,8 +143,7 @@ public class PersonService : IPersonService
         _context.Persons.Add(person);
         await _context.SaveChangesAsync(CancellationToken.None);
 
-        _logger.LogInformation("Created new person {PersonId} (EmployeeId: {EmployeeId})", 
-            person.Id, person.EmployeeId ?? "N/A");
+        LogPersonCreated(person.Id, person.EmployeeId ?? "N/A");
 
         // Phase 10.5: Audit the creation
         var auditDetails = JsonSerializer.Serialize(new
@@ -283,7 +282,7 @@ public class PersonService : IPersonService
         {
             existingPerson.IdentityVerifiedAt = null;
             existingPerson.IdentityVerifiedBy = null;
-            _logger.LogInformation("Identity document changed for person {PersonId}, reset verification status", personId);
+            LogIdentityDocumentChanged(personId);
         }
 
         // Update audit fields
@@ -292,8 +291,7 @@ public class PersonService : IPersonService
 
         await _context.SaveChangesAsync(CancellationToken.None);
 
-        _logger.LogInformation("Updated person {PersonId} (EmployeeId: {EmployeeId})", 
-            personId, existingPerson.EmployeeId ?? "N/A");
+        LogPersonUpdated(personId, existingPerson.EmployeeId ?? "N/A");
 
         // Phase 10.5: Audit the update
         var auditDetails = JsonSerializer.Serialize(new
@@ -325,8 +323,7 @@ public class PersonService : IPersonService
         _context.Persons.Remove(person);
         await _context.SaveChangesAsync(CancellationToken.None);
 
-        _logger.LogInformation("Deleted person {PersonId} (EmployeeId: {EmployeeId})", 
-            personId, person.EmployeeId ?? "N/A");
+        LogPersonDeleted(personId, person.EmployeeId ?? "N/A");
 
         // Phase 10.5: Audit the deletion
         var auditDetails = JsonSerializer.Serialize(new
@@ -361,7 +358,7 @@ public class PersonService : IPersonService
         var person = await GetPersonByIdAsync(personId);
         if (person == null)
         {
-            _logger.LogWarning("Cannot link account: Person {PersonId} not found", personId);
+            LogPersonNotFoundForLinking(personId);
             return false;
         }
 
@@ -370,22 +367,21 @@ public class PersonService : IPersonService
             .FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
         {
-            _logger.LogWarning("Cannot link account: User {UserId} not found", userId);
+            LogUserNotFoundForLinking(userId);
             return false;
         }
 
         // Check if user is already linked to another person
         if (user.PersonId.HasValue && user.PersonId.Value != personId)
         {
-            _logger.LogWarning("Cannot link account: User {UserId} is already linked to person {ExistingPersonId}", 
-                userId, user.PersonId.Value);
+            LogUserAlreadyLinkedToOtherPerson(userId, user.PersonId.Value);
             throw new InvalidOperationException($"User is already linked to another person (PersonId: {user.PersonId.Value})");
         }
 
         // Check if user is already linked to the same person (idempotent operation)
         if (user.PersonId == personId)
         {
-            _logger.LogInformation("User {UserId} is already linked to person {PersonId}, skipping", userId, personId);
+            LogUserAlreadyLinkedToSamePerson(userId, personId);
             return true;
         }
 
@@ -411,16 +407,14 @@ public class PersonService : IPersonService
                 if (rolesToAdd.Any())
                 {
                     await _userManager.AddToRolesAsync(user, rolesToAdd);
-                    _logger.LogInformation("Synced {RoleCount} roles from existing Person accounts to user {UserId}: {Roles}", 
-                        rolesToAdd.Count, userId, string.Join(", ", rolesToAdd));
+                    LogRolesSynced(rolesToAdd.Count, userId, string.Join(", ", rolesToAdd));
                 }
             }
         }
 
         await _context.SaveChangesAsync(CancellationToken.None);
 
-        _logger.LogInformation("Linked user {UserId} ({UserName}) to person {PersonId} (EmployeeId: {EmployeeId})", 
-            userId, user.UserName, personId, person.EmployeeId ?? "N/A");
+        LogPersonAccountLinked(userId, user.UserName, personId, person.EmployeeId ?? "N/A");
 
         // Phase 10.5: Audit the account linking
         var auditDetails = JsonSerializer.Serialize(new
@@ -447,7 +441,7 @@ public class PersonService : IPersonService
         var user = await _context.Users.FindAsync(userId);
         if (user == null)
         {
-            _logger.LogWarning("Cannot unlink account: User {UserId} not found", userId);
+            LogUserNotFoundForUnlinking(userId);
             return false;
         }
 
@@ -460,8 +454,7 @@ public class PersonService : IPersonService
 
         await _context.SaveChangesAsync(CancellationToken.None);
 
-        _logger.LogInformation("Unlinked user {UserId} ({UserName}) from person {PersonId}", 
-            userId, user.UserName, previousPersonId ?? Guid.Empty);
+        LogPersonAccountUnlinked(userId, user.UserName, previousPersonId ?? Guid.Empty);
 
         // Phase 10.5: Audit the account unlinking
         var auditDetails = JsonSerializer.Serialize(new
@@ -511,7 +504,7 @@ public class PersonService : IPersonService
     /// <inheritdoc />
     public async Task<List<ApplicationUser>> GetUnlinkedUsersAsync(string? searchTerm = null)
     {
-        _logger.LogInformation("Getting unlinked users with search term: {SearchTerm}", searchTerm ?? "(none)");
+        LogGettingUnlinkedUsers(searchTerm ?? "(none)");
 
         var query = _context.Users
             .Where(u => u.PersonId == null);
@@ -575,7 +568,7 @@ public class PersonService : IPersonService
         var person = await GetPersonByIdAsync(personId);
         if (person == null)
         {
-            _logger.LogWarning("Cannot verify identity: Person {PersonId} not found", personId);
+            LogPersonNotFoundForVerification(personId);
             return false;
         }
 
@@ -584,7 +577,7 @@ public class PersonService : IPersonService
             string.IsNullOrWhiteSpace(person.PassportNumber) &&
             string.IsNullOrWhiteSpace(person.ResidentCertificateNumber))
         {
-            _logger.LogWarning("Cannot verify identity: Person {PersonId} has no identity document", personId);
+            LogPersonHasNoIdentityDocument(personId);
             return false;
         }
 
@@ -594,8 +587,7 @@ public class PersonService : IPersonService
 
         await _context.SaveChangesAsync(CancellationToken.None);
 
-        _logger.LogInformation("Verified identity for person {PersonId} by user {VerifiedBy}", 
-            personId, verifiedByUserId);
+        LogPersonIdentityVerified(personId, verifiedByUserId);
 
         // Audit the identity verification
         var auditDetails = JsonSerializer.Serialize(new
@@ -616,4 +608,52 @@ public class PersonService : IPersonService
 
         return true;
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Created new person {PersonId} (EmployeeId: {EmployeeId})")]
+    partial void LogPersonCreated(Guid personId, string employeeId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Identity document changed for person {PersonId}, reset verification status")]
+    partial void LogIdentityDocumentChanged(Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Updated person {PersonId} (EmployeeId: {EmployeeId})")]
+    partial void LogPersonUpdated(Guid personId, string employeeId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Deleted person {PersonId} (EmployeeId: {EmployeeId})")]
+    partial void LogPersonDeleted(Guid personId, string employeeId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot link account: Person {PersonId} not found")]
+    partial void LogPersonNotFoundForLinking(Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot link account: User {UserId} not found")]
+    partial void LogUserNotFoundForLinking(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot link account: User {UserId} is already linked to person {ExistingPersonId}")]
+    partial void LogUserAlreadyLinkedToOtherPerson(Guid userId, Guid existingPersonId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} is already linked to person {PersonId}, skipping")]
+    partial void LogUserAlreadyLinkedToSamePerson(Guid userId, Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Synced {RoleCount} roles from existing Person accounts to user {UserId}: {Roles}")]
+    partial void LogRolesSynced(int roleCount, Guid userId, string roles);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Linked user {UserId} ({UserName}) to person {PersonId} (EmployeeId: {EmployeeId})")]
+    partial void LogPersonAccountLinked(Guid userId, string? userName, Guid personId, string employeeId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot unlink account: User {UserId} not found")]
+    partial void LogUserNotFoundForUnlinking(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Unlinked user {UserId} ({UserName}) from person {PersonId}")]
+    partial void LogPersonAccountUnlinked(Guid userId, string? userName, Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Getting unlinked users with search term: {SearchTerm}")]
+    partial void LogGettingUnlinkedUsers(string searchTerm);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot verify identity: Person {PersonId} not found")]
+    partial void LogPersonNotFoundForVerification(Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot verify identity: Person {PersonId} has no identity document")]
+    partial void LogPersonHasNoIdentityDocument(Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Verified identity for person {PersonId} by user {VerifiedBy}")]
+    partial void LogPersonIdentityVerified(Guid personId, Guid verifiedBy);
 }

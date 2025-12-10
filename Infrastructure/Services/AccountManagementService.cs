@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services;
 
-public class AccountManagementService : IAccountManagementService
+public partial class AccountManagementService : IAccountManagementService
 {
     private readonly IApplicationDbContext _db;
     private readonly ApplicationDbContext _dbContext; // Need concrete type for Roles/UserRoles
@@ -53,7 +53,7 @@ public class AccountManagementService : IAccountManagementService
 
         if (currentUser?.PersonId == null)
         {
-            _logger.LogWarning("User {UserId} not found or has no PersonId", userId);
+            LogUserNotFoundOrNoPersonId(userId);
             return Enumerable.Empty<LinkedAccountDto>();
         }
 
@@ -100,17 +100,14 @@ public class AccountManagementService : IAccountManagementService
 
             if (currentUser == null || targetUser == null)
             {
-                _logger.LogWarning("User not found: CurrentUserId={CurrentUserId}, TargetAccountId={TargetAccountId}",
-                    currentUserId, targetAccountId);
+                LogUserNotFoundForSwitch(currentUserId, targetAccountId);
                 return false;
             }
 
             // Verify both users belong to the same Person (security check)
             if (currentUser.PersonId != targetUser.PersonId || currentUser.PersonId == null)
             {
-                _logger.LogWarning(
-                    "User {CurrentUserId} attempted to switch to account {TargetAccountId} with different PersonId. " +
-                    "Current PersonId: {CurrentPersonId}, Target PersonId: {TargetPersonId}",
+                LogAccountSwitchPersonMismatch(
                     currentUserId, targetAccountId, currentUser.PersonId, targetUser.PersonId);
                 return false;
             }
@@ -129,15 +126,13 @@ public class AccountManagementService : IAccountManagementService
                 ipAddress,
                 userAgent);
 
-            _logger.LogInformation("User {CurrentUserId} switched to account {TargetAccountId}. Reason: {Reason}",
-                currentUserId, targetAccountId, reason);
+            LogAccountSwitched(currentUserId, targetAccountId, reason);
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error switching account from {CurrentUserId} to {TargetAccountId}",
-                currentUserId, targetAccountId);
+            LogAccountSwitchError(ex, currentUserId, targetAccountId);
             return false;
         }
     }
@@ -165,4 +160,19 @@ public class AccountManagementService : IAccountManagementService
             return "unknown";
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "User {UserId} not found or has no PersonId")]
+    partial void LogUserNotFoundOrNoPersonId(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "User not found: CurrentUserId={CurrentUserId}, TargetAccountId={TargetAccountId}")]
+    partial void LogUserNotFoundForSwitch(Guid currentUserId, Guid targetAccountId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "User {CurrentUserId} attempted to switch to account {TargetAccountId} with different PersonId. Current PersonId: {CurrentPersonId}, Target PersonId: {TargetPersonId}")]
+    partial void LogAccountSwitchPersonMismatch(Guid currentUserId, Guid targetAccountId, Guid? currentPersonId, Guid? targetPersonId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User {CurrentUserId} switched to account {TargetAccountId}. Reason: {Reason}")]
+    partial void LogAccountSwitched(Guid currentUserId, Guid targetAccountId, string reason);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error switching account from {CurrentUserId} to {TargetAccountId}")]
+    partial void LogAccountSwitchError(Exception ex, Guid currentUserId, Guid targetAccountId);
 }
