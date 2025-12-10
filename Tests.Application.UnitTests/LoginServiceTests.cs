@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using System.Threading.Tasks;
 using Xunit;
+using Core.Application.Utilities;
 
 namespace Tests.Application.UnitTests;
 
@@ -132,11 +133,18 @@ public class LoginServiceTests
     public async Task AuthenticateAsync_LegacyUser_Success_ReturnsLegacySuccess()
     {
         // Arrange
-        var provisionedUser = new ApplicationUser { UserName = "legacy" };
+        var provisionedUser = new ApplicationUser 
+        { 
+            UserName = "legacy",
+            Person = new Person 
+            { 
+                NationalId = PidHasher.Hash("A123456789") 
+            }
+        };
         _mockUserManager.Setup(um => um.FindByEmailAsync("legacy")).ReturnsAsync((ApplicationUser)null);
         _mockLegacyAuthService.Setup(las => las.ValidateAsync("legacy", "password", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Core.Application.DTOs.LegacyUserDto { IsAuthenticated = true });
-        _mockJitProvisioningService.Setup(jps => jps.ProvisionUserAsync(It.IsAny<Core.Application.DTOs.LegacyUserDto>(), It.IsAny<CancellationToken>()))
+        _mockJitProvisioningService.Setup(jps => jps.ProvisionExternalUserAsync(It.IsAny<Core.Application.DTOs.ExternalAuthResult>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(provisionedUser);
 
         // Act

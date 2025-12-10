@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Entities;
 using Infrastructure;
@@ -176,13 +177,14 @@ public class JitProvisioningServiceTests : IDisposable
     public async Task ProvisionExternalUser_MatchByNationalId_ShouldUseSamePerson()
     {
         // Arrange
+        // The service now stores hashed NationalId, so we need to store the hash in test data
         var existingPerson = new Person
         {
             Id = Guid.NewGuid(),
             Email = "john@oldmail.com",
             FirstName = "John",
             LastName = "Doe",
-            NationalId = "A123456789",
+            NationalId = PidHasher.Hash("A123456789"), // Store hashed value
             CreatedAt = DateTime.UtcNow
         };
         await _context.Persons.AddAsync(existingPerson);

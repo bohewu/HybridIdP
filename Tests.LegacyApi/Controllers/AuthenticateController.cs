@@ -35,7 +35,7 @@ public class AuthenticateController : ControllerBase
                  SsoUuid = Guid.NewGuid().ToString(),
                  Username = request.Username,
                  Email = $"{request.Username}@example.com",
-                 NationalId = "A123456789",
+                 NationalId = "M123456789",
                  PassportNumber = (string?)null,
                  ResidentCertificateNumber = (string?)null
              });

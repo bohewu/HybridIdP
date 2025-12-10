@@ -1,4 +1,5 @@
 using Core.Application;
+using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Entities;
 using Infrastructure;
@@ -751,7 +752,7 @@ public class PersonServiceTests : IDisposable
 
         // Assert
         Assert.NotEqual(Guid.Empty, result.Id);
-        Assert.Equal("A123456789", result.NationalId);
+        Assert.Equal(PidHasher.Hash("A123456789"), result.NationalId);
     }
 
     [Fact]
@@ -873,7 +874,7 @@ public class PersonServiceTests : IDisposable
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal("B123456780", result.NationalId);
+        Assert.Equal(PidHasher.Hash("B123456780"), result.NationalId);
         Assert.Null(result.IdentityVerifiedAt);
         Assert.Null(result.IdentityVerifiedBy);
     }
@@ -894,7 +895,7 @@ public class PersonServiceTests : IDisposable
         await service.CreatePersonAsync(person);
 
         // Act
-        var (success, errorMessage) = await service.CheckPersonUniquenessAsync("A123456789", null, null);
+        var (success, errorMessage) = await service.CheckPersonUniquenessAsync(PidHasher.Hash("A123456789"), null, null);
 
         // Assert
         Assert.False(success);
@@ -910,7 +911,7 @@ public class PersonServiceTests : IDisposable
         var service = CreateService(context);
 
         // Act
-        var (success, errorMessage) = await service.CheckPersonUniquenessAsync("A123456789", null, null);
+        var (success, errorMessage) = await service.CheckPersonUniquenessAsync(PidHasher.Hash("A123456789"), null, null);
 
         // Assert
         Assert.True(success);
@@ -934,7 +935,7 @@ public class PersonServiceTests : IDisposable
 
         // Act - check same national ID but exclude the person who owns it
         var (success, errorMessage) = await service.CheckPersonUniquenessAsync(
-            "A123456789", null, null, created.Id);
+            PidHasher.Hash("A123456789"), null, null, created.Id);
 
         // Assert
         Assert.True(success);
