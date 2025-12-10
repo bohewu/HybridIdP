@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Web.IdP.Api;
+namespace Web.IdP.Controllers.Admin;
 
 [ApiController]
 [Route("api/[controller]")]

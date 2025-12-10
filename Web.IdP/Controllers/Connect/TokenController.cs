@@ -7,7 +7,7 @@ using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using Web.IdP.Services;
 
-namespace Web.IdP.Controllers
+namespace Web.IdP.Controllers.Connect
 {
     public class TokenController : Controller
     {

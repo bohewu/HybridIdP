@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Server.AspNetCore;
 using Web.IdP.Services;
 
-namespace Web.IdP.Controllers;
+namespace Web.IdP.Controllers.Connect;
 
 public class RevocationController : Controller
 {

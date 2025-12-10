@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Core.Application;
 using Core.Domain.Constants;
 
-namespace Web.IdP.Api;
+namespace Web.IdP.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/[controller]")]

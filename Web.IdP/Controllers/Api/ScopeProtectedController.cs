@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Web.IdP.Controllers;
+namespace Web.IdP.Controllers.Api;
 
 /// <summary>
 /// Test controller for demonstrating scope-based authorization
