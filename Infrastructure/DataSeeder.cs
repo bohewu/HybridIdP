@@ -429,29 +429,31 @@ public static class DataSeeder
     {
         const string clientId = "testclient-device";
 
-        if (await applicationManager.FindByClientIdAsync(clientId) == null)
+        var client = await applicationManager.FindByClientIdAsync(clientId);
+        if (client != null)
         {
-            await applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
-            {
-                ClientId = clientId,
-                ClientType = OpenIddictConstants.ClientTypes.Public,
-                ConsentType = OpenIddictConstants.ConsentTypes.Implicit,
-                DisplayName = "Device Test Client",
-                Permissions =
-                {
-                    OpenIddictConstants.Permissions.Endpoints.Authorization,
-                    OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization,
-                    OpenIddictConstants.Permissions.Endpoints.Token,
-                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                    OpenIddictConstants.Permissions.ResponseTypes.Code,
-                    OpenIddictConstants.Permissions.Scopes.Email,
-                    OpenIddictConstants.Permissions.Scopes.Profile,
-                    OpenIddictConstants.Permissions.Scopes.Roles,
-                    $"{OpenIddictConstants.Permissions.Prefixes.Scope}openid",
-                    $"{OpenIddictConstants.Permissions.Prefixes.Scope}offline_access"
-                }
-            });
+            await applicationManager.DeleteAsync(client);
         }
+
+        await applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
+        {
+            ClientId = clientId,
+            ClientType = OpenIddictConstants.ClientTypes.Public,
+            ConsentType = OpenIddictConstants.ConsentTypes.Implicit,
+            DisplayName = "Device Test Client",
+            Permissions =
+            {
+                OpenIddictConstants.Permissions.Endpoints.Authorization,
+                OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization,
+                OpenIddictConstants.Permissions.Endpoints.Token,
+                OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
+                OpenIddictConstants.Permissions.Scopes.Email,
+                OpenIddictConstants.Permissions.Scopes.Profile,
+                OpenIddictConstants.Permissions.Scopes.Roles,
+                $"{OpenIddictConstants.Permissions.Prefixes.Scope}openid",
+                $"{OpenIddictConstants.Permissions.Prefixes.Scope}offline_access"
+            }
+        });
     }
 
     /// <summary>
@@ -488,25 +490,28 @@ public static class DataSeeder
         }
 
         // Seed M2M client
-        if (await applicationManager.FindByClientIdAsync(clientId) == null)
+        var client = await applicationManager.FindByClientIdAsync(clientId);
+        if (client != null)
         {
-            await applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
-            {
-                ClientId = clientId,
-                ClientSecret = clientSecret,
-                DisplayName = "M2M Test Client",
-                ClientType = OpenIddictConstants.ClientTypes.Confidential,
-                ConsentType = OpenIddictConstants.ConsentTypes.Implicit, // No consent for M2M
-                Permissions =
-                {
-                    OpenIddictConstants.Permissions.Endpoints.Token,
-                    OpenIddictConstants.Permissions.Endpoints.Introspection,
-                    OpenIddictConstants.Permissions.Endpoints.Revocation,
-                    OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                    $"{OpenIddictConstants.Permissions.Prefixes.Scope}api:company:read",
-                    $"{OpenIddictConstants.Permissions.Prefixes.Scope}api:company:write"
-                }
-            });
+            await applicationManager.DeleteAsync(client);
         }
+
+        await applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
+        {
+            ClientId = clientId,
+            ClientSecret = clientSecret,
+            DisplayName = "M2M Test Client",
+            ClientType = OpenIddictConstants.ClientTypes.Confidential,
+            ConsentType = OpenIddictConstants.ConsentTypes.Implicit, // No consent for M2M
+            Permissions =
+            {
+                OpenIddictConstants.Permissions.Endpoints.Token,
+                OpenIddictConstants.Permissions.Endpoints.Introspection,
+                OpenIddictConstants.Permissions.Endpoints.Revocation,
+                OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
+                $"{OpenIddictConstants.Permissions.Prefixes.Scope}api:company:read",
+                $"{OpenIddictConstants.Permissions.Prefixes.Scope}api:company:write"
+            }
+        });
     }
 }
