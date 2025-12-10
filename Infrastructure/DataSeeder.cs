@@ -1,3 +1,4 @@
+using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
@@ -101,7 +102,7 @@ public static class DataSeeder
                 Id = Guid.NewGuid(),
                 FirstName = "System",
                 LastName = "Administrator",
-                NationalId = "A123456789", // Default admin National ID (Taiwan format)
+                NationalId = PidHasher.Hash("A123456789"), // Default admin National ID (Taiwan format) - stored as SHA256 hash
                 IdentityDocumentType = IdentityDocumentTypes.NationalId,
                 IdentityVerifiedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow
@@ -136,7 +137,7 @@ public static class DataSeeder
             if (adminUser.PersonId == null)
             {
                 var existingPerson = await context.Persons
-                    .FirstOrDefaultAsync(p => p.NationalId == "A123456789");
+                    .FirstOrDefaultAsync(p => p.NationalId == PidHasher.Hash("A123456789"));
                 
                 if (existingPerson == null)
                 {
@@ -146,7 +147,7 @@ public static class DataSeeder
                         Id = Guid.NewGuid(),
                         FirstName = "System",
                         LastName = "Administrator",
-                        NationalId = "A123456789",
+                        NationalId = PidHasher.Hash("A123456789"),
                         IdentityDocumentType = IdentityDocumentTypes.NationalId,
                         IdentityVerifiedAt = DateTime.UtcNow,
                         CreatedBy = adminUser.Id,
@@ -193,7 +194,7 @@ public static class DataSeeder
             FirstName = "App",
             LastName = "Manager",
             Email = email,
-            NationalId = "B987654321", // Test NationalId
+            NationalId = PidHasher.Hash("B987654321"), // Test NationalId - stored as SHA256 hash
             IdentityDocumentType = IdentityDocumentTypes.NationalId,
             IdentityVerifiedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow
@@ -250,7 +251,7 @@ public static class DataSeeder
             FirstName = "Multi",
             LastName = "Test",
             Email = email,
-            NationalId = "C123456789", // Test NationalId
+            NationalId = PidHasher.Hash("C123456789"), // Test NationalId - stored as SHA256 hash
             IdentityDocumentType = IdentityDocumentTypes.NationalId,
             IdentityVerifiedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Core.Application;
+using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
@@ -91,42 +92,53 @@ public class PersonService : IPersonService
             }
         }
 
-        // Phase 10.6: Validate identity documents
-        if (!string.IsNullOrWhiteSpace(person.NationalId))
+        // Phase 10.6: Validate identity documents BEFORE hashing
+        // We can only validate the format when we have the plaintext value
+        if (!string.IsNullOrWhiteSpace(person.NationalId) && !PidHasher.IsHashed(person.NationalId))
         {
             if (!IdentityDocumentValidator.IsValidTaiwanNationalId(person.NationalId))
             {
-                throw new InvalidOperationException($"Invalid Taiwan National ID format: {person.NationalId}");
+                throw new InvalidOperationException($"Invalid Taiwan National ID format");
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(person.PassportNumber))
+        if (!string.IsNullOrWhiteSpace(person.PassportNumber) && !PidHasher.IsHashed(person.PassportNumber))
         {
             if (!IdentityDocumentValidator.IsValidPassportNumber(person.PassportNumber))
             {
-                throw new InvalidOperationException($"Invalid passport number format: {person.PassportNumber}");
+                throw new InvalidOperationException($"Invalid passport number format");
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(person.ResidentCertificateNumber))
+        if (!string.IsNullOrWhiteSpace(person.ResidentCertificateNumber) && !PidHasher.IsHashed(person.ResidentCertificateNumber))
         {
             if (!IdentityDocumentValidator.IsValidResidentCertificateNumber(person.ResidentCertificateNumber))
             {
-                throw new InvalidOperationException($"Invalid resident certificate format: {person.ResidentCertificateNumber}");
+                throw new InvalidOperationException($"Invalid resident certificate format");
             }
         }
 
-        // Phase 10.6: Check for duplicate identity documents
+        // Hash PID values for storage (only if not already hashed)
+        var nationalIdHash = PidHasher.IsHashed(person.NationalId) ? person.NationalId : PidHasher.Hash(person.NationalId);
+        var passportHash = PidHasher.IsHashed(person.PassportNumber) ? person.PassportNumber : PidHasher.Hash(person.PassportNumber);
+        var residentCertHash = PidHasher.IsHashed(person.ResidentCertificateNumber) ? person.ResidentCertificateNumber : PidHasher.Hash(person.ResidentCertificateNumber);
+
+        // Phase 10.6: Check for duplicate identity documents using hashed values
         var (isUnique, errorMessage) = await CheckPersonUniquenessAsync(
-            person.NationalId,
-            person.PassportNumber,
-            person.ResidentCertificateNumber,
+            nationalIdHash,
+            passportHash,
+            residentCertHash,
             null);
 
         if (!isUnique)
         {
             throw new InvalidOperationException(errorMessage);
         }
+
+        // Store hashed values
+        person.NationalId = nationalIdHash;
+        person.PassportNumber = passportHash;
+        person.ResidentCertificateNumber = residentCertHash;
 
         _context.Persons.Add(person);
         await _context.SaveChangesAsync(CancellationToken.None);
@@ -178,36 +190,49 @@ public class PersonService : IPersonService
             }
         }
 
-        // Phase 10.6: Validate identity documents
-        if (!string.IsNullOrWhiteSpace(person.NationalId))
+        // Phase 10.6: PID Hash handling for update
+        // Only validate and hash if NEW plaintext value is provided (not empty, not already hashed)
+        string? newNationalIdHash = null;
+        string? newPassportHash = null;
+        string? newResidentCertHash = null;
+
+        if (!string.IsNullOrWhiteSpace(person.NationalId) && !PidHasher.IsHashed(person.NationalId))
         {
             if (!IdentityDocumentValidator.IsValidTaiwanNationalId(person.NationalId))
             {
-                throw new InvalidOperationException($"Invalid Taiwan National ID format: {person.NationalId}");
+                throw new InvalidOperationException($"Invalid Taiwan National ID format");
             }
+            newNationalIdHash = PidHasher.Hash(person.NationalId);
         }
 
-        if (!string.IsNullOrWhiteSpace(person.PassportNumber))
+        if (!string.IsNullOrWhiteSpace(person.PassportNumber) && !PidHasher.IsHashed(person.PassportNumber))
         {
             if (!IdentityDocumentValidator.IsValidPassportNumber(person.PassportNumber))
             {
-                throw new InvalidOperationException($"Invalid passport number format: {person.PassportNumber}");
+                throw new InvalidOperationException($"Invalid passport number format");
             }
+            newPassportHash = PidHasher.Hash(person.PassportNumber);
         }
 
-        if (!string.IsNullOrWhiteSpace(person.ResidentCertificateNumber))
+        if (!string.IsNullOrWhiteSpace(person.ResidentCertificateNumber) && !PidHasher.IsHashed(person.ResidentCertificateNumber))
         {
             if (!IdentityDocumentValidator.IsValidResidentCertificateNumber(person.ResidentCertificateNumber))
             {
-                throw new InvalidOperationException($"Invalid resident certificate format: {person.ResidentCertificateNumber}");
+                throw new InvalidOperationException($"Invalid resident certificate format");
             }
+            newResidentCertHash = PidHasher.Hash(person.ResidentCertificateNumber);
         }
 
-        // Phase 10.6: Check for duplicate identity documents (excluding current person)
+        // Determine final values: use new hash if provided, otherwise keep existing
+        var finalNationalId = newNationalIdHash ?? existingPerson.NationalId;
+        var finalPassport = newPassportHash ?? existingPerson.PassportNumber;
+        var finalResidentCert = newResidentCertHash ?? existingPerson.ResidentCertificateNumber;
+
+        // Check for duplicate identity documents (excluding current person)
         var (isUnique, errorMessage) = await CheckPersonUniquenessAsync(
-            person.NationalId,
-            person.PassportNumber,
-            person.ResidentCertificateNumber,
+            finalNationalId,
+            finalPassport,
+            finalResidentCert,
             personId);
 
         if (!isUnique)
@@ -215,11 +240,11 @@ public class PersonService : IPersonService
             throw new InvalidOperationException(errorMessage);
         }
 
-        // Phase 10.6: Reset verification fields if identity document changes
+        // Detect if identity documents actually changed
         bool identityChanged = 
-            person.NationalId != existingPerson.NationalId ||
-            person.PassportNumber != existingPerson.PassportNumber ||
-            person.ResidentCertificateNumber != existingPerson.ResidentCertificateNumber;
+            (newNationalIdHash != null && newNationalIdHash != existingPerson.NationalId) ||
+            (newPassportHash != null && newPassportHash != existingPerson.PassportNumber) ||
+            (newResidentCertHash != null && newResidentCertHash != existingPerson.ResidentCertificateNumber);
 
         // Update fields
         // Contact Information
@@ -244,10 +269,13 @@ public class PersonService : IPersonService
         existingPerson.TimeZone = person.TimeZone;
         existingPerson.Locale = person.Locale;
 
-        // Phase 10.6: Update identity fields
-        existingPerson.NationalId = person.NationalId;
-        existingPerson.PassportNumber = person.PassportNumber;
-        existingPerson.ResidentCertificateNumber = person.ResidentCertificateNumber;
+        // Phase 10.6: Update identity fields (only if new value was provided)
+        if (newNationalIdHash != null)
+            existingPerson.NationalId = newNationalIdHash;
+        if (newPassportHash != null)
+            existingPerson.PassportNumber = newPassportHash;
+        if (newResidentCertHash != null)
+            existingPerson.ResidentCertificateNumber = newResidentCertHash;
         existingPerson.IdentityDocumentType = person.IdentityDocumentType;
 
         // Reset verification if identity document changed

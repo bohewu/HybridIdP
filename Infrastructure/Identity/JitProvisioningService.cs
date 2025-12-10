@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
@@ -71,9 +72,10 @@ public class JitProvisioningService : IJitProvisioningService
                 EmployeeId = externalAuth.EmployeeId,
                 Department = externalAuth.Department,
                 JobTitle = externalAuth.JobTitle,
-                NationalId = externalAuth.NationalId,
-                PassportNumber = externalAuth.PassportNumber,
-                ResidentCertificateNumber = externalAuth.ResidentCertificateNumber,
+                // Hash PID values before storing
+                NationalId = PidHasher.Hash(externalAuth.NationalId),
+                PassportNumber = PidHasher.Hash(externalAuth.PassportNumber),
+                ResidentCertificateNumber = PidHasher.Hash(externalAuth.ResidentCertificateNumber),
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = null // System provisioned
             };
@@ -144,27 +146,30 @@ public class JitProvisioningService : IJitProvisioningService
         ExternalAuthResult externalAuth,
         CancellationToken cancellationToken)
     {
-        // Priority 1: Match by identity documents (ANY match)
+        // Priority 1: Match by identity documents (ANY match) - using hashed values
         if (!string.IsNullOrWhiteSpace(externalAuth.NationalId))
         {
+            var hashedNationalId = PidHasher.Hash(externalAuth.NationalId);
             var personByNationalId = await _context.Persons
-                .FirstOrDefaultAsync(p => p.NationalId == externalAuth.NationalId, cancellationToken);
+                .FirstOrDefaultAsync(p => p.NationalId == hashedNationalId, cancellationToken);
             if (personByNationalId != null)
                 return personByNationalId;
         }
 
         if (!string.IsNullOrWhiteSpace(externalAuth.PassportNumber))
         {
+            var hashedPassport = PidHasher.Hash(externalAuth.PassportNumber);
             var personByPassport = await _context.Persons
-                .FirstOrDefaultAsync(p => p.PassportNumber == externalAuth.PassportNumber, cancellationToken);
+                .FirstOrDefaultAsync(p => p.PassportNumber == hashedPassport, cancellationToken);
             if (personByPassport != null)
                 return personByPassport;
         }
 
         if (!string.IsNullOrWhiteSpace(externalAuth.ResidentCertificateNumber))
         {
+            var hashedResident = PidHasher.Hash(externalAuth.ResidentCertificateNumber);
             var personByResident = await _context.Persons
-                .FirstOrDefaultAsync(p => p.ResidentCertificateNumber == externalAuth.ResidentCertificateNumber, cancellationToken);
+                .FirstOrDefaultAsync(p => p.ResidentCertificateNumber == hashedResident, cancellationToken);
             if (personByResident != null)
                 return personByResident;
         }

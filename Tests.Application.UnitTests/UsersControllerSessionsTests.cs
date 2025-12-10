@@ -10,8 +10,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Localization;
 using Moq;
-using Web.IdP.Api;
+using Web.IdP;
+using Web.IdP.Controllers.Admin;
+using Web.IdP.Services;
 using Xunit;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -38,8 +41,16 @@ public class UsersControllerSessionsTests
 
         sessionServiceMock = new Mock<ISessionService>();
         var loginHistoryMock = new Mock<ILoginHistoryService>();
+        var localizerMock = new Mock<IStringLocalizer<SharedResource>>();
+        var impersonationMock = new Mock<IImpersonationService>();
 
-        return new UsersController(userMgmt.Object, userManager, sessionServiceMock.Object, loginHistoryMock.Object);
+        return new UsersController(
+            userMgmt.Object, 
+            userManager, 
+            sessionServiceMock.Object, 
+            loginHistoryMock.Object,
+            localizerMock.Object,
+            impersonationMock.Object);
     }
 
     [Fact]
