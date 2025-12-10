@@ -1,0 +1,12 @@
+services:
+  idp-service:
+    environment:
+      # Override environment variables here
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      # Expose additional ports if needed
+      - "5000:5000"
+
+  mssql-service:
+    environment:
+      - MSSQL_SA_PASSWORD=NewStrong!Passw0rd

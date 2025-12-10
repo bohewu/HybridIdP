@@ -37,7 +37,11 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using System.Threading.RateLimiting;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -57,6 +61,26 @@ builder.Services.AddSingleton(levelSwitch);
 // Add services to the container.
 // Add Vite services for Vue.js integration
 builder.Services.AddViteServices();
+
+// Configure Proxy Options (Phase 17)
+builder.Services.Configure<ProxyOptions>(builder.Configuration.GetSection(ProxyOptions.Section));
+
+// Configure Cache (Redis or Memory) (Phase 17)
+var redisConnectionString = builder.Configuration.GetConnectionString("RedisConnection");
+var redisEnabled = builder.Configuration.GetValue<bool>("Redis:Enabled");
+
+if (redisEnabled && !string.IsNullOrEmpty(redisConnectionString))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "HybridIdP_";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
 
 // Database provider selection: prioritize environment variable, then appsettings
 var databaseProvider = Environment.GetEnvironmentVariable("DATABASE_PROVIDER")
@@ -188,8 +212,25 @@ builder.Services.AddOpenIddict()
                .SetDeviceCodeLifetime(TimeSpan.FromMinutes(tokenOptions.DeviceCodeLifetimeMinutes));
 
         // Register the signing and encryption credentials
-        options.AddDevelopmentEncryptionCertificate()
-               .AddDevelopmentSigningCertificate();
+        // Phase 17: Production Certificate Support
+        var encryptionCertPath = builder.Configuration["Certificates:EncryptionCertificatePath"];
+        var encryptionCertPassword = builder.Configuration["Certificates:EncryptionCertificatePassword"];
+        var signingCertPath = builder.Configuration["Certificates:SigningCertificatePath"];
+        var signingCertPassword = builder.Configuration["Certificates:SigningCertificatePassword"];
+
+        if (!string.IsNullOrEmpty(encryptionCertPath) && File.Exists(encryptionCertPath) &&
+            !string.IsNullOrEmpty(signingCertPath) && File.Exists(signingCertPath))
+        {
+            // Production: Load from PFX using .NET 10 X509CertificateLoader
+            options.AddEncryptionCertificate(X509CertificateLoader.LoadPkcs12FromFile(encryptionCertPath, encryptionCertPassword));
+            options.AddSigningCertificate(X509CertificateLoader.LoadPkcs12FromFile(signingCertPath, signingCertPassword));
+        }
+        else
+        {
+            // Development/Fallback: Use Ephemeral/Development Certificates
+            options.AddDevelopmentEncryptionCertificate()
+                   .AddDevelopmentSigningCertificate();
+        }
 
         // Register the ASP.NET Core host and configure the ASP.NET Core-specific options
         options.UseAspNetCore()
@@ -338,7 +379,8 @@ builder.Services.AddScoped<IDeviceFlowService, DeviceFlowService>();
 
 
 // Settings + Branding services
-builder.Services.AddMemoryCache();
+// builder.Services.AddMemoryCache(); // Replaced by AddDistributedMemoryCache above or Redis
+builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IBrandingService, BrandingService>();
@@ -524,9 +566,9 @@ else
     healthChecksBuilder.AddSqlServer(connectionString);
 }
 
-// Add Redis Health Check if connection string is available
-var redisConnectionString = builder.Configuration.GetConnectionString("RedisConnection");
-if (!string.IsNullOrEmpty(redisConnectionString))
+// Add Redis Health Check if connection string is available AND Redis is enabled
+// var redisConnectionString = builder.Configuration.GetConnectionString("RedisConnection"); // Moved up
+if (redisEnabled && !string.IsNullOrEmpty(redisConnectionString))
 {
     healthChecksBuilder.AddRedis(redisConnectionString);
 }
@@ -552,6 +594,44 @@ app.UseHttpsRedirection();
 
 // Add security headers middleware
 app.UseSecurityHeaders();
+
+// Configure Forwarded Headers Middleware (Phase 17)
+// Required for running behind a proxy (Nginx, Load Balancer) to get real Client IP
+var proxyOptions = new ProxyOptions();
+builder.Configuration.GetSection(ProxyOptions.Section).Bind(proxyOptions);
+
+if (proxyOptions.Enabled)
+{
+    var options = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    };
+
+    // Add KnownProxies
+    if (!string.IsNullOrEmpty(proxyOptions.KnownProxies))
+    {
+        foreach (var ip in proxyOptions.KnownProxies.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (IPAddress.TryParse(ip, out var address))
+            {
+                options.KnownProxies.Add(address);
+            }
+        }
+    }
+
+    // Add KnownNetworks if supported (custom logic needed or Loopback default)
+    // For simplicity here, we clear KnownProxies/Networks if we want to trust all (Internal Deployment)
+    // Or we configure explicit IPs.
+    // If KnownNetworks logic is complex, usually recommended to configure Nginx to set headers correctly and trust Nginx IP.
+    
+    // Explicitly set ForwardLimit
+    options.ForwardLimit = proxyOptions.ForwardLimit;
+
+    // Optional: RequireHeaderSymmetry
+    options.RequireHeaderSymmetry = proxyOptions.RequireHeaderSymmetry;
+
+    app.UseForwardedHeaders(options);
+}
 
 // Use Vite development server in development mode
 if (app.Environment.IsDevelopment())
