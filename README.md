@@ -3,12 +3,11 @@
 A comprehensive Identity Provider Administration System.
 
 ## Documentation
-## Documentation
 - [How to Test](docs/TESTING.md) 👈 **Start Here for Testing & Seeding**
 - [Architecture](docs/ARCHITECTURE.md)
 - [Features](docs/FEATURES.md)
 - [Impersonation Guide](docs/Impersonation.md)
-- [Development Guide](docs/DEVELOPMENT_GUIDE.md)
+- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
 
 ## Key Features
 
@@ -35,7 +34,7 @@ Built on top of the robust **OpenIddict** framework, supporting modern security 
 - **Security Headers**: Pre-configured CSP, HSTS, and other security best practices.
 
 ### 🛠️ Developer Experience
-- **Docker Ready**: Includes `docker-compose` for rapid deployment.
+- **Docker Ready**: Includes `docker compose` for rapid deployment.
 - **Data Seeding**: Automated environments setup for Development (Test Users, Clients, Resources).
 - **Tests**: High coverage with Unit, Integration, and End-to-End (Playwright) tests.
 
