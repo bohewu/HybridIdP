@@ -4,6 +4,7 @@ using Core.Application.DTOs;
 using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Core.Domain.Events;
 using Core.Application.Options; // Added
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -11,9 +12,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options; // Added
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Web.IdP.Pages.Account;
 
+[EnableRateLimiting("login")]
 public class LoginModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
@@ -23,6 +26,7 @@ public class LoginModel : PageModel
     private readonly ILoginHistoryService _loginHistoryService;
     private readonly INotificationService _notificationService;
     private readonly ISecurityPolicyService _securityPolicyService;
+    private readonly IDomainEventPublisher _eventPublisher;
     private readonly TurnstileOptions _turnstileOptions; // Changed
     private readonly ILogger<LoginModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -35,6 +39,7 @@ public class LoginModel : PageModel
         ILoginHistoryService loginHistoryService,
         INotificationService notificationService,
         ISecurityPolicyService securityPolicyService,
+        IDomainEventPublisher eventPublisher,
         IOptions<TurnstileOptions> turnstileOptions, // Changed
         ILogger<LoginModel> logger,
         IStringLocalizer<SharedResource> localizer)
@@ -46,6 +51,7 @@ public class LoginModel : PageModel
         _loginHistoryService = loginHistoryService;
         _notificationService = notificationService;
         _securityPolicyService = securityPolicyService;
+        _eventPublisher = eventPublisher;
         _turnstileOptions = turnstileOptions.Value; // Changed
         _logger = logger;
         _localizer = localizer;
@@ -146,18 +152,51 @@ public class LoginModel : PageModel
                 await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
                 _logger.LogInformation("User '{UserName}' signed in successfully.", result.User!.UserName);
                 
+                // Publish audit event for successful login
+                await _eventPublisher.PublishAsync(new LoginAttemptEvent(
+                    userId: result.User!.Id.ToString(),
+                    userName: result.User!.UserName ?? Input.Login,
+                    isSuccessful: true,
+                    failureReason: null,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    userAgent: Request.Headers["User-Agent"].ToString()
+                ));
+                
                 // Always redirect to returnUrl (default is ~/ index page)
                 // Users will navigate to Admin/ApplicationManager portals via menu
                 return LocalRedirect(returnUrl);
 
+
             case LoginStatus.LockedOut:
                 _logger.LogWarning("Login failed for user '{Login}': Account is locked out.", Input.Login);
+                
+                // Publish audit event for locked out login attempt
+                await _eventPublisher.PublishAsync(new LoginAttemptEvent(
+                    userId: string.Empty,
+                    userName: Input.Login,
+                    isSuccessful: false,
+                    failureReason: "Account locked out",
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    userAgent: Request.Headers["User-Agent"].ToString()
+                ));
+                
                 ModelState.AddModelError(string.Empty, _localizer["UserAccountLockedOut"]);
                 return Page();
 
             case LoginStatus.InvalidCredentials:
             default:
                 _logger.LogWarning("Login failed for user '{Login}': Invalid credentials.", Input.Login);
+                
+                // Publish audit event for failed login attempt
+                await _eventPublisher.PublishAsync(new LoginAttemptEvent(
+                    userId: string.Empty,
+                    userName: Input.Login,
+                    isSuccessful: false,
+                    failureReason: "Invalid credentials",
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    userAgent: Request.Headers["User-Agent"].ToString()
+                ));
+                
                 ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
                 return Page();
         }

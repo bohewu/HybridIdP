@@ -36,6 +36,9 @@ using HealthChecks.NpgSql;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -391,6 +394,71 @@ builder.Services.Configure<AppInfoOptions>(builder.Configuration.GetSection(AppI
 // Register LegacyAuth Options
 builder.Services.Configure<LegacyAuthOptions>(builder.Configuration.GetSection(LegacyAuthOptions.SectionName));
 
+// Register RateLimiting Options
+builder.Services.Configure<RateLimitingOptions>(builder.Configuration.GetSection(RateLimitingOptions.Section));
+
+// Configure Rate Limiting
+var rateLimitingOptions = new RateLimitingOptions();
+builder.Configuration.GetSection(RateLimitingOptions.Section).Bind(rateLimitingOptions);
+
+if (rateLimitingOptions.Enabled)
+{
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        
+        // Login endpoint policy - per IP address
+        options.AddPolicy("login", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = rateLimitingOptions.LoginPermitLimit,
+                    Window = TimeSpan.FromSeconds(rateLimitingOptions.LoginWindowSeconds),
+                    QueueLimit = rateLimitingOptions.QueueLimit,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                }));
+        
+        // Token endpoint policy - per client ID
+        options.AddPolicy("token", httpContext =>
+        {
+            var clientId = httpContext.Request.Form["client_id"].ToString();
+            if (string.IsNullOrEmpty(clientId))
+            {
+                clientId = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            }
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: clientId,
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = rateLimitingOptions.TokenPermitLimit,
+                    Window = TimeSpan.FromSeconds(rateLimitingOptions.TokenWindowSeconds),
+                    QueueLimit = rateLimitingOptions.QueueLimit,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                });
+        });
+        
+        // Admin API policy - per client ID or IP
+        options.AddPolicy("admin-api", httpContext =>
+        {
+            var clientId = httpContext.User?.FindFirst("client_id")?.Value;
+            if (string.IsNullOrEmpty(clientId))
+            {
+                clientId = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            }
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: clientId,
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = rateLimitingOptions.AdminApiPermitLimit,
+                    Window = TimeSpan.FromSeconds(rateLimitingOptions.AdminApiWindowSeconds),
+                    QueueLimit = rateLimitingOptions.QueueLimit,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                });
+        });
+    });
+}
+
 // Configure OpenTelemetry
 var appInfoOptions = new AppInfoOptions();
 builder.Configuration.GetSection(AppInfoOptions.Section).Bind(appInfoOptions);
@@ -500,6 +568,12 @@ var localizationOptions = new RequestLocalizationOptions()
     .AddSupportedUICultures(supportedCultures);
 
 app.UseRequestLocalization(localizationOptions);
+
+// Use rate limiting middleware if enabled
+if (rateLimitingOptions.Enabled)
+{
+    app.UseRateLimiter();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
