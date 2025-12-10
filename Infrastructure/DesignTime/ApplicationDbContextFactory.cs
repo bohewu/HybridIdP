@@ -39,6 +39,9 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
             });
         }
 
+        // Important: Register OpenIddict entity sets with Guid keys (must match Program.cs configuration)
+        optionsBuilder.UseOpenIddict<Guid>();
+
         return new ApplicationDbContext(optionsBuilder.Options);
     }
 }
