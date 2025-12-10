@@ -37,13 +37,25 @@
   },
   "loginHistory": {
     "title": "登入紀錄",
+    "userLabel": "使用者",
+    "showAbnormalOnly": "僅顯示異常",
+    "tableHeaders": {
+      "loginTime": "登入時間",
+      "ipAddress": "IP 位址",
+      "userAgent": "裝置/瀏覽器",
+      "riskScore": "風險分數",
+      "status": "狀態",
+      "actions": "操作"
+    },
     "status": {
       "success": "成功",
-      "failure": "失敗"
+      "failure": "失敗",
+      "abnormal": "異常"
     },
     "buttons": {
       "close": "關閉"
-    }
+    },
+    "noRecords": "無登入紀錄"
   },
   "jobTitle": "職稱",
   "emailCannotBeChanged": "建立後無法變更電子郵件",

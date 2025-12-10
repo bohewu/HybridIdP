@@ -37,13 +37,25 @@
   },
   "loginHistory": {
     "title": "Login History",
+    "userLabel": "User",
+    "showAbnormalOnly": "Show Abnormal Only",
+    "tableHeaders": {
+      "loginTime": "Login Time",
+      "ipAddress": "IP Address",
+      "userAgent": "Device/Browser",
+      "riskScore": "Risk Score",
+      "status": "Status",
+      "actions": "Actions"
+    },
     "status": {
       "success": "Success",
-      "failure": "Failure"
+      "failure": "Failure",
+      "abnormal": "Abnormal"
     },
     "buttons": {
       "close": "Close"
-    }
+    },
+    "noRecords": "No login records"
   },
   "jobTitle": "Job Title",
   "emailCannotBeChanged": "Email cannot be changed after creation",

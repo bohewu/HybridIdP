@@ -202,9 +202,7 @@ const setInitialFocus = async () => {
     const inputElements = modalPanel.value.querySelectorAll(
       'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])'
     )
-    console.log('[BaseModal] Found input elements:', inputElements.length, inputElements)
     if (inputElements.length > 0) {
-      console.log('[BaseModal] Focusing first input:', inputElements[0])
       inputElements[0].focus()
       return
     }
@@ -213,9 +211,7 @@ const setInitialFocus = async () => {
     const focusableElements = modalPanel.value.querySelectorAll(
       'button:not([disabled]):not([tabindex="-1"]), [href], [tabindex]:not([tabindex="-1"])'
     )
-    console.log('[BaseModal] Found focusable elements:', focusableElements.length, focusableElements)
     if (focusableElements.length > 0) {
-      console.log('[BaseModal] Focusing first focusable:', focusableElements[0])
       focusableElements[0].focus()
     }
   }
@@ -249,7 +245,6 @@ const handleKeyDown = (event) => {
 
 // Watch show prop to manage focus
 watch(() => props.show, (newVal) => {
-  console.log('[BaseModal] show changed to:', newVal)
   if (newVal) {
     setInitialFocus()
   }
