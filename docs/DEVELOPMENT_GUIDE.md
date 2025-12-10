@@ -44,8 +44,15 @@ docs/
 
 **正確的啟動順序**
 
-#### 1. 啟動資料庫（PostgreSQL）
+#### 1. 啟動資料庫（PostgreSQL/SQL Server）與 Redis
 
+推薦使用 Docker Compose 啟動開發環境依賴服務：
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+或者使用 PowerShell 腳本（僅限 PostgreSQL）：
 ```powershell
 // See docs/examples/development_guide_start_db.ps1.example
 ```

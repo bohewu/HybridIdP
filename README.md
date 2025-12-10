@@ -47,6 +47,11 @@ Built on top of the robust **OpenIddict** framework, supporting modern security 
 > - The AI agents have strived for clean, maintainable code, but human review is encouraged for critical security paths.
 
 ## Quick Start
-1.  Run the backend (Web.IdP).
-2.  Run the frontend (ClientApp) or use the hosted Razor views.
-3.  Login as Admin.
+1.  **Development Setup**:
+    Start backend dependencies (SQL Server, Redis, etc.) using Docker Compose:
+    ```bash
+    docker compose -f docker-compose.dev.yml up -d
+    ```
+2.  Run the backend (Web.IdP).
+3.  Run the frontend (ClientApp) or use the hosted Razor views.
+4.  Login as Admin.
