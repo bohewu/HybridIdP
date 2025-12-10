@@ -249,10 +249,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.Property(e => e.Locale).HasMaxLength(20);
             entity.Property(e => e.CreatedAt).IsRequired();
             
-            // Phase 10.6: Identity verification fields
-            entity.Property(e => e.NationalId).HasMaxLength(20);
-            entity.Property(e => e.PassportNumber).HasMaxLength(20);
-            entity.Property(e => e.ResidentCertificateNumber).HasMaxLength(20);
+            // Phase 10.6: Identity verification fields (stored as SHA256 hash - 64 chars)
+            entity.Property(e => e.NationalId).HasMaxLength(64);
+            entity.Property(e => e.PassportNumber).HasMaxLength(64);
+            entity.Property(e => e.ResidentCertificateNumber).HasMaxLength(64);
             entity.Property(e => e.IdentityDocumentType).HasMaxLength(30);
             
             // Phase 10.6: Unique indexes for identity fields (filtered to allow NULL values)

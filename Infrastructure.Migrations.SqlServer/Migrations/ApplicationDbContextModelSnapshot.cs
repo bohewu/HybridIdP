@@ -498,16 +498,16 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("NationalId")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("Nickname")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("PassportNumber")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(50)
@@ -522,8 +522,8 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("ResidentCertificateNumber")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("TimeZone")
                         .HasMaxLength(100)

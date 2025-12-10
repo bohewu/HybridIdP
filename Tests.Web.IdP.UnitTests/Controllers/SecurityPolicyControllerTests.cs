@@ -5,7 +5,7 @@ using Core.Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using Web.IdP.Api;
+using Web.IdP.Controllers.Admin;
 using Xunit;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
