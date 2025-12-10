@@ -1,0 +1,1829 @@
+使用來自 Web.IdP\Properties\launchSettings.json 的啟動設定...
+正在建置...
+[12:33:48 INF] User profile is available. Using 'C:\Users\bohewu\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[12:33:49 INF] Executed DbCommand (11ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[12:33:49 INF] Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[12:33:49 INF] Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+[12:33:49 INF] No migrations were applied. The database is already up to date.
+[12:33:49 INF] Executed DbCommand (5ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+SELECT a."Id", a."ConcurrencyStamp", a."CreatedAt", a."Description", a."IsSystem", a."ModifiedAt", a."Name", a."NormalizedName", a."Permissions"
+FROM "AspNetRoles" AS a
+WHERE a."NormalizedName" = @normalizedName
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+SELECT a."Id", a."ConcurrencyStamp", a."CreatedAt", a."Description", a."IsSystem", a."ModifiedAt", a."Name", a."NormalizedName", a."Permissions"
+FROM "AspNetRoles" AS a
+WHERE a."NormalizedName" = @normalizedName
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+SELECT a."Id", a."ConcurrencyStamp", a."CreatedAt", a."Description", a."IsSystem", a."ModifiedAt", a."Name", a."NormalizedName", a."Permissions"
+FROM "AspNetRoles" AS a
+WHERE a."NormalizedName" = @normalizedName
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@normalizedEmail='?'], CommandType='Text', CommandTimeout='30']
+SELECT a."Id", a."AccessFailedCount", a."Address", a."Birthdate", a."ConcurrencyStamp", a."CreatedAt", a."CreatedBy", a."DeletedAt", a."DeletedBy", a."Department", a."Email", a."EmailConfirmed", a."EmployeeId", a."FirstName", a."Gender", a."IsActive", a."IsDeleted", a."JobTitle", a."LastLoginDate", a."LastName", a."LastPasswordChangeDate", a."Locale", a."LockoutEnabled", a."LockoutEnd", a."MiddleName", a."ModifiedAt", a."ModifiedBy", a."Nickname", a."NormalizedEmail", a."NormalizedUserName", a."PasswordHash", a."PasswordHistory", a."PersonId", a."PhoneNumber", a."PhoneNumberConfirmed", a."PictureUrl", a."ProfileUrl", a."SecurityStamp", a."TimeZone", a."TwoFactorEnabled", a."UpdatedAt", a."UserName", a."Website"
+FROM "AspNetUsers" AS a
+WHERE a."NormalizedEmail" = @normalizedEmail
+LIMIT 2
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+SELECT o."Id", o."ConcurrencyToken", o."Description", o."Descriptions", o."DisplayName", o."DisplayNames", o."Name", o."Properties", o."Resources"
+FROM "OpenIddictScopes" AS o
+WHERE o."Name" = @name
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+SELECT o."Id", o."ConcurrencyToken", o."Description", o."Descriptions", o."DisplayName", o."DisplayNames", o."Name", o."Properties", o."Resources"
+FROM "OpenIddictScopes" AS o
+WHERE o."Name" = @name
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+SELECT o."Id", o."ConcurrencyToken", o."Description", o."Descriptions", o."DisplayName", o."DisplayNames", o."Name", o."Properties", o."Resources"
+FROM "OpenIddictScopes" AS o
+WHERE o."Name" = @name
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+SELECT o."Id", o."ConcurrencyToken", o."Description", o."Descriptions", o."DisplayName", o."DisplayNames", o."Name", o."Properties", o."Resources"
+FROM "OpenIddictScopes" AS o
+WHERE o."Name" = @name
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM "Core.Application.IApplicationDbContext.UserClaims" AS c)
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@normalizedEmail='?'], CommandType='Text', CommandTimeout='30']
+SELECT a."Id", a."AccessFailedCount", a."Address", a."Birthdate", a."ConcurrencyStamp", a."CreatedAt", a."CreatedBy", a."DeletedAt", a."DeletedBy", a."Department", a."Email", a."EmailConfirmed", a."EmployeeId", a."FirstName", a."Gender", a."IsActive", a."IsDeleted", a."JobTitle", a."LastLoginDate", a."LastName", a."LastPasswordChangeDate", a."Locale", a."LockoutEnabled", a."LockoutEnd", a."MiddleName", a."ModifiedAt", a."ModifiedBy", a."Nickname", a."NormalizedEmail", a."NormalizedUserName", a."PasswordHash", a."PasswordHistory", a."PersonId", a."PhoneNumber", a."PhoneNumberConfirmed", a."PictureUrl", a."ProfileUrl", a."SecurityStamp", a."TimeZone", a."TwoFactorEnabled", a."UpdatedAt", a."UserName", a."Website"
+FROM "AspNetUsers" AS a
+WHERE a."NormalizedEmail" = @normalizedEmail
+LIMIT 2
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@normalizedEmail='?'], CommandType='Text', CommandTimeout='30']
+SELECT a."Id", a."AccessFailedCount", a."Address", a."Birthdate", a."ConcurrencyStamp", a."CreatedAt", a."CreatedBy", a."DeletedAt", a."DeletedBy", a."Department", a."Email", a."EmailConfirmed", a."EmployeeId", a."FirstName", a."Gender", a."IsActive", a."IsDeleted", a."JobTitle", a."LastLoginDate", a."LastName", a."LastPasswordChangeDate", a."Locale", a."LockoutEnabled", a."LockoutEnd", a."MiddleName", a."ModifiedAt", a."ModifiedBy", a."Nickname", a."NormalizedEmail", a."NormalizedUserName", a."PasswordHash", a."PasswordHistory", a."PersonId", a."PhoneNumber", a."PhoneNumberConfirmed", a."PictureUrl", a."ProfileUrl", a."SecurityStamp", a."TimeZone", a."TwoFactorEnabled", a."UpdatedAt", a."UserName", a."Website"
+FROM "AspNetUsers" AS a
+WHERE a."NormalizedEmail" = @normalizedEmail
+LIMIT 2
+DEBUG: ENTERING SeedTestDeviceClientAsync
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@identifier='?'], CommandType='Text', CommandTimeout='30']
+SELECT o."Id", o."ApplicationType", o."ClientId", o."ClientSecret", o."ClientType", o."ConcurrencyToken", o."ConsentType", o."DisplayName", o."DisplayNames", o."JsonWebKeySet", o."Permissions", o."PostLogoutRedirectUris", o."Properties", o."RedirectUris", o."Requirements", o."Settings"
+FROM "OpenIddictApplications" AS o
+WHERE o."ClientId" = @identifier
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (2ms) [Parameters=[@application_Id='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+DELETE FROM "OpenIddictTokens" AS o
+WHERE o."Id" IN (
+    SELECT o0."Id"
+    FROM "OpenIddictTokens" AS o0
+    LEFT JOIN "OpenIddictApplications" AS o1 ON o0."ApplicationId" = o1."Id"
+    WHERE o1."Id" = @application_Id
+)
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@application_Id='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+DELETE FROM "OpenIddictAuthorizations" AS o
+WHERE o."Id" IN (
+    SELECT o0."Id"
+    FROM "OpenIddictAuthorizations" AS o0
+    LEFT JOIN "OpenIddictApplications" AS o1 ON o0."ApplicationId" = o1."Id"
+    WHERE o1."Id" = @application_Id
+)
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?'], CommandType='Text', CommandTimeout='30']
+DELETE FROM "OpenIddictApplications"
+WHERE "Id" = @p0 AND "ConcurrencyToken" = @p1;
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@identifier='?'], CommandType='Text', CommandTimeout='30']
+SELECT o."Id", o."ApplicationType", o."ClientId", o."ClientSecret", o."ClientType", o."ConcurrencyToken", o."ConsentType", o."DisplayName", o."DisplayNames", o."JsonWebKeySet", o."Permissions", o."PostLogoutRedirectUris", o."Properties", o."RedirectUris", o."Requirements", o."Settings"
+FROM "OpenIddictApplications" AS o
+WHERE o."ClientId" = @identifier
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (2ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?', @p2='?', @p3='?', @p4='?', @p5='?', @p6='?', @p7='?', @p8='?', @p9='?', @p10='?', @p11='?', @p12='?', @p13='?', @p14='?', @p15='?'], CommandType='Text', CommandTimeout='30']
+INSERT INTO "OpenIddictApplications" ("Id", "ApplicationType", "ClientId", "ClientSecret", "ClientType", "ConcurrencyToken", "ConsentType", "DisplayName", "DisplayNames", "JsonWebKeySet", "Permissions", "PostLogoutRedirectUris", "Properties", "RedirectUris", "Requirements", "Settings")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15);
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+SELECT o."Id", o."ConcurrencyToken", o."Description", o."Descriptions", o."DisplayName", o."DisplayNames", o."Name", o."Properties", o."Resources"
+FROM "OpenIddictScopes" AS o
+WHERE o."Name" = @name
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+SELECT o."Id", o."ConcurrencyToken", o."Description", o."Descriptions", o."DisplayName", o."DisplayNames", o."Name", o."Properties", o."Resources"
+FROM "OpenIddictScopes" AS o
+WHERE o."Name" = @name
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@identifier='?'], CommandType='Text', CommandTimeout='30']
+SELECT o."Id", o."ApplicationType", o."ClientId", o."ClientSecret", o."ClientType", o."ConcurrencyToken", o."ConsentType", o."DisplayName", o."DisplayNames", o."JsonWebKeySet", o."Permissions", o."PostLogoutRedirectUris", o."Properties", o."RedirectUris", o."Requirements", o."Settings"
+FROM "OpenIddictApplications" AS o
+WHERE o."ClientId" = @identifier
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@application_Id='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+DELETE FROM "OpenIddictTokens" AS o
+WHERE o."Id" IN (
+    SELECT o0."Id"
+    FROM "OpenIddictTokens" AS o0
+    LEFT JOIN "OpenIddictApplications" AS o1 ON o0."ApplicationId" = o1."Id"
+    WHERE o1."Id" = @application_Id
+)
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@application_Id='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+DELETE FROM "OpenIddictAuthorizations" AS o
+WHERE o."Id" IN (
+    SELECT o0."Id"
+    FROM "OpenIddictAuthorizations" AS o0
+    LEFT JOIN "OpenIddictApplications" AS o1 ON o0."ApplicationId" = o1."Id"
+    WHERE o1."Id" = @application_Id
+)
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?'], CommandType='Text', CommandTimeout='30']
+DELETE FROM "OpenIddictApplications"
+WHERE "Id" = @p0 AND "ConcurrencyToken" = @p1;
+[12:33:49 INF] Executed DbCommand (1ms) [Parameters=[@identifier='?'], CommandType='Text', CommandTimeout='30']
+SELECT o."Id", o."ApplicationType", o."ClientId", o."ClientSecret", o."ClientType", o."ConcurrencyToken", o."ConsentType", o."DisplayName", o."DisplayNames", o."JsonWebKeySet", o."Permissions", o."PostLogoutRedirectUris", o."Properties", o."RedirectUris", o."Requirements", o."Settings"
+FROM "OpenIddictApplications" AS o
+WHERE o."ClientId" = @identifier
+LIMIT 1
+[12:33:49 INF] Executed DbCommand (2ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?', @p2='?', @p3='?', @p4='?', @p5='?', @p6='?', @p7='?', @p8='?', @p9='?', @p10='?', @p11='?', @p12='?', @p13='?', @p14='?', @p15='?'], CommandType='Text', CommandTimeout='30']
+INSERT INTO "OpenIddictApplications" ("Id", "ApplicationType", "ClientId", "ClientSecret", "ClientType", "ConcurrencyToken", "ConsentType", "DisplayName", "DisplayNames", "JsonWebKeySet", "Permissions", "PostLogoutRedirectUris", "Properties", "RedirectUris", "Requirements", "Settings")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15);
+[12:33:50 INF] Initialized Scheduler Signaller of type: Quartz.Core.SchedulerSignalerImpl
+[12:33:50 INF] Quartz Scheduler created
+[12:33:50 INF] JobFactory set to: Quartz.Simpl.MicrosoftDependencyInjectionJobFactory
+[12:33:50 INF] RAMJobStore initialized.
+[12:33:50 INF] Quartz Scheduler 3.15.1.0 - 'QuartzScheduler' with instanceId 'NON_CLUSTERED' initialized
+[12:33:50 INF] Using thread pool 'Quartz.Simpl.DefaultThreadPool', size: 10
+[12:33:50 INF] Using job store 'Quartz.Simpl.RAMJobStore', supports persistence: False, clustered: False
+[12:33:50 INF] Adding 1 jobs, 1 triggers.
+[12:33:50 INF] Adding job: OpenIddict/Quartz.NET integration.OpenIddict job
+[12:33:50 INF] Monitoring Background Service started
+[12:33:50 INF] Executed DbCommand (2ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            238810bff686d079aad6551f11a41bd3
+Activity.SpanId:             ed216c885038ea4f
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:50.0580593Z
+Activity.Duration:           00:00:00.0039663
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:50 INF] Now listening on: https://localhost:7035
+[12:33:50 INF] Application started. Press Ctrl+C to shut down.
+[12:33:50 INF] Hosting environment: Development
+[12:33:50 INF] Content root path: C:\repos\HybridIdP\Web.IdP
+[12:33:50 INF] Scheduler QuartzScheduler_$_NON_CLUSTERED started.
+[12:33:52 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            2ef5c71e6d831a1ae40e6d09caf8e5e9
+Activity.SpanId:             ceb594ecc3ac8a72
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.0962008Z
+Activity.Duration:           00:00:00.0033071
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            c72384554232abd5c2947455d9fe8d47
+Activity.SpanId:             85660b64b8e6064b
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1021234Z
+Activity.Duration:           00:00:00.0009427
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            20b3ffd36cffc3527a68c08d1e96aefb
+Activity.SpanId:             4b14fdcbc559a7ae
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1057012Z
+Activity.Duration:           00:00:00.0007786
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            6f14ea6826ad89a4b2d04d3f3b31743c
+Activity.SpanId:             7d455e54de58cd74
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1082860Z
+Activity.Duration:           00:00:00.0007417
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            b0e2419c086cb1a87664f6fb2329853a
+Activity.SpanId:             53c10168631f6edb
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1107421Z
+Activity.Duration:           00:00:00.0007538
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (2ms) [Parameters=[@last24Hours='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE l."IsSuccessful" AND l."LoginTime" >= @last24Hours
+Activity.TraceId:            d52ea01777b2d2d17a73bc5ea2f53e66
+Activity.SpanId:             944ab886da98021e
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1265555Z
+Activity.Duration:           00:00:00.0024540
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE l."IsSuccessful" AND l."LoginTime" >= @last24Hours
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (1ms) [Parameters=[@last24Hours='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE l."IsSuccessful" AND l."LoginTime" >= @last24Hours
+Activity.TraceId:            aedc66cb9edbed7a674473a114671590
+Activity.SpanId:             f1f55cf39745fcda
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1319480Z
+Activity.Duration:           00:00:00.0012066
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE l."IsSuccessful" AND l."LoginTime" >= @last24Hours
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (1ms) [Parameters=[@last24Hours='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE NOT (l."IsSuccessful") AND l."LoginTime" >= @last24Hours
+Activity.TraceId:            c8eaa61b62d7a0a154954cb3bd35bbab
+Activity.SpanId:             5ca1e449ae44655a
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1382274Z
+Activity.Duration:           00:00:00.0013202
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE NOT (l."IsSuccessful") AND l."LoginTime" >= @last24Hours
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (1ms) [Parameters=[@last24Hours='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+SELECT l."RiskScore"::numeric
+FROM "LoginHistories" AS l
+WHERE l."LoginTime" >= @last24Hours
+Activity.TraceId:            cfca1881312a93408f9cb72330c147e0
+Activity.SpanId:             92b990569daf1aaf
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1494910Z
+Activity.Duration:           00:00:00.0014381
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT l."RiskScore"::numeric
+FROM "LoginHistories" AS l
+WHERE l."LoginTime" >= @last24Hours
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (2ms) [Parameters=[@lastHour='?' (DbType = DateTime), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT l."Id", l."IpAddress", l."IsApprovedByAdmin", l."IsFlaggedAbnormal", l."IsSuccessful", l."LoginTime", l."RiskScore", l."UserAgent", l."UserId"
+FROM "LoginHistories" AS l
+WHERE l."IsFlaggedAbnormal" AND l."LoginTime" >= @lastHour
+ORDER BY l."LoginTime" DESC
+LIMIT @p
+Activity.TraceId:            7b595291a2626c6dbe4c0ea90433c326
+Activity.SpanId:             6669ffe3b8859345
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1674460Z
+Activity.Duration:           00:00:00.0024662
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT l."Id", l."IpAddress", l."IsApprovedByAdmin", l."IsFlaggedAbnormal", l."IsSuccessful", l."LoginTime", l."RiskScore", l."UserAgent", l."UserId"
+FROM "LoginHistories" AS l
+WHERE l."IsFlaggedAbnormal" AND l."LoginTime" >= @lastHour
+ORDER BY l."LoginTime" DESC
+LIMIT @p
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (1ms) [Parameters=[@lastHour='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+SELECT l."IpAddress", count(*)::int AS "Count", max(l."LoginTime") AS "LatestTime"
+FROM "LoginHistories" AS l
+WHERE NOT (l."IsSuccessful") AND l."LoginTime" >= @lastHour AND l."IpAddress" IS NOT NULL
+GROUP BY l."IpAddress"
+HAVING count(*)::int >= 3
+Activity.TraceId:            4eddf3b1694f65f378222224a94d1b7f
+Activity.SpanId:             b9c84e2306a4ccef
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1829068Z
+Activity.Duration:           00:00:00.0012840
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT l."IpAddress", count(*)::int AS "Count", max(l."LoginTime") AS "LatestTime"
+FROM "LoginHistories" AS l
+WHERE NOT (l."IsSuccessful") AND l."LoginTime" >= @lastHour AND l."IpAddress" IS NOT NULL
+GROUP BY l."IpAddress"
+HAVING count(*)::int >= 3
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Executed DbCommand (1ms) [Parameters=[@lastHour='?' (DbType = DateTime), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT a."Id", a."CreatedAt", a."Details", a."EventType", a."IPAddress", a."Timestamp", a."UserAgent", a."UserId"
+FROM "AuditEvents" AS a
+WHERE a."Timestamp" >= @lastHour AND (a."EventType" LIKE '%Security%' OR a."EventType" LIKE '%Policy%' OR a."EventType" LIKE '%Failed%')
+ORDER BY a."Timestamp" DESC
+LIMIT @p
+Activity.TraceId:            81d5aa86b070625d8ce6cf139e26aa4f
+Activity.SpanId:             901f956fccf395eb
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.1919397Z
+Activity.Duration:           00:00:00.0017336
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT a."Id", a."CreatedAt", a."Details", a."EventType", a."IPAddress", a."Timestamp", a."UserAgent", a."UserId"
+FROM "AuditEvents" AS a
+WHERE a."Timestamp" >= @lastHour AND (a."EventType" LIKE '%Security%' OR a."EventType" LIKE '%Policy%' OR a."EventType" LIKE '%Failed%')
+ORDER BY a."Timestamp" DESC
+LIMIT @p
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Start processing HTTP request GET https://localhost:7035/metrics
+[12:33:52 INF] Sending HTTP request GET https://localhost:7035/metrics
+[12:33:52 INF] Request starting HTTP/1.1 GET https://localhost:7035/metrics - null null
+[12:33:52 INF] Checking IP whitelist: RemoteIP=::1, AllowedIPs=127.0.0.1, ::1, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+[12:33:52 INF] IP ::1 is allowed, granting access
+[12:33:52 INF] Executing endpoint '/metrics'
+[12:33:52 INF] Executed endpoint '/metrics'
+[12:33:52 INF] Request finished HTTP/1.1 GET https://localhost:7035/metrics - 200 null text/plain; charset=utf-8; version=0.0.4 136.0116ms
+Activity.TraceId:            b88a4d215ea099510812ab5ed6556224
+Activity.SpanId:             3746524baa15ab87
+Activity.TraceFlags:         Recorded
+Activity.ParentSpanId:       7a1bd8c65f0ce948
+Activity.DisplayName:        GET /metrics
+Activity.Kind:               Server
+Activity.StartTime:          2025-12-10T04:33:52.2511419Z
+Activity.Duration:           00:00:00.1366685
+Activity.Tags:
+    server.address: localhost
+    server.port: 7035
+    http.request.method: GET
+    url.scheme: https
+    url.path: /metrics
+    network.protocol.version: 1.1
+    http.route: /metrics
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+Activity.TraceId:            b88a4d215ea099510812ab5ed6556224
+Activity.SpanId:             7a1bd8c65f0ce948
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        GET
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:52.2109026Z
+Activity.Duration:           00:00:00.1764661
+Activity.Tags:
+    http.request.method: GET
+    server.address: localhost
+    server.port: 7035
+    url.full: https://localhost:7035/metrics
+    http.response.status_code: 200
+    network.protocol.version: 1.1
+Instrumentation scope (ActivitySource):
+    Name: System.Net.Http
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:52 INF] Received HTTP response headers after 189.4771ms - 200
+[12:33:52 INF] End processing HTTP request after 195.0816ms - 200
+[12:33:53 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            1c0d0beb8f998d2dd87550e9ff8c88e9
+Activity.SpanId:             4c4a29488cc904bd
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:53.4061919Z
+Activity.Duration:           00:00:00.0032664
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:53 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            2776821ae0a06cd30dec22e3b6302bcf
+Activity.SpanId:             b54368566bdcde0e
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:53.4117219Z
+Activity.Duration:           00:00:00.0012130
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:53 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            339e0c1c56a51ac677a699cf0c5452a3
+Activity.SpanId:             ce3b0ed27a414ada
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:53.4149754Z
+Activity.Duration:           00:00:00.0010517
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:53 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            1c68dc0043e8d2852d4f141d2c6ac401
+Activity.SpanId:             bacd490fb3d125f4
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:53.4187256Z
+Activity.Duration:           00:00:00.0012363
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:53 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            7d7830c039855c86e14fd1601afb06dd
+Activity.SpanId:             b7b8cd70353d22e3
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:53.4219330Z
+Activity.Duration:           00:00:00.0008372
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:54 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            509f0f0121b83d30df876c0190f740ad
+Activity.SpanId:             b23c841e05258fde
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:54.4299870Z
+Activity.Duration:           00:00:00.0034840
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:54 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            478a02e59fc8d11abda87f9663f7b23c
+Activity.SpanId:             02498b9617bebbd5
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:54.4354080Z
+Activity.Duration:           00:00:00.0009732
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:54 INF] Executed DbCommand (0ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            614cad75cc82989470110b2cb0e0caf6
+Activity.SpanId:             77762f6c756878f0
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:54.4384429Z
+Activity.Duration:           00:00:00.0006792
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:54 INF] Executed DbCommand (0ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            9c1f212cd6cdfb422100135d3ba84bf0
+Activity.SpanId:             251c62c90e88bfaf
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:54.4408675Z
+Activity.Duration:           00:00:00.0006682
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:54 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            0ab3abec1e8289798c919381cead1db5
+Activity.SpanId:             c196072380c10a85
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:54.4436406Z
+Activity.Duration:           00:00:00.0009127
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:55 INF] Executed DbCommand (2ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            1274ccd694621bf2b69ba1c88f81c818
+Activity.SpanId:             8a471562e02060c8
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:55.4618940Z
+Activity.Duration:           00:00:00.0038502
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:55 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            a2511545a11de847238b5d0269f2974c
+Activity.SpanId:             0c20cab8f68924a3
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:55.4678799Z
+Activity.Duration:           00:00:00.0013525
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:55 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            76b8615b94e939dbeec89af0612ac7e9
+Activity.SpanId:             cebba6b6d9811af8
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:55.4712510Z
+Activity.Duration:           00:00:00.0010279
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:55 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            a2108a139702cb89d24f5f444f8cf24c
+Activity.SpanId:             53b9ac4264da4efc
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:55.4743680Z
+Activity.Duration:           00:00:00.0009480
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:55 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            7e87d8eb2ae6f54dcde1e617f1a912c5
+Activity.SpanId:             d9ef300c18f2f4d5
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:55.4780311Z
+Activity.Duration:           00:00:00.0010447
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:56 INF] Executed DbCommand (2ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            f469b49b53f39987bbad249e77e802e7
+Activity.SpanId:             5e32aa34da6ac150
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:56.4870350Z
+Activity.Duration:           00:00:00.0035675
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:56 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            0791aa9a702cffb7fa53e74e2e604d6b
+Activity.SpanId:             6e5cd99b1484fcf7
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:56.4926972Z
+Activity.Duration:           00:00:00.0012096
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:56 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            bd291a9d488c5a68b038877580aea084
+Activity.SpanId:             801aa2ab25932746
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:56.4957107Z
+Activity.Duration:           00:00:00.0007262
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:56 INF] Executed DbCommand (0ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            cbf417a462dfe007e198afaed1837b17
+Activity.SpanId:             4f865b640d32d37a
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:56.4980506Z
+Activity.Duration:           00:00:00.0007018
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:56 INF] Executed DbCommand (0ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            6d3d5c916688fd91e8aafbd3090836e8
+Activity.SpanId:             cc24172ce170a316
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:56.5004712Z
+Activity.Duration:           00:00:00.0006843
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:57 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            3f5734ea1507cfa09f02d69fd8233f01
+Activity.SpanId:             53cb9e910cfcf12d
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:57.5142635Z
+Activity.Duration:           00:00:00.0023167
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:57 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            90d2e7922400276f4e4fe6bdd648b564
+Activity.SpanId:             3ae7803e94823986
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:57.5187605Z
+Activity.Duration:           00:00:00.0011978
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:57 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            ad169fb30a608c1fd1daddc9986a5d52
+Activity.SpanId:             36a47a343c498991
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:57.5216834Z
+Activity.Duration:           00:00:00.0007500
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:57 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            4ac5e98ef26c95b056aa7e3771b9c49f
+Activity.SpanId:             2830c526eeb43605
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:57.5241227Z
+Activity.Duration:           00:00:00.0006933
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:57 INF] Executed DbCommand (0ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            0ebc5d38f4e159f60ede54122bbeb5a0
+Activity.SpanId:             3b4057279649b0b6
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:57.5263743Z
+Activity.Duration:           00:00:00.0005217
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:57 INF] Executed DbCommand (1ms) [Parameters=[@last24Hours='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE l."IsSuccessful" AND l."LoginTime" >= @last24Hours
+Activity.TraceId:            369bc540fee94f283e699f7038c56fb4
+Activity.SpanId:             796378687782ff0b
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:57.5291793Z
+Activity.Duration:           00:00:00.0009388
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE l."IsSuccessful" AND l."LoginTime" >= @last24Hours
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:57 INF] Executed DbCommand (1ms) [Parameters=[@last24Hours='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE l."IsSuccessful" AND l."LoginTime" >= @last24Hours
+Activity.TraceId:            348b020068ad8fa35be2f16331ae6a56
+Activity.SpanId:             393d3140c2e7cdda
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:57.5319781Z
+Activity.Duration:           00:00:00.0008832
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE l."IsSuccessful" AND l."LoginTime" >= @last24Hours
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:57 INF] Executed DbCommand (0ms) [Parameters=[@last24Hours='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE NOT (l."IsSuccessful") AND l."LoginTime" >= @last24Hours
+Activity.TraceId:            82cb7fffb9c5bcf484ffad83e76efa7e
+Activity.SpanId:             9dc036c7155ae054
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:57.5344502Z
+Activity.Duration:           00:00:00.0006295
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT count(*)::int
+FROM "LoginHistories" AS l
+WHERE NOT (l."IsSuccessful") AND l."LoginTime" >= @last24Hours
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:57 INF] Executed DbCommand (0ms) [Parameters=[@last24Hours='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+SELECT l."RiskScore"::numeric
+FROM "LoginHistories" AS l
+WHERE l."LoginTime" >= @last24Hours
+Activity.TraceId:            6804b397485060f0e5a72c7154dc22b8
+Activity.SpanId:             af98899236d74370
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:57.5369019Z
+Activity.Duration:           00:00:00.0006047
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT l."RiskScore"::numeric
+FROM "LoginHistories" AS l
+WHERE l."LoginTime" >= @last24Hours
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:58 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            87c96002615a81a598b91f3ebe2f8b1e
+Activity.SpanId:             5e4c029c85fd13e5
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:58.5396742Z
+Activity.Duration:           00:00:00.0031910
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:58 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            63c6d53f4e0d48ef78b44c1dd32d9731
+Activity.SpanId:             2698376baa44952c
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:58.5447539Z
+Activity.Duration:           00:00:00.0007212
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:58 INF] Executed DbCommand (0ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            4dd4231b3f718770074cfb4ffe9bd6b3
+Activity.SpanId:             c1a664885efff52d
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:58.5472337Z
+Activity.Duration:           00:00:00.0006650
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:58 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            d759322922473cb94f34b9542538f1a3
+Activity.SpanId:             6f63d5f29850acff
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:58.5496903Z
+Activity.Duration:           00:00:00.0006561
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:58 INF] Executed DbCommand (0ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            1d3779bbf248124eaf97fea2a1e80712
+Activity.SpanId:             997899cdfbe04c08
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:58.5521269Z
+Activity.Duration:           00:00:00.0006410
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:59 INF] Executed DbCommand (2ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            8ab2cc836dbf4af40f1547f715cd423b
+Activity.SpanId:             afe51fb4a6ec1e87
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:59.5642559Z
+Activity.Duration:           00:00:00.0020240
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:59 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            119ad07d812ae25fb0380a34f166c19d
+Activity.SpanId:             23efa274b052620f
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:59.5683794Z
+Activity.Duration:           00:00:00.0010745
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:59 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            472c229c0c84eb9f81bffa28c1d2a3df
+Activity.SpanId:             ffe6281bf7568c2d
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:59.5715370Z
+Activity.Duration:           00:00:00.0009551
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:59 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            8b1b1b33ec80cd22d8e72690af0986f5
+Activity.SpanId:             daee879bea6d0993
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:59.5743408Z
+Activity.Duration:           00:00:00.0008991
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+
+[12:33:59 INF] Executed DbCommand (1ms) [Parameters=[@key='?'], CommandType='Text', CommandTimeout='30']
+SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Activity.TraceId:            c99dc03fc146a2fe852ef703f5bbd81f
+Activity.SpanId:             05039501f55b1620
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        hybridauth_idp
+Activity.Kind:               Client
+Activity.StartTime:          2025-12-10T04:33:59.5771362Z
+Activity.Duration:           00:00:00.0013434
+Activity.Tags:
+    db.system: postgresql
+    db.name: hybridauth_idp
+    peer.service: tcp://localhost:5432
+    db.statement: SELECT s."Id", s."DataType", s."Key", s."UpdatedBy", s."UpdatedUtc", s."Value"
+FROM "Settings" AS s
+WHERE s."Key" = @key
+LIMIT 1
+Instrumentation scope (ActivitySource):
+    Name: OpenTelemetry.Instrumentation.EntityFrameworkCore
+    Version: 1.0.0-beta.12
+Resource associated with Activity:
+    service.name: HybridAuthIdP
+    service.version: 1.0.0
+    service.instance.id: 2ddcd496-b64e-41e9-aedf-26d1ccd2a878
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.14.0
+

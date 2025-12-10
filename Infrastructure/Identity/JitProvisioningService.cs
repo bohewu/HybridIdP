@@ -86,30 +86,43 @@ public class JitProvisioningService : IJitProvisioningService
         var username = externalAuth.Email ?? 
                       $"{externalAuth.Provider}_{externalAuth.ProviderKey}";
         
-        var newUser = new ApplicationUser
+        var newUser = await _userManager.FindByNameAsync(username);
+        if (newUser == null)
         {
-            Id = Guid.NewGuid(),
-            UserName = username,
-            Email = externalAuth.Email,
-            EmailConfirmed = !string.IsNullOrWhiteSpace(externalAuth.Email), // External auth is considered verified
-            PersonId = person.Id,
-            FirstName = externalAuth.FirstName,
-            LastName = externalAuth.LastName,
-            MiddleName = externalAuth.MiddleName,
-            Department = externalAuth.Department,
-            JobTitle = externalAuth.JobTitle,
-            EmployeeId = externalAuth.EmployeeId,
-            PhoneNumber = externalAuth.PhoneNumber,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
+            newUser = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = username,
+                Email = externalAuth.Email,
+                EmailConfirmed = !string.IsNullOrWhiteSpace(externalAuth.Email), // External auth is considered verified
+                PersonId = person.Id,
+                FirstName = externalAuth.FirstName,
+                LastName = externalAuth.LastName,
+                MiddleName = externalAuth.MiddleName,
+                Department = externalAuth.Department,
+                JobTitle = externalAuth.JobTitle,
+                EmployeeId = externalAuth.EmployeeId,
+                PhoneNumber = externalAuth.PhoneNumber,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
 
-        var createResult = await _userManager.CreateAsync(newUser);
-        if (!createResult.Succeeded)
+            var createResult = await _userManager.CreateAsync(newUser);
+            if (!createResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to create user: {string.Join(", ", createResult.Errors.Select(e => e.Description))}"
+                );
+            }
+        }
+        else
         {
-            throw new InvalidOperationException(
-                $"Failed to create user: {string.Join(", ", createResult.Errors.Select(e => e.Description))}"
-            );
+            // User exists but wasn't found by FindByLogin. Ensure Person is linked.
+            if (newUser.PersonId == null)
+            {
+                newUser.PersonId = person.Id;
+                await _userManager.UpdateAsync(newUser);
+            }
         }
 
         // Step 5: Create external login link
