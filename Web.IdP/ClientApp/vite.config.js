@@ -28,9 +28,7 @@ export default defineConfig({
         'admin-people': './src/admin/persons/main.js',
         'admin-settings': './src/admin/settings/main.js',
         'admin-security': './src/admin/security/main.js',
-        'admin-audit': './src/admin/audit/main.js',
-        'accountManagement': './src/accountManagement.js',
-        'roleBadge': './src/roleBadge.js'
+        'admin-audit': './src/admin/audit/main.js'
       }
     }
   },
