@@ -1,7 +1,7 @@
 ---
 title: "Project Progress Summary"
 owner: HybridAuthIdP Team
-last-updated: 2025-12-02
+last-updated: 2025-12-10
 ---
 
 # 專案進度摘要
@@ -23,7 +23,8 @@ last-updated: 2025-12-02
 -- Phase 12 — Admin API & HR Integration: 📋 Planned — `./phase-12-admin-api-hr-integration.md`
 -- Phase 13 — OAuth Flow Enhancement: 100% ✅ — `./archive/phases/phase-13-oauth-flow-enhancement.md`
 -- Phase 15 — Operational Excellence (Health & Logging): 📋 Planned — `./phase-15-operational.md`
--- Phase 16 — Advanced User Support (Impersonation): 📋 Planned — `./phase-16-impersonation.md`
+-- Phase 16 — Advanced User Support (Impersonation): 100% ✅ — `./phase-16-impersonation.md`
+-- Phase 17 — Deployment & Documentation: 100% ✅ — `./docs/DEPLOYMENT_GUIDE.md`
 
 Backlog & Technical Debt: `./TODOS.md`
 
@@ -35,6 +36,36 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 -- 如需更完整的歷史紀錄或截圖證據，請參閱 `./archive/historical/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
+
+## 2025-12-10: Phase 17 Deployment & Documentation Complete ✅
+
+**Implementation Summary:**
+
+Phase 17 establishes standard deployment procedures and documentation, ensuring the application is production-ready with proper certificate management, caching, and proxy configuration.
+
+**Key Achievements:**
+- ✅ **Secure Deployment Guide**: Created `docs/DEPLOYMENT_GUIDE.md` covering Nginx, Internal LB, and External DB scenarios.
+- ✅ **Certificate Management**: Implemented production PFX certificate loading with `X509CertificateLoader`.
+- ✅ **Redis Integration**: Added optional distributed caching support (configurable via `Redis:Enabled`).
+- ✅ **Proxy Configuration**: Implemented `ForwardedHeadersMiddleware` with `ProxyOptions`.
+- ✅ **Docker Improvements**: separating dev (`docker-compose.dev.yml`) and prod (internal/nginx) workflows.
+
+---
+
+## 2025-12-08: Phase 16 User Impersonation Complete ✅
+
+**Implementation Summary:**
+
+Phase 16 delivers the "Login As" functionality, allowing administrators to assist users by temporarily acting on their behalf.
+
+**Key Features:**
+- ✅ **Backend Service**: `ImpersonationService` with secure ClaimsTransformation.
+- ✅ **Security**: Admin-only access, prevention of self-impersonation or recursive admin impersonation.
+- ✅ **Frontend UI**: "Login As" button in User Management list.
+- ✅ **UX**: Global warning banner when impersonation is active.
+- ✅ **Audit**: Full audit logging of start/stop impersonation events.
+
+---
 
 ## 2025-12-03: Phase 11.6 Homepage Refactoring & Comprehensive Security Hardening Complete ✅
 
