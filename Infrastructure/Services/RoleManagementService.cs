@@ -167,7 +167,7 @@ public class RoleManagementService : IRoleManagementService
         var invalidPermissions = (createDto.Permissions ?? new List<string>())
             .Where(p => !allPermissions.Contains(p))
             .ToList();
-        if (invalidPermissions.Any())
+        if (invalidPermissions.Count > 0)
         {
             return (false, null, new[] { $"Invalid permissions: {string.Join(", ", invalidPermissions)}" });
         }
@@ -303,7 +303,7 @@ public class RoleManagementService : IRoleManagementService
 
     private string? SerializePermissions(List<string> permissions)
     {
-        if (permissions == null || !permissions.Any())
+        if (permissions == null || permissions.Count == 0)
             return null;
 
         return string.Join(",", permissions);

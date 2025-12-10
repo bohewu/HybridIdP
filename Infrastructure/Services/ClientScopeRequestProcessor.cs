@@ -26,7 +26,7 @@ namespace Infrastructure.Services
             var allowedSet = valid.ToHashSet(StringComparer.OrdinalIgnoreCase);
             var disallowed = requestedList.Where(s => !allowedSet.Contains(s)).ToList();
 
-            if (disallowed.Any() && logAuditIfRestricted)
+            if (disallowed.Count > 0 && logAuditIfRestricted)
             {
                 var details = JsonSerializer.Serialize(new
                 {

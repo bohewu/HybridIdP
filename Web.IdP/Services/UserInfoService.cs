@@ -61,7 +61,7 @@ public class UserInfoService : IUserInfoService
 
         // Add roles if available
         var roles = principal.GetClaims(Claims.Role);
-        if (roles.Any())
+        if (roles.Count() > 0)
         {
             userinfo[Claims.Role] = roles;
         }

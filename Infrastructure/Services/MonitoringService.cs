@@ -62,7 +62,7 @@ public class MonitoringService : IMonitoringService
             .Where(l => l.LoginTime >= last24Hours)
             .Select(l => (decimal)l.RiskScore)
             .ToListAsync();
-        var avgRiskScore = riskScores.Any() ? riskScores.Average() : 0;
+        var avgRiskScore = riskScores.Count > 0 ? riskScores.Average() : 0;
 
         return new ActivityStatsDto
         {

@@ -212,7 +212,7 @@ public class UserManagementService : IUserManagementService
         }
 
         // Assign roles
-        if (createDto.Roles.Any())
+        if (createDto.Roles != null && createDto.Roles.Count > 0)
         {
             var roleResult = await _userManager.AddToRolesAsync(user, createDto.Roles);
             if (!roleResult.Succeeded)
@@ -306,7 +306,7 @@ public class UserManagementService : IUserManagementService
         var rolesToRemove = currentRoles.Except(updateDto.Roles).ToList();
         var rolesToAdd = updateDto.Roles.Except(currentRoles).ToList();
 
-        if (rolesToRemove.Any())
+        if (rolesToRemove.Count > 0)
         {
             var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
             if (!removeResult.Succeeded)
@@ -315,7 +315,7 @@ public class UserManagementService : IUserManagementService
             }
         }
 
-        if (rolesToAdd.Any())
+        if (rolesToAdd.Count > 0)
         {
             var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
             if (!addResult.Succeeded)
@@ -435,7 +435,7 @@ public class UserManagementService : IUserManagementService
             {
                 var siblingCurrentRoles = await _userManager.GetRolesAsync(sibling);
                 var siblingRolesToRemove = siblingCurrentRoles.Intersect(rolesToRemove).ToList();
-                if (siblingRolesToRemove.Any())
+                if (siblingRolesToRemove.Count > 0)
                 {
                     await _userManager.RemoveFromRolesAsync(sibling, siblingRolesToRemove);
                 }
@@ -456,7 +456,7 @@ public class UserManagementService : IUserManagementService
             {
                 var siblingCurrentRoles = await _userManager.GetRolesAsync(sibling);
                 var siblingRolesToAdd = rolesToAdd.Except(siblingCurrentRoles).ToList();
-                if (siblingRolesToAdd.Any())
+                if (siblingRolesToAdd.Count > 0)
                 {
                     await _userManager.AddToRolesAsync(sibling, siblingRolesToAdd);
                 }
@@ -500,7 +500,7 @@ public class UserManagementService : IUserManagementService
         }
 
         // If any role ID was invalid, return error
-        if (errors.Any())
+        if (errors.Count > 0)
         {
             return (false, errors);
         }
