@@ -137,7 +137,7 @@ public partial class ApiResourceService : IApiResourceService
         await _context.SaveChangesAsync(default);
 
         // Add scope associations if provided
-        if (request.ScopeIds != null && request.ScopeIds.Any())
+        if (request.ScopeIds != null && request.ScopeIds.Count > 0)
         {
             foreach (var scopeId in request.ScopeIds.Distinct())
             {
@@ -276,11 +276,11 @@ public partial class ApiResourceService : IApiResourceService
         return scopeInfos;
     }
 
-    public async Task<IEnumerable<string>> GetAudiencesByScopesAsync(IEnumerable<string> scopeNames)
+    public async Task<List<string>> GetAudiencesByScopesAsync(IEnumerable<string> scopeNames)
     {
         if (scopeNames == null || !scopeNames.Any())
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
 
         var scopeNamesList = scopeNames.ToList();
@@ -300,9 +300,9 @@ public partial class ApiResourceService : IApiResourceService
             }
         }
 
-        if (!scopeIds.Any())
+        if (scopeIds.Count == 0)
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
 
         // Query API resources that contain these scope IDs

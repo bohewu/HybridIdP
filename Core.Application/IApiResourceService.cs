@@ -17,5 +17,5 @@ public interface IApiResourceService
     /// </summary>
     /// <param name="scopeNames">Collection of requested scope names</param>
     /// <returns>Distinct API resource names that should be included as audience values</returns>
-    Task<IEnumerable<string>> GetAudiencesByScopesAsync(IEnumerable<string> scopeNames);
+    Task<List<string>> GetAudiencesByScopesAsync(IEnumerable<string> scopeNames);
 }
