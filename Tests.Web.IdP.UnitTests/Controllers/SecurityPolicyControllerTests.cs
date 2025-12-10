@@ -44,7 +44,7 @@ public class SecurityPolicyControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var returnedPolicy = Assert.IsType<SecurityPolicy>(okResult.Value);
+        var returnedPolicy = Assert.IsType<SecurityPolicyDto>(okResult.Value);
         Assert.Equal(10, returnedPolicy.MinPasswordLength);
     }
 
@@ -66,9 +66,8 @@ public class SecurityPolicyControllerTests
         var result = await _controller.UpdatePolicy(dto);
 
         // Assert
+        // Assert
         _mockService.Verify();
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        var returnedPolicy = Assert.IsType<SecurityPolicy>(okResult.Value);
-        Assert.Equal(12, returnedPolicy.MinPasswordLength);
+        Assert.IsType<NoContentResult>(result);
     }
 }

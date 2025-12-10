@@ -6,7 +6,7 @@ namespace Tests.SystemTests;
 
 public class LegacyAuthSystemTests
 {
-    private const string Authority = "https://localhost:7080";
+    private const string Authority = "https://localhost:7035";
     // Using a user that matches LegacyApi mock logic (not "lockout", not empty)
     private const string Username = "legacy_test";
     private const string Password = "password";

@@ -544,6 +544,8 @@ public class PersonService : IPersonService
         passportNumber = string.IsNullOrWhiteSpace(passportNumber) ? null : passportNumber;
         residentCertificateNumber = string.IsNullOrWhiteSpace(residentCertificateNumber) ? null : residentCertificateNumber;
 
+
+
         // If no identity documents provided, skip uniqueness check
         if (nationalId == null && passportNumber == null && residentCertificateNumber == null)
         {

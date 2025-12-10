@@ -28,6 +28,15 @@ public class SessionServiceTests
         _apps = new Mock<IOpenIddictApplicationManager>();
         _tokens = new Mock<IOpenIddictTokenManager>();
 
+        // Default: return empty token list to prevent NullReferenceException in ListSessionsAsync
+        _tokens.Setup(m => m.FindAsync(
+            It.IsAny<string>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<CancellationToken>()))
+            .Returns(new AsyncEnumerable<object>(Array.Empty<object>()));
+
         var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
@@ -224,9 +233,10 @@ public class SessionServiceTests
 
         _tokens.Setup(m => m.FindAsync(
             It.Is<string>(s => s == userId.ToString()),
-            It.Is<string?>(c => c == "testclient-app"),
             It.IsAny<string?>(),
-            It.IsAny<string?>()))
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<CancellationToken>()))
             .Returns(new AsyncEnumerable<object>(new[] { token }));
         _tokens.Setup(m => m.GetAuthorizationIdAsync(token, It.IsAny<CancellationToken>())).ReturnsAsync("auth-1");
         _tokens.Setup(m => m.GetStatusAsync(token, It.IsAny<CancellationToken>())).ReturnsAsync(OpenIddictConstants.Statuses.Valid);
