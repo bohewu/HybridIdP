@@ -7,7 +7,7 @@ using OpenIddict.Abstractions;
 
 namespace Infrastructure.Services;
 
-public class ApiResourceService : IApiResourceService
+public partial class ApiResourceService : IApiResourceService
 {
     private readonly IApplicationDbContext _context;
     private readonly IOpenIddictScopeManager _scopeManager;
@@ -155,7 +155,7 @@ public class ApiResourceService : IApiResourceService
             await _context.SaveChangesAsync(default);
         }
 
-        _logger.LogInformation("API resource created: {ResourceName} (ID: {ResourceId})", resource.Name, resource.Id);
+        LogApiResourceCreated(resource.Name, resource.Id);
 
         return new ApiResourceSummary
         {
@@ -221,7 +221,7 @@ public class ApiResourceService : IApiResourceService
 
         await _context.SaveChangesAsync(default);
 
-        _logger.LogInformation("API resource updated: {ResourceName} (ID: {ResourceId})", resource.Name, resource.Id);
+        LogApiResourceUpdated(resource.Name, resource.Id);
 
         return true;
     }
@@ -241,7 +241,7 @@ public class ApiResourceService : IApiResourceService
         _context.ApiResources.Remove(resource);
         await _context.SaveChangesAsync(default);
 
-        _logger.LogInformation("API resource deleted: {ResourceName} (ID: {ResourceId})", resource.Name, resource.Id);
+        LogApiResourceDeleted(resource.Name, resource.Id);
 
         return true;
     }
@@ -315,4 +315,13 @@ public class ApiResourceService : IApiResourceService
 
         return audiences;
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "API resource created: {ResourceName} (ID: {ResourceId})")]
+    partial void LogApiResourceCreated(string resourceName, int resourceId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "API resource updated: {ResourceName} (ID: {ResourceId})")]
+    partial void LogApiResourceUpdated(string resourceName, int resourceId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "API resource deleted: {ResourceName} (ID: {ResourceId})")]
+    partial void LogApiResourceDeleted(string resourceName, int resourceId);
 }

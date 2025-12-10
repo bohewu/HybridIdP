@@ -1,10 +1,11 @@
+using System.Net;
+using Core.Application;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Core.Application;
 
 namespace Web.IdP.Services;
 
-public class CloudflareConnectivityService : BackgroundService
+public partial class CloudflareConnectivityService : BackgroundService
 {
     private readonly ITurnstileStateService _stateService;
     private readonly HttpClient _httpClient;
@@ -24,7 +25,7 @@ public class CloudflareConnectivityService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Cloudflare Connectivity Check Background Service is starting.");
+        LogServiceStarting();
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -40,7 +41,7 @@ public class CloudflareConnectivityService : BackgroundService
             }
         }
         
-        _logger.LogInformation("Cloudflare Connectivity Check Background Service is stopping.");
+        LogServiceStopping();
     }
 
     public async Task CheckConnectivityAsync(CancellationToken stoppingToken)
@@ -54,7 +55,7 @@ public class CloudflareConnectivityService : BackgroundService
             {
                 if (!_stateService.IsAvailable)
                 {
-                    _logger.LogInformation("Cloudflare connectivity restored. Re-enabling Turnstile.");
+                    LogConnectivityRestored();
                     _stateService.SetAvailable(true);
                 }
             }
@@ -62,7 +63,7 @@ public class CloudflareConnectivityService : BackgroundService
             {
                 if (_stateService.IsAvailable)
                 {
-                    _logger.LogWarning("Cloudflare connectivity check failed (Status: {StatusCode}). Disabling Turnstile.", response.StatusCode);
+                    LogConnectivityCheckFailed(response.StatusCode);
                     _stateService.SetAvailable(false);
                 }
             }
@@ -71,13 +72,13 @@ public class CloudflareConnectivityService : BackgroundService
         {
             if (_stateService.IsAvailable)
             {
-                _logger.LogWarning(ex, "Cloudflare connectivity check failed (Exception). Disabling Turnstile.");
+                LogConnectivityCheckException(ex);
                 _stateService.SetAvailable(false);
             }
         }
         catch (Exception ex)
         {
-             _logger.LogError(ex, "Unexpected error during Cloudflare connectivity check.");
+             LogUnexpectedError(ex);
              // Decide whether to disable or keep previous state. Failing safe (disabling) is usually safer for UX.
              if (_stateService.IsAvailable)
              {
@@ -85,4 +86,22 @@ public class CloudflareConnectivityService : BackgroundService
              }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Cloudflare Connectivity Check Background Service is starting.")]
+    private partial void LogServiceStarting();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Cloudflare Connectivity Check Background Service is stopping.")]
+    private partial void LogServiceStopping();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Cloudflare connectivity restored. Re-enabling Turnstile.")]
+    private partial void LogConnectivityRestored();
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cloudflare connectivity check failed (Status: {StatusCode}). Disabling Turnstile.")]
+    private partial void LogConnectivityCheckFailed(HttpStatusCode statusCode);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cloudflare connectivity check failed (Exception). Disabling Turnstile.")]
+    private partial void LogConnectivityCheckException(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unexpected error during Cloudflare connectivity check.")]
+    private partial void LogUnexpectedError(Exception ex);
 }

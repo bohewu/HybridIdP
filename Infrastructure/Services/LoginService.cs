@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services;
 
-public class LoginService : ILoginService
+public partial class LoginService : ILoginService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ISecurityPolicyService _securityPolicyService;
@@ -45,28 +45,19 @@ public class LoginService : ILoginService
     {
         if (await _userManager.IsLockedOutAsync(user))
         {
-            if (_logger.IsEnabled(LogLevel.Warning))
-            {
-                _logger.LogWarning("User account '{username}' is locked out.", user.UserName);
-            }
+            LogUserLockedOut(user.UserName);
             return LoginResult.LockedOut();
         }
 
         if (await _userManager.CheckPasswordAsync(user, password))
         {
             await _userManager.ResetAccessFailedCountAsync(user);
-            if (_logger.IsEnabled(LogLevel.Information))
-            {
-                _logger.LogInformation("User '{username}' authenticated successfully.", user.UserName);
-            }
+            LogUserAuthenticated(user.UserName);
             return LoginResult.Success(user);
         }
 
         // Password is incorrect, handle lockout logic
-        if (_logger.IsEnabled(LogLevel.Warning))
-        {
-            _logger.LogWarning("Invalid password attempt for user '{username}'.", user.UserName);
-        }
+        LogInvalidPasswordAttempt(user.UserName);
         
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         
@@ -77,10 +68,7 @@ public class LoginService : ILoginService
 
             if (accessFailedCount >= policy.MaxFailedAccessAttempts)
             {
-                if (_logger.IsEnabled(LogLevel.Warning))
-                {
-                    _logger.LogWarning("User account '{username}' locked out due to too many failed login attempts.", user.UserName);
-                }
+                LogUserLockedOutCheck(user.UserName);
                 await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddMinutes(policy.LockoutDurationMinutes));
                 return LoginResult.LockedOut();
             }
@@ -114,10 +102,22 @@ public class LoginService : ILoginService
 
         var provisionedUser = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth);
 
-        if (_logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("User '{login}' authenticated via legacy auth and JIT provisioned.", login);
-        }
+        LogLegacyUserAuthenticated(login);
         return LoginResult.LegacySuccess(provisionedUser);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "User account '{UserName}' is locked out.")]
+    partial void LogUserLockedOut(string? userName);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User '{UserName}' authenticated successfully.")]
+    partial void LogUserAuthenticated(string? userName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid password attempt for user '{UserName}'.")]
+    partial void LogInvalidPasswordAttempt(string? userName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "User account '{UserName}' locked out due to too many failed login attempts.")]
+    partial void LogUserLockedOutCheck(string? userName);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User '{Login}' authenticated via legacy auth and JIT provisioned.")]
+    partial void LogLegacyUserAuthenticated(string login);
 }

@@ -27,7 +27,7 @@ using Web.IdP.Services; // Ensure namespace matches interface
 
 namespace Web.IdP.Services // Keep consistent namespace case
 {
-    public class AuthorizationService : Web.IdP.Services.IAuthorizationService
+    public partial class AuthorizationService : Web.IdP.Services.IAuthorizationService
     {
         private readonly IOpenIddictApplicationManager _applicationManager;
         private readonly IOpenIddictAuthorizationManager _authorizationManager;
@@ -171,11 +171,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 if (audiences.Any())
                 {
                     identity.SetAudiences([..audiences]);
-                    _logger.LogInformation("Setting audiences for existing authorization: {Audiences}", string.Join(", ", audiences));
+                    LogSettingAudiencesForExistingAuth(string.Join(", ", audiences));
                 }
                 else
                 {
-                    _logger.LogInformation("No audiences found for existing authorization with scopes: {Scopes}", string.Join(", ", scopes));
+                    LogNoAudiencesForExistingAuth(string.Join(", ", scopes));
                 }
 
                 identity.SetDestinations(GetDestinations);
@@ -266,7 +266,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             var grantedSet = (granted_scopes ?? Array.Empty<string>()).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var missingRequired = clientRequiredScopes.Except(grantedSet, StringComparer.OrdinalIgnoreCase).ToList();
             
-            _logger.LogInformation("Tampering check: clientId={ClientId}, requiredScopes={Required}, grantedScopes={Granted}, missing={Missing}",
+            LogTamperingCheck(
                 request.ClientId,
                 string.Join(",", clientRequiredScopes),
                 string.Join(",", grantedSet),
@@ -311,11 +311,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
             if (audiences.Any())
             {
                 identity.SetAudiences(audiences.ToImmutableArray());
-                _logger.LogInformation("Setting audiences for authorization: {Audiences}", string.Join(", ", audiences));
+                LogSettingAudiencesForAuth(string.Join(", ", audiences));
             }
             else
             {
-                _logger.LogInformation("No audiences found for effective scopes: {Scopes}", string.Join(", ", effectiveScopes));
+                LogNoAudiencesForAuth(string.Join(", ", effectiveScopes));
             }
 
             identity.SetScopes(effectiveScopes);
@@ -562,5 +562,20 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 identity.AddClaim(new Claim("permission", permission));
             }
         }
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Setting audiences for existing authorization: {Audiences}")]
+        partial void LogSettingAudiencesForExistingAuth(string audiences);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "No audiences found for existing authorization with scopes: {Scopes}")]
+        partial void LogNoAudiencesForExistingAuth(string scopes);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Tampering check: clientId={ClientId}, requiredScopes={Required}, grantedScopes={Granted}, missing={Missing}")]
+        partial void LogTamperingCheck(string? clientId, string required, string granted, string missing);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Setting audiences for authorization: {Audiences}")]
+        partial void LogSettingAudiencesForAuth(string audiences);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "No audiences found for effective scopes: {Scopes}")]
+        partial void LogNoAudiencesForAuth(string scopes);
     }
 }
