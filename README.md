@@ -3,6 +3,8 @@
 A comprehensive Identity Provider Administration System.
 
 ## Documentation
+## Documentation
+- [How to Test](docs/TESTING.md) 👈 **Start Here for Testing & Seeding**
 - [Architecture](docs/ARCHITECTURE.md)
 - [Features](docs/FEATURES.md)
 - [Impersonation Guide](docs/Impersonation.md)

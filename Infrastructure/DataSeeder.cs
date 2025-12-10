@@ -33,6 +33,9 @@ public static class DataSeeder
         if (seedTestUsers) 
         {
             await ResourceSeeder.SeedAsync(context, scopeManager);
+            
+            // Seed Localization (Consent Text)
+            await LocalizationSeeder.SeedAsync(context);
         }
 
         // 5. Seed Users (Admin + Test Users)
