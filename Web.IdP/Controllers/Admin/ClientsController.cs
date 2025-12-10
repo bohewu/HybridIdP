@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using DomainPermissions = Core.Domain.Constants.Permissions;
 
-namespace Web.IdP.Api;
+namespace Web.IdP.Controllers.Admin;
 
 /// <summary>
 /// API controller for managing OIDC clients.

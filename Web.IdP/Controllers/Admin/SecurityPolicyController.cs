@@ -5,7 +5,7 @@ using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
-namespace Web.IdP.Api;
+namespace Web.IdP.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/security/policies")]

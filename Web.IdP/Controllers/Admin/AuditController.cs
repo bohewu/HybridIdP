@@ -5,7 +5,7 @@ using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Web.IdP.Api;
+namespace Web.IdP.Controllers.Admin;
 
 /// <summary>
 /// Audit logging endpoints for compliance and monitoring.

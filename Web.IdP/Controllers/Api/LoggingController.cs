@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Web.IdP.Services;
 using Core.Domain.Constants;
 
-namespace Web.IdP.Controllers.Api;
+namespace Web.IdP.Controllers.Api.Api;
 
 [Route("api/logging")]
 [ApiController]

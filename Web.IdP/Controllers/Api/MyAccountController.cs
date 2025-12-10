@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
-namespace Web.IdP.Controllers.Api;
+namespace Web.IdP.Controllers.Api.Api;
 
 /// <summary>
 /// Phase 11.3: My Account API

@@ -13,7 +13,7 @@ using Microsoft.Extensions.Localization;
 using Web.IdP;
 using Web.IdP.Services;
 
-namespace Web.IdP.Api;
+namespace Web.IdP.Controllers.Admin;
 
 /// <summary>
 /// API controller for managing users.

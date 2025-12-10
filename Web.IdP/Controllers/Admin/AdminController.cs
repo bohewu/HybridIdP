@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Web.IdP.Api;
+namespace Web.IdP.Controllers.Admin;
 
 /// <summary>
 /// Legacy admin API controller.

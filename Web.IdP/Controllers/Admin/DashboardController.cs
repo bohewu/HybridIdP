@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
 
-namespace Web.IdP.Api;
+namespace Web.IdP.Controllers.Admin;
 
 /// <summary>
 /// Dashboard endpoints split from AdminController as part of refactor toward single-responsibility controllers.
