@@ -395,16 +395,16 @@ public partial class PersonService : IPersonService
             .Where(u => u.PersonId == personId && u.Id != userId)
             .ToListAsync();
             
-        if (existingAccounts.Any())
+        if (existingAccounts.Count > 0)
         {
             // Get roles from the first existing account to replicate
             var sourceAccount = existingAccounts.First();
             var sourceRoles = await _userManager.GetRolesAsync(sourceAccount);
-            if (sourceRoles.Any())
+            if (sourceRoles.Count > 0)
             {
                 var currentUserRoles = await _userManager.GetRolesAsync(user);
                 var rolesToAdd = sourceRoles.Except(currentUserRoles).ToList();
-                if (rolesToAdd.Any())
+                if (rolesToAdd.Count > 0)
                 {
                     await _userManager.AddToRolesAsync(user, rolesToAdd);
                     LogRolesSynced(rolesToAdd.Count, userId, string.Join(", ", rolesToAdd));

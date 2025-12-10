@@ -141,7 +141,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             // Always show consent page for first time or if prompt=consent is requested
             // In production, you may skip consent if authorization already exists
-            if (authorizations.Any() && prompt != "consent")
+            if (authorizations.Count > 0 && prompt != "consent")
             {
                  // If a permanent authorization was found, return immediately
                 // Create a clean identity without ASP.NET Identity cookie claims to avoid duplicates
@@ -167,8 +167,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 }
 
                 // Add audience (aud) claims from API Resources associated with requested scopes
-                var audiences = (await _apiResourceService.GetAudiencesByScopesAsync(scopes)).ToList();
-                if (audiences.Any())
+                var audiences = await _apiResourceService.GetAudiencesByScopesAsync(scopes);
+                if (audiences.Count > 0)
                 {
                     identity.SetAudiences([..audiences]);
                     LogSettingAudiencesForExistingAuth(string.Join(", ", audiences));
@@ -272,7 +272,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 string.Join(",", grantedSet),
                 string.Join(",", missingRequired));
             
-            if (missingRequired.Any())
+            if (missingRequired.Count > 0)
             {
                 // Log tampering attempt
                 var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -308,7 +308,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             // Audiences based on effective scopes
             var audiences = await _apiResourceService.GetAudiencesByScopesAsync(effectiveScopes);
-            if (audiences.Any())
+            if (audiences.Count > 0)
             {
                 identity.SetAudiences(audiences.ToImmutableArray());
                 LogSettingAudiencesForAuth(string.Join(", ", audiences));

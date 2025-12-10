@@ -80,7 +80,7 @@ namespace Web.IdP.Services
                 // Add audience (aud) claims from API Resources associated with requested scopes
                 var requestedScopes = request.GetScopes();
                 var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
-                if (audiences.Any())
+                if (audiences.Count > 0)
                 {
                     identity.SetAudiences(audiences.ToImmutableArray());
                 }
@@ -168,7 +168,7 @@ namespace Web.IdP.Services
                     // Add audience claims from API resources
                     var requestedScopes = schemePrincipal.GetScopes().ToList();
                     var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
-                    if (audiences.Any())
+                    if (audiences.Count > 0)
                     {
                         identity.SetAudiences(audiences.ToImmutableArray());
                     }
@@ -238,7 +238,7 @@ namespace Web.IdP.Services
                 // Add audience (aud) claims from API Resources associated with requested scopes
                 var requestedScopes = request.GetScopes();
                 var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
-                if (audiences.Any())
+                if (audiences.Count > 0)
                 {
                     identity.SetAudiences(audiences.ToImmutableArray());
                 }
