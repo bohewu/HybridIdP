@@ -60,7 +60,13 @@ builder.Services.AddSingleton(levelSwitch);
 
 // Add services to the container.
 // Add Vite services for Vue.js integration
+// Add Vite services for Vue.js integration
 builder.Services.AddViteServices();
+
+// Register Turnstile Services (Circuit Breaker)
+builder.Services.AddSingleton<ITurnstileStateService, TurnstileStateService>();
+builder.Services.AddHostedService<CloudflareConnectivityService>();
+builder.Services.AddHttpClient<CloudflareConnectivityService>();
 
 // Configure Proxy Options (Phase 17)
 builder.Services.Configure<ProxyOptions>(builder.Configuration.GetSection(ProxyOptions.Section));

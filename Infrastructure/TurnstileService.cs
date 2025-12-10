@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Core.Application;
-using Core.Application.Options; // Added
-using Microsoft.Extensions.Options; // Added
+using Core.Application.Options;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using System.Net.Http;
 
@@ -10,29 +10,39 @@ namespace Infrastructure;
 public class TurnstileService : ITurnstileService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly TurnstileOptions _options; // Changed
+    private readonly TurnstileOptions _options;
+    private readonly ITurnstileStateService _stateService; // Added
     private readonly ILogger<TurnstileService> _logger;
 
     public TurnstileService(
         IHttpClientFactory httpClientFactory,
-        IOptions<TurnstileOptions> options, // Changed
+        IOptions<TurnstileOptions> options,
+        ITurnstileStateService stateService, // Added
         ILogger<TurnstileService> logger)
     {
         _httpClientFactory = httpClientFactory;
-        _options = options.Value; // Changed
+        _options = options.Value;
+        _stateService = stateService; // Added
         _logger = logger;
     }
 
     public async Task<bool> ValidateTokenAsync(string token, string? remoteIp = null)
     {
-        var enabled = _options.Enabled; // Changed
+        var enabled = _options.Enabled;
         if (!enabled)
         {
-            _logger.LogInformation("Turnstile is disabled. Skipping validation.");
-            return true; // Pass validation when disabled
+            _logger.LogInformation("Turnstile is disabled via configuration. Skipping validation.");
+            return true;
         }
 
-        var secretKey = _options.SecretKey; // Changed
+        // Circuit Breaker Check
+        if (!_stateService.IsAvailable)
+        {
+            _logger.LogWarning("Turnstile is temporarily disabled due to connectivity issues (Circuit Breaker). Skipping validation.");
+            return true; // Bypass validation
+        }
+
+        var secretKey = _options.SecretKey;
         if (string.IsNullOrEmpty(secretKey))
         {
             _logger.LogWarning("Turnstile SecretKey is not configured. Validation will fail.");

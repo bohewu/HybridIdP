@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Web.IdP\Web.IdP.csproj" />
+    <ProjectReference Include="..\Core.Application\Core.Application.csproj" />
   </ItemGroup>
 
 </Project>

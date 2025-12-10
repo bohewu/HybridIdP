@@ -75,6 +75,31 @@ HybridIdP uses **OpenIddict**, which requires valid X.509 certificates to sign a
    - `Proxy__KnownProxies`: IPs of your Load Balancer/Nginx.
    - `ENCRYPTION_CERT_PASSWORD` & `SIGNING_CERT_PASSWORD`: Passwords used when creating PFX files.
 
+### Configuration via Environment Variables
+
+The application uses `appsettings.json` for structure, but values should be overridden using Environment Variables in production. ASP.NET Core uses result to double underscore `__` to override nested keys.
+
+**Example: Configuring Turnstile**
+
+To override the `Turnstile` settings in `appsettings.json`:
+
+```json
+"Turnstile": {
+  "SiteKey": "default-site-key",
+  "SecretKey": "default-secret-key"
+}
+```
+
+Set the following environment variables in your `.env` file:
+
+```bash
+Turnstile__SiteKey=0x4AAAAAAABBBBBBBB
+Turnstile__SecretKey=0x4AAAAAAABBBBBBBB
+```
+
+> [!NOTE]
+> The double underscore `__` is critical. It separates the parent section (`Turnstile`) from the child key (`SiteKey`).
+
 ---
 
 ## Deployment Modes
