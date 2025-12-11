@@ -12,7 +12,8 @@ export const SettingKeys = {
         PasswordMinLength: "security.password.minLength",
         PasswordRequireDigit: "security.password.requireDigit",
         PasswordRequireUppercase: "security.password.requireUppercase",
-        PasswordRequireSpecialChar: "security.password.requireSpecialChar"
+        PasswordRequireSpecialChar: "security.password.requireSpecialChar",
+        RegistrationEnabled: "Security:RegistrationEnabled"
     },
     Email: {
         SmtpHost: "Mail.Host",
