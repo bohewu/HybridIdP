@@ -26,8 +26,8 @@ This file contains current high-priority backlog items and remaining tasks.
 
 ## Medium-term (tech debt)
 
-- [ ] Add icon preview in Admin UI for Consent customization
-- [ ] Implement Cancel/Disable logic for required scopes on consent screen
+- [x] ~~Add icon preview in Admin UI for Consent customization~~ (Done in `ScopeForm.vue`)
+- [x] ~~Implement Cancel/Disable logic for required scopes on consent screen~~ (Done in `Authorize.cshtml`)
 - [x] ~~Fix intermittent failing tests in `SettingsServiceTests`~~ (Resolved)
 
 ## Phase 12 (Remaining tasks)
