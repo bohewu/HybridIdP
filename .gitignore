@@ -7,6 +7,7 @@
 *.user
 *.userosscache
 *.sln.docstates
+*.DotSettings.user
 
 # Build results
 [Dd]ebug/
@@ -33,6 +34,8 @@ bld/
 
 # Test results
 TestResults/
+test-results/
+playwright-screenshots/
 .fake
 
 # Frontend build outputs
@@ -43,7 +46,8 @@ Web.IdP/wwwroot/dist/
 
 # Test scripts
 test-*.ps1
-test-*.mdreferences/
+test-*.md
 
 # Security scan reports
 security-reports/
+
