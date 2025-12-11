@@ -20,6 +20,9 @@ public class RegisterModel : PageModel
     private readonly ILogger<RegisterModel> _logger;
     private readonly IApplicationDbContext _context;
     private readonly IAuditService _auditService;
+    private readonly ISettingsService _settingsService; // Added
+
+    public const string RegistrationEnabledKey = "Security:RegistrationEnabled";
 
     public RegisterModel(
         UserManager<ApplicationUser> userManager,
@@ -28,7 +31,8 @@ public class RegisterModel : PageModel
         IOptions<TurnstileOptions> turnstileOptions, // Changed
         ILogger<RegisterModel> logger,
         IApplicationDbContext context,
-        IAuditService auditService)
+        IAuditService auditService,
+        ISettingsService settingsService) // Added
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -37,6 +41,7 @@ public class RegisterModel : PageModel
         _logger = logger;
         _context = context;
         _auditService = auditService;
+        _settingsService = settingsService; // Added
     }
 
     [BindProperty]
@@ -46,6 +51,7 @@ public class RegisterModel : PageModel
     
     public bool TurnstileEnabled => _turnstileOptions.Enabled; // Changed
     public string TurnstileSiteKey => _turnstileOptions.SiteKey; // Changed
+    public bool RegistrationEnabled { get; private set; } = true;
 
     public class InputModel
     {
@@ -66,14 +72,31 @@ public class RegisterModel : PageModel
         public string ConfirmPassword { get; set; } = default!;
     }
 
-    public void OnGet(string? returnUrl = null)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
     {
+        // Check if registration is enabled
+        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(RegistrationEnabledKey) ?? true;
+        
+        if (!RegistrationEnabled)
+        {
+            TempData["ErrorMessage"] = "Registration is currently disabled.";
+            return RedirectToPage("./Login", new { returnUrl });
+        }
+        
         ReturnUrl = returnUrl;
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
     {
         returnUrl ??= Url.Content("~/");
+        
+        // Block registration if disabled
+        var isEnabled = await _settingsService.GetValueAsync<bool?>(RegistrationEnabledKey) ?? true;
+        if (!isEnabled)
+        {
+            return Forbid();
+        }
         
         if (ModelState.IsValid)
         {

@@ -68,7 +68,10 @@
                 </div>
                 
                 <div class="auth-footer">
-                    <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="auth-link">@Localizer["DontHaveAccountRegister"]</a>
+                    @if (Model.RegistrationEnabled)
+                    {
+                        <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="auth-link">@Localizer["DontHaveAccountRegister"]</a>
+                    }
                 </div>
             </form>
         </div>
