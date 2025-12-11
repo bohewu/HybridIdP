@@ -1,5 +1,6 @@
 using Core.Domain;
 using Core.Domain.Entities;
+using Core.Domain.Enums;
 using Xunit;
 
 namespace Tests.Infrastructure.UnitTests;
@@ -7,6 +8,7 @@ namespace Tests.Infrastructure.UnitTests;
 /// <summary>
 /// Unit tests for Person entity and its relationship with ApplicationUser
 /// Phase 10.1: Schema & Backfill
+/// Phase 18: Added lifecycle management tests
 /// </summary>
 public class PersonEntityTests
 {
@@ -242,4 +244,285 @@ public class PersonEntityTests
         Assert.Contains("Boston", person.Address);
         Assert.Contains("456 Oak Ave", person.Address);
     }
+
+    #region Phase 18: Lifecycle Management Tests
+
+    [Fact]
+    public void Person_DefaultStatus_IsActive()
+    {
+        // Arrange & Act
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Test",
+            LastName = "User"
+        };
+
+        // Assert
+        Assert.Equal(PersonStatus.Active, person.Status);
+    }
+
+    [Theory]
+    [InlineData(PersonStatus.Pending)]
+    [InlineData(PersonStatus.Active)]
+    [InlineData(PersonStatus.Suspended)]
+    [InlineData(PersonStatus.Resigned)]
+    [InlineData(PersonStatus.Terminated)]
+    public void Person_CanHave_AllStatusValues(PersonStatus status)
+    {
+        // Arrange & Act
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Test",
+            LastName = "User",
+            Status = status
+        };
+
+        // Assert
+        Assert.Equal(status, person.Status);
+    }
+
+    [Fact]
+    public void Person_CanHave_StartAndEndDates()
+    {
+        // Arrange
+        var startDate = DateTime.UtcNow.AddDays(-30);
+        var endDate = DateTime.UtcNow.AddMonths(6);
+
+        // Act
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Contract",
+            LastName = "Worker",
+            StartDate = startDate,
+            EndDate = endDate
+        };
+
+        // Assert
+        Assert.NotNull(person.StartDate);
+        Assert.NotNull(person.EndDate);
+        Assert.Equal(startDate, person.StartDate);
+        Assert.Equal(endDate, person.EndDate);
+    }
+
+    [Fact]
+    public void Person_CanBe_SoftDeleted()
+    {
+        // Arrange
+        var deletedBy = Guid.NewGuid();
+        var deletedAt = DateTime.UtcNow;
+
+        // Act
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Deleted",
+            LastName = "User",
+            IsDeleted = true,
+            DeletedAt = deletedAt,
+            DeletedBy = deletedBy
+        };
+
+        // Assert
+        Assert.True(person.IsDeleted);
+        Assert.Equal(deletedAt, person.DeletedAt);
+        Assert.Equal(deletedBy, person.DeletedBy);
+    }
+
+    [Fact]
+    public void CanAuthenticate_ActivePerson_ReturnsTrue()
+    {
+        // Arrange
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Active",
+            LastName = "User",
+            Status = PersonStatus.Active,
+            IsDeleted = false
+        };
+
+        // Act
+        var result = person.CanAuthenticate();
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void CanAuthenticate_DeletedPerson_ReturnsFalse()
+    {
+        // Arrange
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Deleted",
+            LastName = "User",
+            Status = PersonStatus.Active,
+            IsDeleted = true
+        };
+
+        // Act
+        var result = person.CanAuthenticate();
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Theory]
+    [InlineData(PersonStatus.Pending)]
+    [InlineData(PersonStatus.Suspended)]
+    [InlineData(PersonStatus.Resigned)]
+    [InlineData(PersonStatus.Terminated)]
+    public void CanAuthenticate_NonActiveStatus_ReturnsFalse(PersonStatus status)
+    {
+        // Arrange
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Inactive",
+            LastName = "User",
+            Status = status,
+            IsDeleted = false
+        };
+
+        // Act
+        var result = person.CanAuthenticate();
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void CanAuthenticate_FutureStartDate_ReturnsFalse()
+    {
+        // Arrange
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Future",
+            LastName = "User",
+            Status = PersonStatus.Active,
+            StartDate = DateTime.UtcNow.AddDays(7),
+            IsDeleted = false
+        };
+
+        // Act
+        var result = person.CanAuthenticate();
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void CanAuthenticate_PastEndDate_ReturnsFalse()
+    {
+        // Arrange
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Expired",
+            LastName = "User",
+            Status = PersonStatus.Active,
+            EndDate = DateTime.UtcNow.AddDays(-1),
+            IsDeleted = false
+        };
+
+        // Act
+        var result = person.CanAuthenticate();
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void CanAuthenticate_WithinDateRange_ReturnsTrue()
+    {
+        // Arrange
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Valid",
+            LastName = "User",
+            Status = PersonStatus.Active,
+            StartDate = DateTime.UtcNow.AddDays(-30),
+            EndDate = DateTime.UtcNow.AddDays(30),
+            IsDeleted = false
+        };
+
+        // Act
+        var result = person.CanAuthenticate();
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void CanAuthenticate_StartDateToday_ReturnsTrue()
+    {
+        // Arrange
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Today",
+            LastName = "User",
+            Status = PersonStatus.Active,
+            StartDate = DateTime.UtcNow.Date,
+            IsDeleted = false
+        };
+
+        // Act
+        var result = person.CanAuthenticate();
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void CanAuthenticate_EndDateToday_ReturnsTrue()
+    {
+        // Arrange
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "LastDay",
+            LastName = "User",
+            Status = PersonStatus.Active,
+            EndDate = DateTime.UtcNow.Date,
+            IsDeleted = false
+        };
+
+        // Act
+        var result = person.CanAuthenticate();
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void CanAuthenticate_NullDates_ReturnsTrue()
+    {
+        // Arrange
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "NoDates",
+            LastName = "User",
+            Status = PersonStatus.Active,
+            StartDate = null,
+            EndDate = null,
+            IsDeleted = false
+        };
+
+        // Act
+        var result = person.CanAuthenticate();
+
+        // Assert
+        Assert.True(result);
+    }
+
+    #endregion
 }
+
