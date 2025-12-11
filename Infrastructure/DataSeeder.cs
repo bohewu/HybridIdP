@@ -57,7 +57,7 @@ public static class DataSeeder
             {
                 Id = Guid.NewGuid(),
                 Key = key,
-                Value = "true"  // Default: registration enabled
+                Value = "false"  // Default: registration disabled
             });
             await context.SaveChangesAsync();
         }
