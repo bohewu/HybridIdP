@@ -91,12 +91,14 @@ namespace Tests.Application.UnitTests
         {
             // Arrange
             var user = new ClaimsPrincipal(new ClaimsIdentity()); // Unauthenticated
+#pragma warning disable CA2254 // Template should be a static expression
             _mockLogger.Setup(x => x.Log(
                 It.IsAny<LogLevel>(),
                 It.IsAny<EventId>(),
                 It.IsAny<It.IsAnyType>(),
-                It.IsAny<Exception>(),
-                (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()));
+                It.IsAny<Exception?>(),
+                (Func<It.IsAnyType, Exception?, string>)It.IsAny<object>()));
+#pragma warning restore CA2254 // Template should be a static expression
 
             var request = new OpenIddictRequest();
             var context = new DefaultHttpContext();
