@@ -34,8 +34,8 @@ public class LoginAuditIntegrationTests : IDisposable
         _settingsService.Setup(s => s.GetValueAsync<int>(SettingKeys.Audit.RetentionDays, default))
             .ReturnsAsync(30);
         
-        // Use None masking in tests to verify audit content without masking complexity
-        var auditOptions = Options.Create(new AuditOptions { PiiMaskingLevel = PiiMaskingLevel.None });
+        // Use Partial masking to verify PII protection is applied
+        var auditOptions = Options.Create(new AuditOptions { PiiMaskingLevel = PiiMaskingLevel.Partial });
         _auditService = new AuditService(_db, _db, _eventPublisher.Object, _settingsService.Object, auditOptions);
     }
 
@@ -67,7 +67,11 @@ public class LoginAuditIntegrationTests : IDisposable
         Assert.Equal("user-123", auditEvent.UserId);
         Assert.Equal("192.168.1.100", auditEvent.IPAddress);
         Assert.Equal("Mozilla/5.0 Test Browser", auditEvent.UserAgent);
-        Assert.Contains("testuser@example.com", auditEvent.Details!); // Using None masking in tests
+        
+        // Verify PII masking is applied - original value should NOT be present
+        Assert.DoesNotContain("testuser@example.com", auditEvent.Details!);
+        // But masked value should be present (partial mask shows first few chars + ***)
+        Assert.Contains("tes***", auditEvent.Details!);
         Assert.Contains("successful", auditEvent.Details!); // successful login
     }
 
@@ -91,6 +95,10 @@ public class LoginAuditIntegrationTests : IDisposable
         var auditEvent = await _db.AuditEvents.FirstOrDefaultAsync();
         Assert.NotNull(auditEvent);
         Assert.Equal("LoginAttempt", auditEvent.EventType);
+        
+        // Verify PII masking is applied
+        Assert.DoesNotContain("unknownuser", auditEvent.Details!);
+        Assert.Contains("unk***", auditEvent.Details!); // Masked username
         Assert.Contains("failed", auditEvent.Details!); // failed login
         Assert.Contains("Invalid credentials", auditEvent.Details!);
     }
@@ -114,6 +122,10 @@ public class LoginAuditIntegrationTests : IDisposable
         // Assert
         var auditEvent = await _db.AuditEvents.FirstOrDefaultAsync();
         Assert.NotNull(auditEvent);
+        
+        // Verify PII masking is applied
+        Assert.DoesNotContain("lockeduser", auditEvent.Details!);
+        Assert.Contains("loc***", auditEvent.Details!); // Masked username
         Assert.Contains("Account locked out", auditEvent.Details!);
     }
 }
