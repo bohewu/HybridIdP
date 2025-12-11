@@ -4,6 +4,7 @@ namespace Core.Application.DTOs;
 /// DTO for creating or updating a Person
 /// Phase 10.2: Person Service & API
 /// Phase 10.6: Added identity verification fields
+/// Phase 18: Added lifecycle management fields
 /// </summary>
 public class PersonDto
 {
@@ -37,10 +38,27 @@ public class PersonDto
     public string? PassportNumber { get; set; }
     public string? ResidentCertificateNumber { get; set; }
     public string? IdentityDocumentType { get; set; }
+    
+    // Phase 18: Lifecycle Management Fields
+    /// <summary>
+    /// Person status: Pending, Active, Suspended, Resigned, Terminated
+    /// </summary>
+    public string? Status { get; set; }
+    
+    /// <summary>
+    /// Employment start date (person becomes active on or after this date)
+    /// </summary>
+    public DateTime? StartDate { get; set; }
+    
+    /// <summary>
+    /// Employment end date (last working day, person becomes inactive after this)
+    /// </summary>
+    public DateTime? EndDate { get; set; }
 }
 
 /// <summary>
 /// DTO for Person response with linked accounts
+/// Phase 18: Added lifecycle management fields
 /// </summary>
 public class PersonResponseDto : PersonDto
 {
@@ -54,7 +72,23 @@ public class PersonResponseDto : PersonDto
     // Phase 10.6: Identity Verification Audit Fields
     public DateTime? IdentityVerifiedAt { get; set; }
     public Guid? IdentityVerifiedBy { get; set; }
+    
+    // Phase 18: Lifecycle Audit Fields
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
+    
+    /// <summary>
+    /// Display-friendly status name for the UI
+    /// </summary>
+    public string? StatusDisplayName { get; set; }
+    
+    /// <summary>
+    /// Whether the person can currently authenticate (based on status and dates)
+    /// </summary>
+    public bool CanAuthenticate { get; set; }
 }
+
 
 /// <summary>
 /// DTO for linked account information

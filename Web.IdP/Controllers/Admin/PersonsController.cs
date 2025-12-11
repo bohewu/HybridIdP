@@ -2,6 +2,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Core.Domain.Enums;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -421,7 +422,11 @@ public class PersonsController : ControllerBase
             NationalId = dto.NationalId,
             PassportNumber = dto.PassportNumber,
             ResidentCertificateNumber = dto.ResidentCertificateNumber,
-            IdentityDocumentType = dto.IdentityDocumentType
+            IdentityDocumentType = dto.IdentityDocumentType,
+            // Phase 18: Lifecycle fields
+            Status = Enum.TryParse<PersonStatus>(dto.Status, true, out var status) ? status : PersonStatus.Active,
+            StartDate = dto.StartDate,
+            EndDate = dto.EndDate
         };
     }
 
@@ -450,7 +455,6 @@ public class PersonsController : ControllerBase
             Birthdate = person.Birthdate,
             Gender = person.Gender,
             TimeZone = person.TimeZone,
-            
             Locale = person.Locale,
             CreatedAt = person.CreatedAt,
             CreatedBy = person.CreatedBy,
@@ -463,6 +467,15 @@ public class PersonsController : ControllerBase
             IdentityDocumentType = person.IdentityDocumentType,
             IdentityVerifiedAt = person.IdentityVerifiedAt,
             IdentityVerifiedBy = person.IdentityVerifiedBy,
+            // Phase 18: Lifecycle fields
+            Status = person.Status.ToString(),
+            StatusDisplayName = person.Status.ToString(),
+            StartDate = person.StartDate,
+            EndDate = person.EndDate,
+            IsDeleted = person.IsDeleted,
+            DeletedAt = person.DeletedAt,
+            DeletedBy = person.DeletedBy,
+            CanAuthenticate = person.CanAuthenticate(),
             Accounts = person.Accounts?.Select(a => new LinkedAccountDto
             {
                 Id = a.Id,

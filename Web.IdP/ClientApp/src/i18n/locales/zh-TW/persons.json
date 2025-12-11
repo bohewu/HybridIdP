@@ -24,10 +24,19 @@
     "employeeId": "員工編號",
     "department": "部門",
     "jobTitle": "職位",
+    "status": "狀態",
     "linkedAccounts": "連結帳號",
     "identityStatus": "身分狀態",
     "actions": "動作"
   },
+  "statuses": {
+    "pending": "待啟用",
+    "active": "啟用中",
+    "suspended": "已停權",
+    "resigned": "已離職",
+    "terminated": "已終止"
+  },
+  "dateRestricted": "此人員因日期限制（起始/結束日期）而無法進行身分驗證",
   "form": {
     "firstName": "名字",
     "middleName": "中間名",
