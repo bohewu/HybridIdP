@@ -1,7 +1,7 @@
 ---
 title: "Project Progress Summary"
 owner: HybridAuthIdP Team
-last-updated: 2025-12-10
+last-updated: 2025-12-11
 ---
 
 # 專案進度摘要
@@ -25,7 +25,7 @@ last-updated: 2025-12-10
 -- Phase 15 — Operational Excellence (Health & Logging): 📋 Planned — `./phase-15-operational.md`
 -- Phase 16 — Advanced User Support (Impersonation): 100% ✅ — `./phase-16-impersonation.md`
 -- Phase 17 — Deployment & Documentation: 100% ✅ — `./docs/DEPLOYMENT_GUIDE.md`
--- Phase 18 — Personnel Lifecycle Management: 📋 Planned — `./docs/phase-18-personnel-lifecycle.md`
+-- Phase 18 — Personnel Lifecycle Management: 100% ✅ — `./phase-18-personnel-lifecycle.md`
 
 Backlog & Technical Debt: `./TODOS.md`
 
@@ -37,6 +37,25 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 -- 如需更完整的歷史紀錄或截圖證據，請參閱 `./archive/historical/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
+
+## 2025-12-11: Phase 18 Personnel Lifecycle Management Complete ✅
+
+**Implementation Summary:**
+
+Phase 18 delivers complete personnel lifecycle management with status tracking, date-based access control, and automated background processing.
+
+**Key Achievements:**
+- ✅ **Schema & Entity**: `PersonStatus` enum (Pending/Active/Suspended/Resigned/Terminated), `StartDate`/`EndDate` fields
+- ✅ **Login Validation**: Status and date-range checks in `LoginService` blocking inactive persons
+- ✅ **Admin UI**: Status badges (color-coded), date pickers, `CanAuthenticate` indicator
+- ✅ **Background Job**: `PersonLifecycleJob` (Quartz) runs daily to auto-activate/terminate
+- ✅ **Token Revocation**: Automatic token revocation on termination via `IPersonLifecycleService`
+- ✅ **Testing**:
+  - System Tests: 8/8 passed (2.9s) - API-level lifecycle verification
+  - E2E Tests: 1/1 passed (2.2s) - UI lifecycle flow
+  - Unit Tests: 3/3 passed - PersonLifecycleJob
+
+---
 
 ## 2025-12-10: Phase 17 Deployment & Documentation Complete ✅
 
