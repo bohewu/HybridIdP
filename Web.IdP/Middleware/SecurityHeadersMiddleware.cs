@@ -25,10 +25,10 @@ public class SecurityHeadersMiddleware
 
         // Content Security Policy (CSP)
         // Allow Bootstrap CDN, Bootstrap Icons CDN, Cloudflare Turnstile, and self
-        var scriptSrc = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com";
-        var styleSrc = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com";
-        var styleSrcElem = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com";
-        var styleSrcAttr = "'none'";
+        var scriptSrc = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-eval'";
+        var styleSrc = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-inline'";
+        var styleSrcElem = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-inline'";
+        var styleSrcAttr = "'unsafe-inline'";
         var connectSrc = "'self' https://challenges.cloudflare.com";
         var frameSrc = "https://challenges.cloudflare.com";
 

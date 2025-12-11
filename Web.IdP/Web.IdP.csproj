@@ -23,7 +23,6 @@
     <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="Vite.AspNetCore" Version="2.4.1" />
     
     <!-- OpenTelemetry packages for observability -->
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />

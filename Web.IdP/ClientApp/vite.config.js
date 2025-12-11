@@ -10,6 +10,7 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  base: '/dist/',
   build: {
     manifest: true,
     outDir: '../wwwroot/dist',
@@ -28,7 +29,9 @@ export default defineConfig({
         'admin-people': './src/admin/persons/main.js',
         'admin-settings': './src/admin/settings/main.js',
         'admin-security': './src/admin/security/main.js',
-        'admin-audit': './src/admin/audit/main.js'
+        'admin-audit': './src/admin/audit/main.js',
+        'admin-resources': './src/admin/resources/main.js',
+        'admin-monitoring': './src/admin/monitoring/main.js'
       }
     }
   },

@@ -1,0 +1,96 @@
+using System.Text.Json;
+
+namespace Web.IdP.Services;
+
+/// <summary>
+/// Service to read Vite manifest and resolve asset paths for production builds.
+/// </summary>
+public interface IViteManifestService
+{
+    /// <summary>
+    /// Gets the production script path for an entry point.
+    /// </summary>
+    string? GetScriptPath(string entryName);
+    
+    /// <summary>
+    /// Gets CSS file paths for an entry point.
+    /// </summary>
+    IEnumerable<string> GetCssPaths(string entryName);
+    
+    /// <summary>
+    /// Gets all import paths for an entry point (for preloading).
+    /// </summary>
+    IEnumerable<string> GetImportPaths(string entryName);
+}
+
+public class ViteManifestService : IViteManifestService
+{
+    private readonly Dictionary<string, ViteManifestEntry> _manifest;
+    private readonly string _basePath;
+
+    public ViteManifestService(IWebHostEnvironment env, IConfiguration configuration)
+    {
+        // Read configuration with defaults
+        _basePath = configuration["Vite:Base"] ?? "/dist/";
+        var manifestRelativePath = configuration["Vite:Manifest"] ?? "dist/.vite/manifest.json";
+        
+        // Manifest is generated at wwwroot/dist/.vite/manifest.json
+        var manifestPath = Path.Combine(env.WebRootPath, manifestRelativePath);
+        
+        if (File.Exists(manifestPath))
+        {
+            var json = File.ReadAllText(manifestPath);
+            _manifest = JsonSerializer.Deserialize<Dictionary<string, ViteManifestEntry>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) 
+                ?? new Dictionary<string, ViteManifestEntry>();
+        }
+        else
+        {
+            _manifest = new Dictionary<string, ViteManifestEntry>();
+        }
+    }
+
+    public string? GetScriptPath(string entryName)
+    {
+        // Try to find by entry source path pattern (e.g. "src/admin/claims/main.js")
+        // The manifest keys are usually the relative path from source root
+        if (_manifest.TryGetValue(entryName, out var entry))
+        {
+            return _basePath + entry.File;
+        }
+        
+        return null;
+    }
+
+    public IEnumerable<string> GetCssPaths(string entryName)
+    {
+        if (_manifest.TryGetValue(entryName, out var entry) && entry.Css != null)
+        {
+            return entry.Css.Select(css => _basePath + css);
+        }
+        return Enumerable.Empty<string>();
+    }
+
+    public IEnumerable<string> GetImportPaths(string entryName)
+    {
+        if (_manifest.TryGetValue(entryName, out var entry) && entry.Imports != null)
+        {
+            foreach (var import in entry.Imports)
+            {
+                if (_manifest.TryGetValue(import, out var importEntry))
+                {
+                    yield return _basePath + importEntry.File;
+                }
+            }
+        }
+    }
+}
+
+public class ViteManifestEntry
+{
+    public string File { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? Src { get; set; }
+    public bool? IsEntry { get; set; }
+    public List<string>? Imports { get; set; }
+    public List<string>? Css { get; set; }
+}

@@ -70,16 +70,16 @@ public partial class LoginModel : PageModel
 
     public class InputModel
     {
-        [Required]
+        [Required(ErrorMessage = "RequiredField")]
         [Display(Name = "EmailOrUsernameLabel")]
         public string Login { get; set; } = default!;
 
-        [Required]
+        [Required(ErrorMessage = "RequiredField")]
         [DataType(DataType.Password)]
         [Display(Name = "Password")]
         public string Password { get; set; } = default!;
 
-        [Display(Name = "Remember me?")]
+        [Display(Name = "RememberMe")]
         public bool RememberMe { get; set; }
     }
 

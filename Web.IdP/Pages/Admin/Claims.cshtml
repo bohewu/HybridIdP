@@ -1,6 +1,4 @@
 @page
-@using Microsoft.AspNetCore.Hosting
-@inject IWebHostEnvironment Environment
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @model Web.IdP.Pages.Admin.ClaimsModel
 @{
@@ -12,12 +10,5 @@
 <div id="app" class="vue-app-container"></div>
 
 @section Scripts {
-    @if (Environment.IsDevelopment())
-    {
-        <script type="module" src="http://localhost:5173/src/admin/claims/main.js"></script>
-    }
-    else
-    {
-        <script type="module" src="~/dist/admin-claims.js" asp-append-version="true"></script>
-    }
+    <script type="module" vite-src="~/src/admin/claims/main.js"></script>
 }
