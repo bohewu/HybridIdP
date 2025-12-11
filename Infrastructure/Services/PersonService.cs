@@ -290,6 +290,11 @@ public partial class PersonService : IPersonService
             LogIdentityDocumentChanged(personId);
         }
 
+        // Phase 18: Update lifecycle fields
+        existingPerson.Status = person.Status;
+        existingPerson.StartDate = person.StartDate;
+        existingPerson.EndDate = person.EndDate;
+
         // Update audit fields
         existingPerson.ModifiedAt = DateTime.UtcNow;
         existingPerson.ModifiedBy = modifiedBy;

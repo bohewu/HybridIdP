@@ -12,6 +12,11 @@ export async function loginAsAdminViaIdP(page: Page) {
   await page.click('button.auth-btn-primary');
   // Wait for admin layout to load (admin is redirected to /Admin after login)
   await page.waitForSelector('.user-info-name, .user-name', { timeout: 20000 });
+  // Ensure we are on the Admin page (explicit navigation if not redirected)
+  if (!page.url().includes('/Admin')) {
+    await page.goto('https://localhost:7035/Admin');
+    await page.waitForSelector('.user-info-name, .user-name', { timeout: 10000 });
+  }
 }
 export async function login(page: Page, email: string, password: string) {
   // Go directly to login page
@@ -818,6 +823,45 @@ export async function createPersonWithIdentity(
   }, payload);
 }
 
+export async function createPersonWithLifecycle(
+  page: Page,
+  personData: {
+    firstName: string;
+    lastName: string;
+    status: 'Pending' | 'Active' | 'Suspended' | 'Resigned' | 'Terminated';
+    startDate?: string | null;
+    endDate?: string | null;
+    employeeId?: string;
+    department?: string;
+    jobTitle?: string;
+  }
+) {
+  const payload = {
+    firstName: personData.firstName,
+    lastName: personData.lastName,
+    employeeId: personData.employeeId || null,
+    department: personData.department || 'E2E Department',
+    jobTitle: personData.jobTitle || 'E2E Tester',
+    // Phase 18: Lifecycle fields
+    status: personData.status,
+    startDate: personData.startDate || null,
+    endDate: personData.endDate || null
+  };
+  
+  return await page.evaluate(async (p) => {
+    const r = await fetch('/api/admin/people', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
+    });
+    if (!r.ok) {
+      const errorText = await r.text();
+      throw new Error(`Failed to create person with lifecycle: ${r.status} - ${errorText}`);
+    }
+    return r.json();
+  }, payload);
+}
+
 export async function updatePersonIdentity(
   page: Page,
   personId: string,
@@ -911,6 +955,7 @@ export default {
     unlinkAccountFromPerson,
     getAvailableUsers,
     createPersonWithIdentity,
+    createPersonWithLifecycle,
     updatePersonIdentity,
     verifyPersonIdentity,
     getPersonDetails,

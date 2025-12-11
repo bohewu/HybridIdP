@@ -46,6 +46,10 @@ const formData = ref({
 	profileUrl: '',
 	pictureUrl: '',
 	website: '',
+	// Phase 18: Lifecycle fields
+	status: 'Active',
+	startDate: '',
+	endDate: '',
 	// Phase 10.6: Identity fields
 	nationalId: '',
 	passportNumber: '',
@@ -73,6 +77,10 @@ if (props.person) {
 		profileUrl: props.person.profileUrl || '',
 		pictureUrl: props.person.pictureUrl || '',
 		website: props.person.website || '',
+		// Phase 18: Lifecycle fields
+		status: props.person.status || 'Active',
+		startDate: props.person.startDate ? props.person.startDate.split('T')[0] : '',
+		endDate: props.person.endDate ? props.person.endDate.split('T')[0] : '',
 		// Phase 10.6: Identity fields
 		nationalId: props.person.nationalId || '',
 		passportNumber: props.person.passportNumber || '',
@@ -139,36 +147,50 @@ const handleSubmit = async () => {
 	}
 
 	// Identity document validation
+	// Skip validation if value is masked placeholder (●●●●●●●●●●) - means existing value unchanged
+	const MASKED_PLACEHOLDER = '●●●●●●●●●●'
 	if (formData.value.identityDocumentType !== 'None') {
 		if (formData.value.identityDocumentType === 'NationalId') {
-			if (!formData.value.nationalId?.trim()) {
+			const nationalId = formData.value.nationalId?.trim()
+			if (!nationalId) {
 				error.value = t('persons.validation.nationalIdRequired')
 				return
 			}
-			const result = validateTaiwanNationalId(formData.value.nationalId)
-			if (!result.valid) {
-				error.value = result.error
-				return
+			// Skip validation if masked (existing value)
+			if (nationalId !== MASKED_PLACEHOLDER) {
+				const result = validateTaiwanNationalId(nationalId)
+				if (!result.valid) {
+					error.value = result.error
+					return
+				}
 			}
 		} else if (formData.value.identityDocumentType === 'Passport') {
-			if (!formData.value.passportNumber?.trim()) {
+			const passportNumber = formData.value.passportNumber?.trim()
+			if (!passportNumber) {
 				error.value = t('persons.validation.passportRequired')
 				return
 			}
-			const result = validatePassportNumber(formData.value.passportNumber)
-			if (!result.valid) {
-				error.value = result.error
-				return
+			// Skip validation if masked (existing value)
+			if (passportNumber !== MASKED_PLACEHOLDER) {
+				const result = validatePassportNumber(passportNumber)
+				if (!result.valid) {
+					error.value = result.error
+					return
+				}
 			}
 		} else if (formData.value.identityDocumentType === 'ResidentCertificate') {
-			if (!formData.value.residentCertificateNumber?.trim()) {
+			const residentCertNumber = formData.value.residentCertificateNumber?.trim()
+			if (!residentCertNumber) {
 				error.value = t('persons.validation.residentCertRequired')
 				return
 			}
-			const result = validateResidentCertificate(formData.value.residentCertificateNumber)
-			if (!result.valid) {
-				error.value = result.error
-				return
+			// Skip validation if masked (existing value)
+			if (residentCertNumber !== MASKED_PLACEHOLDER) {
+				const result = validateResidentCertificate(residentCertNumber)
+				if (!result.valid) {
+					error.value = result.error
+					return
+				}
 			}
 		}
 	}
@@ -182,22 +204,58 @@ const handleSubmit = async () => {
 
 		const method = isEdit.value ? 'PUT' : 'POST'
 		
+		// Convert empty date strings to null for proper DateTime? parsing
+		// Also clear masked PID placeholders (●●●●●●●●●●) - empty means keep existing value
+		const MASKED_PLACEHOLDER = '●●●●●●●●●●'
+		const payload = {
+			...formData.value,
+			startDate: formData.value.startDate || null,
+			endDate: formData.value.endDate || null,
+			birthdate: formData.value.birthdate || null,
+			// Clear masked values - empty string means keep existing on backend
+			nationalId: formData.value.nationalId === MASKED_PLACEHOLDER ? '' : formData.value.nationalId,
+			passportNumber: formData.value.passportNumber === MASKED_PLACEHOLDER ? '' : formData.value.passportNumber,
+			residentCertificateNumber: formData.value.residentCertificateNumber === MASKED_PLACEHOLDER ? '' : formData.value.residentCertificateNumber
+		}
+		
 		const response = await fetch(url, {
 			method,
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify(formData.value)
+			body: JSON.stringify(payload)
 		})
 
 		if (!response.ok) {
-			const errorData = await response.text()
-			throw new Error(errorData || `HTTP error! status: ${response.status}`)
+			const errorText = await response.text()
+			let errorMessage = t('persons.errors.saveFailed', { message: '' })
+			
+			// Try to parse as JSON and extract meaningful error info
+			try {
+				const errorJson = JSON.parse(errorText)
+				if (errorJson.title) {
+					errorMessage = errorJson.title
+				}
+				// If there are validation errors, show the first one
+				if (errorJson.errors) {
+					const firstError = Object.values(errorJson.errors).flat()[0]
+					if (firstError) {
+						errorMessage = String(firstError)
+					}
+				}
+			} catch {
+				// Not JSON, use the text if it's short
+				if (errorText && errorText.length < 200) {
+					errorMessage = errorText
+				}
+			}
+			
+			throw new Error(errorMessage)
 		}
 
 		emit('save')
 	} catch (e) {
-		error.value = t('persons.errors.saveFailed', { message: e.message })
+		error.value = e.message || t('persons.errors.saveFailed', { message: '' })
 		console.error('Error saving person:', e)
 	} finally {
 		saving.value = false
@@ -309,6 +367,42 @@ const handleClose = () => {
 								<input id="jobTitle" v-model="formData.jobTitle" type="text"
 									:placeholder="t('persons.form.jobTitle')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+							</div>
+						</div>
+
+						<!-- Phase 18: Lifecycle Info -->
+						<div class="border-t pt-4">
+							<h4 class="text-sm font-medium text-gray-700 mb-3">{{ t('persons.form.lifecycleInfo') }}</h4>
+							<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+								<div>
+									<label for="status" class="block text-sm font-medium text-gray-700">
+										{{ t('persons.form.status') }}
+									</label>
+									<select id="status" v-model="formData.status"
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+										<option value="Pending">{{ t('persons.statuses.pending') }}</option>
+										<option value="Active">{{ t('persons.statuses.active') }}</option>
+										<option value="Suspended">{{ t('persons.statuses.suspended') }}</option>
+										<option value="Resigned">{{ t('persons.statuses.resigned') }}</option>
+										<option value="Terminated">{{ t('persons.statuses.terminated') }}</option>
+									</select>
+								</div>
+
+								<div>
+									<label for="startDate" class="block text-sm font-medium text-gray-700">
+										{{ t('persons.form.startDate') }}
+									</label>
+									<input id="startDate" v-model="formData.startDate" type="date"
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+								</div>
+
+								<div>
+									<label for="endDate" class="block text-sm font-medium text-gray-700">
+										{{ t('persons.form.endDate') }}
+									</label>
+									<input id="endDate" v-model="formData.endDate" type="date"
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+								</div>
 							</div>
 						</div>
 
