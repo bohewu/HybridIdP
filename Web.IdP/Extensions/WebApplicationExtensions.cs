@@ -81,6 +81,8 @@ public static class WebApplicationExtensions
             app.UseRateLimiter();
         }
 
+        app.UseStaticFiles();
+
         app.UseAuthentication();
         app.UseAuthorization();
 
@@ -106,16 +108,6 @@ public static class WebApplicationExtensions
             Predicate = _ => true,
             ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
         });
-
-        // Static Files Logic
-        if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
-        {
-            app.UseStaticFiles();
-        }
-        else
-        {
-            app.MapStaticAssets().ShortCircuit();
-        }
 
         app.MapControllers();
         app.MapHub<global::Infrastructure.Hubs.MonitoringHub>("/monitoringHub");
