@@ -7,7 +7,6 @@ import BrandingSettings from './components/BrandingSettings.vue'
 import EmailSettings from './components/EmailSettings.vue'
 import LoggingSettings from './components/LoggingSettings.vue'
 import SystemSettings from './components/SystemSettings.vue'
-import PasswordPolicySettings from './components/PasswordPolicySettings.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 const { t } = useI18n()
 
@@ -66,9 +65,6 @@ onMounted(async () => {
 
         <!-- System Settings -->
         <SystemSettings :can-update="hasUpdatePermission" />
-
-        <!-- Password Policy Settings -->
-        <PasswordPolicySettings :can-update="hasUpdatePermission" />
 
         <!-- Logging Settings -->
         <LoggingSettings :can-update="hasUpdatePermission" />
