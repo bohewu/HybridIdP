@@ -371,3 +371,29 @@ main {
         width: 100% !important;
     }
 }
+
+/* Vue Loading Bar */
+.vue-loading-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, #4f46e5, #7c3aed, #4f46e5);
+    background-size: 200% 100%;
+    animation: vue-loading-slide 1.5s ease-in-out infinite;
+    z-index: 9999;
+    opacity: 1;
+    transition: opacity 0.3s ease-out;
+}
+
+.vue-loading-bar.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+@keyframes vue-loading-slide {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
