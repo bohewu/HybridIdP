@@ -1,11 +1,13 @@
 using System;
 using System.Threading.Tasks;
 using Core.Application;
+using Core.Application.Options;
 using Core.Domain.Constants;
 using Core.Domain.Events;
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -32,7 +34,9 @@ public class LoginAuditIntegrationTests : IDisposable
         _settingsService.Setup(s => s.GetValueAsync<int>(SettingKeys.Audit.RetentionDays, default))
             .ReturnsAsync(30);
         
-        _auditService = new AuditService(_db, _db, _eventPublisher.Object, _settingsService.Object);
+        // Use None masking in tests to verify audit content without masking complexity
+        var auditOptions = Options.Create(new AuditOptions { PiiMaskingLevel = PiiMaskingLevel.None });
+        _auditService = new AuditService(_db, _db, _eventPublisher.Object, _settingsService.Object, auditOptions);
     }
 
     public void Dispose()
@@ -63,7 +67,7 @@ public class LoginAuditIntegrationTests : IDisposable
         Assert.Equal("user-123", auditEvent.UserId);
         Assert.Equal("192.168.1.100", auditEvent.IPAddress);
         Assert.Equal("Mozilla/5.0 Test Browser", auditEvent.UserAgent);
-        Assert.Contains("testuser@example.com", auditEvent.Details!);
+        Assert.Contains("testuser@example.com", auditEvent.Details!); // Using None masking in tests
         Assert.Contains("successful", auditEvent.Details!); // successful login
     }
 
