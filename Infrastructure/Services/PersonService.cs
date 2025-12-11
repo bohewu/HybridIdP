@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Core.Application;
+using Core.Application.Options;
 using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Constants;
@@ -8,6 +9,7 @@ using Infrastructure.Validators;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services;
 
@@ -24,17 +26,20 @@ public partial class PersonService : IPersonService
     private readonly ILogger<PersonService> _logger;
     private readonly IAuditService _auditService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly PiiMaskingLevel _piiMaskingLevel;
 
     public PersonService(
         IApplicationDbContext context,
         ILogger<PersonService> logger,
         IAuditService auditService,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IOptions<AuditOptions> auditOptions)
     {
         _context = context;
         _logger = logger;
         _auditService = auditService;
         _userManager = userManager;
+        _piiMaskingLevel = auditOptions.Value.PiiMaskingLevel;
     }
 
     public async Task<Person?> GetPersonByIdAsync(Guid personId)
@@ -149,8 +154,8 @@ public partial class PersonService : IPersonService
         var auditDetails = JsonSerializer.Serialize(new
         {
             PersonId = person.Id,
-            FirstName = person.FirstName,
-            LastName = person.LastName,
+            FirstName = PiiMasker.MaskName(person.FirstName, _piiMaskingLevel),
+            LastName = PiiMasker.MaskName(person.LastName, _piiMaskingLevel),
             EmployeeId = person.EmployeeId,
             Department = person.Department
         });
@@ -297,8 +302,8 @@ public partial class PersonService : IPersonService
         var auditDetails = JsonSerializer.Serialize(new
         {
             PersonId = existingPerson.Id,
-            FirstName = existingPerson.FirstName,
-            LastName = existingPerson.LastName,
+            FirstName = PiiMasker.MaskName(existingPerson.FirstName, _piiMaskingLevel),
+            LastName = PiiMasker.MaskName(existingPerson.LastName, _piiMaskingLevel),
             EmployeeId = existingPerson.EmployeeId,
             Department = existingPerson.Department,
             ModifiedBy = modifiedBy
@@ -329,8 +334,8 @@ public partial class PersonService : IPersonService
         var auditDetails = JsonSerializer.Serialize(new
         {
             PersonId = person.Id,
-            FirstName = person.FirstName,
-            LastName = person.LastName,
+            FirstName = PiiMasker.MaskName(person.FirstName, _piiMaskingLevel),
+            LastName = PiiMasker.MaskName(person.LastName, _piiMaskingLevel),
             EmployeeId = person.EmployeeId,
             Department = person.Department
         });
@@ -421,8 +426,8 @@ public partial class PersonService : IPersonService
         {
             PersonId = personId,
             ApplicationUserId = userId,
-            UserName = user.UserName,
-            Email = user.Email,
+            UserName = PiiMasker.MaskUserName(user.UserName, _piiMaskingLevel),
+            Email = PiiMasker.MaskEmail(user.Email, _piiMaskingLevel),
             PersonEmployeeId = person.EmployeeId,
             LinkedBy = modifiedBy
         });
@@ -461,8 +466,8 @@ public partial class PersonService : IPersonService
         {
             PersonId = previousPersonId,
             ApplicationUserId = userId,
-            UserName = user.UserName,
-            Email = user.Email,
+            UserName = PiiMasker.MaskUserName(user.UserName, _piiMaskingLevel),
+            Email = PiiMasker.MaskEmail(user.Email, _piiMaskingLevel),
             UnlinkedBy = modifiedBy
         });
         await _auditService.LogEventAsync(
