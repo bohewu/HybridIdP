@@ -25,7 +25,7 @@
 
 ```powershell
 # 1. 啟動 Docker 容器
-docker-compose up -d
+docker-compose -f docker-compose.dev.yml up -d
 
 # 2. 套用 Migrations（注意：是 Infrastructure.Migrations.SqlServer，不是 Infrastructure）
 cd Infrastructure.Migrations.SqlServer
@@ -43,7 +43,7 @@ dotnet run
 
 ```powershell
 # 1. 啟動 Docker 容器
-docker-compose up -d
+docker-compose -f docker-compose.dev.yml up -d
 
 # 2. 設定環境變數
 $env:DATABASE_PROVIDER="PostgreSQL"
@@ -670,6 +670,205 @@ SET QUOTED_IDENTIFIER ON;
 GO
 ```
 
+### 問題 7: Git Clone 後舊資料庫與新 Migrations 不同步
+
+**情境描述:**
+
+當您重新 `git clone` 專案到新環境，但 Docker 容器中的舊資料庫仍然存在時，執行 `dotnet ef database update` 可能會遇到以下問題:
+
+1. **Migration 歷史不一致**：舊資料庫的 `__EFMigrationsHistory` 表可能與新程式碼的 migrations 不一致
+2. **Schema 不匹配**：資料庫結構可能與最新的程式碼不符
+3. **測試資料過期**：舊的測試資料（如 TestClient）可能與新程式碼不相容
+
+**症狀:**
+```
+The model for context 'ApplicationDbContext' has pending changes...
+There is already an object named 'AspNetUsers' in the database
+The database is already up to date
+No migrations were applied. The database is already up to date.
+```
+
+**解決方案：選擇以下任一方法**
+
+#### 方法 1: 完全重置資料庫 (推薦 - 最乾淨)
+
+這會刪除所有舊資料，從頭開始建立資料庫。
+
+**SQL Server:**
+```powershell
+# 1. 停止應用程式（如果正在執行）
+# Ctrl+C 終止 dotnet run
+
+# 2. 刪除並重建資料庫
+docker exec hybrididp-mssql-service-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -C -Q "DROP DATABASE IF EXISTS hybridauth_idp; CREATE DATABASE hybridauth_idp;"
+
+# 3. 切換到正確的 migrations 專案目錄
+cd Infrastructure.Migrations.SqlServer
+
+# 4. 重新套用所有 migrations
+dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+
+# 5. 註冊 TestClient（E2E 測試需要）
+cd ..
+Get-Content create-testclient-mssql.sql | docker exec -i hybrididp-mssql-service-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -d hybridauth_idp -C
+
+# 6. 重新啟動應用程式
+cd Web.IdP
+dotnet run
+```
+
+**PostgreSQL:**
+```powershell
+# 1. 停止應用程式（如果正在執行）
+# Ctrl+C 終止 dotnet run
+
+# 2. 刪除並重建資料庫
+docker exec hybrididp-postgres-service-1 psql -U user -d postgres -c "DROP DATABASE IF EXISTS hybridauth_idp;"
+docker exec hybrididp-postgres-service-1 psql -U user -d postgres -c "CREATE DATABASE hybridauth_idp;"
+
+# 3. 切換到正確的 migrations 專案目錄
+cd Infrastructure.Migrations.Postgres
+
+# 4. 重新套用所有 migrations
+dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+
+# 5. 註冊 TestClient（E2E 測試需要）
+cd ..
+Get-Content create-testclient.sql | docker exec -i hybrididp-postgres-service-1 psql -U user -d hybridauth_idp
+
+# 6. 重新啟動應用程式
+cd Web.IdP
+dotnet run
+```
+
+#### 方法 2: 強制同步 Migration 歷史記錄
+
+如果您想保留現有資料（例如測試用戶），可以強制將 migration 歷史標記為「已套用」，而不實際執行 SQL。
+
+**警告:** 只有當您確定資料庫結構已經與最新程式碼一致時才使用此方法！
+
+```powershell
+# SQL Server
+cd Infrastructure.Migrations.SqlServer
+
+# 查看哪些 migrations 尚未套用
+dotnet ef migrations list --startup-project ..\Web.IdP --context ApplicationDbContext
+
+# 如果顯示「Pending」的 migration，但您確定資料庫已經是最新的
+# 可以手動在資料庫中插入 migration 記錄（⚠️ 高風險操作）
+docker exec hybrididp-mssql-service-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -d hybridauth_idp -C -Q "INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion) VALUES ('20251124061302_InitialCreate', '9.0.0')"
+
+# PostgreSQL 同理
+docker exec hybrididp-postgres-service-1 psql -U user -d hybridauth_idp -c "INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ('20251124073027_InitialCreate', '9.0.0')"
+```
+
+#### 方法 3: 建立全新的資料庫（使用不同名稱）
+
+如果您想保留舊資料庫作為參考，可以建立新的資料庫：
+
+```powershell
+# 修改 appsettings.Development.json 或設定環境變數
+# SQL Server
+$env:ConnectionStrings__SqlServerConnection = "Server=localhost,1433;Database=hybridauth_idp_new;User Id=SA;Password=YourStrong!Passw0rd;Encrypt=False;TrustServerCertificate=True"
+
+# PostgreSQL
+$env:ConnectionStrings__PostgreSqlConnection = "Host=localhost;Port=5432;Database=hybridauth_idp_new;Username=user;Password=password"
+
+# 然後按照正常流程套用 migrations
+cd Infrastructure.Migrations.SqlServer  # 或 Postgres
+dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+```
+
+**最佳實務建議:**
+
+1. **開發環境**：建議使用**方法 1 (完全重置)**，確保每次都有乾淨的環境
+2. **保留測試資料**：如果需要保留特定測試資料，考慮將資料匯出成 SQL script，重置後再匯入
+3. **Docker Volume 管理**：如果經常遇到此問題，可以在 `docker-compose down` 時加上 `-v` 參數刪除 volumes:
+   ```powershell
+   docker-compose down -v  # 刪除所有 volumes，包括資料庫資料
+   docker-compose up -d    # 重新建立全新環境
+   ```
+4. **檢查 Migration 歷史**：每次 clone 後先執行 `dotnet ef migrations list` 確認狀態
+
+**驗證資料庫已正確更新:**
+```powershell
+# SQL Server - 檢查 migrations 歷史
+docker exec hybrididp-mssql-service-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -d hybridauth_idp -C -Q "SELECT * FROM __EFMigrationsHistory"
+
+# PostgreSQL - 檢查 migrations 歷史
+docker exec hybrididp-postgres-service-1 psql -U user -d hybridauth_idp -c "SELECT * FROM \"__EFMigrationsHistory\""
+
+# 檢查測試用戶是否存在（應用程式啟動後自動建立）
+# SQL Server
+docker exec hybrididp-mssql-service-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -d hybridauth_idp -C -Q "SELECT Email FROM AspNetUsers WHERE Email = 'admin@hybridauth.local'"
+
+# PostgreSQL
+docker exec hybrididp-postgres-service-1 psql -U user -d hybridauth_idp -c "SELECT \"Email\" FROM \"AspNetUsers\" WHERE \"Email\" = 'admin@hybridauth.local'"
+```
+
+### 問題 8: PostgreSQL "operator does not exist: character varying = uuid"
+
+**情境描述:**
+
+當在 PostgreSQL 上執行 migrations 時，可能會遇到類型比較錯誤。
+
+**症狀:**
+```
+42883: operator does not exist: character varying = uuid
+POSITION: 118
+WHERE "Name" IN ('openid', 'profile', 'email',
+FROM "OpenIddictScopes"
+```
+
+**原因:**
+
+PostgreSQL migrations 中存在類型不匹配：
+- 某些表（如 `ScopeExtensions.ScopeId`, `ScopeClaim.ScopeId`）使用 `character varying`（字串）
+- `OpenIddictScopes.Id` 使用 `uuid` 類型
+- PostgreSQL 無法直接比較這兩種類型
+
+**解決方案:**
+
+此問題已在 migration 檔案中修復。如果您遇到此問題，請確保：
+
+1. **確認 migration 檔案已包含類型轉換**：
+   ```powershell
+   # 檢查 20251205140958_AddIsPublicToScopeExtension.cs
+   code Infrastructure.Migrations.Postgres\Migrations\20251205140958_AddIsPublicToScopeExtension.cs
+   ```
+
+2. **SQL 查詢應包含 CAST**：
+   ```sql
+   WHERE "ScopeId" IN (
+       SELECT CAST("Id" AS TEXT)  -- 必須有這個 CAST
+       FROM "OpenIddictScopes" 
+       WHERE "Name" IN ('openid', 'profile', 'email', 'roles')
+   );
+   ```
+
+3. **如果問題仍然存在，手動修復**：
+   - 編輯 migration 檔案
+   - 在所有將 UUID 與 VARCHAR 比較的地方添加 `CAST("Id" AS TEXT)`
+   - 重新套用 migrations
+
+4. **完全重置並重新套用**：
+   ```powershell
+   # 刪除並重建資料庫
+   docker exec hybrididp-postgres-service-1 psql -U user -d postgres -c "DROP DATABASE IF EXISTS hybridauth_idp;"
+   docker exec hybrididp-postgres-service-1 psql -U user -d postgres -c "CREATE DATABASE hybridauth_idp;"
+   
+   # 設定環境變數並套用所有 migrations
+   cd Infrastructure.Migrations.Postgres
+   $env:DATABASE_PROVIDER="PostgreSQL"
+   dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+   ```
+
+**預防措施:**
+
+未來在建立新的 migrations 時，如果需要比較 `OpenIddictScopes.Id` 與字串欄位：
+- 始終使用 `CAST("Id" AS TEXT)` 進行類型轉換
+- 或考慮將相關外鍵欄位改為 `uuid` 類型（需要重新設計 schema）
+
 ---
 
 ## 📊 性能考量
@@ -797,6 +996,6 @@ dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDb
 ---
 
 **建立時間:** 2025-11-24  
-**最後更新:** 2025-11-28  
+**最後更新:** 2025-12-11  
 **維護者:** HybridIdP Team  
-**版本:** 1.1
+**版本:** 1.3
