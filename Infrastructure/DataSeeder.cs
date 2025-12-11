@@ -61,5 +61,29 @@ public static class DataSeeder
             });
             await context.SaveChangesAsync();
         }
+
+        // Seed Password Policy Settings
+        var settingsToSeed = new (string Key, string Value)[]
+        {
+            (Core.Domain.Constants.SettingKeys.Security.PasswordMinLength, "8"),
+            (Core.Domain.Constants.SettingKeys.Security.PasswordRequireDigit, "true"),
+            (Core.Domain.Constants.SettingKeys.Security.PasswordRequireUppercase, "true"),
+            (Core.Domain.Constants.SettingKeys.Security.PasswordRequireSpecialChar, "true")
+        };
+
+        foreach (var (settingKey, settingValue) in settingsToSeed)
+        {
+            if (!await context.Settings.AnyAsync(s => s.Key == settingKey))
+            {
+                context.Settings.Add(new Setting
+                {
+                    Id = Guid.NewGuid(),
+                    Key = settingKey,
+                    Value = settingValue
+                });
+            }
+        }
+        
+        await context.SaveChangesAsync();
     }
 }
