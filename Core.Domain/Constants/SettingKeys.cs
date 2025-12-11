@@ -17,6 +17,7 @@ public static class SettingKeys
         public const string PasswordRequireDigit = "security.password.requireDigit";
         public const string PasswordRequireUppercase = "security.password.requireUppercase";
         public const string PasswordRequireSpecialChar = "security.password.requireSpecialChar";
+        public const string RegistrationEnabled = "Security:RegistrationEnabled";
     }
 
     public static class Email

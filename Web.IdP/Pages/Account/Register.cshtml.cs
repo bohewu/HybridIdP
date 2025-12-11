@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Options; // Added
 using Core.Application.Options; // Added
+using Core.Domain.Constants; // Added
 
 namespace Web.IdP.Pages.Account;
 
@@ -21,8 +22,6 @@ public class RegisterModel : PageModel
     private readonly IApplicationDbContext _context;
     private readonly IAuditService _auditService;
     private readonly ISettingsService _settingsService; // Added
-
-    public const string RegistrationEnabledKey = "Security:RegistrationEnabled";
 
     public RegisterModel(
         UserManager<ApplicationUser> userManager,
@@ -75,7 +74,7 @@ public class RegisterModel : PageModel
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
     {
         // Check if registration is enabled
-        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(RegistrationEnabledKey) ?? true;
+        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
         
         if (!RegistrationEnabled)
         {
@@ -92,7 +91,7 @@ public class RegisterModel : PageModel
         returnUrl ??= Url.Content("~/");
         
         // Block registration if disabled
-        var isEnabled = await _settingsService.GetValueAsync<bool?>(RegistrationEnabledKey) ?? true;
+        var isEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
         if (!isEnabled)
         {
             return Forbid();

@@ -43,5 +43,23 @@ public static class DataSeeder
 
         // 6. Seed Clients (M2M, Device, Public, Demo)
         await ClientSeeder.SeedAsync(applicationManager, scopeManager, seedTestUsers);
+
+        // 7. Seed Default Settings
+        await SeedDefaultSettingsAsync(context);
+    }
+
+    private static async Task SeedDefaultSettingsAsync(ApplicationDbContext context)
+    {
+        var key = Core.Domain.Constants.SettingKeys.Security.RegistrationEnabled;
+        if (!await context.Settings.AnyAsync(s => s.Key == key))
+        {
+            context.Settings.Add(new Setting
+            {
+                Id = Guid.NewGuid(),
+                Key = key,
+                Value = "true"  // Default: registration enabled
+            });
+            await context.SaveChangesAsync();
+        }
     }
 }
