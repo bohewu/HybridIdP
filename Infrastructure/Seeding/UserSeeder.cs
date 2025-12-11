@@ -2,6 +2,7 @@ using Core.Application.Utilities;
 using Core.Domain.Constants;
 using Core.Domain;
 using Core.Domain.Entities;
+using Core.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,7 +45,9 @@ public static class UserSeeder
                 NationalId = PidHasher.Hash("A123456789"), // Default admin National ID (Taiwan format) - stored as SHA256 hash
                 IdentityDocumentType = IdentityDocumentTypes.NationalId,
                 IdentityVerifiedAt = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
             };
             
             context.Persons.Add(adminPerson);
@@ -72,7 +75,7 @@ public static class UserSeeder
         }
         else
         {
-            // Phase 10.6.2: Update existing admin user's Person if it doesn't exist
+            // Phase 10.6.2: Ensure Person exists and is linked
             if (adminUser.PersonId == null)
             {
                 var existingPerson = await context.Persons
@@ -91,7 +94,9 @@ public static class UserSeeder
                         IdentityVerifiedAt = DateTime.UtcNow,
                         CreatedBy = adminUser.Id,
                         IdentityVerifiedBy = adminUser.Id,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.UtcNow,
+                        Status = PersonStatus.Active,
+                        StartDate = DateTime.UtcNow
                     };
                     
                     context.Persons.Add(adminPerson);
@@ -102,6 +107,25 @@ public static class UserSeeder
                 {
                     // Link existing Person to admin user
                     adminUser.PersonId = existingPerson.Id;
+                    
+                    // Fix existing person status if needed
+                    if (existingPerson.Status != PersonStatus.Active)
+                    {
+                        existingPerson.Status = PersonStatus.Active;
+                        if (!existingPerson.StartDate.HasValue) existingPerson.StartDate = DateTime.UtcNow;
+                    }
+                    
+                    await context.SaveChangesAsync();
+                }
+            }
+            else
+            {
+                // Ensure existing linked person is Active (Fix for Phase 18 migration on existing DBs)
+                var person = await context.Persons.FindAsync(adminUser.PersonId);
+                if (person != null && person.Status != PersonStatus.Active)
+                {
+                    person.Status = PersonStatus.Active;
+                    if (!person.StartDate.HasValue) person.StartDate = DateTime.UtcNow;
                     await context.SaveChangesAsync();
                 }
             }
@@ -143,7 +167,9 @@ public static class UserSeeder
                 NationalId = nationalIdHash,
                 IdentityDocumentType = IdentityDocumentTypes.NationalId,
                 IdentityVerifiedAt = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
             };
             
             context.Persons.Add(person);
@@ -208,7 +234,9 @@ public static class UserSeeder
                 NationalId = nationalIdHash,
                 IdentityDocumentType = IdentityDocumentTypes.NationalId,
                 IdentityVerifiedAt = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
             };
             
             context.Persons.Add(person);
@@ -274,7 +302,9 @@ public static class UserSeeder
                 NationalId = nationalIdHash,
                 IdentityDocumentType = IdentityDocumentTypes.NationalId,
                 IdentityVerifiedAt = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
             };
 
             context.Persons.Add(person);
