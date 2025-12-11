@@ -45,6 +45,13 @@ This file contains current high-priority backlog items and remaining tasks.
   - Register as OIDC client to IdP
   - Display app catalog with role-based filtering
 
+## Phase 18 (Personnel Lifecycle)
+
+- [ ] Phase 18.1: Schema & Entity (Person Status, Dates)
+- [ ] Phase 18.2: Logic & Security (Login Checks, IPersonService)
+- [ ] Phase 18.3: Admin UI (Person List Status, Editing)
+- [ ] Phase 18.4: Automation (PersonLifecycleJob w/ Quartz)
+
 ## Notes
 
 - Security scanning scripts available: `CI/security-scan.ps1`, `CI/dependency-scan.ps1`
