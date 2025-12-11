@@ -319,6 +319,42 @@ const saveScopeClaims = async (scopeId) => {
                         <label for="iconUrl" class="block text-sm font-medium text-gray-700 mb-1.5">
                           {{ $t('scopes.form.iconUrl') }}
                         </label>
+                        <!-- Common Icons Dropdown -->
+                        <div class="flex space-x-2 mb-2">
+                          <select
+                            @change="e => { if (e.target.value) formData.iconUrl = e.target.value; e.target.value = '' }"
+                            class="block w-48 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                          >
+                            <option value="">{{ $t('scopes.form.iconQuickSelect') }}</option>
+                            <optgroup :label="$t('scopes.form.iconCategoryIdentity')">
+                              <option value="bi bi-person-circle">👤 person-circle</option>
+                              <option value="bi bi-envelope">📧 envelope (email)</option>
+                              <option value="bi bi-shield-check">🛡️ shield-check</option>
+                              <option value="bi bi-key">🔑 key</option>
+                              <option value="bi bi-lock">🔒 lock</option>
+                            </optgroup>
+                            <optgroup :label="$t('scopes.form.iconCategoryData')">
+                              <option value="bi bi-database">🗄️ database</option>
+                              <option value="bi bi-folder">📁 folder</option>
+                              <option value="bi bi-file-earmark-text">📄 file-text</option>
+                              <option value="bi bi-cloud">☁️ cloud</option>
+                            </optgroup>
+                            <optgroup :label="$t('scopes.form.iconCategoryAccess')">
+                              <option value="bi bi-gear">⚙️ gear (settings)</option>
+                              <option value="bi bi-people">👥 people (group)</option>
+                              <option value="bi bi-building">🏢 building (org)</option>
+                              <option value="bi bi-globe">🌐 globe</option>
+                            </optgroup>
+                            <optgroup :label="$t('scopes.form.iconCategoryOther')">
+                              <option value="bi bi-credit-card">💳 credit-card</option>
+                              <option value="bi bi-cart">🛒 cart</option>
+                              <option value="bi bi-calendar">📅 calendar</option>
+                              <option value="bi bi-chat">💬 chat</option>
+                              <option value="bi bi-bell">🔔 bell</option>
+                            </optgroup>
+                          </select>
+                          <span class="text-xs text-gray-400 self-center">{{ $t('scopes.form.iconOrManual') }}</span>
+                        </div>
                         <input
                           id="iconUrl"
                           v-model="formData.iconUrl"
