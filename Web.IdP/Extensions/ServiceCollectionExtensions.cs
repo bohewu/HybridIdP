@@ -405,6 +405,18 @@ public static class ServiceCollectionExtensions
         {
             options.UseSimpleTypeLoader();
             options.UseInMemoryStore();
+
+            // Phase 18.4: PersonLifecycleJob - runs daily at midnight to process scheduled transitions
+            var jobKey = new JobKey(
+                global::Infrastructure.Jobs.PersonLifecycleJobConstants.JobName,
+                global::Infrastructure.Jobs.PersonLifecycleJobConstants.JobGroup);
+
+            options.AddJob<global::Infrastructure.Jobs.PersonLifecycleJob>(opts => opts.WithIdentity(jobKey));
+            options.AddTrigger(opts => opts
+                .ForJob(jobKey)
+                .WithIdentity(global::Infrastructure.Jobs.PersonLifecycleJobConstants.TriggerName)
+                .WithCronSchedule(global::Infrastructure.Jobs.PersonLifecycleJobConstants.DefaultCronSchedule)
+                .WithDescription("Daily job to process Person lifecycle transitions (auto-activate/terminate)"));
         });
         services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
 
