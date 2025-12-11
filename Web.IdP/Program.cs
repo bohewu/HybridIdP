@@ -15,7 +15,7 @@ using Microsoft.AspNetCore.Mvc.Razor;
 using OpenIddict.Abstractions;
 using OpenIddict.Server;
 using OpenIddict.Server.AspNetCore;
-using Vite.AspNetCore;
+
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using Web.IdP.Options;
 using Core.Application.Options;
@@ -26,6 +26,7 @@ using OpenTelemetry.Exporter.Prometheus;
 using Web.IdP.Middleware;
 using Web.IdP.Services;
 using Web.IdP.Constants;
+using Web.IdP; // Added for SharedResource
 
 using Quartz;
 using HealthChecks.UI.Client;
@@ -61,7 +62,9 @@ builder.Services.AddSingleton(levelSwitch);
 // Add services to the container.
 // Add Vite services for Vue.js integration
 // Add Vite services for Vue.js integration
-builder.Services.AddViteServices();
+// Register Custom Vite Manifest Service
+builder.Services.AddSingleton<IViteManifestService, ViteManifestService>();
+// builder.Services.AddViteServices(); // Removed custom lib
 
 // Register Turnstile Services (Circuit Breaker)
 builder.Services.AddSingleton<ITurnstileStateService, TurnstileStateService>();
@@ -265,7 +268,6 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.Name = CookieConstants.SessionCookieName;
 });
 
@@ -275,13 +277,17 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Strict;
-    options.Cookie.SameSite = SameSiteMode.Strict;
+
     options.Cookie.Name = CookieConstants.AntiforgeryCookieName;
 });
 
 builder.Services.AddMvc()
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
-    .AddDataAnnotationsLocalization();
+    .AddDataAnnotationsLocalization(options =>
+    {
+        options.DataAnnotationLocalizerProvider = (type, factory) =>
+            factory.Create(typeof(SharedResource));
+    });
 
 // Branding options
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection(BrandingOptions.Section));
@@ -642,11 +648,6 @@ if (proxyOptions.Enabled)
     app.UseForwardedHeaders(options);
 }
 
-// Use Vite development server in development mode
-if (app.Environment.IsDevelopment())
-{
-    app.UseViteDevelopmentServer();
-}
 
 app.UseRouting();
 
@@ -692,11 +693,23 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 //     options.ApiPath = "/health-ui-api";
 // }).RequireAuthorization("HasAnyAdminAccess");
 
-app.MapStaticAssets();
+// --- 修改開始 ---
+// 如果是 開發環境 或 Staging (測試環境)，使用舊版 UseStaticFiles
+// 這樣可以避免強快取 (Immutable Cache) 導致 CSS 壞掉修不好
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+{
+    // 這裡使用舊的 Middleware，雖然比較慢一點點，但它不會鎖死瀏覽器快取
+    // 只要你重新部署，它就會乖乖更新
+    app.UseStaticFiles();
+}
+else
+{
+    // 確保你的正式環境效能最好
+    app.MapStaticAssets().ShortCircuit();
+}
 app.MapControllers(); // Map API controller endpoints
 app.MapHub<Infrastructure.Hubs.MonitoringHub>("/monitoringHub");
-app.MapRazorPages()
-   .WithStaticAssets();
+app.MapRazorPages();
 
 // Seed the database (seed test users only in development environment)
 await DataSeeder.SeedAsync(app.Services, seedTestUsers: app.Environment.IsDevelopment());

@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, h } from 'vue'
 import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 import i18n from '@/i18n'
 
@@ -6,87 +6,107 @@ import i18n from '@/i18n'
 // v-loading="true"  -> show default overlay
 // v-loading="{ loading: true, overlay: true, message: 'Loading...' }"
 
+// Helper function to mount the loader
+function mountLoader(el, binding) {
+  // Ensure the host can be a positioned parent for absolute overlay
+  const computed = window.getComputedStyle(el)
+  const originalPosition = el.style.position || ''
+  if (computed.position === '' || computed.position === 'static') {
+    el.style.position = 'relative'
+    el.__vLoading_orig_pos = originalPosition
+  }
+
+  // container for the mounted LoadingIndicator
+  const container = document.createElement('div')
+  const opts = binding.value && typeof binding.value === 'object' ? binding.value : {}
+  const defaultOverlay = opts.overlay ?? true
+  container.className = defaultOverlay
+    ? 'absolute inset-0 bg-white/60 z-40 flex items-center justify-center pointer-events-auto v-loading-container'
+    : 'flex items-center justify-center v-loading-container'
+  
+  const initialLoading = typeof binding.value === 'object' ? !!(binding.value.loading ?? binding.value.value) : !!binding.value
+  
+  // Wrapper component to manage state
+  const Wrapper = {
+    data() {
+      return {
+        loading: initialLoading,
+        overlay: opts.overlay ?? true,
+        message: opts.message ?? '',
+        size: opts.size ?? 'md',
+        showMessage: !!opts.message
+      }
+    },
+    render() {
+      return h(LoadingIndicator, {
+        loading: this.loading,
+        overlay: this.overlay,
+        message: this.message,
+        size: this.size,
+        showMessage: this.showMessage
+      })
+    }
+  }
+  
+  const app = createApp(Wrapper)
+
+  try { app.use(i18n) } catch (err) { console.debug('v-loading: failed to apply i18n (ignored)', err) }
+
+  const vm = app.mount(container)
+
+  el.appendChild(container)
+  container.style.display = initialLoading ? '' : 'none'
+
+  el.__vLoading = { container, app, vm }
+}
+
 export default {
   mounted(el, binding) {
-    // Ensure the host can be a positioned parent for absolute overlay
-    const computed = window.getComputedStyle(el)
-    const originalPosition = el.style.position || ''
-    if (computed.position === '' || computed.position === 'static') {
-      el.style.position = 'relative'
-      el.__vLoading_orig_pos = originalPosition
-    }
-
-    // container for the mounted LoadingIndicator
-    const container = document.createElement('div')
-    // get options early (we used to read 'opts' below but referenced it before
-    // initialization — move it up so we can safely choose the default overlay)
-    const opts = binding.value && typeof binding.value === 'object' ? binding.value : {}
-    // choose tailwind classes depending on overlay/inline (default overlay = true)
-    const defaultOverlay = opts.overlay ?? true
-    container.className = defaultOverlay
-      ? 'absolute inset-0 bg-white/60 z-40 flex items-center justify-center pointer-events-auto v-loading-container'
-      : 'flex items-center justify-center v-loading-container'
-    // mount a small Vue app with the LoadingIndicator component so behavior stays consistent
-    const initialLoading = typeof binding.value === 'object' ? !!(binding.value.loading ?? binding.value.value) : !!binding.value
-    const app = createApp(LoadingIndicator, {
-      loading: initialLoading,
-      overlay: opts.overlay ?? true,
-      message: opts.message ?? '',
-      size: opts.size ?? 'md',
-      showMessage: !!opts.message
-    })
-
-    // ensure i18n is available inside the small app so LoadingIndicator can use useI18n()
-    try { app.use(i18n) } catch (err) { console.debug('v-loading: failed to apply i18n (ignored)', err) }
-
-    // expose instance proxy after mount
-    const vm = app.mount(container)
-
-    el.appendChild(container)
-    // ensure visual visibility matches initialLoading
-    container.style.display = initialLoading ? '' : 'none'
-
-    // store references for updates / cleanup
-    el.__vLoading = { container, app, vm }
-    console.debug('[v-loading] mounted', { el, initialLoading })
+    mountLoader(el, binding)
   },
 
   updated(el, binding) {
     const ref = el.__vLoading
-    if (!ref) return
+    if (!ref) {
+      // If reference lost, remount
+      mountLoader(el, binding)
+      return
+    }
 
     const opts = binding.value && typeof binding.value === 'object' ? binding.value : {}
     const newLoading = typeof binding.value === 'object' ? !!(binding.value.loading ?? binding.value.value) : !!binding.value
 
-    // vm is the component instance proxy; update props directly
-    console.debug('[v-loading] updated', { bindingValue: binding.value })
     try {
       if (ref.vm) {
         ref.vm.loading = newLoading
-      }
-      // ensure container is visible/hidden even if vm updates aren't applied synchronously
-      if (ref.container) {
-        ref.container.style.display = newLoading ? '' : 'none'
         if (opts.overlay !== undefined) {
           ref.vm.overlay = opts.overlay
-          // update classes on the container to match overlay vs inline styles
-          ref.container.className = opts.overlay
-            ? 'absolute inset-0 bg-white/60 z-40 flex items-center justify-center pointer-events-auto v-loading-container'
-            : 'flex items-center justify-center v-loading-container'
+          ref.vm.size = opts.size ?? 'md' // Ensure size is updated
         }
         if (opts.message !== undefined) {
           ref.vm.message = opts.message
           ref.vm.showMessage = !!opts.message
         }
-        if (opts.size !== undefined) ref.vm.size = opts.size
+      }
+      
+      if (ref.container) {
+        ref.container.style.display = newLoading ? '' : 'none'
+        if (opts.overlay !== undefined) {
+          ref.container.className = opts.overlay
+            ? 'absolute inset-0 bg-white/60 z-40 flex items-center justify-center pointer-events-auto v-loading-container'
+            : 'flex items-center justify-center v-loading-container'
+        }
       }
     } catch (err) {
       // fallback: if runtime doesn't allow direct updates, recreate app
-      ref.app.unmount()
-      ref.container.remove()
+      console.warn('[v-loading] update failed, recreating', err)
+      try {
+          if (ref.app) ref.app.unmount()
+          if (ref.container && ref.container.parentNode) ref.container.parentNode.removeChild(ref.container)
+      } catch (ignored) {}
+      
       el.__vLoading = null
-      // call mounted to recreate
-      this.mounted(el, binding)
+      mountLoader(el, binding)
     }
   },
 
@@ -95,13 +115,9 @@ export default {
     if (!ref) return
     try {
       ref.app.unmount()
-    } catch (err) {
-      // ignore
-    }
+    } catch (err) {}
     if (ref.container && ref.container.parentNode) ref.container.parentNode.removeChild(ref.container)
-    console.debug('[v-loading] beforeUnmount cleaned', el)
-
-    // restore original position style if we modified it
+    
     if (el.__vLoading_orig_pos !== undefined) {
       el.style.position = el.__vLoading_orig_pos
       delete el.__vLoading_orig_pos

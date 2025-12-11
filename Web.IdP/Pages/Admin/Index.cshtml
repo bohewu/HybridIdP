@@ -6,16 +6,9 @@
     ViewData["Breadcrumb"] = Localizer["Dashboard"].Value;
 }
 
-@section Scripts {
-    @if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
-    {
-        <script type="module" src="http://localhost:5173/src/admin/dashboard/main.js"></script>
-    }
-    else
-    {
-        <script type="module" src="~/dist/assets/admin-dashboard.js" asp-append-version="true"></script>
-    }
-}
-
 <div id="app"></div>
+
+@section Scripts {
+    <script type="module" vite-src="~/src/admin/dashboard/main.js"></script>
+}
 
