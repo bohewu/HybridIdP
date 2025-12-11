@@ -321,6 +321,9 @@ watch([page, pageSize, search], () => {
                   {{ t('persons.table.jobTitle') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('persons.table.status') }}
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {{ t('persons.table.linkedAccounts') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -361,6 +364,25 @@ watch([page, pageSize, search], () => {
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span v-if="person.jobTitle" class="text-sm text-gray-900">{{ person.jobTitle }}</span>
                   <span v-else class="text-sm text-gray-400">-</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <!-- Phase 18: Status Badge -->
+                  <span 
+                    :class="[
+                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                      person.status === 'Active' && person.canAuthenticate ? 'bg-green-100 text-green-800' : '',
+                      person.status === 'Active' && !person.canAuthenticate ? 'bg-yellow-100 text-yellow-800' : '',
+                      person.status === 'Pending' ? 'bg-blue-100 text-blue-800' : '',
+                      person.status === 'Suspended' ? 'bg-orange-100 text-orange-800' : '',
+                      person.status === 'Resigned' ? 'bg-gray-100 text-gray-800' : '',
+                      person.status === 'Terminated' ? 'bg-red-100 text-red-800' : ''
+                    ]"
+                  >
+                    {{ t(`persons.statuses.${person.status?.toLowerCase() || 'active'}`) }}
+                  </span>
+                  <span v-if="!person.canAuthenticate && person.status === 'Active'" class="ml-1 text-xs text-gray-500" :title="t('persons.dateRestricted')">
+                    ⏰
+                  </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span v-if="person.accounts && person.accounts.length > 0" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">

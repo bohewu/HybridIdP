@@ -24,10 +24,19 @@
     "employeeId": "Employee ID",
     "department": "Department",
     "jobTitle": "Job Title",
+    "status": "Status",
     "linkedAccounts": "Linked Accounts",
     "identityStatus": "Identity Status",
     "actions": "Actions"
   },
+  "statuses": {
+    "pending": "Pending",
+    "active": "Active",
+    "suspended": "Suspended",
+    "resigned": "Resigned",
+    "terminated": "Terminated"
+  },
+  "dateRestricted": "This person has date restrictions (start/end date) preventing authentication",
   "form": {
     "firstName": "First Name",
     "middleName": "Middle Name",
