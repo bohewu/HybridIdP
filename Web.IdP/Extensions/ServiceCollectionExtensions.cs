@@ -52,6 +52,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRoleManagementService, RoleManagementService>();
         services.AddScoped<IScopeService, ScopeService>();
         services.AddScoped<IPersonService, PersonService>();
+        services.AddScoped<IPersonLifecycleService, PersonLifecycleService>(); // Phase 18
         services.AddScoped<ILocalizationService, LocalizationService>();
         services.AddScoped<IApiResourceService, ApiResourceService>();
         services.AddScoped<IClientService, ClientService>();
