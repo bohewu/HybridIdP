@@ -73,6 +73,12 @@ public class RegisterModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
     {
+        // Redirect if already logged in
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return LocalRedirect(returnUrl ?? Url.Content("~/"));
+        }
+        
         // Check if registration is enabled
         RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
         

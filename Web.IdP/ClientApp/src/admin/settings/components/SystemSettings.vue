@@ -18,6 +18,7 @@ const showSuccess = ref(false);
 const error = ref(null);
 
 const settings = ref({
+    registrationEnabled: true,
     monitoringEnabled: true,
     activityInterval: 5,
     securityInterval: 10,
@@ -29,7 +30,8 @@ const settings = ref({
 const originalSettings = ref({});
 
 const hasChanges = computed(() => {
-    return settings.value.monitoringEnabled !== originalSettings.value.monitoringEnabled ||
+    return settings.value.registrationEnabled !== originalSettings.value.registrationEnabled ||
+           settings.value.monitoringEnabled !== originalSettings.value.monitoringEnabled ||
            settings.value.activityInterval !== originalSettings.value.activityInterval ||
            settings.value.securityInterval !== originalSettings.value.securityInterval ||
            settings.value.metricsInterval !== originalSettings.value.metricsInterval ||
@@ -54,8 +56,18 @@ const loadSettings = async () => {
             credentials: 'include'
         }).then(r => r.json());
 
-        const [monitoringData, auditData] = await Promise.all([monitoringPromise, auditPromise]);
+        // Load Security Settings (single key)
+        const securityPromise = fetch(`/api/admin/settings/${SettingKeys.Security.RegistrationEnabled}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        }).then(r => r.ok ? r.json() : { value: 'true' }).catch(() => ({ value: 'true' }));
+
+        const [monitoringData, auditData, securityData] = await Promise.all([monitoringPromise, auditPromise, securityPromise]);
         
+        // Map Security Data
+        settings.value.registrationEnabled = securityData?.value?.toLowerCase() === 'true';
+
         // Map Monitoring Data
         const getVal = (data, key, def) => data.find(s => s.key === key)?.value || def;
 
@@ -95,6 +107,7 @@ const saveSettings = async () => {
         });
 
         const updates = [
+            updateSetting(SettingKeys.Security.RegistrationEnabled, settings.value.registrationEnabled.toString()),
             updateSetting('Monitoring.Enabled', settings.value.monitoringEnabled.toString()),
             updateSetting('Monitoring.ActivityIntervalSeconds', settings.value.activityInterval.toString()),
             updateSetting('Monitoring.SecurityIntervalSeconds', settings.value.securityInterval.toString()),
@@ -193,6 +206,20 @@ onMounted(() => {
                     </div>
                 </div>
             </div>
+
+            <!-- Security Section - Registration Toggle -->
+            <div class="mb-6">
+                <h3 class="text-md font-medium text-gray-900 mb-2">{{ t('settings.security.title') || 'Security' }}</h3>
+                <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                        <span class="label-text font-bold text-gray-700 mr-4">{{ t('settings.security.registrationEnabled') || 'Allow Public Registration' }}</span>
+                        <input type="checkbox" class="toggle toggle-primary" v-model="settings.registrationEnabled" :disabled="!canUpdate" />
+                    </label>
+                    <p class="text-sm text-gray-500 mt-1">{{ t('settings.security.registrationEnabledDesc') || 'When disabled, new users cannot register accounts.' }}</p>
+                </div>
+            </div>
+
+            <div class="divider my-4"></div>
 
             <!-- Audit Retention Section -->
             <div class="mb-6">
