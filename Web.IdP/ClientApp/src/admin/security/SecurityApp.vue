@@ -27,6 +27,20 @@
 
     <!-- Main Content -->
     <div v-if="!loading" class="space-y-6">
+      <!-- Registration Settings -->
+      <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+        <div class="px-4 py-5 sm:px-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('security.registrationSettings') || 'Registration Settings' }}</h3>
+        </div>
+        <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <dl class="sm:divide-y sm:divide-gray-200">
+            <FormRow :label="$t('security.registrationEnabled') || 'Allow Public Registration'" :help-text="$t('security.registrationEnabledHelp') || 'When disabled, new users cannot register accounts.'">
+              <ToggleSwitch v-model="registrationEnabled" @update:modelValue="onRegistrationToggle" />
+            </FormRow>
+          </dl>
+        </div>
+      </div>
+
       <!-- Password Requirements -->
       <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <div class="px-4 py-5 sm:px-6">
@@ -116,6 +130,7 @@ import { useI18n } from 'vue-i18n';
 import PageHeader from '@/components/common/PageHeader.vue';
 import FormRow from '@/components/common/FormRow.vue';
 import ToggleSwitch from '@/components/common/ToggleSwitch.vue';
+import { SettingKeys } from '@/utils/settingKeys';
 
 const { t } = useI18n();
 
@@ -124,25 +139,43 @@ const originalPolicy = ref(null);
 const loading = ref(true);
 const isSaving = ref(false);
 const notification = ref({ message: '', type: '' });
+const registrationEnabled = ref(true);
+const originalRegistrationEnabled = ref(true);
 
 const isDirty = computed(() => {
   if (!policy.value || !originalPolicy.value) {
     return false;
   }
-  return JSON.stringify(policy.value) !== JSON.stringify(originalPolicy.value);
+  const policyChanged = JSON.stringify(policy.value) !== JSON.stringify(originalPolicy.value);
+  const registrationChanged = registrationEnabled.value !== originalRegistrationEnabled.value;
+  return policyChanged || registrationChanged;
 });
 
 const fetchPolicy = async () => {
   loading.value = true;
   notification.value = { message: '', type: '' };
   try {
-    const response = await fetch('/api/admin/security/policies');
-    if (!response.ok) {
-      throw new Error(t('security.loadingError', { message: `${response.status} ${response.statusText}` }));
+    // Fetch both policy and registration setting in parallel
+    const [policyResponse, regResponse] = await Promise.all([
+      fetch('/api/admin/security/policies'),
+      fetch(`/api/admin/settings/${SettingKeys.Security.RegistrationEnabled}`, { credentials: 'include' })
+    ]);
+    
+    if (!policyResponse.ok) {
+      throw new Error(t('security.loadingError', { message: `${policyResponse.status} ${policyResponse.statusText}` }));
     }
-    const data = await response.json();
+    const data = await policyResponse.json();
     policy.value = data;
-    originalPolicy.value = JSON.parse(JSON.stringify(data)); // Deep copy for dirty checking
+    originalPolicy.value = JSON.parse(JSON.stringify(data));
+    
+    // Load registration setting (default true if not found)
+    if (regResponse.ok) {
+      const regData = await regResponse.json();
+      registrationEnabled.value = regData?.value?.toLowerCase() === 'true';
+    } else {
+      registrationEnabled.value = true;
+    }
+    originalRegistrationEnabled.value = registrationEnabled.value;
   } catch (e) {
     notification.value = { message: e.message, type: 'error' };
   } finally {
@@ -154,17 +187,32 @@ const savePolicy = async () => {
   isSaving.value = true;
   notification.value = { message: '', type: '' };
   try {
-    const response = await fetch('/api/admin/security/policies', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(policy.value),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
+    // Save policy and registration setting
+    const [policyResponse, regResponse] = await Promise.all([
+      fetch('/api/admin/security/policies', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(policy.value),
+      }),
+      fetch(`/api/admin/settings/${SettingKeys.Security.RegistrationEnabled}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ value: registrationEnabled.value.toString() })
+      })
+    ]);
+    
+    if (!policyResponse.ok) {
+      const errorData = await policyResponse.json();
       const errorMessages = Object.values(errorData.errors || {}).flat().join(', ');
-      throw new Error(errorMessages || t('security.saveError', { message: response.statusText }));
+      throw new Error(errorMessages || t('security.saveError', { message: policyResponse.statusText }));
     }
-    originalPolicy.value = JSON.parse(JSON.stringify(policy.value)); // Update original state
+    if (!regResponse.ok) {
+      throw new Error(t('security.saveError', { message: 'Failed to save registration setting' }));
+    }
+    
+    originalPolicy.value = JSON.parse(JSON.stringify(policy.value));
+    originalRegistrationEnabled.value = registrationEnabled.value;
     notification.value = { message: t('security.saveSuccess'), type: 'success' };
   } catch (e) {
     notification.value = { message: e.message, type: 'error' };
@@ -176,6 +224,10 @@ const savePolicy = async () => {
       }
     }, 5000);
   }
+};
+
+const onRegistrationToggle = (value) => {
+  registrationEnabled.value = value;
 };
 
 onMounted(fetchPolicy);

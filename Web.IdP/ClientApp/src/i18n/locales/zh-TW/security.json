@@ -29,5 +29,8 @@
     "abnormalLoginHistoryCount": "歷史數量",
     "abnormalLoginHistoryCountHelp": "分析異常的最近登入次數。",
     "blockAbnormalLogin": "封鎖異常登入",
-    "blockAbnormalLoginHelp": "自動封鎖偵測為異常的登入。"
+    "blockAbnormalLoginHelp": "自動封鎖偵測為異常的登入。",
+    "registrationSettings": "註冊設定",
+    "registrationEnabled": "允許公開註冊",
+    "registrationEnabledHelp": "關閉後，新使用者將無法註冊帳戶。"
 }

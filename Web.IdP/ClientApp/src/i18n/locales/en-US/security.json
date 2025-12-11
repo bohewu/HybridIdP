@@ -29,5 +29,8 @@
     "abnormalLoginHistoryCount": "History Count",
     "abnormalLoginHistoryCountHelp": "Number of recent logins to analyze for abnormalities.",
     "blockAbnormalLogin": "Block Abnormal Logins",
-    "blockAbnormalLoginHelp": "Automatically block logins detected as abnormal."
+    "blockAbnormalLoginHelp": "Automatically block logins detected as abnormal.",
+    "registrationSettings": "Registration Settings",
+    "registrationEnabled": "Allow Public Registration",
+    "registrationEnabledHelp": "When disabled, new users cannot register accounts."
 }
