@@ -62,28 +62,28 @@ public static class DataSeeder
             await context.SaveChangesAsync();
         }
 
-        // Seed Password Policy Settings
-        var settingsToSeed = new (string Key, string Value)[]
+        // Seed Default Security Policy if not exists
+        if (!await context.SecurityPolicies.AnyAsync())
         {
-            (Core.Domain.Constants.SettingKeys.Security.PasswordMinLength, "8"),
-            (Core.Domain.Constants.SettingKeys.Security.PasswordRequireDigit, "true"),
-            (Core.Domain.Constants.SettingKeys.Security.PasswordRequireUppercase, "true"),
-            (Core.Domain.Constants.SettingKeys.Security.PasswordRequireSpecialChar, "true")
-        };
-
-        foreach (var (settingKey, settingValue) in settingsToSeed)
-        {
-            if (!await context.Settings.AnyAsync(s => s.Key == settingKey))
+            context.SecurityPolicies.Add(new Core.Domain.Entities.SecurityPolicy
             {
-                context.Settings.Add(new Setting
-                {
-                    Id = Guid.NewGuid(),
-                    Key = settingKey,
-                    Value = settingValue
-                });
-            }
+                Id = Guid.NewGuid(),
+                MinPasswordLength = 8,
+                RequireUppercase = true,
+                RequireLowercase = true,
+                RequireDigit = true,
+                RequireNonAlphanumeric = true,
+                PasswordHistoryCount = 5,
+                PasswordExpirationDays = 180,
+                MinPasswordAgeDays = 1,
+                MaxFailedAccessAttempts = 5,
+                LockoutDurationMinutes = 15,
+                AbnormalLoginHistoryCount = 10,
+                BlockAbnormalLogin = false,
+                UpdatedUtc = DateTime.UtcNow,
+                UpdatedBy = "System"
+            });
+            await context.SaveChangesAsync();
         }
-        
-        await context.SaveChangesAsync();
     }
 }
