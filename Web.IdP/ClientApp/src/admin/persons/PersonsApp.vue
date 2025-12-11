@@ -282,6 +282,7 @@ watch([page, pageSize, search], () => {
               <input
                 v-model="search"
                 type="text"
+                data-test-id="person-search"
                 :placeholder="t('persons.search')"
                 class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
               />
@@ -368,6 +369,7 @@ watch([page, pageSize, search], () => {
                 <td class="px-6 py-4 whitespace-nowrap">
                   <!-- Phase 18: Status Badge -->
                   <span 
+                    data-test-id="person-status-badge"
                     :class="[
                       'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
                       person.status === 'Active' && person.canAuthenticate ? 'bg-green-100 text-green-800' : '',
@@ -380,7 +382,12 @@ watch([page, pageSize, search], () => {
                   >
                     {{ t(`persons.statuses.${person.status?.toLowerCase() || 'active'}`) }}
                   </span>
-                  <span v-if="!person.canAuthenticate && person.status === 'Active'" class="ml-1 text-xs text-gray-500" :title="t('persons.dateRestricted')">
+                  <span 
+                    v-if="!person.canAuthenticate && person.status === 'Active'" 
+                    data-test-id="person-date-restricted"
+                    class="ml-1 text-xs text-gray-500" 
+                    :title="t('persons.dateRestricted')"
+                  >
                     ⏰
                   </span>
                 </td>
