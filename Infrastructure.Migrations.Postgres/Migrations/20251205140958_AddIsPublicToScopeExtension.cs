@@ -19,11 +19,12 @@ namespace Infrastructure.Migrations.Postgres.Migrations
             
             // Set OIDC scopes (openid, profile, email, roles) as public
             // These scopes are user-centric and should be available to all clients
+            // Note: CAST is required because ScopeId is VARCHAR but OpenIddictScopes.Id is UUID
             migrationBuilder.Sql(@"
                 UPDATE ""ScopeExtensions"" 
                 SET ""IsPublic"" = true 
                 WHERE ""ScopeId"" IN (
-                    SELECT ""Id"" 
+                    SELECT CAST(""Id"" AS TEXT)
                     FROM ""OpenIddictScopes"" 
                     WHERE ""Name"" IN ('openid', 'profile', 'email', 'roles')
                 );
