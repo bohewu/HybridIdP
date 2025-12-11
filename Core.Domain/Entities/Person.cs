@@ -1,10 +1,12 @@
 using System;
+using Core.Domain.Enums;
 
 namespace Core.Domain.Entities;
 
 /// <summary>
 /// Represents a real-life identity (person/employee) that can have multiple authentication accounts.
 /// This entity centralizes profile information and employment history.
+/// Phase 18: Added lifecycle management fields (Status, StartDate, EndDate, soft delete)
 /// </summary>
 public class Person
 {
@@ -133,6 +135,39 @@ public class Person
     /// </summary>
     public Guid? IdentityVerifiedBy { get; set; }
     
+    // Lifecycle Management (Phase 18)
+    /// <summary>
+    /// Current lifecycle status of the person (Pending, Active, Suspended, Resigned, Terminated)
+    /// </summary>
+    public PersonStatus Status { get; set; } = PersonStatus.Active;
+    
+    /// <summary>
+    /// Employment start date (inclusive). Person becomes active on or after this date.
+    /// </summary>
+    public DateTime? StartDate { get; set; }
+    
+    /// <summary>
+    /// Employment end date (inclusive). This is the last working day.
+    /// Person becomes inactive the day after this date.
+    /// </summary>
+    public DateTime? EndDate { get; set; }
+    
+    // Soft Delete
+    /// <summary>
+    /// Whether this person record is soft-deleted
+    /// </summary>
+    public bool IsDeleted { get; set; }
+    
+    /// <summary>
+    /// Timestamp when this person record was soft-deleted
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+    
+    /// <summary>
+    /// User ID who soft-deleted this person record
+    /// </summary>
+    public Guid? DeletedBy { get; set; }
+    
     // Audit Fields
     /// <summary>
     /// User ID who created this person record
@@ -159,4 +194,21 @@ public class Person
     /// Collection of authentication accounts (ApplicationUser) linked to this person
     /// </summary>
     public ICollection<ApplicationUser>? Accounts { get; set; }
+    
+    // Helper Methods (Phase 18)
+    /// <summary>
+    /// Checks if the person is currently allowed to authenticate based on status and dates.
+    /// </summary>
+    public bool CanAuthenticate()
+    {
+        if (IsDeleted) return false;
+        if (Status != PersonStatus.Active) return false;
+        
+        var now = DateTime.UtcNow.Date;
+        if (StartDate.HasValue && StartDate.Value.Date > now) return false;
+        if (EndDate.HasValue && EndDate.Value.Date < now) return false;
+        
+        return true;
+    }
 }
+

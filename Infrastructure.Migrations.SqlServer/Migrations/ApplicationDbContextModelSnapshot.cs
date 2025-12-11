@@ -445,6 +445,12 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Department")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -456,6 +462,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<string>("EmployeeId")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("FirstName")
                         .HasMaxLength(100)
@@ -474,6 +483,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
 
                     b.Property<Guid?>("IdentityVerifiedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<string>("JobTitle")
                         .HasMaxLength(200)
@@ -525,6 +537,12 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
                     b.Property<string>("TimeZone")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -541,6 +559,8 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .IsUnique()
                         .HasFilter("[EmployeeId] IS NOT NULL");
 
+                    b.HasIndex("IsDeleted");
+
                     b.HasIndex("NationalId")
                         .IsUnique()
                         .HasFilter("[NationalId] IS NOT NULL");
@@ -552,6 +572,8 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.HasIndex("ResidentCertificateNumber")
                         .IsUnique()
                         .HasFilter("[ResidentCertificateNumber] IS NOT NULL");
+
+                    b.HasIndex("Status");
 
                     b.ToTable("Persons");
                 });

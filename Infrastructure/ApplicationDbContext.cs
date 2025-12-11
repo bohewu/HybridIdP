@@ -268,6 +268,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .IsUnique()
                 .HasFilter("[ResidentCertificateNumber] IS NOT NULL");
             
+            // Phase 18: Lifecycle management fields
+            // Store Status as int (default EF behavior for enums)
+            entity.Property(e => e.Status).IsRequired();
+            entity.HasIndex(e => e.Status); // Index for filtering by status
+            entity.HasIndex(e => e.IsDeleted); // Index for soft delete queries
+            
             // Configure relationship: One Person can have Many ApplicationUsers
             entity.HasMany(p => p.Accounts)
                 .WithOne(u => u.Person)
