@@ -56,8 +56,8 @@ public class DashboardServiceTests : IDisposable
             new() { Id = Guid.NewGuid(), UserName = "user2", Email = "user2@test.com" }
         };
 
-        _applicationManagerMock.Setup(m => m.ListAsync(default)).Returns(applications.ToAsyncEnumerable());
-        _scopeManagerMock.Setup(m => m.ListAsync(default)).Returns(scopes.ToAsyncEnumerable());
+        _applicationManagerMock.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>())).Returns(applications.ToAsyncEnumerable());
+        _scopeManagerMock.Setup(m => m.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>())).Returns(scopes.ToAsyncEnumerable());
 
         await _dbContext.Users.AddRangeAsync(users);
         await _dbContext.SaveChangesAsync();
