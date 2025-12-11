@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options; // Added
 using Microsoft.AspNetCore.RateLimiting;
+using Core.Domain.Constants;
 
 namespace Web.IdP.Pages.Account;
 
@@ -32,8 +33,6 @@ public partial class LoginModel : PageModel
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ITurnstileStateService _turnstileStateService; // Added
     private readonly ISettingsService _settingsService; // Added
-
-    public const string RegistrationEnabledKey = "Security:RegistrationEnabled";
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
@@ -98,7 +97,7 @@ public partial class LoginModel : PageModel
         }
 
         // Load registration setting
-        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(RegistrationEnabledKey) ?? true;
+        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
 
         ReturnUrl = returnUrl;
     }
