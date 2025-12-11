@@ -445,6 +445,9 @@ builder.Services.Configure<LegacyAuthOptions>(builder.Configuration.GetSection(L
 // Register RateLimiting Options
 builder.Services.Configure<RateLimitingOptions>(builder.Configuration.GetSection(RateLimitingOptions.Section));
 
+// Register Audit Options (PII Masking Level)
+builder.Services.Configure<AuditOptions>(builder.Configuration.GetSection(AuditOptions.SectionName));
+
 // Configure Rate Limiting
 var rateLimitingOptions = new RateLimitingOptions();
 builder.Configuration.GetSection(RateLimitingOptions.Section).Bind(rateLimitingOptions);

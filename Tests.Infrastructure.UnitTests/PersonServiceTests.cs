@@ -1,4 +1,5 @@
 using Core.Application;
+using Core.Application.Options;
 using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Entities;
@@ -7,6 +8,7 @@ using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -22,6 +24,7 @@ public class PersonServiceTests : IDisposable
     private readonly Mock<ILogger<PersonService>> _loggerMock;
     private readonly Mock<IAuditService> _auditServiceMock;
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
+    private readonly IOptions<AuditOptions> _auditOptions;
 
     public PersonServiceTests()
     {
@@ -31,6 +34,7 @@ public class PersonServiceTests : IDisposable
 
         _loggerMock = new Mock<ILogger<PersonService>>();
         _auditServiceMock = new Mock<IAuditService>();
+        _auditOptions = Options.Create(new AuditOptions { PiiMaskingLevel = PiiMaskingLevel.Partial });
         
         // Create UserManager mock
         var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
@@ -40,7 +44,7 @@ public class PersonServiceTests : IDisposable
     
     private PersonService CreateService(ApplicationDbContext context)
     {
-        return new PersonService(context, _loggerMock.Object, _auditServiceMock.Object, _userManagerMock.Object);
+        return new PersonService(context, _loggerMock.Object, _auditServiceMock.Object, _userManagerMock.Object, _auditOptions);
     }
 
     public void Dispose()
