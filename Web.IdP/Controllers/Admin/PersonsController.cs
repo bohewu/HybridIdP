@@ -460,10 +460,11 @@ public class PersonsController : ControllerBase
             CreatedBy = person.CreatedBy,
             ModifiedAt = person.ModifiedAt,
             ModifiedBy = person.ModifiedBy,
-            // Phase 10.6: Identity fields
-            NationalId = person.NationalId,
-            PassportNumber = person.PassportNumber,
-            ResidentCertificateNumber = person.ResidentCertificateNumber,
+            // Phase 10.6: Identity fields - Return masked indicators instead of hashed values
+            // Users can see if a value exists without exposing the hash
+            NationalId = !string.IsNullOrWhiteSpace(person.NationalId) ? "●●●●●●●●●●" : null,
+            PassportNumber = !string.IsNullOrWhiteSpace(person.PassportNumber) ? "●●●●●●●●●●" : null,
+            ResidentCertificateNumber = !string.IsNullOrWhiteSpace(person.ResidentCertificateNumber) ? "●●●●●●●●●●" : null,
             IdentityDocumentType = person.IdentityDocumentType,
             IdentityVerifiedAt = person.IdentityVerifiedAt,
             IdentityVerifiedBy = person.IdentityVerifiedBy,
