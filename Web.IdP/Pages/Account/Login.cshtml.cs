@@ -31,6 +31,9 @@ public partial class LoginModel : PageModel
     private readonly ILogger<LoginModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ITurnstileStateService _turnstileStateService; // Added
+    private readonly ISettingsService _settingsService; // Added
+
+    public const string RegistrationEnabledKey = "Security:RegistrationEnabled";
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
@@ -44,7 +47,8 @@ public partial class LoginModel : PageModel
         IOptions<TurnstileOptions> turnstileOptions,
         ILogger<LoginModel> logger,
         IStringLocalizer<SharedResource> localizer,
-        ITurnstileStateService turnstileStateService) // Added
+        ITurnstileStateService turnstileStateService,
+        ISettingsService settingsService) // Added
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -58,6 +62,7 @@ public partial class LoginModel : PageModel
         _logger = logger;
         _localizer = localizer;
         _turnstileStateService = turnstileStateService; // Added
+        _settingsService = settingsService; // Added
     }
 
     [BindProperty]
@@ -67,6 +72,7 @@ public partial class LoginModel : PageModel
     
     public bool TurnstileEnabled => _turnstileOptions.Enabled && _turnstileStateService.IsAvailable; // Changed
     public string TurnstileSiteKey => _turnstileOptions.SiteKey; // Changed
+    public bool RegistrationEnabled { get; private set; } = true;
 
     public class InputModel
     {
@@ -90,6 +96,9 @@ public partial class LoginModel : PageModel
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
         }
+
+        // Load registration setting
+        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(RegistrationEnabledKey) ?? true;
 
         ReturnUrl = returnUrl;
     }
