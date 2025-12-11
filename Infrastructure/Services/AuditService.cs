@@ -1,9 +1,12 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Options;
+using Core.Application.Utilities;
 using Core.Domain.Entities;
 using Core.Domain.Events;
 using Core.Domain.Constants; // Added
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,13 +43,20 @@ public class AuditService : IAuditService,
     private readonly ApplicationDbContext _dbContext; // For accessing Roles DbSet
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly ISettingsService _settingsService;
+    private readonly PiiMaskingLevel _piiMaskingLevel;
 
-    public AuditService(IApplicationDbContext db, ApplicationDbContext dbContext, IDomainEventPublisher eventPublisher, ISettingsService settingsService)
+    public AuditService(
+        IApplicationDbContext db,
+        ApplicationDbContext dbContext,
+        IDomainEventPublisher eventPublisher,
+        ISettingsService settingsService,
+        IOptions<AuditOptions> auditOptions)
     {
         _db = db;
         _dbContext = dbContext;
         _eventPublisher = eventPublisher;
         _settingsService = settingsService;
+        _piiMaskingLevel = auditOptions.Value.PiiMaskingLevel;
     }
 
     public async Task LogEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent)
@@ -157,33 +167,40 @@ public class AuditService : IAuditService,
 
     public async Task HandleAsync(UserCreatedEvent @event)
     {
-        await LogEventAsync("UserCreated", @event.UserId, $"User '{@event.UserName}' ({@event.Email}) was created", null, null);
+        var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
+        var maskedEmail = PiiMasker.MaskEmail(@event.Email, _piiMaskingLevel);
+        await LogEventAsync("UserCreated", @event.UserId, $"User '{maskedUserName}' ({maskedEmail}) was created", null, null);
     }
 
     public async Task HandleAsync(UserUpdatedEvent @event)
     {
-        await LogEventAsync("UserUpdated", @event.UserId, $"User '{@event.UserName}' was updated: {@event.Changes}", null, null);
+        var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
+        await LogEventAsync("UserUpdated", @event.UserId, $"User '{maskedUserName}' was updated: {@event.Changes}", null, null);
     }
 
     public async Task HandleAsync(UserDeletedEvent @event)
     {
-        await LogEventAsync("UserDeleted", @event.UserId, $"User '{@event.UserName}' was deleted", null, null);
+        var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
+        await LogEventAsync("UserDeleted", @event.UserId, $"User '{maskedUserName}' was deleted", null, null);
     }
 
     public async Task HandleAsync(UserRoleAssignedEvent @event)
     {
         var action = @event.IsAssigned ? "assigned to" : "removed from";
-        await LogEventAsync("UserRoleChanged", @event.UserId, $"User '{@event.UserName}' was {action} role '{@event.RoleName}'", null, null);
+        var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
+        await LogEventAsync("UserRoleChanged", @event.UserId, $"User '{maskedUserName}' was {action} role '{@event.RoleName}'", null, null);
     }
 
     public async Task HandleAsync(UserPasswordChangedEvent @event)
     {
-        await LogEventAsync("UserPasswordChanged", @event.UserId, $"Password changed for user '{@event.UserName}'", null, null);
+        var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
+        await LogEventAsync("UserPasswordChanged", @event.UserId, $"Password changed for user '{maskedUserName}'", null, null);
     }
 
     public async Task HandleAsync(UserAccountStatusChangedEvent @event)
     {
-        await LogEventAsync("UserStatusChanged", @event.UserId, $"User '{@event.UserName}' status changed from '{@event.OldStatus}' to '{@event.NewStatus}'", null, null);
+        var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
+        await LogEventAsync("UserStatusChanged", @event.UserId, $"User '{maskedUserName}' status changed from '{@event.OldStatus}' to '{@event.NewStatus}'", null, null);
     }
 
     public async Task HandleAsync(ClientCreatedEvent @event)
@@ -254,17 +271,20 @@ public class AuditService : IAuditService,
     public async Task HandleAsync(LoginAttemptEvent @event)
     {
         var status = @event.IsSuccessful ? "successful" : $"failed ({@event.FailureReason})";
-        await LogEventAsync("LoginAttempt", @event.UserId, $"Login attempt for user '{@event.UserName}': {status}", @event.IPAddress, @event.UserAgent);
+        var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
+        await LogEventAsync("LoginAttempt", @event.UserId, $"Login attempt for user '{maskedUserName}': {status}", @event.IPAddress, @event.UserAgent);
     }
 
     public async Task HandleAsync(LogoutEvent @event)
     {
-        await LogEventAsync("Logout", @event.UserId, $"User '{@event.UserName}' logged out", @event.IPAddress, @event.UserAgent);
+        var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
+        await LogEventAsync("Logout", @event.UserId, $"User '{maskedUserName}' logged out", @event.IPAddress, @event.UserAgent);
     }
 
     public async Task HandleAsync(SecurityPolicyUpdatedEvent @event)
     {
-        await LogEventAsync("SecurityPolicyUpdated", @event.UpdatedByUserId, $"Security policies updated by '{@event.UpdatedByUserName}': {@event.PolicyChanges}", null, null);
+        var maskedUserName = PiiMasker.MaskUserName(@event.UpdatedByUserName, _piiMaskingLevel);
+        await LogEventAsync("SecurityPolicyUpdated", @event.UpdatedByUserId, $"Security policies updated by '{maskedUserName}': {@event.PolicyChanges}", null, null);
     }
 
     public async Task LogRoleSwitchAsync(Guid userId, Guid oldRoleId, Guid newRoleId, string sessionAuthorizationId, string ipAddress, string userAgent)
@@ -284,7 +304,9 @@ public class AuditService : IAuditService,
         var currentUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == currentUserId);
         var targetUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == targetAccountId);
 
-        var details = $"User '{currentUser?.UserName ?? currentUserId.ToString()}' switched to account '{targetUser?.UserName ?? targetAccountId.ToString()}'. Reason: {reason}";
+        var maskedCurrentUserName = PiiMasker.MaskUserName(currentUser?.UserName ?? currentUserId.ToString(), _piiMaskingLevel);
+        var maskedTargetUserName = PiiMasker.MaskUserName(targetUser?.UserName ?? targetAccountId.ToString(), _piiMaskingLevel);
+        var details = $"User '{maskedCurrentUserName}' switched to account '{maskedTargetUserName}'. Reason: {reason}";
         
         await LogEventAsync("AccountSwitch", currentUserId.ToString(), details, ipAddress, userAgent);
     }

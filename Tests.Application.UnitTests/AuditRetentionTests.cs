@@ -4,11 +4,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Core.Application;
+using Core.Application.Options;
 using Core.Domain.Entities;
 using Core.Domain.Events;
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Tests.Application.UnitTests
@@ -51,7 +53,8 @@ namespace Tests.Application.UnitTests
         private AuditService CreateService(FakeSettingsService settings, ApplicationDbContext db)
         {
             var publisher = new FakeDomainEventPublisher();
-            return new AuditService(db, db, publisher, settings);
+            var auditOptions = Options.Create(new AuditOptions { PiiMaskingLevel = PiiMaskingLevel.Partial });
+            return new AuditService(db, db, publisher, settings, auditOptions);
         }
 
         [Fact]

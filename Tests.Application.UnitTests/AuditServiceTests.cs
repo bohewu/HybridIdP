@@ -1,11 +1,13 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Options;
 using Core.Domain.Entities;
 using Core.Domain.Events;
 using Core.Domain.Constants; // Added
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -33,7 +35,8 @@ public class AuditServiceTests : IDisposable
         _eventPublisherMock = new Mock<IDomainEventPublisher>();
         _settingsServiceMock = new Mock<ISettingsService>();
         _settingsServiceMock.Setup(s => s.GetValueAsync<int>(SettingKeys.Audit.RetentionDays, It.IsAny<CancellationToken>())).ReturnsAsync(0);
-        _auditService = new AuditService(_dbContext, _dbContext, _eventPublisherMock.Object, _settingsServiceMock.Object);
+        var auditOptions = Options.Create(new AuditOptions { PiiMaskingLevel = PiiMaskingLevel.Partial });
+        _auditService = new AuditService(_dbContext, _dbContext, _eventPublisherMock.Object, _settingsServiceMock.Object, auditOptions);
     }
 
     public void Dispose()
