@@ -122,21 +122,33 @@ public static class UserSeeder
             return; // User already exists
         }
 
-        // Create Person entity first (required for ownership tracking)
-        var person = new Person
-        {
-            Id = Guid.NewGuid(),
-            FirstName = "App",
-            LastName = "Manager",
-            Email = email,
-            NationalId = PidHasher.Hash("B987654321"), // Test NationalId - stored as SHA256 hash
-            IdentityDocumentType = IdentityDocumentTypes.NationalId,
-            IdentityVerifiedAt = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow
-        };
+        // Check if Person already exists
+        var nationalIdHash = PidHasher.Hash("B987654321");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
         
-        context.Persons.Add(person);
-        await context.SaveChangesAsync();
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            // Create Person entity first (required for ownership tracking)
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "App",
+                LastName = "Manager",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
 
         var user = new ApplicationUser
         {
@@ -175,21 +187,33 @@ public static class UserSeeder
             return; // User already exists
         }
 
-        // Create Person entity
-        var person = new Person
-        {
-            Id = Guid.NewGuid(),
-            FirstName = "Multi",
-            LastName = "Test",
-            Email = email,
-            NationalId = PidHasher.Hash("C123456789"), // Test NationalId - stored as SHA256 hash
-            IdentityDocumentType = IdentityDocumentTypes.NationalId,
-            IdentityVerifiedAt = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow
-        };
+        // Check if Person already exists
+        var nationalIdHash = PidHasher.Hash("C123456789");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
         
-        context.Persons.Add(person);
-        await context.SaveChangesAsync();
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            // Create Person entity
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Multi",
+                LastName = "Test",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
 
         var user = new ApplicationUser
         {
@@ -229,21 +253,33 @@ public static class UserSeeder
             return;
         }
 
-        // Create Person
-        var person = new Person
+        // Check if Person already exists
+        var nationalIdHash = PidHasher.Hash("T123456789");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
         {
-            Id = Guid.NewGuid(),
-            FirstName = "Test",
-            LastName = "User",
-            Email = email,
-            NationalId = PidHasher.Hash("T123456789"),
-            IdentityDocumentType = IdentityDocumentTypes.NationalId,
-            IdentityVerifiedAt = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow
-        };
+            person = existingPerson;
+        }
+        else
+        {
+            // Create Person
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Test",
+                LastName = "User",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            };
 
-        context.Persons.Add(person);
-        await context.SaveChangesAsync();
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
 
         var user = new ApplicationUser
         {
