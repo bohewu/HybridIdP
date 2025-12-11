@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options; // Added
 using Microsoft.AspNetCore.RateLimiting;
-using Core.Domain.Constants;
 
 namespace Web.IdP.Pages.Account;
 
