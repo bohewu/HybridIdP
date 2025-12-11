@@ -122,10 +122,10 @@ public class DashboardService : IDashboardService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<SessionDto>> GetActiveSessionsAsync()
+    public Task<IEnumerable<SessionDto>> GetActiveSessionsAsync()
     {
         // For now, return empty. Can be implemented later with OpenIddict authorizations
-        return new List<SessionDto>();
+        return Task.FromResult<IEnumerable<SessionDto>>([]);
     }
 
     /// <inheritdoc />
@@ -151,7 +151,7 @@ public class DashboardService : IDashboardService
     }
 
     /// <inheritdoc />
-    public async Task TerminateSessionAsync(string sessionId)
+    public Task TerminateSessionAsync(string sessionId)
     {
         // TODO: Implement session termination using OpenIddict
         throw new NotImplementedException("Session termination not yet implemented");

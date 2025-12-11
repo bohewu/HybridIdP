@@ -29,7 +29,7 @@ public class LogSettingsSyncService : IHostedService
                 _levelSwitch.MinimumLevel = parsedLevel;
             }
         }
-        catch (Exception ex)
+        catch
         {
             // Fallback to default level if DB isn't ready or settings are missing
             // We can't easily log here if the logger isn't injected, but we shouldn't crash startup.
