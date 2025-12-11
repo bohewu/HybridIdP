@@ -36,7 +36,7 @@ public class DynamicLoggingServiceTests
 
         // Assert
         Assert.Equal(LogEventLevel.Debug, _loggingLevelSwitch.MinimumLevel);
-        _settingsServiceMock.Verify(s => s.SetValueAsync(SettingKey, level, null), Times.Once);
+        _settingsServiceMock.Verify(s => s.SetValueAsync(SettingKey, level, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public class DynamicLoggingServiceTests
         
         // Assert state unchanged
         Assert.Equal(initialLevel, _loggingLevelSwitch.MinimumLevel);
-        _settingsServiceMock.Verify(s => s.SetValueAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _settingsServiceMock.Verify(s => s.SetValueAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     #endregion
@@ -62,7 +62,7 @@ public class DynamicLoggingServiceTests
     public async Task GetGlobalLogLevelAsync_WhenSettingExists_ReturnsStoredValue()
     {
         // Arrange
-        _settingsServiceMock.Setup(s => s.GetValueAsync<string>(SettingKey))
+        _settingsServiceMock.Setup(s => s.GetValueAsync<string>(SettingKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync("Warning");
 
         // Act
@@ -76,7 +76,7 @@ public class DynamicLoggingServiceTests
     public async Task GetGlobalLogLevelAsync_WhenSettingMissing_ReturnsSwitchValue()
     {
         // Arrange
-        _settingsServiceMock.Setup(s => s.GetValueAsync<string>(SettingKey))
+        _settingsServiceMock.Setup(s => s.GetValueAsync<string>(SettingKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
         _loggingLevelSwitch.MinimumLevel = LogEventLevel.Error;
 
