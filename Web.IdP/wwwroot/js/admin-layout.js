@@ -27,35 +27,59 @@ function initVueLoadingBar() {
     var loadingBar = document.getElementById('vue-loading-bar');
     if (!loadingBar) return;
     
+    var hasHidden = false;
+    var minDisplayTime = 300; // Minimum time to show loading bar (ms)
+    var startTime = Date.now();
+    
     // Hide loading bar function
     function hideLoadingBar() {
-        loadingBar.classList.add('hidden');
-        // Remove from DOM after animation
+        if (hasHidden) return;
+        
+        // Ensure minimum display time
+        var elapsed = Date.now() - startTime;
+        if (elapsed < minDisplayTime) {
+            setTimeout(hideLoadingBar, minDisplayTime - elapsed);
+            return;
+        }
+        
+        hasHidden = true;
+        
+        // Complete to 100% first, then fade out
+        loadingBar.classList.add('complete');
+        
+        // Wait for width transition, then fade out
         setTimeout(function() {
-            if (loadingBar.parentNode) {
-                loadingBar.parentNode.removeChild(loadingBar);
-            }
-        }, 300);
+            loadingBar.classList.add('hidden');
+            // Remove from DOM after fade animation
+            setTimeout(function() {
+                if (loadingBar.parentNode) {
+                    loadingBar.parentNode.removeChild(loadingBar);
+                }
+            }, 300);
+        }, 200); // Wait for complete animation
     }
     
     // Method 1: Listen for custom Vue mounted event
     window.addEventListener('vue-mounted', hideLoadingBar);
     
-    // Method 2: Check if any Vue app container has content (fallback)
-    var checkInterval = setInterval(function() {
-        var vueApps = document.querySelectorAll('[id$="-app"]');
-        for (var i = 0; i < vueApps.length; i++) {
-            if (vueApps[i].children.length > 0) {
-                clearInterval(checkInterval);
-                hideLoadingBar();
-                return;
-            }
-        }
-    }, 100);
-    
-    // Method 3: Timeout fallback (max 8 seconds)
+    // Method 2: Check if any Vue app container has content (start checking after 200ms)
     setTimeout(function() {
-        clearInterval(checkInterval);
-        hideLoadingBar();
-    }, 8000);
+        var checkInterval = setInterval(function() {
+            // Check both #app and elements ending with -app
+            var vueApps = document.querySelectorAll('#app, [id$="-app"]');
+            for (var i = 0; i < vueApps.length; i++) {
+                if (vueApps[i].children.length > 0) {
+                    clearInterval(checkInterval);
+                    hideLoadingBar();
+                    return;
+                }
+            }
+        }, 100);
+        
+        // Method 3: Timeout fallback (max 8 seconds)
+        setTimeout(function() {
+            clearInterval(checkInterval);
+            hideLoadingBar();
+        }, 8000);
+    }, 200); // Start checking after 200ms delay
 }
