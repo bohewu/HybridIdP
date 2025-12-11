@@ -3,14 +3,14 @@ import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [vue()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
-  base: '/dist/',
+  base: command === 'build' ? '/dist/' : '/',
   build: {
     manifest: true,
     outDir: '../wwwroot/dist',
@@ -45,4 +45,4 @@ export default defineConfig({
       port: 5173
     }
   }
-})
+}))
