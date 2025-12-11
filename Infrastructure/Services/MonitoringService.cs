@@ -175,14 +175,14 @@ public class MonitoringService : IMonitoringService
         return alerts.OrderByDescending(a => a.Timestamp).Take(10);
     }
 
-    public async Task<PrometheusMetricsDto> ParsePrometheusMetricsAsync(string metricsText)
+    public Task<PrometheusMetricsDto> ParsePrometheusMetricsAsync(string metricsText)
     {
         var result = new PrometheusMetricsDto();
         var metricTypes = new Dictionary<string, string>();
 
         if (string.IsNullOrWhiteSpace(metricsText))
         {
-            return result;
+            return Task.FromResult(result);
         }
 
         var lines = metricsText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -235,7 +235,7 @@ public class MonitoringService : IMonitoringService
             }
         }
 
-        return result;
+        return Task.FromResult(result);
     }
 
     public async Task<PrometheusMetricsDto> GetSystemMetricsAsync()
