@@ -10,21 +10,32 @@ namespace Tests.SystemTests;
 /// System tests for Phase 18: Person Lifecycle Management
 /// Tests that login is blocked for inactive persons and token revocation works correctly.
 /// </summary>
-public class PersonLifecycleSystemTests
+public class PersonLifecycleSystemTests : IDisposable
 {
     private const string Authority = "https://localhost:7035";
     private const string AdminUsername = "admin@hybridauth.local";
     private const string AdminPassword = "Admin@123";
 
-    private static readonly HttpClientHandler HttpClientHandler = new()
-    {
-        ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
-        AllowAutoRedirect = false,
-        UseCookies = true,
-        CookieContainer = new CookieContainer()
-    };
+    private readonly HttpClientHandler _httpClientHandler;
+    private readonly HttpClient _httpClient;
 
-    private readonly HttpClient _httpClient = new(HttpClientHandler) { BaseAddress = new Uri(Authority) };
+    public PersonLifecycleSystemTests()
+    {
+        _httpClientHandler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+            AllowAutoRedirect = true, // Keep true for login redirects
+            UseCookies = true,
+            CookieContainer = new CookieContainer()
+        };
+        _httpClient = new HttpClient(_httpClientHandler) { BaseAddress = new Uri(Authority) };
+    }
+
+    public void Dispose()
+    {
+        _httpClient.Dispose();
+        _httpClientHandler.Dispose();
+    }
 
     /// <summary>
     /// Tests that creating a person with Suspended status sets canAuthenticate to false
@@ -53,9 +64,9 @@ public class PersonLifecycleSystemTests
                 new StringContent(JsonSerializer.Serialize(personData), Encoding.UTF8, "application/json"));
 
             // Assert
-            Assert.True(response.IsSuccessStatusCode, $"Failed to create person: {response.StatusCode}");
-            var content = await response.Content.ReadAsStringAsync();
-            var person = JsonSerializer.Deserialize<PersonResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Assert.True(response.IsSuccessStatusCode, $"Failed to create person: {response.StatusCode} - {responseContent}");
+            var person = JsonSerializer.Deserialize<PersonResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             Assert.NotNull(person);
             Assert.Equal("Suspended", person.Status);
@@ -93,9 +104,9 @@ public class PersonLifecycleSystemTests
             "/api/admin/people",
             new StringContent(JsonSerializer.Serialize(personData), Encoding.UTF8, "application/json"));
 
-        Assert.True(response.IsSuccessStatusCode);
-        var content = await response.Content.ReadAsStringAsync();
-        var person = JsonSerializer.Deserialize<PersonResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var responseContent = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, $"Failed to create person: {response.StatusCode} - {responseContent}");
+        var person = JsonSerializer.Deserialize<PersonResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         Assert.NotNull(person);
         Assert.Equal("Pending", person.Status);
@@ -127,9 +138,9 @@ public class PersonLifecycleSystemTests
             "/api/admin/people",
             new StringContent(JsonSerializer.Serialize(personData), Encoding.UTF8, "application/json"));
 
-        Assert.True(response.IsSuccessStatusCode);
-        var content = await response.Content.ReadAsStringAsync();
-        var person = JsonSerializer.Deserialize<PersonResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var responseContent = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, $"Failed to create person: {response.StatusCode} - {responseContent}");
+        var person = JsonSerializer.Deserialize<PersonResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         Assert.NotNull(person);
         Assert.Equal("Active", person.Status);
@@ -163,9 +174,9 @@ public class PersonLifecycleSystemTests
             "/api/admin/people",
             new StringContent(JsonSerializer.Serialize(personData), Encoding.UTF8, "application/json"));
 
-        Assert.True(response.IsSuccessStatusCode);
-        var content = await response.Content.ReadAsStringAsync();
-        var person = JsonSerializer.Deserialize<PersonResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var responseContent = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, $"Failed to create person: {response.StatusCode} - {responseContent}");
+        var person = JsonSerializer.Deserialize<PersonResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         Assert.NotNull(person);
         Assert.Equal("Active", person.Status);
@@ -200,9 +211,9 @@ public class PersonLifecycleSystemTests
             "/api/admin/people",
             new StringContent(JsonSerializer.Serialize(personData), Encoding.UTF8, "application/json"));
 
-        Assert.True(response.IsSuccessStatusCode);
-        var content = await response.Content.ReadAsStringAsync();
-        var person = JsonSerializer.Deserialize<PersonResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var responseContent = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, $"Failed to create person: {response.StatusCode} - {responseContent}");
+        var person = JsonSerializer.Deserialize<PersonResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         Assert.NotNull(person);
         Assert.Equal("Active", person.Status);
@@ -278,7 +289,7 @@ public class PersonLifecycleSystemTests
         var loginPageContent = await loginPageResponse.Content.ReadAsStringAsync();
         var token = GetRequestVerificationToken(loginPageContent);
 
-        // Submit Login Form (follow redirects off to check response)
+        // Submit Login Form
         var formData = new FormUrlEncodedContent(new[]
         {
             new KeyValuePair<string, string>("Input.Login", AdminUsername),
@@ -286,11 +297,9 @@ public class PersonLifecycleSystemTests
             new KeyValuePair<string, string>("__RequestVerificationToken", token)
         });
 
-        // Need to allow redirect for cookie handling
-        HttpClientHandler.AllowAutoRedirect = true;
+        // AllowAutoRedirect is true by default, so login will follow redirect and set cookies
         var loginResponse = await _httpClient.PostAsync("/Account/Login", formData);
         loginResponse.EnsureSuccessStatusCode();
-        HttpClientHandler.AllowAutoRedirect = false;
     }
 
     private string GetRequestVerificationToken(string html)
