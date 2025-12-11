@@ -20,8 +20,9 @@ This file contains current high-priority backlog items and remaining tasks.
 
 ## Short-term (high priority)
 
-- [ ] Phase 5.6 Part 3: Frontend scope authorization UX improvements
-- [ ] Implement Resource table usage for consent multi-language text (Part 2)
+- [ ] Implement Resource table usage for consent multi-language text
+  - `Resource` entity exists but not yet integrated with Consent screen
+  - Consent screen should read scope descriptions from `Resource` table by culture
 
 ## Medium-term (tech debt)
 
