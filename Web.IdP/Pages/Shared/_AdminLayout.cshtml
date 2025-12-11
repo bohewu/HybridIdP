@@ -28,33 +28,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     
-    @* Admin Layout Custom Styles *@
+    @* Admin Layout Custom Styles (includes Vue loading bar) *@
     <link href="~/css/admin-layout.css" rel="stylesheet" asp-append-version="true">
-    
-    @* Vue Loading Bar Styles *@
-    <style>
-        .vue-loading-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, #4f46e5, #7c3aed, #4f46e5);
-            background-size: 200% 100%;
-            animation: vue-loading-slide 1.5s ease-in-out infinite;
-            z-index: 9999;
-            opacity: 1;
-            transition: opacity 0.3s ease-out;
-        }
-        .vue-loading-bar.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        @@keyframes vue-loading-slide {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-    </style>
 </head>
 <body class="admin-layout">
     @* Vue Loading Bar - auto-hides when Vue apps are mounted *@
@@ -287,51 +262,11 @@
     @* Bootstrap 5 JS *@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    @* Admin Layout Mobile Menu Script *@
+    @* Admin Layout Scripts (includes Vue loading bar handler) *@
     <script src="~/js/language.js" asp-append-version="true"></script>
     <script src="~/js/admin-layout.js" asp-append-version="true"></script>
     
     @* Page-specific scripts (e.g., Vue.js bundles) *@
     @RenderSection("Scripts", required: false)
-    
-    @* Auto-hide loading bar when Vue is mounted or page is fully loaded *@
-    <script>
-        (function() {
-            var loadingBar = document.getElementById('vue-loading-bar');
-            if (!loadingBar) return;
-            
-            // Hide loading bar function
-            function hideLoadingBar() {
-                loadingBar.classList.add('hidden');
-                // Remove from DOM after animation
-                setTimeout(function() {
-                    if (loadingBar.parentNode) {
-                        loadingBar.parentNode.removeChild(loadingBar);
-                    }
-                }, 300);
-            }
-            
-            // Method 1: Listen for custom Vue mounted event
-            window.addEventListener('vue-mounted', hideLoadingBar);
-            
-            // Method 2: Check if any Vue app container has content (fallback)
-            var checkInterval = setInterval(function() {
-                var vueApps = document.querySelectorAll('[id$="-app"]');
-                for (var i = 0; i < vueApps.length; i++) {
-                    if (vueApps[i].children.length > 0) {
-                        clearInterval(checkInterval);
-                        hideLoadingBar();
-                        return;
-                    }
-                }
-            }, 100);
-            
-            // Method 3: Timeout fallback (max 8 seconds)
-            setTimeout(function() {
-                clearInterval(checkInterval);
-                hideLoadingBar();
-            }, 8000);
-        })();
-    </script>
 </body>
 </html>
