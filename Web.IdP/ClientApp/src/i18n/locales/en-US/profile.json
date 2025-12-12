@@ -1,0 +1,47 @@
+{
+  "profile": {
+    "title": "My Profile",
+    "loading": "Loading profile...",
+    "username": "Username",
+    "email": "Email",
+    "accountInfo": "Account Information",
+    "personInfo": "Person Information",
+    "fullName": "Full Name",
+    "employeeId": "Employee ID",
+    "department": "Department",
+    "jobTitle": "Job Title",
+    "externalLogins": "External Logins",
+    "edit": {
+      "title": "Edit Profile",
+      "phoneNumber": "Phone Number",
+      "phoneNumberPlaceholder": "+886-912-345-678",
+      "locale": "Preferred Language",
+      "selectLocale": "Select Language",
+      "timeZone": "Time Zone",
+      "selectTimeZone": "Select Time Zone",
+      "success": "Profile updated successfully"
+    },
+    "changePassword": {
+      "title": "Change Password",
+      "accountSpecificNote": "Note: This will only change the password for the current account. If you have multiple accounts linked to this profile, other account passwords will not be affected.",
+      "currentPassword": "Current Password",
+      "currentPasswordPlaceholder": "Enter current password",
+      "newPassword": "New Password",
+      "newPasswordPlaceholder": "Enter new password",
+      "confirmPassword": "Confirm New Password",
+      "confirmPasswordPlaceholder": "Re-enter new password",
+      "passwordRequirements": "Password must meet system policy requirements (minimum length, complexity, etc.)",
+      "success": "Password changed successfully",
+      "passwordMismatch": "Passwords do not match",
+      "externalLoginNote": "This account is authenticated via an external provider. To change your password, please visit the provider's website:",
+      "disabledByPolicy": "Password change is currently disabled by system policy. Please contact your administrator."
+    }
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "errorOccurred": "An error occurred",
+    "networkError": "Network error. Please try again."
+  }
+}
