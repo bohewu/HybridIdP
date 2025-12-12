@@ -129,6 +129,12 @@ public static class UserSeeder
                     await context.SaveChangesAsync();
                 }
             }
+            
+            // CRITICAL: Ensure Admin role is assigned (handles case where AspNetUserRoles was cleared but user exists)
+            if (!await userManager.IsInRoleAsync(adminUser, AuthConstants.Roles.Admin))
+            {
+                await userManager.AddToRoleAsync(adminUser, AuthConstants.Roles.Admin);
+            }
         }
     }
 
