@@ -114,7 +114,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.HasIndex(e => new { e.Key, e.Culture }).IsUnique();
             entity.Property(e => e.Key).HasMaxLength(200).IsRequired();
             entity.Property(e => e.Culture).HasMaxLength(20).IsRequired();
-            entity.Property(e => e.Value).HasColumnType("text").IsRequired();
+            entity.Property(e => e.Value).IsRequired();
             entity.Property(e => e.Category).HasMaxLength(100);
             entity.Property(e => e.CreatedUtc).IsRequired();
             entity.Property(e => e.UpdatedUtc).IsRequired();

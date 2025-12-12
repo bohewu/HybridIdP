@@ -62,7 +62,7 @@ test('Admin - Localization CRUD (create, update, delete)', async ({ page }) => {
     await page.waitForSelector('[data-test-id="resources-table"], [data-test-id="create-resource-btn"]', { timeout: 15000 });
 
     const resourceKey = `e2e.test.key.${Date.now()}`;
-    const resourceValue = `E2E Test Value ${Date.now()}`;
+    const resourceValue = `測試值 E2E Value ${Date.now()}`;
     const resourceCulture = 'zh-TW';
 
     // Click Create Resource button using data-test-id
