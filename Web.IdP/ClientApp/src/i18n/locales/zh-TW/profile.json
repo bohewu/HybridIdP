@@ -21,20 +21,35 @@
     "selectTimeZone": "選擇時區",
     "success": "個人檔案更新成功"
   },
+  "info": {
+    "title": "個人資訊",
+    "description": "檢視您的帳戶詳情與身分驗證資訊。",
+    "userName": "使用者名稱",
+    "email": "電子郵件",
+    "accountDetails": "帳戶詳情",
+    "personalDetails": "個人詳細資料",
+    "fullName": "全名",
+    "identityType": "身分證件類型",
+    "emailVerified": "Email 已驗證",
+    "identityVerified": "身分已驗證"
+  },
   "changePassword": {
     "title": "變更密碼",
-    "accountSpecificNote": "注意：此操作僅會變更目前帳號的密碼。如果您有多個帳號連結到此個人檔案，其他帳號的密碼不會受到影響。",
+    "description": "為確保帳戶安全，請使用長且隨機的密碼。",
     "currentPassword": "目前密碼",
     "currentPasswordPlaceholder": "輸入目前密碼",
     "newPassword": "新密碼",
     "newPasswordPlaceholder": "輸入新密碼",
     "confirmPassword": "確認新密碼",
     "confirmPasswordPlaceholder": "再次輸入新密碼",
-    "passwordRequirements": "密碼必須符合系統政策要求（最小長度、複雜度等）",
-    "success": "密碼變更成功",
-    "passwordMismatch": "密碼不相符",
-    "externalLoginNote": "此帳號透過外部供應商進行身份驗證。若要變更密碼，請訪問供應商網站：",
-    "disabledByPolicy": "系統政策目前停用密碼變更功能。請聯繫您的管理員。"
+    "passwordMismatch": "新密碼與確認密碼不符。",
+    "passwordRules": "密碼長度至少需為 8 個字元。",
+    "submit": "更新密碼",
+    "successMessage": "您的密碼已成功更新。",
+    "externalLoginTitle": "外部帳戶",
+    "externalLoginMessage": "您使用外部帳戶登入。請透過您的提供者變更密碼。",
+    "policyDisabled": "目前安全性原則已停用密碼變更功能。",
+    "disabledByPolicy": "管理員已停用密碼變更功能。"
   },
   "common": {
     "save": "儲存",

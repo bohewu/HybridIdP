@@ -21,20 +21,35 @@
     "selectTimeZone": "Select Time Zone",
     "success": "Profile updated successfully"
   },
+  "info": {
+    "title": "Profile Information",
+    "description": "View your account details and identity information.",
+    "userName": "Username",
+    "email": "Email",
+    "accountDetails": "Account Details",
+    "personalDetails": "Personal Details",
+    "fullName": "Full Name",
+    "identityType": "Identity Document",
+    "emailVerified": "Email Verified",
+    "identityVerified": "Identity Verified"
+  },
   "changePassword": {
     "title": "Change Password",
-    "accountSpecificNote": "Note: This will only change the password for the current account. If you have multiple accounts linked to this profile, other account passwords will not be affected.",
+    "description": "Ensure your account is using a long, random password to stay secure.",
     "currentPassword": "Current Password",
     "currentPasswordPlaceholder": "Enter current password",
     "newPassword": "New Password",
     "newPasswordPlaceholder": "Enter new password",
     "confirmPassword": "Confirm New Password",
-    "confirmPasswordPlaceholder": "Re-enter new password",
-    "passwordRequirements": "Password must meet system policy requirements (minimum length, complexity, etc.)",
-    "success": "Password changed successfully",
-    "passwordMismatch": "Passwords do not match",
-    "externalLoginNote": "This account is authenticated via an external provider. To change your password, please visit the provider's website:",
-    "disabledByPolicy": "Password change is currently disabled by system policy. Please contact your administrator."
+    "confirmPasswordPlaceholder": "Confirm new password",
+    "passwordMismatch": "New password and confirmation do not match.",
+    "passwordRules": "Password must be at least 8 characters long.",
+    "submit": "Update Password",
+    "successMessage": "Your password has been successfully updated.",
+    "externalLoginTitle": "External Account",
+    "externalLoginMessage": "You are logged in with an external account. Please change your password through your provider.",
+    "policyDisabled": "Password change is currently disabled by security policy.",
+    "disabledByPolicy": "Password change is disabled by your administrator."
   },
   "common": {
     "save": "Save",
