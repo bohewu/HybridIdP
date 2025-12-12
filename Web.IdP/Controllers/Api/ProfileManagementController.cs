@@ -12,7 +12,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Web.IdP.Controllers;
+namespace Web.IdP.Controllers.Api;
 
 /// <summary>
 /// API controller for managing user profile information
