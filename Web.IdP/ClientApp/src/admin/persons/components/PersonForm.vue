@@ -53,8 +53,7 @@ const formData = ref({
 	// Phase 10.6: Identity fields
 	nationalId: '',
 	passportNumber: '',
-	residentCertificateNumber: '',
-	identityDocumentType: 'None'
+	residentCertificateNumber: ''
 })
 
 // Load person data for edit
@@ -84,14 +83,13 @@ if (props.person) {
 		// Phase 10.6: Identity fields
 		nationalId: props.person.nationalId || '',
 		passportNumber: props.person.passportNumber || '',
-		residentCertificateNumber: props.person.residentCertificateNumber || '',
-		identityDocumentType: props.person.identityDocumentType || 'None'
+		residentCertificateNumber: props.person.residentCertificateNumber || ''
 	}
 }
 
-// Real-time validation watchers
+// Real-time validation watchers - validate each field independently when it has a value
 watch(() => formData.value.nationalId, (newValue) => {
-	if (newValue && formData.value.identityDocumentType === 'NationalId') {
+	if (newValue && newValue !== '●●●●●●●●●●') {
 		const result = validateTaiwanNationalId(newValue)
 		identityErrors.value.nationalId = result.error
 	} else {
@@ -100,7 +98,7 @@ watch(() => formData.value.nationalId, (newValue) => {
 })
 
 watch(() => formData.value.passportNumber, (newValue) => {
-	if (newValue && formData.value.identityDocumentType === 'Passport') {
+	if (newValue && newValue !== '●●●●●●●●●●') {
 		const result = validatePassportNumber(newValue)
 		identityErrors.value.passportNumber = result.error
 	} else {
@@ -109,19 +107,12 @@ watch(() => formData.value.passportNumber, (newValue) => {
 })
 
 watch(() => formData.value.residentCertificateNumber, (newValue) => {
-	if (newValue && formData.value.identityDocumentType === 'ResidentCertificate') {
+	if (newValue && newValue !== '●●●●●●●●●●') {
 		const result = validateResidentCertificate(newValue)
 		identityErrors.value.residentCertificateNumber = result.error
 	} else {
 		identityErrors.value.residentCertificateNumber = null
 	}
-})
-
-// Clear validation errors when document type changes
-watch(() => formData.value.identityDocumentType, () => {
-	identityErrors.value.nationalId = null
-	identityErrors.value.passportNumber = null
-	identityErrors.value.residentCertificateNumber = null
 })
 
 const handleSubmit = async () => {
@@ -146,52 +137,34 @@ const handleSubmit = async () => {
 		}
 	}
 
-	// Identity document validation
+	// Identity document validation - validate each filled field independently
 	// Skip validation if value is masked placeholder (●●●●●●●●●●) - means existing value unchanged
 	const MASKED_PLACEHOLDER = '●●●●●●●●●●'
-	if (formData.value.identityDocumentType !== 'None') {
-		if (formData.value.identityDocumentType === 'NationalId') {
-			const nationalId = formData.value.nationalId?.trim()
-			if (!nationalId) {
-				error.value = t('persons.validation.nationalIdRequired')
-				return
-			}
-			// Skip validation if masked (existing value)
-			if (nationalId !== MASKED_PLACEHOLDER) {
-				const result = validateTaiwanNationalId(nationalId)
-				if (!result.valid) {
-					error.value = result.error
-					return
-				}
-			}
-		} else if (formData.value.identityDocumentType === 'Passport') {
-			const passportNumber = formData.value.passportNumber?.trim()
-			if (!passportNumber) {
-				error.value = t('persons.validation.passportRequired')
-				return
-			}
-			// Skip validation if masked (existing value)
-			if (passportNumber !== MASKED_PLACEHOLDER) {
-				const result = validatePassportNumber(passportNumber)
-				if (!result.valid) {
-					error.value = result.error
-					return
-				}
-			}
-		} else if (formData.value.identityDocumentType === 'ResidentCertificate') {
-			const residentCertNumber = formData.value.residentCertificateNumber?.trim()
-			if (!residentCertNumber) {
-				error.value = t('persons.validation.residentCertRequired')
-				return
-			}
-			// Skip validation if masked (existing value)
-			if (residentCertNumber !== MASKED_PLACEHOLDER) {
-				const result = validateResidentCertificate(residentCertNumber)
-				if (!result.valid) {
-					error.value = result.error
-					return
-				}
-			}
+	
+	const nationalId = formData.value.nationalId?.trim()
+	if (nationalId && nationalId !== MASKED_PLACEHOLDER) {
+		const result = validateTaiwanNationalId(nationalId)
+		if (!result.valid) {
+			error.value = result.error
+			return
+		}
+	}
+	
+	const passportNumber = formData.value.passportNumber?.trim()
+	if (passportNumber && passportNumber !== MASKED_PLACEHOLDER) {
+		const result = validatePassportNumber(passportNumber)
+		if (!result.valid) {
+			error.value = result.error
+			return
+		}
+	}
+	
+	const residentCertNumber = formData.value.residentCertificateNumber?.trim()
+	if (residentCertNumber && residentCertNumber !== MASKED_PLACEHOLDER) {
+		const result = validateResidentCertificate(residentCertNumber)
+		if (!result.valid) {
+			error.value = result.error
+			return
 		}
 	}
 
@@ -464,19 +437,6 @@ const handleClose = () => {
 							<h4 class="text-sm font-medium text-gray-700 mb-3">{{ t('persons.form.identityVerification')
 								}}</h4>
 							
-							<div class="mb-4">
-								<label for="identityDocumentType" class="block text-sm font-medium text-gray-700">
-									{{ t('persons.form.identityDocumentType') }}
-								</label>
-								<select id="identityDocumentType" v-model="formData.identityDocumentType"
-									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-									<option value="None">{{ t('persons.form.documentTypes.none') }}</option>
-									<option value="NationalId">{{ t('persons.form.documentTypes.nationalId') }}</option>
-									<option value="Passport">{{ t('persons.form.documentTypes.passport') }}</option>
-									<option value="ResidentCertificate">{{ t('persons.form.documentTypes.residentCertificate') }}</option>
-								</select>
-							</div>
-
 							<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 								<div>
 									<label for="nationalId" class="block text-sm font-medium text-gray-700">

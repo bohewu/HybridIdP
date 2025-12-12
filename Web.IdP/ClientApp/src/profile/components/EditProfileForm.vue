@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+  <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6" data-testid="edit-profile-form">
     <div class="px-6 py-5 border-b border-gray-200 bg-gray-50 rounded-t-lg">
       <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
         <i class="bi bi-person-gear text-indigo-600"></i>
@@ -34,7 +34,7 @@
             <input 
               v-model="form.phoneNumber"
               type="tel"
-              class="block w-full pl-10 border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
+              class="block w-full pl-10 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
               :placeholder="t('profile.edit.phoneNumberPlaceholder')"
             />
           </div>

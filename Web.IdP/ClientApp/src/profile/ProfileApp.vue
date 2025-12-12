@@ -7,27 +7,30 @@
     </div>
 
     <!-- Main Content -->
-    <div v-if="!loading" class="max-w-3xl space-y-6">
+    <div v-if="!loading" class="space-y-6">
       <!-- Profile Info Card (Read-only) -->
       <ProfileInfoCard 
         v-if="profile" 
         :profile="profile" 
       />
 
-      <!-- Edit Profile Form (Editable Person fields) -->
-      <EditProfileForm 
-        v-if="profile && profile.person" 
-        :profile="profile" 
-        @updated="loadProfile" 
-      />
+      <!-- Edit Profile and Change Password - Side by side on larger screens -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Edit Profile Form (Editable Person fields) -->
+        <EditProfileForm 
+          v-if="profile && profile.person" 
+          :profile="profile" 
+          @updated="loadProfile" 
+        />
 
-      <!-- Change Password Form -->
-      <ChangePasswordForm 
-        v-if="profile"
-        :allow-password-change="profile.allowPasswordChange"
-        :has-local-password="profile.hasLocalPassword"
-        :external-logins="profile.externalLogins"
-      />
+        <!-- Change Password Form -->
+        <ChangePasswordForm 
+          v-if="profile"
+          :allow-password-change="profile.allowPasswordChange"
+          :has-local-password="profile.hasLocalPassword"
+          :external-logins="profile.externalLogins"
+        />
+      </div>
     </div>
   </div>
 </template>
