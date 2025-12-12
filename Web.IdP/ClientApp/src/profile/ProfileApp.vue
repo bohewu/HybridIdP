@@ -1,37 +1,33 @@
 <template>
-  <div class="container py-4"
+  <div class="px-4 sm:px-6 lg:px-8 py-8"
        v-loading="{ loading, overlay: true, message: t('profile.loading') }">
     <!-- Page Header -->
-    <div class="row mb-4">
-      <div class="col">
-        <h1 class="h2">{{ t('profile.title') }}</h1>
-      </div>
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold text-gray-900">{{ t('profile.title') }}</h1>
     </div>
 
     <!-- Main Content -->
-    <div v-if="!loading" class="row">
-      <div class="col-lg-8">
-        <!-- Profile Info Card (Read-only) -->
-        <ProfileInfoCard 
-          v-if="profile" 
-          :profile="profile" 
-        />
+    <div v-if="!loading" class="max-w-3xl space-y-6">
+      <!-- Profile Info Card (Read-only) -->
+      <ProfileInfoCard 
+        v-if="profile" 
+        :profile="profile" 
+      />
 
-        <!-- Edit Profile Form (Editable Person fields) -->
-        <EditProfileForm 
-          v-if="profile && profile.person" 
-          :profile="profile" 
-          @updated="loadProfile" 
-        />
+      <!-- Edit Profile Form (Editable Person fields) -->
+      <EditProfileForm 
+        v-if="profile && profile.person" 
+        :profile="profile" 
+        @updated="loadProfile" 
+      />
 
-        <!-- Change Password Form -->
-        <ChangePasswordForm 
-          v-if="profile"
-          :allow-password-change="profile.allowPasswordChange"
-          :has-local-password="profile.hasLocalPassword"
-          :external-logins="profile.externalLogins"
-        />
-      </div>
+      <!-- Change Password Form -->
+      <ChangePasswordForm 
+        v-if="profile"
+        :allow-password-change="profile.allowPasswordChange"
+        :has-local-password="profile.hasLocalPassword"
+        :external-logins="profile.externalLogins"
+      />
     </div>
   </div>
 </template>

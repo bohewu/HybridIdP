@@ -1,71 +1,72 @@
 <template>
-  <div class="bg-white shadow rounded-lg p-6 mb-6">
-    <h2 class="text-xl font-semibold text-gray-900 mb-4">
-      {{ t('profile.accountInfo') }}
-    </h2>
-
-    <div class="space-y-3">
-      <!-- Username -->
-      <div class="flex justify-between">
-        <span class="text-sm font-medium text-gray-500">{{ t('profile.username') }}</span>
-        <span class="text-sm text-gray-900">{{ profile.userName }}</span>
-      </div>
-
-      <!-- Email -->
-      <div class="flex justify-between">
-        <span class="text-sm font-medium text-gray-500">{{ t('profile.email') }}</span>
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-900">{{ profile.email }}</span>
-          <span v-if="profile.emailConfirmed" class="text-green-600" title="Email verified">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-            </svg>
-          </span>
-        </div>
-      </div>
-
-      <!-- External Logins -->
-      <div v-if="profile.externalLogins && profile.externalLogins.length > 0">
-        <span class="text-sm font-medium text-gray-500">{{ t('profile.externalLogins') }}</span>
-        <div class="mt-2 space-y-1">
-          <div v-for="login in profile.externalLogins" :key="login.loginProvider" 
-               class="flex items-center gap-2 text-sm text-gray-700">
-            <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-            </svg>
-            <span>{{ login.providerDisplayName || login.loginProvider }}</span>
-          </div>
-        </div>
-      </div>
+  <!-- Account Info -->
+  <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+    <div class="px-4 py-5 sm:px-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">{{ t('profile.accountInfo') }}</h3>
     </div>
+    <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
+      <dl class="sm:divide-y sm:divide-gray-200">
+        <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">{{ t('profile.username') }}</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ profile.userName }}</dd>
+        </div>
+        <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">{{ t('profile.email') }}</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex items-center gap-2">
+            {{ profile.email }}
+            <span v-if="profile.emailConfirmed" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+              Verified
+            </span>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </div>
 
-    <!-- Person Info Section (if linked) -->
-    <div v-if="profile.person" class="mt-6 pt-6 border-t border-gray-200">
-      <h3 class="text-lg font-semibold text-gray-900 mb-4">
-        {{ t('profile.personInfo') }}
-      </h3>
-      
-      <div class="space-y-3">
-        <div class="flex justify-between">
-          <span class="text-sm font-medium text-gray-500">{{ t('profile.fullName') }}</span>
-          <span class="text-sm text-gray-900">{{ profile.person.fullName }}</span>
+  <!-- Person Info (if linked) -->
+  <div v-if="profile.person" class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+    <div class="px-4 py-5 sm:px-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">{{ t('profile.personInfo') }}</h3>
+    </div>
+    <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
+      <dl class="sm:divide-y sm:divide-gray-200">
+        <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">{{ t('profile.fullName') }}</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ profile.person.fullName || '-' }}</dd>
         </div>
-        
-        <div v-if="profile.person.employeeId" class="flex justify-between">
-          <span class="text-sm font-medium text-gray-500">{{ t('profile.employeeId') }}</span>
-          <span class="text-sm text-gray-900">{{ profile.person.employeeId }}</span>
+        <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">{{ t('profile.employeeId') }}</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ profile.person.employeeId || '-' }}</dd>
         </div>
-        
-        <div v-if="profile.person.department" class="flex justify-between">
-          <span class="text-sm font-medium text-gray-500">{{ t('profile.department') }}</span>
-          <span class="text-sm text-gray-900">{{ profile.person.department }}</span>
+        <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">{{ t('profile.department') }}</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ profile.person.department || '-' }}</dd>
         </div>
-        
-        <div v-if="profile.person.jobTitle" class="flex justify-between">
-          <span class="text-sm font-medium text-gray-500">{{ t('profile.jobTitle') }}</span>
-          <span class="text-sm text-gray-900">{{ profile.person.jobTitle }}</span>
+        <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">{{ t('profile.jobTitle') }}</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ profile.person.jobTitle || '-' }}</dd>
         </div>
-      </div>
+      </dl>
+    </div>
+  </div>
+
+  <!-- External Logins -->
+  <div v-if="profile.externalLogins && profile.externalLogins.length > 0" class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+    <div class="px-4 py-5 sm:px-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">{{ t('profile.externalLogins') }}</h3>
+    </div>
+    <div class="border-t border-gray-200">
+      <ul class="divide-y divide-gray-200">
+        <li v-for="login in profile.externalLogins" :key="login.loginProvider" class="px-4 py-4 sm:px-6 flex items-center">
+          <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+          </svg>
+          <span class="text-sm text-gray-900">{{ login.providerDisplayName || login.loginProvider }}</span>
+        </li>
+      </ul>
     </div>
   </div>
 </template>
@@ -74,7 +75,7 @@
 import { defineProps } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const props = defineProps({
+defineProps({
   profile: {
     type: Object,
     required: true
