@@ -25,8 +25,12 @@ const permissionGroups = ref({
   scopes: { label: 'Scopes', permissions: [] },
   users: { label: 'Users', permissions: [] },
   roles: { label: 'Roles', permissions: [] },
+  claims: { label: 'Claims', permissions: [] },
+  persons: { label: 'Persons', permissions: [] },
   audit: { label: 'Audit', permissions: [] },
-  settings: { label: 'Settings', permissions: [] }
+  monitoring: { label: 'Monitoring', permissions: [] },
+  settings: { label: 'Settings', permissions: [] },
+  localization: { label: 'Localization', permissions: [] }
 })
 
 const fetchAvailablePermissions = async () => {

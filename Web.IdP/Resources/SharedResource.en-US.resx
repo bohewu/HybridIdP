@@ -54,6 +54,9 @@
   <data name="Monitoring" xml:space="preserve">
     <value>Monitoring</value>
   </data>
+  <data name="Localization" xml:space="preserve">
+    <value>Localization</value>
+  </data>
   <data name="Administrator" xml:space="preserve">
     <value>Administrator</value>
   </data>

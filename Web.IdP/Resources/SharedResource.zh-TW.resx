@@ -48,6 +48,9 @@
   <data name="Monitoring" xml:space="preserve">
     <value>監控</value>
   </data>
+  <data name="Localization" xml:space="preserve">
+    <value>多語言管理</value>
+  </data>
   <data name="Administrator" xml:space="preserve">
     <value>管理者</value>
   </data>
