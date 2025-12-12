@@ -112,7 +112,19 @@ public static class Permissions
             Persons.Read, Persons.Create, Persons.Update, Persons.Delete,
             Audit.Read,
             Monitoring.Read,
-            Settings.Read, Settings.Update
+            Settings.Read, Settings.Update,
+            Localization.Read, Localization.Create, Localization.Update, Localization.Delete
         };
+    }
+
+    /// <summary>
+    /// Localization management permissions
+    /// </summary>
+    public static class Localization
+    {
+        public const string Read = "localization.read";
+        public const string Create = "localization.create";
+        public const string Update = "localization.update";
+        public const string Delete = "localization.delete";
     }
 }

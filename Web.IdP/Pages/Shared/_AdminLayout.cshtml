@@ -156,6 +156,13 @@
                         <i class="bi bi-lock"></i>
                         <span>@Localizer["SecurityPolicies"]</span>
                     </a>
+                    @if (userPermissions.HasPermission(Permissions.Localization.Read))
+                    {
+                        <a href="/Admin/Localization" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Localization" ? "active" : "")">
+                            <i class="bi bi-translate"></i>
+                            <span>@Localizer["Localization"]</span>
+                        </a>
+                    }
                     @if (userPermissions.HasPermission(Permissions.Audit.Read))
                     {
                         <a href="/Admin/Audit" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Audit" ? "active" : "")">

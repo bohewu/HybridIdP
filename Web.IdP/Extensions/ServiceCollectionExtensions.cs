@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPersonService, PersonService>();
         services.AddScoped<IPersonLifecycleService, PersonLifecycleService>(); // Phase 18
         services.AddScoped<ILocalizationService, LocalizationService>();
+        services.AddScoped<ILocalizationManagementService, LocalizationManagementService>();
         services.AddScoped<IApiResourceService, ApiResourceService>();
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<IClientAllowedScopesService, ClientAllowedScopesService>();

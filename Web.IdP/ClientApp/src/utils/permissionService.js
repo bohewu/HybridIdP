@@ -189,6 +189,12 @@ export const Permissions = {
   Settings: {
     Read: 'settings.read',
     Update: 'settings.update'
+  },
+  Localization: {
+    Read: 'localization.read',
+    Create: 'localization.create',
+    Update: 'localization.update',
+    Delete: 'localization.delete'
   }
 };
 

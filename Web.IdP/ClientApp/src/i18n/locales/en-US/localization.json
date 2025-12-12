@@ -1,0 +1,46 @@
+{
+  "pageTitle": "Localization",
+  "pageSubtitle": "Manage system localization resources and translations.",
+  "createButton": "Create Resource",
+  "searchPlaceholder": "Search Key or Value...",
+  "noResources": "No localization resources found.",
+  "loadingMessage": "Loading resources...",
+  "confirmDelete": "Are you sure you want to delete this resource? This action cannot be undone.",
+  "actions": {
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "table": {
+    "key": "Key",
+    "culture": "Culture",
+    "value": "Value",
+    "category": "Category",
+    "actions": "Actions"
+  },
+  "form": {
+    "createTitle": "Create Resource",
+    "editTitle": "Edit Resource",
+    "key": "Key",
+    "keyPlaceholder": "e.g. scope.email.title",
+    "culture": "Culture",
+    "category": "Category",
+    "categoryPlaceholder": "e.g. Consent, UI...",
+    "value": "Value",
+    "valuePlaceholder": "Enter translated text...",
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel"
+  },
+  "accessDenied": {
+    "read": "You do not have permission to view localization resources.",
+    "create": "You do not have permission to create localization resources.",
+    "update": "You do not have permission to update localization resources.",
+    "delete": "You do not have permission to delete localization resources."
+  },
+  "sort": {
+    "keyAsc": "Key (A-Z)",
+    "keyDesc": "Key (Z-A)",
+    "categoryAsc": "Category (A-Z)",
+    "categoryDesc": "Category (Z-A)"
+  }
+}

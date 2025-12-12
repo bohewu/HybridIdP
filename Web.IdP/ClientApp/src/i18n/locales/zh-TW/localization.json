@@ -1,0 +1,46 @@
+{
+  "pageTitle": "多語言管理",
+  "pageSubtitle": "管理系統中的多語言翻譯資源 (Localization Resources)。",
+  "createButton": "新增翻譯",
+  "searchPlaceholder": "搜尋 Key 或內容...",
+  "noResources": "找不到符合的翻譯資源",
+  "loadingMessage": "載入翻譯資源中...",
+  "confirmDelete": "您確定要刪除這筆翻譯資源嗎？此動作無法還原。",
+  "actions": {
+    "edit": "編輯",
+    "delete": "刪除"
+  },
+  "table": {
+    "key": "Key (鍵值)",
+    "culture": "語系",
+    "value": "內容",
+    "category": "分類",
+    "actions": "操作"
+  },
+  "form": {
+    "createTitle": "新增翻譯",
+    "editTitle": "編輯翻譯",
+    "key": "Key (鍵值)",
+    "keyPlaceholder": "例如 scope.email.title",
+    "culture": "語系",
+    "category": "分類",
+    "categoryPlaceholder": "例如 Consent, UI...",
+    "value": "翻譯內容",
+    "valuePlaceholder": "請輸入翻譯後的文字...",
+    "save": "儲存",
+    "saving": "儲存中...",
+    "cancel": "取消"
+  },
+  "accessDenied": {
+    "read": "您沒有權限檢視翻譯資源。",
+    "create": "您沒有權限新增翻譯資源。",
+    "update": "您沒有權限修改翻譯資源。",
+    "delete": "您沒有權限刪除翻譯資源。"
+  },
+  "sort": {
+    "keyAsc": "Key (A-Z)",
+    "keyDesc": "Key (Z-A)",
+    "categoryAsc": "分類 (A-Z)",
+    "categoryDesc": "分類 (Z-A)"
+  }
+}
