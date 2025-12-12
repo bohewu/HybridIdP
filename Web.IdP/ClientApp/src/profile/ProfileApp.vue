@@ -1,17 +1,16 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white shadow-sm">
-      <div class="max-w-4xl mx-auto px-4 py-4">
-        <h1 class="text-2xl font-bold text-gray-900">
-          {{ t('profile.title') }}
-        </h1>
+  <div class="container py-4"
+       v-loading="{ loading, overlay: true, message: t('profile.loading') }">
+    <!-- Page Header -->
+    <div class="row mb-4">
+      <div class="col">
+        <h1 class="h2">{{ t('profile.title') }}</h1>
       </div>
-    </header>
+    </div>
 
     <!-- Main Content -->
-    <main class="max-w-4xl mx-auto px-4 py-6">
-      <div v-loading="{ loading, overlay: true, message: t('profile.loading') }">
+    <div v-if="!loading" class="row">
+      <div class="col-lg-8">
         <!-- Profile Info Card (Read-only) -->
         <ProfileInfoCard 
           v-if="profile" 
@@ -33,7 +32,7 @@
           :external-logins="profile.externalLogins"
         />
       </div>
-    </main>
+    </div>
   </div>
 </template>
 
