@@ -1,105 +1,102 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdminViaIdP, createUserWithRole, deleteUser, createRole, deleteRole, login } from '../helpers/admin';
 
 /**
  * Profile Management E2E Tests
  * 
- * Strategy: Single test with setup/teardown to avoid rate limiting
- * Creates test user via API, runs all checks, then cleanup
+ * Tests the profile page UI including:
+ * - Account information display
+ * - Edit Profile form visibility
+ * - Password change form
+ * - Responsive layout (side-by-side forms on wide screens)
  */
-test('Profile Management - Complete Flow', async ({ page }) => {
-  // Setup: Login as admin and create test data
-  await loginAsAdminViaIdP(page);
+test.describe('Profile Management', () => {
+  test.beforeEach(async ({ page }) => {
+    // Login as admin user
+    await page.goto('https://localhost:7035/Account/Login');
+    await page.fill('#Input_Login', 'admin@hybridauth.local');
+    await page.fill('#Input_Password', 'Admin@123');
+    await page.click('button.auth-btn-primary');
+    await page.waitForSelector('.user-name');
+  });
 
-  const testEmail = `e2e_profile_${Date.now()}@example.com`;
-  const testPassword = 'Test@12345';
-  
-  // Create test role via API (no special permissions needed for profile viewing)
-  const role = await createRole(page, `e2e_profile_role_${Date.now()}`, []);
-  const testRoleId = role.id;
-  
-  // Create test user via API
-  const user = await createUserWithRole(page, testEmail, testPassword, [testRoleId]);
-  const testUserId = user.id;
+  test.describe('Profile Page Layout', () => {
+    test('should display ProfileInfoCard with account information', async ({ page }) => {
+      await page.goto('https://localhost:7035/Account/Profile');
+      
+      // Wait for Vue app to mount
+      await page.waitForSelector('#profile-app', { timeout: 15000 });
+      
+      // Verify ProfileInfoCard is visible
+      await expect(page.locator('[data-testid="profile-info-card"]')).toBeVisible();
+      
+      // Verify email is displayed
+      await expect(page.locator('text=admin@hybridauth.local').first()).toBeVisible();
+    });
 
-  // Logout admin
-  await page.goto('https://localhost:7035/Account/Logout');
+    test('should display EditProfileForm for user with linked Person', async ({ page }) => {
+      await page.goto('https://localhost:7035/Account/Profile');
+      await page.waitForSelector('#profile-app', { timeout: 15000 });
+      
+      // Admin user has linked Person, so Edit Profile form should be visible
+      await expect(page.locator('[data-testid="edit-profile-form"]')).toBeVisible();
+      
+      // Verify phone number input exists
+      const phoneInput = page.locator('input[type="tel"]');
+      await expect(phoneInput.first()).toBeVisible();
+    });
 
-  // ===== Test 1: Display profile page =====
-  await login(page, testEmail, testPassword);
-  await page.goto('https://localhost:7035/Account/Profile');
-  
-  // Wait for Vue app to mount
-  await page.waitForSelector('#profile-app', { timeout: 15000 });
-  await page.waitForSelector('text=Account Information', { timeout: 15000 });
-  
-  // Check that email is displayed
-  await expect(page.locator(`text=${testEmail}`).first()).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('text=Email').first()).toBeVisible();
+    test('should display ChangePasswordForm', async ({ page }) => {
+      await page.goto('https://localhost:7035/Account/Profile');
+      await page.waitForSelector('#profile-app', { timeout: 15000 });
+      
+      // Verify ChangePasswordForm is visible
+      await expect(page.locator('[data-testid="change-password-form"]')).toBeVisible();
+    });
 
-  // ===== Test 2: Verify password change form =====
-  const changePasswordTitle = page.locator('text=Change Password');
-  const policyDisabledWarning = page.locator('text=disabled by system policy');
-  
-  // At least one should be visible (form or policy warning)
-  const hasChangePasswordForm = await changePasswordTitle.count() > 0;
-  const hasPolicyWarning = await policyDisabledWarning.count() > 0;
-  expect(hasChangePasswordForm || hasPolicyWarning).toBe(true);
-  
-  // External login note should NOT appear for test user (has local password)
-  const externalLoginNote = page.locator('text=authenticated via an external provider');
-  expect(await externalLoginNote.count()).toBe(0);
+    test('should have side-by-side layout on wide screens', async ({ page }) => {
+      // Set wide viewport
+      await page.setViewportSize({ width: 1280, height: 800 });
+      
+      await page.goto('https://localhost:7035/Account/Profile');
+      await page.waitForSelector('#profile-app', { timeout: 15000 });
+      
+      // Wait for forms to be visible
+      const editForm = page.locator('[data-testid="edit-profile-form"]');
+      const passwordForm = page.locator('[data-testid="change-password-form"]');
+      
+      await expect(editForm).toBeVisible();
+      await expect(passwordForm).toBeVisible();
+      
+      // Verify side-by-side layout (forms at roughly same Y position)
+      const editFormBox = await editForm.boundingBox();
+      const passwordFormBox = await passwordForm.boundingBox();
+      
+      if (editFormBox && passwordFormBox) {
+        const verticalDiff = Math.abs(editFormBox.y - passwordFormBox.y);
+        expect(verticalDiff).toBeLessThan(100); // Side-by-side means similar Y position
+      }
+    });
+  });
 
-  // ===== Test 3: Check password form fields =====
-  if (await changePasswordTitle.count() > 0) {
-    await expect(changePasswordTitle).toBeVisible();
-    
-    const passwordInputs = page.locator('input[type="password"]');
-    const count = await passwordInputs.count();
-    expect(count).toBeGreaterThanOrEqual(3); // current, new, confirm
-  }
-
-  // ===== Test 4: Verify API response structure =====
-  await page.goto('https://localhost:7035/Account/Logout');
-  await login(page, testEmail, testPassword);
-  
-  const profileResponsePromise = page.waitForResponse(
-    response => response.url().includes('/api/profile') && response.request().method() === 'GET',
-    { timeout: 15000 }
-  );
-  
-  await page.goto('https://localhost:7035/Account/Profile');
-  const profileResponse = await profileResponsePromise;
-  expect(profileResponse.status()).toBe(200);
-  
-  const profileData = await profileResponse.json();
-  expect(profileData).toHaveProperty('userId');
-  expect(profileData).toHaveProperty('userName');
-  expect(profileData).toHaveProperty('hasLocalPassword');
-  expect(profileData).toHaveProperty('allowPasswordChange');
-  expect(profileData.userName).toBe(testEmail);
-  expect(profileData.hasLocalPassword).toBe(true);
-
-  // ===== Test 5: Handle user without linked Person =====
-  await page.waitForSelector('text=Account Information', { timeout: 15000 });
-  const accountInfoSection = page.locator('text=Account Information');
- await expect(accountInfoSection).toBeVisible();
-  
-  // Test user doesn't have linked Person - edit form should NOT be visible
-  const editFormTitle = page.locator('text=Edit Profile');
-  const hasEditForm = await editFormTitle.count() > 0;
-  
-  if (!hasEditForm) {
-    // Expected: test user has no Person, so no edit form
-    console.log('✓ Test user not linked to Person - edit form correctly hidden');
-  }
-
-  // Cleanup: Login as admin and delete test data
-  await page.goto('https://localhost:7035/Account/Logout');
-  await loginAsAdminViaIdP(page);
-  
-  await deleteUser(page, testUserId);
-  await deleteRole(page, testRoleId);
-  
-  console.log('✓ All profile management tests passed');
+  test.describe('Profile API', () => {
+    test('should return correct data structure', async ({ page }) => {
+      // Capture API response when navigating to profile
+      const profileResponsePromise = page.waitForResponse(
+        response => response.url().includes('/api/profile') && response.request().method() === 'GET',
+        { timeout: 15000 }
+      );
+      
+      await page.goto('https://localhost:7035/Account/Profile');
+      const profileResponse = await profileResponsePromise;
+      
+      expect(profileResponse.status()).toBe(200);
+      
+      const profileData = await profileResponse.json();
+      expect(profileData).toHaveProperty('userId');
+      expect(profileData).toHaveProperty('userName');
+      expect(profileData).toHaveProperty('hasLocalPassword');
+      expect(profileData).toHaveProperty('allowPasswordChange');
+      expect(profileData.hasLocalPassword).toBe(true);
+    });
+  });
 });

@@ -145,6 +145,10 @@ public partial class PersonService : IPersonService
         person.PassportNumber = passportHash;
         person.ResidentCertificateNumber = residentCertHash;
 
+        // Auto-infer IdentityDocumentType based on which fields are populated
+        person.IdentityDocumentType = InferIdentityDocumentType(
+            person.NationalId, person.PassportNumber, person.ResidentCertificateNumber);
+
         _context.Persons.Add(person);
         await _context.SaveChangesAsync(CancellationToken.None);
 
@@ -280,7 +284,10 @@ public partial class PersonService : IPersonService
             existingPerson.PassportNumber = newPassportHash;
         if (newResidentCertHash != null)
             existingPerson.ResidentCertificateNumber = newResidentCertHash;
-        existingPerson.IdentityDocumentType = person.IdentityDocumentType;
+
+        // Auto-infer IdentityDocumentType based on final field values
+        existingPerson.IdentityDocumentType = InferIdentityDocumentType(
+            existingPerson.NationalId, existingPerson.PassportNumber, existingPerson.ResidentCertificateNumber);
 
         // Reset verification if identity document changed
         if (identityChanged)
@@ -666,4 +673,22 @@ public partial class PersonService : IPersonService
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Verified identity for person {PersonId} by user {VerifiedBy}")]
     partial void LogPersonIdentityVerified(Guid personId, Guid verifiedBy);
+
+    /// <summary>
+    /// Infers the IdentityDocumentType based on which identity fields are populated.
+    /// Priority: NationalId > PassportNumber > ResidentCertificateNumber > None
+    /// </summary>
+    private static string InferIdentityDocumentType(
+        string? nationalId,
+        string? passportNumber,
+        string? residentCertificateNumber)
+    {
+        if (!string.IsNullOrWhiteSpace(nationalId))
+            return IdentityDocumentTypes.NationalId;
+        if (!string.IsNullOrWhiteSpace(passportNumber))
+            return IdentityDocumentTypes.Passport;
+        if (!string.IsNullOrWhiteSpace(residentCertificateNumber))
+            return IdentityDocumentTypes.ResidentCertificate;
+        return IdentityDocumentTypes.None;
+    }
 }

@@ -1043,4 +1043,142 @@ public class PersonServiceTests : IDisposable
     }
 
     #endregion
+
+    #region IdentityDocumentType Auto-Inference Tests
+
+    [Fact]
+    public async Task CreatePersonAsync_WithNationalId_ShouldInferNationalIdType()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = CreateService(context);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789" // Valid Taiwan National ID
+        };
+
+        // Act
+        var result = await service.CreatePersonAsync(person, Guid.NewGuid());
+
+        // Assert
+        Assert.Equal("NationalId", result.IdentityDocumentType);
+    }
+
+    [Fact]
+    public async Task CreatePersonAsync_WithPassportOnly_ShouldInferPassportType()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = CreateService(context);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            PassportNumber = "AB1234567" // Valid passport format
+        };
+
+        // Act
+        var result = await service.CreatePersonAsync(person, Guid.NewGuid());
+
+        // Assert
+        Assert.Equal("Passport", result.IdentityDocumentType);
+    }
+
+    [Fact]
+    public async Task CreatePersonAsync_WithResidentCertOnly_ShouldInferResidentCertType()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = CreateService(context);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            ResidentCertificateNumber = "AB12345678" // Valid resident cert format
+        };
+
+        // Act
+        var result = await service.CreatePersonAsync(person, Guid.NewGuid());
+
+        // Assert
+        Assert.Equal("ResidentCertificate", result.IdentityDocumentType);
+    }
+
+    [Fact]
+    public async Task CreatePersonAsync_WithNoIdentityDocs_ShouldInferNoneType()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = CreateService(context);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe"
+        };
+
+        // Act
+        var result = await service.CreatePersonAsync(person, Guid.NewGuid());
+
+        // Assert
+        Assert.Equal("None", result.IdentityDocumentType);
+    }
+
+    [Fact]
+    public async Task CreatePersonAsync_WithMultipleIdentityDocs_ShouldPrioritizeNationalId()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = CreateService(context);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789",
+            PassportNumber = "AB1234567"
+        };
+
+        // Act
+        var result = await service.CreatePersonAsync(person, Guid.NewGuid());
+
+        // Assert - NationalId has priority over PassportNumber
+        Assert.Equal("NationalId", result.IdentityDocumentType);
+    }
+
+    [Fact]
+    public async Task UpdatePersonAsync_ShouldReInferIdentityDocumentType()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        var service = CreateService(context);
+
+        var person = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            NationalId = "A123456789"
+        };
+        var created = await service.CreatePersonAsync(person);
+        Assert.Equal("NationalId", created.IdentityDocumentType);
+
+        // Act - Update with passport only (remove national ID by not providing it)
+        var updates = new Person
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            PassportNumber = "AB1234567"
+        };
+        var result = await service.UpdatePersonAsync(created.Id, updates, Guid.NewGuid());
+
+        // Assert - Should now infer based on current fields (NationalId hash is kept)
+        Assert.Equal("NationalId", result!.IdentityDocumentType);
+    }
+
+    #endregion
 }

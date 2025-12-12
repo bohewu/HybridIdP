@@ -1,6 +1,6 @@
 <template>
   <!-- Account Info -->
-  <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+  <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6" data-testid="profile-info-card">
     <div class="px-4 py-5 sm:px-6">
       <h3 class="text-lg leading-6 font-medium text-gray-900">{{ t('profile.accountInfo') }}</h3>
     </div>
@@ -37,30 +37,6 @@
               {{ t('profile.info.fullName') }}
             </dt>
             <dd class="mt-1 text-sm text-gray-900 font-medium pl-6">{{ profile.personFullName }}</dd>
-          </div>
-
-          <div v-if="profile.person.nationalId" class="sm:col-span-1">
-            <dt class="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <i class="bi bi-person-badge text-gray-400"></i>
-              {{ t('profile.info.nationalId') }}
-            </dt>
-            <dd class="mt-1 text-sm text-gray-900 font-medium pl-6 tracking-wide">{{ profile.person.nationalId }}</dd>
-          </div>
-
-          <div v-if="profile.person.passportNumber" class="sm:col-span-1">
-            <dt class="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <i class="bi bi-airplane text-gray-400"></i>
-              {{ t('profile.info.passport') }}
-            </dt>
-            <dd class="mt-1 text-sm text-gray-900 font-medium pl-6 tracking-wide">{{ profile.person.passportNumber }}</dd>
-          </div>
-
-          <div v-if="profile.person.residentCertificateNumber" class="sm:col-span-1">
-            <dt class="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <i class="bi bi-postcard text-gray-400"></i>
-              {{ t('profile.info.residentCert') }}
-            </dt>
-            <dd class="mt-1 text-sm text-gray-900 font-medium pl-6 tracking-wide">{{ profile.person.residentCertificateNumber }}</dd>
           </div>
 
           <!-- Identity Verification Status Check (Global) -->
