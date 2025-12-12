@@ -515,6 +515,29 @@ cd e2e
 npm test
 ```
 
+### 重置測試資料 (reset-database.ps1)
+
+在執行 E2E 測試前，可以使用 `scripts/reset-database.ps1` 腳本將資料庫重置到乾淨狀態：
+
+```powershell
+# 只清理資料，保留資料庫結構 (預設)
+.\scripts\reset-database.ps1
+
+# 完全重建資料庫 (DROP + CREATE + Migration)
+.\scripts\reset-database.ps1 -DropDatabase $true
+
+# 使用 PostgreSQL
+.\scripts\reset-database.ps1 -Provider PostgreSQL
+
+# 清理資料但跳過 seeder (快速模式)
+.\scripts\reset-database.ps1 -SkipSeeder $true
+```
+
+**腳本會執行：**
+1. 按 FK 順序清理所有資料表
+2. 執行 DataSeeder 重建必要資料 (Admin 角色、使用者、設定等)
+3. 註冊 TestClient (E2E 測試用)
+
 ---
 
 ## 🌍 遠端資料庫更新 (Remote Update)
