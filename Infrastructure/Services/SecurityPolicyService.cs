@@ -65,6 +65,7 @@ public partial class SecurityPolicyService : ISecurityPolicyService
         policy.LockoutDurationMinutes = policyDto.LockoutDurationMinutes;
         policy.AbnormalLoginHistoryCount = policyDto.AbnormalLoginHistoryCount;
         policy.BlockAbnormalLogin = policyDto.BlockAbnormalLogin;
+        policy.AllowSelfPasswordChange = policyDto.AllowSelfPasswordChange;
         
         // Update metadata
         policy.UpdatedUtc = DateTime.UtcNow;
