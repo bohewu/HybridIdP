@@ -515,10 +515,54 @@ cd e2e
 npm test
 ```
 
-**測試結果應該:**
-- 總測試: 78 個
-- 通過: 68+ 個
-- 失敗: < 10 個 (UI timing 問題)
+---
+
+## 🌍 遠端資料庫更新 (Remote Update)
+
+如果您需要對遠端主機（例如 Staging 或 Production 環境）執行資料庫 Migration 更新，可以使用我們提供的自動化腳本。
+
+### 使用 `update-db.ps1` 腳本
+
+位於 `deployment/` 目錄下的 `update-db.ps1` 腳本可以協助您設定正確的環境變數並執行 `dotnet ef` 命令。
+
+**腳本位置:** `deployment/update-db.ps1`
+
+**參數說明:**
+- `-Provider`: 資料庫類型 (`SqlServer` 或 `PostgreSQL`)
+- `-ConnectionString`: 完整的連線字串
+
+#### 使用範例
+
+**1. SQL Server 更新**
+
+```powershell
+.\deployment\update-db.ps1 -Provider SqlServer -ConnectionString "Server=10.0.0.5,1433;Database=hybridauth_idp;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;Encrypt=True"
+```
+
+**2. PostgreSQL 更新**
+
+```powershell
+.\deployment\update-db.ps1 -Provider PostgreSQL -ConnectionString "Host=10.0.0.5;Port=5432;Database=hybridauth_idp;Username=postgres;Password=password"
+```
+
+### 手動執行步驟
+
+若無法使用腳本，您也可以手動執行（原理與腳本相同）：
+
+1. **設定環境變數**：指定 Provider 與 ConnectionString。
+2. **切換目錄**：進入對應的 `Infrastructure.Migrations.*` 目錄。
+3. **執行命令**：執行 `dotnet ef database update ...`。
+
+詳細手動指令請參考腳本內容或上方 [Migration 管理](#migration-管理) 章節，重點在於在執行命令前先設定好環境變數：
+
+```powershell
+# SQL Server 範例
+$env:DATABASE_PROVIDER="SqlServer"
+$env:ConnectionStrings__SqlServerConnection="Server=..."
+
+cd Infrastructure.Migrations.SqlServer
+dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+```
 
 ---
 
