@@ -1,3 +1,17 @@
-@import '../admin/style.css';
+/* Do NOT import admin/style.css because it includes @tailwind base which resets Bootstrap styles */
+/* @tailwind base;  <-- DISABLED to prevent conflict with Bootstrap */
+@tailwind components;
+@tailwind utilities;
 
-/* Profile-specific styles if needed */
+.form-input {
+    @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3;
+}
+
+/* 
+   CRITICAL FIX: Tailwind's .collapse utility sets { visibility: hidden }
+   which conflicts with Bootstrap's .collapse class used in the navbar.
+   We must override it to ensure the navbar remains visible.
+*/
+.collapse {
+    visibility: visible !important;
+}
