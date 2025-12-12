@@ -19,18 +19,18 @@ const error = ref('')
 const availablePermissions = ref([])
 const loadingPermissions = ref(false)
 
-// Group permissions by category
+// Group permissions by category (labels are i18n keys)
 const permissionGroups = ref({
-  clients: { label: 'Clients', permissions: [] },
-  scopes: { label: 'Scopes', permissions: [] },
-  users: { label: 'Users', permissions: [] },
-  roles: { label: 'Roles', permissions: [] },
-  claims: { label: 'Claims', permissions: [] },
-  persons: { label: 'Persons', permissions: [] },
-  audit: { label: 'Audit', permissions: [] },
-  monitoring: { label: 'Monitoring', permissions: [] },
-  settings: { label: 'Settings', permissions: [] },
-  localization: { label: 'Localization', permissions: [] }
+  clients: { labelKey: 'clients', permissions: [] },
+  scopes: { labelKey: 'scopes', permissions: [] },
+  users: { labelKey: 'users', permissions: [] },
+  roles: { labelKey: 'roles', permissions: [] },
+  claims: { labelKey: 'claims', permissions: [] },
+  persons: { labelKey: 'persons', permissions: [] },
+  audit: { labelKey: 'audit', permissions: [] },
+  monitoring: { labelKey: 'monitoring', permissions: [] },
+  settings: { labelKey: 'settings', permissions: [] },
+  localization: { labelKey: 'localization', permissions: [] }
 })
 
 const fetchAvailablePermissions = async () => {
@@ -233,7 +233,7 @@ onMounted(() => {
                                   class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                               />
                               <label :for="`category-${key}`" class="ml-3 text-sm font-semibold text-gray-900 cursor-pointer">
-                                {{ group.label }}
+                                {{ $t(`permissions.groups.${group.labelKey}`) }}
                               </label>
                             </div>
 
@@ -247,8 +247,8 @@ onMounted(() => {
                                     @change="togglePermission(perm)"
                                     class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                                 />
-                                <label :for="`perm-${perm}`" class="ml-3 text-sm text-gray-700 cursor-pointer font-mono">
-                                  {{ perm }}
+                                <label :for="`perm-${perm}`" class="ml-3 text-sm text-gray-700 cursor-pointer">
+                                  {{ $t(`permissions.items.${perm}`, perm) }}
                                 </label>
                               </div>
                             </div>
