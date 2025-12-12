@@ -163,3 +163,48 @@ test('Admin - Security Policies (boolean toggles)', async ({ page }) => {
   await page.locator('button[data-testid="save-policy-btn"]:not([disabled])').click({ timeout: 10000 });
   await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
 });
+
+test('Admin - Security Policies (allowSelfPasswordChange toggle)', async ({ page }) => {
+  await adminHelpers.loginAsAdminViaIdP(page);
+
+  await page.goto('https://localhost:7035/Admin/SecurityPolicies');
+  await page.waitForTimeout(1000);
+  
+  // Wait for the page to load - look for the allowSelfPasswordChange toggle
+  // It's in the "Password History & Expiration" section
+  await page.waitForSelector('text=Allow Self-Service Password Change', { timeout: 15000 });
+  
+  // Find the allowSelfPasswordChange checkbox
+  // It's the toggle after "Minimum Password Age"
+  const passwordChangeRow = page.locator('text=Allow Self-Service Password Change').locator('..').locator('..');
+  const checkbox = passwordChangeRow.locator('input[type="checkbox"]');
+  
+  // Get initial state
+  const isCheckedInitial = await checkbox.isChecked();
+  console.log(`Initial allowSelfPasswordChange state: ${isCheckedInitial}`);
+  
+  // Toggle the checkbox
+  await checkbox.click({ force: true });
+  
+  // Verify state changed
+  await expect(checkbox).toBeChecked({ checked: !isCheckedInitial });
+  
+  // Save
+  await page.locator('button[data-testid="save-policy-btn"]:not([disabled])').click({ timeout: 10000 });
+  await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
+  
+  // Reload to verify persistence
+  await page.reload();
+  await page.waitForSelector('text=Allow Self-Service Password Change', { timeout: 15000 });
+  
+  const checkboxAfterReload = page.locator('text=Allow Self-Service Password Change').locator('..').locator('..').locator('input[type="checkbox"]');
+  await expect(checkboxAfterReload).toBeChecked({ checked: !isCheckedInitial });
+  
+  // Restore original state
+  await checkboxAfterReload.click({ force: true });
+  await expect(checkboxAfterReload).toBeChecked({ checked: isCheckedInitial });
+  await page.locator('button[data-testid="save-policy-btn"]:not([disabled])').click({ timeout: 10000 });
+  await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
+  
+  console.log('✓ allowSelfPasswordChange toggle test passed');
+});
