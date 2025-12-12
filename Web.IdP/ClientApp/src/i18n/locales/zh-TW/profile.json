@@ -1,0 +1,47 @@
+{
+  "profile": {
+    "title": "我的個人資料",
+    "loading": "載入中...",
+    "username": "使用者名稱",
+    "email": "電子郵件",
+    "accountInfo": "帳號資訊",
+    "personInfo": "個人資訊",
+    "fullName": "全名",
+    "employeeId": "員工編號",
+    "department": "部門",
+    "jobTitle": "職稱",
+    "externalLogins": "外部登入",
+    "edit": {
+      "title": "編輯個人資料",
+      "phoneNumber": "電話號碼",
+      "phoneNumberPlaceholder": "+886-912-345-678",
+      "locale": "偏好語系",
+      "selectLocale": "選擇語系",
+      "timeZone": "時區",
+      "selectTimeZone": "選擇時區",
+      "success": "個人資料更新成功"
+    },
+    "changePassword": {
+      "title": "變更密碼",
+      "accountSpecificNote": "注意：此操作僅變更目前登入帳號的密碼。若您有多個帳號連結到此身份，其他帳號的密碼不受影響。",
+      "currentPassword": "目前密碼",
+      "currentPasswordPlaceholder": "輸入目前密碼",
+      "newPassword": "新密碼",
+      "newPasswordPlaceholder": "輸入新密碼",
+      "confirmPassword": "確認新密碼",
+      "confirmPasswordPlaceholder": "再次輸入新密碼",
+      "passwordRequirements": "密碼必須符合系統安全原則（長度、複雜度等）",
+      "success": "密碼變更成功",
+      "passwordMismatch": "密碼不一致",
+      "externalLoginNote": "此帳號透過外部身份提供者認證，若要變更密碼，請前往該提供者的網站：",
+      "disabledByPolicy": "系統管理員已停用密碼自行變更功能，請聯絡管理員協助重設密碼。"
+    }
+  },
+  "common": {
+    "save": "儲存",
+    "saving": "儲存中...",
+    "cancel": "取消",
+    "errorOccurred": "發生錯誤",
+    "networkError": "網路錯誤，請重試。"
+  }
+}
