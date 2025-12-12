@@ -83,6 +83,9 @@
             <FormRow :label="$t('security.minAgeDays')" for-id="minAgeDays" :help-text="$t('security.minAgeDaysHelp')">
               <input type="number" id="minAgeDays" v-model.number="policy.minPasswordAgeDays" min="0" max="365" class="form-input-sm">
             </FormRow>
+            <FormRow :label="$t('security.allowSelfPasswordChange')" :help-text="$t('security.allowSelfPasswordChangeHelp')">
+              <ToggleSwitch v-model="policy.allowSelfPasswordChange" />
+            </FormRow>
           </dl>
         </div>
       </div>

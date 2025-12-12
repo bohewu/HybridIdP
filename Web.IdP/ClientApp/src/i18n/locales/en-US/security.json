@@ -20,6 +20,8 @@
     "expirationDaysHelp": "Number of days before a password expires (0 for never).",
     "minAgeDays": "Minimum Password Age (Days)",
     "minAgeDaysHelp": "Minimum days a user must keep a password before changing it.",
+    "allowSelfPasswordChange": "Allow Self-Service Password Change",
+    "allowSelfPasswordChangeHelp": "When enabled, users can change their own passwords from their profile page.",
     "accountLockout": "Account Lockout",
     "maxFailedAttempts": "Max Failed Attempts",
     "maxFailedAttemptsHelp": "Number of failed attempts before lockout.",

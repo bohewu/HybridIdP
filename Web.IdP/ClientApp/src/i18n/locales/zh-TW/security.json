@@ -20,6 +20,8 @@
     "expirationDaysHelp": "密碼過期前的天數（0 代表永不過期）。",
     "minAgeDays": "最小密碼年齡（天）",
     "minAgeDaysHelp": "使用者在變更密碼前必須保留密碼的最少天數。",
+    "allowSelfPasswordChange": "允許自助變更密碼",
+    "allowSelfPasswordChangeHelp": "啟用後，使用者可從個人資料頁面變更自己的密碼。",
     "accountLockout": "帳戶鎖定",
     "maxFailedAttempts": "最大失敗嘗試",
     "maxFailedAttemptsHelp": "鎖定前的失敗嘗試次數。",
