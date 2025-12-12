@@ -22,33 +22,36 @@
             </span>
           </dd>
         </div>
-      </dl>
-    </div>
-  </div>
 
-  <!-- Person Info (if linked) -->
-  <div v-if="profile.person" class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
-    <div class="px-4 py-5 sm:px-6">
-      <h3 class="text-lg leading-6 font-medium text-gray-900">{{ t('profile.personInfo') }}</h3>
-    </div>
-    <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
-      <dl class="sm:divide-y sm:divide-gray-200">
-        <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-          <dt class="text-sm font-medium text-gray-500">{{ t('profile.fullName') }}</dt>
-          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ profile.person.fullName || '-' }}</dd>
-        </div>
-        <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-          <dt class="text-sm font-medium text-gray-500">{{ t('profile.employeeId') }}</dt>
-          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ profile.person.employeeId || '-' }}</dd>
-        </div>
-        <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-          <dt class="text-sm font-medium text-gray-500">{{ t('profile.department') }}</dt>
-          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ profile.person.department || '-' }}</dd>
-        </div>
-        <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-          <dt class="text-sm font-medium text-gray-500">{{ t('profile.jobTitle') }}</dt>
-          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ profile.person.jobTitle || '-' }}</dd>
-        </div>
+        <template v-if="profile?.person">
+          <div class="sm:col-span-2 mt-2 pt-4 border-t border-gray-100">
+             <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i class="bi bi-person-vcard"></i>
+                {{ t('profile.info.personalDetails') }}
+             </h4>
+          </div>
+
+          <div class="sm:col-span-1">
+            <dt class="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <i class="bi bi-type text-gray-400"></i>
+              {{ t('profile.info.fullName') }}
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 font-medium pl-6">{{ profile.personFullName }}</dd>
+          </div>
+
+          <div class="sm:col-span-1">
+            <dt class="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <i class="bi bi-card-text text-gray-400"></i>
+              {{ t('profile.info.identityType') }}
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 font-medium pl-6">
+              {{ profile.identityDocumentType || '-' }}
+              <span v-if="profile.identityVerified" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                 <i class="bi bi-patch-check-fill mr-1"></i> Verified
+              </span>
+            </dd>
+          </div>
+        </template>
       </dl>
     </div>
   </div>

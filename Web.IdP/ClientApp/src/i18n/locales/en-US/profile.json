@@ -13,7 +13,8 @@
   "edit": {
     "title": "Edit Profile",
     "phoneNumber": "Phone Number",
-    "phoneNumberPlaceholder": "+886-912-345-678",
+    "phoneNumberPlaceholder": "Enter your phone number (e.g., +123 456 7890)",
+    "invalidPhoneNumber": "Invalid phone number format",
     "locale": "Preferred Language",
     "selectLocale": "Select Language",
     "timeZone": "Time Zone",

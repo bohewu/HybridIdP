@@ -13,7 +13,8 @@
   "edit": {
     "title": "編輯個人檔案",
     "phoneNumber": "電話號碼",
-    "phoneNumberPlaceholder": "+886-912-345-678",
+    "phoneNumberPlaceholder": "輸入您的電話號碼 (例如：0912-345-678)",
+    "invalidPhoneNumber": "電話號碼格式無效",
     "locale": "偏好語言",
     "selectLocale": "選擇語言",
     "timeZone": "時區",
