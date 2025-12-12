@@ -10,11 +10,15 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<ApplicationRole> RoleManager
 @inject IOptions<BrandingOptions> BrandingOptions
+@{
+    var currentCulture = System.Globalization.CultureInfo.CurrentUICulture.Name;
+}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@currentCulture">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="locale" content="@currentCulture" />
     <title>@ViewData["Title"] - @BrandingOptions.Value.ProductName</title>
     @if (User.Identity?.IsAuthenticated == true)
     {

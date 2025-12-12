@@ -31,7 +31,11 @@
     "fullName": "Full Name",
     "identityType": "Identity Document",
     "emailVerified": "Email Verified",
-    "identityVerified": "Identity Verified"
+    "identityVerified": "Identity Verified",
+    "verified": "Verified",
+    "nationalId": "National ID",
+    "passport": "Passport Number",
+    "residentCert": "Resident Certificate"
   },
   "changePassword": {
     "title": "Change Password",
