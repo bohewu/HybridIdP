@@ -31,4 +31,9 @@ public class SecurityPolicyDto
     public int AbnormalLoginHistoryCount { get; set; } = 10;
 
     public bool BlockAbnormalLogin { get; set; } = false;
+    
+    public bool AllowSelfPasswordChange { get; set; } = true;
+    
+    public DateTime UpdatedUtc { get; set; }
+    public string? UpdatedBy { get; set; }
 }

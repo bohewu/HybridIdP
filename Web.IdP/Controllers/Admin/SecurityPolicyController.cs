@@ -38,7 +38,10 @@ public class SecurityPolicyController : ControllerBase
             MaxFailedAccessAttempts = policy.MaxFailedAccessAttempts,
             LockoutDurationMinutes = policy.LockoutDurationMinutes,
             AbnormalLoginHistoryCount = policy.AbnormalLoginHistoryCount,
-            BlockAbnormalLogin = policy.BlockAbnormalLogin
+            BlockAbnormalLogin = policy.BlockAbnormalLogin,
+            AllowSelfPasswordChange = policy.AllowSelfPasswordChange,
+            UpdatedUtc = policy.UpdatedUtc,
+            UpdatedBy = policy.UpdatedBy
         };
         
         return Ok(dto);
