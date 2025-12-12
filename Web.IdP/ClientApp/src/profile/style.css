@@ -1,5 +1,5 @@
 /* Do NOT import admin/style.css because it includes @tailwind base which resets Bootstrap styles */
-/* @tailwind base;  <-- DISABLED to prevent conflict with Bootstrap */
+/* We also avoid @tailwind base here for the same reason */
 @tailwind components;
 @tailwind utilities;
 
