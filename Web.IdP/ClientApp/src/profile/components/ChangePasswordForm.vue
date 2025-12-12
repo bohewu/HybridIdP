@@ -61,7 +61,7 @@
               v-model="form.currentPassword"
               type="password"
               required
-              class="block w-full pl-10 border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
+              class="block w-full pl-10 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
               :placeholder="t('profile.changePassword.currentPasswordPlaceholder')"
             />
           </div>
@@ -81,11 +81,37 @@
               v-model="form.newPassword"
               type="password"
               required
-              class="block w-full pl-10 border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
+              class="block w-full pl-10 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
               :placeholder="t('profile.changePassword.newPasswordPlaceholder')"
             />
           </div>
-          <p class="mt-1 text-xs text-gray-500">{{ t('profile.changePassword.passwordRules') }}</p>
+          
+          <!-- Password Requirements Checklist -->
+          <div v-if="policy && form.newPassword" class="mt-2 space-y-1">
+            <div class="text-xs font-medium text-gray-600 mb-1">{{ t('profile.changePassword.requirements') }}</div>
+            <div class="grid grid-cols-2 gap-1 text-xs">
+              <div :class="passwordChecks.minLength ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
+                <i :class="passwordChecks.minLength ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+                {{ t('profile.changePassword.minLength', { length: policy.minPasswordLength }) }}
+              </div>
+              <div v-if="policy.requireUppercase" :class="passwordChecks.uppercase ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
+                <i :class="passwordChecks.uppercase ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+                {{ t('profile.changePassword.requireUppercase') }}
+              </div>
+              <div v-if="policy.requireLowercase" :class="passwordChecks.lowercase ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
+                <i :class="passwordChecks.lowercase ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+                {{ t('profile.changePassword.requireLowercase') }}
+              </div>
+              <div v-if="policy.requireDigit" :class="passwordChecks.digit ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
+                <i :class="passwordChecks.digit ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+                {{ t('profile.changePassword.requireDigit') }}
+              </div>
+              <div v-if="policy.requireNonAlphanumeric" :class="passwordChecks.special ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
+                <i :class="passwordChecks.special ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+                {{ t('profile.changePassword.requireSpecial') }}
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Confirm Password -->
@@ -102,9 +128,20 @@
               v-model="form.confirmPassword"
               type="password"
               required
-              class="block w-full pl-10 border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
+              class="block w-full pl-10 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
               :placeholder="t('profile.changePassword.confirmPasswordPlaceholder')"
             />
+          </div>
+          <!-- Password match indicator -->
+          <div v-if="form.confirmPassword" class="mt-1 text-xs">
+            <span v-if="passwordsMatch" class="text-green-600 flex items-center gap-1">
+              <i class="bi bi-check-circle-fill"></i>
+              {{ t('profile.changePassword.passwordsMatch') }}
+            </span>
+            <span v-else class="text-red-600 flex items-center gap-1">
+              <i class="bi bi-x-circle-fill"></i>
+              {{ t('profile.changePassword.passwordMismatch') }}
+            </span>
           </div>
         </div>
 
@@ -112,7 +149,7 @@
         <div class="flex justify-end pt-2 border-t border-gray-100 mt-4">
           <button 
             type="submit"
-            :disabled="loading"
+            :disabled="loading || !isFormValid"
             class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <i v-if="loading" class="bi bi-arrow-repeat animate-spin mr-2"></i>
@@ -126,7 +163,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps } from 'vue'
+import { ref, computed, onMounted, defineProps } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
@@ -148,11 +185,60 @@ const { t } = useI18n()
 const loading = ref(false)
 const showSuccess = ref(false)
 const errors = ref([])
+const policy = ref(null)
 
 const form = ref({
   currentPassword: '',
   newPassword: '',
   confirmPassword: ''
+})
+
+// Fetch security policy on mount
+onMounted(async () => {
+  try {
+    const res = await fetch('/api/admin/security/policies', { credentials: 'include' })
+    if (res.ok) {
+      policy.value = await res.json()
+    }
+  } catch (e) {
+    console.error('Failed to fetch security policy:', e)
+  }
+})
+
+// Real-time password validation checks
+const passwordChecks = computed(() => {
+  const pwd = form.value.newPassword
+  if (!policy.value || !pwd) {
+    return { minLength: false, uppercase: false, lowercase: false, digit: false, special: false }
+  }
+  return {
+    minLength: pwd.length >= policy.value.minPasswordLength,
+    uppercase: !policy.value.requireUppercase || /[A-Z]/.test(pwd),
+    lowercase: !policy.value.requireLowercase || /[a-z]/.test(pwd),
+    digit: !policy.value.requireDigit || /[0-9]/.test(pwd),
+    special: !policy.value.requireNonAlphanumeric || /[^a-zA-Z0-9]/.test(pwd)
+  }
+})
+
+// Check if passwords match
+const passwordsMatch = computed(() => {
+  return form.value.newPassword && form.value.confirmPassword && 
+         form.value.newPassword === form.value.confirmPassword
+})
+
+// Check if all validations pass
+const allPasswordChecksPass = computed(() => {
+  const checks = passwordChecks.value
+  return checks.minLength && checks.uppercase && checks.lowercase && checks.digit && checks.special
+})
+
+// Form is valid when all fields filled, password meets requirements, and passwords match
+const isFormValid = computed(() => {
+  return form.value.currentPassword && 
+         form.value.newPassword && 
+         form.value.confirmPassword &&
+         passwordsMatch.value &&
+         allPasswordChecksPass.value
 })
 
 const resetForm = () => {
@@ -170,8 +256,13 @@ const handleSubmit = async () => {
   showSuccess.value = false
 
   // Client-side validation
-  if (form.value.newPassword !== form.value.confirmPassword) {
+  if (!passwordsMatch.value) {
     errors.value.push(t('profile.changePassword.passwordMismatch'))
+    return
+  }
+
+  if (!allPasswordChecksPass.value) {
+    errors.value.push(t('profile.changePassword.passwordRequirementsNotMet'))
     return
   }
 
