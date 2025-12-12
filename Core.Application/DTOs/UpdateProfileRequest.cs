@@ -10,7 +10,10 @@ public class UpdateProfileRequest
     /// <summary>
     /// Phone number (updates Person.PhoneNumber)
     /// </summary>
-    [Phone]
+    /// <summary>
+    /// Phone number (updates Person.PhoneNumber)
+    /// </summary>
+    [MaxLength(50)]
     public string? PhoneNumber { get; set; }
     
     /// <summary>
