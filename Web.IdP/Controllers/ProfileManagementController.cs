@@ -19,7 +19,7 @@ namespace Web.IdP.Controllers;
 /// </summary>
 [Authorize]
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/profile")]
 public class ProfileManagementController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
