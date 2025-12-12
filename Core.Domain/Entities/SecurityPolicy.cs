@@ -17,6 +17,13 @@ namespace Core.Domain.Entities
         public int LockoutDurationMinutes { get; set; } = 15;
         public int AbnormalLoginHistoryCount { get; set; } = 10; // Number of recent logins to check for abnormalities
         public bool BlockAbnormalLogin { get; set; } = false; // Whether to block login if abnormal
+        
+        /// <summary>
+        /// Whether users are allowed to change their own passwords via profile page.
+        /// When false, only admins can reset passwords.
+        /// </summary>
+        public bool AllowSelfPasswordChange { get; set; } = true;
+        
         public DateTime UpdatedUtc { get; set; }
         public string? UpdatedBy { get; set; }
     }
