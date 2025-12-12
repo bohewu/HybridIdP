@@ -12,38 +12,58 @@
     "localization": "語系"
   },
   "items": {
-    "clients.read": "讀取客戶端",
-    "clients.create": "建立客戶端",
-    "clients.update": "更新客戶端",
-    "clients.delete": "刪除客戶端",
-    "scopes.read": "讀取範圍",
-    "scopes.create": "建立範圍",
-    "scopes.update": "更新範圍",
-    "scopes.delete": "刪除範圍",
-    "users.read": "讀取使用者",
-    "users.create": "建立使用者",
-    "users.update": "更新使用者",
-    "users.delete": "刪除使用者",
-    "users.impersonate": "模擬使用者",
-    "roles.read": "讀取角色",
-    "roles.create": "建立角色",
-    "roles.update": "更新角色",
-    "roles.delete": "刪除角色",
-    "claims.read": "讀取聲明",
-    "claims.create": "建立聲明",
-    "claims.update": "更新聲明",
-    "claims.delete": "刪除聲明",
-    "persons.read": "讀取人員",
-    "persons.create": "建立人員",
-    "persons.update": "更新人員",
-    "persons.delete": "刪除人員",
-    "audit.read": "讀取稽核紀錄",
-    "monitoring.read": "讀取監控",
-    "settings.read": "讀取設定",
-    "settings.update": "更新設定",
-    "localization.read": "讀取語系資源",
-    "localization.create": "建立語系資源",
-    "localization.update": "更新語系資源",
-    "localization.delete": "刪除語系資源"
+    "clients": {
+      "read": "讀取客戶端",
+      "create": "建立客戶端",
+      "update": "更新客戶端",
+      "delete": "刪除客戶端"
+    },
+    "scopes": {
+      "read": "讀取範圍",
+      "create": "建立範圍",
+      "update": "更新範圍",
+      "delete": "刪除範圍"
+    },
+    "users": {
+      "read": "讀取使用者",
+      "create": "建立使用者",
+      "update": "更新使用者",
+      "delete": "刪除使用者",
+      "impersonate": "模擬使用者"
+    },
+    "roles": {
+      "read": "讀取角色",
+      "create": "建立角色",
+      "update": "更新角色",
+      "delete": "刪除角色"
+    },
+    "claims": {
+      "read": "讀取聲明",
+      "create": "建立聲明",
+      "update": "更新聲明",
+      "delete": "刪除聲明"
+    },
+    "persons": {
+      "read": "讀取人員",
+      "create": "建立人員",
+      "update": "更新人員",
+      "delete": "刪除人員"
+    },
+    "audit": {
+      "read": "讀取稽核紀錄"
+    },
+    "monitoring": {
+      "read": "讀取監控"
+    },
+    "settings": {
+      "read": "讀取設定",
+      "update": "更新設定"
+    },
+    "localization": {
+      "read": "讀取語系資源",
+      "create": "建立語系資源",
+      "update": "更新語系資源",
+      "delete": "刪除語系資源"
+    }
   }
 }
