@@ -39,17 +39,39 @@
             <dd class="mt-1 text-sm text-gray-900 font-medium pl-6">{{ profile.personFullName }}</dd>
           </div>
 
-          <div class="sm:col-span-1">
+          <div v-if="profile.person.nationalId" class="sm:col-span-1">
             <dt class="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <i class="bi bi-card-text text-gray-400"></i>
-              {{ t('profile.info.identityType') }}
+              <i class="bi bi-person-badge text-gray-400"></i>
+              {{ t('profile.info.nationalId') }}
             </dt>
-            <dd class="mt-1 text-sm text-gray-900 font-medium pl-6">
-              {{ profile.identityDocumentType || '-' }}
-              <span v-if="profile.identityVerified" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                 <i class="bi bi-patch-check-fill mr-1"></i> Verified
-              </span>
-            </dd>
+            <dd class="mt-1 text-sm text-gray-900 font-medium pl-6 tracking-wide">{{ profile.person.nationalId }}</dd>
+          </div>
+
+          <div v-if="profile.person.passportNumber" class="sm:col-span-1">
+            <dt class="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <i class="bi bi-airplane text-gray-400"></i>
+              {{ t('profile.info.passport') }}
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 font-medium pl-6 tracking-wide">{{ profile.person.passportNumber }}</dd>
+          </div>
+
+          <div v-if="profile.person.residentCertificateNumber" class="sm:col-span-1">
+            <dt class="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <i class="bi bi-postcard text-gray-400"></i>
+              {{ t('profile.info.residentCert') }}
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 font-medium pl-6 tracking-wide">{{ profile.person.residentCertificateNumber }}</dd>
+          </div>
+
+          <!-- Identity Verification Status Check (Global) -->
+          <div v-if="profile.identityVerified" class="sm:col-span-2 pt-2">
+             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                 <i class="bi bi-patch-check-fill mr-1.5"></i> 
+                 {{ t('profile.info.identityVerified') }}
+                 <span v-if="profile.identityDocumentType" class="ml-1 text-green-700 opacity-75">
+                    ({{ profile.identityDocumentType }})
+                 </span>
+             </span>
           </div>
         </template>
       </dl>

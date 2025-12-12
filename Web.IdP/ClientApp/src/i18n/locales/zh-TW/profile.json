@@ -31,7 +31,11 @@
     "fullName": "全名",
     "identityType": "身分證件類型",
     "emailVerified": "Email 已驗證",
-    "identityVerified": "身分已驗證"
+    "identityVerified": "身分已驗證",
+    "verified": "已驗證",
+    "nationalId": "身分證字號",
+    "passport": "護照號碼",
+    "residentCert": "居留證號"
   },
   "changePassword": {
     "title": "變更密碼",
