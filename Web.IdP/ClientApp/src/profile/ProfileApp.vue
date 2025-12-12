@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 sm:px-6 lg:px-8 py-8"
+  <div class="px-4 sm:px-6 lg:px-8 py-8 mx-auto max-w-7xl"
        v-loading="{ loading, overlay: true, message: t('profile.loading') }">
     <!-- Page Header -->
     <div class="mb-8">
