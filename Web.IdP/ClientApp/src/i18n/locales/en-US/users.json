@@ -89,14 +89,16 @@
     "uppercase": "At least one uppercase letter",
     "lowercase": "At least one lowercase letter",
     "digit": "At least one digit",
-    "specialChar": "At least one special character"
+    "specialChar": "At least one special character",
+    "minCharacterTypes": "At least {n} character types"
   },
   "passwordErrors": {
     "minLength": "Password must be at least {n} characters long",
     "uppercase": "Password must contain at least one uppercase letter",
     "lowercase": "Password must contain at least one lowercase letter",
     "digit": "Password must contain at least one digit",
-    "specialChar": "Password must contain at least one special character"
+    "specialChar": "Password must contain at least one special character",
+    "minCharacterTypes": "Password must contain at least {n} different character types"
   },
   "confirmations": {
     "deactivate": "Are you sure you want to deactivate {email}?",

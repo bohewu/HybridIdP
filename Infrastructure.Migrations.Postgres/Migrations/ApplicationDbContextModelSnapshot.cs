@@ -741,6 +741,9 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Property<int>("AbnormalLoginHistoryCount")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("AllowSelfPasswordChange")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("BlockAbnormalLogin")
                         .HasColumnType("boolean");
 
@@ -748,6 +751,9 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("MaxFailedAccessAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MinCharacterTypes")
                         .HasColumnType("integer");
 
                     b.Property<int>("MinPasswordAgeDays")

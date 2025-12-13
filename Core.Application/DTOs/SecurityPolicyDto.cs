@@ -6,6 +6,9 @@ public class SecurityPolicyDto
 {
     [Range(6, 128)]
     public int MinPasswordLength { get; set; }
+    
+    [Range(2, 4)]
+    public int MinCharacterTypes { get; set; } = 3;
 
     public bool RequireUppercase { get; set; }
     public bool RequireLowercase { get; set; }

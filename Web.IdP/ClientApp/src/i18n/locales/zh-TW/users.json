@@ -89,14 +89,16 @@
     "uppercase": "至少一個大寫字母",
     "lowercase": "至少一個小寫字母",
     "digit": "至少一個數字",
-    "specialChar": "至少一個特殊字元"
+    "specialChar": "至少一個特殊字元",
+    "minCharacterTypes": "至少 {n} 種字元類型"
   },
   "passwordErrors": {
     "minLength": "密碼長度至少需 {n} 個字元",
     "uppercase": "密碼必須包含至少一個大寫字母",
     "lowercase": "密碼必須包含至少一個小寫字母",
     "digit": "密碼必須包含至少一個數字",
-    "specialChar": "密碼必須包含至少一個特殊字元"
+    "specialChar": "密碼必須包含至少一個特殊字元",
+    "minCharacterTypes": "密碼必須包含至少 {n} 種不同的字元類型"
   },
   "confirmations": {
     "deactivate": "確定要停用 {email} 嗎？",

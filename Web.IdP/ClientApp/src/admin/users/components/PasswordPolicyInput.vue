@@ -21,13 +21,17 @@ const password = ref('')
 const confirmPassword = ref('')
 const errors = ref({})
 
+import { usePasswordValidation } from '@/composables/usePasswordValidation'
+
+const { validatePasswordComplexity, getPasswordRequirements } = usePasswordValidation()
+
 const validate = () => {
   const newErrors = {}
   
   if (!props.isEditMode && !password.value) {
     newErrors.password = t('users.passwordRequired')
   } else if (password.value) {
-    const complexityErrors = validatePasswordComplexity(password.value)
+    const complexityErrors = validatePasswordComplexity(password.value, props.policy)
     if (complexityErrors.length > 0) {
       newErrors.password = complexityErrors.join('; ')
     }
@@ -45,62 +49,8 @@ const validate = () => {
   return Object.keys(newErrors).length === 0
 }
 
-const validatePasswordComplexity = (pwd) => {
-  const validationErrors = []
-  if (!props.policy) return []
-
-  if (props.policy.minPasswordLength && pwd.length < props.policy.minPasswordLength) {
-    validationErrors.push(t('users.passwordErrors.minLength', { n: props.policy.minPasswordLength }))
-  }
-  if (props.policy.requireUppercase && !/[A-Z]/.test(pwd)) {
-    validationErrors.push(t('users.passwordErrors.uppercase'))
-  }
-  if (props.policy.requireLowercase && !/[a-z]/.test(pwd)) {
-    validationErrors.push(t('users.passwordErrors.lowercase'))
-  }
-  if (props.policy.requireDigit && !/[0-9]/.test(pwd)) {
-    validationErrors.push(t('users.passwordErrors.digit'))
-  }
-  if (props.policy.requireNonAlphanumeric && !/[^A-Za-z0-9]/.test(pwd)) {
-    validationErrors.push(t('users.passwordErrors.specialChar'))
-  }
-  return validationErrors
-}
-
 const passwordRequirements = computed(() => {
-  if (!props.policy) return []
-  const reqs = []
-  if (props.policy.minPasswordLength > 0) {
-    reqs.push({
-      text: t('users.passwordReqs.minLength', { n: props.policy.minPasswordLength }),
-      valid: password.value.length >= props.policy.minPasswordLength
-    })
-  }
-  if (props.policy.requireUppercase) {
-    reqs.push({
-      text: t('users.passwordReqs.uppercase'),
-      valid: /[A-Z]/.test(password.value)
-    })
-  }
-  if (props.policy.requireLowercase) {
-    reqs.push({
-      text: t('users.passwordReqs.lowercase'),
-      valid: /[a-z]/.test(password.value)
-    })
-  }
-  if (props.policy.requireDigit) {
-    reqs.push({
-      text: t('users.passwordReqs.digit'),
-      valid: /[0-9]/.test(password.value)
-    })
-  }
-  if (props.policy.requireNonAlphanumeric) {
-    reqs.push({
-      text: t('users.passwordReqs.specialChar'),
-      valid: /[^A-Za-z0-9]/.test(password.value)
-    })
-  }
-  return reqs
+  return getPasswordRequirements(password.value, props.policy)
 })
 
 defineExpose({ validate })

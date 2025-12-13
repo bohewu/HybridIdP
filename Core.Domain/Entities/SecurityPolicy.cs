@@ -9,6 +9,7 @@ namespace Core.Domain.Entities
         public bool RequireUppercase { get; set; } = true;
         public bool RequireLowercase { get; set; } = true;
         public bool RequireDigit { get; set; } = true;
+        public int MinCharacterTypes { get; set; } = 3;
         public bool RequireNonAlphanumeric { get; set; } = true;
         public int PasswordHistoryCount { get; set; } = 5; // 0 means no history check
         public int PasswordExpirationDays { get; set; } = 180; // 0 means no expiration

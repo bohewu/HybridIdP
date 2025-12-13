@@ -62,6 +62,21 @@ namespace HybridIdP.Infrastructure.Identity
                 errors.Add(new IdentityError { Code = nameof(IdentityErrorDescriber.PasswordRequiresNonAlphanumeric), Description = "Passwords must have at least one non alphanumeric character." });
             }
 
+            // Minimum Character Types
+            if (policy.MinCharacterTypes > 0)
+            {
+                int matchCount = 0;
+                if (password.Any(char.IsUpper)) matchCount++;
+                if (password.Any(char.IsLower)) matchCount++;
+                if (password.Any(char.IsDigit)) matchCount++;
+                if (password.Any(c => !char.IsLetterOrDigit(c))) matchCount++;
+
+                if (matchCount < policy.MinCharacterTypes)
+                {
+                    errors.Add(new IdentityError { Code = "PasswordTooSimple", Description = $"Passwords must contain at least {policy.MinCharacterTypes} different character types (Uppercase, Lowercase, Digit, Non-alphanumeric)." });
+                }
+            }
+
             // Password History Check
             if (policy.PasswordHistoryCount > 0 && user.PasswordHash != null)
             {
