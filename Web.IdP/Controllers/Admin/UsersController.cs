@@ -367,14 +367,12 @@ public class UsersController : ControllerBase
     {
         try
         {
-            // Only allow self revocation or admins to revoke sessions for other users
+            // Allow if [HasPermission] passed (Admins) or if Self (if checks allowed looser access, but current attribute is strict)
+            // For M2M, IsInRole("Admin") is false, but they have the scope. 
+            // Since [HasPermission(Users.Update)] guards this, we can trust the caller has permission.
+            // Self-revocation logic would require relaxed attribute, but for now assuming Admin-only or M2M-Admin.
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var isAdmin = User.IsInRole(AuthConstants.Roles.Admin);
-            if (!isAdmin && !string.Equals(currentUserId, id.ToString(), StringComparison.OrdinalIgnoreCase))
-            {
-                // Authenticated but not allowed to act on another user's sessions
-                return Forbid();
-            }
+
             var success = await _sessionService.RevokeSessionAsync(id, authorizationId);
             if (!success)
             {
@@ -422,13 +420,9 @@ public class UsersController : ControllerBase
     {
         try
         {
-            // Only allow self revocation of all sessions or admins to act on other users
+            // [HasPermission] already validated access.
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var isAdmin = User.IsInRole(AuthConstants.Roles.Admin);
-            if (!isAdmin && !string.Equals(currentUserId, id.ToString(), StringComparison.OrdinalIgnoreCase))
-            {
-                return Forbid();
-            }
+
             var count = await _sessionService.RevokeAllSessionsAsync(id);
             return Ok(new { revoked = count });
         }
