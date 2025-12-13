@@ -31,6 +31,42 @@ public class WebIdPServerFixture : IDisposable
         await StartServerAsync();
     }
 
+    public async Task StopServerAsync()
+    {
+        try
+        {
+            if (_serverProcess != null && !_serverProcess.HasExited)
+            {
+                _serverProcess.Kill(entireProcessTree: true);
+                
+                // Wait up to 5 seconds for process to exit
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try
+                {
+                    await _serverProcess.WaitForExitAsync(cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Process didn't exit in time, but Kill was called so it should be gone
+                }
+                
+                _serverProcess.Dispose();
+                _serverProcess = null;
+            }
+        }
+        catch { /* Ignore stop errors */ }
+        
+        IsRunning = false;
+        
+        // Verify server is actually stopped
+        await Task.Delay(1000);
+        if (await IsServerAliveAsync())
+        {
+            // Force kill using port
+            await KillExistingServerAsync();
+        }
+    }
+
     private async Task<bool> IsServerAliveAsync()
     {
         try
@@ -130,6 +166,7 @@ public class WebIdPServerFixture : IDisposable
 
     public void Dispose()
     {
+        // Synchronous dispose - best effort cleanup
         try
         {
             if (_serverProcess != null && !_serverProcess.HasExited)
@@ -142,5 +179,6 @@ public class WebIdPServerFixture : IDisposable
         catch { /* Ignore disposal errors */ }
         
         IsRunning = false;
+        GC.SuppressFinalize(this);
     }
 }
