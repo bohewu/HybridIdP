@@ -100,6 +100,202 @@ public class AdminApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
     // NOTE: Admin API requires specific scopes that testclient-m2m doesn't have
     // Skipping authenticated Admin API tests for now - require dedicated admin client
     // See TEST_DATA_CLEANUP.md for future CRUD test patterns
+
+    // ===== OIDC Endpoints Coverage =====
+    
+    [Fact]
+    public async Task Connect_Userinfo_WithoutAuth_Returns401()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/connect/userinfo");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Connect_Introspection_WithoutAuth_Returns401Or404()
+    {
+        // Act
+        var response = await _httpClient.PostAsync("/connect/introspection", new FormUrlEncodedContent(new Dictionary<string, string>()));
+
+        // Assert - May return 401 or 404 depending on implementation
+        Assert.True(response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Connect_Revocation_WithoutClientId_Returns4xx()
+    {
+        // Act
+        var response = await _httpClient.PostAsync("/connect/revocation", new FormUrlEncodedContent(new Dictionary<string, string>()));
+
+        // Assert - Should return 4xx (400/401/404)
+        Assert.True((int)response.StatusCode >= 400 && (int)response.StatusCode < 500);
+    }
+
+    [Fact]
+    public async Task Connect_Device_WithoutClientId_Returns4xx()
+    {
+        // Act
+        var response = await _httpClient.PostAsync("/connect/device", new FormUrlEncodedContent(new Dictionary<string, string>()));
+
+        // Assert - Should return 4xx
+        Assert.True((int)response.StatusCode >= 400 && (int)response.StatusCode < 500);
+    }
+
+    [Fact]
+    public async Task Connect_Logout_Post_Returns4xx()
+    {
+        // Act
+        var response = await _httpClient.PostAsync("/connect/logout", new FormUrlEncodedContent(new Dictionary<string, string>()));
+
+        // Assert - Should return 4xx
+        Assert.True((int)response.StatusCode >= 400 && (int)response.StatusCode < 500);
+    }
+
+    // ===== Admin API Endpoints Coverage (GET - Read-only, require auth) =====
+    
+    [Fact]
+    public async Task AdminApi_Roles_WithoutAuth_Returns401()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/roles");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminApi_Clients_WithoutAuth_Returns401()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/clients");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminApi_Scopes_WithoutAuth_Returns401()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/scopes");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminApi_Settings_WithoutAuth_Returns401()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/settings");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminApi_People_WithoutAuth_Returns401()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/people");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminApi_Audit_WithoutAuth_Returns4xx()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/audit");
+
+        // Assert - May be 401 or 404
+        Assert.True(response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminApi_Dashboard_WithoutAuth_Returns4xx()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/dashboard");
+
+        // Assert - May be 401 or 404
+        Assert.True(response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminApi_Resources_WithoutAuth_Returns401()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/resources");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminApi_Permissions_WithoutAuth_Returns4xx()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/permissions");
+
+        // Assert - May be 401 or 404
+        Assert.True(response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminApi_Localization_WithoutAuth_Returns4xx()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/localization");
+
+        // Assert - May be 401 or 404
+        Assert.True(response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminApi_Claims_WithoutAuth_Returns4xx()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/claims");
+
+        // Assert - May be 401 or 404
+        Assert.True(response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AdminApi_Monitoring_WithoutAuth_Returns4xx()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/monitoring");
+
+        // Assert - May be 401 or 404
+        Assert.True(response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.NotFound);
+    }
+
+    // ===== Account Endpoints Coverage =====
+    
+    [Fact]
+    public async Task Account_Login_Get_ReturnsOk()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/Account/Login");
+
+        // Assert - Should return OK or Redirect
+        Assert.True(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Redirect);
+    }
+
+    [Fact]
+    public async Task Account_Logout_Get_ReturnsOk()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/Account/Logout");
+
+        // Assert
+        Assert.True(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Redirect);
+    }
     
     // Helper to get M2M access token
     private async Task<string> GetM2MTokenAsync()
