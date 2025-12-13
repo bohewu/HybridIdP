@@ -76,6 +76,7 @@ defineExpose({ validate })
             :required="!isEditMode"
             :placeholder="$t('users.password')"
             @input="validate"
+            data-test-id="user-password-input"
         />
         <p v-if="errors.password" class="mt-1.5 text-sm text-red-600">{{ errors.password }}</p>
         <p v-if="isEditMode" class="mt-1.5 text-xs text-gray-500">
@@ -99,6 +100,7 @@ defineExpose({ validate })
             :required="!isEditMode"
             :placeholder="$t('users.confirmPassword')"
             @input="validate"
+            data-test-id="user-confirm-password-input"
         />
         <p v-if="errors.confirmPassword" class="mt-1.5 text-sm text-red-600">
           {{ errors.confirmPassword }}

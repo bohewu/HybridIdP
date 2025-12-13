@@ -28,15 +28,15 @@
       <div class="mb-8 bg-white rounded-lg shadow-sm p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('dashboard.quickStats') }}</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg">
+          <div class="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg" data-test-id="dashboard-stats-clients">
             <div class="text-3xl font-bold text-indigo-600">{{ stats.totalClients }}</div>
             <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalClients') }}</div>
           </div>
-          <div class="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
+          <div class="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg" data-test-id="dashboard-stats-scopes">
             <div class="text-3xl font-bold text-green-600">{{ stats.totalScopes }}</div>
             <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalScopes') }}</div>
           </div>
-          <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
+          <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg" data-test-id="dashboard-stats-users">
             <div class="text-3xl font-bold text-blue-600">{{ stats.totalUsers }}</div>
             <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalUsers') }}</div>
           </div>
@@ -50,7 +50,9 @@
             <button 
                 @click="fetchHealth" 
                 :disabled="healthLoading"
-                class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                data-test-id="dashboard-health-refresh"
+            >
                 <svg v-if="healthLoading" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
