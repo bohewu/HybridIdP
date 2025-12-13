@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
+
+// Path to store authenticated session state
+const STORAGE_STATE = path.join(__dirname, '.auth', 'admin.json');
 
 export default defineConfig({
   // Per-test timeout: increase to 90s for E2E flows with OAuth redirects
@@ -16,6 +20,13 @@ export default defineConfig({
   },
   globalSetup: require.resolve('./global-setup'),
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // Main test project - uses stored auth state from global-setup
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: STORAGE_STATE,
+      },
+    },
   ],
 });
