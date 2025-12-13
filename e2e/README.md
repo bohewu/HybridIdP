@@ -1,390 +1,315 @@
-# E2E tests (Playwright) — Quick guide
+# E2E Tests (Playwright) - Hybrid Testing Strategy
 
-This folder contains Playwright-based end-to-end tests for HybridAuth IdP.
+## Overview
 
-Key points / best practices
-- Prefer tests in `tests/feature-people` for person/account workflows — those are the canonical, actively maintained scenarios.
-- Use helpers in `tests/helpers/admin.ts` for API-driven operations (create users, persons, link accounts, etc.). Do not modify `admin.ts` unless you're adding new stable helpers — it's used by many test suites.
-- When adding new tests for account linking / multi-account login, reuse the helpers and the `feature-people` patterns rather than duplicating full flows.
+This folder contains Playwright-based E2E tests for HybridIdP using a **Hybrid Testing Strategy**:
+- **API** for test setup and teardown (fast, reliable)
+- **UI** for critical user flows and visual validation
 
-Run tests
-- Run a single test file (headed or headless):
-  - Headless (fast):
-    npx playwright test tests/feature-people/admin-people-account-linking.spec.ts -g "Multi-account login - two accounts linked to same verified person"
-  - Headed (useful for debugging):
-    npx playwright test tests/feature-people/admin-people-account-linking.spec.ts -g "Multi-account login - two accounts linked to same verified person" --headed
+## Quick Start
 
-- Run a whole feature folder (headless, trace on failure):
-    npx playwright test tests/feature-people --workers=1 --trace=on
-
-Troubleshooting
-- If login fails in tests, check:
-  - Users are created with a role (the IdP currently denies sign-in for users with zero roles)
-  - User records have EmailConfirmed = true and IsActive = true when created by test helpers
-  - The test environment has the IdP accessible at `https://localhost:7035` and the TestClient at `https://localhost:7001` if used
-
-If in doubt, re-use the working `feature-people` tests as your example. They cover person, identity, linked accounts, and multi-account login thoroughly.
-# E2E Tests (Playwright)
-
-This folder contains Playwright tests for the HybridIdP solution.
-
-Prerequisites:
-
+### Prerequisites
 - Node.js 18+
-- Browsers: `npm run install:browsers`
-- The apps are running locally:
-  - IdP: <https://localhost:7035>
-  - TestClient: <https://localhost:7001>
+- Apps running locally:
+  - IdP: `https://localhost:7035`
+  - TestClient: `https://localhost:7001`
+  - Vite dev server: `http://localhost:5173` (optional, for UI tests)
 
-## ⚠️ Important: Clean Test Data Before Running Tests
-
-**Before running E2E tests, clean up accumulated test data to avoid conflicts and ensure consistent results.**
-
-Run cleanup scripts from the repository root:
-
+### Install & Run
 ```powershell
-cd C:\repos\HybridIdP
-
-# Clean all test data (recommended)
-.\cleanup-users-mssql.ps1    # Remove test users/persons
-.\cleanup-claims-mssql.ps1   # Remove test claims (e2e_*)
-.\cleanup-roles-mssql.ps1    # Remove test roles (e2e_*)
-.\cleanup-scopes-mssql.ps1   # Remove test scopes (e2e_*, diag-scope_*)
-```
-
-**When to clean:**
-- Before running full test suite
-- Before running specific feature tests (People, Claims, Roles, Scopes, Clients)
-- When seeing "already exists" or "not found" errors
-- After failed test runs that left orphaned data
-
-See [TEST_DATA_CLEANUP.md](./TEST_DATA_CLEANUP.md) for detailed cleanup documentation.
-
-Check if apps are already running:
-
-PowerShell (recommended for this repo):
-
-```powershell
-# quick TCP check (works in PowerShell Core as well)
-Test-NetConnection -ComputerName 'localhost' -Port 7035
-Test-NetConnection -ComputerName 'localhost' -Port 7001
-
-# quick HTTP check (uses Invoke-WebRequest; will error on self-signed cert)
-try {
-  Invoke-WebRequest -Uri 'https://localhost:7035' -UseBasicParsing -ErrorAction Stop | Out-Null
-  Write-Host "IdP appears to be running: https://localhost:7035"
-} catch {
-  Write-Host "IdP not reachable - start it using the command below in a separate terminal"
-}
-try {
-  Invoke-WebRequest -Uri 'https://localhost:7001' -UseBasicParsing -ErrorAction Stop | Out-Null
-  Write-Host "TestClient appears to be running: https://localhost:7001"
-} catch {
-  Write-Host "TestClient not reachable - start it using the command below in a separate terminal"
-}
-```
-
-If either app is not running, open two separate shells (PowerShell) and run the following commands (in their respective folders):
-
-PowerShell terminal 1 (IdP):
-
-```powershell
-cd Web.IdP
-dotnet run --launch-profile https
-```
-
-PowerShell terminal 2 (TestClient):
-
-```powershell
-cd TestClient
-dotnet run --launch-profile https
-```
-
-If you also use the client-side dev server for Playwright UI tests, start Vite in a third terminal:
-
-```powershell
-cd Web.IdP/ClientApp
-npm run dev
-```
-
-Install dependencies:
-
-```powershell
-cd .\e2e
+cd e2e
 npm install
 npm run install:browsers
+npm test                # Headless
+npm run test:headed     # Headed (for debugging)
 ```
 
-Run tests (headless):
+## Hybrid Testing Pattern
 
+### Core Principles
+1. **Global Auth**: Authenticate once in `global-setup.ts`, reuse via storage state
+2. **API for Setup/Teardown**: Use `api` fixture for creating/deleting test data
+3. **UI for Verification**: Test critical user flows and visual elements via UI
+4. **Dynamic Data**: Zero pre-existing data dependencies - create what you need
+
+### Example Test
+```typescript
+import { test, expect } from './fixtures';
+
+test('Create and verify user', async ({ page, api }) => {
+  // 1. Setup (API)
+  const user = await api.users.create({
+    email: 'test@example.com',
+    userName: 'test@example.com',
+    firstName: 'Test',
+    lastName: 'User',
+    password: 'Test@123'
+  });
+
+  // 2. Navigate and verify (UI)
+  await page.goto('https://localhost:7035/Admin/Users');
+  
+  // 3. Assert (data-test-id for reliability)
+  await expect(page.locator(`[data-test-id="user-row-${user.id}"]`))
+    .toBeVisible();
+
+  // 4. Cleanup (API)
+  await api.users.deleteUser(user.id);
+});
+```
+
+## Project Structure
+
+```
+e2e/
+├── tests/
+│   ├── fixtures.ts              # Custom fixtures (api, page)
+│   ├── global-setup.ts          # One-time admin authentication
+│   ├── helpers/
+│   │   ├── api-client.ts        # API client (UsersApi, RolesApi, etc.)
+│   │   └── admin.ts             # Legacy UI helpers (being phased out)
+│   └── feature-*/               # Test files organized by feature
+├── .auth/
+│   └── admin.json               # Saved admin authentication state
+└── playwright.config.ts
+```
+
+## API Clients
+
+### Available APIs
+- **`api.users`**: Create, list, delete users
+- **`api.roles`**: Create, list, delete roles
+- **`api.clients`**: Create, delete clients
+
+### Example Usage
+```typescript
+// Create user
+const user = await api.users.create({
+  email: 'user@example.com',
+  userName: 'user@example.com',
+  firstName: 'Test',
+  lastName: 'User',
+  password: 'Test@123'
+});
+
+// Create role with permissions
+const role = await api.roles.create(
+  'test-role',
+  'Test Role',
+  ['users.read', 'users.update']
+);
+
+// Cleanup
+await api.users.deleteUser(user.id);
+await api.roles.deleteRole(role.id);
+```
+
+## UI Testing Best Practices
+
+### Use data-test-id for Selectors
+```typescript
+// ✅ Good - Reliable, semantic
+await page.locator('[data-test-id="user-row-123"]').click();
+await page.locator('[data-test-id="save-btn"]').click();
+
+// ❌ Bad - Fragile, implementation-dependent
+await page.locator('.user-table tr:nth-child(3)').click();
+await page.locator('button.btn-primary').click();
+```
+
+### Test Structure (AAA Pattern)
+```typescript
+test('descriptive test name', async ({ page, api }) => {
+  // Arrange (Setup via API)
+  const testData = await api.createTestData();
+  
+  // Act (Interact via UI)
+  await page.goto('/target-page');
+  await page.click('[data-test-id="action"]');
+  
+  // Assert (Verify via UI or API)
+  await expect(page.locator('[data-test-id="result"]'))
+    .toContainText('Expected');
+  
+  // Cleanup (Teardown via API)
+  await api.deleteTestData(testData.id);
+});
+```
+
+## Running Tests
+
+### Run All Tests
 ```powershell
-npm test
+npx playwright test
 ```
 
-Run tests (headed):
-
+### Run Specific Feature
 ```powershell
-npm run test:headed
+npx playwright test tests/feature-users/
+npx playwright test tests/feature-roles/
 ```
 
-Run a single test file (useful for debugging):
-
+### Run Single Test
 ```powershell
-# from the e2e directory
-npx playwright test tests/login.spec.ts
-npx playwright test tests/testclient-login-consent.spec.ts
-npx playwright test tests/logout.spec.ts
-npx playwright test tests/admin-clients-crud.spec.ts
+npx playwright test tests/feature-users/admin-users-crud.spec.ts
 ```
 
-Notes:
-
-- Self-signed HTTPS is accepted via `ignoreHTTPSErrors` in config.
-- Tests assume IdP and TestClient are already started.
-
-
-Developer helpers (PowerShell) — quick start ⚡
-
-This repo includes small PowerShell helper scripts to make it easier to run the IdP, TestClient, and Playwright E2E tests in separate terminals.
-
-- `scripts/start-e2e-dev.ps1` — opens separate pwsh windows for:
-  - `dotnet run --project .\Web.IdP\Web.IdP.csproj --launch-profile https` (IdP)
-  - `dotnet run --project .\TestClient\TestClient.csproj --launch-profile https` (TestClient)
-  - optionally starts the Vite dev server when run with `-StartVite`
-  - When launching new windows the script can inherit the current environment variables so they start with DATABASE_PROVIDER/connection strings
-    already set. Use `-InheritEnv` to enable this behavior (useful when starting from a session that sets `DATABASE_PROVIDER` for Postgres runs).
-
-- `e2e/wait-for-idp-ready.ps1` — waits for IdP/TestClient to be reachable, attempts an admin sign-in, and calls the protected admin health endpoint (`/api/admin/health`) to verify seeding/initialization finished.
-
-- `scripts/run-e2e.ps1` — convenience wrapper that:
-  1. installs e2e npm deps and Playwright browsers
-  2. (optionally) launches services via `scripts/start-e2e-dev.ps1` when run with `-StartServices`
-  3. invokes `e2e/wait-for-idp-ready.ps1` to wait for readiness
-  4. runs Playwright tests (headless by default; use `-Headed` to run headed)
-
-Example flows
-
-1) Start services manually in separate terminals and run tests
-
+### Run with UI (Headed Mode)
 ```powershell
-# In terminal 1 (IdP)
-cd Web.IdP
-dotnet run --launch-profile https
-
-# In terminal 2 (TestClient)
-cd TestClient
-dotnet run --launch-profile https
-
-# In a third terminal, wait for readiness and run tests
-cd .\e2e
-..\scripts\wait-for-idp-ready.ps1 -IdpUrl 'https://localhost:7035' -TestClientUrl 'https://localhost:7001' -TimeoutSeconds 180
-npm test
+npx playwright test --headed
+npx playwright test tests/feature-users/ --headed
 ```
 
-2) Single-command developer flow (opens helper windows + runs tests)
-
+### Debug Mode
 ```powershell
-# From repo root: starts services, waits for readiness, runs tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e.ps1 -StartServices -TimeoutSeconds 180
-
-# Run headed tests instead
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e.ps1 -StartServices -Headed
+npx playwright test --debug
+npx playwright test tests/feature-users/admin-users-crud.spec.ts --debug
 ```
 
-If the helpers finish successfully the admin account and admin API will be reachable and you can run `npm test` in `./e2e` to run Playwright E2E.
+## Troubleshooting
 
-Test user credentials:
+### Tests Failing on Login
+- Check that apps are running (IdP at 7035, TestClient at 7001)
+- Verify `.auth/admin.json` exists (created by global-setup)
+- Ensure admin user exists: `admin@hybridauth.local` / `Admin@123`
 
-- 基本測試用戶：`admin@hybridauth.local` / `Admin@123` (Admin 角色)
+### "Already Exists" Errors
+- Tests use dynamic timestamps for unique data
+- Check if previous test run left orphaned data
+- Verify cleanup code is running (check test afterEach hooks)
 
-TestClient (OIDC) details and required scopes/permissions
------------------------------------------------------
+### Slow Tests
+- Use API for setup/teardown instead of UI
+- Avoid unnecessary `page.waitForTimeout()` - use `waitForSelector` instead
+- Run tests in parallel with `--workers=4`
 
-The Playwright e2e tests rely on a local TestClient web app that performs OIDC flows against the local IdP. To make the tests reliable the TestClient must be registered in the IdP with the following minimal configuration:
+### HTTPS Certificate Errors
+- Config already sets `ignoreHTTPSErrors: true`
+- If still failing, check that IdP/TestClient are running with HTTPS
 
-- ClientId: `testclient-public`
-- ApplicationType: `web` (public client — no secret)
-- Redirect URIs: `https://localhost:7001/signin-oidc`
-- PostLogoutRedirectUris: `https://localhost:7001/signout-callback-oidc`
-- Grant types / Permissions (OpenIddict permission strings):
-  - ept:authorization, ept:token, ept:logout
-  - gt:authorization_code, gt:refresh_token
-  - scp:openid, scp:profile, scp:email, scp:roles
-  - scp:api:company:read, scp:api:inventory:read
+## Test Organization
 
-Notes:
-- The tests expect the above API scopes (api:company:read, api:inventory:read) to exist in OpenIddict and be associated with API resources. The readiness script `e2e/wait-for-idp-ready.ps1` will attempt to verify and create the `testclient-public` client and the two API scopes automatically when it runs (if not present).
-- If you run the IdP/TestClient manually, ensure `testclient-public` is seeded or created via the Admin UI before running the Playwright suite to avoid `invalid_scope` or `invalid_client` errors during authorize.
-- The TestClient's options in `TestClient/Program.cs` show the requested scopes and must match allowed scopes in the IdP for the OIDC flow to succeed.
+### Feature-based Folders
+```
+tests/
+├── feature-auth/         # Auth flows, login, consent
+├── feature-users/        # User management
+├── feature-roles/        # Role management
+├── feature-clients/      # Client management
+├── feature-people/       # Person/identity management
+└── feature-impersonation/# Impersonation flows
+```
 
-Running tests using PostgreSQL (helper)
-------------------------------------
+### Naming Conventions
+- Test files: `feature-name.spec.ts` or `admin-feature-name.spec.ts`
+- Test descriptions: `'Should do X when Y'` or `'Feature does X'`
+- Dynamic data: Use timestamps `e2e-user-${Date.now()}@example.com`
 
-This repository includes a helper `scripts/run-e2e-postgres.ps1` which automates the common Postgres-backed e2e workflow: bring up docker-compose, ensure the Postgres DB exists and `pgcrypto` is enabled, apply Postgres EF migrations, start `Web.IdP` and `TestClient` in separate windows, wait for readiness, and run Playwright tests.
+## CI/CD Integration
 
-Basic example (from repo root):
+### GitHub Actions Example
+```yaml
+- name: Run E2E Tests
+  run: |
+    npm ci
+    npx playwright install --with-deps
+    npm test
+  working-directory: ./e2e
+```
 
+### Parallel Execution
 ```powershell
-# start docker-compose, create DB + pgcrypto, run migrations, start services, and run tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -TimeoutSeconds 300
+# Run with 4 workers (faster in CI)
+npx playwright test --workers=4
+
+# Or configure in playwright.config.ts
+fullyParallel: true
 ```
 
-Only start Web.IdP window (skip TestClient) when running the Postgres helper:
+## Migration from Legacy Tests
 
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -WebOnly -TimeoutSeconds 300
+### Old Pattern (Avoid)
+```typescript
+// ❌ Old: UI for everything
+test('old way', async ({ page }) => {
+  await adminHelpers.loginAsAdminViaIdP(page);
+  await page.click('.nav-users');
+  await page.click('.btn-create');
+  await page.fill('#email', 'test@example.com');
+  await page.click('.btn-save');
+  // ... many more clicks ...
+  await page.click('.btn-delete');
+});
 ```
 
-Seed API resources automatically
---------------------------------
-
-If you want the run-e2e-postgres helper to seed API Resources (the `ApiResources` and `ApiResourceScopes` table data) before running tests, pass `-SeedApiResources`.
-
-```powershell
-# bring up containers, apply migrations, create API resources, start services and run tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -SeedApiResources -TimeoutSeconds 300
+### New Pattern (Recommended)
+```typescript
+// ✅ New: API for setup/teardown, UI for verification
+test('new way', async ({ page, api }) => {
+  const user = await api.users.create({ /* ... */ });
+  
+  await page.goto('https://localhost:7035/Admin/Users');
+  await expect(page.locator(`[data-test-id="user-row-${user.id}"]`))
+    .toBeVisible();
+  
+  await api.users.deleteUser(user.id);
+});
 ```
 
-Admin-API-based seeding (recommended)
-------------------------------------
+## Common Test Scenarios
 
-The `-SeedApiResources` flag now uses the Admin API seeder (`setup-test-api-resources.ps1`) which signs in to the local Admin UI and calls the protected Admin endpoints to create scopes, API resources and ensure the `testclient-public` client exists with canonical permissions. This is safer and consistent across database providers (Postgres & MSSQL).
+### Create and Verify User
+```typescript
+test('User appears in admin list', async ({ page, api }) => {
+  const user = await api.users.create({
+    email: `test-${Date.now()}@example.com`,
+    userName: `test-${Date.now()}@example.com`,
+    firstName: 'Test',
+    lastName: 'User',
+    password: 'Test@123'
+  });
 
-Required preconditions / envs:
+  await page.goto('https://localhost:7035/Admin/Users');
+  await expect(page.locator(`[data-test-id="user-row-${user.id}"]`))
+    .toBeVisible();
 
-- IdP (Web.IdP) running and reachable at https://localhost:7035 (or adjust the base URL inside `setup-test-api-resources.ps1`)
-- Admin user present with credentials (defaults used by the script): `admin@hybridauth.local` / `Admin@123` — if you changed these in your environment, update the variables at the top of `setup-test-api-resources.ps1` or pass a different approach for automated login.
-
-Recommended combined command for a Postgres-backed full run that normalizes DB permissions and seeds via Admin API:
-
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -NormalizePermissions -SeedApiResources -TimeoutSeconds 600
+  await api.users.deleteUser(user.id);
+});
 ```
 
-Notes:
-- The seeder attempts to sign in to the Admin UI (so Admin UI login must be functional). If the Admin UI is unreachable or uses different credentials, the script will warn and continue — in that case you can seed manually or update the script.
-- Keep the SQL seeding scripts as a fallback for CI setups where Admin UI login is not possible.
+### Assign Role via UI
+```typescript
+test('Assign role via UI', async ({ page, api }) => {
+  const role = await api.roles.create('test-role', 'Test', ['users.read']);
+  const user = await api.users.create({ /* ... */ });
 
-Normalize test client permissions (recommended)
---------------------------------------------
+  await page.goto('https://localhost:7035/Admin/Users');
+  const userRow = page.locator(`[data-test-id="user-row-${user.id}"]`);
+  await userRow.locator('[data-test-id="assign-role-btn"]').click();
+  
+  await page.check(`[data-test-id="role-${role.id}"]`);
+  await page.click('[data-test-id="save-btn"]');
 
-To avoid OpenIddict parsing errors caused by malformed/duplicated permissions in the `OpenIddictApplications.Permissions` column, the runner can normalize the TestClient permissions for both Postgres and MSSQL prior to seeding or running tests.
+  await expect(userRow).toContainText(role.name);
 
-```powershell
-# Normalize across both DBs, then seed and run tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-e2e-postgres.ps1 -UpCompose -StartServices -NormalizePermissions -SeedApiResources -TimeoutSeconds 300
+  await api.users.deleteUser(user.id);
+  await api.roles.deleteRole(role.id);
+});
 ```
 
-If you still see authorize errors like `error:unauthorized_client` / ID2043 when running authorize flows, the TestClient record in the IdP DB may have malformed or missing permission entries. Two convenient fixes are provided:
+## Resources
 
-1) Normalize permissions (safe, idempotent)
+- [Playwright Documentation](https://playwright.dev)
+- [Phase 19 E2E Refactoring](../docs/PHASE_19_E2E_REFACTORING.md)
+- `tests/fixtures.ts` - Custom fixture definitions
+- `tests/helpers/api-client.ts` - API client implementation
 
-```powershell
-# This updates the `OpenIddictApplications.Permissions` column to a canonical JSON array
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\normalize-testclient-permissions.ps1 -Provider Postgres
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\normalize-testclient-permissions.ps1 -Provider SqlServer
-```
+## Test Data Credentials
 
-2) Recreate the TestClient via the Admin API (backup + recreate)
+- **Admin**: `admin@hybridauth.local` / `Admin@123`
+- **TestClient ID**: `testclient-public`
+- **Required Scopes**: `openid`, `profile`, `email`, `roles`
 
-```powershell
-# Recreates (deletes + re-creates) the testclient-public client using Admin API credentials.
-pwsh -NoProfile -ExecutionPolicy Bypass -File ..\scripts\recreate-testclient.ps1
-```
+---
 
-Notes:
-- If you run the Postgres helper and temporarily set `DATABASE_PROVIDER` to `PostgreSQL` for migrations or seeding, remember to restore your default provider (for example, `SqlServer`) when you're done so local manual runs use the expected DB provider.
-- The runner's readiness scripts will attempt to create the test client automatically; these manual scripts are intended for troubleshooting and repair when automatic seeding doesn't produce valid permissions.
-
-TestClient UI readiness check
----------------------------
-
-The Postgres helper can also validate that the TestClient home page is returning and contains a `Login` link or `signin-oidc` anchor before tests run. This check helps catch cases where TestClient is reachable at the TCP/HTTP level but still returning e.g. a static error page. The helper `scripts/check-testclient-ready.ps1` is automatically called by `run-e2e-postgres.ps1` after starting services.
-
-Scope Authorization E2E Tests
-------------------------------
-
-Phase 9.7 introduced comprehensive E2E tests for scope-based authorization features. These tests verify consent page behavior, userinfo endpoint protection, and admin UI integration for required scopes.
-
-**Test Files:**
-- `e2e/tests/feature-auth/consent-required-scopes.spec.ts` - Consent page behavior (5 tests)
-- `e2e/tests/feature-auth/userinfo-scope-enforcement.spec.ts` - Userinfo endpoint protection (3 tests)
-- `e2e/tests/feature-auth/scope-authorization-flow.spec.ts` - Admin UI integration (5 tests)
-- `e2e/tests/feature-auth/testclient-login-consent.spec.ts` - Enhanced with scope assertions
-
-**Prerequisites:**
-The `global-setup.ts` automatically configures:
-1. `testclient-public` with `openid` as required scope
-2. `testclient-no-openid` for testing 403 scenarios (created without openid scope)
-3. Required API scopes: `api:company:read`, `api:inventory:read`
-
-**Helper Functions:**
-New helper functions in `e2e/tests/helpers/scopeHelpers.ts`:
-- `setClientRequiredScopes(page, clientGuid, scopeNames)` - Set required scopes via API
-- `getClientGuidByClientId(page, clientId)` - Get client GUID from clientId string
-- `createTestClientWithoutOpenId(page, clientId)` - Create client without openid scope
-- `getClientRequiredScopes(page, clientGuid)` - Get required scopes for a client
-- `deleteTestClient(page, clientId)` - Delete test client by clientId
-- `extractAccessTokenFromTestClient(page)` - Extract access token from TestClient profile
-
-**Running Scope Tests:**
-
-```powershell
-# Run all scope authorization tests
-npx playwright test tests/feature-auth/consent-required-scopes.spec.ts
-npx playwright test tests/feature-auth/userinfo-scope-enforcement.spec.ts
-npx playwright test tests/feature-auth/scope-authorization-flow.spec.ts
-
-# Run all feature-auth tests
-npx playwright test tests/feature-auth/
-
-# Run with headed browser (for debugging)
-npx playwright test tests/feature-auth/consent-required-scopes.spec.ts --headed
-```
-
-**Test Coverage:**
-- Consent page displays required scopes as disabled checkboxes
-- Users can uncheck optional scopes (excluded from token)
-- Server detects and logs consent tampering attempts (ConsentTamperingDetected audit event)
-- Multiple required scopes all show as disabled
-- Clients without required scopes show all scopes as optional
-- Userinfo endpoint returns 200 with openid scope, 403 without
-- Admin UI integration: marking scope as required → consent shows disabled
-- Required scope validation: cannot mark non-allowed scope as required
-- Cross-session persistence: required scopes persist across edit sessions
-
-**Developer Guide:**
-See `docs/SCOPE_AUTHORIZATION.md` for detailed documentation on implementing and testing scope-based authorization.
-
-pgcrypto validation
--------------------
-
-The `run-e2e-postgres.ps1` helper now validates that the `pgcrypto` extension exists in the target database and will attempt to create it automatically. If the script cannot create the extension (for example when the DB user lacks CREATE EXTENSION privileges), it will print actionable commands you can run inside the Postgres container (as the `postgres` superuser) and then exit with a clear error. This helps avoid subtle `gen_random_uuid()` seed failures during migrations.
-
-Only starting Web.IdP against Postgres (no tests)
------------------------------------------------
-
-If you want to run only `Web.IdP` pointing at Postgres (for manual dev or debugging), you can prepare Postgres and migrations then start the IdP process directly in your shell. Example sequence:
-
-```powershell
-# 1) Ensure postgres container is running (docker-compose up -d)
-# 2) Create DB and enable pgcrypto inside the container (adjust container name / user):
-docker exec -it <postgres_container> psql -U user -d postgres -c "CREATE DATABASE hybridauth_idp;"
-docker exec -it <postgres_container> psql -U user -d hybridauth_idp -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-
-# 3) Set env vars in the same shell (so dotnet run inherits them):
-$env:DATABASE_PROVIDER = 'PostgreSQL'
-$env:ConnectionStrings__PostgreSqlConnection = 'Host=localhost;Port=5432;Database=hybridauth_idp;Username=user;Password=password'
-
-# 4) Apply Postgres migrations (from repo root):
-cd Infrastructure.Migrations.Postgres
-dotnet ef database update --startup-project ..\Web.IdP
-
-# 5) Run Web.IdP (this will use the Postgres provider):
-cd ..\Web.IdP
-dotnet run --launch-profile https
-```
-
-Notes:
-- `scripts/run-e2e-postgres.ps1` is intended as a convenience wrapper for local development and should be run from the repository root so it can find `docker-compose.yml` and relative projects.
- - The script uses the first container matching `postgres-service` (or the `postgres` image) when locating the DB container. Use `docker ps` to confirm container names if needed.
+**Last Updated**: 2025-12-13 (Phase 19.5 - Hybrid Testing Strategy)
