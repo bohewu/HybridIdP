@@ -7,8 +7,7 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
-[Collection("SystemTests")]
-public class PersonLifecycleSystemTests 
+public class PersonLifecycleSystemTests : IClassFixture<WebIdPServerFixture>
 {
     private readonly HttpClient _client;
     private readonly WebIdPServerFixture _serverFixture;
