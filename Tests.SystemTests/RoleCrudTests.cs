@@ -7,6 +7,7 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
+[Collection("SystemTests")]
 public class RoleCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
@@ -131,6 +132,23 @@ public class RoleCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         Assert.Equal(updateRequest.Name, updatedRole.Name);
         Assert.Equal(updateRequest.Description, updatedRole.Description);
         Assert.Contains("roles.read", updatedRole.Permissions);
+    }
+
+    [Fact]
+    public async Task CreateRole_MissingName_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateRoleDto
+        {
+            Name = "", // Invalid
+            Description = "Test Role Description"
+        };
+
+        // Act
+        var response = await _httpClient.PostAsJsonAsync("/api/admin/roles", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

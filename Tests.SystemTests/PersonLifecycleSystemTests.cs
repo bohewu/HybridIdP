@@ -80,6 +80,7 @@ public class PersonLifecycleFixture : IDisposable, IAsyncLifetime
 /// <summary>
 /// Verified System Tests (Fast). uses shared session.
 /// </summary>
+[Collection("SystemTests")]
 public class PersonLifecycleSystemTests : IClassFixture<PersonLifecycleFixture>
 {
     private readonly HttpClient _client;

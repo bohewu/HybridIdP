@@ -6,6 +6,7 @@ namespace Tests.SystemTests;
 /// <summary>
 /// Tests for WebIdPServerFixture to verify server lifecycle management works correctly
 /// </summary>
+[Collection("SystemTests")]
 public class WebIdPServerFixtureTests : IClassFixture<WebIdPServerFixture>
 {
     private readonly WebIdPServerFixture _fixture;

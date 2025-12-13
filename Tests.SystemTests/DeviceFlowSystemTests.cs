@@ -6,6 +6,7 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
+[Collection("SystemTests")]
 public class DeviceFlowSystemTests
 {
     private const string Authority = "https://localhost:7035";
