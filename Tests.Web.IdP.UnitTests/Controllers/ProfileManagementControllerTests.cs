@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Web.IdP.Controllers;
+using Web.IdP.Controllers.Api;
 using Xunit;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
@@ -197,7 +198,7 @@ public class ProfileManagementControllerTests : IDisposable
     #region UpdateProfile Tests
 
     [Fact]
-    public async Task UpdateProfile_UserNotLinkedToPerson_ReturnsBadRequest()
+    public async Task UpdateProfile_UserNotLinkedToPerson_ReturnsOk()
     {
         // Arrange
         _mockUserManager.Setup(m => m.GetUserAsync(It.IsAny<ClaimsPrincipal>()))
@@ -208,12 +209,20 @@ public class ProfileManagementControllerTests : IDisposable
             PhoneNumber = "+886-987-654-321"
         };
 
+        _mockAuditService.Setup(a => a.LogEventAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+
         // Act
         var result = await _controller.UpdateProfile(request);
 
         // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Contains("not linked to a Person", badRequestResult.Value.ToString());
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.Contains("updated successfully", okResult.Value.ToString());
     }
 
     [Fact]

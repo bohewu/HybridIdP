@@ -1,3 +1,0 @@
-
-Running 2 tests using 2 workers
-

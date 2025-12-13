@@ -630,26 +630,34 @@ setup() {
 
 **重要**：生產環境請務必修改預設密碼！
 
-### 9. 測試方法：使用 MCP Playwright Browser
 
-本專案使用 **Playwright MCP Server** 進行瀏覽器自動化測試，而非傳統的 `npx playwright test` 命令。
+### 9. 測試策略 (Testing Strategy)
 
-#### 為什麼使用 MCP Server？
+由於我們移除了 E2E (Playwright) 測試，專案採用以下測試策略：
 
--   ✅ **互動式測試**：可以即時查看瀏覽器狀態
--   ✅ **逐步除錯**：每個步驟都可以檢查頁面快照
--   ✅ **靈活控制**：可以暫停、檢查、繼續測試流程
--   ✅ **整合 VS Code**：所有測試在 VS Code 內完成
+#### 1. Backend System Tests (Hybrid/API Tests) - **核心測試**
+-   **位置**: `Tests.SystemTests`
+-   **目的**: 驗證核心認證流程 (Login, Device Flow, M2M, Token Exchange) 與資料正確性。
+-   **特點**: 使用 `HttpClient` 直接對 API 發送請求，不透過瀏覽器。比 E2E 更快、更穩定。
+-   **重要性**: 這是我們最主要的自動化防線。
+-   **執行指令**:
+    ```bash
+    dotnet test Tests.SystemTests/Tests.SystemTests.csproj
+    ```
 
-#### MCP Browser 測試範例
+#### 2. Backend Unit Tests
+-   **位置**: `Tests.Application.UnitTests`, `Tests.Web.IdP.UnitTests` 等
+-   **目的**: 驗證商業邏輯與最小單元的正確性。
 
-```typescript
-// See docs/examples/development_guide_mcp_test_example.ts.example
-```
+#### 3. Frontend Component Tests (Vitest) - **UI 邏輯**
+-   **工具**: Vitest (推薦)
+-   **目的**: 驗證 Vue 組件的互動邏輯 (e.g., 按鈕點擊、Store 狀態變更)。
+-   **優點**: 不需啟動瀏覽器，執行速度極快。
 
-#### E2E 測試檔案位置
--   請先讀取e2e/README.md
--   `e2e/tests/...` - 測試 scope-mapped claims
+#### 4. Manual "Smoke" Testing - **UI 外觀**
+-   **目的**: 驗證 CSS 樣式、排版與使用者體驗。
+-   **時機**: 在重大 UI 變更或 Release 前進行。
+
 
 
 ### 10. 失敗場景測試指南
@@ -959,11 +967,7 @@ setup() {
 
 ### 12. 自動化測試實作建議
 
-#### E2E 失敗測試範例
 
-```typescript
-// See docs/examples/development_guide_e2e_failure_test_example.ts.example
-```
 
 #### Unit Test 範例
 
@@ -1024,7 +1028,7 @@ setup() {
 -   **Styling**: Tailwind CSS 3.4.17
 -   **Layout**: Bootstrap 5.3.2 (CDN)
 -   **Icons**: Bootstrap Icons 1.11.1
--   **Testing**: Playwright (E2E)
+-   **Testing**: Manual Testing, System Tests (HttpClient)
 
 ### Development
 

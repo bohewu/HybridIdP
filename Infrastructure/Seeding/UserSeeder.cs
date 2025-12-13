@@ -24,6 +24,7 @@ public static class UserSeeder
             await SeedApplicationManagerTestUserAsync(userManager, roleManager, context);
             await SeedMultiRoleTestUserAsync(userManager, roleManager, context);
             await SeedStandardTestUserAsync(userManager, context);
+            await SeedLegacyTestUserAsync(userManager, context);
         }
     }
 
@@ -332,6 +333,65 @@ public static class UserSeeder
         if (result.Succeeded)
         {
             // Update created by
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
+        }
+    }
+
+    private static async Task SeedLegacyTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string username = "legacy_test";
+        const string password = "Legacy@123";
+
+        var existingUser = await userManager.FindByNameAsync(username);
+        if (existingUser != null) return;
+
+        // Legacy user might not have a Person entity initially (legacy data simulation)
+        // Check if Person already exists just in case
+        var nationalIdHash = PidHasher.Hash("L123456789");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Legacy",
+                LastName = "User",
+                Email = "legacy@test.local",
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = username,
+            Email = "legacy@test.local", // Different from username to test legacy login by username
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Legacy",
+            LastName = "User",
+            IsActive = true
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
             person.CreatedBy = user.Id;
             person.IdentityVerifiedBy = user.Id;
             await context.SaveChangesAsync();

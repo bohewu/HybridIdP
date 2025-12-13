@@ -9,7 +9,7 @@ public class LegacyAuthSystemTests
     private const string Authority = "https://localhost:7035";
     // Using a user that matches LegacyApi mock logic (not "lockout", not empty)
     private const string Username = "legacy_test";
-    private const string Password = "password";
+    private const string Password = "Legacy@123";
 
     private static readonly HttpClientHandler HttpClientHandler = new()
     {

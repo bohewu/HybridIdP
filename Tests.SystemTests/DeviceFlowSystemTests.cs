@@ -75,7 +75,7 @@ public class DeviceFlowSystemTests
             process.Kill();
             Assert.Fail($"Timed out waiting for User Code. Output:\n{string.Join("\n", output)}");
         }
-        var userCode = userCodeTask.Result;
+        var userCode = await userCodeTask;
         
         // Act - Simulate User
         var content = await SubmitUserCodeAsync(userCode);
