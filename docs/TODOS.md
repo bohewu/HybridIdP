@@ -21,6 +21,21 @@ This file contains current high-priority backlog items and remaining tasks.
 
 ## Short-term (high priority)
 
+### Phase 19: Frontend Testing Strategy (Vitest) & System Tests
+- [ ] Phase 19.1: Vitest Setup & Configuration
+  - [ ] Configure Vitest in `Web.IdP/ClientApp`
+  - [ ] Setup `happy-dom` or `jsdom`
+- [ ] Phase 19.2: Test High-Value Composables (Logic)
+  - [ ] `useAuth`, `useApi`, `useForm`
+- [ ] Phase 19.3: Test Complex Components (High Risk)
+  - [ ] Form validations (UserForm, ClientForm)
+  - [ ] Data Grids (sorting/filtering logic)
+- [ ] Phase 19.4: Verify OIDC Flows via SystemTests
+  - [x] Device Flow (`DeviceFlowSystemTests.cs`)
+  - [x] Client Credentials (`M2MSystemTests.cs`)
+  - [x] Resource Owner Password / Legacy (`LegacyAuthSystemTests.cs`)
+  - [ ] Authorization Code Flow (Interactive Login via HttpClient simulation)
+
 
 ## Medium-term (tech debt)
 
