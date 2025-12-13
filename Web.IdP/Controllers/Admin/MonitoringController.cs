@@ -4,6 +4,7 @@ using Core.Domain.Constants;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -12,7 +13,7 @@ namespace Web.IdP.Controllers.Admin;
 /// </summary>
 [ApiController]
 [Route("api/admin/monitoring")]
-[Authorize]
+[ApiAuthorize]
 public class MonitoringController : ControllerBase
 {
     private readonly IMonitoringService _monitoringService;
