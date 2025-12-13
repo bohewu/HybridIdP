@@ -6,6 +6,10 @@ namespace Tests.SystemTests;
 /// <summary>
 /// Admin API endpoint tests
 /// Uses WebIdPServerFixture to auto-manage server lifecycle
+/// 
+/// NOTE: Current tests are READ-ONLY (validation of 401/400 responses)
+/// Future CRUD tests MUST cleanup test data in DisposeAsync()
+/// See Tests.SystemTests/TEST_DATA_CLEANUP.md for guidelines
 /// </summary>
 public class AdminApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {

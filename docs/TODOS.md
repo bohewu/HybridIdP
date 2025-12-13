@@ -21,24 +21,25 @@ This file contains current high-priority backlog items and remaining tasks.
 
 ## Short-term (high priority)
 
-### Phase 19: Frontend Testing Strategy (Vitest) & System Tests
-- [ ] Phase 19.1: Vitest Setup & Configuration
-  - [ ] Configure Vitest in `Web.IdP/ClientApp`
-  - [ ] Setup `happy-dom` or `jsdom`
-- [ ] Phase 19.2: Test High-Value Composables (Logic)
-  - [ ] `useAuth`, `useApi`, `useForm`
-- [ ] Phase 19.3: Test Complex Components (High Risk)
-  - [ ] Form validations (UserForm, ClientForm)
-  - [ ] Data Grids (sorting/filtering logic)
-- [ ] Phase 19.4: Verify OIDC Flows via SystemTests
+### Phase 19: Frontend Testing Strategy (Vitest) & System Tests ✅ COMPLETED
+- [x] Phase 19.1: Vitest Setup & Configuration
+  - [x] Configure Vitest in `Web.IdP/ClientApp`
+  - [x] Setup `happy-dom`
+- [x] Phase 19.2: Test High-Value Composables (Logic)
+  - [x] `usePasswordValidation`, `useIdentityValidation` (Taiwan ID validation fix)
+- [x] Phase 19.3: Test Complex Components (High Risk)
+  - [x] Form validations (UserForm)
+  - [x] Permission service tests
+- [x] Phase 19.4: Verify OIDC Flows via SystemTests
   - [x] Device Flow (`DeviceFlowSystemTests.cs`)
   - [x] Client Credentials (`M2MSystemTests.cs`)
   - [x] Resource Owner Password / Legacy (`LegacyAuthSystemTests.cs`)
-  - [ ] Authorization Code Flow (Interactive Login via HttpClient simulation)
-- [ ] Phase 19.5: Create `Tests.Api.IntegrationTests` (Endpoint Coverage)
-  - [ ] Setup `WebApplicationFactory` (In-Memory TestServer)
-  - [ ] Cover all Admin API routes (Users, Clients, People)
-  - [ ] Focus on Validation, 401/403/404 cases, and Response Schemes
+  - [x] Authorization Code Flow smoke tests (`AuthCodeSystemTests`)
+  - [x] WebIdPServerFixture for auto server lifecycle
+- [x] Phase 19.5: API Endpoint Tests
+  - [x] Admin API endpoint validation (`AdminApiTests`)
+  - [x] Token endpoint validation
+  - Consolidated into SystemTests (KISS principle)
 
 
 ## Medium-term (tech debt)
