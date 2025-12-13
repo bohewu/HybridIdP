@@ -5,6 +5,7 @@ using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -15,7 +16,7 @@ namespace Web.IdP.Controllers.Admin;
 /// </summary>
 [ApiController]
 [Route("api/admin/scopes")]
-[Authorize]
+[ApiAuthorize]
 public class ScopesController : ControllerBase
 {
     private readonly IScopeService _scopeService;
