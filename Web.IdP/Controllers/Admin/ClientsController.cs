@@ -5,6 +5,7 @@ using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Web.IdP.Attributes;
 using DomainPermissions = Core.Domain.Constants.Permissions;
 
 namespace Web.IdP.Controllers.Admin;
@@ -14,7 +15,7 @@ namespace Web.IdP.Controllers.Admin;
 /// </summary>
 [ApiController]
 [Route("api/admin/clients")]
-[Authorize]
+[ApiAuthorize]
 public class ClientsController : ControllerBase
 {
     private readonly IClientService _clientService;
