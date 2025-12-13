@@ -121,3 +121,15 @@ public class TestDataCleaner
 **Current**: No action needed (all tests are read-only)
 
 **Future**: When adding CRUD tests, implement cleanup using Pattern 1 or Pattern 3
+
+## Example Implementation
+
+See `UserCrudTests.cs` for a complete example of:
+- IAsyncLifetime with InitializeAsync and DisposeAsync
+- Cleanup before tests (removes leftover data from previous runs)
+- Cleanup after tests (removes all created test data)
+- Test data prefix pattern for easy identification
+- Automatic tracking of created resources
+
+**Note**: UserCrudTests currently marked as TODO due to missing admin M2M client with proper scopes.
+To enable: Add admin M2M client to ClientSeeder with `/api/admin/*` permissions.
