@@ -18,12 +18,12 @@ Current E2E tests are slow, flaky, and prone to data conflicts. We need to shift
 -   [x] **API Client**: Create `e2e/tests/helpers/api-client.ts` with type-safe API clients.
 -   [x] **Fixtures**: Create `e2e/tests/fixtures.ts` with `api` context for hybrid tests.
 
-### Phase 19.2: User Management (Core)
+### Phase 19.2: User Management (Core) ✅
 **Goal**: Refactor the most data-heavy feature to prove the pattern.
--   [ ] **API Helpers**: Add `UsersApi` to create/delete users, assign roles programmatically.
--   [ ] **Refactor Tests**: Rewrite `feature-users` spec.
-    -   *Old*: Login -> Create User UI -> Verify -> Delete User UI.
-    -   *New*: API Create User -> UI Login as User or UI Edit User -> Verify -> API Delete User.
+-   [x] **API Helpers**: `UsersApi` in `api-client.ts` for create/delete users, assign roles.
+-   [x] **Refactor Tests**: Rewrote `feature-users` specs to hybrid pattern.
+    -   *Old*: 5 files, ~1000+ lines, many `page.evaluate(fetch())` calls.
+    -   *New*: 5 files, ~400 lines, clean `api` fixture usage.
 
 ### Phase 19.3: People & Identity Verification
 **Goal**: Handle complex data relationships (Person <-> User <-> Identity).
