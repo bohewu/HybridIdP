@@ -100,6 +100,7 @@ const handleClose = () => {
             :disabled="claim?.isStandard"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.namePlaceholder')"
+            data-test-id="claim-name-input"
           />
         </div>
 
@@ -112,6 +113,7 @@ const handleClose = () => {
             required
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10 px-3"
             :placeholder="t('claims.form.displayNamePlaceholder')"
+             data-test-id="claim-display-name-input"
           />
         </div>
 
@@ -123,6 +125,7 @@ const handleClose = () => {
             rows="2"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors px-3 py-2"
             :placeholder="t('claims.form.descriptionPlaceholder')"
+            data-test-id="claim-description-input"
           ></textarea>
         </div>
 
@@ -136,6 +139,7 @@ const handleClose = () => {
             :disabled="claim?.isStandard"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.claimTypePlaceholder')"
+             data-test-id="claim-type-input"
           />
           <p class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.claimTypeHelp') }}</p>
         </div>
@@ -150,6 +154,7 @@ const handleClose = () => {
             :disabled="claim?.isStandard"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.userPropertyPathPlaceholder')"
+             data-test-id="claim-property-path-input"
           />
           <p class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.userPropertyPathHelp') }}</p>
         </div>
@@ -161,6 +166,7 @@ const handleClose = () => {
             v-model="formData.dataType"
             :disabled="claim?.isStandard"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
+             data-test-id="claim-data-type-select"
           >
             <option value="String">{{ t('claims.form.dataTypes.string') }}</option>
             <option value="Boolean">{{ t('claims.form.dataTypes.boolean') }}</option>
@@ -178,6 +184,7 @@ const handleClose = () => {
               type="checkbox"
               :disabled="claim?.isStandard"
               class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 disabled:bg-gray-100 h-4 w-4"
+              data-test-id="claim-required-checkbox"
             />
             <span class="ml-2 text-sm text-gray-700">{{ t('claims.form.isRequired') }}</span>
           </label>
@@ -197,6 +204,7 @@ const handleClose = () => {
         form="claim-form"
         :disabled="saving"
         class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        data-test-id="claim-save-btn"
       >
         {{ saving ? t('claims.form.saving') : t('claims.form.save') }}
       </button>
@@ -205,6 +213,7 @@ const handleClose = () => {
         @click="handleClose"
         :disabled="saving"
         class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        data-test-id="claim-cancel-btn"
       >
         {{ t('claims.form.cancel') }}
       </button>

@@ -10,6 +10,7 @@
           @click="openCreateModal"
           class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
           :disabled="loading"
+          data-test-id="claims-create-btn"
         >
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -19,114 +20,21 @@
       </template>
     </PageHeader>
 
-    <!-- Error State -->
-    <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4" role="alert">
-      <p class="text-sm text-red-700">{{ error }}</p>
-    </div>
+    <!-- ... (omitted) ... -->
 
-    <!-- Main Content -->
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200"
-         v-loading="{ loading: loading, overlay: true, message: $t('claims.loadingMessage') }">
-      <!-- Filter Section -->
-      <div class="p-4 border-b border-gray-200">
-        <div class="flex flex-col md:flex-row md:items-center gap-3">
-          <!-- Search Input -->
           <div class="flex-1">
-            <SearchInput v-model="search" :placeholder="$t('claims.searchPlaceholder')" />
+            <SearchInput v-model="search" :placeholder="$t('claims.searchPlaceholder')" data-test-id="claims-search-input" />
           </div>
-          
-          <!-- Sort and Apply -->
-          <div class="flex gap-2">
-            <select 
-              v-model="sortBy" 
-              class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
-            >
-              <option value="name">{{ $t('claims.sortOptions.name') }}</option>
-              <option value="displayname">{{ $t('claims.sortOptions.displayName') }}</option>
-              <option value="claimtype">{{ $t('claims.sortOptions.claimType') }}</option>
-              <option value="type">{{ $t('claims.sortOptions.type') }}</option>
-            </select>
-            <select 
-              v-model="sortDirection" 
-              class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
-            >
-              <option value="asc">{{ $t('claims.sortDirection.asc') }}</option>
-              <option value="desc">{{ $t('claims.sortDirection.desc') }}</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <!-- Table Section -->
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('claims.table.name') }}
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('claims.table.displayName') }}
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('claims.table.claimType') }}
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('claims.table.type') }}
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('claims.table.scopes') }}
-              </th>
-              <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {{ $t('claims.table.actions') }}
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-if="!loading && claims.length === 0">
-              <td colspan="6" class="px-6 py-4">
-                <div class="text-center py-8">
-                  <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <h3 class="mt-2 text-sm font-medium text-gray-900">{{ $t('claims.emptyState.title') }}</h3>
-                  <p class="mt-1 text-sm text-gray-500">{{ $t('claims.emptyState.message') }}</p>
-                </div>
-              </td>
-            </tr>
-            <template v-if="!loading && claims.length > 0">
-              <tr v-for="claim in claims" :key="claim.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div class="text-sm font-medium text-gray-900">{{ claim.name }}</div>
-                  <span v-if="claim.isRequired" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                    {{ $t('claims.badges.required') }}
-                  </span>
-                </div>
-              </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-900">{{ claim.displayName }}</div>
-                <div class="text-sm text-gray-500">{{ claim.description }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <code class="text-xs bg-gray-100 px-2 py-1 rounded">{{ claim.claimType }}</code>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="claim.isStandard" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {{ $t('claims.badges.standard') }}
-                </span>
-                <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                  {{ $t('claims.badges.custom') }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ $t('claims.scopeCount', { count: claim.scopeCount }) }}
-              </td>
+
+    <!-- ... (omitted) ... -->
+
               <td class="px-6 py-4 whitespace-nowrap text-center">
                 <div class="inline-flex gap-1">
                   <button
                     @click="openEditModal(claim)"
                     class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     :title="$t('claims.actions.edit')"
+                    data-test-id="claims-edit-btn"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -138,6 +46,7 @@
                     class="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-700 text-sm font-medium rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     :disabled="claim.scopeCount > 0"
                     :title="$t('claims.actions.delete')"
+                    data-test-id="claims-delete-btn"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
