@@ -139,10 +139,10 @@ test.describe('Admin - People Account Linking', () => {
     // Create two user accounts
     const user1Email = `multi1-${timestamp}@example.com`
     const user2Email = `multi2-${timestamp}@example.com`
-    
+
     const user1 = await createUnlinkedUser(page, user1Email, 'TestPassword123!', ['User'])
     const user2 = await createUnlinkedUser(page, user2Email, 'TestPassword123!', ['User'])
-    
+
     createdUserIds.push(user1.id, user2.id)
 
     // Link both accounts to the same person
@@ -163,7 +163,7 @@ test.describe('Admin - People Account Linking', () => {
     // Test login with first account
     const page1 = await context.newPage()
     await login(page1, user1Email, 'TestPassword123!')
-    
+
     // Check user profile shows person name
     await page1.goto('https://localhost:7035/Account/Profile')
     await expect(page1.locator('text=/MultiAccount OnePerson/i')).toBeVisible()
@@ -172,7 +172,7 @@ test.describe('Admin - People Account Linking', () => {
     // Test login with second account
     const page2 = await context.newPage()
     await login(page2, user2Email, 'TestPassword123!')
-    
+
     // Check user profile shows same person name
     await page2.goto('https://localhost:7035/Account/Profile')
     await expect(page2.locator('text=/MultiAccount OnePerson/i')).toBeVisible()
@@ -215,7 +215,7 @@ test.describe('Admin - People Account Linking', () => {
 
     // Verify identity document type is shown (if UI displays it)
     // This depends on UI implementation
-    
+
     await userPage.close()
   })
 
@@ -228,10 +228,10 @@ test.describe('Admin - People Account Linking', () => {
     const timestamp = Date.now()
     const user1Email = `available1-${timestamp}@example.com`
     const user2Email = `available2-${timestamp}@example.com`
-    
+
     const user1 = await createUnlinkedUser(page, user1Email, 'TestPassword123!', [])
     const user2 = await createUnlinkedUser(page, user2Email, 'TestPassword123!', [])
-    
+
     createdUserIds.push(user1.id, user2.id)
 
     // Link first user

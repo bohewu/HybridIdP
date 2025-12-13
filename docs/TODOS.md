@@ -21,6 +21,12 @@ This file contains current high-priority backlog items and remaining tasks.
 
 ## Short-term (high priority)
 
+### Phase 19: E2E Refactoring (Hybrid Testing)
+- [ ] Phase 19.1: Framework & Auth (Global Setup, API Clients)
+- [ ] Phase 19.2: User Management (Core CRUD via API+UI)
+- [ ] Phase 19.3: People & Identity (Complex Data Relationships)
+- [ ] Phase 19.4: Clients & Resources (Config-heavy tests)
+- [ ] Phase 19.5: Cleanup & CI Optimization
 
 ## Medium-term (tech debt)
 
