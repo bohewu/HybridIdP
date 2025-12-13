@@ -2,12 +2,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Web.IdP.Services;
 using Core.Domain.Constants;
+using Web.IdP.Attributes;
+using Infrastructure.Authorization;
 
-namespace Web.IdP.Controllers.Api.Api;
+namespace Web.IdP.Controllers.Admin;
 
-[Route("api/logging")]
+/// <summary>
+/// Admin API controller for managing logging configuration.
+/// </summary>
+[Route("api/admin/logging")]
 [ApiController]
-[Authorize(Policy = "HasAnyAdminAccess")]
+[ApiAuthorize]
 public class LoggingController : ControllerBase
 {
     private readonly IDynamicLoggingService _loggingService;
@@ -17,16 +22,22 @@ public class LoggingController : ControllerBase
         _loggingService = loggingService;
     }
 
+    /// <summary>
+    /// Get the current global log level.
+    /// </summary>
     [HttpGet("level")]
-    [Authorize(Policy = Permissions.Settings.Read)]
+    [HasPermission(Permissions.Settings.Read)]
     public async Task<IActionResult> GetLevel()
     {
         var level = await _loggingService.GetGlobalLogLevelAsync();
         return Ok(new { level });
     }
 
+    /// <summary>
+    /// Set the global log level.
+    /// </summary>
     [HttpPost("level")]
-    [Authorize(Policy = Permissions.Settings.Update)]
+    [HasPermission(Permissions.Settings.Update)]
     public async Task<IActionResult> SetLevel([FromBody] SetLogLevelRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Level))
