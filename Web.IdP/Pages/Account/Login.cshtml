@@ -35,24 +35,24 @@
             <p class="auth-subtitle">@Localizer["SignInToContinue"]</p>
 
             <form method="post" class="auth-form">
-                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" data-test-id="login-error-summary"></div>
                 
                 <input type="hidden" asp-for="ReturnUrl" />
                 
                 <div class="mb-3">
                     <label for="Input_Login" class="form-label">@Localizer["EmailOrUsername"]</label>
-                    <input asp-for="Input.Login" type="text" class="form-control" placeholder="@Localizer["EmailOrUsername"]" autocomplete="username" autofocus aria-label="@Localizer["EmailOrUsername"]" />
-                    <span asp-validation-for="Input.Login" class="text-danger"></span>
+                    <input asp-for="Input.Login" type="text" class="form-control" placeholder="@Localizer["EmailOrUsername"]" autocomplete="username" autofocus aria-label="@Localizer["EmailOrUsername"]" data-test-id="login-username" />
+                    <span asp-validation-for="Input.Login" class="text-danger" data-test-id="login-username-error"></span>
                 </div>
                 
                 <div class="mb-3">
                     <label for="Input_Password" class="form-label">@Localizer["Password"]</label>
-                    <input asp-for="Input.Password" class="form-control" placeholder="@Localizer["Password"]" autocomplete="current-password" />
-                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                    <input asp-for="Input.Password" class="form-control" placeholder="@Localizer["Password"]" autocomplete="current-password" data-test-id="login-password" />
+                    <span asp-validation-for="Input.Password" class="text-danger" data-test-id="login-password-error"></span>
                 </div>
                 
                 <div class="form-check">
-                    <input asp-for="Input.RememberMe" class="form-check-input" />
+                    <input asp-for="Input.RememberMe" class="form-check-input" data-test-id="login-remember" />
                     <label for="Input_RememberMe" class="form-check-label">@Localizer["RememberMe"]</label>
                 </div>
                 
@@ -64,7 +64,7 @@
                 }
                 
                 <div class="d-grid mt-4">
-                    <button type="submit" class="auth-btn-primary">@Localizer["Login"]</button>
+                    <button type="submit" class="auth-btn-primary" data-test-id="login-submit">@Localizer["Login"]</button>
                 </div>
                 
                 <div class="auth-footer">

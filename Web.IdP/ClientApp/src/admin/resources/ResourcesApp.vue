@@ -178,6 +178,7 @@ watch([page, pageSize, search, sort], () => {
           @click="handleCreate"
           class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
           :disabled="loading"
+          data-test-id="resources-create-btn"
         >
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -200,7 +201,7 @@ watch([page, pageSize, search, sort], () => {
         <div class="flex flex-col md:flex-row md:items-center gap-3">
           <!-- Search Input -->
           <div class="flex-1">
-            <SearchInput v-model="search" :placeholder="$t('resources.searchPlaceholder')" />
+            <SearchInput v-model="search" :placeholder="$t('resources.searchPlaceholder')" data-test-id="resources-search-input" />
           </div>
           
           <!-- Sort -->
