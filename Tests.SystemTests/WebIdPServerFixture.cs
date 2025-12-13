@@ -140,7 +140,7 @@ public class WebIdPServerFixture : IDisposable
         var startInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = "run --launch-profile https --no-build",
+            Arguments = "run --launch-profile https --no-build --RateLimiting:Enabled=false",
             WorkingDirectory = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "Web.IdP"),
             UseShellExecute = false,
             CreateNoWindow = false,
