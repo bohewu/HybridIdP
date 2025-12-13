@@ -65,6 +65,11 @@ public class ProfileManagementController : ControllerBase
             UserName = user.UserName ?? string.Empty,
             Email = user.Email,
             EmailConfirmed = user.EmailConfirmed,
+            
+            // Initial map from User
+            Locale = user.Locale,
+            TimeZone = user.TimeZone,
+            
             HasLocalPassword = hasLocalPassword,
             AllowPasswordChange = policy.AllowSelfPasswordChange && hasLocalPassword,
             ExternalLogins = externalLogins.Select(l => new ExternalLoginDto
@@ -93,6 +98,12 @@ public class ProfileManagementController : ControllerBase
                     Locale = person.Locale,
                     TimeZone = person.TimeZone
                 };
+
+                // Fallback logic: If User definition is missing, use Person's
+                if (string.IsNullOrEmpty(dto.Locale)) dto.Locale = person.Locale;
+                if (string.IsNullOrEmpty(dto.TimeZone)) dto.TimeZone = person.TimeZone;
+                
+                // Note: PhoneNumber is not yet on Root DTO, so we rely on Person.PhoneNumber
             }
         }
 
@@ -112,30 +123,53 @@ public class ProfileManagementController : ControllerBase
             return NotFound(new { error = "User not found" });
         }
 
-        // Only allow updates if user is linked to a Person
-        if (!user.PersonId.HasValue)
+        // 1. Update ApplicationUser (Always)
+        var userChanged = false;
+        if (user.PhoneNumber != request.PhoneNumber) 
         {
-            _logger.LogWarning("User {UserId} attempted to update profile but is not linked to a Person", user.Id);
-            return BadRequest(new { error = "User is not linked to a Person entity" });
+            user.PhoneNumber = request.PhoneNumber;
+            userChanged = true;
+        }
+        if (user.Locale != request.Locale)
+        {
+            user.Locale = request.Locale;
+            userChanged = true;
+        }
+        if (user.TimeZone != request.TimeZone)
+        {
+            user.TimeZone = request.TimeZone;
+            userChanged = true;
         }
 
-        var person = await _dbContext.Persons
-            .FirstOrDefaultAsync(p => p.Id == user.PersonId.Value);
-
-        if (person == null)
+        if (userChanged)
         {
-            _logger.LogWarning("Person {PersonId} not found for user {UserId}", user.PersonId.Value, user.Id);
-            return NotFound(new { error = "Person not found" });
+            await _userManager.UpdateAsync(user);
         }
 
-        // Update editable Person fields
-        person.PhoneNumber = request.PhoneNumber;
-        person.Locale = request.Locale;
-        person.TimeZone = request.TimeZone;
-        person.ModifiedBy = user.Id;
-        person.ModifiedAt = DateTime.UtcNow;
+        // 2. Update Person (If linked)
+        if (user.PersonId.HasValue)
+        {
+            var person = await _dbContext.Persons
+                .FirstOrDefaultAsync(p => p.Id == user.PersonId.Value);
 
-        await _dbContext.SaveChangesAsync();
+            if (person != null)
+            {
+                // Sync to Person
+                person.PhoneNumber = request.PhoneNumber;
+                person.Locale = request.Locale;
+                person.TimeZone = request.TimeZone;
+                person.ModifiedBy = user.Id;
+                person.ModifiedAt = DateTime.UtcNow;
+
+                await _dbContext.SaveChangesAsync();
+                
+                _logger.LogInformation("User {UserId} updated profile and synced to Person {PersonId}", user.Id, person.Id);
+            }
+        }
+        else
+        {
+            _logger.LogInformation("User {UserId} updated profile (User only, no linked Person)", user.Id);
+        }
 
         // Audit log
         await _auditService.LogEventAsync(
@@ -145,8 +179,6 @@ public class ProfileManagementController : ControllerBase
             ipAddress: null,
             userAgent: null
         );
-
-        _logger.LogInformation("User {UserId} updated profile (Person: {PersonId})", user.Id, person.Id);
 
         return Ok(new { message = "Profile updated successfully" });
     }

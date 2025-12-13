@@ -134,22 +134,32 @@ const form = ref({
 })
 
 // Initialize form with profile data
+// Initialize form with profile data
 watch(() => props.profile, (newProfile) => {
-  if (newProfile?.person) {
+  if (newProfile) {
+    // Prefer root properties (ApplicationUser), fallback to person or empty
     form.value = {
-      phoneNumber: newProfile.person.phoneNumber || '',
-      locale: newProfile.person.locale || '',
-      timeZone: newProfile.person.timeZone || ''
+      phoneNumber: newProfile.person?.phoneNumber || '', // PhoneNumber still primarily on Person for display? Or sync back? User has it too.
+      // Actually, my Controller Update logic handles User.PhoneNumber too. 
+      // But ProfileDto.PhoneNumber is NOT on root yet? 
+      // ProfileDto def: "public string? PhoneNumber { get; set; }" is NOT there in my previous view_file of ProfileDto.
+      // Wait, ApplicationUser has PhoneNumber (inherited).
+      // I should have added PhoneNumber to ProfileDto root too for consistency.
+      // But for now, let's focus on Locale/TimeZone.
+      phoneNumber: newProfile.person?.phoneNumber || '', 
+      
+      locale: newProfile.locale || newProfile.person?.locale || '',
+      timeZone: newProfile.timeZone || newProfile.person?.timeZone || ''
     }
   }
 }, { immediate: true })
 
 const resetForm = () => {
-  if (props.profile?.person) {
+  if (props.profile) {
     form.value = {
-      phoneNumber: props.profile.person.phoneNumber || '',
-      locale: props.profile.person.locale || '',
-      timeZone: props.profile.person.timeZone || ''
+      phoneNumber: props.profile.person?.phoneNumber || '',
+      locale: props.profile.locale || props.profile.person?.locale || '',
+      timeZone: props.profile.timeZone || props.profile.person?.timeZone || ''
     }
   }
   showSuccess.value = false

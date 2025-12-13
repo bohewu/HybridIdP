@@ -161,6 +161,10 @@ public partial class LoginService : ILoginService
             return LoginResult.PersonInactive(reason);
         }
 
+        // Attach the validated Person to the User object so it's available downstream
+        // (e.g., for Login Page fallback locale logic)
+        user.Person = person;
+
         return null; // Person is valid, continue with login
     }
 

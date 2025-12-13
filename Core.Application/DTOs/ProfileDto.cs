@@ -14,6 +14,10 @@ public class ProfileDto
     public string? Email { get; set; }
     public bool EmailConfirmed { get; set; }
     
+    // User Preferences (ApplicationUser)
+    public string? Locale { get; set; }
+    public string? TimeZone { get; set; }
+    
     // Person data (partially editable)
     public PersonProfileDto? Person { get; set; }
     
