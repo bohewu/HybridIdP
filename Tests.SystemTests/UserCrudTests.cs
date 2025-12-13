@@ -13,8 +13,7 @@ namespace Tests.SystemTests;
 /// CRUD tests for User management with automatic cleanup
 /// Uses IAsyncLifetime to cleanup test data before and after tests
 /// </summary>
-[Collection("SystemTests")]
-public class UserCrudTests : IAsyncLifetime
+public class UserCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;
