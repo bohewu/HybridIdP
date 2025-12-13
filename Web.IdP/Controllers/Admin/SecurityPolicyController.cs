@@ -32,6 +32,7 @@ public class SecurityPolicyController : ControllerBase
             RequireLowercase = policy.RequireLowercase,
             RequireDigit = policy.RequireDigit,
             RequireNonAlphanumeric = policy.RequireNonAlphanumeric,
+            MinCharacterTypes = policy.MinCharacterTypes,
             PasswordHistoryCount = policy.PasswordHistoryCount,
             PasswordExpirationDays = policy.PasswordExpirationDays,
             MinPasswordAgeDays = policy.MinPasswordAgeDays,
