@@ -17,12 +17,10 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] Device Flow implementation - `TestClient.Device`
 - [x] PII Masking for audit logs - `PiiMasker`, `AuditOptions`
 - [x] Configurable Audit Retention via SystemSettings UI
+- [x] Implement Resource table usage for consent multi-language text - `AuthorizationService`, `LocalizationService`
 
 ## Short-term (high priority)
 
-- [ ] Implement Resource table usage for consent multi-language text
-  - `Resource` entity exists but not yet integrated with Consent screen
-  - Consent screen should read scope descriptions from `Resource` table by culture
 
 ## Medium-term (tech debt)
 
