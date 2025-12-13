@@ -2,12 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Core.Application;
 using Core.Domain.Constants;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/[controller]")]
-[Authorize]
+[ApiAuthorize]
 public class SettingsController : ControllerBase
 {
     private readonly ISettingsService _settings;
