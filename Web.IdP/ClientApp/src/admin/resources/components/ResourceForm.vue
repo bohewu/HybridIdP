@@ -251,7 +251,9 @@ const isScopeSelected = (scopeId) => {
             <p class="mt-1 text-xs text-gray-500">{{ $t('resources.form.baseUrlHelp') }}</p>
           </div>
 
-<!-- ... (omitted scopes) ... -->
+        </div>
+      </form>
+    </template>
 
     <template #footer>
       <button

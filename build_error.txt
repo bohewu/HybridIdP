@@ -1,0 +1,19 @@
+  正在判斷要還原的專案...
+  所有專案都在最新狀態，可進行還原。
+  Core.Domain -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Domain\bin\Debug\net10.0\Core.Domain.dll
+  Core.Application -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Application\bin\Debug\net10.0\Core.Application.dll
+  Infrastructure -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure\bin\Debug\net10.0\Infrastructure.dll
+  Infrastructure.Migrations.SqlServer -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure.Migrations.SqlServer\bin\Debug\net10.0\Infrastructure.Migrations.SqlServer.dll
+  Infrastructure.Migrations.Postgres -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure.Migrations.Postgres\bin\Debug\net10.0\Infrastructure.Migrations.Postgres.dll
+  Web.IdP -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\bin\Debug\net10.0\Web.IdP.dll
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.Web.IdP.UnitTests\Controllers\ProfileManagementControllerTests.cs(27,35): error CS0246: 找不到類型或命名空間名稱 'ProfileManagementController' (是否遺漏了 using 指示詞或組件參考?) [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.Web.IdP.UnitTests\Tests.Web.IdP.UnitTests.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.Web.IdP.UnitTests\Controllers\ProfileManagementControllerTests.cs(28,22): error CS0246: 找不到類型或命名空間名稱 'ProfileManagementController' (是否遺漏了 using 指示詞或組件參考?) [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.Web.IdP.UnitTests\Tests.Web.IdP.UnitTests.csproj]
+
+建置失敗。
+
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.Web.IdP.UnitTests\Controllers\ProfileManagementControllerTests.cs(27,35): error CS0246: 找不到類型或命名空間名稱 'ProfileManagementController' (是否遺漏了 using 指示詞或組件參考?) [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.Web.IdP.UnitTests\Tests.Web.IdP.UnitTests.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.Web.IdP.UnitTests\Controllers\ProfileManagementControllerTests.cs(28,22): error CS0246: 找不到類型或命名空間名稱 'ProfileManagementController' (是否遺漏了 using 指示詞或組件參考?) [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.Web.IdP.UnitTests\Tests.Web.IdP.UnitTests.csproj]
+    0 個警告
+    2 個錯誤
+
+經過時間 00:00:02.65
