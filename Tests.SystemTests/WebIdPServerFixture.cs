@@ -5,29 +5,35 @@ namespace Tests.SystemTests;
 
 /// <summary>
 /// Manages Web.IdP server lifecycle for system tests
+/// Single instance shared by SystemTestsCollection
 /// </summary>
-public class WebIdPServerFixture : IDisposable
+public class WebIdPServerFixture : IAsyncLifetime, IDisposable
 {
     private Process? _serverProcess;
     private const string ServerUrl = "https://localhost:7035";
-    private const int StartupTimeoutMs = 30000;
-    
     public string BaseUrl => ServerUrl;
-    public bool IsRunning { get; private set; }
 
+    public bool IsRunning 
+    {
+        get { return _serverProcess != null && !_serverProcess.HasExited; }
+    }
+
+    public async Task InitializeAsync()
+    {
+        await EnsureServerRunningAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await StopServerAsync();
+    }
+    
+    // For manual calls if needed (though InitializeAsync covers it)
     public async Task EnsureServerRunningAsync()
     {
-        // Check if already running
-        if (await IsServerAliveAsync())
-        {
-            IsRunning = true;
-            return;
-        }
+        if (IsRunning && await IsServerAliveAsync()) return;
 
-        // Kill any existing process using the port
         await KillExistingServerAsync();
-
-        // Start new server process
         await StartServerAsync();
     }
 
@@ -38,33 +44,15 @@ public class WebIdPServerFixture : IDisposable
             if (_serverProcess != null && !_serverProcess.HasExited)
             {
                 _serverProcess.Kill(entireProcessTree: true);
-                
-                // Wait up to 5 seconds for process to exit
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                try
-                {
-                    await _serverProcess.WaitForExitAsync(cts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Process didn't exit in time, but Kill was called so it should be gone
-                }
-                
+                try { await _serverProcess.WaitForExitAsync(cts.Token); } catch { }
                 _serverProcess.Dispose();
                 _serverProcess = null;
             }
         }
-        catch { /* Ignore stop errors */ }
+        catch { }
         
-        IsRunning = false;
-        
-        // Verify server is actually stopped
-        await Task.Delay(1000);
-        if (await IsServerAliveAsync())
-        {
-            // Force kill using port
-            await KillExistingServerAsync();
-        }
+        await KillExistingServerAsync();
     }
 
     private async Task<bool> IsServerAliveAsync()
@@ -89,17 +77,33 @@ public class WebIdPServerFixture : IDisposable
     {
         try
         {
-            // Kill any process named 'Web.IdP' or 'Web.IdP.exe'
+            // 1. Kill by process name (Cross-platform .NET API)
             foreach (var process in Process.GetProcessesByName("Web.IdP"))
             {
                 try { process.Kill(); } catch { }
             }
             
-            // Find process using port 7035 via netstat (backup)
+            // 2. Kill by port 7035 (OS-specific)
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            {
+                await KillPortWindowsAsync(7035);
+            }
+            else
+            {
+                await KillPortLinuxAsync(7035);
+            }
+
+            await Task.Delay(2000); // Wait for release
+        }
+        catch { }
+    }
+
+    private async Task KillPortWindowsAsync(int port)
+    {
             var netstatInfo = new ProcessStartInfo
             {
                 FileName = "cmd",
-                Arguments = "/c netstat -ano | findstr :7035",
+                Arguments = $"/c netstat -ano | findstr :{port}",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
@@ -111,28 +115,65 @@ public class WebIdPServerFixture : IDisposable
                 var output = await netstatProcess.StandardOutput.ReadToEndAsync();
                 await netstatProcess.WaitForExitAsync();
 
-                // Parse PID from output (last column)
                 var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
                 foreach (var line in lines)
                 {
                     var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    // On Windows netstat -ano output, PID is the last column
                     if (parts.Length > 0 && int.TryParse(parts[^1], out int pid))
                     {
                         try
                         {
                             var process = Process.GetProcessById(pid);
-                            process.Kill(entireProcessTree: true);
-                            await process.WaitForExitAsync();
+                            // Verify it's not the current test runner!
+                            if (process.Id != Environment.ProcessId)
+                            {
+                                process.Kill(entireProcessTree: true);
+                                await process.WaitForExitAsync();
+                            }
                         }
-                        catch { /* Process already gone */ }
+                        catch { }
                     }
                 }
             }
+    }
 
-            // Additional wait for port to be released
-            await Task.Delay(2000);
+    private async Task KillPortLinuxAsync(int port)
+    {
+        try 
+        {
+            // lsof -t -i:7035
+            var lsofinfo = new ProcessStartInfo
+            {
+                FileName = "lsof",
+                Arguments = $"-t -i:{port}",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(lsofinfo);
+            if (proc != null)
+            {
+                var output = await proc.StandardOutput.ReadToEndAsync();
+                await proc.WaitForExitAsync();
+                
+                if (!string.IsNullOrWhiteSpace(output))
+                {
+                     var pids = output.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                     foreach(var pidStr in pids)
+                     {
+                         if (int.TryParse(pidStr, out int pid))
+                         {
+                             try { Process.GetProcessById(pid).Kill(); } catch { }
+                         }
+                     }
+                }
+            }
         }
-        catch { /* Continue if kill fails */ }
+        catch 
+        { 
+             try { Process.Start("pkill", "-f Web.IdP")?.WaitForExit(); } catch {}
+        }
     }
 
     private async Task StartServerAsync()
@@ -150,9 +191,7 @@ public class WebIdPServerFixture : IDisposable
 
         _serverProcess = Process.Start(startInfo);
         if (_serverProcess == null)
-        {
             throw new Exception("Failed to start Web.IdP server");
-        }
         
         // Capture stderr for debugging
         var stderr = new System.Text.StringBuilder();
@@ -161,47 +200,28 @@ public class WebIdPServerFixture : IDisposable
         };
         _serverProcess.BeginErrorReadLine();
 
-        // Drain stdout to prevent buffer fill deadlocks
-        _serverProcess.OutputDataReceived += (sender, args) => { /* Ignore stdout */ };
+        // Drain stdout
+        _serverProcess.OutputDataReceived += (sender, args) => { };
         _serverProcess.BeginOutputReadLine();
 
-        // Wait for server to be ready
         var stopwatch = Stopwatch.StartNew();
-        while (stopwatch.ElapsedMilliseconds < 60000) // 60s timeout
+        while (stopwatch.ElapsedMilliseconds < 60000) 
         {
             if (_serverProcess.HasExited)
-            {
                  throw new Exception($"Web.IdP server process exited prematurely with code {_serverProcess.ExitCode}. Error: {stderr}");
-            }
 
-            if (await IsServerAliveAsync())
-            {
-                IsRunning = true;
-                await Task.Delay(1000); // Additional stabilization time
-                return;
-            }
+            if (await IsServerAliveAsync()) return;
             await Task.Delay(500);
         }
 
         try { _serverProcess.Kill(entireProcessTree: true); } catch { }
         throw new TimeoutException($"Web.IdP server did not start within 60s. Last error: {stderr}");
     }
-
+    
     public void Dispose()
     {
-        // Synchronous dispose - best effort cleanup
-        try
-        {
-            if (_serverProcess != null && !_serverProcess.HasExited)
-            {
-                _serverProcess.Kill(entireProcessTree: true);
-                _serverProcess.WaitForExit(5000);
-                _serverProcess.Dispose();
-            }
-        }
-        catch { /* Ignore disposal errors */ }
-        
-        IsRunning = false;
+        // IAsyncLifetime.DisposeAsync handles logical cleanup. 
+        // This is just fallback.
         GC.SuppressFinalize(this);
     }
 }

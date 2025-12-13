@@ -12,7 +12,7 @@ namespace Tests.SystemTests;
 /// See Tests.SystemTests/TEST_DATA_CLEANUP.md for guidelines
 /// </summary>
 [Collection("SystemTests")]
-public class AdminApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+public class AdminApiTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

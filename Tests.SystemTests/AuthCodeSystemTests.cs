@@ -8,7 +8,7 @@ namespace Tests.SystemTests;
 /// Tests against running Web.IdP server
 /// </summary>
 [Collection("SystemTests")]
-public class AuthCodeSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+public class AuthCodeSystemTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

@@ -5,7 +5,7 @@ using Xunit;
 namespace Tests.SystemTests;
 
 [Collection("SystemTests")]
-public class M2MSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+public class M2MSystemTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
 
