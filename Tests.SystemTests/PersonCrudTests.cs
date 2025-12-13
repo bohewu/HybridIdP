@@ -14,10 +14,12 @@ public class PersonCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
     private string? _adminToken;
     private readonly List<string> _createdPersonIds = new();
     private const string TEST_PREFIX = "test_person_";
+    private readonly Xunit.Abstractions.ITestOutputHelper _output;
 
-    public PersonCrudTests(WebIdPServerFixture serverFixture)
+    public PersonCrudTests(WebIdPServerFixture serverFixture, Xunit.Abstractions.ITestOutputHelper output)
     {
         _serverFixture = serverFixture;
+        _output = output;
         var handler = new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
@@ -175,29 +177,39 @@ public class PersonCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
     }
 
     // ===== PID Field Tests (User's Specific Requirement) =====
-    // NOTE: These tests are skipped due to DB uniqueness constraint issues.
-    // The PersonService validates uniqueness, but stale test data with same hashed
-    // passport numbers causes DbUpdateException at SaveChangesAsync level.
-    // TODO: Clean up stale test data or use transaction rollback strategy.
+    // NOTE: These tests are skipped pending server-side investigation.
+    // 
+    // INVESTIGATION FINDINGS:
+    // - Basic person creation (without PID) works fine
+    // - ALL PID field types fail with 500 (PassportNumber, ResidentCertificateNumber)
+    // - JSON casing (camelCase vs PascalCase) is NOT the issue
+    // - PID format validation passes (validated format is correct)
+    // - Error occurs at SaveChangesAsync level (after validation, during DB insert)
+    // - Unique constraint on PID fields shouldn't trigger (using unique GUIDs)
+    // 
+    // LIKELY CAUSES (need server logs to confirm):
+    // 1. EF Core model validation issue with PID fields
+    // 2. Database migration issue (column constraints)
+    // 3. Environmental issue specific to test DB
+    //
+    // TODO: Add console/file logging to PersonService to capture actual exception
 
-    [Fact(Skip = "DB uniqueness constraint on PassportNumber - stale test data issue")]
+    [Fact] // Re-enabled with detailed error logging in controller
     public async Task GetPerson_WithPassportNumber_ReturnsMaskedValue()
     {
-        // Arrange - create person with PassportNumber (simpler format than NationalId)
-        var passportNum = $"PP{Guid.NewGuid():N}".Substring(0, 9); // 9 chars
+        // Arrange - create person with PassportNumber
+        var passportNum = $"PP{Guid.NewGuid():N}".Substring(0, 9);
+        // Note: EmployeeId column max is 50 chars, so use shorter prefix
+        var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
         var request = new
         {
-            employeeId = $"{TEST_PREFIX}pid_{Guid.NewGuid()}",
+            employeeId = $"{TEST_PREFIX}p_{shortId}", // Shorter to fit 50 char limit
             firstName = "PID",
             lastName = "Test",
             passportNumber = passportNum
         };
         var createRes = await _httpClient.PostAsJsonAsync("/api/admin/people", request);
-        if (!createRes.IsSuccessStatusCode)
-        {
-            var errContent = await createRes.Content.ReadAsStringAsync();
-            throw new Exception($"Create failed: {createRes.StatusCode} - {errContent}");
-        }
+        createRes.EnsureSuccessStatusCode();
         var created = await createRes.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
         var personId = created.GetProperty("id").GetString()!;
         _createdPersonIds.Add(personId);
@@ -218,14 +230,16 @@ public class PersonCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
         Assert.Contains("●", passportNumber); // Should be masked
     }
 
-    [Fact(Skip = "DB uniqueness constraint on PassportNumber - stale test data issue")]
+    [Fact] // Re-enabled after fixing EmployeeId length issue
     public async Task UpdatePerson_WithEmptyPassportNumber_PreservesExistingValue()
     {
         // Arrange - create person with PassportNumber
         var passportNum = $"PP{Guid.NewGuid():N}".Substring(0, 9);
+        // Note: EmployeeId column max is 50 chars, so use shorter prefix
+        var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
         var request = new
         {
-            employeeId = $"{TEST_PREFIX}upd_pid_{Guid.NewGuid()}",
+            employeeId = $"{TEST_PREFIX}u_{shortId}", // Shorter to fit 50 char limit
             firstName = "Preserve",
             lastName = "PID",
             passportNumber = passportNum

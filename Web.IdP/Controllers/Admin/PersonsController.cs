@@ -153,7 +153,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating person");
+            _logger.LogError(ex, "Error creating person: {Message}", ex.Message);
             return StatusCode(500, "An error occurred while creating the person");
         }
     }
