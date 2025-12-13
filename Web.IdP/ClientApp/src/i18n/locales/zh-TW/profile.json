@@ -68,6 +68,7 @@
     "saving": "儲存中...",
     "cancel": "取消",
     "errorOccurred": "發生錯誤",
-    "networkError": "網路錯誤。請重試。"
+    "networkError": "網路錯誤。請重試。",
+    "reloadForLocale": "語言設定已變更。是否重新載入頁面以套用變更？"
   }
 }

@@ -68,6 +68,7 @@
     "saving": "Saving...",
     "cancel": "Cancel",
     "errorOccurred": "An error occurred",
-    "networkError": "Network error. Please try again."
+    "networkError": "Network error. Please try again.",
+    "reloadForLocale": "Language settings changed. Reload the page to apply changes?"
   }
 }

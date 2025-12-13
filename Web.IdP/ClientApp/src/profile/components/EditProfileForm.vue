@@ -175,6 +175,11 @@ const handleSubmit = async () => {
   
   loading.value = true
 
+  // Check if locale changed (capture BEFORE request to avoid race condition with props update)
+  const originalLocale = props.profile.locale || props.profile.person?.locale;
+  const newLocale = form.value.locale;
+  const localeChanged = newLocale !== originalLocale;
+
   try {
     const res = await fetch('/api/profile', {
       method: 'PUT',
@@ -189,6 +194,13 @@ const handleSubmit = async () => {
       showSuccess.value = true
       emit('updated')
       
+      if (localeChanged) {
+        // Simple reload to apply new locale immediately
+        if (confirm(t('profile.common.reloadForLocale'))) {
+           window.location.reload();
+        }
+      }
+
       setTimeout(() => {
         showSuccess.value = false
       }, 3000)
