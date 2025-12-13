@@ -14,7 +14,7 @@
     "requireDigit": "需要數字",
     "requireNonAlphanumeric": "需要非英數字元",
     "minCharacterTypes": "最少字元類型",
-    "minCharacterTypesHelp": "密碼必須包含的最少字元類型數量（大寫、小寫、數字、特殊符號），不包含長度檢查。",
+    "minCharacterTypesHelp": "確保「彈性複雜度」。使用者必須從「大寫、小寫、數字、符號」中至少使用 N 種，而非強制特定類型。",
     "passwordHistory": "密碼歷史與過期",
     "historyCount": "密碼歷史數量",
     "historyCountHelp": "記住並防止重複使用的舊密碼數量。",

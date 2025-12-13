@@ -14,7 +14,7 @@
     "requireDigit": "Require Digit",
     "requireNonAlphanumeric": "Require Non-Alphanumeric",
     "minCharacterTypes": "Minimum Character Types",
-    "minCharacterTypesHelp": "Minimum number of different character types (uppercase, lowercase, digit, non-alphanumeric) excluding length.",
+    "minCharacterTypesHelp": "Ensures 'Flexible Complexity'. User must use at least N distinct character types from: Uppercase, Lowercase, Digit, Special.",
     "passwordHistory": "Password History & Expiration",
     "historyCount": "Password History Count",
     "historyCountHelp": "Number of previous passwords to remember and prevent reuse.",
