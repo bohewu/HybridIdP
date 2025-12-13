@@ -5,8 +5,21 @@ using Xunit;
 namespace Tests.SystemTests;
 
 [Collection("SystemTests")]
-public class LegacyAuthSystemTests
+public class LegacyAuthSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
+    private readonly WebIdPServerFixture _serverFixture;
+
+    public LegacyAuthSystemTests(WebIdPServerFixture serverFixture)
+    {
+        _serverFixture = serverFixture;
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _serverFixture.EnsureServerRunningAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
     private const string Authority = "https://localhost:7035";
     // Using a user that matches LegacyApi mock logic (not "lockout", not empty)
     private const string Username = "legacy_test";

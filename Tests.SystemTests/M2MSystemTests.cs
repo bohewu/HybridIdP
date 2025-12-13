@@ -5,8 +5,21 @@ using Xunit;
 namespace Tests.SystemTests;
 
 [Collection("SystemTests")]
-public class M2MSystemTests
+public class M2MSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
+    private readonly WebIdPServerFixture _serverFixture;
+
+    public M2MSystemTests(WebIdPServerFixture serverFixture)
+    {
+        _serverFixture = serverFixture;
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _serverFixture.EnsureServerRunningAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
     [Fact]
     public async Task ClientCredentialsMock_EndToEnd_ReturnsSuccess()
     {
