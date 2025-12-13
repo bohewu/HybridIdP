@@ -180,6 +180,18 @@ public class ProfileManagementController : ControllerBase
             userAgent: null
         );
 
+        // Limit cookie update to valid locales only? 
+        // For now, if we saved it to the DB, we trust it or checking basic specific ones.
+        if (!string.IsNullOrEmpty(request.Locale))
+        {
+            var culture = request.Locale;
+            Response.Cookies.Append(
+                Microsoft.AspNetCore.Localization.CookieRequestCultureProvider.DefaultCookieName,
+                Microsoft.AspNetCore.Localization.CookieRequestCultureProvider.MakeCookieValue(new Microsoft.AspNetCore.Localization.RequestCulture(culture)),
+                new Microsoft.AspNetCore.Http.CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1) }
+            );
+        }
+
         return Ok(new { message = "Profile updated successfully" });
     }
 
