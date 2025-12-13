@@ -74,6 +74,49 @@ public class AdminApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task M2M_GetToken_WithValidClientCredentials_ReturnsAccessToken()
+    {
+        // Arrange - Use seeded M2M client from ClientSeeder
+        var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = "testclient-m2m",
+            ["client_secret"] = "m2m-test-secret-2024", 
+            ["scope"] = "api:company:read api:company:write"
+        });
+
+        // Act
+        var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("access_token", content);
+        Assert.Contains("token_type", content);
+    }
+
+    // NOTE: Admin API requires specific scopes that testclient-m2m doesn't have
+    // Skipping authenticated Admin API tests for now - require dedicated admin client
+    // See TEST_DATA_CLEANUP.md for future CRUD test patterns
     
-    // TODO: Add M2M authenticated tests
+    // Helper to get M2M access token
+    private async Task<string> GetM2MTokenAsync()
+    {
+        var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = "testclient-m2m",
+            ["client_secret"] = "m2m-test-secret-2024",
+            ["scope"] = "api:company:read api:company:write"
+        });
+
+        var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
+        response.EnsureSuccessStatusCode();
+        
+        var content = await response.Content.ReadAsStringAsync();
+        var tokenJson = System.Text.Json.JsonDocument.Parse(content);
+        return tokenJson.RootElement.GetProperty("access_token").GetString()!;
+    }
 }
