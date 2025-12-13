@@ -25,12 +25,12 @@ Current E2E tests are slow, flaky, and prone to data conflicts. We need to shift
     -   *Old*: 5 files, ~1000+ lines, many `page.evaluate(fetch())` calls.
     -   *New*: 5 files, ~400 lines, clean `api` fixture usage.
 
-### Phase 19.3: People & Identity Verification
+### Phase 19.3: People & Identity Verification ✅
 **Goal**: Handle complex data relationships (Person <-> User <-> Identity).
--   [ ] **API Helpers**: Add `PeopleApi` for Person CRUD and `IdentityApi` for verification simulation.
--   [ ] **Refactor Tests**: Rewrite `feature-people`.
-    -   Pre-seed "Verified Person" via API before testing Account Linking UI.
-    -   Ensure `admin-people-account-linking.spec.ts` is fully idempotent.
+-   [x] **API Helpers**: `PeopleApi` in `api-client.ts` for Person CRUD and account linking.
+-   [x] **Refactor Tests**: Rewrote `feature-people` specs to hybrid pattern.
+    -   *Old*: 4 files, ~48KB, complex page.evaluate patterns.
+    -   *New*: 4 files, ~7KB, clean API-first approach.
 
 ### Phase 19.4: Clients, Resources & Configuration
 **Goal**: Refactor configuration-heavy tests.
