@@ -208,3 +208,33 @@ test('Admin - Security Policies (allowSelfPasswordChange toggle)', async ({ page
   
   console.log('✓ allowSelfPasswordChange toggle test passed');
 });
+
+test('Admin - Security Policies (minimum character types)', async ({ page }) => {
+  await adminHelpers.loginAsAdminViaIdP(page);
+
+  await page.goto('https://localhost:7035/Admin/SecurityPolicies');
+  await page.waitForTimeout(1000);
+  await page.waitForSelector('input#minCharacterTypes', { timeout: 15000 });
+
+  // Get original value
+  const originalVal = await page.inputValue('#minCharacterTypes');
+  const newVal = originalVal === '3' ? '2' : '3';
+
+  // Update
+  await page.fill('#minCharacterTypes', newVal);
+  await page.locator('#minCharacterTypes').press('Tab');
+  
+  // Save
+  await page.locator('button[data-testid="save-policy-btn"]:not([disabled])').click({ timeout: 10000 });
+  await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
+
+  // Reload
+  await page.reload();
+  await page.waitForSelector('input#minCharacterTypes', { timeout: 15000 });
+  await expect(page.locator('#minCharacterTypes')).toHaveValue(newVal);
+
+  // Restore
+  await page.fill('#minCharacterTypes', originalVal);
+  await page.locator('button[data-testid="save-policy-btn"]:not([disabled])').click({ timeout: 10000 });
+  await expect(page.locator('.bg-green-50').first()).toBeVisible({ timeout: 10000 });
+});

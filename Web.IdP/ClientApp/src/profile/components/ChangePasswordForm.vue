@@ -90,25 +90,9 @@
           <div v-if="policy && form.newPassword" class="mt-2 space-y-1">
             <div class="text-xs font-medium text-gray-600 mb-1">{{ t('profile.changePassword.requirements') }}</div>
             <div class="grid grid-cols-2 gap-1 text-xs">
-              <div :class="passwordChecks.minLength ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
-                <i :class="passwordChecks.minLength ? 'bi-check-circle-fill' : 'bi-circle'"></i>
-                {{ t('profile.changePassword.minLength', { length: policy.minPasswordLength }) }}
-              </div>
-              <div v-if="policy.requireUppercase" :class="passwordChecks.uppercase ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
-                <i :class="passwordChecks.uppercase ? 'bi-check-circle-fill' : 'bi-circle'"></i>
-                {{ t('profile.changePassword.requireUppercase') }}
-              </div>
-              <div v-if="policy.requireLowercase" :class="passwordChecks.lowercase ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
-                <i :class="passwordChecks.lowercase ? 'bi-check-circle-fill' : 'bi-circle'"></i>
-                {{ t('profile.changePassword.requireLowercase') }}
-              </div>
-              <div v-if="policy.requireDigit" :class="passwordChecks.digit ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
-                <i :class="passwordChecks.digit ? 'bi-check-circle-fill' : 'bi-circle'"></i>
-                {{ t('profile.changePassword.requireDigit') }}
-              </div>
-              <div v-if="policy.requireNonAlphanumeric" :class="passwordChecks.special ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
-                <i :class="passwordChecks.special ? 'bi-check-circle-fill' : 'bi-circle'"></i>
-                {{ t('profile.changePassword.requireSpecial') }}
+              <div v-for="(req, index) in requirements" :key="index" :class="req.valid ? 'text-green-600' : 'text-gray-500'" class="flex items-center gap-1">
+                <i :class="req.valid ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+                {{ req.text }}
               </div>
             </div>
           </div>
@@ -205,31 +189,15 @@ onMounted(async () => {
   }
 })
 
-// Real-time password validation checks
-const passwordChecks = computed(() => {
-  const pwd = form.value.newPassword
-  if (!policy.value || !pwd) {
-    return { minLength: false, uppercase: false, lowercase: false, digit: false, special: false }
-  }
-  return {
-    minLength: pwd.length >= policy.value.minPasswordLength,
-    uppercase: !policy.value.requireUppercase || /[A-Z]/.test(pwd),
-    lowercase: !policy.value.requireLowercase || /[a-z]/.test(pwd),
-    digit: !policy.value.requireDigit || /[0-9]/.test(pwd),
-    special: !policy.value.requireNonAlphanumeric || /[^a-zA-Z0-9]/.test(pwd)
-  }
-})
+// Real-time password validation using composable
+import { usePasswordValidation } from '@/composables/usePasswordValidation'
+const { getPasswordRequirements } = usePasswordValidation()
 
-// Check if passwords match
-const passwordsMatch = computed(() => {
-  return form.value.newPassword && form.value.confirmPassword && 
-         form.value.newPassword === form.value.confirmPassword
-})
+const requirements = computed(() => getPasswordRequirements(form.value.newPassword, policy.value))
 
-// Check if all validations pass
 const allPasswordChecksPass = computed(() => {
-  const checks = passwordChecks.value
-  return checks.minLength && checks.uppercase && checks.lowercase && checks.digit && checks.special
+  if (!requirements.value.length) return false
+  return requirements.value.every(r => r.valid)
 })
 
 // Form is valid when all fields filled, password meets requirements, and passwords match

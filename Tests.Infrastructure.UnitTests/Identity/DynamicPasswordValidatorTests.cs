@@ -160,5 +160,50 @@ namespace Tests.Infrastructure.UnitTests
             // Assert
             Assert.True(result.Succeeded);
         }
+
+        [Fact]
+        public async Task ValidateAsync_WithInsufficientCharacterTypes_ShouldFail()
+        {
+            // Arrange
+            _defaultPolicy.MinCharacterTypes = 3;
+            // Disable specific requirements to isolate character types check
+            _defaultPolicy.RequireUppercase = false;
+            _defaultPolicy.RequireLowercase = false;
+            _defaultPolicy.RequireDigit = false;
+            _defaultPolicy.RequireNonAlphanumeric = false;
+            
+            var user = new ApplicationUser();
+            // Password contains only Lowercase and Digit (2 types), requires 3
+            var password = "password1"; 
+
+            // Act
+            var result = await _validator.ValidateAsync(null!, user, password);
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Contains(result.Errors, e => e.Code == "PasswordTooSimple");
+        }
+
+        [Fact]
+        public async Task ValidateAsync_WithSufficientCharacterTypes_ShouldSucceed()
+        {
+            // Arrange
+            _defaultPolicy.MinCharacterTypes = 3;
+             // Disable specific requirements to isolate character types check
+            _defaultPolicy.RequireUppercase = false;
+            _defaultPolicy.RequireLowercase = false;
+            _defaultPolicy.RequireDigit = false;
+            _defaultPolicy.RequireNonAlphanumeric = false;
+
+            var user = new ApplicationUser();
+            // Password contains Lowercase, Digit, Special (3 types)
+            var password = "password1!";
+
+            // Act
+            var result = await _validator.ValidateAsync(null!, user, password);
+
+            // Assert
+            Assert.True(result.Succeeded);
+        }
     }
 }

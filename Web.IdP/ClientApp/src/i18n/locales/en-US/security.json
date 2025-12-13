@@ -13,6 +13,8 @@
     "requireLowercase": "Require Lowercase",
     "requireDigit": "Require Digit",
     "requireNonAlphanumeric": "Require Non-Alphanumeric",
+    "minCharacterTypes": "Minimum Character Types",
+    "minCharacterTypesHelp": "Minimum number of different character types (uppercase, lowercase, digit, non-alphanumeric) excluding length.",
     "passwordHistory": "Password History & Expiration",
     "historyCount": "Password History Count",
     "historyCountHelp": "Number of previous passwords to remember and prevent reuse.",

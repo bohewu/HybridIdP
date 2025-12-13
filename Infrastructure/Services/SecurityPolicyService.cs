@@ -58,6 +58,7 @@ public partial class SecurityPolicyService : ISecurityPolicyService
         policy.RequireLowercase = policyDto.RequireLowercase;
         policy.RequireDigit = policyDto.RequireDigit;
         policy.RequireNonAlphanumeric = policyDto.RequireNonAlphanumeric;
+        policy.MinCharacterTypes = policyDto.MinCharacterTypes;
         policy.PasswordHistoryCount = policyDto.PasswordHistoryCount;
         policy.PasswordExpirationDays = policyDto.PasswordExpirationDays;
         policy.MinPasswordAgeDays = policyDto.MinPasswordAgeDays;

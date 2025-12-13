@@ -63,6 +63,9 @@
             <FormRow :label="$t('security.requireNonAlphanumeric')">
               <ToggleSwitch v-model="policy.requireNonAlphanumeric" />
             </FormRow>
+            <FormRow :label="$t('security.minCharacterTypes')" for-id="minCharacterTypes" :help-text="$t('security.minCharacterTypesHelp')">
+              <input type="number" id="minCharacterTypes" v-model.number="policy.minCharacterTypes" min="2" max="4" class="form-input-sm">
+            </FormRow>
           </dl>
         </div>
       </div>
