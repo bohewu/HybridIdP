@@ -14,7 +14,7 @@ namespace Tests.SystemTests;
 /// Uses IAsyncLifetime to cleanup test data before and after tests
 /// </summary>
 [Collection("SystemTests")]
-public class UserCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+public class UserCrudTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

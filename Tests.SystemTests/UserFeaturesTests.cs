@@ -8,7 +8,7 @@ using Xunit;
 namespace Tests.SystemTests;
 
 [Collection("SystemTests")]
-public class UserFeaturesTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+public class UserFeaturesTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

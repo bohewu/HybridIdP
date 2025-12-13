@@ -7,7 +7,7 @@ using Xunit;
 namespace Tests.SystemTests;
 
 [Collection("SystemTests")]
-public class DeviceFlowSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+public class DeviceFlowSystemTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private const string Authority = "https://localhost:7035";

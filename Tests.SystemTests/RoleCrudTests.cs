@@ -8,7 +8,7 @@ using Xunit;
 namespace Tests.SystemTests;
 
 [Collection("SystemTests")]
-public class RoleCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+public class RoleCrudTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

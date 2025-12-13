@@ -7,92 +7,42 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
-public class PersonLifecycleFixture : IDisposable, IAsyncLifetime
+[Collection("SystemTests")]
+public class PersonLifecycleSystemTests 
 {
-    public HttpClient Client { get; private set; }
-    private HttpClientHandler _handler;
-    private readonly string _baseUrl = "https://localhost:7035";
+    private readonly HttpClient _client;
     private readonly WebIdPServerFixture _serverFixture;
 
-    public PersonLifecycleFixture()
+    public PersonLifecycleSystemTests(WebIdPServerFixture fixture)
     {
-        _serverFixture = new WebIdPServerFixture();
-        _handler = new HttpClientHandler
+        _serverFixture = fixture;
+        // Construct client manually as we removed the wrapper fixture
+        // Or reuse a shared client from fixture? 
+        // WebIdPServerFixture doesn't expose Client.
+        // We create one here.
+        var handler = new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
             CookieContainer = new CookieContainer(),
             UseCookies = true
         };
-        Client = new HttpClient(_handler) 
+        _client = new HttpClient(handler) 
         { 
-            BaseAddress = new Uri(_baseUrl),
+            BaseAddress = new Uri(fixture.BaseUrl),
             Timeout = TimeSpan.FromSeconds(10) 
         };
     }
-
-    public async Task InitializeAsync()
+    
+    // InitializeAsync not strictly needed if we just call Login in the test or helper
+    // But LoginAsAdmin is needed.
+    // We can call it in constructor or helper.
+    // If the server is already running (Collection scope), we can just log in.
+    
+    private async Task EnsureLoggedInAsync()
     {
-        await _serverFixture.EnsureServerRunningAsync();
-        await LoginAsAdminAsync();
+         await LoginAsAdminAsync();
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
-
-    public void Dispose()
-    {
-        Client.Dispose();
-        _handler.Dispose();
-        _serverFixture.Dispose();
-    }
-
-    private async Task LoginAsAdminAsync()
-    {
-        var loginPage = await Client.GetAsync("/Account/Login");
-        var html = await loginPage.Content.ReadAsStringAsync();
-        
-        if (!loginPage.IsSuccessStatusCode)
-            throw new Exception($"Failed to load login page. Status: {loginPage.StatusCode}");
-
-        var tokenMatch = Regex.Match(html, @"input[^>]+name=""__RequestVerificationToken""[^>]*value=""([^""]+)""");
-        if (!tokenMatch.Success) 
-            tokenMatch = Regex.Match(html, @"input[^>]+value=""([^""]+)""[^>]*name=""__RequestVerificationToken""");
-
-        if (!tokenMatch.Success)
-            throw new Exception("Anti-forgery token not found.");
-
-        var token = tokenMatch.Groups[1].Value;
-        
-        var loginContent = new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["Input.Login"] = "admin@hybridauth.local",
-            ["Input.Password"] = "Admin@123",
-            ["__RequestVerificationToken"] = token,
-            ["Input.RememberMe"] = "true" // Keep session alive
-        });
-        
-        var loginResponse = await Client.PostAsync("/Account/Login", loginContent);
-        
-        if (loginResponse.StatusCode == HttpStatusCode.OK)
-        {
-             var content = await loginResponse.Content.ReadAsStringAsync();
-             if (content.Contains("Input.Login"))
-                 throw new Exception("Login failed.");
-        }
-    }
-}
-
-/// <summary>
-/// Verified System Tests (Fast). uses shared session.
-/// </summary>
-[Collection("SystemTests")]
-public class PersonLifecycleSystemTests : IClassFixture<PersonLifecycleFixture>
-{
-    private readonly HttpClient _client;
-
-    public PersonLifecycleSystemTests(PersonLifecycleFixture fixture)
-    {
-        _client = fixture.Client;
-    }
 
     [Fact]
     public async Task CreatePerson_WithActiveStatus_CanAuthenticate()
@@ -190,6 +140,8 @@ public class PersonLifecycleSystemTests : IClassFixture<PersonLifecycleFixture>
 
     private async Task<JsonElement> CreatePersonAsync(string firstName, string status, string? startDate = null, string? endDate = null)
     {
+        await EnsureLoggedInAsync();
+
         var payload = new Dictionary<string, object?>
         {
             ["firstName"] = firstName,
@@ -205,5 +157,40 @@ public class PersonLifecycleSystemTests : IClassFixture<PersonLifecycleFixture>
         var content = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, $"Create failed: {response.StatusCode}");
         return JsonDocument.Parse(content).RootElement;
+    }
+
+    private async Task LoginAsAdminAsync()
+    {
+        var loginPage = await _client.GetAsync("/Account/Login");
+        var html = await loginPage.Content.ReadAsStringAsync();
+        
+        if (!loginPage.IsSuccessStatusCode)
+            throw new Exception($"Failed to load login page. Status: {loginPage.StatusCode}");
+
+        var tokenMatch = Regex.Match(html, @"input[^>]+name=""__RequestVerificationToken""[^>]*value=""([^""]+)""");
+        if (!tokenMatch.Success) 
+            tokenMatch = Regex.Match(html, @"input[^>]+value=""([^""]+)""[^>]*name=""__RequestVerificationToken""");
+
+        if (!tokenMatch.Success)
+            throw new Exception("Anti-forgery token not found.");
+
+        var token = tokenMatch.Groups[1].Value;
+        
+        var loginContent = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Input.Login"] = "admin@hybridauth.local",
+            ["Input.Password"] = "Admin@123",
+            ["__RequestVerificationToken"] = token,
+            ["Input.RememberMe"] = "true" // Keep session alive
+        });
+        
+        var loginResponse = await _client.PostAsync("/Account/Login", loginContent);
+        
+        if (loginResponse.StatusCode == HttpStatusCode.OK)
+        {
+             var content = await loginResponse.Content.ReadAsStringAsync();
+             if (content.Contains("Input.Login"))
+                 throw new Exception("Login failed.");
+        }
     }
 }
