@@ -180,8 +180,8 @@ const getSortIcon = (field) => {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap">
+            <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50" :data-test-id="`user-row-${user.id}`">
+              <td class="px-6 py-4 whitespace-nowrap" :data-test-id="`user-email-${user.id}`">
                 <div class="text-sm font-medium text-gray-900">{{ user.userName }}</div>
                 <div v-if="user.employeeId" class="text-sm text-gray-500">{{ t('users.details.id', { id: user.employeeId }) }}</div>
               </td>
