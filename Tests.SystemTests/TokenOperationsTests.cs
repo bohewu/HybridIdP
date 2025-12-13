@@ -168,6 +168,56 @@ public class TokenOperationsTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    // ===== Userinfo Tests =====
+
+    [Fact]
+    public async Task Userinfo_NoAuth_ReturnsUnauthorized()
+    {
+        // Arrange - no auth header
+        using var httpClient = new HttpClient(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        })
+        { BaseAddress = new Uri(_serverFixture.BaseUrl) };
+
+        // Act
+        var response = await httpClient.GetAsync("/connect/userinfo");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Userinfo_InvalidToken_ReturnsUnauthorized()
+    {
+        // Arrange
+        _httpClient.DefaultRequestHeaders.Authorization = 
+            new AuthenticationHeaderValue("Bearer", "invalid_token_xyz");
+
+        // Act
+        var response = await _httpClient.GetAsync("/connect/userinfo");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Userinfo_ValidToken_ReturnsUserInfo()
+    {
+        // Arrange - need token with openid scope
+        _httpClient.DefaultRequestHeaders.Authorization = 
+            new AuthenticationHeaderValue("Bearer", _accessToken);
+
+        // Act
+        var response = await _httpClient.GetAsync("/connect/userinfo");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
+        Assert.True(result.TryGetProperty("sub", out _));
+    }
+
     // ===== Helper Methods =====
 
     private async Task<string> GetAccessTokenAsync()
