@@ -175,10 +175,12 @@ public class PersonCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
     }
 
     // ===== PID Field Tests (User's Specific Requirement) =====
-    // Note: These tests are skipped due to server-side duplicate detection/hashing issues
-    // that need investigation. The core CRUD tests (12/12) pass successfully.
+    // NOTE: These tests are skipped due to DB uniqueness constraint issues.
+    // The PersonService validates uniqueness, but stale test data with same hashed
+    // passport numbers causes DbUpdateException at SaveChangesAsync level.
+    // TODO: Clean up stale test data or use transaction rollback strategy.
 
-    [Fact(Skip = "Server-side PID hashing/duplicate detection issue to investigate")]
+    [Fact(Skip = "DB uniqueness constraint on PassportNumber - stale test data issue")]
     public async Task GetPerson_WithPassportNumber_ReturnsMaskedValue()
     {
         // Arrange - create person with PassportNumber (simpler format than NationalId)
@@ -216,7 +218,7 @@ public class PersonCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
         Assert.Contains("●", passportNumber); // Should be masked
     }
 
-    [Fact(Skip = "Server-side PID hashing/duplicate detection issue to investigate")]
+    [Fact(Skip = "DB uniqueness constraint on PassportNumber - stale test data issue")]
     public async Task UpdatePerson_WithEmptyPassportNumber_PreservesExistingValue()
     {
         // Arrange - create person with PassportNumber
