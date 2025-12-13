@@ -58,6 +58,8 @@
     "endDate": "End Date",
     "personalInfo": "Personal Information",
     "identityVerification": "Identity Verification",
+    "selectTimeZone": "Select Time Zone",
+    "selectLocale": "Select Language",
     "identityDocumentType": "Identity Document Type",
     "documentTypes": {
       "none": "None",

@@ -57,6 +57,8 @@
     "startDate": "起始日期",
     "endDate": "結束日期",
     "personalInfo": "個人資訊",
+    "selectTimeZone": "選擇時區",
+    "selectLocale": "選擇語言",
     "identityVerification": "身分驗證",
     "identityDocumentType": "身分證件類型",
     "documentTypes": {

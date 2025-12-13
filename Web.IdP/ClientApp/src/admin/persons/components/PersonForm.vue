@@ -411,23 +411,32 @@ const handleClose = () => {
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
 							</div>
 
-							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-4">
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-4">
 								<div>
 									<label for="timeZone" class="block text-sm font-medium text-gray-700">
 										{{ t('persons.form.timeZone') }}
 									</label>
-									<input id="timeZone" v-model="formData.timeZone" type="text"
-										:placeholder="t('persons.form.timeZone')"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									<select id="timeZone" v-model="formData.timeZone"
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+										<option value="">{{ t('persons.form.selectTimeZone') }}</option>
+										<option value="Asia/Taipei">Asia/Taipei (GMT+8)</option>
+										<option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+										<option value="America/New_York">America/New_York (EST)</option>
+										<option value="Europe/London">Europe/London (GMT)</option>
+										<option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+									</select>
 								</div>
 
 								<div>
 									<label for="locale" class="block text-sm font-medium text-gray-700">
 										{{ t('persons.form.locale') }}
 									</label>
-									<input id="locale" v-model="formData.locale" type="text"
-										:placeholder="t('persons.form.locale')"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									<select id="locale" v-model="formData.locale"
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+										<option value="">{{ t('persons.form.selectLocale') }}</option>
+										<option value="zh-TW">繁體中文 (zh-TW)</option>
+										<option value="en-US">English (en-US)</option>
+									</select>
 								</div>
 							</div>
 						</div>

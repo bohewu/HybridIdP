@@ -172,6 +172,25 @@ public partial class LoginModel : PageModel
                     userAgent: Request.Headers["User-Agent"].ToString()
                 ));
                 
+                // Set localization cookie if user has a preferred locale
+                var preferredLocale = result.User!.Locale;
+                
+                // Fallback to Person if user has no locale but is linked to a Person
+                // (Person is now loaded by LoginService)
+                if (string.IsNullOrEmpty(preferredLocale) && result.User.Person != null)
+                {
+                    preferredLocale = result.User.Person.Locale;
+                }
+
+                if (!string.IsNullOrEmpty(preferredLocale))
+                {
+                    Response.Cookies.Append(
+                        Microsoft.AspNetCore.Localization.CookieRequestCultureProvider.DefaultCookieName,
+                        Microsoft.AspNetCore.Localization.CookieRequestCultureProvider.MakeCookieValue(new Microsoft.AspNetCore.Localization.RequestCulture(preferredLocale)),
+                        new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1) }
+                    );
+                }
+
                 // Always redirect to returnUrl (default is ~/ index page)
                 // Users will navigate to Admin/ApplicationManager portals via menu
                 return LocalRedirect(returnUrl);
