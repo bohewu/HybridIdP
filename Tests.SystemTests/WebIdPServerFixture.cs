@@ -89,11 +89,17 @@ public class WebIdPServerFixture : IDisposable
     {
         try
         {
-            // Find process using port 7035
+            // Kill any process named 'Web.IdP' or 'Web.IdP.exe'
+            foreach (var process in Process.GetProcessesByName("Web.IdP"))
+            {
+                try { process.Kill(); } catch { }
+            }
+            
+            // Find process using port 7035 via netstat (backup)
             var netstatInfo = new ProcessStartInfo
             {
-                FileName = "netstat",
-                Arguments = "-ano | findstr :7035",
+                FileName = "cmd",
+                Arguments = "/c netstat -ano | findstr :7035",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
@@ -147,11 +153,27 @@ public class WebIdPServerFixture : IDisposable
         {
             throw new Exception("Failed to start Web.IdP server");
         }
+        
+        // Capture stderr for debugging
+        var stderr = new System.Text.StringBuilder();
+        _serverProcess.ErrorDataReceived += (sender, args) => {
+             if (args.Data != null) stderr.AppendLine(args.Data);
+        };
+        _serverProcess.BeginErrorReadLine();
+
+        // Drain stdout to prevent buffer fill deadlocks
+        _serverProcess.OutputDataReceived += (sender, args) => { /* Ignore stdout */ };
+        _serverProcess.BeginOutputReadLine();
 
         // Wait for server to be ready
         var stopwatch = Stopwatch.StartNew();
-        while (stopwatch.ElapsedMilliseconds < StartupTimeoutMs)
+        while (stopwatch.ElapsedMilliseconds < 60000) // 60s timeout
         {
+            if (_serverProcess.HasExited)
+            {
+                 throw new Exception($"Web.IdP server process exited prematurely with code {_serverProcess.ExitCode}. Error: {stderr}");
+            }
+
             if (await IsServerAliveAsync())
             {
                 IsRunning = true;
@@ -161,7 +183,8 @@ public class WebIdPServerFixture : IDisposable
             await Task.Delay(500);
         }
 
-        throw new TimeoutException($"Web.IdP server did not start within {StartupTimeoutMs}ms");
+        try { _serverProcess.Kill(entireProcessTree: true); } catch { }
+        throw new TimeoutException($"Web.IdP server did not start within 60s. Last error: {stderr}");
     }
 
     public void Dispose()

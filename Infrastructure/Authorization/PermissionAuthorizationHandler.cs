@@ -23,6 +23,29 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
+        // Check for Scopes (M2M / Client Credentials)
+        // Scopes are typically used for machine-to-machine communication where there is no user/role
+        
+        // 1. Check "scope" claim (space-separated, standard OAuth2)
+        var scopeClaim = context.User.FindFirst("scope");
+        if (scopeClaim != null && !string.IsNullOrWhiteSpace(scopeClaim.Value))
+        {
+            var scopes = scopeClaim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (scopes.Contains(requirement.Permission, StringComparer.OrdinalIgnoreCase))
+            {
+                context.Succeed(requirement);
+                return;
+            }
+        }
+
+        // 2. Check "scp" claim (repeated claim, Azure AD style)
+        var scpClaims = context.User.FindAll("scp");
+        if (scpClaims.Any(c => string.Equals(c.Value, requirement.Permission, StringComparison.OrdinalIgnoreCase)))
+        {
+             context.Succeed(requirement);
+             return;
+        }
+
         // Phase 11.4: Get the active role from claims
         // The active role is set during login/role selection and stored in the session
         var activeRoleClaim = context.User.Claims

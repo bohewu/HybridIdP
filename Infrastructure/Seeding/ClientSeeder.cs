@@ -23,6 +23,9 @@ public static class ClientSeeder
             
             // Seed Demo Client (new)
             await SeedDemoClientAsync(applicationManager);
+
+            // Seed Admin Client for System Tests
+            await SeedTestAdminClientAsync(applicationManager, scopeManager);
         }
 
         // Note: SeedTestApplicationAsync removed in Phase 3.2
@@ -118,6 +121,68 @@ public static class ClientSeeder
                 $"{Permissions.Prefixes.Scope}api:company:write"
             }
         });
+    }
+
+    /// <summary>
+    /// Seeds Admin M2M test client for CRUD tests.
+    /// ClientId: testclient-admin
+    /// ClientSecret: admin-test-secret-2024
+    /// Supports: client_credentials grant with full admin API access
+    /// </summary>
+    private static async Task SeedTestAdminClientAsync(
+        IOpenIddictApplicationManager applicationManager,
+        IOpenIddictScopeManager scopeManager)
+    {
+        const string clientId = "testclient-admin";
+        const string clientSecret = "admin-test-secret-2024";
+
+        // Get all application permissions (matching Admin Role)
+        var allPermissions = Core.Domain.Constants.Permissions.GetAll();
+
+        // Ensure all scopes exist
+        foreach (var permission in allPermissions)
+        {
+            if (await scopeManager.FindByNameAsync(permission) == null)
+            {
+                await scopeManager.CreateAsync(new OpenIddictScopeDescriptor
+                {
+                    Name = permission,
+                    DisplayName = permission, // Description can be refined if needed
+                    Description = $"Scope for {permission}"
+                });
+            }
+        }
+
+        // Seed Admin M2M client
+        var client = await applicationManager.FindByClientIdAsync(clientId);
+        if (client != null)
+        {
+            await applicationManager.DeleteAsync(client);
+        }
+
+        var descriptor = new OpenIddictApplicationDescriptor
+        {
+            ClientId = clientId,
+            ClientSecret = clientSecret,
+            DisplayName = "Admin API Test Client",
+            ClientType = ClientTypes.Confidential,
+            ConsentType = ConsentTypes.Implicit,
+            Permissions =
+            {
+                Permissions.Endpoints.Token,
+                Permissions.Endpoints.Introspection,
+                Permissions.Endpoints.Revocation,
+                Permissions.GrantTypes.ClientCredentials
+            }
+        };
+
+        // Add all permission scopes to the client permissions
+        foreach (var permission in allPermissions)
+        {
+            descriptor.Permissions.Add($"{Permissions.Prefixes.Scope}{permission}");
+        }
+
+        await applicationManager.CreateAsync(descriptor);
     }
 
 
