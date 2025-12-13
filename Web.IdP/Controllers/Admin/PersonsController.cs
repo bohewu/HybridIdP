@@ -7,6 +7,7 @@ using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -17,7 +18,7 @@ namespace Web.IdP.Controllers.Admin;
 /// </summary>
 [ApiController]
 [Route("api/admin/people")]
-[Authorize]
+[ApiAuthorize]
 public class PersonsController : ControllerBase
 {
     private readonly IPersonService _personService;
