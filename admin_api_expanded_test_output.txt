@@ -1,0 +1,82 @@
+  正在判斷要還原的專案...
+  所有專案都在最新狀態，可進行還原。
+  Tests.SystemTests -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll 的測試回合 (.NETCoreApp,Version=v10.0)
+VSTest 版本 18.0.1 (x64)
+
+正在啟動測試執行，請稍候...
+總共有 1 個測試檔案與指定的模式相符。
+  失敗 Tests.SystemTests.AdminApiTests.AdminApi_Persons_WithoutAuth_Returns401 [15 ms]
+  錯誤訊息:
+   Assert.Equal() Failure: Values differ
+Expected: Unauthorized
+Actual:   NotFound
+  堆疊追蹤:
+     at Tests.SystemTests.AdminApiTests.AdminApi_Persons_WithoutAuth_Returns401() in C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\AdminApiTests.cs:line 205
+--- End of stack trace from previous location ---
+  失敗 Tests.SystemTests.AdminApiTests.AdminApi_ApiResources_WithoutAuth_Returns401 [12 ms]
+  錯誤訊息:
+   Assert.Equal() Failure: Values differ
+Expected: Unauthorized
+Actual:   NotFound
+  堆疊追蹤:
+     at Tests.SystemTests.AdminApiTests.AdminApi_ApiResources_WithoutAuth_Returns401() in C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\AdminApiTests.cs:line 235
+--- End of stack trace from previous location ---
+  失敗 Tests.SystemTests.AdminApiTests.AdminApi_Dashboard_WithoutAuth_Returns401 [12 ms]
+  錯誤訊息:
+   Assert.Equal() Failure: Values differ
+Expected: Unauthorized
+Actual:   NotFound
+  堆疊追蹤:
+     at Tests.SystemTests.AdminApiTests.AdminApi_Dashboard_WithoutAuth_Returns401() in C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\AdminApiTests.cs:line 225
+--- End of stack trace from previous location ---
+  失敗 Tests.SystemTests.AdminApiTests.Connect_Device_WithoutClientId_ReturnsBadRequest [19 ms]
+  錯誤訊息:
+   Assert.Equal() Failure: Values differ
+Expected: BadRequest
+Actual:   Unauthorized
+  堆疊追蹤:
+     at Tests.SystemTests.AdminApiTests.Connect_Device_WithoutClientId_ReturnsBadRequest() in C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\AdminApiTests.cs:line 143
+--- End of stack trace from previous location ---
+  失敗 Tests.SystemTests.AdminApiTests.Connect_Logout_Get_ReturnsOk [7 ms]
+  錯誤訊息:
+   Assert.True() Failure
+Expected: True
+Actual:   False
+  堆疊追蹤:
+     at Tests.SystemTests.AdminApiTests.Connect_Logout_Get_ReturnsOk() in C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\AdminApiTests.cs:line 153
+--- End of stack trace from previous location ---
+  失敗 Tests.SystemTests.AdminApiTests.AdminApi_AuditLogs_WithoutAuth_Returns401 [10 ms]
+  錯誤訊息:
+   Assert.Equal() Failure: Values differ
+Expected: Unauthorized
+Actual:   NotFound
+  堆疊追蹤:
+     at Tests.SystemTests.AdminApiTests.AdminApi_AuditLogs_WithoutAuth_Returns401() in C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\AdminApiTests.cs:line 215
+--- End of stack trace from previous location ---
+  失敗 Tests.SystemTests.AdminApiTests.AdminApi_Permissions_WithoutAuth_Returns401 [16 ms]
+  錯誤訊息:
+   Assert.Equal() Failure: Values differ
+Expected: Unauthorized
+Actual:   NotFound
+  堆疊追蹤:
+     at Tests.SystemTests.AdminApiTests.AdminApi_Permissions_WithoutAuth_Returns401() in C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\AdminApiTests.cs:line 245
+--- End of stack trace from previous location ---
+  失敗 Tests.SystemTests.AdminApiTests.Connect_Revocation_WithoutClientId_ReturnsBadRequest [6 ms]
+  錯誤訊息:
+   Assert.True() Failure
+Expected: True
+Actual:   False
+  堆疊追蹤:
+     at Tests.SystemTests.AdminApiTests.Connect_Revocation_WithoutClientId_ReturnsBadRequest() in C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\AdminApiTests.cs:line 133
+--- End of stack trace from previous location ---
+  失敗 Tests.SystemTests.AdminApiTests.Connect_Introspection_WithoutAuth_Returns401 [7 ms]
+  錯誤訊息:
+   Assert.Equal() Failure: Values differ
+Expected: Unauthorized
+Actual:   NotFound
+  堆疊追蹤:
+     at Tests.SystemTests.AdminApiTests.Connect_Introspection_WithoutAuth_Returns401() in C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\AdminApiTests.cs:line 123
+--- End of stack trace from previous location ---
+
+失敗!  - 失敗:     9，通過:    12，略過:     0，總計:    21，持續時間: 21 s - Tests.SystemTests.dll (net10.0)
