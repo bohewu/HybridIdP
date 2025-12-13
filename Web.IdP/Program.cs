@@ -99,7 +99,10 @@ var app = builder.Build();
 app.UseCustomPipeline(builder.Configuration);
 app.MapCustomEndpoints(builder.Configuration);
 
-// Seed the database (seed test users only in development environment)
-await DataSeeder.SeedAsync(app.Services, seedTestUsers: app.Environment.IsDevelopment());
+// Seed the database (skip in Test environment - integration tests handle seeding)
+if (!app.Environment.IsEnvironment("Test"))
+{
+    await DataSeeder.SeedAsync(app.Services, seedTestUsers: app.Environment.IsDevelopment());
+}
 
 app.Run();

@@ -43,7 +43,7 @@ export function useIdentityValidation() {
 
     const letter = value[0]
     const letterValue = letterMapping[letter]
-    
+
     if (!letterValue) {
       return {
         valid: false,
@@ -51,18 +51,26 @@ export function useIdentityValidation() {
       }
     }
 
-    // Calculate checksum
+    // Checksum validation
+    // Logic must match IdentityDocumentValidator.cs
+
+    // Convert letter to two digits
     const firstDigit = Math.floor(letterValue / 10)
     const secondDigit = letterValue % 10
-    const weights = [9, 8, 7, 6, 5, 4, 3, 2, 1, 1]
-    
-    let sum = firstDigit * 1 + secondDigit * 9
-    
-    for (let i = 0; i < 9; i++) {
-      sum += parseInt(value[i + 1]) * weights[i]
+
+    const weights = [1, 9, 8, 7, 6, 5, 4, 3, 2, 1] // 10 weights
+
+    // Calculate weighted sum for the letter and first 8 digits
+    let sum = firstDigit * weights[0] + secondDigit * weights[1]
+
+    for (let i = 1; i < 9; i++) {
+      sum += parseInt(value[i]) * weights[i + 1]
     }
 
-    if (sum % 10 !== 0) {
+    const lastDigit = parseInt(value[9])
+    const checksum = (10 - (sum % 10)) % 10
+
+    if (checksum !== lastDigit) {
       return {
         valid: false,
         error: t('persons.validation.nationalIdChecksum')
@@ -134,7 +142,7 @@ export function useIdentityValidation() {
           errors.push(result.error)
         }
       }
-      
+
       // Clear other document fields if present
       if (formData.passportNumber || formData.residentCertificateNumber) {
         errors.push(t('persons.validation.onlyOneDocumentType'))
@@ -148,7 +156,7 @@ export function useIdentityValidation() {
           errors.push(result.error)
         }
       }
-      
+
       // Clear other document fields if present
       if (formData.nationalId || formData.residentCertificateNumber) {
         errors.push(t('persons.validation.onlyOneDocumentType'))
@@ -162,7 +170,7 @@ export function useIdentityValidation() {
           errors.push(result.error)
         }
       }
-      
+
       // Clear other document fields if present
       if (formData.nationalId || formData.passportNumber) {
         errors.push(t('persons.validation.onlyOneDocumentType'))
