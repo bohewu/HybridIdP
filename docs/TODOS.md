@@ -35,6 +35,10 @@ This file contains current high-priority backlog items and remaining tasks.
   - [x] Client Credentials (`M2MSystemTests.cs`)
   - [x] Resource Owner Password / Legacy (`LegacyAuthSystemTests.cs`)
   - [ ] Authorization Code Flow (Interactive Login via HttpClient simulation)
+- [ ] Phase 19.5: Create `Tests.Api.IntegrationTests` (Endpoint Coverage)
+  - [ ] Setup `WebApplicationFactory` (In-Memory TestServer)
+  - [ ] Cover all Admin API routes (Users, Clients, People)
+  - [ ] Focus on Validation, 401/403/404 cases, and Response Schemes
 
 
 ## Medium-term (tech debt)
