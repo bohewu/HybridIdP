@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -13,7 +14,7 @@ namespace Web.IdP.Controllers.Admin;
 /// </summary>
 [ApiController]
 [Route("api/admin/dashboard")] // preserve existing URL segment used by frontend
-[Authorize]
+[ApiAuthorize]
 public class DashboardController : ControllerBase
 {
     private readonly IOpenIddictApplicationManager _applicationManager;

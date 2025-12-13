@@ -4,6 +4,7 @@ using Core.Domain.Constants;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -13,7 +14,7 @@ namespace Web.IdP.Controllers.Admin;
 /// </summary>
 [ApiController]
 [Route("api/admin/resources")]
-[Authorize]
+[ApiAuthorize]
 public class ApiResourcesController : ControllerBase
 {
     private readonly IApiResourceService _apiResourceService;
