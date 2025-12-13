@@ -98,15 +98,16 @@ public class UserCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         // Arrange
         var createRequest = new CreateUserDto
         {
-            UserName = $"{TEST_PREFIX}create",
-            Email = $"{TEST_PREFIX}create@example.com",
+            UserName = $"{TEST_PREFIX}update_{Guid.NewGuid()}",
+            Email = $"{TEST_PREFIX}update_{Guid.NewGuid()}@example.com",
             FirstName = "Test",
             LastName = "User",
-            Password = "Password123!",
+            Password = "TestPass123!",
             PhoneNumber = "1234567890"
         };
 
         var createResponse = await _httpClient.PostAsJsonAsync("/api/admin/users", createRequest);
+        createResponse.EnsureSuccessStatusCode();
         var createdUser = await createResponse.Content.ReadFromJsonAsync<UserDetailDto>();
         _createdUserIds.Add(createdUser.Id.ToString());
 
@@ -134,15 +135,16 @@ public class UserCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         // Arrange
         var createRequest = new CreateUserDto
         {
-            UserName = $"{TEST_PREFIX}delete",
-            Email = $"{TEST_PREFIX}delete@example.com",
+            UserName = $"{TEST_PREFIX}delete_{Guid.NewGuid()}",
+            Email = $"{TEST_PREFIX}delete_{Guid.NewGuid()}@example.com",
             FirstName = "Test",
             LastName = "User",
-            Password = "Password123!",
+            Password = "TestPass123!",
             PhoneNumber = "1234567890"
         };
 
         var createResponse = await _httpClient.PostAsJsonAsync("/api/admin/users", createRequest);
+        createResponse.EnsureSuccessStatusCode();
         var createdUser = await createResponse.Content.ReadFromJsonAsync<UserDetailDto>();
         _createdUserIds.Add(createdUser.Id.ToString());
 
@@ -178,15 +180,20 @@ public class UserCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         // Arrange
         var request = new CreateUserDto
         {
-            UserName = $"{TEST_PREFIX}get",
-            Email = $"{TEST_PREFIX}get@example.com",
+            UserName = $"{TEST_PREFIX}get_{Guid.NewGuid()}",
+            Email = $"{TEST_PREFIX}get_{Guid.NewGuid()}@example.com",
             FirstName = "Test",
             LastName = "User",
-            Password = "Password123!",
+            Password = "TestPass123!",
             PhoneNumber = "1234567890"
         };
 
         var createResponse = await _httpClient.PostAsJsonAsync("/api/admin/users", request);
+        if (!createResponse.IsSuccessStatusCode)
+        {
+             var error = await createResponse.Content.ReadAsStringAsync();
+             throw new Exception($"Create failed with {createResponse.StatusCode}: {error}");
+        }
         var createdUser = await createResponse.Content.ReadFromJsonAsync<UserDetailDto>();
         _createdUserIds.Add(createdUser.Id.ToString());
 

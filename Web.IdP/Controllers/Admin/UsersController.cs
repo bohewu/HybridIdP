@@ -13,7 +13,7 @@ using Microsoft.Extensions.Localization;
 using Web.IdP;
 using Web.IdP.Services;
 
-using OpenIddict.Validation.AspNetCore;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -22,11 +22,7 @@ namespace Web.IdP.Controllers.Admin;
 /// </summary>
 [ApiController]
 [Route("api/admin/users")]
-// Note: We use string literals because Attribute arguments must be compile-time constants, 
-// and string interpolation/concatenation of some framework constants may not be supported or they might be static readonly.
-// "Identity.Application" -> IdentityConstants.ApplicationScheme
-// "OpenIddict.Validation.AspNetCore" -> OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme
-[Authorize(AuthenticationSchemes = "Identity.Application, OpenIddict.Validation.AspNetCore")]
+[ApiAuthorize]
 public class UsersController : ControllerBase
 {
     private readonly IUserManagementService _userManagementService;
