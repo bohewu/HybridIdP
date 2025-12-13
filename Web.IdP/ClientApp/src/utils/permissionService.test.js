@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Permissions } from '../permissionService'
+import { Permissions } from './permissionService'
 
 describe('Permission Constants', () => {
   it('should have lowercase permission values', () => {
@@ -41,10 +41,10 @@ describe('Permission Constants', () => {
     expect(Permissions.Clients).toBeDefined()
     expect(Permissions.Clients.Read).toBe('clients.read')
     expect(Permissions.Clients.Create).toBe('clients.create')
-    
+
     // These should NOT exist (would be undefined)
-    expect((Permissions.Clients as any).READ).toBeUndefined()
-    expect((Permissions.Clients as any).CREATE).toBeUndefined()
+    expect(Permissions.Clients.READ).toBeUndefined()
+    expect(Permissions.Clients.CREATE).toBeUndefined()
   })
 
   it('should match backend permission format', () => {
