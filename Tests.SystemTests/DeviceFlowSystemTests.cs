@@ -7,8 +7,9 @@ using Xunit;
 namespace Tests.SystemTests;
 
 [Collection("SystemTests")]
-public class DeviceFlowSystemTests
+public class DeviceFlowSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
+    private readonly WebIdPServerFixture _serverFixture;
     private const string Authority = "https://localhost:7035";
     private const string Username = "admin@hybridauth.local";
     private const string Password = "Admin@123";
@@ -23,6 +24,18 @@ public class DeviceFlowSystemTests
     };
 
     private static readonly HttpClient HttpClient = new(HttpClientHandler) { BaseAddress = new Uri(Authority) };
+
+    public DeviceFlowSystemTests(WebIdPServerFixture serverFixture)
+    {
+        _serverFixture = serverFixture;
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _serverFixture.EnsureServerRunningAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task DeviceFlow_EndToEnd_ReturnsSuccess()

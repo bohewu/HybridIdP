@@ -12,9 +12,11 @@ public class PersonLifecycleFixture : IDisposable, IAsyncLifetime
     public HttpClient Client { get; private set; }
     private HttpClientHandler _handler;
     private readonly string _baseUrl = "https://localhost:7035";
+    private readonly WebIdPServerFixture _serverFixture;
 
     public PersonLifecycleFixture()
     {
+        _serverFixture = new WebIdPServerFixture();
         _handler = new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
@@ -30,6 +32,7 @@ public class PersonLifecycleFixture : IDisposable, IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        await _serverFixture.EnsureServerRunningAsync();
         await LoginAsAdminAsync();
     }
 
@@ -39,6 +42,7 @@ public class PersonLifecycleFixture : IDisposable, IAsyncLifetime
     {
         Client.Dispose();
         _handler.Dispose();
+        _serverFixture.Dispose();
     }
 
     private async Task LoginAsAdminAsync()
