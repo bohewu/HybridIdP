@@ -11,12 +11,12 @@ Current E2E tests are slow, flaky, and prone to data conflicts. We need to shift
 
 ## Execution Plan (Phased)
 
-### Phase 19.1: Framework Foundation & Auth
+### Phase 19.1: Framework Foundation & Auth ✅
 **Goal**: Establish the infrastructure for hybrid testing.
--   [ ] **Config**: Update `playwright.config.ts` to support global setup and multiple projects.
--   [ ] **Global Setup**: Implement `global-setup.ts` to save Admin auth state to `storageState.json`.
--   [ ] **API Client**: Create `e2e/tests/helpers/api-client.ts` wrapping `APIRequestContext` for reusable, type-safe API calls (GET, POST, DELETE).
--   [ ] **Refactor Auth Tests**: Rewrite `feature-auth` to use the new structure (though Auth tests naturally require UI, they checking for redirect behavior can be optimized).
+-   [x] **Config**: Update `playwright.config.ts` to support global setup and storage state.
+-   [x] **Global Setup**: Implement `global-setup.ts` to save Admin auth state to `.auth/admin.json`.
+-   [x] **API Client**: Create `e2e/tests/helpers/api-client.ts` with type-safe API clients.
+-   [x] **Fixtures**: Create `e2e/tests/fixtures.ts` with `api` context for hybrid tests.
 
 ### Phase 19.2: User Management (Core)
 **Goal**: Refactor the most data-heavy feature to prove the pattern.
