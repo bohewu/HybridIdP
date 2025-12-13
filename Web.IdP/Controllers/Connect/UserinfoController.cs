@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Server.AspNetCore;
 using Web.IdP.Services;
 
-namespace Web.IdP.Controllers.Admin;
+namespace Web.IdP.Controllers.Connect;
 
 /// <summary>
 /// OpenID Connect UserInfo endpoint
