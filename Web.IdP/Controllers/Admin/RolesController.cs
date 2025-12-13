@@ -5,6 +5,8 @@ using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using Web.IdP.Attributes;
+
 namespace Web.IdP.Controllers.Admin;
 
 /// <summary>
@@ -12,7 +14,7 @@ namespace Web.IdP.Controllers.Admin;
 /// </summary>
 [ApiController]
 [Route("api/admin/roles")]
-[Authorize]
+[ApiAuthorize]
 public class RolesController : ControllerBase
 {
     private readonly IRoleManagementService _roleManagementService;
