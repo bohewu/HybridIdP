@@ -159,6 +159,20 @@ public class RoleCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task GetAvailablePermissions_ReturnsOk_AndList()
+    {
+        // Act
+        var response = await _httpClient.GetAsync("/api/admin/roles/permissions");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var permissions = await response.Content.ReadFromJsonAsync<List<string>>();
+        Assert.NotNull(permissions);
+        Assert.NotEmpty(permissions);
+        Assert.Contains("users.read", permissions);
+    }
+
     private async Task<string> GetAdminTokenAsync()
     {
         var scopes = new[]
