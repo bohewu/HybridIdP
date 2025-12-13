@@ -4,6 +4,7 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
+[Collection("SystemTests")]
 public class LegacyAuthSystemTests
 {
     private const string Authority = "https://localhost:7035";

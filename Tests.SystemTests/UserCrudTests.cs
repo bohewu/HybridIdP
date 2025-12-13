@@ -13,6 +13,7 @@ namespace Tests.SystemTests;
 /// CRUD tests for User management with automatic cleanup
 /// Uses IAsyncLifetime to cleanup test data before and after tests
 /// </summary>
+[Collection("SystemTests")]
 public class UserCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
@@ -206,6 +207,48 @@ public class UserCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         Assert.NotNull(fetchedUser);
         Assert.Equal(createdUser.Id, fetchedUser.Id);
         Assert.Equal(request.Email, fetchedUser.Email);
+    }
+
+    [Fact]
+    public async Task CreateUser_InvalidEmail_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateUserDto
+        {
+            UserName = $"{TEST_PREFIX}user_invalid_{Guid.NewGuid()}",
+            Email = "invalid-email", // Invalid format
+            FirstName = "Test",
+            LastName = "User",
+            Password = "TestPass123!",
+            PhoneNumber = "1234567890"
+        };
+
+        // Act
+        var response = await _httpClient.PostAsJsonAsync("/api/admin/users", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateUser_MissingPassword_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateUserDto
+        {
+            UserName = $"{TEST_PREFIX}user_nopass_{Guid.NewGuid()}",
+            Email = $"{TEST_PREFIX}nopass_{Guid.NewGuid()}@example.com",
+            FirstName = "Test",
+            LastName = "User",
+            Password = "", // Empty
+            PhoneNumber = "1234567890"
+        };
+
+        // Act
+        var response = await _httpClient.PostAsJsonAsync("/api/admin/users", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     // ===== Helper Methods =====
