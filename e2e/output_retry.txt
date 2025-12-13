@@ -1,6 +1,0 @@
-
-Running 1 test using 1 worker
-
-  ✓  1 [chromium] › tests\feature-auth\userinfo-scope-enforcement.spec.ts:10:7 › Userinfo Endpoint - Scope Protection › Userinfo returns 200 with openid scope and correct claims (48.8s)
-
-  1 passed (56.5s)
