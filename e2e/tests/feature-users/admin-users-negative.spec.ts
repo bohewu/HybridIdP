@@ -8,6 +8,8 @@ const ERR_INVALID_EMAIL = /invalid|email|format/i;
 const ERR_PASSWORD = /password/i;
 const ERR_REQUIRED = /required/i;
 
+test.describe.configure({ mode: 'serial' });
+
 test.describe('Admin - Users negative validation', () => {
   test('Duplicate email shows validation error', async ({ api }) => {
     const ts = Date.now();
