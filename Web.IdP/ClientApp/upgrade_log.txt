@@ -1,0 +1,46 @@
+≈ tailwindcss v4.0.6
+
+│ Searching for CSS files in the current directory and its subdirectories… 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\profile\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\claims\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\audit\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\clients\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\localization\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\persons\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\monitoring\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\resources\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\roles\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\scopes\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\settings\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\security\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+
+│ ↳ Could not determine configuration file for: `.\src\admin\users\style.css` 
+│   Update your stylesheet to use `@config` to specify the correct configuration file explicitly and then run the upgrade tool again. 
+

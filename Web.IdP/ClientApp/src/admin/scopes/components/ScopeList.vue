@@ -54,7 +54,7 @@ defineEmits(['edit', 'delete'])
         <tr v-for="scope in scopes" :key="scope.name" class="hover:bg-gray-50">
           <td class="px-6 py-4 whitespace-nowrap">
             <div class="flex items-center">
-              <div class="flex-shrink-0 h-10 w-10">
+              <div class="shrink-0 h-10 w-10">
                 <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
                   <svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />

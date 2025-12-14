@@ -5,7 +5,7 @@
         <h1 id="message-heading" class="text-2xl font-bold text-gray-900">{{ title }}</h1>
         <p v-if="subtitle" class="mt-1 text-sm text-gray-500">{{ subtitle }}</p>
       </div>
-      <div class="mt-4 flex items-center justify-between sm:mt-0 sm:ml-6 sm:flex-shrink-0 sm:justify-start">
+      <div class="mt-4 flex items-center justify-between sm:mt-0 sm:ml-6 sm:shrink-0 sm:justify-start">
         <slot name="actions"></slot>
       </div>
     </div>

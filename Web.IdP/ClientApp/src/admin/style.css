@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@config "../../tailwind.config.js";
 
 .main-container {
     max-width: 100%;
@@ -10,12 +10,4 @@
     .main-container {
         max-width: 1280px;
     }
-}
-
-.form-input {
-    @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3;
-}
-
-.form-input-padded {
-    @apply form-input pl-10;
 }
