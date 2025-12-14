@@ -22,6 +22,7 @@ public class DeviceFlowServiceTests
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<IStringLocalizer<DeviceFlowService>> _mockLocalizer;
     private readonly Mock<ILogger<DeviceFlowService>> _mockLogger;
+    private readonly Mock<IClaimsEnrichmentService> _mockClaimsEnricher;
     private readonly DeviceFlowService _service;
 
     public DeviceFlowServiceTests()
@@ -31,15 +32,22 @@ public class DeviceFlowServiceTests
         _mockUserManager = MockUserManager<ApplicationUser>();
         _mockLocalizer = new Mock<IStringLocalizer<DeviceFlowService>>();
         _mockLogger = new Mock<ILogger<DeviceFlowService>>();
+        _mockClaimsEnricher = new Mock<IClaimsEnrichmentService>();
 
         _mockLocalizer.Setup(l => l[It.IsAny<string>()]).Returns((string key) => new LocalizedString(key, key));
+
+        _mockClaimsEnricher.Setup(x => x.AddScopeMappedClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(Task.CompletedTask);
+        _mockClaimsEnricher.Setup(x => x.AddPermissionClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>()))
+            .Returns(Task.CompletedTask);
 
         _service = new DeviceFlowService(
             _mockScopeManager.Object,
             _mockApplicationManager.Object,
             _mockUserManager.Object,
             _mockLocalizer.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockClaimsEnricher.Object);
     }
 
     private static Mock<UserManager<TUser>> MockUserManager<TUser>() where TUser : class

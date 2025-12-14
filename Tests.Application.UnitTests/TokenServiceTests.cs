@@ -28,6 +28,7 @@ namespace Tests.Application.UnitTests
         private readonly Mock<IApplicationDbContext> _mockDbContext;
         private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
         private readonly Mock<ILogger<TokenService>> _mockLogger;
+        private readonly Mock<IClaimsEnrichmentService> _mockClaimsEnricher;
         private readonly TokenService _service;
 
         public TokenServiceTests()
@@ -51,6 +52,13 @@ namespace Tests.Application.UnitTests
             _mockDbContext = new Mock<IApplicationDbContext>();
             _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
             _mockLogger = new Mock<ILogger<TokenService>>();
+            _mockClaimsEnricher = new Mock<IClaimsEnrichmentService>();
+            
+            // Default setup for claims enricher to avoid null task exceptions
+            _mockClaimsEnricher.Setup(x => x.AddScopeMappedClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
+                .Returns(Task.CompletedTask);
+            _mockClaimsEnricher.Setup(x => x.AddPermissionClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>()))
+                .Returns(Task.CompletedTask);
 
             _service = new TokenService(
                 _mockUserManager.Object,
@@ -60,7 +68,8 @@ namespace Tests.Application.UnitTests
                 _mockAuditService.Object,
                 _mockDbContext.Object,
                 _mockApplicationManager.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockClaimsEnricher.Object);
         }
 
         [Fact]
