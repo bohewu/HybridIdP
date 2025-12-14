@@ -4,6 +4,7 @@ using Core.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -13,7 +14,7 @@ namespace Web.IdP.Controllers.Admin;
 /// </summary>
 [ApiController]
 [Route("api/admin/permissions")]
-[Authorize]
+[ApiAuthorize]
 public class PermissionsController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
