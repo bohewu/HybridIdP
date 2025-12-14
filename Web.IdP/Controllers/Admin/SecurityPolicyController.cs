@@ -4,11 +4,13 @@ using Core.Domain.Constants;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/security/policies")]
+[ApiAuthorize]
 public class SecurityPolicyController : ControllerBase
 {
     private readonly ISecurityPolicyService _securityPolicyService;
