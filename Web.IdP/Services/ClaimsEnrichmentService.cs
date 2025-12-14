@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Web.IdP.Services; // For IScopeService if needed, or simply the namespace
 using Core.Application; // For IApplicationDbContext
-using Core.Domain;
 
 namespace Web.IdP.Services;
 
