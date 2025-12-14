@@ -78,16 +78,16 @@
     "clientSecretNotAllowed": "公開用戶端不能有用戶端密鑰",
     "redirectUris": "重新導向 URI",
     "redirectUrisRequired": "至少需要一個重新導向 URI",
-    "redirectUrisPlaceholder": "https://localhost:7001/signin-oidc\nhttps://myapp.com/callback",
+    "redirectUrisPlaceholder": "https://your-service.com/signin-oidc\nhttps://mobile-app/callback",
     "redirectUrisHelp": "每行一個 URI",
     "redirectUrisInvalid": "重新導向 URI 第 {line} 行不是有效的絕對 URL",
     "postLogoutRedirectUris": "登出後重新導向 URI",
-    "postLogoutRedirectUrisPlaceholder": "https://localhost:7001/signout-callback-oidc\nhttps://myapp.com/logout",
+    "postLogoutRedirectUrisPlaceholder": "https://your-service.com/signout-callback-oidc\nhttps://mobile-app/logout",
     "postLogoutRedirectUrisHelp": "每行一個 URI",
     "postLogoutRedirectUrisInvalid": "登出後重新導向 URI 第 {line} 行不是有效的絕對 URL",
     "permissions": "權限",
     "permissionsRequired": "至少選擇一個權限",
-    "permissionsHelp": "💡 <strong>提示：</strong>大多數 OAuth/OIDC 流程至少需要：授權端點、權杖端點、授權碼授予和 OpenID 範圍。",
+    "permissionsHelp": "💡 提示：大多數 OAuth/OIDC 流程至少需要：授權端點、權杖端點、授權碼授予和 OpenID 範圍。",
     "categories": {
       "endpoints": "端點",
       "grantTypes": "授予類型",
@@ -144,7 +144,19 @@
     "updateButton": "更新用戶端",
     "cancel": "取消",
     "validationError": "請修正以下驗證錯誤。",
-    "saveFailed": "儲存用戶端失敗：{message}"
+    "saveFailed": "儲存用戶端失敗：{message}",
+    "generator": {
+      "title": "測試工具 & 產生器",
+      "description": "產生一個包含有效 PKCE 參數的授權 URL，用於測試您的設定。",
+      "generateButton": "產生測試 URL",
+      "codeVerifier": "Code Verifier (PKCE)",
+      "codeVerifierHelp": "這是您的原始驗證碼。在交換權杖 (Token Exchange) 步驟中，您需要將此值作為 `code_verifier` 參數傳送。",
+      "codeChallenge": "Code Challenge",
+      "generatedUrl": "授權 URL",
+      "generatedUrlHelp": "將此 URL 貼上瀏覽器以測試登入流程。",
+      "copy": "複製",
+      "copied": "已複製"
+    }
   },
   "secretModal": {
     "title": "用戶端密鑰已產生",
