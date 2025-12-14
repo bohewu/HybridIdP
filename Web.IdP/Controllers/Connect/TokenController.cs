@@ -7,13 +7,7 @@ using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using Web.IdP.Filters;
 using Web.IdP.Services;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
-using OpenIddict.Abstractions;
-using OpenIddict.Server.AspNetCore;
-using Web.IdP.Services;
+
 
 namespace Web.IdP.Controllers.Connect
 {
