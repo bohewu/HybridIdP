@@ -5,6 +5,9 @@ import BaseModal from '@/components/common/BaseModal.vue'
 
 const { t } = useI18n()
 
+// Standard OIDC scopes that cannot have claims modified
+const STANDARD_OIDC_SCOPES = ['openid', 'profile', 'email', 'phone', 'address']
+
 const props = defineProps({
   scope: {
     type: Object,
@@ -15,6 +18,10 @@ const props = defineProps({
 const emit = defineEmits(['submit', 'cancel'])
 
 const isEdit = computed(() => props.scope !== null)
+const isStandardScope = computed(() => {
+  if (!props.scope?.name) return false
+  return STANDARD_OIDC_SCOPES.includes(props.scope.name.toLowerCase())
+})
 const formData = ref({
   name: '',
   displayName: '',
@@ -426,38 +433,53 @@ const saveScopeClaims = async (scopeId) => {
 
           <!-- Claims -->
           <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-2">
-                        {{ $t('scopes.form.userClaimsTitle') }}
-                      </label>
-                      <div v-if="loadingClaims" class="text-sm text-gray-500">
-                        {{ $t('scopes.form.userClaimsLoading') }}
-                      </div>
-                      <div v-else class="border border-gray-300 rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
-                        <div v-if="availableClaims.length === 0" class="text-sm text-gray-500 p-2">
-                          {{ $t('scopes.form.userClaimsNone') }}
-                        </div>
-                        <label
-                          v-for="claim in availableClaims"
-                          :key="claim.id"
-                          class="flex items-start p-2 hover:bg-gray-50 rounded cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            :value="claim.id"
-                            v-model="selectedClaimIds"
-                            class="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                          />
-                          <div class="ml-3 flex-1">
-                            <div class="text-sm font-medium text-gray-900">
-                              {{ claim.name }}
-                              <span v-if="claim.isStandard" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                {{ $t('scopes.form.userClaimsStandardLabel') }}
-                              </span>
-                            </div>
-                            <div class="text-xs text-gray-500">{{ claim.displayName }}</div>
-                          </div>
-                        </label>
-                      </div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              {{ $t('scopes.form.userClaimsTitle') }}
+            </label>
+            
+            <!-- Standard Scope Warning -->
+            <div v-if="isStandardScope" class="mb-3 bg-amber-50 border-l-4 border-amber-400 p-3">
+              <div class="flex items-center">
+                <svg class="h-5 w-5 text-amber-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                </svg>
+                <p class="text-sm text-amber-700">
+                  {{ $t('scopes.form.standardScopeClaimsWarning') }}
+                </p>
+              </div>
+            </div>
+            
+            <div v-if="loadingClaims" class="text-sm text-gray-500">
+              {{ $t('scopes.form.userClaimsLoading') }}
+            </div>
+            <div v-else class="border border-gray-300 rounded-md max-h-48 overflow-y-auto p-2 space-y-1" :class="{ 'opacity-60 pointer-events-none': isStandardScope }">
+              <div v-if="availableClaims.length === 0" class="text-sm text-gray-500 p-2">
+                {{ $t('scopes.form.userClaimsNone') }}
+              </div>
+              <label
+                v-for="claim in availableClaims"
+                :key="claim.id"
+                class="flex items-start p-2 hover:bg-gray-50 rounded" 
+                :class="isStandardScope ? 'cursor-not-allowed' : 'cursor-pointer'"
+              >
+                <input
+                  type="checkbox"
+                  :value="claim.id"
+                  v-model="selectedClaimIds"
+                  :disabled="isStandardScope"
+                  class="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 disabled:opacity-50"
+                />
+                <div class="ml-3 flex-1">
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ claim.name }}
+                    <span v-if="claim.isStandard" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                      {{ $t('scopes.form.userClaimsStandardLabel') }}
+                    </span>
+                  </div>
+                  <div class="text-xs text-gray-500">{{ claim.displayName }}</div>
+                </div>
+              </label>
+            </div>
             <p class="mt-1 text-xs text-gray-500">
               {{ $t('scopes.form.userClaimsHelp') }}
             </p>

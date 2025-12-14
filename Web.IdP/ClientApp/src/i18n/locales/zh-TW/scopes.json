@@ -58,6 +58,7 @@
     "userClaimsNone": "沒有可用的 claims。請先建立 claims。",
     "userClaimsStandardLabel": "標準",
     "userClaimsHelp": "選擇當請求此範圍時應包含哪些 claims",
+    "standardScopeClaimsWarning": "這是標準 OIDC 範圍。為確保規範相容性，claims 無法被修改。",
     "consentSectionTitle": "同意畫面客製化",
     "consentSectionHelp": "自訂此範圍在使用者同意畫面上的顯示方式",
     "consentDisplayName": "同意顯示名稱",

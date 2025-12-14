@@ -58,6 +58,7 @@
     "userClaimsNone": "No claims available. Create claims first.",
     "userClaimsStandardLabel": "Standard",
     "userClaimsHelp": "Select which claims should be included when this scope is requested",
+    "standardScopeClaimsWarning": "This is a standard OIDC scope. Claims cannot be modified to ensure specification compliance.",
     "consentSectionTitle": "Consent Screen Customization",
     "consentSectionHelp": "Customize how this scope appears on the user consent screen",
     "consentDisplayName": "Consent Display Name",

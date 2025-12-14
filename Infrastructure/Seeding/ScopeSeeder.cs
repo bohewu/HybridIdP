@@ -67,7 +67,7 @@ public static class ScopeSeeder
             new() { Name = "phone_number_verified", DisplayName = "Phone Verified", Description = "Whether the phone number has been verified", ClaimType = Claims.PhoneNumberVerified, UserPropertyPath = "PhoneNumberConfirmed", DataType = "Boolean", IsStandard = true, IsRequired = false },
             
             // ADDRESS SCOPE claims (single formatted address claim)
-            new() { Name = "address", DisplayName = "Address", Description = "User's mailing address as JSON", ClaimType = Claims.Address, UserPropertyPath = null, DataType = "Json", IsStandard = true, IsRequired = false },
+            new() { Name = "address", DisplayName = "Address", Description = "User's mailing address as JSON", ClaimType = Claims.Address, UserPropertyPath = "Address", DataType = "Json", IsStandard = true, IsRequired = false },
         };
 
         // Step 1: Seed UserClaims if not exist
