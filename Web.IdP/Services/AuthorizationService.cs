@@ -114,6 +114,46 @@ namespace Web.IdP.Services // Keep consistent namespace case
             ApplicationName = await _applicationManager.GetDisplayNameAsync(application);
             Scope = request.Scope;
 
+            // Validate Response Type Permissions
+            // In Passthrough mode, we must manually enforce that the client is allowed to use the requested response types.
+            var permissions = await _applicationManager.GetPermissionsAsync(application);
+            
+            if (request.HasResponseType(ResponseTypes.Code) && !permissions.Contains(Permissions.ResponseTypes.Code))
+            {
+                _logger.LogWarning("Client {ClientId} requested response_type=code without permission.", request.ClientId);
+                return new ForbidResult(
+                    authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.UnauthorizedClient,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The client is not authorized to use 'response_type=code'."
+                    }));
+            }
+
+            if (request.HasResponseType(ResponseTypes.Token) && !permissions.Contains(Permissions.ResponseTypes.Token))
+            {
+                _logger.LogWarning("Client {ClientId} requested response_type=token without permission.", request.ClientId);
+                 return new ForbidResult(
+                    authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.UnauthorizedClient,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The client is not authorized to use 'response_type=token'."
+                    }));
+            }
+
+            if (request.HasResponseType(ResponseTypes.IdToken) && !permissions.Contains(Permissions.ResponseTypes.IdToken))
+            {
+                _logger.LogWarning("Client {ClientId} requested response_type=id_token without permission.", request.ClientId);
+                 return new ForbidResult(
+                    authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.UnauthorizedClient,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The client is not authorized to use 'response_type=id_token'."
+                    }));
+            }
+
             var requestedScopes = request.GetScopes();
             var clientGuid = Guid.Parse(applicationId);
             var eval = await _clientScopeProcessor.EnforceAsync(clientGuid, requestedScopes, logAuditIfRestricted: true);
