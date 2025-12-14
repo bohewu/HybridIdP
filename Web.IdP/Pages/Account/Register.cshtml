@@ -21,9 +21,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - @productName</title>
     
-    @* Tailwind CSS & Razor Scripts *@
+    @* Tailwind CSS *@
+    @if (ViteService.IsDevelopment)
+    {
+        <script type="module" vite-src="@@vite/client"></script>
+    }
     <link href="@ViteService.GetScriptPath("src/styles/main.css")" rel="stylesheet" />
-    <script type="module" src="@ViteService.GetScriptPath("src/scripts/razor.js")"></script>
+    <script type="module" vite-src="src/scripts/razor.js"></script>
 </head>
 <body class="h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">

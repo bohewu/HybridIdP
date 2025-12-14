@@ -24,30 +24,36 @@
         </div>
 
         <template v-if="profile?.person">
-          <div class="sm:col-span-2 mt-2 pt-4 border-t border-gray-100">
+          <div class="sm:col-span-2 mt-2 pt-4 border-t border-gray-100 px-4 sm:px-6">
              <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <i class="bi bi-person-vcard"></i>
                 {{ t('profile.info.personalDetails') }}
              </h4>
           </div>
 
-          <div class="sm:col-span-1">
+          <div class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 bg-gray-50/50">
             <dt class="text-sm font-medium text-gray-500 flex items-center gap-2">
               <i class="bi bi-type text-gray-400"></i>
               {{ t('profile.info.fullName') }}
             </dt>
-            <dd class="mt-1 text-sm text-gray-900 font-medium pl-6">{{ profile.personFullName }}</dd>
+            <dd class="mt-1 text-sm text-gray-900 font-medium sm:mt-0 sm:col-span-2">{{ profile.personFullName }}</dd>
           </div>
 
           <!-- Identity Verification Status Check (Global) -->
-          <div v-if="profile.identityVerified" class="sm:col-span-2 pt-2">
-             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                 <i class="bi bi-patch-check-fill mr-1.5"></i> 
-                 {{ t('profile.info.identityVerified') }}
-                 <span v-if="profile.identityDocumentType" class="ml-1 text-green-700 opacity-75">
-                    ({{ profile.identityDocumentType }})
+          <div v-if="profile.identityVerified" class="py-3 sm:py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+             <dt class="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <i class="bi bi-patch-check text-green-500"></i>
+                {{ t('profile.info.status') }}
+             </dt>
+             <dd class="mt-1 sm:mt-0 sm:col-span-2">
+                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                     <i class="bi bi-patch-check-fill mr-1.5"></i> 
+                     {{ t('profile.info.identityVerified') }}
+                     <span v-if="profile.identityDocumentType" class="ml-1 text-green-700 opacity-75">
+                        ({{ profile.identityDocumentType }})
+                     </span>
                  </span>
-             </span>
+             </dd>
           </div>
         </template>
       </dl>

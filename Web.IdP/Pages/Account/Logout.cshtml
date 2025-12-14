@@ -5,25 +5,42 @@
     ViewData["Title"] = Localizer["LogoutTitle"];
 }
 
-<div class="container">
-    <div class="row justify-content-center mt-5">
-        <div class="col-md-6">
-            <div class="card shadow">
-                <div class="card-body p-4 text-center">
-                    <h2 class="card-title mb-4">@ViewData["Title"]</h2>
+<div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-center">
+        <div class="w-full max-w-md">
+            <div class="bg-white py-8 px-4 shadow rounded-lg sm:px-10 border border-gray-200">
+                <div class="text-center">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6">@ViewData["Title"]</h2>
                     
                     @if (Model.ShowLogoutPrompt)
                     {
-                        <p class="mb-4">@Localizer["LogoutConfirmMessage"]</p>
-                        <form method="post">
-                            <button type="submit" class="btn btn-danger">@Localizer["YesLogout"]</button>
-                            <a asp-page="/Index" class="btn btn-secondary">@Localizer["Cancel"]</a>
+                        <p class="mb-6 text-gray-600">@Localizer["LogoutConfirmMessage"]</p>
+                        <form method="post" class="space-y-4">
+                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                                @Localizer["YesLogout"]
+                            </button>
+                            <a asp-page="/Index" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                                @Localizer["Cancel"]
+                            </a>
                         </form>
                     }
                     else
                     {
-                        <p class="text-success mb-4">@Localizer["LogoutSuccessMessage"]</p>
-                        <a asp-page="/Index" class="btn btn-primary">@Localizer["ReturnHome"]</a>
+                        <div class="rounded-md bg-green-50 p-4 mb-6">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="bi bi-check-circle-fill text-green-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-green-800">
+                                        @Localizer["LogoutSuccessMessage"]
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <a asp-page="/Index" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                            @Localizer["ReturnHome"]
+                        </a>
                     }
                 </div>
             </div>

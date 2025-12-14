@@ -21,15 +21,27 @@ public interface IViteManifestService
     /// Gets all import paths for an entry point (for preloading).
     /// </summary>
     IEnumerable<string> GetImportPaths(string entryName);
+
+    /// <summary>
+    /// Checks if the environment is development.
+    /// </summary>
+    bool IsDevelopment { get; }
 }
 
 public class ViteManifestService : IViteManifestService
 {
     private readonly Dictionary<string, ViteManifestEntry> _manifest;
     private readonly string _basePath;
+    private readonly bool _isDevelopment;
+    private readonly string _devServerUrl;
+
+    public bool IsDevelopment => _isDevelopment;
 
     public ViteManifestService(IWebHostEnvironment env, IConfiguration configuration)
     {
+        _isDevelopment = env.IsDevelopment();
+        _devServerUrl = configuration["Vite:DevServerUrl"] ?? "http://localhost:5173";
+
         // Read configuration with defaults
         _basePath = configuration["Vite:Base"] ?? "/dist/";
         var manifestRelativePath = configuration["Vite:Manifest"] ?? "dist/.vite/manifest.json";
@@ -51,6 +63,12 @@ public class ViteManifestService : IViteManifestService
 
     public string? GetScriptPath(string entryName)
     {
+        if (_isDevelopment)
+        {
+            // In dev mode, return the path to the Vite dev server
+            return $"{_devServerUrl}/{entryName}";
+        }
+
         // Try to find by entry source path pattern (e.g. "src/admin/claims/main.js")
         // The manifest keys are usually the relative path from source root
         if (_manifest.TryGetValue(entryName, out var entry))
@@ -63,6 +81,19 @@ public class ViteManifestService : IViteManifestService
 
     public IEnumerable<string> GetCssPaths(string entryName)
     {
+        if (_isDevelopment)
+        {
+            // In dev mode, CSS is usually injected by the JS bundle (HMR).
+            // However, if we explicitly link a CSS file, Vite can serve it too.
+            // But typically for Vue/Vite apps, we rely on the JS entry to inject styles.
+            // If we MUST return a CSS path (e.g. for main.css which is an entry), we can.
+            if (entryName.EndsWith(".css"))
+            {
+                 return new[] { $"{_devServerUrl}/{entryName}" };
+            }
+            return Enumerable.Empty<string>();
+        }
+
         if (_manifest.TryGetValue(entryName, out var entry) && entry.Css != null)
         {
             return entry.Css.Select(css => _basePath + css);
@@ -72,6 +103,11 @@ public class ViteManifestService : IViteManifestService
 
     public IEnumerable<string> GetImportPaths(string entryName)
     {
+        if (_isDevelopment)
+        {
+            yield break;
+        }
+
         if (_manifest.TryGetValue(entryName, out var entry) && entry.Imports != null)
         {
             foreach (var import in entry.Imports)
