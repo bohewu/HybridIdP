@@ -238,6 +238,16 @@ public static class ServiceCollectionExtensions
             .AddDefaultTokenProviders()
             .AddErrorDescriber<LocalizedIdentityErrorDescriber>();
 
+        // Configure SecurityStampValidatorOptions from configuration (e.g. for testing)
+        services.Configure<SecurityStampValidatorOptions>(options =>
+        {
+            var interval = configuration.GetValue<int?>("Security:ValidationIntervalSeconds");
+            if (interval.HasValue)
+            {
+                options.ValidationInterval = TimeSpan.FromSeconds(interval.Value);
+            }
+        });
+
         // Configure Application Cookie
         services.ConfigureApplicationCookie(options =>
         {

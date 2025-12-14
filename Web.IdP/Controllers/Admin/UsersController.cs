@@ -424,6 +424,14 @@ public class UsersController : ControllerBase
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var count = await _sessionService.RevokeAllSessionsAsync(id);
+            
+            // Force invalidation of existing cookies by updating Security Stamp
+            var user = await _userManager.FindByIdAsync(id.ToString());
+            if (user != null)
+            {
+                await _userManager.UpdateSecurityStampAsync(user);
+            }
+
             return Ok(new { revoked = count });
         }
         catch (Exception ex)
