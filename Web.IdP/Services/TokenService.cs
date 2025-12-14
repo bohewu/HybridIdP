@@ -24,6 +24,7 @@ namespace Web.IdP.Services
         private readonly IApplicationDbContext _db;
         private readonly IOpenIddictApplicationManager _applicationManager;
         private readonly ILogger<TokenService> _logger;
+        private readonly IClaimsEnrichmentService _claimsEnricher;
 
         public TokenService(
             UserManager<ApplicationUser> userManager,
@@ -33,7 +34,8 @@ namespace Web.IdP.Services
             IAuditService auditService,
             IApplicationDbContext db,
             IOpenIddictApplicationManager applicationManager,
-            ILogger<TokenService> logger)
+            ILogger<TokenService> logger,
+            IClaimsEnrichmentService claimsEnricher)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -43,6 +45,7 @@ namespace Web.IdP.Services
             _db = db;
             _applicationManager = applicationManager;
             _logger = logger;
+            _claimsEnricher = claimsEnricher;
         }
 
         public async Task<IActionResult> HandleTokenRequestAsync(OpenIddictRequest request, ClaimsPrincipal? schemePrincipal)
@@ -172,13 +175,13 @@ namespace Web.IdP.Services
 
                     // Get scopes from original principal and add scope-based claims from DB
                     var requestedScopes = schemePrincipal.GetScopes().ToList();
-                    await AddScopeBasedClaimsAsync(identity, user, requestedScopes);
+                    await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, requestedScopes);
 
                     // Copy scopes from the original principal
                     identity.SetScopes(requestedScopes);
 
                     // Add permission claims
-                    await AddPermissionClaimsAsync(identity, user);
+                    await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
 
                     // Add audience claims from API resources
                     var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
@@ -243,10 +246,10 @@ namespace Web.IdP.Services
 
                 // Get requested scopes and add scope-based claims from DB
                 var requestedScopes = request.GetScopes();
-                await AddScopeBasedClaimsAsync(identity, user, requestedScopes);
+                await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, requestedScopes);
 
                 // Add permission claims from user's roles
-                await AddPermissionClaimsAsync(identity, user);
+                await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
 
                 // Set granted scopes on identity
                 identity.SetScopes(requestedScopes);
@@ -380,101 +383,7 @@ namespace Web.IdP.Services
                     }));
         }
 
-        private async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user)
-        {
-            var userRoles = await _userManager.GetRolesAsync(user);
-            var permissions = new HashSet<string>();
 
-            foreach (var roleName in userRoles)
-            {
-                var role = await _roleManager.FindByNameAsync(roleName);
-                if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
-                {
-                    var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(p => p.Trim())
-                        .Where(p => !string.IsNullOrEmpty(p));
-
-                    foreach (var permission in rolePermissions)
-                    {
-                        permissions.Add(permission);
-                    }
-                }
-            }
-
-            foreach (var permission in permissions)
-            {
-                identity.AddClaim(new Claim("permission", permission));
-            }
-        }
-
-        /// <summary>
-        /// Adds claims to the identity based on granted scopes using DB-driven mappings.
-        /// Only claims for the granted scopes will be added per OIDC specification.
-        /// </summary>
-        private async Task AddScopeBasedClaimsAsync(
-            ClaimsIdentity identity, 
-            ApplicationUser user, 
-            IEnumerable<string> grantedScopes)
-        {
-            var scopeSet = grantedScopes.ToHashSet(StringComparer.OrdinalIgnoreCase);
-            
-            // Query scope-to-claims mappings from DB
-            var scopeClaims = await _db.ScopeClaims
-                .Where(sc => scopeSet.Contains(sc.ScopeName))
-                .Include(sc => sc.UserClaim)
-                .ToListAsync();
-
-            foreach (var scopeClaim in scopeClaims)
-            {
-                if (scopeClaim.UserClaim == null) continue;
-
-                var claimType = scopeClaim.UserClaim.ClaimType;
-                
-                // Skip if already set (e.g., subject is always included)
-                if (identity.FindFirst(claimType) != null) continue;
-
-                var value = GetClaimValueFromUser(user, scopeClaim.UserClaim);
-                if (value != null)
-                {
-                    // Handle boolean types
-                    if (scopeClaim.UserClaim.DataType == "Boolean")
-                    {
-                        identity.AddClaim(new Claim(claimType, value.ToString()!.ToLower()));
-                    }
-                    else
-                    {
-                        identity.AddClaim(new Claim(claimType, value.ToString() ?? string.Empty));
-                    }
-                }
-            }
-
-            // Handle roles scope specially
-            if (scopeSet.Contains("roles") || scopeSet.Contains(AuthConstants.Scopes.Roles))
-            {
-                var roles = await _userManager.GetRolesAsync(user);
-                identity.SetClaims(Claims.Role, roles.ToImmutableArray());
-            }
-        }
-
-        /// <summary>
-        /// Gets a claim value from the user based on the UserPropertyPath defined in UserClaim.
-        /// </summary>
-        private static object? GetClaimValueFromUser(ApplicationUser user, UserClaim userClaim)
-        {
-            if (string.IsNullOrEmpty(userClaim.UserPropertyPath))
-                return null;
-
-            return userClaim.UserPropertyPath switch
-            {
-                "Id" => user.Id.ToString(),
-                "UserName" => user.UserName,
-                "Email" => user.Email,
-                "EmailConfirmed" => user.EmailConfirmed,
-                "PhoneNumber" => user.PhoneNumber,
-                "PhoneNumberConfirmed" => user.PhoneNumberConfirmed,
-                _ => null
-            };
-        }
 
         private static IEnumerable<string> GetDestinations(Claim claim)
         {

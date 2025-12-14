@@ -18,19 +18,22 @@ public partial class DeviceFlowService : IDeviceFlowService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IStringLocalizer<DeviceFlowService> _localizer;
     private readonly ILogger<DeviceFlowService> _logger;
+    private readonly IClaimsEnrichmentService _claimsEnricher;
 
     public DeviceFlowService(
         IOpenIddictScopeManager scopeManager,
         IOpenIddictApplicationManager applicationManager,
         UserManager<ApplicationUser> userManager,
         IStringLocalizer<DeviceFlowService> localizer,
-        ILogger<DeviceFlowService> logger)
+        ILogger<DeviceFlowService> logger,
+        IClaimsEnrichmentService claimsEnricher)
     {
         _scopeManager = scopeManager;
         _applicationManager = applicationManager;
         _userManager = userManager;
         _localizer = localizer;
         _logger = logger;
+        _claimsEnricher = claimsEnricher;
     }
 
     public async Task<DeviceVerificationViewModel> PrepareVerificationViewModelAsync(AuthenticateResult authenticateResult)
@@ -90,13 +93,14 @@ public partial class DeviceFlowService : IDeviceFlowService
                 roleType: Claims.Role);
 
             // Add the claims that will be persisted in the tokens.
-            identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                    .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                    .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                    .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                    .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
+            identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user));
+            
+            // Enrich with scope-mapped claims and permissions using shared service
+            var scopes = authenticateResult.Principal.GetScopes();
+            await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes);
+            await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
 
-            identity.SetScopes(authenticateResult.Principal.GetScopes());
+            identity.SetScopes(scopes);
             identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
             identity.SetDestinations(GetDestinations);
 
