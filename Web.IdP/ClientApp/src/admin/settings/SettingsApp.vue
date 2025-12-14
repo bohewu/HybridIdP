@@ -7,6 +7,7 @@ import BrandingSettings from './components/BrandingSettings.vue'
 import EmailSettings from './components/EmailSettings.vue'
 import LoggingSettings from './components/LoggingSettings.vue'
 import SystemSettings from './components/SystemSettings.vue'
+import TurnstileSettings from './components/TurnstileSettings.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 const { t } = useI18n()
 
@@ -68,6 +69,9 @@ onMounted(async () => {
 
         <!-- Logging Settings -->
         <LoggingSettings :can-update="hasUpdatePermission" />
+
+        <!-- Turnstile Settings -->
+        <TurnstileSettings :can-update="hasUpdatePermission" />
 
         <!-- Email Settings -->
         <EmailSettings :can-update="hasUpdatePermission" />

@@ -21,7 +21,8 @@ public class RegisterModel : PageModel
     private readonly ILogger<RegisterModel> _logger;
     private readonly IApplicationDbContext _context;
     private readonly IAuditService _auditService;
-    private readonly ISettingsService _settingsService; // Added
+    private readonly ISettingsService _settingsService;
+    private readonly ITurnstileStateService _turnstileStateService;
 
     public RegisterModel(
         UserManager<ApplicationUser> userManager,
@@ -31,16 +32,18 @@ public class RegisterModel : PageModel
         ILogger<RegisterModel> logger,
         IApplicationDbContext context,
         IAuditService auditService,
-        ISettingsService settingsService) // Added
+        ISettingsService settingsService,
+        ITurnstileStateService turnstileStateService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _turnstileService = turnstileService;
-        _turnstileOptions = turnstileOptions.Value; // Changed
+        _turnstileOptions = turnstileOptions.Value;
         _logger = logger;
         _context = context;
         _auditService = auditService;
-        _settingsService = settingsService; // Added
+        _settingsService = settingsService;
+        _turnstileStateService = turnstileStateService;
     }
 
     [BindProperty]
@@ -48,8 +51,8 @@ public class RegisterModel : PageModel
 
     public string? ReturnUrl { get; set; }
     
-    public bool TurnstileEnabled => _turnstileOptions.Enabled; // Changed
-    public string TurnstileSiteKey => _turnstileOptions.SiteKey; // Changed
+    public bool TurnstileEnabled { get; private set; }
+    public string TurnstileSiteKey => _turnstileOptions.SiteKey;
     public bool RegistrationEnabled { get; private set; } = true;
 
     public class InputModel
@@ -87,6 +90,10 @@ public class RegisterModel : PageModel
             TempData["ErrorMessage"] = "Registration is currently disabled.";
             return RedirectToPage("./Login", new { returnUrl });
         }
+
+        // Load Turnstile enabled setting (DB overrides appsettings)
+        var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled);
+        TurnstileEnabled = (dbTurnstileEnabled ?? _turnstileOptions.Enabled) && _turnstileStateService.IsAvailable;
         
         ReturnUrl = returnUrl;
         return Page();
