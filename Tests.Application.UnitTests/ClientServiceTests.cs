@@ -783,7 +783,8 @@ public class ClientServiceTests
     {
         // Arrange
         // CreateClientRequest(ClientId, ClientSecret, DisplayName, ApplicationType, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
-        var request = new CreateClientRequest("test-client", null, "Test Client", null, ClientTypes.Confidential, null, null, null, null);
+        // Use client_credentials grant (M2M) to avoid Interactive flow validation requiring RedirectUris
+        var request = new CreateClientRequest("test-client", null, "Test Client", null, ClientTypes.Confidential, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials });
         var createdClient = new { Id = Guid.NewGuid() };
         
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
@@ -827,7 +828,8 @@ public class ClientServiceTests
     {
         // Arrange
         // CreateClientRequest(ClientId, ClientSecret, DisplayName, ApplicationType, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
-        var request = new CreateClientRequest("test-client", null, "Test Client", ApplicationTypes.Web, ClientTypes.Public, ConsentTypes.Explicit, null, null, null);
+        // RedirectUris required because default permissions include AuthorizationCode (interactive)
+        var request = new CreateClientRequest("test-client", null, "Test Client", ApplicationTypes.Web, ClientTypes.Public, ConsentTypes.Explicit, new List<string> { "https://localhost/callback" }, null, null);
         var createdClient = new { Id = Guid.NewGuid() };
         
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
@@ -869,7 +871,7 @@ public class ClientServiceTests
             ConsentTypes.Explicit,
             null,
             null,
-            new List<string> { Permissions.Endpoints.Token }
+            new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials }  // M2M to avoid redirect requirement
         );
 
         var createdClient = new { Id = Guid.NewGuid() };
@@ -905,7 +907,8 @@ public class ClientServiceTests
     public async Task CreateClientAsync_ShouldInferClientType_FromSecretPresence()
     {
         // Arrange 1: Type null + has secret => Confidential
-        var req1 = new CreateClientRequest("c1", "s1", null, null, null, null, null, null, null);
+        // Use M2M client_credentials grant to avoid interactive flow requiring RedirectUris
+        var req1 = new CreateClientRequest("c1", "s1", null, null, null, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials });
         var created1 = new { Id = Guid.NewGuid() };
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("c1", It.IsAny<CancellationToken>()))
@@ -935,8 +938,8 @@ public class ClientServiceTests
 
         // Act 1
         var r1 = await _clientService.CreateClientAsync(req1);
-        // Act 2
-        var r2 = await _clientService.CreateClientAsync(new CreateClientRequest("c2", null, null, null, null, null, null, null, null));
+        // Act 2 - Also use M2M grant
+        var r2 = await _clientService.CreateClientAsync(new CreateClientRequest("c2", null, null, null, null, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials }));
 
         // Assert
         Assert.Null(r1.ClientSecret); // provided secret should not be echoed
@@ -946,8 +949,8 @@ public class ClientServiceTests
     [Fact]
     public async Task CreateClientAsync_ShouldFallbackDisplayNameToClientId_WhenNull()
     {
-        // Arrange
-        var req = new CreateClientRequest("cid-fallback", null, null, null, ClientTypes.Public, null, null, null, null);
+        // Arrange - Use M2M client_credentials to avoid interactive flow requiring RedirectUris
+        var req = new CreateClientRequest("cid-fallback", null, null, null, ClientTypes.Public, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials });
         var created = new { Id = Guid.NewGuid() };
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("cid-fallback", It.IsAny<CancellationToken>()))
@@ -986,7 +989,7 @@ public class ClientServiceTests
             null,
             new List<string> { "https://valid", "not a url" },
             new List<string> { "http://valid-pl", "not a url" },
-            null
+            new List<string> { Permissions.Endpoints.Authorization, Permissions.Endpoints.Token, Permissions.GrantTypes.AuthorizationCode }  // Explicit interactive with RedirectUris
         );
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("cid-urls", It.IsAny<CancellationToken>()))
@@ -1065,7 +1068,7 @@ public class ClientServiceTests
             null,
             ClientTypes.Public,
             null,
-            null,
+            new List<string> { "https://localhost/callback" },  // RedirectUris required for interactive
             null,
             new List<string> 
             { 
@@ -1106,7 +1109,7 @@ public class ClientServiceTests
             null,
             ClientTypes.Public,
             null,
-            null,
+            new List<string> { "https://localhost/callback" },  // RedirectUris required for interactive
             null,
             new List<string> 
             { 
@@ -1147,7 +1150,7 @@ public class ClientServiceTests
             null,
             ClientTypes.Public,
             null,
-            null,
+            new List<string> { "https://localhost/callback" },  // RedirectUris required for interactive
             null,
             new List<string> 
             { 
@@ -1374,7 +1377,7 @@ public class ClientServiceTests
             null, 
             null, 
             null, 
-            null, 
+            new List<string> { "https://localhost/callback" },  // RedirectUris required for interactive
             null, 
             new List<string> 
             { 
@@ -1417,7 +1420,7 @@ public class ClientServiceTests
             null, 
             null, 
             null, 
-            null, 
+            new List<string> { "https://localhost/callback" },  // RedirectUris required for interactive
             null, 
             new List<string> 
             { 
