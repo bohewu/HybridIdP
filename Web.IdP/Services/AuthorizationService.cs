@@ -43,6 +43,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
         private readonly IClientScopeRequestProcessor _clientScopeProcessor;
         private readonly ILogger<AuthorizationService> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IClaimsEnrichmentService _claimsEnricher;
 
         public AuthorizationService(
             IOpenIddictApplicationManager applicationManager,
@@ -58,7 +59,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
             IClientAllowedScopesService clientAllowedScopesService,
             IClientScopeRequestProcessor clientScopeProcessor,
             ILogger<AuthorizationService> logger,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IClaimsEnrichmentService claimsEnricher)
         {
             _applicationManager = applicationManager;
             _authorizationManager = authorizationManager;
@@ -74,6 +76,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             _clientScopeProcessor = clientScopeProcessor;
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
+            _claimsEnricher = claimsEnricher;
         }
 
         private HttpContext HttpContext => _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("HttpContext is not available.");
@@ -200,10 +203,10 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     identity.SetClaims(Claims.Role, [..roles]);
 
                     // Add permission claims from user's roles
-                    await AddPermissionClaimsAsync(identity, user);
+                    await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
 
                     // Enrich with scope-mapped claims from DB based on requested scopes
-                    await AddScopeMappedClaimsAsync(identity, user, [..scopes]);
+                    await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes);
                 }
 
                 // Add audience (aud) claims from API Resources associated with requested scopes
@@ -288,7 +291,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             identity.SetClaims(Claims.Role, roles.ToImmutableArray());
 
             // Add permission claims from user's roles
-            await AddPermissionClaimsAsync(identity, user);
+            await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
 
             // Requested scopes
             // Enforce client scope policy again to guard against tampering
@@ -344,7 +347,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             var effectiveScopes = classification.Allowed.ToImmutableArray();
 
             // Add claims mapped by effective (allowed) scopes
-            await AddScopeMappedClaimsAsync(identity, user, effectiveScopes);
+            await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, effectiveScopes);
 
             // Audiences based on effective scopes
             var audiences = await _apiResourceService.GetAudiencesByScopesAsync(effectiveScopes);
@@ -452,63 +455,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             }
         }
 
-        private async Task AddScopeMappedClaimsAsync(ClaimsIdentity identity, ApplicationUser user, ImmutableArray<string> requestedScopes)
-        {
-            if (requestedScopes.IsDefaultOrEmpty)
-            {
-                return;
-            }
 
-            var scopeNames = requestedScopes.ToArray().AsEnumerable();
-            // EF Core DbContext cannot be mocked easily if we use extension methods like ToListAsync directly on mocked DbSet.
-            // But here we rely on _db passing the IQueryable. 
-            // Since we mocked _db, we assume it returns IQueryable if we set it up.
-            // However, real implementation uses _db.ScopeClaims.
-            
-            var mappings = await _db.ScopeClaims
-                .Include(sc => sc.UserClaim)
-                .Where(sc => scopeNames.Contains(sc.ScopeName))
-                .ToListAsync();
-
-            foreach (var map in mappings)
-            {
-                var def = map.UserClaim;
-                if (def == null) continue;
-
-                var value = ResolveUserProperty(user, def.UserPropertyPath);
-
-                if (string.IsNullOrEmpty(value) && !map.AlwaysInclude)
-                {
-                    continue;
-                }
-
-                if (identity.HasClaim(c => c.Type == def.ClaimType))
-                {
-                    continue;
-                }
-
-                identity.SetClaim(def.ClaimType, value ?? string.Empty);
-            }
-        }
-
-        private static string? ResolveUserProperty(ApplicationUser user, string path)
-        {
-            if (string.IsNullOrWhiteSpace(path)) return null;
-
-            object? current = user;
-            var segments = path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            foreach (var seg in segments)
-            {
-                if (current == null) return null;
-                var type = current.GetType();
-                var prop = type.GetProperty(seg);
-                if (prop == null) return null;
-                current = prop.GetValue(current);
-            }
-
-            return current?.ToString();
-        }
 
         private async Task LoadScopeInfosAsync(ImmutableArray<string> scopeNames, Guid clientId)
         {
@@ -574,34 +521,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             ScopeInfos = ScopeInfos.OrderBy(s => s.DisplayOrder).ThenBy(s => s.Name).ToList();
         }
 
-        private async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user)
-        {
-            var userRoles = await _userManager.GetRolesAsync(user);
-            var permissions = new HashSet<string>();
 
-            foreach (var roleName in userRoles)
-            {
-                var role = await _roleManager.FindByNameAsync(roleName);
-                if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
-                {
-                    // Parse permissions from the role's Permissions property (comma-separated string)
-                    var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(p => p.Trim())
-                        .Where(p => !string.IsNullOrEmpty(p));
-                    
-                    foreach (var permission in rolePermissions)
-                    {
-                        permissions.Add(permission);
-                    }
-                }
-            }
-
-            // Add permission claims to identity
-            foreach (var permission in permissions)
-            {
-                identity.AddClaim(new Claim("permission", permission));
-            }
-        }
 
         [LoggerMessage(Level = LogLevel.Information, Message = "Setting audiences for existing authorization: {Audiences}")]
         partial void LogSettingAudiencesForExistingAuth(string audiences);

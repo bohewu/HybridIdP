@@ -70,6 +70,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IIntrospectionService, IntrospectionService>();
         services.AddScoped<IRevocationService, RevocationService>();
         services.AddScoped<IDeviceFlowService, DeviceFlowService>();
+        services.AddScoped<IClaimsEnrichmentService, ClaimsEnrichmentService>();
 
         // Settings & Infrastructure
         services.AddScoped<ISettingsService, SettingsService>();
