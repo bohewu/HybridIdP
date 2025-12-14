@@ -8,54 +8,65 @@
     var applicationName = ViewData["ApplicationName"] as string;
 }
 
-<div class="container">
-    <div class="row justify-content-center mt-5">
-        <div class="col-md-8 col-lg-6">
-            <div class="card shadow">
-                <div class="card-body p-4">
-                    <h2 class="card-title text-center mb-4">@ViewData["Title"]</h2>
-                    
-                    <div class="alert alert-info" role="alert">
-                        <strong>@applicationName</strong> @Localizer["is requesting access to your account"]
+<div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-center">
+        <div class="w-full max-w-2xl">
+            <div class="bg-white py-8 px-4 shadow rounded-lg sm:px-10 border border-gray-200">
+                <div class="mb-6 text-center">
+                    <h2 class="text-2xl font-bold text-gray-900">@ViewData["Title"]</h2>
+                </div>
+                
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6" role="alert">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-info-circle text-blue-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                <strong>@applicationName</strong> @Localizer["is requesting access to your account"]
+                            </p>
+                        </div>
                     </div>
+                </div>
 
-                    <form method="post" action="@Url.Action("Authorize")">
-                        @* Preserve original authorize request parameters in the POST body *@
-                        @foreach (var kvp in Context.Request.Query)
+                <form method="post" action="@Url.Action("Authorize")">
+                    @* Preserve original authorize request parameters in the POST body *@
+                    @foreach (var kvp in Context.Request.Query)
+                    {
+                        foreach (var val in kvp.Value)
                         {
-                            foreach (var val in kvp.Value)
-                            {
-                                <input type="hidden" name="@kvp.Key" value="@val" />
-                            }
+                            <input type="hidden" name="@kvp.Key" value="@val" />
                         }
-                        
-                        @if (Model != null && Model.Any())
-                        {
-                            <div class="mb-4">
-                                <h5>@Localizer["This application will be able to:"]</h5>
-                                
-                                @* Group scopes by category *@
-                                @{
-                                    var groupedScopes = Model.GroupBy(s => s.Category ?? "General").OrderBy(g => g.Key).ToArray();
+                    }
+                    
+                    @if (Model != null && Model.Any())
+                    {
+                        <div class="mb-6">
+                            <h5 class="text-lg font-medium text-gray-900 mb-4">@Localizer["This application will be able to:"]</h5>
+                            
+                            @* Group scopes by category *@
+                            @{
+                                var groupedScopes = Model.GroupBy(s => s.Category ?? "General").OrderBy(g => g.Key).ToArray();
+                            }
+                            
+                            @foreach (var group in groupedScopes)
+                            {
+                                @if (groupedScopes.Count() > 1 && !string.IsNullOrEmpty(group.Key))
+                                {
+                                    <h6 class="mt-4 mb-2 text-sm font-semibold text-gray-500 uppercase tracking-wider">@group.Key</h6>
                                 }
                                 
-                                @foreach (var group in groupedScopes)
-                                {
-                                    @if (groupedScopes.Count() > 1 && !string.IsNullOrEmpty(group.Key))
+                                <div class="space-y-3 mb-4">
+                                    @foreach (var scopeInfo in group)
                                     {
-                                        <h6 class="mt-3 mb-2 text-muted">@group.Key</h6>
-                                    }
-                                    
-                                    <div class="mb-3">
-                                        @foreach (var scopeInfo in group)
-                                        {
-                                            <div class="form-check mb-2">
+                                        <div class="relative flex items-start">
+                                            <div class="flex items-center h-5">
                                                 @if (scopeInfo.IsRequired)
                                                 {
                                                     @* Required scopes: use hidden input + disabled checkbox for display *@
                                                     <input type="hidden" name="granted_scopes" value="@scopeInfo.Name" />
                                                     <input 
-                                                        class="form-check-input" 
+                                                        class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded disabled:opacity-50" 
                                                         type="checkbox" 
                                                         value="@scopeInfo.Name" 
                                                         id="scope_@scopeInfo.Name"
@@ -67,7 +78,7 @@
                                                 {
                                                     @* Optional scopes: regular checkbox that can be unchecked *@
                                                     <input 
-                                                        class="form-check-input" 
+                                                        class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded" 
                                                         type="checkbox" 
                                                         name="granted_scopes" 
                                                         value="@scopeInfo.Name" 
@@ -75,89 +86,85 @@
                                                         checked
                                                     />
                                                 }
-                                                <label class="form-check-label d-flex align-items-start" for="scope_@scopeInfo.Name">
-                                                    <div class="flex-grow-1">
-                                                        <div class="d-flex align-items-center">
-                                                            @* Display icon if provided *@
-                                                            @if (!string.IsNullOrEmpty(scopeInfo.IconUrl))
+                                            </div>
+                                            <div class="ml-3 text-sm">
+                                                <label for="scope_@scopeInfo.Name" class="font-medium text-gray-700 flex items-center flex-wrap">
+                                                    <div class="flex items-center mr-2">
+                                                        @* Display icon if provided *@
+                                                        @if (!string.IsNullOrEmpty(scopeInfo.IconUrl))
+                                                        {
+                                                            @if (scopeInfo.IconUrl.StartsWith("bi "))
                                                             {
-                                                                @if (scopeInfo.IconUrl.StartsWith("bi "))
-                                                                {
-                                                                    <i class="@scopeInfo.IconUrl me-2"></i>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <img src="@scopeInfo.IconUrl" alt="@scopeInfo.Name" class="me-2 scope-icon" />
-                                                                }
+                                                                <i class="@scopeInfo.IconUrl mr-2 text-gray-500"></i>
                                                             }
                                                             else
                                                             {
-                                                                @* Default icons for standard scopes *@
-                                                                @if (scopeInfo.Name == "openid")
-                                                                {
-                                                                    <i class="bi bi-person-badge me-2"></i>
-                                                                }
-                                                                else if (scopeInfo.Name == "email")
-                                                                {
-                                                                    <i class="bi bi-envelope me-2"></i>
-                                                                }
-                                                                else if (scopeInfo.Name == "profile")
-                                                                {
-                                                                    <i class="bi bi-person me-2"></i>
-                                                                }
-                                                                else if (scopeInfo.Name == "roles")
-                                                                {
-                                                                    <i class="bi bi-shield-check me-2"></i>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <i class="bi bi-check-circle me-2"></i>
-                                                                }
+                                                                <img src="@scopeInfo.IconUrl" alt="@scopeInfo.Name" class="mr-2 h-4 w-4 scope-icon" />
                                                             }
-                                                            
-                                                            <div>
-                                                                <strong>
-                                                                    @* Use ConsentDisplayName if available, otherwise fallback to DisplayName or Name *@
-                                                                    @(scopeInfo.ConsentDisplayName ?? scopeInfo.DisplayName)
-                                                                </strong>
-                                                                
-                                                                @if (scopeInfo.IsRequired)
-                                                                {
-                                                                    <span class="badge bg-warning text-dark ms-2">@Localizer["Required"]</span>
-                                                                }
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        @* Display description if provided *@
-                                                        @if (!string.IsNullOrEmpty(scopeInfo.ConsentDescription))
-                                                        {
-                                                            <div class="text-muted small mt-1">
-                                                                @scopeInfo.ConsentDescription
-                                                            </div>
                                                         }
+                                                        else
+                                                        {
+                                                            @* Default icons for standard scopes *@
+                                                            @if (scopeInfo.Name == "openid")
+                                                            {
+                                                                <i class="bi bi-person-badge mr-2 text-gray-500"></i>
+                                                            }
+                                                            else if (scopeInfo.Name == "email")
+                                                            {
+                                                                <i class="bi bi-envelope mr-2 text-gray-500"></i>
+                                                            }
+                                                            else if (scopeInfo.Name == "profile")
+                                                            {
+                                                                <i class="bi bi-person mr-2 text-gray-500"></i>
+                                                            }
+                                                            else if (scopeInfo.Name == "roles")
+                                                            {
+                                                                <i class="bi bi-shield-check mr-2 text-gray-500"></i>
+                                                            }
+                                                            else
+                                                            {
+                                                                <i class="bi bi-check-circle mr-2 text-gray-500"></i>
+                                                            }
+                                                        }
+                                                        
+                                                        <span>@(scopeInfo.ConsentDisplayName ?? scopeInfo.DisplayName)</span>
                                                     </div>
+                                                    
+                                                    @if (scopeInfo.IsRequired)
+                                                    {
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                            @Localizer["Required"]
+                                                        </span>
+                                                    }
                                                 </label>
+                                                
+                                                @* Display description if provided *@
+                                                @if (!string.IsNullOrEmpty(scopeInfo.ConsentDescription))
+                                                {
+                                                    <p class="text-gray-500 mt-1">@scopeInfo.ConsentDescription</p>
+                                                }
                                             </div>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                        }
-                        <div class="d-grid gap-2">
-                            <button type="submit" name="submit" value="allow" class="btn btn-success btn-lg">
-                                <i class="bi bi-check-circle"></i> @Localizer["Allow Access"]
-                            </button>
-                            <button type="submit" name="submit" value="deny" class="btn btn-danger">
-                                <i class="bi bi-x-circle"></i> @Localizer["Deny"]
-                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            }
                         </div>
-                    </form>
-
-                    <div class="text-center mt-3">
-                        <small class="text-muted">
-                            @Localizer["By allowing access, you agree to share the requested information with this application."]
-                        </small>
+                    }
+                    
+                    <div class="mt-8 grid grid-cols-2 gap-4">
+                        <button type="submit" name="submit" value="deny" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                            <i class="bi bi-x-circle mr-2"></i> @Localizer["Deny"]
+                        </button>
+                        <button type="submit" name="submit" value="allow" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                            <i class="bi bi-check-circle mr-2"></i> @Localizer["Allow Access"]
+                        </button>
                     </div>
+                </form>
+
+                <div class="mt-6 text-center">
+                    <p class="text-xs text-gray-500">
+                        @Localizer["By allowing access, you agree to share the requested information with this application."]
+                    </p>
                 </div>
             </div>
         </div>

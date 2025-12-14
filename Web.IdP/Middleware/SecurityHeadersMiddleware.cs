@@ -36,8 +36,8 @@ public class SecurityHeadersMiddleware
         if (_env.IsDevelopment())
         {
             scriptSrc += " 'unsafe-eval' 'unsafe-inline' http://localhost:5173"; // Vite needs eval, inline, and localhost dev server
-            styleSrc += " 'unsafe-inline'"; // Allow inline styles for Vue HMR
-            styleSrcElem += " 'unsafe-inline'"; // Allow inline <style> tags for Vue HMR
+            styleSrc += " 'unsafe-inline' http://localhost:5173"; // Allow inline styles for Vue HMR and dev server styles
+            styleSrcElem += " 'unsafe-inline' http://localhost:5173"; // Allow inline <style> tags for Vue HMR and dev server styles
             styleSrcAttr = "'unsafe-inline'"; // Allow inline style attributes for Vue HMR
             connectSrc += " ws: wss: http://localhost:5173 https://cdn.jsdelivr.net"; // WebSocket for HMR, SignalR, Vite, and source maps
         }
