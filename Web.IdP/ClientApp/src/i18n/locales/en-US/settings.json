@@ -73,5 +73,12 @@
     "lockoutDurationMinutes": "Lockout Duration (Minutes)",
     "abnormalLoginHistoryCount": "Abnormal Login Check Count",
     "blockAbnormalLogin": "Block Abnormal Logins"
+  },
+  "turnstile": {
+    "title": "Turnstile (CAPTCHA)",
+    "description": "Configure Cloudflare Turnstile CAPTCHA for login and registration forms.",
+    "enable": "Enable Turnstile",
+    "enableDesc": "When enabled, users must complete CAPTCHA verification on login and registration.",
+    "hint": "Important: You must configure Turnstile SiteKey and SecretKey in appsettings.json or environment variables. Without these keys, enabling this setting will have no effect."
   }
 }

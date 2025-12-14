@@ -32,5 +32,8 @@ export const SettingKeys = {
         ActivityIntervalSeconds: "Monitoring.ActivityIntervalSeconds",
         SecurityIntervalSeconds: "Monitoring.SecurityIntervalSeconds",
         MetricsIntervalSeconds: "Monitoring.MetricsIntervalSeconds"
+    },
+    Turnstile: {
+        Enabled: "Turnstile.Enabled"
     }
 }

@@ -68,8 +68,8 @@ public partial class LoginModel : PageModel
 
     public string? ReturnUrl { get; set; }
     
-    public bool TurnstileEnabled => _turnstileOptions.Enabled && _turnstileStateService.IsAvailable; // Changed
-    public string TurnstileSiteKey => _turnstileOptions.SiteKey; // Changed
+    public bool TurnstileEnabled { get; private set; }
+    public string TurnstileSiteKey => _turnstileOptions.SiteKey;
     public bool RegistrationEnabled { get; private set; } = true;
 
     public class InputModel
@@ -97,6 +97,10 @@ public partial class LoginModel : PageModel
 
         // Load registration setting
         RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
+
+        // Load Turnstile enabled setting (DB overrides appsettings)
+        var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled);
+        TurnstileEnabled = (dbTurnstileEnabled ?? _turnstileOptions.Enabled) && _turnstileStateService.IsAvailable;
 
         ReturnUrl = returnUrl;
     }

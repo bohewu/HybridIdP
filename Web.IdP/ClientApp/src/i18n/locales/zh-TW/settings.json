@@ -73,5 +73,12 @@
     "lockoutDurationMinutes": "鎖定持續時間 (分鐘)",
     "abnormalLoginHistoryCount": "異常登入檢查筆數",
     "blockAbnormalLogin": "封鎖異常登入"
+  },
+  "turnstile": {
+    "title": "Turnstile (驗證碼)",
+    "description": "設定 Cloudflare Turnstile 驗證碼，用於登入和註冊表單。",
+    "enable": "啟用 Turnstile",
+    "enableDesc": "啟用後，使用者必須在登入和註冊時完成驗證碼驗證。",
+    "hint": "重要：您必須在 appsettings.json 或環境變數中設定 Turnstile 的 SiteKey 和 SecretKey。如未設定這些金鑰，啟用此設定將不會生效。"
   }
 }

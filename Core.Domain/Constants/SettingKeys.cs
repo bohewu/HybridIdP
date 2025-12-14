@@ -35,4 +35,9 @@ public static class SettingKeys
     {
         public const string RetentionDays = "Audit.RetentionDays";
     }
+
+    public static class Turnstile
+    {
+        public const string Enabled = "Turnstile.Enabled";
+    }
 }
