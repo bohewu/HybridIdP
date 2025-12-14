@@ -87,10 +87,6 @@ const schema = computed(() => {
       validateUriList(data.postLogoutRedirectUris, ctx, 'postLogoutRedirectUris', t('clients.form.postLogoutRedirectUrisInvalid'))
     }
     
-    // Validate that openid scope permission is included
-    if (!data.permissions.includes('scp:openid')) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allowedScopes'], message: t('clients.form.allowedScopesOpenidRequired') })
-    }
   })
 })
 
