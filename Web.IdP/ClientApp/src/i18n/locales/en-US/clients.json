@@ -78,16 +78,16 @@
     "clientSecretNotAllowed": "Public clients cannot have a Client Secret",
     "redirectUris": "Redirect URIs",
     "redirectUrisRequired": "At least one Redirect URI is required",
-    "redirectUrisPlaceholder": "https://localhost:7001/signin-oidc\nhttps://myapp.com/callback",
+    "redirectUrisPlaceholder": "https://your-service.com/signin-oidc\nhttps://mobile-app/callback",
     "redirectUrisHelp": "One URI per line",
     "redirectUrisInvalid": "Redirect URI line {line} is not a valid absolute URL",
     "postLogoutRedirectUris": "Post Logout Redirect URIs",
-    "postLogoutRedirectUrisPlaceholder": "https://localhost:7001/signout-callback-oidc\nhttps://myapp.com/logout",
+    "postLogoutRedirectUrisPlaceholder": "https://your-service.com/signout-callback-oidc\nhttps://mobile-app/logout",
     "postLogoutRedirectUrisHelp": "One URI per line",
     "postLogoutRedirectUrisInvalid": "Post Logout URI line {line} is not a valid absolute URL",
     "permissions": "Permissions",
     "permissionsRequired": "Select at least one permission",
-    "permissionsHelp": "💡 <strong>Tip:</strong> Most OAuth/OIDC flows need at minimum: Authorization Endpoint, Token Endpoint, Authorization Code grant, and OpenID scope.",
+    "permissionsHelp": "💡 Tip: Most OAuth/OIDC flows need at minimum: Authorization Endpoint, Token Endpoint, Authorization Code grant, and OpenID scope.",
     "categories": {
       "endpoints": "Endpoints",
       "grantTypes": "Grant Types",
@@ -143,7 +143,19 @@
     "updateButton": "Update Client",
     "cancel": "Cancel",
     "validationError": "Please correct the validation errors below.",
-    "saveFailed": "Failed to save client: {message}"
+    "saveFailed": "Failed to save client: {message}",
+    "generator": {
+      "title": "Test Tools & Generator",
+      "description": "Generate an authorization URL with valid PKCE parameters to test your configuration.",
+      "generateButton": "Generate Test URL",
+      "codeVerifier": "Code Verifier (PKCE)",
+      "codeVerifierHelp": "This is your original verifier. You will need to send this as the `code_verifier` parameter during the token exchange step.",
+      "codeChallenge": "Code Challenge",
+      "generatedUrl": "Authorization URL",
+      "generatedUrlHelp": "Paste this URL into your browser to test the login flow.",
+      "copy": "Copy",
+      "copied": "Copied"
+    }
   },
   "secretModal": {
     "title": "Client Secret Generated",
