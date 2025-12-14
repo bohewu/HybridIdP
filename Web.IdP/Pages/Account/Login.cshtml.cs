@@ -216,6 +216,36 @@ public partial class LoginModel : PageModel
                 ModelState.AddModelError(string.Empty, _localizer["UserAccountLockedOut"]);
                 return Page();
 
+            case LoginStatus.UserInactive:
+                LogUserInactive(Input.Login);
+                
+                await _eventPublisher.PublishAsync(new LoginAttemptEvent(
+                    userId: string.Empty,
+                    userName: Input.Login,
+                    isSuccessful: false,
+                    failureReason: "User account deactivated",
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    userAgent: Request.Headers["User-Agent"].ToString()
+                ));
+                
+                ModelState.AddModelError(string.Empty, _localizer["UserAccountDeactivated"]);
+                return Page();
+
+            case LoginStatus.PersonInactive:
+                LogPersonInactive(Input.Login, result.Message);
+                
+                await _eventPublisher.PublishAsync(new LoginAttemptEvent(
+                    userId: string.Empty,
+                    userName: Input.Login,
+                    isSuccessful: false,
+                    failureReason: result.Message ?? "Person inactive",
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    userAgent: Request.Headers["User-Agent"].ToString()
+                ));
+                
+                ModelState.AddModelError(string.Empty, _localizer["PersonNotActive"]);
+                return Page();
+
             case LoginStatus.InvalidCredentials:
             default:
                 LogInvalidCredentials(Input.Login);
@@ -243,6 +273,12 @@ public partial class LoginModel : PageModel
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Login failed for user '{Login}': Account is locked out.")]
     partial void LogUserLockedOut(string login);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Login failed for user '{Login}': User account is deactivated.")]
+    partial void LogUserInactive(string login);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Login failed for user '{Login}': Person inactive - {Reason}.")]
+    partial void LogPersonInactive(string login, string? reason);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Login failed for user '{Login}': Invalid credentials.")]
     partial void LogInvalidCredentials(string login);
