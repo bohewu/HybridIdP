@@ -59,12 +59,25 @@
                 @if (Model.TurnstileEnabled)
                 {
                     <div class="mb-3 mt-3">
-                        <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey"></div>
+                        <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired"></div>
                     </div>
                 }
                 
                 <div class="d-grid mt-4">
-                    <button type="submit" class="auth-btn-primary" data-test-id="login-submit">@Localizer["Login"]</button>
+                    @if (Model.TurnstileEnabled)
+                    {
+                        <button type="submit" class="auth-btn-primary" data-test-id="login-submit" id="loginSubmitBtn" disabled>
+                            <span id="loginBtnText">@Localizer["Login"]</span>
+                            <span id="loginBtnLoading" class="d-none">
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                @Localizer["PleaseCompleteCaptcha"]
+                            </span>
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="submit" class="auth-btn-primary" data-test-id="login-submit">@Localizer["Login"]</button>
+                    }
                 </div>
                 
                 <div class="auth-footer">
@@ -82,6 +95,7 @@
     @if (Model.TurnstileEnabled)
     {
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+        <script src="~/js/turnstile.js" asp-append-version="true"></script>
     }
 </body>
 </html>

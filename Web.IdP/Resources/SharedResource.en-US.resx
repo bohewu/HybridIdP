@@ -413,6 +413,9 @@
   <data name="ImpersonatingUser" xml:space="preserve">
     <value>You are currently impersonating {0}.</value>
   </data>
+  <data name="PleaseCompleteCaptcha" xml:space="preserve">
+    <value>Please complete CAPTCHA...</value>
+  </data>
   <data name="RequiredField" xml:space="preserve">
     <value>The {0} field is required.</value>
   </data>
