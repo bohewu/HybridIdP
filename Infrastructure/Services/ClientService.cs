@@ -220,6 +220,12 @@ public class ClientService : IClientService
             ClientType = clientType
         };
 
+        // Validate Native app constraints
+        if (descriptor.ApplicationType == ApplicationTypes.Native && descriptor.ClientType != ClientTypes.Public)
+        {
+            throw new ArgumentException("Native applications must be public clients (cannot have a client secret).");
+        }
+
         // Add redirect URIs
         if (request.RedirectUris != null)
         {
@@ -318,6 +324,14 @@ public class ClientService : IClientService
             }
         }
 
+        // Validate Redirect URIs for interactive clients
+        if ((descriptor.Permissions.Contains(Permissions.GrantTypes.AuthorizationCode) ||
+             descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit)) &&
+            descriptor.RedirectUris.Count == 0)
+        {
+            throw new ArgumentException("Redirect URIs are required for interactive clients (Authorization Code or Implicit flow).");
+        }
+
         var application = await _applicationManager.CreateAsync(descriptor);
         var id = await _applicationManager.GetIdAsync(application);
 
@@ -388,11 +402,19 @@ public class ClientService : IClientService
             descriptor.ConsentType = request.ConsentType;
         }
 
+
+
         // Only set ClientSecret if a new one is explicitly provided
         if (!string.IsNullOrEmpty(request.ClientSecret))
         {
             descriptor.ClientSecret = request.ClientSecret;
             descriptor.ClientType = ClientTypes.Confidential;  // Update type if adding/changing secret
+        }
+
+        // Validate Native app constraints
+        if (descriptor.ApplicationType == ApplicationTypes.Native && descriptor.ClientType != ClientTypes.Public)
+        {
+            throw new ArgumentException("Native applications must be public clients (cannot have a client secret).");
         }
 
         // Handle redirect URIs - replace if provided
@@ -484,6 +506,14 @@ public class ClientService : IClientService
             {
                 await _eventPublisher.PublishAsync(new ClientScopeChangedEvent(id.ToString(), descriptor.ClientId!, scopeChanges));
             }
+        }
+
+        // Validate Redirect URIs for interactive clients
+        if ((descriptor.Permissions.Contains(Permissions.GrantTypes.AuthorizationCode) ||
+             descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit)) &&
+            descriptor.RedirectUris.Count == 0)
+        {
+            throw new ArgumentException("Redirect URIs are required for interactive clients (Authorization Code or Implicit flow).");
         }
 
         await _applicationManager.PopulateAsync(application, descriptor);
