@@ -27,7 +27,6 @@ const formData = ref({
   redirectUris: '',
   postLogoutRedirectUris: '',
   permissions: [],
-  allowedScopes: [],
   requiredScopes: []
 })
 
@@ -39,21 +38,20 @@ const availablePermissions = computed(() => [
   // Endpoints
   { value: 'ept:authorization', labelKey: 'authorizationEndpoint', category: 'endpoints' },
   { value: 'ept:token', labelKey: 'tokenEndpoint', category: 'endpoints' },
-  { value: 'ept:logout', labelKey: 'logoutEndpoint', category: 'endpoints' },
+  { value: 'ept:end_session', labelKey: 'endSessionEndpoint', category: 'endpoints' }, // Was logout
   { value: 'ept:introspection', labelKey: 'introspectionEndpoint', category: 'endpoints' },
   { value: 'ept:revocation', labelKey: 'revocationEndpoint', category: 'endpoints' },
-  { value: 'ept:device', labelKey: 'deviceEndpoint', category: 'endpoints' },
+  { value: 'ept:device_authorization', labelKey: 'deviceAuthorizationEndpoint', category: 'endpoints' }, // Was device
+  { value: 'ept:pushed_authorization', labelKey: 'pushedAuthorizationEndpoint', category: 'endpoints' }, // New
+  
   // Grant Types
   { value: 'gt:authorization_code', labelKey: 'authorizationCode', category: 'grantTypes' },
   { value: 'gt:client_credentials', labelKey: 'clientCredentials', category: 'grantTypes' },
   { value: 'gt:refresh_token', labelKey: 'refreshToken', category: 'grantTypes' },
-  { value: 'gt:device_code', labelKey: 'deviceCode', category: 'grantTypes' },
+  { value: 'gt:urn:ietf:params:oauth:grant-type:device_code', labelKey: 'deviceCode', category: 'grantTypes' }, // Fixed URN
   { value: 'gt:password', labelKey: 'password', category: 'grantTypes' },
-  // Scopes
-  { value: 'scp:openid', labelKey: 'openid', category: 'scopes' },
-  { value: 'scp:profile', labelKey: 'profile', category: 'scopes' },
-  { value: 'scp:email', labelKey: 'email', category: 'scopes' },
-  { value: 'scp:roles', labelKey: 'roles', category: 'scopes' }
+  { value: 'gt:implicit', labelKey: 'implicit', category: 'grantTypes' },
+  { value: 'gt:urn:ietf:params:oauth:grant-type:token-exchange', labelKey: 'tokenExchange', category: 'grantTypes' },
 ])
 
 // Group permissions by category
@@ -66,6 +64,27 @@ const permissionsByCategory = computed(() => {
     grouped[perm.category].push(perm)
   })
   return grouped
+})
+
+// BRIDGE: Local Allowed Scopes <-> Permissions
+// This computed property allows ClientScopeManager (which expects an array of scope strings)
+// to read/write directly to formData.permissions (which stores 'scp:scope' strings).
+const localAllowedScopes = computed({
+  get: () => {
+    return formData.value.permissions
+      .filter(p => p.startsWith('scp:'))
+      .map(p => p.substring(4))
+  },
+  set: (newScopes) => {
+    // 1. Remove all existing scope permissions
+    const nonScopePermissions = formData.value.permissions.filter(p => !p.startsWith('scp:'))
+    
+    // 2. Add new scope permissions
+    const newScopePermissions = newScopes.map(s => `scp:${s}`)
+    
+    // 3. Update formData
+    formData.value.permissions = [...nonScopePermissions, ...newScopePermissions]
+  }
 })
 
 const submitting = ref(false)
@@ -82,7 +101,7 @@ const schema = computed(() => z.object({
   redirectUris: z.string().min(1, t('clients.form.redirectUrisRequired')),
   postLogoutRedirectUris: z.string().optional(),
   permissions: z.array(z.string()).min(1, t('clients.form.permissionsRequired')),
-  allowedScopes: z.array(z.string()).min(1, t('clients.form.allowedScopesRequired'))
+  // allowedScopes removed from generic schema, validated via permissions checking for openid
 }).superRefine((val, ctx) => {
   // Validate Redirect URIs lines
   const redirectLines = (val.redirectUris || '').split('\n').map(x => x.trim()).filter(x => x.length > 0)
@@ -97,8 +116,9 @@ const schema = computed(() => z.object({
   postLines.forEach((u, i) => {
     try { new URL(u) } catch { ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['postLogoutRedirectUris'], message: t('clients.form.postLogoutRedirectUrisInvalid', { line: i + 1 }) }) }
   })
-  // Validate that openid scope is included for OIDC clients
-  if (val.allowedScopes && !val.allowedScopes.includes('openid')) {
+  // Validate that openid scope permission is included
+  if (!val.permissions.includes('scp:openid')) {
+     // We map error to 'allowedScopes' field for UI display if needed, or 'permissions'
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allowedScopes'], message: t('clients.form.allowedScopesOpenidRequired') })
   }
 }))
@@ -109,10 +129,10 @@ const resetForm = () => {
     displayName: '',
     applicationType: 'web',
     clientType: 'public',
+    consentType: 'explicit',
     redirectUris: '',
     postLogoutRedirectUris: '',
     permissions: [],
-    allowedScopes: [],
     requiredScopes: []
   }
   error.value = null
@@ -132,28 +152,19 @@ watch(() => props.client, async (newClient) => {
       redirectUris: newClient.redirectUris?.join('\n') || '',
       postLogoutRedirectUris: newClient.postLogoutRedirectUris?.join('\n') || '',
       permissions: newClient.permissions || [],
-      allowedScopes: [],
       requiredScopes: []
     }
     
-    // Fetch allowed and required scopes for this client in edit mode
+    // Fetch required scopes (still separate table)
     if (newClient.id) {
       try {
-        // Fetch Allowed Scopes
-        const responseAllowed = await fetch(`/api/admin/clients/${newClient.id}/scopes`)
-        if (responseAllowed.ok) {
-          const data = await responseAllowed.json()
-          formData.value.allowedScopes = data.scopes || []
-        }
-
-        // Fetch Required Scopes
         const responseRequired = await fetch(`/api/admin/clients/${newClient.id}/required-scopes`)
         if (responseRequired.ok) {
           const data = await responseRequired.json()
           formData.value.requiredScopes = data.scopes || []
         }
       } catch (e) {
-        console.error('Failed to fetch client scopes:', e)
+        console.error('Failed to fetch client required scopes:', e)
       }
     }
   } else {
@@ -221,28 +232,11 @@ const handleSubmit = async () => {
 
     const responseData = await response.json()
 
-    // Save allowed scopes via dedicated endpoint
+    // Save REQUIRED scopes via dedicated endpoint (Allowed scopes are handled via permissions now)
     const clientId = isEdit.value ? props.client.id : responseData.id
     if (clientId) {
       try {
-        // Save Allowed Scopes (always send explicit state so server reflects current UI)
-        // sending empty array will clear allowed scopes server-side if user removed all
-        {
-          const scopesResponse = await fetch(`/api/admin/clients/${clientId}/scopes`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ scopes: formData.value.allowedScopes })
-          })
-          
-          if (!scopesResponse.ok) {
-            throw new Error(`Failed to save allowed scopes: ${scopesResponse.status}`)
-          }
-        }
-
         // Save Required Scopes (always send explicit state to avoid race conditions)
-        // sending empty array will clear any previously required scopes
         {
           const requiredResponse = await fetch(`/api/admin/clients/${clientId}/required-scopes`, {
             method: 'PUT',
@@ -256,10 +250,9 @@ const handleSubmit = async () => {
              throw new Error(`Failed to save required scopes: ${requiredResponse.status}`)
           }
         }
-
       } catch (e) {
         console.error('Error saving client scopes:', e)
-        throw new Error(`Client saved but failed to update scopes: ${e.message}`)
+        throw new Error(`Client saved but failed to update required scopes: ${e.message}`)
       }
     }
 
@@ -591,13 +584,13 @@ const closeSecretModal = () => {
                       
                       <div class="mb-8"> <!-- Increased margin to prevent overlap -->
                         <ClientScopeManager 
-                          v-model="formData.allowedScopes" 
+                          v-model="localAllowedScopes" 
                           v-model:requiredScopes="formData.requiredScopes" 
                         />
                       </div>
                       
                       <p class="mt-3 text-xs text-gray-500">{{ $t('clients.form.allowedScopesHelp') }}</p>
-                      <p v-if="!formData.allowedScopes.includes('openid')" class="mt-1 text-xs text-yellow-600">
+                      <p v-if="!localAllowedScopes.includes('openid')" class="mt-1 text-xs text-yellow-600">
                         {{ $t('clients.form.allowedScopesOpenidRequired') }}
                       </p>
                     </div>
