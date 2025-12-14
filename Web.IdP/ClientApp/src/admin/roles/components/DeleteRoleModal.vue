@@ -72,7 +72,7 @@ const handleClose = () => {
   >
     <template #body>
       <div class="sm:flex sm:items-start">
-        <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+        <div class="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
           <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
@@ -87,7 +87,7 @@ const handleClose = () => {
                   <!-- System Role Warning -->
                   <div v-if="role.isSystem" class="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
                     <div class="flex">
-                      <div class="flex-shrink-0">
+                      <div class="shrink-0">
                         <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
                           <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
                         </svg>
@@ -103,7 +103,7 @@ const handleClose = () => {
                   <!-- Users Assigned Warning -->
                   <div v-else-if="role.userCount > 0" class="mb-4 bg-orange-50 border-l-4 border-orange-400 p-4">
                     <div class="flex">
-                      <div class="flex-shrink-0">
+                      <div class="shrink-0">
                         <svg class="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
                           <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
                         </svg>

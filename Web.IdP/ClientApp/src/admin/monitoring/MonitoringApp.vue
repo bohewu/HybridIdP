@@ -36,7 +36,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="monitoring-app" v-loading="{ loading: loading, overlay: true, message: t('monitoring.loading') }">
+  <div class="space-y-6" v-loading="{ loading: loading, overlay: true, message: t('monitoring.loading') }">
     <PageHeader
       :title="t('monitoring.title')"
       :subtitle="t('monitoring.subtitle')"
@@ -46,7 +46,7 @@ onMounted(async () => {
       {{ error }}
     </div>
 
-    <div class="monitoring-content">
+    <div class="space-y-6">
       <ActivityDashboard />
       <SecurityMetrics />
       <RealTimeAlerts />
@@ -61,11 +61,5 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.monitoring-app {
-  @apply space-y-6;
-}
-
-.monitoring-content {
-  @apply space-y-6;
-}
+/* Scoped styles removed as they only contained @apply rules now moved to template */
 </style>

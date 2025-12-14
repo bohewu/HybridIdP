@@ -28,15 +28,15 @@
       <div class="mb-8 bg-white rounded-lg shadow-sm p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('dashboard.quickStats') }}</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg" data-test-id="dashboard-stats-clients">
+          <div class="text-center p-4 bg-linear-to-br from-indigo-50 to-indigo-100 rounded-lg" data-test-id="dashboard-stats-clients">
             <div class="text-3xl font-bold text-indigo-600">{{ stats.totalClients }}</div>
             <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalClients') }}</div>
           </div>
-          <div class="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg" data-test-id="dashboard-stats-scopes">
+          <div class="text-center p-4 bg-linear-to-br from-green-50 to-green-100 rounded-lg" data-test-id="dashboard-stats-scopes">
             <div class="text-3xl font-bold text-green-600">{{ stats.totalScopes }}</div>
             <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalScopes') }}</div>
           </div>
-          <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg" data-test-id="dashboard-stats-users">
+          <div class="text-center p-4 bg-linear-to-br from-blue-50 to-blue-100 rounded-lg" data-test-id="dashboard-stats-users">
             <div class="text-3xl font-bold text-blue-600">{{ stats.totalUsers }}</div>
             <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalUsers') }}</div>
           </div>
@@ -71,7 +71,7 @@
         <div v-if="healthData" class="space-y-4">
             <!-- Overall Status -->
             <div class="flex items-center p-4 rounded-lg" :class="healthData.status === 'Healthy' ? 'bg-green-50' : 'bg-red-50'">
-                <div class="flex-shrink-0">
+                <div class="shrink-0">
                     <svg v-if="healthData.status === 'Healthy'" class="h-8 w-8 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>

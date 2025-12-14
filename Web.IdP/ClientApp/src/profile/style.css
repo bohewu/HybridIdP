@@ -1,11 +1,9 @@
+@import 'tailwindcss/utilities' layer(utilities);
+
+@config "../../tailwind.config.js";
+
 /* Do NOT import admin/style.css because it includes @tailwind base which resets Bootstrap styles */
 /* We also avoid @tailwind base here for the same reason */
-@tailwind components;
-@tailwind utilities;
-
-.form-input {
-    @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3;
-}
 
 /* 
    CRITICAL FIX: Tailwind's .collapse utility sets { visibility: hidden }
