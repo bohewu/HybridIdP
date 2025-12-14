@@ -31,8 +31,6 @@ export default {
         'sidebar-md': '220px',
       },
       borderRadius: {
-        'md': '0.375rem', // Force 6px for rounded-md
-        'lg': '0.5rem',   // Force 8px for rounded-lg
       },
     },
   },
