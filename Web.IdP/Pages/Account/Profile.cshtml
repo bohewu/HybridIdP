@@ -1,7 +1,8 @@
 @page
 @model Web.IdP.Pages.Account.ProfileModel
+@inject IViewLocalizer Localizer
 @{
-    ViewData["Title"] = "Profile";
+    ViewData["Title"] = Localizer["Profile"];
 }
 
 <div id="profile-app"></div>

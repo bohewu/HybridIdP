@@ -37,7 +37,7 @@ const loadLevel = async () => {
     loading.value = true;
     error.value = null;
     try {
-        const response = await fetch('/api/logging/level', {
+        const response = await fetch('/api/admin/logging/level', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include'
@@ -63,7 +63,7 @@ const saveLevel = async () => {
     showSuccess.value = false;
 
     try {
-        const response = await fetch('/api/logging/level', {
+        const response = await fetch('/api/admin/logging/level', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
