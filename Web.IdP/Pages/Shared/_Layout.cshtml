@@ -6,15 +6,17 @@
 @using Web.IdP.Helpers
 @using Microsoft.Extensions.Options
 @using Web.IdP.Options
+@using Web.IdP.Services
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<ApplicationRole> RoleManager
 @inject IOptions<BrandingOptions> BrandingOptions
+@inject IViteManifestService ViteService
 @{
     var currentCulture = System.Globalization.CultureInfo.CurrentUICulture.Name;
 }
 <!DOCTYPE html>
-<html lang="@currentCulture">
+<html lang="@currentCulture" class="h-full bg-gray-50">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -29,162 +31,212 @@
             <meta name="active-role" content="@activeRole" />
         }
     }
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    
+    @* Tailwind CSS *@
+    <link href="@ViteService.GetScriptPath("src/styles/main.css")" rel="stylesheet" />
+    <script type="module" src="@ViteService.GetScriptPath("src/scripts/razor.js")"></script>
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Web.IdP.styles.css" asp-append-version="true" />
 </head>
-<body>
+<body class="h-full flex flex-col">
     @if (User.Identity is System.Security.Claims.ClaimsIdentity claimsIdentity && claimsIdentity.Actor != null)
     {
-        <div class="alert alert-warning text-center m-0 p-2 rounded-0 border-0 border-bottom border-warning" role="alert">
+        <div class="bg-yellow-50 text-yellow-800 text-center p-2 border-b border-yellow-200" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
             @string.Format(Localizer["ImpersonatingUser"], User.Identity.Name)
-            <button id="stopImpersonationBtn" class="btn btn-sm btn-outline-dark ms-3 fw-bold">
+            <button id="stopImpersonationBtn" class="ml-3 px-2 py-1 text-xs font-bold text-yellow-900 border border-yellow-900 rounded hover:bg-yellow-100">
                 <i class="bi bi-x-circle me-1"></i>
                 @Localizer["StopImpersonation"]
             </button>
         </div>
-        <script>
-            document.getElementById('stopImpersonationBtn').addEventListener('click', async () => {
-                try {
-                    const response = await fetch('/api/admin/users/stop-impersonation', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        window.location.reload();
-                    } else {
-                        const data = await response.json();
-                        alert(data.error || 'Failed to stop impersonation');
-                    }
-                } catch (error) {
-                    console.error('Error stopping impersonation:', error);
-                    alert('An error occurred');
-                }
-            });
-        </script>
     }
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm google-navbar">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">
-                    <i class="bi bi-shield-lock"></i> @BrandingOptions.Value.ProductName
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-end">
-                    <ul class="navbar-nav align-items-sm-center">
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                                // Get user permissions for menu visibility
-                                var userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User);
-                                var hasAdminPermissions = User.IsInRole(Roles.Admin);
-                                var hasClientScopePermissions = 
-                                User.IsInRole(Roles.ApplicationManager) ||
-                                userPermissions.Contains(Permissions.Clients.Read) ||
-                                userPermissions.Contains(Permissions.Scopes.Read);
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle p-0" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <div class="user-profile">
-                                        <div class="user-avatar">
-                                            @{
-                                                var userName = User.Identity.Name ?? "?";
-                                                var initial = string.IsNullOrEmpty(userName) ? "?" : userName.Substring(0, 1).ToUpper();
-                                            }
-                                            @initial
-                                        </div>
-                                        <span class="user-name">@Localizer["Hello"], @User.Identity.Name</span>
+    <header class="bg-white shadow">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                @* Logo / Brand *@
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <a class="flex items-center text-xl font-bold text-gray-900 no-underline hover:no-underline" asp-area="" asp-page="/Index">
+                            <i class="bi bi-shield-lock mr-2"></i> @BrandingOptions.Value.ProductName
+                        </a>
+                    </div>
+                </div>
+                
+                @* Desktop Menu *@
+                <div class="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        // Get user permissions for menu visibility
+                        var userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User);
+                        var hasAdminPermissions = User.IsInRole(Roles.Admin);
+                        var hasClientScopePermissions = 
+                        User.IsInRole(Roles.ApplicationManager) ||
+                        userPermissions.Contains(Permissions.Clients.Read) ||
+                        userPermissions.Contains(Permissions.Scopes.Read);
+                        
+                        <!-- User Dropdown -->
+                        <div class="ml-3 relative group">
+                            <div>
+                                <button type="button" class="bg-white flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 items-center gap-2" id="user-menu-button" aria-expanded="false" aria-haspopup="true">
+                                    <span class="sr-only">Open user menu</span>
+                                    <div class="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+                                        @{
+                                            var userName = User.Identity.Name ?? "?";
+                                            var initial = string.IsNullOrEmpty(userName) ? "?" : userName.Substring(0, 1).ToUpper();
+                                        }
+                                        @initial
                                     </div>
+                                    <span class="text-gray-700">@Localizer["Hello"], @User.Identity.Name</span>
+                                    <i class="bi bi-chevron-down text-gray-500 text-xs"></i>
+                                </button>
+                            </div>
+                            <!-- Dropdown menu -->
+                            <div class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none hidden group-hover:block z-50">
+                                @if (User.IsInRole(Roles.Admin) && hasAdminPermissions)
+                                {
+                                    <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Admin/Index">
+                                        <i class="bi bi-speedometer2 mr-2"></i> @Localizer["AdminConsole"]
+                                    </a>
+                                    <div class="border-t border-gray-100 my-1"></div>
+                                }
+                                else if (hasClientScopePermissions)
+                                {
+                                    <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/ApplicationManager/Index">
+                                        <i class="bi bi-diagram-3 mr-2"></i> @Localizer["ApplicationManager"]
+                                    </a>
+                                    <div class="border-t border-gray-100 my-1"></div>
+                                }
+                                
+                                <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/Authorizations">
+                                    <i class="bi bi-shield-check mr-2"></i> @Localizer["AuthorizationManagement"]
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                    @* Show Admin Console if user is Admin or has admin-level permissions *@
-                                    @if (User.IsInRole(Roles.Admin) && hasAdminPermissions)
-                                    {
-                                        <li>
-                                            <a class="dropdown-item" asp-page="/Admin/Index">
-                                                <i class="bi bi-speedometer2"></i> @Localizer["AdminConsole"]
-                                            </a>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                    }
-                                    @* Show ApplicationManager if user has client/scope read permissions (but not Admin role) *@
-                                    else if (hasClientScopePermissions)
-                                    {
-                                        <li>
-                                            <a class="dropdown-item" asp-page="/ApplicationManager/Index">
-                                                <i class="bi bi-diagram-3"></i> @Localizer["ApplicationManager"]
-                                            </a>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                    }
-                                    <li>
-                                        <a class="dropdown-item" asp-page="/Account/Authorizations">
-                                            <i class="bi bi-shield-check"></i> @Localizer["AuthorizationManagement"]
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" asp-page="/Account/LinkedAccounts">
-                                            <i class="bi bi-person-lines-fill"></i> @Localizer["LinkedAccounts"]
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" asp-page="/Account/Profile">
-                                            <i class="bi bi-person-circle"></i> @Localizer["Profile"]
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <a class="dropdown-item" asp-page="/Account/Logout">
-                                            <i class="bi bi-box-arrow-right"></i> @Localizer["Logout"]
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-page="/Account/Login">
-                                    <i class="bi bi-box-arrow-in-right"></i> @Localizer["Login"]
+                                <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/LinkedAccounts">
+                                    <i class="bi bi-person-lines-fill mr-2"></i> @Localizer["LinkedAccounts"]
                                 </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-page="/Account/Register">
-                                    <i class="bi bi-person-plus"></i> @Localizer["Register"]
+                                <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/Profile">
+                                    <i class="bi bi-person-circle mr-2"></i> @Localizer["Profile"]
                                 </a>
-                            </li>
-                        }
-                        <li class="nav-item dropdown ms-sm-2">
-                            <partial name="_LanguageSelector" />
-                        </li>
-                    </ul>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/Logout">
+                                    <i class="bi bi-box-arrow-right mr-2"></i> @Localizer["Logout"]
+                                </a>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <a class="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium" asp-page="/Account/Login">
+                            <i class="bi bi-box-arrow-in-right mr-1"></i> @Localizer["Login"]
+                        </a>
+                        <a class="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium" asp-page="/Account/Register">
+                            <i class="bi bi-person-plus mr-1"></i> @Localizer["Register"]
+                        </a>
+                    }
+                    
+                    <div class="ml-4">
+                        <partial name="_LanguageSelector" />
+                    </div>
+                </div>
+
+                @* Mobile menu button *@
+                <div class="-mr-2 flex items-center sm:hidden">
+                    <button type="button" class="bg-white inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500" aria-controls="mobile-menu" aria-expanded="false">
+                        <span class="sr-only">Open main menu</span>
+                        <i class="bi bi-list text-2xl"></i>
+                    </button>
                 </div>
             </div>
         </nav>
+        
+        @* Mobile Menu *@
+        <div class="hidden sm:hidden bg-white border-t border-gray-200" id="mobile-menu">
+            <div class="pt-2 pb-3 space-y-1">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                        <div class="flex items-center">
+                             <div class="flex-shrink-0">
+                                <div class="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                                    @{
+                                        var userName = User.Identity.Name ?? "?";
+                                        var initial = string.IsNullOrEmpty(userName) ? "?" : userName.Substring(0, 1).ToUpper();
+                                    }
+                                    @initial
+                                </div>
+                            </div>
+                            <div class="ml-3">
+                                <div class="text-base font-medium text-gray-800">@User.Identity.Name</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    var userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User);
+                    var hasAdminPermissions = User.IsInRole(Roles.Admin);
+                    var hasClientScopePermissions = 
+                    User.IsInRole(Roles.ApplicationManager) ||
+                    userPermissions.Contains(Permissions.Clients.Read) ||
+                    userPermissions.Contains(Permissions.Scopes.Read);
+                    
+                    if (User.IsInRole(Roles.Admin) && hasAdminPermissions)
+                    {
+                         <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Admin/Index">
+                            <i class="bi bi-speedometer2 mr-2"></i> @Localizer["AdminConsole"]
+                        </a>
+                    }
+                    else if (hasClientScopePermissions)
+                    {
+                        <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/ApplicationManager/Index">
+                            <i class="bi bi-diagram-3 mr-2"></i> @Localizer["ApplicationManager"]
+                        </a>
+                    }
+                    
+                    <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/Authorizations">
+                        <i class="bi bi-shield-check mr-2"></i> @Localizer["AuthorizationManagement"]
+                    </a>
+                    <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/LinkedAccounts">
+                        <i class="bi bi-person-lines-fill mr-2"></i> @Localizer["LinkedAccounts"]
+                    </a>
+                    <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/Profile">
+                        <i class="bi bi-person-circle mr-2"></i> @Localizer["Profile"]
+                    </a>
+                    <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/Logout">
+                        <i class="bi bi-box-arrow-right mr-2"></i> @Localizer["Logout"]
+                    </a>
+                }
+                else
+                {
+                    <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/Login">
+                        <i class="bi bi-box-arrow-in-right mr-1"></i> @Localizer["Login"]
+                    </a>
+                    <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/Register">
+                        <i class="bi bi-person-plus mr-1"></i> @Localizer["Register"]
+                    </a>
+                }
+                 <div class="px-4 py-2">
+                    <partial name="_LanguageSelector" />
+                </div>
+            </div>
+        </div>
     </header>
     
-    <main role="main">
+    <main role="main" class="flex-grow">
         @RenderBody()
     </main>
 
-    <footer class="google-footer">
-        <div class="container">
-            <div class="footer-content">
-                <div>
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
+                <div class="mb-4 md:mb-0">
                     @Localizer["FooterCopyright"] • @Localizer["AllRightsReserved"]
                 </div>
-                <div>
-                    <a asp-area="" asp-page="/Privacy">
+                <div class="flex space-x-4">
+                    <a asp-area="" asp-page="/Privacy" class="hover:text-gray-900">
                         <i class="bi bi-shield-check"></i> @Localizer["Privacy"]
                     </a>
-                    <span class="mx-2">|</span>
-                        <a href="/Docs/Index" class="text-decoration-none text-muted">
+                    <span class="text-gray-300">|</span>
+                        <a href="/Docs/Index" class="hover:text-gray-900">
                         <i class="bi bi-journal-text"></i> @Localizer["Documentation"]
                     </a>
                 </div>
@@ -192,7 +244,7 @@
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    @* Removed Bootstrap Bundle JS *@
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/language.js" asp-append-version="true"></script>
     <script src="~/js/menu.js" asp-append-version="true"></script>

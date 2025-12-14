@@ -2,80 +2,104 @@
 @model Web.IdP.Pages.Account.RegisterModel
 @using Microsoft.AspNetCore.Mvc.Localization
 @using Microsoft.AspNetCore.Localization
+@using Web.IdP.Services
+@using Core.Application
 @inject IViewLocalizer Localizer
+@inject IViteManifestService ViteService
+@inject IBrandingService BrandingService
 @{
     ViewData["Title"] = Localizer["Register"];
     Layout = null;
     var currentCulture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
+    var productName = await BrandingService.GetProductNameAsync();
 }
 
 <!DOCTYPE html>
-<html lang="@currentCulture">
+<html lang="@currentCulture" class="h-full bg-gray-50">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - HybridAuth IdP</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    <title>@ViewData["Title"] - @productName</title>
+    
+    @* Tailwind CSS & Razor Scripts *@
+    <link href="@ViteService.GetScriptPath("src/styles/main.css")" rel="stylesheet" />
+    <script type="module" src="@ViteService.GetScriptPath("src/scripts/razor.js")"></script>
 </head>
-<body>
-    <div class="auth-container">
-        <div class="language-selector">
-            <select class="language-select">
-                <option value="en-US" selected="@(currentCulture == "en-US")">English</option>
-                <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文</option>
-            </select>
-        </div>
-
-        <div class="auth-card">
-            <div class="auth-logo">
-                <h1>HybridAuth IdP</h1>
+<body class="h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <div class="text-center relative">
+            <div class="absolute top-0 right-0">
+                 <div class="language-selector">
+                    <select class="language-select block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        <option value="en-US" selected="@(currentCulture == "en-US")">English</option>
+                        <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文</option>
+                    </select>
+                </div>
             </div>
 
-            <h2 class="auth-title">@ViewData["Title"]</h2>
-            <p class="auth-subtitle">@Localizer["Create your account"]</p>
+            <h1 class="mt-6 text-3xl font-extrabold text-gray-900">@productName</h1>
+            <h2 class="mt-2 text-2xl font-bold text-gray-900">@ViewData["Title"]</h2>
+            <p class="mt-2 text-sm text-gray-600">@Localizer["Create your account"]</p>
+        </div>
 
-            <form method="post" class="auth-form">
-                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+        <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-200">
+            <form method="post" class="space-y-6">
+                <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-4 rounded-md text-sm mb-4" role="alert"></div>
                 
-                <div class="mb-3">
-                    <label for="Input_Email" class="form-label">@Localizer["Email"]</label>
-                    <input asp-for="Input.Email" class="form-control" placeholder="@Localizer["Email"]" autocomplete="username" />
-                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                <div>
+                    <label for="Input_Email" class="block text-sm font-medium text-gray-700">@Localizer["Email"]</label>
+                    <div class="mt-1">
+                        <input asp-for="Input.Email" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                               placeholder="@Localizer["Email"]" autocomplete="username" />
+                    </div>
+                    <span asp-validation-for="Input.Email" class="text-red-500 text-xs mt-1 block"></span>
                 </div>
                 
-                <div class="mb-3">
-                    <label for="Input_Password" class="form-label">@Localizer["Password"]</label>
-                    <input asp-for="Input.Password" class="form-control" placeholder="@Localizer["Password"]" autocomplete="new-password" />
-                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                <div>
+                    <label for="Input_Password" class="block text-sm font-medium text-gray-700">@Localizer["Password"]</label>
+                    <div class="mt-1">
+                        <input asp-for="Input.Password" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                               placeholder="@Localizer["Password"]" autocomplete="new-password" />
+                    </div>
+                    <span asp-validation-for="Input.Password" class="text-red-500 text-xs mt-1 block"></span>
                 </div>
                 
-                <div class="mb-4">
-                    <label for="Input_ConfirmPassword" class="form-label">@Localizer["Confirm password"]</label>
-                    <input asp-for="Input.ConfirmPassword" class="form-control" placeholder="@Localizer["Confirm password"]" autocomplete="new-password" />
-                    <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+                <div>
+                    <label for="Input_ConfirmPassword" class="block text-sm font-medium text-gray-700">@Localizer["Confirm password"]</label>
+                    <div class="mt-1">
+                        <input asp-for="Input.ConfirmPassword" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                               placeholder="@Localizer["Confirm password"]" autocomplete="new-password" />
+                    </div>
+                    <span asp-validation-for="Input.ConfirmPassword" class="text-red-500 text-xs mt-1 block"></span>
                 </div>
                 
                 @if (Model.TurnstileEnabled)
                 {
-                    <div class="mb-3">
+                    <div class="mt-4">
                         <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey"></div>
                     </div>
                 }
                 
-                <div class="d-grid mt-4">
-                    <button type="submit" class="auth-btn-primary">@Localizer["Register"]</button>
+                <div class="mt-4">
+                    <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">@Localizer["Register"]</button>
                 </div>
                 
-                <div class="auth-footer">
-                    <a asp-page="./Login" class="auth-link">@Localizer["Already have an account? Sign in"]</a>
+                <div class="mt-6">
+                     <div class="relative">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-gray-300"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-2 bg-white text-gray-500">
+                                <a asp-page="./Login" class="font-medium text-blue-600 hover:text-blue-500">@Localizer["Already have an account? Sign in"]</a>
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/language.js" asp-append-version="true"></script>
     @if (Model.TurnstileEnabled)
     {
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
