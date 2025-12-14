@@ -163,6 +163,70 @@ namespace Tests.Application.UnitTests
             await Assert.ThrowsAsync<ArgumentNullException>(() => authService.HandleAuthorizeRequestAsync(user, null!, null));
         }
 
-        
+        [Fact]
+        public async Task HandleAuthorizeRequestAsync_WithCodeResponseType_MissingPermission_ReturnsForbid()
+        {
+            // Arrange
+            var user = new ClaimsPrincipal(new ClaimsIdentity("Test"));
+            var request = new OpenIddictRequest
+            {
+                ClientId = "client",
+                ResponseType = OpenIddictConstants.ResponseTypes.Code,
+                Scope = "openid"
+            };
+
+            // Setup Context
+            var context = new DefaultHttpContext();
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            // Setup Client
+            var client = new object();
+            _mockApplicationManager.Setup(m => m.FindByClientIdAsync("client", default)).ReturnsAsync(client);
+            _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(client, default)).ReturnsAsync("TestApp");
+            _mockApplicationManager.Setup(m => m.GetIdAsync(client, default)).ReturnsAsync("client-id-guid");
+
+            // Setup Missing Permission
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(client, default))
+                .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.ResponseTypes.Token)); // Has Token but needs Code
+
+            // Act
+            var result = await _authorizationService.HandleAuthorizeRequestAsync(user, request, null);
+
+            // Assert
+            var forbidResult = Assert.IsType<ForbidResult>(result);
+        }
+
+        [Fact]
+        public async Task HandleAuthorizeRequestAsync_WithTokenResponseType_MissingPermission_ReturnsForbid()
+        {
+            // Arrange
+            var user = new ClaimsPrincipal(new ClaimsIdentity("Test"));
+            var request = new OpenIddictRequest
+            {
+                ClientId = "client",
+                ResponseType = OpenIddictConstants.ResponseTypes.Token,
+                Scope = "openid"
+            };
+
+            // Setup Context
+            var context = new DefaultHttpContext();
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            // Setup Client
+            var client = new object();
+            _mockApplicationManager.Setup(m => m.FindByClientIdAsync("client", default)).ReturnsAsync(client);
+            _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(client, default)).ReturnsAsync("TestApp");
+            _mockApplicationManager.Setup(m => m.GetIdAsync(client, default)).ReturnsAsync("client-id-guid");
+
+            // Setup Missing Permission
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(client, default))
+                .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.ResponseTypes.Code)); // Has Code but needs Token
+
+            // Act
+            var result = await _authorizationService.HandleAuthorizeRequestAsync(user, request, null);
+
+            // Assert
+            var forbidResult = Assert.IsType<ForbidResult>(result);
+        }
     }
 }
