@@ -26,7 +26,9 @@ last-updated: 2025-12-11
 -- Phase 16 — Advanced User Support (Impersonation): 100% ✅ — `./phase-16-impersonation.md`
 -- Phase 17 — Deployment & Documentation: 100% ✅ — `./docs/DEPLOYMENT_GUIDE.md`
 -- Phase 18 — Personnel Lifecycle Management: 100% ✅ — `./phase-18-personnel-lifecycle.md`
--- Phase 19 — Frontend Testing Strategy (Vitest): 0% — `./TODOS.md`
+-- Phase 19 — Frontend Testing Strategy (Vitest): 50% — `./TODOS.md`
+-- Phase 20 — MFA & WebAuthn: 0% — `./docs/archive/phases/phase-20-mfa-webauthn.md`
+-- Phase 21 — External Identity Providers: 📋 Planned — `./docs/archive/phases/phase-21-external-idp.md`
 
 Backlog & Technical Debt: `./TODOS.md`
 
