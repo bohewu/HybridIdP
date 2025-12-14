@@ -25,6 +25,8 @@ public static class UserSeeder
             await SeedMultiRoleTestUserAsync(userManager, roleManager, context);
             await SeedStandardTestUserAsync(userManager, context);
             await SeedLegacyTestUserAsync(userManager, context);
+            await SeedInactiveUserAsync(userManager, context);
+            await SeedInactivePersonUserAsync(userManager, context);
         }
     }
 
@@ -387,6 +389,126 @@ public static class UserSeeder
             FirstName = "Legacy",
             LastName = "User",
             IsActive = true
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Seeds a test user with IsActive = false for testing deactivated account login blocking.
+    /// </summary>
+    private static async Task SeedInactiveUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "inactive@hybridauth.local";
+        const string password = "Inactive@123";
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null) return;
+
+        var nationalIdHash = PidHasher.Hash("I123456789");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Inactive",
+                LastName = "User",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active, // Person is active, but User is not
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Inactive",
+            LastName = "User",
+            IsActive = false // User account is deactivated
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Seeds a test user whose linked Person has Status = Suspended for testing person inactive login blocking.
+    /// </summary>
+    private static async Task SeedInactivePersonUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "inactiveperson@hybridauth.local";
+        const string password = "InactivePerson@123";
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null) return;
+
+        var nationalIdHash = PidHasher.Hash("P123456789");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "InactivePerson",
+                LastName = "User",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Suspended, // Person is suspended - cannot login
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "InactivePerson",
+            LastName = "User",
+            IsActive = true // User is active, but Person is suspended
         };
 
         var result = await userManager.CreateAsync(user, password);
