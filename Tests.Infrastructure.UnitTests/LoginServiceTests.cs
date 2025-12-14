@@ -98,5 +98,56 @@ namespace Tests.Infrastructure.UnitTests
             Assert.NotNull(result.User.Person); // Verification point: Person attached?
             Assert.Equal("zh-TW", result.User.Person.Locale); // Verification point: Locale accessible
         }
+
+        [Fact]
+        public async Task AuthenticateAsync_ShouldReturnUserInactive_WhenUserIsDeactivated()
+        {
+            // Arrange
+            var user = new ApplicationUser 
+            { 
+                UserName = "deactivated", 
+                Email = "deactivated@example.com",
+                IsActive = false // User is deactivated
+            };
+
+            // Setup UserManager
+            _userManagerMock.Setup(x => x.FindByEmailAsync(user.Email)).ReturnsAsync(user);
+
+            // Act
+            var result = await _service.AuthenticateAsync(user.Email, "anypassword");
+
+            // Assert
+            Assert.False(result.IsSuccess);
+            Assert.Equal(Core.Application.DTOs.LoginStatus.UserInactive, result.Status);
+            Assert.Null(result.User);
+            
+            // Verify password is never checked for inactive user
+            _userManagerMock.Verify(x => x.CheckPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_ShouldSucceed_WhenUserIsActive()
+        {
+            // Arrange
+            var user = new ApplicationUser 
+            { 
+                UserName = "activeuser", 
+                Email = "active@example.com",
+                IsActive = true // User is active
+            };
+
+            // Setup UserManager
+            _userManagerMock.Setup(x => x.FindByEmailAsync(user.Email)).ReturnsAsync(user);
+            _userManagerMock.Setup(x => x.CheckPasswordAsync(user, "password")).ReturnsAsync(true);
+            _userManagerMock.Setup(x => x.IsLockedOutAsync(user)).ReturnsAsync(false);
+            _userManagerMock.Setup(x => x.ResetAccessFailedCountAsync(user)).ReturnsAsync(IdentityResult.Success);
+
+            // Act
+            var result = await _service.AuthenticateAsync(user.Email, "password");
+
+            // Assert
+            Assert.True(result.IsSuccess);
+            Assert.NotNull(result.User);
+        }
     }
 }
