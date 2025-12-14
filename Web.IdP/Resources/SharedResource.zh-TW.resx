@@ -408,6 +408,9 @@
   <data name="ImpersonatingUser" xml:space="preserve">
     <value>您目前正在模擬 {0}。</value>
   </data>
+  <data name="PleaseCompleteCaptcha" xml:space="preserve">
+    <value>請完成驗證碼...</value>
+  </data>
   <data name="RequiredField" xml:space="preserve">
     <value>{0} 是必填的。</value>
   </data>
