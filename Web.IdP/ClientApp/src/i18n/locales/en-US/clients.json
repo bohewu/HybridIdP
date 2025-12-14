@@ -88,16 +88,16 @@
     "postLogoutRedirectUrisInvalid": "Post Logout URI line {line} is not a valid absolute URL",
     "permissions": "Permissions",
     "permissionsRequired": "Select at least one permission",
-    "permissionsHelp": "💡 Tip: Most OAuth/OIDC flows need at minimum: Authorization Endpoint, Token Endpoint, Authorization Code grant, and OpenID scope.",
+    "permissionsHelp": "💡 Tip: OIDC flows need Authorization Endpoint, Token Endpoint, Authorization Code grant, and openid scope. M2M (Client Credentials) only needs Token Endpoint and client_credentials grant.",
     "categories": {
       "endpoints": "Endpoints",
       "grantTypes": "Grant Types",
       "scopes": "Scopes"
     },
     "allowedScopes": "Allowed Scopes",
-    "allowedScopesHelp": "Select which scopes this client is allowed to request. This acts as a whitelist - the client can only receive tokens with these scopes.",
+    "allowedScopesHelp": "Select which scopes this client is allowed to request. This acts as a whitelist. Include 'openid' for ID Tokens/Userinfo (OIDC); not required for pure OAuth2 API access.",
     "allowedScopesRequired": "At least one scope must be selected",
-    "allowedScopesOpenidRequired": "OIDC clients must include the 'openid' scope",
+    "allowedScopesOpenidRequired": "Tip: Include 'openid' scope if you need ID Tokens or Userinfo",
     "allowedScopesLoading": "Loading available scopes...",
     "allowedScopesNone": "No scopes available. Please create scopes first.",
     "scopeManager": {
