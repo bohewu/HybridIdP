@@ -118,7 +118,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             // In Passthrough mode, we must manually enforce that the client is allowed to use the requested response types.
             var permissions = await _applicationManager.GetPermissionsAsync(application);
             
-            if (request.HasResponseType(ResponseTypes.Code) && !permissions.Contains(Permissions.ResponseTypes.Code))
+            if (request.HasResponseType(ResponseTypes.Code) && !permissions.Contains(OpenIddictConstants.Permissions.ResponseTypes.Code))
             {
                 _logger.LogWarning("Client {ClientId} requested response_type=code without permission.", request.ClientId);
                 return new ForbidResult(
@@ -130,7 +130,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     }));
             }
 
-            if (request.HasResponseType(ResponseTypes.Token) && !permissions.Contains(Permissions.ResponseTypes.Token))
+            if (request.HasResponseType(ResponseTypes.Token) && !permissions.Contains(OpenIddictConstants.Permissions.ResponseTypes.Token))
             {
                 _logger.LogWarning("Client {ClientId} requested response_type=token without permission.", request.ClientId);
                  return new ForbidResult(
@@ -142,7 +142,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     }));
             }
 
-            if (request.HasResponseType(ResponseTypes.IdToken) && !permissions.Contains(Permissions.ResponseTypes.IdToken))
+            if (request.HasResponseType(ResponseTypes.IdToken) && !permissions.Contains(OpenIddictConstants.Permissions.ResponseTypes.IdToken))
             {
                 _logger.LogWarning("Client {ClientId} requested response_type=id_token without permission.", request.ClientId);
                  return new ForbidResult(
