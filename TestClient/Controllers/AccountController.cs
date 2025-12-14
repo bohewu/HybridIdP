@@ -70,10 +70,12 @@ public class AccountController : Controller
         return View();
     }
 
-    public async Task<IActionResult> Logout()
+    public IActionResult Logout()
     {
-        await HttpContext.SignOutAsync(AuthenticationSchemes.Cookies);
-        return RedirectToAction("Index", "Home");
+        return SignOut(new AuthenticationProperties
+        {
+            RedirectUri = "/"
+        }, AuthenticationSchemes.Cookies, AuthenticationSchemes.OpenIdConnect);
     }
 
     public IActionResult AccessDenied()
