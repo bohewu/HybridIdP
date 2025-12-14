@@ -3,9 +3,11 @@ using System.Security.Claims;
 using Core.Application;
 using Core.Domain;
 using Core.Domain.Constants;
+using Core.Domain.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -19,6 +21,7 @@ namespace Web.IdP.Services
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly IApiResourceService _apiResourceService;
         private readonly IAuditService _auditService;
+        private readonly IApplicationDbContext _db;
         private readonly ILogger<TokenService> _logger;
 
         public TokenService(
@@ -27,6 +30,7 @@ namespace Web.IdP.Services
             RoleManager<ApplicationRole> roleManager,
             IApiResourceService apiResourceService,
             IAuditService auditService,
+            IApplicationDbContext db,
             ILogger<TokenService> logger)
         {
             _userManager = userManager;
@@ -34,6 +38,7 @@ namespace Web.IdP.Services
             _roleManager = roleManager;
             _apiResourceService = apiResourceService;
             _auditService = auditService;
+            _db = db;
             _logger = logger;
         }
 
@@ -147,26 +152,25 @@ namespace Web.IdP.Services
                     }
 
                     // Create new identity with the correct authenticationType
-                    var identity = new ClaimsIdentity(schemePrincipal.Claims,
+                    var identity = new ClaimsIdentity(
                         authenticationType: Microsoft.IdentityModel.Tokens.TokenValidationParameters.DefaultAuthenticationType,
                         nameType: Claims.Name,
                         roleType: Claims.Role);
 
-                    // Override the user claims present in the principal in case they changed.
-                    identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                            .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                            .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                            .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                            .SetClaims(Claims.Role, (await _userManager.GetRolesAsync(user)).ToImmutableArray());
+                    // Subject claim is always required
+                    identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user));
+
+                    // Get scopes from original principal and add scope-based claims from DB
+                    var requestedScopes = schemePrincipal.GetScopes().ToList();
+                    await AddScopeBasedClaimsAsync(identity, user, requestedScopes);
 
                     // Copy scopes from the original principal
-                    identity.SetScopes(schemePrincipal.GetScopes());
+                    identity.SetScopes(requestedScopes);
 
                     // Add permission claims
                     await AddPermissionClaimsAsync(identity, user);
 
                     // Add audience claims from API resources
-                    var requestedScopes = schemePrincipal.GetScopes().ToList();
                     var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
                     if (audiences.Count > 0)
                     {
@@ -224,19 +228,20 @@ namespace Web.IdP.Services
                     nameType: Claims.Name,
                     roleType: Claims.Role);
 
-                // Add the claims
-                identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                        .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                        .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user));
+                // Subject claim is always required (OIDC core)
+                identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user));
 
-                var roles = await _userManager.GetRolesAsync(user);
-                identity.SetClaims(Claims.Role, roles.ToImmutableArray());
+                // Get requested scopes and add scope-based claims from DB
+                var requestedScopes = request.GetScopes();
+                await AddScopeBasedClaimsAsync(identity, user, requestedScopes);
 
                 // Add permission claims from user's roles
                 await AddPermissionClaimsAsync(identity, user);
 
+                // Set granted scopes on identity
+                identity.SetScopes(requestedScopes);
+
                 // Add audience (aud) claims from API Resources associated with requested scopes
-                var requestedScopes = request.GetScopes();
                 var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
                 if (audiences.Count > 0)
                 {
@@ -309,6 +314,75 @@ namespace Web.IdP.Services
             {
                 identity.AddClaim(new Claim("permission", permission));
             }
+        }
+
+        /// <summary>
+        /// Adds claims to the identity based on granted scopes using DB-driven mappings.
+        /// Only claims for the granted scopes will be added per OIDC specification.
+        /// </summary>
+        private async Task AddScopeBasedClaimsAsync(
+            ClaimsIdentity identity, 
+            ApplicationUser user, 
+            IEnumerable<string> grantedScopes)
+        {
+            var scopeSet = grantedScopes.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            
+            // Query scope-to-claims mappings from DB
+            var scopeClaims = await _db.ScopeClaims
+                .Where(sc => scopeSet.Contains(sc.ScopeName))
+                .Include(sc => sc.UserClaim)
+                .ToListAsync();
+
+            foreach (var scopeClaim in scopeClaims)
+            {
+                if (scopeClaim.UserClaim == null) continue;
+
+                var claimType = scopeClaim.UserClaim.ClaimType;
+                
+                // Skip if already set (e.g., subject is always included)
+                if (identity.FindFirst(claimType) != null) continue;
+
+                var value = GetClaimValueFromUser(user, scopeClaim.UserClaim);
+                if (value != null)
+                {
+                    // Handle boolean types
+                    if (scopeClaim.UserClaim.DataType == "Boolean")
+                    {
+                        identity.AddClaim(new Claim(claimType, value.ToString()!.ToLower()));
+                    }
+                    else
+                    {
+                        identity.AddClaim(new Claim(claimType, value.ToString() ?? string.Empty));
+                    }
+                }
+            }
+
+            // Handle roles scope specially
+            if (scopeSet.Contains("roles") || scopeSet.Contains(AuthConstants.Scopes.Roles))
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                identity.SetClaims(Claims.Role, roles.ToImmutableArray());
+            }
+        }
+
+        /// <summary>
+        /// Gets a claim value from the user based on the UserPropertyPath defined in UserClaim.
+        /// </summary>
+        private static object? GetClaimValueFromUser(ApplicationUser user, UserClaim userClaim)
+        {
+            if (string.IsNullOrEmpty(userClaim.UserPropertyPath))
+                return null;
+
+            return userClaim.UserPropertyPath switch
+            {
+                "Id" => user.Id.ToString(),
+                "UserName" => user.UserName,
+                "Email" => user.Email,
+                "EmailConfirmed" => user.EmailConfirmed,
+                "PhoneNumber" => user.PhoneNumber,
+                "PhoneNumberConfirmed" => user.PhoneNumberConfirmed,
+                _ => null
+            };
         }
 
         private static IEnumerable<string> GetDestinations(Claim claim)

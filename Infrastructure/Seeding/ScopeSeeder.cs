@@ -2,6 +2,7 @@ using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Infrastructure.Seeding;
 
@@ -15,11 +16,14 @@ public static class ScopeSeeder
 
     private static async Task SeedScopesAsync(IOpenIddictScopeManager scopeManager)
     {
+        // Standard OIDC scopes per specification
         var scopes = new[]
         {
-            new { Name = AuthConstants.Scopes.OpenId, DisplayName = "OpenID", Description = "OpenID scope" },
-            new { Name = AuthConstants.Scopes.Email, DisplayName = "Email", Description = "Email scope" },
-            new { Name = AuthConstants.Scopes.Profile, DisplayName = "Profile", Description = "Profile scope" },
+            new { Name = Scopes.OpenId, DisplayName = "OpenID", Description = "OpenID Connect identifier" },
+            new { Name = Scopes.Email, DisplayName = "Email", Description = "Email address and verification status" },
+            new { Name = Scopes.Profile, DisplayName = "Profile", Description = "User profile information" },
+            new { Name = Scopes.Phone, DisplayName = "Phone", Description = "Phone number and verification status" },
+            new { Name = Scopes.Address, DisplayName = "Address", Description = "Mailing address" },
             new { Name = AuthConstants.Scopes.Roles, DisplayName = "Roles", Description = "User roles" }
         };
 
@@ -32,10 +36,7 @@ public static class ScopeSeeder
                     Name = scope.Name,
                     DisplayName = scope.DisplayName,
                     Description = scope.Description,
-                    Resources =
-                    {
-                        AuthConstants.Resources.ResourceServer
-                    }
+                    Resources = { AuthConstants.Resources.ResourceServer }
                 });
             }
         }
@@ -47,23 +48,26 @@ public static class ScopeSeeder
     /// </summary>
     private static async Task SeedUserClaimsAndMappingsAsync(ApplicationDbContext context, IOpenIddictScopeManager scopeManager)
     {
-        // Define standard OIDC claims
+        // Define standard OIDC claims per specification
         var standardClaims = new List<UserClaim>
         {
             // REQUIRED: Subject identifier (always included)
-            new() { Name = "sub", DisplayName = "Subject Identifier", Description = "Unique identifier for the user", ClaimType = "sub", UserPropertyPath = "Id", DataType = "String", IsStandard = true, IsRequired = true },
+            new() { Name = "sub", DisplayName = "Subject Identifier", Description = "Unique identifier for the user", ClaimType = Claims.Subject, UserPropertyPath = "Id", DataType = "String", IsStandard = true, IsRequired = true },
             
             // PROFILE SCOPE claims
-            new() { Name = "name", DisplayName = "Full Name", Description = "Full name of the user", ClaimType = "name", UserPropertyPath = "UserName", DataType = "String", IsStandard = true, IsRequired = false },
-            new() { Name = "preferred_username", DisplayName = "Preferred Username", Description = "Shorthand name the user prefers to be called", ClaimType = "preferred_username", UserPropertyPath = "UserName", DataType = "String", IsStandard = true, IsRequired = false },
+            new() { Name = "name", DisplayName = "Full Name", Description = "Full name of the user", ClaimType = Claims.Name, UserPropertyPath = "UserName", DataType = "String", IsStandard = true, IsRequired = false },
+            new() { Name = "preferred_username", DisplayName = "Preferred Username", Description = "Shorthand name the user prefers to be called", ClaimType = Claims.PreferredUsername, UserPropertyPath = "UserName", DataType = "String", IsStandard = true, IsRequired = false },
             
             // EMAIL SCOPE claims
-            new() { Name = "email", DisplayName = "Email Address", Description = "Email address of the user", ClaimType = "email", UserPropertyPath = "Email", DataType = "String", IsStandard = true, IsRequired = false },
-            new() { Name = "email_verified", DisplayName = "Email Verified", Description = "Whether the email address has been verified", ClaimType = "email_verified", UserPropertyPath = "EmailConfirmed", DataType = "Boolean", IsStandard = true, IsRequired = false },
+            new() { Name = "email", DisplayName = "Email Address", Description = "Email address of the user", ClaimType = Claims.Email, UserPropertyPath = "Email", DataType = "String", IsStandard = true, IsRequired = false },
+            new() { Name = "email_verified", DisplayName = "Email Verified", Description = "Whether the email address has been verified", ClaimType = Claims.EmailVerified, UserPropertyPath = "EmailConfirmed", DataType = "Boolean", IsStandard = true, IsRequired = false },
             
             // PHONE SCOPE claims
-            new() { Name = "phone_number", DisplayName = "Phone Number", Description = "Phone number of the user", ClaimType = "phone_number", UserPropertyPath = "PhoneNumber", DataType = "String", IsStandard = true, IsRequired = false },
-            new() { Name = "phone_number_verified", DisplayName = "Phone Verified", Description = "Whether the phone number has been verified", ClaimType = "phone_number_verified", UserPropertyPath = "PhoneNumberConfirmed", DataType = "Boolean", IsStandard = true, IsRequired = false },
+            new() { Name = "phone_number", DisplayName = "Phone Number", Description = "Phone number of the user", ClaimType = Claims.PhoneNumber, UserPropertyPath = "PhoneNumber", DataType = "String", IsStandard = true, IsRequired = false },
+            new() { Name = "phone_number_verified", DisplayName = "Phone Verified", Description = "Whether the phone number has been verified", ClaimType = Claims.PhoneNumberVerified, UserPropertyPath = "PhoneNumberConfirmed", DataType = "Boolean", IsStandard = true, IsRequired = false },
+            
+            // ADDRESS SCOPE claims (single formatted address claim)
+            new() { Name = "address", DisplayName = "Address", Description = "User's mailing address as JSON", ClaimType = Claims.Address, UserPropertyPath = null, DataType = "Json", IsStandard = true, IsRequired = false },
         };
 
         // Step 1: Seed UserClaims if not exist
@@ -85,22 +89,21 @@ public static class ScopeSeeder
             // Define scope-to-claims mappings per OIDC specification
             var scopeMappings = new Dictionary<string, string[]>
             {
-                ["openid"] = new[] { "sub" }, // OpenID scope always includes subject identifier
-                ["profile"] = new[] { "name", "preferred_username" }, // Profile scope includes name-related claims
-                ["email"] = new[] { "email", "email_verified" }, // Email scope includes email and verification status
-                ["phone"] = new[] { "phone_number", "phone_number_verified" } // Phone scope
+                [Scopes.OpenId] = new[] { "sub" },
+                [Scopes.Profile] = new[] { "name", "preferred_username" },
+                [Scopes.Email] = new[] { "email", "email_verified" },
+                [Scopes.Phone] = new[] { "phone_number", "phone_number_verified" },
+                [Scopes.Address] = new[] { "address" }
             };
 
             foreach (var (scopeName, claimNames) in scopeMappings)
             {
-                // Get the scope ID from OpenIddict
                 var scope = await scopeManager.FindByNameAsync(scopeName);
-                if (scope == null) continue; // Skip if scope doesn't exist
+                if (scope == null) continue;
 
                 var scopeId = await scopeManager.GetIdAsync(scope);
                 if (scopeId == null) continue;
 
-                // Create ScopeClaim mappings
                 foreach (var claimName in claimNames)
                 {
                     if (!claimsByName.TryGetValue(claimName, out var userClaim))
@@ -111,7 +114,7 @@ public static class ScopeSeeder
                         ScopeId = scopeId.ToString()!,
                         ScopeName = scopeName,
                         UserClaimId = userClaim.Id,
-                        AlwaysInclude = claimName == "sub" // Always include "sub" claim
+                        AlwaysInclude = claimName == "sub"
                     };
 
                     await context.Set<ScopeClaim>().AddAsync(scopeClaim);
