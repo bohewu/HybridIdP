@@ -24,6 +24,7 @@ namespace Tests.Application.UnitTests
         private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
         private readonly Mock<IApiResourceService> _mockApiResourceService;
         private readonly Mock<IAuditService> _mockAuditService;
+        private readonly Mock<IApplicationDbContext> _mockDbContext;
         private readonly Mock<ILogger<TokenService>> _mockLogger;
         private readonly TokenService _service;
 
@@ -45,6 +46,7 @@ namespace Tests.Application.UnitTests
 
             _mockApiResourceService = new Mock<IApiResourceService>();
             _mockAuditService = new Mock<IAuditService>();
+            _mockDbContext = new Mock<IApplicationDbContext>();
             _mockLogger = new Mock<ILogger<TokenService>>();
 
             _service = new TokenService(
@@ -53,6 +55,7 @@ namespace Tests.Application.UnitTests
                 _mockRoleManager.Object,
                 _mockApiResourceService.Object,
                 _mockAuditService.Object,
+                _mockDbContext.Object,
                 _mockLogger.Object);
         }
 
@@ -110,6 +113,19 @@ namespace Tests.Application.UnitTests
 
             _mockApiResourceService.Setup(s => s.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>()))
                 .ReturnsAsync(new List<string>());
+
+            // Setup empty ScopeClaims for this test
+            var emptyScopeClaims = new List<Core.Domain.Entities.ScopeClaim>().AsQueryable();
+            var mockScopeClaimsDbSet = new Mock<Microsoft.EntityFrameworkCore.DbSet<Core.Domain.Entities.ScopeClaim>>();
+            mockScopeClaimsDbSet.As<IQueryable<Core.Domain.Entities.ScopeClaim>>()
+                .Setup(m => m.Provider).Returns(new TestAsyncQueryProvider<Core.Domain.Entities.ScopeClaim>(emptyScopeClaims.Provider));
+            mockScopeClaimsDbSet.As<IQueryable<Core.Domain.Entities.ScopeClaim>>()
+                .Setup(m => m.Expression).Returns(emptyScopeClaims.Expression);
+            mockScopeClaimsDbSet.As<IQueryable<Core.Domain.Entities.ScopeClaim>>()
+                .Setup(m => m.ElementType).Returns(emptyScopeClaims.ElementType);
+            mockScopeClaimsDbSet.As<IQueryable<Core.Domain.Entities.ScopeClaim>>()
+                .Setup(m => m.GetEnumerator()).Returns(emptyScopeClaims.GetEnumerator());
+            _mockDbContext.Setup(c => c.ScopeClaims).Returns(mockScopeClaimsDbSet.Object);
 
             // Act
             var result = await _service.HandleTokenRequestAsync(request, null);
