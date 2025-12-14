@@ -22,6 +22,7 @@ public class LoginResult
     public static LoginResult LegacySuccess(Domain.ApplicationUser user) => new(LoginStatus.LegacySuccess, user);
     public static LoginResult InvalidCredentials() => new(LoginStatus.InvalidCredentials);
     public static LoginResult LockedOut() => new(LoginStatus.LockedOut);
+    public static LoginResult UserInactive() => new(LoginStatus.UserInactive, null, "User account is deactivated");
     public static LoginResult PersonInactive(string message = "Person is not active") => new(LoginStatus.PersonInactive, null, message);
 }
 
@@ -50,6 +51,10 @@ public enum LoginStatus
     /// The user's associated Person is not active (terminated, suspended, pending, or outside valid date range).
     /// Phase 18: Personnel Lifecycle Management
     /// </summary>
-    PersonInactive
+    PersonInactive,
+    /// <summary>
+    /// The user account itself is deactivated (IsActive = false).
+    /// </summary>
+    UserInactive
 }
 

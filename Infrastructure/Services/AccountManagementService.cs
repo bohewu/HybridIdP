@@ -66,6 +66,8 @@ public partial class AccountManagementService : IAccountManagementService
                 u.Id,
                 u.UserName,
                 u.Email,
+                u.IsActive,
+                u.LastLoginDate,
                 IsCurrentAccount = u.Id == userId,
                 Roles = _dbContext.UserRoles
                     .Where(ur => ur.UserId == u.Id)
@@ -85,8 +87,8 @@ public partial class AccountManagementService : IAccountManagementService
             Email = u.Email ?? string.Empty,
             Roles = u.Roles.Where(r => r != null).Cast<string>().ToList(),
             IsCurrentAccount = u.IsCurrentAccount,
-            IsActive = false, // Will be determined by session status
-            LastLoginDate = null // TODO: Implement from LoginHistory if needed
+            IsActive = u.IsActive,
+            LastLoginDate = u.LastLoginDate
         });
     }
 

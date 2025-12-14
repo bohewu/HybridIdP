@@ -52,6 +52,13 @@ public partial class LoginService : ILoginService
 
     private async Task<LoginResult> AuthenticateLocalUserAsync(ApplicationUser user, string password)
     {
+        // Check if user account is active
+        if (!user.IsActive)
+        {
+            LogUserDeactivated(user.UserName);
+            return LoginResult.UserInactive();
+        }
+
         // Phase 18: Check Person status before authentication
         var personCheckResult = await ValidatePersonStatusAsync(user);
         if (personCheckResult != null)
@@ -117,6 +124,13 @@ public partial class LoginService : ILoginService
         };
 
         var provisionedUser = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth);
+
+        // Check if provisioned user account is active
+        if (!provisionedUser.IsActive)
+        {
+            LogUserDeactivated(provisionedUser.UserName);
+            return LoginResult.UserInactive();
+        }
 
         // Phase 18: Check Person status after JIT provisioning
         var personCheckResult = await ValidatePersonStatusAsync(provisionedUser);
@@ -209,5 +223,8 @@ public partial class LoginService : ILoginService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Login blocked for user '{UserName}': Person {PersonId} is inactive - {Reason}.")]
     partial void LogPersonInactive(string? userName, Guid personId, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Login blocked for user '{UserName}': User account is deactivated.")]
+    partial void LogUserDeactivated(string? userName);
 }
 
