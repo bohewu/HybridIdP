@@ -562,6 +562,12 @@ const closeSecretModal = () => {
                         {{ $t('clients.form.allowedScopes') }} <span class="text-red-500">*</span>
                       </label>
                       
+                      <!-- Help text moved to top for visibility -->
+                      <p class="mb-3 text-xs text-gray-500">{{ $t('clients.form.allowedScopesHelp') }}</p>
+                      <p v-if="!localAllowedScopes.includes('openid')" class="mb-3 text-xs text-yellow-600">
+                        {{ $t('clients.form.allowedScopesOpenidRequired') }}
+                      </p>
+                      
                       <div v-if="fieldErrors.allowedScopes" class="mb-2">
                         <p v-for="(err, idx) in fieldErrors.allowedScopes" :key="idx" class="text-sm text-red-600 flex items-start">
                           <svg class="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -577,11 +583,6 @@ const closeSecretModal = () => {
                           v-model:requiredScopes="formData.requiredScopes" 
                         />
                       </div>
-                      
-                      <p class="mt-3 text-xs text-gray-500">{{ $t('clients.form.allowedScopesHelp') }}</p>
-                      <p v-if="!localAllowedScopes.includes('openid')" class="mt-1 text-xs text-yellow-600">
-                        {{ $t('clients.form.allowedScopesOpenidRequired') }}
-                      </p>
                     </div>
 
                     <!-- TEST URL GENERATOR -->
