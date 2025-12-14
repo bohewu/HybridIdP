@@ -285,6 +285,8 @@ public static class ServiceCollectionExtensions
                        .SetUserInfoEndpointUris("/connect/userinfo")
                        .SetIntrospectionEndpointUris("/connect/introspect")
                        .SetRevocationEndpointUris("/connect/revoke")
+                       .SetPushedAuthorizationEndpointUris("/connect/par")
+                       .SetEndSessionEndpointUris("/connect/logout")
                        .SetDeviceAuthorizationEndpointUris("/connect/device")
                        .SetEndUserVerificationEndpointUris("/connect/verify");
 
@@ -329,6 +331,7 @@ public static class ServiceCollectionExtensions
                        .EnableAuthorizationEndpointPassthrough()
                        .EnableTokenEndpointPassthrough()
                        .EnableUserInfoEndpointPassthrough()
+                       .EnableEndSessionEndpointPassthrough()
                        .EnableEndUserVerificationEndpointPassthrough()
                        .EnableStatusCodePagesIntegration();
             })

@@ -18,6 +18,7 @@ public class RevocationController : Controller
     [HttpPost("~/connect/revoke")]
     [IgnoreAntiforgeryToken]
     [Produces("application/json")]
+    [Web.IdP.Filters.RequireClientPermission(OpenIddict.Abstractions.OpenIddictConstants.Permissions.Endpoints.Revocation)]
     public async Task<IActionResult> Revoke()
     {
         var request = HttpContext.GetOpenIddictServerRequest();
