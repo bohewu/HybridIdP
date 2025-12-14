@@ -1,71 +1,126 @@
 using System.Security.Claims;
+using Core.Application;
+using Core.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Web.IdP.Services;
 
+/// <summary>
+/// Service for building UserInfo responses based on granted scopes.
+/// Uses database-driven scope-to-claims mapping for flexibility.
+/// Follows OIDC Core 5.4 - Requesting Claims using Scope Values.
+/// https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
+/// </summary>
 public class UserInfoService : IUserInfoService
 {
-    public Task<Dictionary<string, object>> GetUserInfoAsync(ClaimsPrincipal principal)
+    private readonly IApplicationDbContext _db;
+
+    public UserInfoService(IApplicationDbContext db)
+    {
+        _db = db;
+    }
+
+    public async Task<Dictionary<string, object>> GetUserInfoAsync(ClaimsPrincipal principal)
     {
         if (principal == null)
         {
             throw new ArgumentNullException(nameof(principal));
         }
 
+        // Always include subject claim (required by OIDC)
         var userinfo = new Dictionary<string, object>
         {
             [Claims.Subject] = principal.GetClaim(Claims.Subject) ?? "",
         };
 
-        // Add username if available
-        var username = principal.GetClaim(Claims.Username) ?? principal.GetClaim(Claims.PreferredUsername);
-        if (!string.IsNullOrEmpty(username))
+        // Get granted scopes from the access token
+        var grantedScopes = GetGrantedScopes(principal);
+
+        if (grantedScopes.Count == 0)
         {
-            userinfo[Claims.PreferredUsername] = username;
+            return userinfo;
         }
 
-        // Add email if available
-        var email = principal.GetClaim(Claims.Email);
-        if (!string.IsNullOrEmpty(email))
+        // Query scope-to-claims mappings from database
+        var scopeClaims = await _db.ScopeClaims
+            .Where(sc => grantedScopes.Contains(sc.ScopeName))
+            .Include(sc => sc.UserClaim)
+            .ToListAsync();
+
+        foreach (var scopeClaim in scopeClaims)
         {
-            userinfo[Claims.Email] = email;
-            
-            var emailVerified = principal.GetClaim(Claims.EmailVerified);
-            if (!string.IsNullOrEmpty(emailVerified))
+            if (scopeClaim.UserClaim == null) continue;
+
+            var claimType = scopeClaim.UserClaim.ClaimType;
+
+            // Skip if already added (e.g., "sub" is always included)
+            if (userinfo.ContainsKey(claimType)) continue;
+
+            var value = principal.GetClaim(claimType);
+
+            // Skip empty values unless AlwaysInclude is set
+            if (string.IsNullOrEmpty(value) && !scopeClaim.AlwaysInclude)
             {
-                userinfo[Claims.EmailVerified] = emailVerified == "true";
+                continue;
+            }
+
+            // Handle different data types
+            if (scopeClaim.UserClaim.DataType == "Boolean")
+            {
+                userinfo[claimType] = value?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
+            }
+            else
+            {
+                userinfo[claimType] = value ?? string.Empty;
             }
         }
 
-        // Add name if available
-        var name = principal.GetClaim(Claims.Name);
-        if (!string.IsNullOrEmpty(name))
+        // Handle roles scope (special case - multiple values)
+        if (grantedScopes.Contains("roles"))
         {
-            userinfo[Claims.Name] = name;
+            var roles = principal.GetClaims(Claims.Role).ToList();
+            if (roles.Count > 0)
+            {
+                userinfo[Claims.Role] = roles;
+            }
         }
 
-        // Add given name if available
-        var givenName = principal.GetClaim(Claims.GivenName);
-        if (!string.IsNullOrEmpty(givenName))
+        return userinfo;
+    }
+
+    /// <summary>
+    /// Extracts granted scopes from the principal.
+    /// OpenIddict may store scopes as a space-separated string or as individual claims.
+    /// </summary>
+    private static HashSet<string> GetGrantedScopes(ClaimsPrincipal principal)
+    {
+        var scopes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Try to get scopes from the standard "scope" claim (space-separated)
+        var scopeClaim = principal.FindFirst("scope")?.Value;
+        if (!string.IsNullOrEmpty(scopeClaim))
         {
-            userinfo[Claims.GivenName] = givenName;
+            foreach (var scope in scopeClaim.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                scopes.Add(scope);
+            }
         }
 
-        // Add family name if available
-        var familyName = principal.GetClaim(Claims.FamilyName);
-        if (!string.IsNullOrEmpty(familyName))
+        // Also check for individual scope claims (OpenIddict internal format: "oi_scp")
+        foreach (var claim in principal.Claims.Where(c => c.Type == "oi_scp"))
         {
-            userinfo[Claims.FamilyName] = familyName;
+            scopes.Add(claim.Value);
         }
 
-        // Add roles if available
-        var roles = principal.GetClaims(Claims.Role);
-        if (roles.Count() > 0)
+        // Also check for scopes stored in the principal's private claims (OpenIddict extension)
+        var oidScopes = principal.GetClaims(Claims.Private.Scope);
+        foreach (var scope in oidScopes)
         {
-            userinfo[Claims.Role] = roles;
+            scopes.Add(scope);
         }
 
-        return Task.FromResult(userinfo);
+        return scopes;
     }
 }

@@ -218,6 +218,67 @@ public class TokenOperationsTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
         Assert.True(result.TryGetProperty("sub", out _));
     }
 
+    [Fact]
+    public async Task Userinfo_OnlyOpenIdScope_ReturnsOnlySubject()
+    {
+        // Arrange - get token with only openid scope (no email, no profile)
+        var token = await GetAccessTokenWithScopesAsync("openid");
+        _httpClient.DefaultRequestHeaders.Authorization = 
+            new AuthenticationHeaderValue("Bearer", token);
+
+        // Act
+        var response = await _httpClient.GetAsync("/connect/userinfo");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
+        
+        // Subject should always be present
+        Assert.True(result.TryGetProperty("sub", out _));
+        
+        // Email should NOT be present (no email scope)
+        Assert.False(result.TryGetProperty("email", out _), 
+            "Email should not be returned without email scope");
+        
+        // Profile claims should NOT be present (no profile scope)
+        Assert.False(result.TryGetProperty("name", out _), 
+            "Name should not be returned without profile scope");
+    }
+
+    [Fact]
+    public async Task Userinfo_WithEmailScope_CanAcquireToken()
+    {
+        // Arrange - verify client can acquire token with openid + email scope
+        // Note: Full userinfo testing is done via unit tests; this verifies client config
+        var token = await TryGetAccessTokenWithScopesAsync("openid email");
+        
+        // Assert - token acquisition should succeed now that client has email scope
+        Assert.NotNull(token);
+    }
+
+    [Fact]
+    public async Task Userinfo_WithProfileScope_CanAcquireToken()
+    {
+        // Arrange - verify client can acquire token with openid + profile scope
+        // Note: Full userinfo testing is done via unit tests; this verifies client config
+        var token = await TryGetAccessTokenWithScopesAsync("openid profile");
+        
+        // Assert - token acquisition should succeed now that client has profile scope
+        Assert.NotNull(token);
+    }
+
+    [Fact]
+    public async Task Userinfo_WithRolesScope_CanAcquireToken()
+    {
+        // Arrange - verify client can acquire token with openid + roles scope
+        // Note: Full userinfo testing is done via unit tests; this verifies client config
+        var token = await TryGetAccessTokenWithScopesAsync("openid roles");
+        
+        // Assert - token acquisition should succeed now that client has roles scope
+        Assert.NotNull(token);
+    }
+
     // ===== Helper Methods =====
 
     private async Task<string> GetAccessTokenAsync()
@@ -232,6 +293,46 @@ public class TokenOperationsTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
 
         var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
         response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<JsonElement>(content).GetProperty("access_token").GetString()!;
+    }
+
+    private async Task<string> GetAccessTokenWithScopesAsync(string scopes)
+    {
+        var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = "testclient-admin",
+            ["client_secret"] = "admin-test-secret-2024",
+            ["scope"] = scopes
+        });
+
+        var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<JsonElement>(content).GetProperty("access_token").GetString()!;
+    }
+
+    /// <summary>
+    /// Try to get an access token with specified scopes.
+    /// Returns null if the client doesn't have permission for the requested scopes.
+    /// </summary>
+    private async Task<string?> TryGetAccessTokenWithScopesAsync(string scopes)
+    {
+        var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = "testclient-admin",
+            ["client_secret"] = "admin-test-secret-2024",
+            ["scope"] = scopes
+        });
+
+        var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null; // Client doesn't have permission for these scopes
+        }
+
         var content = await response.Content.ReadAsStringAsync();
         return JsonSerializer.Deserialize<JsonElement>(content).GetProperty("access_token").GetString()!;
     }

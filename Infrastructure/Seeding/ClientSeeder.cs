@@ -172,7 +172,12 @@ public static class ClientSeeder
                 Permissions.Endpoints.Token,
                 Permissions.Endpoints.Introspection,
                 Permissions.Endpoints.Revocation,
-                Permissions.GrantTypes.ClientCredentials
+                Permissions.GrantTypes.ClientCredentials,
+                // Standard OIDC scopes for UserInfo endpoint testing
+                $"{Permissions.Prefixes.Scope}openid",
+                Permissions.Scopes.Profile,
+                Permissions.Scopes.Email,
+                Permissions.Scopes.Roles
             }
         };
 
