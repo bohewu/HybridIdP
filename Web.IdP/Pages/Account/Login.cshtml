@@ -23,8 +23,12 @@
     <title>@ViewData["Title"] - @productName</title>
     
     @* Tailwind CSS *@
+    @if (ViteService.IsDevelopment)
+    {
+        <script type="module" vite-src="@@vite/client"></script>
+    }
     <link href="@ViteService.GetScriptPath("src/styles/main.css")" rel="stylesheet" />
-    <script type="module" src="@ViteService.GetScriptPath("src/scripts/razor.js")"></script>
+    <script type="module" vite-src="src/scripts/razor.js"></script>
     
     @* Legacy auth styles - keep until fully migrated or remove if covered by Tailwind *@
     @* <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true"/> *@

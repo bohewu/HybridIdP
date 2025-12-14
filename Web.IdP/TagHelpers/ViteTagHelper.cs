@@ -12,7 +12,6 @@ namespace Web.IdP.TagHelpers;
 [HtmlTargetElement("script", Attributes = "vite-src")]
 public class ViteScriptTagHelper : TagHelper
 {
-    private readonly IWebHostEnvironment _env;
     private readonly IViteManifestService _manifest;
 
     /// <summary>
@@ -22,9 +21,8 @@ public class ViteScriptTagHelper : TagHelper
     [HtmlAttributeName("vite-src")]
     public string ViteSrc { get; set; } = string.Empty;
 
-    public ViteScriptTagHelper(IWebHostEnvironment env, IViteManifestService manifest)
+    public ViteScriptTagHelper(IViteManifestService manifest)
     {
-        _env = env;
         _manifest = manifest;
     }
 
@@ -36,47 +34,36 @@ public class ViteScriptTagHelper : TagHelper
         }
 
         // Remove ~ and / prefixes to match manifest keys (e.g. "~/src/..." -> "src/...")
-        ViteSrc = ViteSrc.TrimStart('~', '/');
+        string normalizedSrc = ViteSrc.TrimStart('~', '/');
 
         // Always remove the helper attribute
         output.Attributes.RemoveAll("vite-src");
 
-        if (_env.IsDevelopment())
-        {
-            // Development mode: use Vite dev server
-            // Assuming default port 5173
-            var devServerUrl = "http://localhost:5173";
-            output.Attributes.SetAttribute("src", $"{devServerUrl}/{ViteSrc}");
-        }
-        else
-        {
-            // Production mode: use manifest to get correct paths
-            var scriptPath = _manifest.GetScriptPath(ViteSrc);
-            
-            if (!string.IsNullOrEmpty(scriptPath))
-            {
-                output.Attributes.SetAttribute("src", scriptPath);
+        // Use the service to resolve the path (handles both Dev and Prod logic)
+        var scriptPath = _manifest.GetScriptPath(normalizedSrc);
 
+        if (!string.IsNullOrEmpty(scriptPath))
+        {
+            output.Attributes.SetAttribute("src", scriptPath);
+
+            // In Production, we might need to inject CSS links
+            if (!_manifest.IsDevelopment)
+            {
                 // Inject CSS links immediately before the script tag
-                // Note: ideally CSS should be in <head>, but standard Vite injects them alongside JS often works, 
-                // or we can just rely on the script importing them (which Vite does via module import).
-                // However, for initial paint, link tags are better.
-                // Since this is a TagHelper on <script>, we can only append/prepend to it or surround it.
-                // We will use PreContent to inject CSS.
-                
-                var cssPaths = _manifest.GetCssPaths(ViteSrc);
+                var cssPaths = _manifest.GetCssPaths(normalizedSrc);
                 foreach (var css in cssPaths)
                 {
                     output.PreElement.AppendHtml($"""<link rel="stylesheet" href="{css}" />""");
                 }
-                
-                // We can also handle imports for preloading if desired, but keeping it simple for now.
             }
-            else
-            {
-                // Fallback or error logging? For now, leave src empty or warn
-                output.Attributes.SetAttribute("data-vite-error", $"Entry '{ViteSrc}' not found in manifest");
-            }
+        }
+        else
+        {
+            // Fallback or error logging
+            output.Attributes.SetAttribute("data-vite-error", $"Entry '{normalizedSrc}' not found");
+            
+            // If in production and not found, maybe we shouldn't render the script tag at all?
+            // For now, keeping the tag but with an error attribute is safer for debugging.
         }
     }
 }
