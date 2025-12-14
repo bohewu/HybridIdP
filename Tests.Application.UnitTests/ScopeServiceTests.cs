@@ -906,11 +906,11 @@ public class ScopeServiceTests : IDisposable
     public async Task UpdateScopeClaimsAsync_ShouldThrowArgumentException_WhenClaimNotFound()
     {
         // Arrange
-        var scopeObj = new { Id = "scope1", Name = "profile" };
+        var scopeObj = new { Id = "scope1", Name = "custom_scope" };
         _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(scopeObj);
         _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("profile");
+            .ReturnsAsync("custom_scope");
 
         var request = new UpdateScopeClaimsRequest(new List<int> { 999 });
 
@@ -924,11 +924,11 @@ public class ScopeServiceTests : IDisposable
     public async Task UpdateScopeClaimsAsync_ShouldRemoveOldClaims_AndAddNewOnes()
     {
         // Arrange
-        var scopeObj = new { Id = "scope1", Name = "profile" };
+        var scopeObj = new { Id = "scope1", Name = "custom_scope" };
         _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(scopeObj);
         _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("profile");
+            .ReturnsAsync("custom_scope");
 
         // Add existing claim
         var oldClaim = new UserClaim
@@ -946,7 +946,7 @@ public class ScopeServiceTests : IDisposable
         var oldScopeClaim = new ScopeClaim
         {
             ScopeId = "scope1",
-            ScopeName = "profile",
+            ScopeName = "custom_scope",
             UserClaimId = 1,
             AlwaysInclude = false
         };
@@ -980,18 +980,18 @@ public class ScopeServiceTests : IDisposable
         var remainingClaims = _dbContext.ScopeClaims.Where(sc => sc.ScopeId == "scope1").ToList();
         Assert.Single(remainingClaims);
         Assert.Equal(2, remainingClaims.First().UserClaimId);
-        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<ScopeClaimChangedEvent>(e => e.ScopeName == "profile")), Times.Once);
+        _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<ScopeClaimChangedEvent>(e => e.ScopeName == "custom_scope")), Times.Once);
     }
 
     [Fact]
     public async Task UpdateScopeClaimsAsync_ShouldSetAlwaysInclude_FromClaimIsRequired()
     {
         // Arrange
-        var scopeObj = new { Id = "scope1", Name = "openid" };
+        var scopeObj = new { Id = "scope1", Name = "custom_scope" };
         _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(scopeObj);
         _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("openid");
+            .ReturnsAsync("custom_scope");
 
         var requiredClaim = new UserClaim
         {
@@ -1020,11 +1020,11 @@ public class ScopeServiceTests : IDisposable
     public async Task UpdateScopeClaimsAsync_ShouldAllowEmptyClaimsList()
     {
         // Arrange
-        var scopeObj = new { Id = "scope1", Name = "profile" };
+        var scopeObj = new { Id = "scope1", Name = "custom_scope" };
         _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(scopeObj);
         _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("profile");
+            .ReturnsAsync("custom_scope");
 
         // Add existing claim
         var claim = new UserClaim
@@ -1042,7 +1042,7 @@ public class ScopeServiceTests : IDisposable
         var scopeClaim = new ScopeClaim
         {
             ScopeId = "scope1",
-            ScopeName = "profile",
+            ScopeName = "custom_scope",
             UserClaimId = 1,
             AlwaysInclude = false
         };
