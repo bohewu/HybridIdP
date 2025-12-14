@@ -23,6 +23,8 @@ export default defineConfig(({ command }) => ({
       // Multi-Page Application setup with backend routes for security
       // Each admin feature gets its own entry point loaded by a separate Razor Page
       input: {
+        'style': './src/styles/main.css',
+        'razor': './src/scripts/razor.js',
         'admin-shared': './src/admin/shared/main.js',
         'admin-dashboard': './src/admin/dashboard/main.js',
         'admin-clients': './src/admin/clients/main.js',

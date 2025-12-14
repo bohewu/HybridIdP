@@ -1,0 +1,483 @@
+/* Admin Layout Custom Styles */
+
+/* Ensure proper box-sizing for all elements */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+}
+
+body.admin-layout {
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    background-color: #f8f9fa;
+    overflow-x: hidden;
+    /* Prevent horizontal scroll */
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    /* Below Vue modals (z-50) */
+    padding: 0;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    background-color: #fff;
+    width: 260px;
+    transition: transform 0.3s ease-in-out;
+}
+
+.sidebar-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* Logo Section */
+.sidebar-brand {
+    padding: 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+}
+
+.sidebar-brand-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+}
+
+.sidebar-brand-text h1 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #212529;
+}
+
+.sidebar-brand-text p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+/* Navigation */
+.sidebar-nav {
+    padding: 1rem 0;
+}
+
+.nav-section-title {
+    padding: 1rem 1rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #6c757d;
+    letter-spacing: 0.05em;
+}
+
+.sidebar .nav-link {
+    padding: 0.75rem 1rem;
+    color: #495057;
+    font-weight: 500;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sidebar .nav-link:hover {
+    background-color: #f8f9fa;
+    color: #667eea;
+}
+
+.sidebar .nav-link.active {
+    background-color: #e7e9fc;
+    color: #667eea;
+    border-left-color: #667eea;
+}
+
+.sidebar .nav-link i {
+    font-size: 1.125rem;
+    width: 1.25rem;
+    text-align: center;
+}
+
+.badge-phase {
+    font-size: 0.625rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* User Section */
+.sidebar-user {
+    padding: 1rem;
+    border-top: 1px solid #dee2e6;
+    margin-top: auto;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.user-info-name {
+    max-width: 120px;
+}
+
+.user-info-role {
+    font-size: 0.75rem;
+}
+
+/* Main Content */
+.main-content {
+    margin-left: 260px;
+    min-height: 100vh;
+    width: calc(100vw - 260px);
+    /* Full viewport width minus sidebar */
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    /* Prevent horizontal scroll */
+}
+
+/* Scrollable content wrapper - contains main and footer */
+.content-scroll-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    margin-top: 65px;
+    /* Push down by header height */
+    height: calc(100vh - 65px);
+    /* Full viewport height minus header height */
+}
+
+/* Main content inner wrapper for max-width control */
+main {
+    flex-grow: 1;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 100%;
+    /* Default: no max-width restriction */
+}
+
+/* Optional: Add max-width container class for Vue apps if needed */
+.vue-app-container {
+    width: 100%;
+    max-width: 1400px;
+    /* Adjust as needed */
+    margin: 0 auto;
+}
+
+/* Header */
+.top-header {
+    background-color: #fff;
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem 1.5rem;
+    position: fixed;
+    top: 0;
+    left: 260px;
+    /* Position after sidebar */
+    right: 0;
+    z-index: 30;
+    /* Below sidebar (40) and modals (50+) */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    flex-shrink: 0;
+    /* Prevent header from shrinking */
+    height: 65px;
+    /* Fixed height for positioning */
+}
+
+.breadcrumb {
+    margin-bottom: 0;
+    background-color: transparent;
+    padding: 0;
+}
+
+/* Footer */
+.admin-footer {
+    margin-top: auto;
+    padding: 1.5rem;
+    background-color: #fff;
+    border-top: 1px solid #dee2e6;
+    flex-shrink: 0;
+    /* Prevent footer from shrinking */
+}
+
+/* Mobile Responsive */
+@media (max-width: 991.98px) {
+
+    /* Hide sidebar by default on tablets and smaller */
+    .sidebar {
+        transform: translateX(-260px);
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    .main-content {
+        margin-left: 0;
+        width: 100vw;
+        /* Full viewport width on mobile */
+    }
+
+    .top-header {
+        left: 0;
+        /* Full width on mobile */
+        height: 60px;
+        /* Slightly smaller on mobile */
+    }
+
+    .content-scroll-wrapper {
+        margin-top: 60px;
+        /* Match mobile header height */
+        height: calc(100vh - 60px);
+        /* Slightly smaller header on mobile */
+    }
+
+    main {
+        padding: 1rem;
+        /* Reduced padding on mobile */
+    }
+
+    .mobile-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 35;
+        /* Above content, below sidebar (40) and modals (50+) */
+    }
+
+    .mobile-overlay.show {
+        display: block;
+    }
+
+    /* Ensure mobile toggle button is visible */
+    #sidebar-toggle {
+        display: inline-block !important;
+    }
+}
+
+/* Medium screens - collapsible sidebar */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+
+    /* Narrower sidebar on medium screens */
+    .sidebar {
+        width: 220px;
+    }
+
+    .main-content {
+        margin-left: 220px;
+        width: calc(100vw - 220px);
+    }
+
+    .sidebar-brand-text h1 {
+        font-size: 1rem;
+    }
+
+    .sidebar .nav-link {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.9375rem;
+    }
+}
+
+/* Large screens - full sidebar */
+@media (min-width: 1200px) {
+    .sidebar {
+        width: 260px;
+    }
+
+    .main-content {
+        margin-left: 260px;
+        width: calc(100vw - 260px);
+    }
+}
+
+/* Extra large screens - optional wider layout */
+@media (min-width: 1600px) {
+    .main-content main {
+        max-width: 1600px;
+        /* Limit content width on very large screens */
+        margin: 0 auto;
+    }
+}
+
+/* Extra small screens - ensure modals are fully visible */
+@media (max-width: 575.98px) {
+
+    /* Adjust modal dialog for very small screens */
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+
+    /* Ensure sidebar is completely hidden when modal is open */
+    body.modal-open .sidebar {
+        transform: translateX(-260px) !important;
+    }
+
+    /* Smaller padding on very small screens */
+    main {
+        padding: 0.75rem;
+    }
+
+    .top-header {
+        padding: 0.75rem 1rem;
+    }
+}
+
+/* Vue App Container Responsive Utilities */
+.vue-app-container {
+    width: 100%;
+    max-width: 100%;
+    /* Default: no restriction */
+    margin: 0 auto;
+}
+
+/* Optional: Adjust max-width for different screen sizes */
+@media (min-width: 1400px) {
+    .vue-app-container {
+        max-width: 1320px;
+        /* Match Bootstrap container-xxl */
+    }
+}
+
+/* Ensure tables and cards are responsive within Vue apps */
+.vue-app-container .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Print styles */
+@media print {
+
+    .sidebar,
+    .top-header,
+    .admin-footer,
+    .mobile-overlay {
+        display: none !important;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+}
+
+/* Vue Loading Bar - NProgress style */
+.vue-loading-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    width: 0;
+    background: linear-gradient(90deg, #818cf8, #a78bfa, #c4b5fd);
+    z-index: 9999;
+    box-shadow: 0 0 6px rgba(167, 139, 250, 0.5), 0 0 3px rgba(167, 139, 250, 0.3);
+    animation: vue-loading-grow 2s ease-out forwards, vue-loading-pulse 1s ease-in-out infinite;
+    transition: width 0.2s ease-out, opacity 0.3s ease-out;
+}
+
+.vue-loading-bar::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 80px;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    animation: vue-loading-shimmer 1.2s ease-in-out infinite;
+}
+
+/* Complete state - quickly fill to 100% */
+.vue-loading-bar.complete {
+    width: 100% !important;
+    animation: none;
+}
+
+.vue-loading-bar.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Grow from 0% to 90% then wait */
+@keyframes vue-loading-grow {
+    0% {
+        width: 0;
+    }
+
+    15% {
+        width: 30%;
+    }
+
+    40% {
+        width: 60%;
+    }
+
+    70% {
+        width: 80%;
+    }
+
+    100% {
+        width: 90%;
+    }
+}
+
+/* Subtle pulsing glow */
+@keyframes vue-loading-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 6px rgba(167, 139, 250, 0.5), 0 0 3px rgba(167, 139, 250, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 10px rgba(196, 181, 253, 0.6), 0 0 5px rgba(196, 181, 253, 0.4);
+    }
+}
+
+/* Shimmer effect moving across */
+@keyframes vue-loading-shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(500%);
+    }
+}
