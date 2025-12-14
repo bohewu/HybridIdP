@@ -2,8 +2,10 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
+using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using Web.IdP.Services;
+using Web.IdP.Filters;
 
 namespace Web.IdP.Controllers.Connect
 {
@@ -19,6 +21,7 @@ namespace Web.IdP.Controllers.Connect
         [HttpGet("~/connect/authorize")]
         [HttpPost("~/connect/authorize")]
         [IgnoreAntiforgeryToken] // OpenIddict handles CSRF protection
+        [RequireClientPermission(OpenIddictConstants.Permissions.Endpoints.Authorization)]
         public async Task<IActionResult> Authorize()
         {
             var request = HttpContext.GetOpenIddictServerRequest() ??
