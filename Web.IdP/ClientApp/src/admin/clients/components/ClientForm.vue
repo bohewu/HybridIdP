@@ -6,6 +6,11 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import SecretDisplayModal from './SecretDisplayModal.vue'
 import ClientScopeManager from './ClientScopeManager.vue'
 import AuthUrlGenerator from './AuthUrlGenerator.vue'
+import { 
+  useClientFormLogic, 
+  validateUriList,
+  availablePermissions 
+} from '../composables/useClientFormLogic'
 
 const { t } = useI18n()
 
@@ -34,82 +39,17 @@ const formData = ref({
 const generatedClientSecret = ref(null)
 const showSecretModal = ref(false)
 
-// All available permissions from OpenIddict
-const availablePermissions = computed(() => [
-  // Endpoints
-  { value: 'ept:authorization', labelKey: 'authorizationEndpoint', category: 'endpoints' },
-  { value: 'ept:token', labelKey: 'tokenEndpoint', category: 'endpoints' },
-  { value: 'ept:end_session', labelKey: 'endSessionEndpoint', category: 'endpoints' }, // Was logout
-  { value: 'ept:introspection', labelKey: 'introspectionEndpoint', category: 'endpoints' },
-  { value: 'ept:revocation', labelKey: 'revocationEndpoint', category: 'endpoints' },
-  { value: 'ept:device_authorization', labelKey: 'deviceAuthorizationEndpoint', category: 'endpoints' }, // Was device
-  { value: 'ept:pushed_authorization', labelKey: 'pushedAuthorizationEndpoint', category: 'endpoints' }, // New
-  
-  // Grant Types
-  { value: 'gt:authorization_code', labelKey: 'authorizationCode', category: 'grantTypes' },
-  { value: 'gt:client_credentials', labelKey: 'clientCredentials', category: 'grantTypes' },
-  { value: 'gt:refresh_token', labelKey: 'refreshToken', category: 'grantTypes' },
-  { value: 'gt:urn:ietf:params:oauth:grant-type:device_code', labelKey: 'deviceCode', category: 'grantTypes' }, // Fixed URN
-  { value: 'gt:password', labelKey: 'password', category: 'grantTypes' },
-  { value: 'gt:implicit', labelKey: 'implicit', category: 'grantTypes' },
-  { value: 'gt:urn:ietf:params:oauth:grant-type:token-exchange', labelKey: 'tokenExchange', category: 'grantTypes' },
-])
-
-// Group permissions by category
-
-
-// BRIDGE: Local Allowed Scopes <-> Permissions
-// This computed property allows ClientScopeManager (which expects an array of scope strings)
-// to read/write directly to formData.permissions (which stores 'scp:scope' strings).
-const localAllowedScopes = computed({
-  get: () => {
-    return formData.value.permissions
-      .filter(p => p.startsWith('scp:'))
-      .map(p => p.substring(4))
-  },
-  set: (newScopes) => {
-    // 1. Remove all existing scope permissions
-    const nonScopePermissions = formData.value.permissions.filter(p => !p.startsWith('scp:'))
-    
-    // 2. Add new scope permissions
-    const newScopePermissions = newScopes.map(s => `scp:${s}`)
-    
-    // 3. Update formData
-    formData.value.permissions = [...nonScopePermissions, ...newScopePermissions]
-  }
-})
+// Use composable for computed properties and business logic
+const { 
+  isNative, 
+  isInteractive, 
+  permissionsByCategory, 
+  localAllowedScopes 
+} = useClientFormLogic(formData)
 
 const submitting = ref(false)
 const error = ref(null)
 const fieldErrors = ref({}) // Per-field validation errors
-
-// Zod schema for client form validation
-// --- Computed Rules ---
-const isNative = computed(() => formData.value.applicationType === 'native')
-const isInteractive = computed(() => {
-  return formData.value.permissions.includes('gt:authorization_code') || 
-         formData.value.permissions.includes('gt:implicit') ||
-         formData.value.clientType === 'public'
-})
-
-// Group permissions by category (Filtered based on interactivity)
-const permissionsByCategory = computed(() => {
-  const grouped = {}
-  availablePermissions.value.forEach(perm => {
-    // Filter implicit endpoints for M2M (hide Authorization and EndSession if not interactive)
-    if (!isInteractive.value) {
-      if (perm.value === 'ept:authorization' || perm.value === 'ept:end_session') {
-        return
-      }
-    }
-
-    if (!grouped[perm.category]) {
-      grouped[perm.category] = []
-    }
-    grouped[perm.category].push(perm)
-  })
-  return grouped
-})
 
 // --- Validation Schema ---
 const schema = computed(() => {
@@ -154,28 +94,7 @@ const schema = computed(() => {
   })
 })
 
-const validateUriList = (text, ctx, path, messageTemplate) => {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l)
-  lines.forEach((line, index) => {
-    try {
-      new URL(line)
-    } catch {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: messageTemplate.replace('{line}', index + 1),
-        path: [path]
-      })
-    }
-  })
-}
 
-// Watchers for enforcing rules
-watch(() => formData.value.applicationType, (newType) => {
-  if (newType === 'native') {
-    formData.value.clientType = 'public'
-    formData.value.clientSecret = null
-  }
-})
 
 const resetForm = () => {
   formData.value = {
