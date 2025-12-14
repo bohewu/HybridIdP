@@ -12,8 +12,8 @@ last-updated: 2025-12-11
 -- Phase 2 — OpenIddict & OIDC Flow: 100% — `./archive/phases/phase-2-openiddict-oidc.md`
 -- Phase 3 — Admin UI: 100% — `./archive/phases/admin-ui-phase-3.md`
 -- Phase 4 — User/Role/Client & Permissions: 100% — `./archive/phases/phase-4-user-role-client.md`
--- Phase 5 — Security / i18n / Consent / API Resources: 96% — `./archive/phases/phase-5-security-i18n-consent.md`
--- Phase 6 — Code Quality & Tests: 90% — `./archive/phases/phase-6-code-quality-tests.md`
+-- Phase 5 — Security / i18n / Consent / API Resources: 100% ✅ — `./archive/phases/phase-5-security-i18n-consent.md`
+-- Phase 6 — Code Quality & Tests: 100% ✅ — `./archive/phases/phase-6-code-quality-tests.md`
 -- Phase 7 — Audit & Monitoring: 100% — `./archive/phases/phase-7-audit-monitoring.md`
 -- Phase 8 — e2e Test Refactor: 100% — `./archive/phases/phase-8-e2e-refactor.md`
 -- Phase 9 — Scope Authorization & Management: 100% — `./archive/phases/phase-9-roadmap.md`
