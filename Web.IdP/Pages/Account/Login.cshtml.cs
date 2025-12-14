@@ -131,7 +131,7 @@ public partial class LoginModel : PageModel
         {
             case LoginStatus.Success:
             case LoginStatus.LegacySuccess:
-                // Record login for abnormal detection
+                // Check for abnormal login
                 var loginHistory = new LoginHistory
                 {
                     UserId = result.User!.Id,
@@ -143,13 +143,13 @@ public partial class LoginModel : PageModel
                     IsFlaggedAbnormal = false
                 };
 
-                await _loginHistoryService.RecordLoginAsync(loginHistory);
-
-                // Check for abnormal login
                 var isAbnormal = await _loginHistoryService.DetectAbnormalLoginAsync(loginHistory);
                 if (isAbnormal)
                 {
                     loginHistory.IsFlaggedAbnormal = true;
+                    // Record login first so we have the record
+                    await _loginHistoryService.RecordLoginAsync(loginHistory);
+                    
                     await _notificationService.NotifyAbnormalLoginAsync(result.User!.Id.ToString(), loginHistory);
 
                     // Check if we should block abnormal logins
@@ -160,6 +160,11 @@ public partial class LoginModel : PageModel
                         ModelState.AddModelError(string.Empty, _localizer["AbnormalLoginBlocked"]);
                         return Page();
                     }
+                }
+                else
+                {
+                    // Not abnormal, just record
+                    await _loginHistoryService.RecordLoginAsync(loginHistory);
                 }
 
                 // Sign in user (role claims are automatically added by Identity)

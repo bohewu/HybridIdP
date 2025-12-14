@@ -236,7 +236,7 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
 
     #region Abnormal Login & Session Tests
 
-    [Fact(Skip = "Flaky due to IP/Seeding dependencies in test environment")]
+    [Fact]
     public async Task Login_WithAbnormalHistory_ShouldBlockLogin()
     {
         // 1. Login as Admin to enable BlockAbnormalLogin
@@ -286,7 +286,7 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
                 userContent.Contains("異常") ||
                 userContent.Contains("Verify identity") ||
                 userContent.Contains("alert-danger") ||
-                userContent.Contains("validation-summary-errors"), 
+                userContent.Contains("validation-summary-errors"),
                 $"Expected abnormal login block. Content length: {userContent.Length}");
         }
         finally
