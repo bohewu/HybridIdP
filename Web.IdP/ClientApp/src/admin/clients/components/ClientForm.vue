@@ -56,16 +56,7 @@ const availablePermissions = computed(() => [
 ])
 
 // Group permissions by category
-const permissionsByCategory = computed(() => {
-  const grouped = {}
-  availablePermissions.value.forEach(perm => {
-    if (!grouped[perm.category]) {
-      grouped[perm.category] = []
-    }
-    grouped[perm.category].push(perm)
-  })
-  return grouped
-})
+
 
 // BRIDGE: Local Allowed Scopes <-> Permissions
 // This computed property allows ClientScopeManager (which expects an array of scope strings)
@@ -99,6 +90,25 @@ const isInteractive = computed(() => {
   return formData.value.permissions.includes('gt:authorization_code') || 
          formData.value.permissions.includes('gt:implicit') ||
          formData.value.clientType === 'public'
+})
+
+// Group permissions by category (Filtered based on interactivity)
+const permissionsByCategory = computed(() => {
+  const grouped = {}
+  availablePermissions.value.forEach(perm => {
+    // Filter implicit endpoints for M2M (hide Authorization and EndSession if not interactive)
+    if (!isInteractive.value) {
+      if (perm.value === 'ept:authorization' || perm.value === 'ept:end_session') {
+        return
+      }
+    }
+
+    if (!grouped[perm.category]) {
+      grouped[perm.category] = []
+    }
+    grouped[perm.category].push(perm)
+  })
+  return grouped
 })
 
 // --- Validation Schema ---
