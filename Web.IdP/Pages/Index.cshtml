@@ -5,93 +5,65 @@
     ViewData["Title"] = Localizer["HomePage"];
 }
 
-<div class="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-16">
-        <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl md:text-6xl mb-4">
-            <span class="block">@Localizer["HomePage"]</span>
-        </h1>
-        <p class="max-w-2xl mx-auto text-xl text-gray-500">
-            @Localizer["WelcomeMessage"]
-        </p>
+<div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">@Localizer["HomePage"]</h1>
+        <p class="text-xl text-gray-600">@Localizer["WelcomeMessage"]</p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <!-- Authorization Management Card -->
-        <a href="/Account/Authorizations" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden flex flex-col h-full transform hover:-translate-y-1">
-            <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full opacity-10 group-hover:scale-150 transition-transform duration-500"></div>
-            
-            <div class="p-8 flex-1 flex flex-col items-start relative z-10">
-                <div class="w-14 h-14 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300 shadow-sm">
+        <div class="bg-white border border-gray-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col">
+            <div class="p-6 flex-1">
+                <a href="/Account/Authorizations" class="block mb-4 text-blue-600 text-4xl hover:text-blue-700 transition-colors">
                     <i class="bi bi-shield-check"></i>
-                </div>
-                
-                <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors">
-                    @Localizer["AuthorizationManagement"]
-                </h3>
-                
-                <p class="text-gray-500 mb-6 text-sm leading-relaxed">
-                    @Localizer["ViewAndRevokeAuthorizations"]
-                </p>
-                
-                <div class="mt-auto flex items-center text-sm font-medium text-blue-600 group-hover:translate-x-1 transition-transform">
-                    @Localizer["ViewDetails"] 
-                    <i class="bi bi-arrow-right ml-2"></i>
-                </div>
+                </a>
+                <h5 class="text-xl font-medium text-gray-900 mb-2">
+                    <a href="/Account/Authorizations" class="hover:text-blue-600 transition-colors">@Localizer["AuthorizationManagement"]</a>
+                </h5>
+                <p class="text-gray-600 mb-4">@Localizer["ViewAndRevokeAuthorizations"]</p>
             </div>
-            
-            <div class="h-1 w-full bg-gradient-to-r from-blue-500 to-cyan-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-        </a>
+            <div class="p-6 pt-0 mt-auto">
+                 <a href="/Account/Authorizations" class="inline-block px-4 py-2 bg-blue-600 text-white font-medium text-sm leading-tight rounded hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 transition duration-150 ease-in-out">
+                    @Localizer["ViewDetails"]
+                </a>
+            </div>
+        </div>
 
         <!-- Linked Accounts Management Card -->
-        <a href="/Account/LinkedAccounts" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden flex flex-col h-full transform hover:-translate-y-1">
-             <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-gradient-to-br from-emerald-500 to-teal-400 rounded-full opacity-10 group-hover:scale-150 transition-transform duration-500"></div>
-
-            <div class="p-8 flex-1 flex flex-col items-start relative z-10">
-                 <div class="w-14 h-14 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300 shadow-sm">
+        <div class="bg-white border border-gray-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col">
+             <div class="p-6 flex-1">
+                <a href="/Account/LinkedAccounts" class="block mb-4 text-emerald-600 text-4xl hover:text-emerald-700 transition-colors">
                     <i class="bi bi-person-lines-fill"></i>
-                </div>
-                
-                <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-emerald-600 transition-colors">
-                    @Localizer["LinkedAccountsManagement"]
-                </h3>
-                
-                <p class="text-gray-500 mb-6 text-sm leading-relaxed">
-                    @Localizer["ManageYourLinkedAccounts"]
-                </p>
-                
-                <div class="mt-auto flex items-center text-sm font-medium text-emerald-600 group-hover:translate-x-1 transition-transform">
-                    @Localizer["ViewDetails"] 
-                    <i class="bi bi-arrow-right ml-2"></i>
-                </div>
+                </a>
+                <h5 class="text-xl font-medium text-gray-900 mb-2">
+                    <a href="/Account/LinkedAccounts" class="hover:text-emerald-600 transition-colors">@Localizer["LinkedAccountsManagement"]</a>
+                </h5>
+                <p class="text-gray-600 mb-4">@Localizer["ManageYourLinkedAccounts"]</p>
             </div>
-            
-             <div class="h-1 w-full bg-gradient-to-r from-emerald-500 to-teal-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-        </a>
+             <div class="p-6 pt-0 mt-auto">
+                 <a href="/Account/LinkedAccounts" class="inline-block px-4 py-2 bg-emerald-600 text-white font-medium text-sm leading-tight rounded hover:bg-emerald-700 focus:bg-emerald-700 focus:outline-none focus:ring-0 active:bg-emerald-800 transition duration-150 ease-in-out">
+                    @Localizer["ViewDetails"]
+                </a>
+            </div>
+        </div>
 
-        <!-- Profile Management Card (New) -->
-        <a href="/Account/Profile" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden flex flex-col h-full transform hover:-translate-y-1">
-             <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-gradient-to-br from-violet-500 to-purple-400 rounded-full opacity-10 group-hover:scale-150 transition-transform duration-500"></div>
-
-            <div class="p-8 flex-1 flex flex-col items-start relative z-10">
-                 <div class="w-14 h-14 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center text-2xl mb-6 group-hover:bg-violet-600 group-hover:text-white transition-colors duration-300 shadow-sm">
+        <!-- Profile Management Card -->
+        <div class="bg-white border border-gray-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col">
+             <div class="p-6 flex-1">
+                <a href="/Account/Profile" class="block mb-4 text-violet-600 text-4xl hover:text-violet-700 transition-colors">
                     <i class="bi bi-person-circle"></i>
-                </div>
-                
-                <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-violet-600 transition-colors">
-                    @Localizer["Profile"]
-                </h3>
-                
-                <p class="text-gray-500 mb-6 text-sm leading-relaxed">
-                    @Localizer["ManageProfile"]
-                </p>
-                
-                <div class="mt-auto flex items-center text-sm font-medium text-violet-600 group-hover:translate-x-1 transition-transform">
-                    @Localizer["ViewDetails"] 
-                    <i class="bi bi-arrow-right ml-2"></i>
-                </div>
+                </a>
+                <h5 class="text-xl font-medium text-gray-900 mb-2">
+                    <a href="/Account/Profile" class="hover:text-violet-600 transition-colors">@Localizer["Profile"]</a>
+                </h5>
+                <p class="text-gray-600 mb-4">@Localizer["ManageProfile"]</p>
             </div>
-            
-             <div class="h-1 w-full bg-gradient-to-r from-violet-500 to-purple-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-        </a>
+             <div class="p-6 pt-0 mt-auto">
+                 <a href="/Account/Profile" class="inline-block px-4 py-2 bg-violet-600 text-white font-medium text-sm leading-tight rounded hover:bg-violet-700 focus:bg-violet-700 focus:outline-none focus:ring-0 active:bg-violet-800 transition duration-150 ease-in-out">
+                    @Localizer["ViewDetails"]
+                </a>
+            </div>
+        </div>
     </div>
 </div>
