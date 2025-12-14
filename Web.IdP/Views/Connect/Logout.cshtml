@@ -1,0 +1,28 @@
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IViewLocalizer Localizer
+
+@{
+    ViewData["Title"] = Localizer["Log out"];
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card mt-5 shadow-sm">
+            <div class="card-body text-center">
+                <h2 class="card-title text-danger">@Localizer["Log out"]</h2>
+                <p class="card-text text-muted">@Localizer["Are you sure you want to sign out?"]</p>
+                <form asp-controller="Logout" asp-action="Logout" method="post">
+                    <!-- Propagate query parameters e.g., post_logout_redirect_uri -->
+                    @foreach (var query in Context.Request.Query)
+                    {
+                        <input type="hidden" name="@query.Key" value="@query.Value" />
+                    }
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">@Localizer["Yes, Sign Out"]</button>
+                        <a href="/" class="btn btn-outline-secondary">@Localizer["Cancel"]</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
