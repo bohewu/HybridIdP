@@ -221,6 +221,7 @@ public static class ClientSeeder
                 Permissions.Endpoints.Token,
                 Permissions.GrantTypes.AuthorizationCode,
                 Permissions.GrantTypes.RefreshToken,
+                Permissions.GrantTypes.Password, // For ROPC testing
                 Permissions.ResponseTypes.Code,
                 Permissions.Scopes.Email,
                 Permissions.Scopes.Profile,

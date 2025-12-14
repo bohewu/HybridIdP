@@ -301,6 +301,10 @@ public static class ServiceCollectionExtensions
 
                 options.AllowClientCredentialsFlow();
 
+                // Resource Owner Password Credentials (ROPC) flow
+                // Note: ROPC is discouraged for public clients but useful for testing
+                options.AllowPasswordFlow();
+
                 options.AllowDeviceAuthorizationFlow()
                        .SetDeviceCodeLifetime(TimeSpan.FromMinutes(tokenOptions.DeviceCodeLifetimeMinutes));
 

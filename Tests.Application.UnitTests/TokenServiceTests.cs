@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Security.Claims;
 using System.Threading;
 using Core.Application;
@@ -25,6 +26,7 @@ namespace Tests.Application.UnitTests
         private readonly Mock<IApiResourceService> _mockApiResourceService;
         private readonly Mock<IAuditService> _mockAuditService;
         private readonly Mock<IApplicationDbContext> _mockDbContext;
+        private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
         private readonly Mock<ILogger<TokenService>> _mockLogger;
         private readonly TokenService _service;
 
@@ -47,6 +49,7 @@ namespace Tests.Application.UnitTests
             _mockApiResourceService = new Mock<IApiResourceService>();
             _mockAuditService = new Mock<IAuditService>();
             _mockDbContext = new Mock<IApplicationDbContext>();
+            _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
             _mockLogger = new Mock<ILogger<TokenService>>();
 
             _service = new TokenService(
@@ -56,6 +59,7 @@ namespace Tests.Application.UnitTests
                 _mockApiResourceService.Object,
                 _mockAuditService.Object,
                 _mockDbContext.Object,
+                _mockApplicationManager.Object,
                 _mockLogger.Object);
         }
 
@@ -83,6 +87,12 @@ namespace Tests.Application.UnitTests
             var request = CreateRequest(GrantTypes.ClientCredentials, clientId: "service-client", scope: "api:read");
             _mockApiResourceService.Setup(s => s.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>()))
                 .ReturnsAsync(new List<string> { "api1" });
+
+            // Setup ApplicationManager for grant permission validation
+            _mockApplicationManager.Setup(m => m.FindByClientIdAsync("service-client", default))
+                .ReturnsAsync(new object()); // Return non-null client
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(It.IsAny<object>(), default))
+                .ReturnsAsync(new List<string> { OpenIddictConstants.Permissions.GrantTypes.ClientCredentials }.ToImmutableArray());
 
             // Act
             var result = await _service.HandleTokenRequestAsync(request, null);
@@ -127,6 +137,12 @@ namespace Tests.Application.UnitTests
                 .Setup(m => m.GetEnumerator()).Returns(emptyScopeClaims.GetEnumerator());
             _mockDbContext.Setup(c => c.ScopeClaims).Returns(mockScopeClaimsDbSet.Object);
 
+            // Setup ApplicationManager for grant permission validation
+            _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", default))
+                .ReturnsAsync(new object()); // Return non-null client
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(It.IsAny<object>(), default))
+                .ReturnsAsync(new List<string> { OpenIddictConstants.Permissions.GrantTypes.Password }.ToImmutableArray());
+
             // Act
             var result = await _service.HandleTokenRequestAsync(request, null);
 
@@ -142,6 +158,32 @@ namespace Tests.Application.UnitTests
             // Arrange
             var request = CreateRequest(GrantTypes.Password, username: "unknown", password: "password");
             _mockUserManager.Setup(m => m.FindByNameAsync("unknown")).ReturnsAsync((ApplicationUser?)null);
+
+            // Setup ApplicationManager for grant permission validation
+            _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", default))
+                .ReturnsAsync(new object()); // Return non-null client
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(It.IsAny<object>(), default))
+                .ReturnsAsync(new List<string> { OpenIddictConstants.Permissions.GrantTypes.Password }.ToImmutableArray());
+
+            // Act
+            var result = await _service.HandleTokenRequestAsync(request, null);
+
+            // Assert
+            var forbidResult = Assert.IsType<ForbidResult>(result);
+            Assert.Contains(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, forbidResult.AuthenticationSchemes);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_AuthorizationCode_MissingPermission_ReturnsForbidResult()
+        {
+            // Arrange
+            var request = CreateRequest(GrantTypes.AuthorizationCode, clientId: "test-client", code: "auth_code");
+
+            // Setup ApplicationManager for grant permission validation - return empty permissions
+            _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", default))
+                .ReturnsAsync(new object()); // Return non-null client
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(It.IsAny<object>(), default))
+                .ReturnsAsync(ImmutableArray<string>.Empty);
 
             // Act
             var result = await _service.HandleTokenRequestAsync(request, null);

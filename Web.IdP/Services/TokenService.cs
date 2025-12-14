@@ -22,6 +22,7 @@ namespace Web.IdP.Services
         private readonly IApiResourceService _apiResourceService;
         private readonly IAuditService _auditService;
         private readonly IApplicationDbContext _db;
+        private readonly IOpenIddictApplicationManager _applicationManager;
         private readonly ILogger<TokenService> _logger;
 
         public TokenService(
@@ -31,6 +32,7 @@ namespace Web.IdP.Services
             IApiResourceService apiResourceService,
             IAuditService auditService,
             IApplicationDbContext db,
+            IOpenIddictApplicationManager applicationManager,
             ILogger<TokenService> logger)
         {
             _userManager = userManager;
@@ -39,12 +41,20 @@ namespace Web.IdP.Services
             _apiResourceService = apiResourceService;
             _auditService = auditService;
             _db = db;
+            _applicationManager = applicationManager;
             _logger = logger;
         }
 
         public async Task<IActionResult> HandleTokenRequestAsync(OpenIddictRequest request, ClaimsPrincipal? schemePrincipal)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
+
+            // Validate client grant type permissions (required for passthrough mode)
+            var permissionError = await ValidateClientGrantPermissionAsync(request);
+            if (permissionError != null)
+            {
+                return permissionError;
+            }
 
             ClaimsPrincipal claimsPrincipal;
 
@@ -287,6 +297,87 @@ namespace Web.IdP.Services
             );
 
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, claimsPrincipal);
+        }
+
+        /// <summary>
+        /// Validates that the client has permission for the requested grant type.
+        /// Required because passthrough mode doesn't automatically enforce client permissions.
+        /// </summary>
+        private async Task<IActionResult?> ValidateClientGrantPermissionAsync(OpenIddictRequest request)
+        {
+            var clientId = request.ClientId;
+            if (string.IsNullOrEmpty(clientId))
+            {
+                // No client_id means anonymous request - only valid for some flows
+                return null;
+            }
+
+            var client = await _applicationManager.FindByClientIdAsync(clientId);
+            if (client == null)
+            {
+                return new ForbidResult(
+                    authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
+                    properties: new Microsoft.AspNetCore.Authentication.AuthenticationProperties(
+                        new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidClient,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The specified client identifier is invalid."
+                        }));
+            }
+
+            var permissions = await _applicationManager.GetPermissionsAsync(client);
+            var permissionSet = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // Check grant type permissions
+            if (request.IsPasswordGrantType() && 
+                !permissionSet.Contains(OpenIddictConstants.Permissions.GrantTypes.Password))
+            {
+                _logger.LogWarning("Client {ClientId} attempted password grant without permission", clientId);
+                return CreateUnauthorizedGrantResponse("password");
+            }
+
+            if (request.IsClientCredentialsGrantType() && 
+                !permissionSet.Contains(OpenIddictConstants.Permissions.GrantTypes.ClientCredentials))
+            {
+                _logger.LogWarning("Client {ClientId} attempted client_credentials grant without permission", clientId);
+                return CreateUnauthorizedGrantResponse("client_credentials");
+            }
+
+            if (request.GrantType == GrantTypes.DeviceCode && 
+                !permissionSet.Contains(OpenIddictConstants.Permissions.GrantTypes.DeviceCode))
+            {
+                _logger.LogWarning("Client {ClientId} attempted device_code grant without permission", clientId);
+                return CreateUnauthorizedGrantResponse("urn:ietf:params:oauth:grant-type:device_code");
+            }
+
+            if (request.IsRefreshTokenGrantType() && 
+                !permissionSet.Contains(OpenIddictConstants.Permissions.GrantTypes.RefreshToken))
+            {
+                _logger.LogWarning("Client {ClientId} attempted refresh_token grant without permission", clientId);
+                return CreateUnauthorizedGrantResponse("refresh_token");
+            }
+
+            if (request.IsAuthorizationCodeGrantType() && 
+                !permissionSet.Contains(OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode))
+            {
+                _logger.LogWarning("Client {ClientId} attempted authorization_code grant without permission", clientId);
+                return CreateUnauthorizedGrantResponse("authorization_code");
+            }
+
+            return null; // Permission granted
+        }
+
+        private static ForbidResult CreateUnauthorizedGrantResponse(string grantType)
+        {
+            return new ForbidResult(
+                authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
+                properties: new Microsoft.AspNetCore.Authentication.AuthenticationProperties(
+                    new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.UnauthorizedClient,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
+                            $"The client is not authorized to use the '{grantType}' grant type."
+                    }));
         }
 
         private async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user)
