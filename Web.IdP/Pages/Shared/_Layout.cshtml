@@ -248,10 +248,10 @@
         </div>
     </footer>
 
-    @* Removed Bootstrap Bundle JS *@
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    <script src="~/js/language.js" asp-append-version="true"></script>
-    <script src="~/js/menu.js" asp-append-version="true"></script>
+    @* Removed Bootstrap Bundle JS & Legacy Scripts (Conflicting with razor.js) *@
+    @* <script src="~/js/site.js" asp-append-version="true"></script> *@
+    @* <script src="~/js/language.js" asp-append-version="true"></script> *@
+    @* <script src="~/js/menu.js" asp-append-version="true"></script> *@
 
     @await RenderSectionAsync("Scripts", required: false)
     <partial name="_CookieConsent" />

@@ -5,23 +5,30 @@
     ViewData["Title"] = Localizer["Log out"];
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card mt-5 shadow-sm">
-            <div class="card-body text-center">
-                <h2 class="card-title text-danger">@Localizer["Log out"]</h2>
-                <p class="card-text text-muted">@Localizer["Are you sure you want to sign out?"]</p>
-                <form asp-controller="Logout" asp-action="Logout" method="post">
-                    <!-- Propagate query parameters e.g., post_logout_redirect_uri -->
-                    @foreach (var query in Context.Request.Query)
-                    {
-                        <input type="hidden" name="@query.Key" value="@query.Value" />
-                    }
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-danger btn-lg">@Localizer["Yes, Sign Out"]</button>
-                        <a href="/" class="btn btn-outline-secondary">@Localizer["Cancel"]</a>
-                    </div>
-                </form>
+<div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-center">
+        <div class="w-full max-w-md">
+            <div class="bg-white py-8 px-4 shadow rounded-lg sm:px-10 border border-gray-200">
+                <div class="text-center">
+                    <h2 class="text-2xl font-bold text-red-600 mb-2">@Localizer["Log out"]</h2>
+                    <p class="text-gray-500 mb-6">@Localizer["Are you sure you want to sign out?"]</p>
+                    
+                    <form asp-controller="Logout" asp-action="Logout" method="post" class="space-y-4">
+                        <!-- Propagate query parameters e.g., post_logout_redirect_uri -->
+                        @foreach (var query in Context.Request.Query)
+                        {
+                            <input type="hidden" name="@query.Key" value="@query.Value" />
+                        }
+                        <div class="grid gap-3">
+                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                                @Localizer["Yes, Sign Out"]
+                            </button>
+                            <a href="/" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                                @Localizer["Cancel"]
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
