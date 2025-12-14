@@ -156,7 +156,7 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "native",
             Type: "public",
             ConsentType: "explicit",
-            RedirectUris: null,
+            RedirectUris: new List<string> { "http://dummy" },
             PostLogoutRedirectUris: null,
             Permissions: null
         );
@@ -182,7 +182,8 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: null, PostLogoutRedirectUris: null, 
+            Permissions: new List<string> { "gt:client_credentials" }
         );
         var createRes = await _httpClient.PostAsJsonAsync("/api/admin/clients", request);
         var created = await createRes.Content.ReadFromJsonAsync<CreateClientResponse>(_jsonOptions);
@@ -208,7 +209,8 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: null, PostLogoutRedirectUris: null, 
+            Permissions: new List<string> { "gt:client_credentials" }
         );
         var createRes = await _httpClient.PostAsJsonAsync("/api/admin/clients", request);
         createRes.EnsureSuccessStatusCode();
@@ -237,7 +239,8 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: null, PostLogoutRedirectUris: null, 
+            Permissions: new List<string> { "gt:client_credentials" }
         );
         var createRes = await _httpClient.PostAsJsonAsync("/api/admin/clients", request);
         var created = await createRes.Content.ReadFromJsonAsync<CreateClientResponse>(_jsonOptions);
@@ -261,7 +264,8 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: null, PostLogoutRedirectUris: null, 
+            Permissions: new List<string> { "gt:client_credentials" }
         );
         var createRes = await _httpClient.PostAsJsonAsync("/api/admin/clients", request);
         var created = await createRes.Content.ReadFromJsonAsync<CreateClientResponse>(_jsonOptions);
@@ -287,7 +291,8 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: null, PostLogoutRedirectUris: null, 
+            Permissions: new List<string> { "gt:client_credentials" }
         );
         var createRes = await _httpClient.PostAsJsonAsync("/api/admin/clients", request);
         var created = await createRes.Content.ReadFromJsonAsync<CreateClientResponse>(_jsonOptions);
@@ -311,7 +316,9 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: new List<string> { "https://localhost:5000/callback" }, 
+            PostLogoutRedirectUris: null, 
+            Permissions: null
         );
         var createRes = await _httpClient.PostAsJsonAsync("/api/admin/clients", request);
         var created = await createRes.Content.ReadFromJsonAsync<CreateClientResponse>(_jsonOptions);
@@ -337,7 +344,8 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: null, PostLogoutRedirectUris: null, 
+            Permissions: new List<string> { "gt:client_credentials" }
         );
         var createRes = await _httpClient.PostAsJsonAsync("/api/admin/clients", request);
         var created = await createRes.Content.ReadFromJsonAsync<CreateClientResponse>(_jsonOptions);
@@ -403,7 +411,8 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: null, PostLogoutRedirectUris: null, 
+            Permissions: new List<string> { "gt:client_credentials" }
         );
         var createRes = await _httpClient.PostAsJsonAsync("/api/admin/clients", request);
         createRes.EnsureSuccessStatusCode();
@@ -418,7 +427,8 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: null, PostLogoutRedirectUris: null, 
+            Permissions: new List<string> { "gt:client_credentials" }
         );
         var response = await _httpClient.PostAsJsonAsync("/api/admin/clients", duplicateRequest);
 
@@ -436,7 +446,8 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: null, PostLogoutRedirectUris: null, 
+            Permissions: new List<string> { "gt:client_credentials" }
         );
 
         var response = await _httpClient.PostAsJsonAsync("/api/admin/clients", request);
@@ -455,7 +466,8 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "native",
             Type: "public",
             ConsentType: "explicit",
-            RedirectUris: null, PostLogoutRedirectUris: null, Permissions: null
+            RedirectUris: new List<string> { "http://dummy" }, 
+            PostLogoutRedirectUris: null, Permissions: null
         );
         var createRes = await _httpClient.PostAsJsonAsync("/api/admin/clients", request);
         createRes.EnsureSuccessStatusCode();
