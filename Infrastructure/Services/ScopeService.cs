@@ -15,6 +15,19 @@ namespace Infrastructure.Services;
 
 public class ScopeService : IScopeService
 {
+    /// <summary>
+    /// Standard OIDC scopes whose claim mappings cannot be modified.
+    /// Per OIDC specification, these scopes have fixed claim mappings.
+    /// </summary>
+    private static readonly HashSet<string> StandardOidcScopes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        OpenIddictConstants.Scopes.OpenId,
+        OpenIddictConstants.Scopes.Profile,
+        OpenIddictConstants.Scopes.Email,
+        OpenIddictConstants.Scopes.Phone,
+        OpenIddictConstants.Scopes.Address
+    };
+
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IApplicationDbContext _db;
@@ -390,6 +403,14 @@ public class ScopeService : IScopeService
         }
 
         var scopeName = await _scopeManager.GetNameAsync(scope);
+
+        // Protect standard OIDC scopes from having their claims modified
+        if (StandardOidcScopes.Contains(scopeName!))
+        {
+            throw new InvalidOperationException(
+                $"Cannot modify claims for standard OIDC scope '{scopeName}'. " +
+                "Standard scopes have fixed claim mappings per OIDC specification.");
+        }
 
         // Remove existing scope claims
         var existingScopeClaims = await _db.ScopeClaims

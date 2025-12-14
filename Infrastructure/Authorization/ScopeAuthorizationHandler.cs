@@ -58,6 +58,16 @@ public class ScopeAuthorizationHandler : AuthorizationHandler<ScopeRequirement>
             }
         }
 
+        // Check "oi_scp" claims (OpenIddict internal format)
+        var oiScpClaims = user.FindAll("oi_scp");
+        foreach (var oiScpClaim in oiScpClaims)
+        {
+            if (!string.IsNullOrWhiteSpace(oiScpClaim.Value))
+            {
+                scopes.Add(oiScpClaim.Value);
+            }
+        }
+
         // Check if required scope is present (case-insensitive)
         if (scopes.Contains(requirement.Scope))
         {

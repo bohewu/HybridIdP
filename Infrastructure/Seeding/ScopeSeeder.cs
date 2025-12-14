@@ -10,7 +10,7 @@ public static class ScopeSeeder
     public static async Task SeedAsync(IOpenIddictScopeManager scopeManager, ApplicationDbContext context)
     {
         await SeedScopesAsync(scopeManager);
-        await SeedUserClaimsAsync(context, scopeManager);
+        await SeedUserClaimsAndMappingsAsync(context, scopeManager);
     }
 
     private static async Task SeedScopesAsync(IOpenIddictScopeManager scopeManager)
@@ -41,16 +41,14 @@ public static class ScopeSeeder
         }
     }
 
-    private static async Task SeedUserClaimsAsync(ApplicationDbContext context, IOpenIddictScopeManager scopeManager)
+    /// <summary>
+    /// Seeds UserClaims and ScopeClaims mappings separately.
+    /// This fixes the bug where ScopeClaims wouldn't be created if UserClaims already existed.
+    /// </summary>
+    private static async Task SeedUserClaimsAndMappingsAsync(ApplicationDbContext context, IOpenIddictScopeManager scopeManager)
     {
-        // Check if claims already seeded
-        if (await context.Set<UserClaim>().AnyAsync())
-        {
-            return; // Claims already seeded
-        }
-
         // Define standard OIDC claims
-        var claims = new List<UserClaim>
+        var standardClaims = new List<UserClaim>
         {
             // REQUIRED: Subject identifier (always included)
             new() { Name = "sub", DisplayName = "Subject Identifier", Description = "Unique identifier for the user", ClaimType = "sub", UserPropertyPath = "Id", DataType = "String", IsStandard = true, IsRequired = true },
@@ -68,46 +66,59 @@ public static class ScopeSeeder
             new() { Name = "phone_number_verified", DisplayName = "Phone Verified", Description = "Whether the phone number has been verified", ClaimType = "phone_number_verified", UserPropertyPath = "PhoneNumberConfirmed", DataType = "Boolean", IsStandard = true, IsRequired = false },
         };
 
-        // Add claims to database
-        await context.Set<UserClaim>().AddRangeAsync(claims);
-        await context.SaveChangesAsync();
-
-        // Create scope-to-claims mappings
-        var scopeMappings = new Dictionary<string, string[]>
+        // Step 1: Seed UserClaims if not exist
+        var hasUserClaims = await context.Set<UserClaim>().AnyAsync();
+        if (!hasUserClaims)
         {
-            ["openid"] = new[] { "sub" }, // OpenID scope always includes subject identifier
-            ["profile"] = new[] { "name", "preferred_username" }, // Profile scope includes name-related claims
-            ["email"] = new[] { "email", "email_verified" }, // Email scope includes email and verification status
-            ["phone"] = new[] { "phone_number", "phone_number_verified" } // Phone scope (if exists)
-        };
-
-        foreach (var (scopeName, claimNames) in scopeMappings)
-        {
-            // Get the scope ID from OpenIddict
-            var scope = await scopeManager.FindByNameAsync(scopeName);
-            if (scope == null) continue; // Skip if scope doesn't exist
-
-            var scopeId = await scopeManager.GetIdAsync(scope);
-            if (scopeId == null) continue;
-
-            // Create ScopeClaim mappings
-            foreach (var claimName in claimNames)
-            {
-                var userClaim = claims.FirstOrDefault(c => c.Name == claimName);
-                if (userClaim == null) continue;
-
-                var scopeClaim = new ScopeClaim
-                {
-                    ScopeId = scopeId.ToString()!,
-                    ScopeName = scopeName,
-                    UserClaimId = userClaim.Id,
-                    AlwaysInclude = claimName == "sub" // Always include "sub" claim
-                };
-
-                await context.Set<ScopeClaim>().AddAsync(scopeClaim);
-            }
+            await context.Set<UserClaim>().AddRangeAsync(standardClaims);
+            await context.SaveChangesAsync();
         }
 
-        await context.SaveChangesAsync();
+        // Step 2: Seed ScopeClaims mappings if not exist (separate check!)
+        var hasScopeClaims = await context.Set<ScopeClaim>().AnyAsync();
+        if (!hasScopeClaims)
+        {
+            // Re-fetch existing claims from DB (may have been just seeded or already existed)
+            var existingClaims = await context.Set<UserClaim>().ToListAsync();
+            var claimsByName = existingClaims.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+
+            // Define scope-to-claims mappings per OIDC specification
+            var scopeMappings = new Dictionary<string, string[]>
+            {
+                ["openid"] = new[] { "sub" }, // OpenID scope always includes subject identifier
+                ["profile"] = new[] { "name", "preferred_username" }, // Profile scope includes name-related claims
+                ["email"] = new[] { "email", "email_verified" }, // Email scope includes email and verification status
+                ["phone"] = new[] { "phone_number", "phone_number_verified" } // Phone scope
+            };
+
+            foreach (var (scopeName, claimNames) in scopeMappings)
+            {
+                // Get the scope ID from OpenIddict
+                var scope = await scopeManager.FindByNameAsync(scopeName);
+                if (scope == null) continue; // Skip if scope doesn't exist
+
+                var scopeId = await scopeManager.GetIdAsync(scope);
+                if (scopeId == null) continue;
+
+                // Create ScopeClaim mappings
+                foreach (var claimName in claimNames)
+                {
+                    if (!claimsByName.TryGetValue(claimName, out var userClaim))
+                        continue;
+
+                    var scopeClaim = new ScopeClaim
+                    {
+                        ScopeId = scopeId.ToString()!,
+                        ScopeName = scopeName,
+                        UserClaimId = userClaim.Id,
+                        AlwaysInclude = claimName == "sub" // Always include "sub" claim
+                    };
+
+                    await context.Set<ScopeClaim>().AddAsync(scopeClaim);
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
     }
 }
