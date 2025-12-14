@@ -142,6 +142,94 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
         Assert.Contains("type=\"submit\"", content);
     }
 
+    #region Inactive User/Person Tests
+
+    [Fact]
+    public async Task Login_WithInactiveUser_ShouldReturnDeactivatedError()
+    {
+        // Arrange - Use seeded inactive user (inactive@hybridauth.local / Inactive@123)
+        var (token, _) = await GetLoginPageAsync();
+        var formData = CreateLoginForm("inactive@hybridauth.local", "Inactive@123", token);
+
+        // Act
+        var response = await _httpClient.PostAsync("/Account/Login", formData);
+
+        // Assert - Should return login page with deactivated error
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.True(
+            content.Contains("deactivated") || 
+            content.Contains("停用") ||
+            content.Contains("alert-danger") ||
+            content.Contains("validation-summary-errors"),
+            $"Expected deactivated error message. Content length: {content.Length}");
+    }
+
+    [Fact]
+    public async Task Login_WithInactivePerson_ShouldReturnPersonInactiveError()
+    {
+        // Arrange - Use seeded user with inactive person (inactiveperson@hybridauth.local / InactivePerson@123)
+        var (token, _) = await GetLoginPageAsync();
+        var formData = CreateLoginForm("inactiveperson@hybridauth.local", "InactivePerson@123", token);
+
+        // Act
+        var response = await _httpClient.PostAsync("/Account/Login", formData);
+
+        // Assert - Should return login page with person inactive error
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.True(
+            content.Contains("person") || 
+            content.Contains("Person") ||
+            content.Contains("人員") ||
+            content.Contains("alert-danger") ||
+            content.Contains("validation-summary-errors"),
+            $"Expected person inactive error message. Content length: {content.Length}");
+    }
+
+    #endregion
+
+    #region Lockout Tests
+
+    [Fact]
+    public async Task Login_WithMultipleFailedAttempts_ShouldLockout()
+    {
+        // This test uses a dedicated user to avoid affecting other tests
+        // Using testuser@hybridauth.local for lockout test
+        const string testEmail = "testuser@hybridauth.local";
+        const string wrongPassword = "WrongPassword!";
+        
+        // Arrange - Get initial token
+        var (token, _) = await GetLoginPageAsync();
+
+        // Act - Send multiple failed login attempts (default MaxFailedAccessAttempts is 5)
+        for (int i = 0; i < 6; i++)
+        {
+            var formData = CreateLoginForm(testEmail, wrongPassword, token);
+            var response = await _httpClient.PostAsync("/Account/Login", formData);
+            var content = await response.Content.ReadAsStringAsync();
+            
+            // Get new token for next attempt
+            token = ExtractAntiForgeryToken(content);
+        }
+
+        // Final attempt - should be locked out
+        var finalFormData = CreateLoginForm(testEmail, wrongPassword, token);
+        var finalResponse = await _httpClient.PostAsync("/Account/Login", finalFormData);
+        var finalContent = await finalResponse.Content.ReadAsStringAsync();
+
+        // Assert - Should indicate lockout
+        Assert.Equal(HttpStatusCode.OK, finalResponse.StatusCode);
+        Assert.True(
+            finalContent.Contains("locked") || 
+            finalContent.Contains("Locked") ||
+            finalContent.Contains("鎖定") ||
+            finalContent.Contains("alert-danger"),
+            $"Expected lockout message after multiple failed attempts. Content contains error: {finalContent.Contains("alert-danger")}");
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private async Task<(string token, string html)> GetLoginPageAsync()
