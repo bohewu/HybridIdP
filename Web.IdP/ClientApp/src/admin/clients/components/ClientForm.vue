@@ -5,6 +5,7 @@ import { z } from 'zod'
 import BaseModal from '@/components/common/BaseModal.vue'
 import SecretDisplayModal from './SecretDisplayModal.vue'
 import ClientScopeManager from './ClientScopeManager.vue'
+import AuthUrlGenerator from './AuthUrlGenerator.vue'
 
 const { t } = useI18n()
 
@@ -92,36 +93,79 @@ const error = ref(null)
 const fieldErrors = ref({}) // Per-field validation errors
 
 // Zod schema for client form validation
-const schema = computed(() => z.object({
-  clientId: z.string().min(1, t('clients.form.clientIdRequired')),
-  displayName: z.string().optional(),
-  applicationType: z.enum(['web', 'native']),
-  clientType: z.enum(['public', 'confidential']),
-  consentType: z.enum(['explicit', 'implicit']).optional(),
-  redirectUris: z.string().min(1, t('clients.form.redirectUrisRequired')),
-  postLogoutRedirectUris: z.string().optional(),
-  permissions: z.array(z.string()).min(1, t('clients.form.permissionsRequired')),
-  // allowedScopes removed from generic schema, validated via permissions checking for openid
-}).superRefine((val, ctx) => {
-  // Validate Redirect URIs lines
-  const redirectLines = (val.redirectUris || '').split('\n').map(x => x.trim()).filter(x => x.length > 0)
-  if (redirectLines.length === 0) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['redirectUris'], message: t('clients.form.redirectUrisRequired') })
-  }
-  redirectLines.forEach((u, i) => {
-    try { new URL(u) } catch { ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['redirectUris'], message: t('clients.form.redirectUrisInvalid', { line: i + 1 }) }) }
+// --- Computed Rules ---
+const isNative = computed(() => formData.value.applicationType === 'native')
+const isInteractive = computed(() => {
+  return formData.value.permissions.includes('gt:authorization_code') || 
+         formData.value.permissions.includes('gt:implicit') ||
+         formData.value.clientType === 'public'
+})
+
+// --- Validation Schema ---
+const schema = computed(() => {
+  let baseSchema = z.object({
+    clientId: z.string().min(1, t('clients.form.clientIdRequired')),
+    displayName: z.string().optional(),
+    applicationType: z.string(), // z.enum(['web', 'native']),
+    clientType: z.string(), // z.enum(['public', 'confidential']),
+    consentType: z.string().optional(), // z.enum(['explicit', 'implicit']).optional(),
+    redirectUris: z.string().optional(), // Default optional, validated via refine
+    postLogoutRedirectUris: z.string().optional(),
+    permissions: z.array(z.string()).min(1, t('clients.form.permissionsRequired'))
   })
-  // Validate Post Logout Redirect URIs if present
-  const postLines = (val.postLogoutRedirectUris || '').split('\n').map(x => x.trim()).filter(x => x.length > 0)
-  postLines.forEach((u, i) => {
-    try { new URL(u) } catch { ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['postLogoutRedirectUris'], message: t('clients.form.postLogoutRedirectUrisInvalid', { line: i + 1 }) }) }
+
+  // Add refinements
+  return baseSchema.superRefine((data, ctx) => {
+    // Redirect URIs required for interactive flows
+    if (isInteractive.value) {
+       // Check if empty
+       const lines = (data.redirectUris || '').split('\n').filter(l => l.trim().length > 0)
+       if (lines.length === 0) {
+         ctx.addIssue({
+           code: z.ZodIssueCode.custom,
+           message: t('clients.form.redirectUrisRequired'),
+           path: ['redirectUris']
+         })
+       }
+    }
+    
+    // Validate URI formats (if provided)
+    if (data.redirectUris) {
+      validateUriList(data.redirectUris, ctx, 'redirectUris', t('clients.form.redirectUrisInvalid'))
+    }
+    if (data.postLogoutRedirectUris) {
+      validateUriList(data.postLogoutRedirectUris, ctx, 'postLogoutRedirectUris', t('clients.form.postLogoutRedirectUrisInvalid'))
+    }
+    
+    // Validate that openid scope permission is included
+    if (!data.permissions.includes('scp:openid')) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allowedScopes'], message: t('clients.form.allowedScopesOpenidRequired') })
+    }
   })
-  // Validate that openid scope permission is included
-  if (!val.permissions.includes('scp:openid')) {
-     // We map error to 'allowedScopes' field for UI display if needed, or 'permissions'
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['allowedScopes'], message: t('clients.form.allowedScopesOpenidRequired') })
+})
+
+const validateUriList = (text, ctx, path, messageTemplate) => {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+  lines.forEach((line, index) => {
+    try {
+      new URL(line)
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: messageTemplate.replace('{line}', index + 1),
+        path: [path]
+      })
+    }
+  })
+}
+
+// Watchers for enforcing rules
+watch(() => formData.value.applicationType, (newType) => {
+  if (newType === 'native') {
+    formData.value.clientType = 'public'
+    formData.value.clientSecret = null
   }
-}))
+})
 
 const resetForm = () => {
   formData.value = {
@@ -279,69 +323,7 @@ const togglePermission = (permission) => {
     formData.value.permissions.push(permission)
   }
 }
-// --- Test Config Generator ---
-const testConfig = ref({
-  show: false,
-  codeVerifier: '',
-  codeChallenge: '',
-  url: '',
-  copiedVerifier: false,
-  copiedUrl: false
-})
-const generateCodeVerifier = () => {
-  const array = new Uint8Array(32)
-  window.crypto.getRandomValues(array)
-  return btoa(String.fromCharCode.apply(null, array))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-const generateCodeChallenge = async (verifier) => {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(verifier)
-  const hash = await window.crypto.subtle.digest('SHA-256', data)
-  const hashArray = new Uint8Array(hash)
-  return btoa(String.fromCharCode.apply(null, hashArray))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-const generateTestUrl = async () => {
-  const verifier = generateCodeVerifier()
-  const challenge = await generateCodeChallenge(verifier)
-  
-  const scopes = localAllowedScopes.value.includes('openid') 
-    ? localAllowedScopes.value.join(' ') 
-    : 'openid ' + localAllowedScopes.value.join(' ')
-  const redirectUri = (formData.value.redirectUris || '').split('\n')[0]?.trim() || ''
-  
-  if (!redirectUri) {
-    alert(t('clients.form.redirectUrisRequired'))
-    return
-  }
-  const params = new URLSearchParams({
-    client_id: formData.value.clientId,
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: scopes,
-    code_challenge: challenge,
-    code_challenge_method: 'S256',
-    prompt: 'consent'
-  })
-  testConfig.value.codeVerifier = verifier
-  testConfig.value.codeChallenge = challenge
-  testConfig.value.url = `${window.location.origin}/connect/authorize?${params.toString()}`
-  testConfig.value.show = true
-  testConfig.value.copiedVerifier = false
-  testConfig.value.copiedUrl = false
-}
-const copyToClipboard = (text, type) => {
-  navigator.clipboard.writeText(text).then(() => {
-    if (type === 'verifier') {
-      testConfig.value.copiedVerifier = true
-      setTimeout(() => testConfig.value.copiedVerifier = false, 2000)
-    } else {
-      testConfig.value.copiedUrl = true
-      setTimeout(() => testConfig.value.copiedUrl = false, 2000)
-    }
-  })
-}
+// -----------------------------
 // -----------------------------
 
 const closeSecretModal = () => {
@@ -479,7 +461,11 @@ const closeSecretModal = () => {
                             v-model="formData.clientType"
                             type="radio"
                             value="confidential"
-                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                            :disabled="isNative"
+                            :class="[
+                              'h-4 w-4 focus:ring-indigo-500 border-gray-300',
+                              isNative ? 'text-gray-300 cursor-not-allowed' : 'text-indigo-600'
+                            ]"
                           />
                           <label for="type-confidential" class="ml-3 block text-sm text-gray-700">
                             <span class="font-medium">{{ $t('clients.form.clientTypeConfidential') }}</span> - {{ $t('clients.form.clientTypeConfidentialDesc') }}
@@ -489,10 +475,23 @@ const closeSecretModal = () => {
                        <p v-if="formData.clientType === 'confidential'" class="mt-2 text-xs text-gray-500">
                         {{ $t('clients.form.clientSecretHelp') }}
                       </p>
+                      
+                      <!-- Auto-Gen Secret Placeholder -->
+                      <div v-if="formData.clientType === 'confidential' && !isEdit" class="mt-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ $t('clients.form.clientSecret') }}
+                        </label>
+                        <input
+                            type="text"
+                            disabled
+                            class="block w-full rounded-md border-gray-300 bg-gray-50 text-gray-500 shadow-sm sm:text-xs h-8 px-3 cursor-not-allowed italic"
+                            :value="$t('clients.form.clientSecretAutoGenPlaceholder')"
+                        />
+                      </div>
                     </div>
 
                     <!-- Consent Type -->
-                    <div>
+                    <div v-if="isInteractive">
                       <label class="block text-sm font-medium text-gray-700 mb-2">
                         {{ $t('clients.form.consentType') }}
                       </label>
@@ -528,14 +527,14 @@ const closeSecretModal = () => {
                     </div>
 
                     <!-- Redirect URIs -->
-                    <div class="mb-5">
+                    <div class="mb-5" v-if="isInteractive">
                       <label for="redirectUris" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('clients.form.redirectUris') }} <span class="text-red-500">*</span>
+                        {{ $t('clients.form.redirectUris') }} <span v-if="isInteractive" class="text-red-500">*</span>
                       </label>
                       <textarea
                         id="redirectUris"
                         v-model="formData.redirectUris"
-                        required
+                        :required="isInteractive"
                         rows="3"
                         :class="[
                           'block w-full rounded-md shadow-sm sm:text-sm px-3 py-2',
@@ -557,7 +556,7 @@ const closeSecretModal = () => {
                     </div>
 
                     <!-- Post Logout Redirect URIs -->
-                    <div class="mb-5">
+                    <div class="mb-5" v-if="isInteractive">
                       <label for="postLogoutRedirectUris" class="block text-sm font-medium text-gray-700 mb-1.5">
                         {{ $t('clients.form.postLogoutRedirectUris') }}
                       </label>
@@ -661,85 +660,12 @@ const closeSecretModal = () => {
                     </div>
 
                     <!-- TEST URL GENERATOR -->
-                    <div class="border-t border-gray-200 pt-5 mt-5">
-                      <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-medium text-gray-900">{{ $t('clients.form.generator.title') }}</h3>
-                        <button 
-                          type="button"
-                          @click="testConfig.show = !testConfig.show"
-                          class="text-indigo-600 hover:text-indigo-900 text-sm font-medium focus:outline-none"
-                        >
-                          {{ testConfig.show ? $t('clients.form.cancel') : $t('clients.form.generator.generateButton') }}
-                        </button>
-                      </div>
-                      
-                      <div v-if="testConfig.show" class="mt-4 bg-gray-50 rounded-md p-4 space-y-4">
-                        <p class="text-xs text-gray-500">{{ $t('clients.form.generator.description') }}</p>
-                        
-                        <div class="flex justify-end">
-                           <button 
-                              type="button"
-                              @click="generateTestUrl"
-                              class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                            >
-                             <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                             </svg>
-                             {{ $t('clients.form.generator.generateButton') }}
-                           </button>
-                        </div>
-                        
-                        <div v-if="testConfig.url" class="space-y-4 animate-fade-in">
-                           <!-- Code Verifier -->
-                           <div>
-                             <label class="block text-xs font-medium text-gray-700 mb-1">
-                               {{ $t('clients.form.generator.codeVerifier') }}
-                               <span class="text-gray-400 font-normal">- {{ $t('clients.form.generator.codeVerifierHelp') }}</span>
-                             </label>
-                             <div class="flex">
-                               <input 
-                                 type="text" 
-                                 readonly 
-                                 :value="testConfig.codeVerifier" 
-                                 class="block w-full rounded-l-md border-gray-300 bg-white text-gray-600 shadow-sm sm:text-xs h-8 px-2 focus:ring-indigo-500 focus:border-indigo-500"
-                               />
-                               <button 
-                                 type="button"
-                                 @click="copyToClipboard(testConfig.codeVerifier, 'verifier')"
-                                 class="inline-flex items-center px-4 whitespace-nowrap rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-xs hover:bg-gray-100"
-                               >
-                                 {{ testConfig.copiedVerifier ? $t('clients.form.generator.copied') : $t('clients.form.generator.copy') }}
-                               </button>
-                             </div>
-                           </div>
-                           
-                           <!-- URL -->
-                           <div>
-                             <label class="block text-xs font-medium text-gray-700 mb-1">
-                               {{ $t('clients.form.generator.generatedUrl') }}
-                               <span class="text-gray-400 font-normal">- {{ $t('clients.form.generator.generatedUrlHelp') }}</span>
-                             </label>
-                             <div class="relative rounded-md shadow-sm">
-                               <textarea 
-                                 readonly 
-                                 :value="testConfig.url" 
-                                 rows="3"
-                                 class="block w-full rounded-md border-gray-300 bg-white text-gray-600 shadow-sm sm:text-xs px-2 py-1.5 pr-12 focus:ring-indigo-500 focus:border-indigo-500"
-                               ></textarea>
-                               <div class="absolute top-2 right-2">
-                                  <button 
-                                   type="button"
-                                   @click="copyToClipboard(testConfig.url, 'url')"
-                                   class="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none whitespace-nowrap"
-                                 >
-                                   {{ testConfig.copiedUrl ? $t('clients.form.generator.copied') : $t('clients.form.generator.copy') }}
-                                 </button>
-                               </div>
-                             </div>
-                           </div>
-                        </div>
-                      </div>
-                    </div>
+                    <AuthUrlGenerator 
+                      v-if="isInteractive"
+                      :client-id="formData.clientId"
+                      :redirect-uri="formData.redirectUris"
+                      :scopes="localAllowedScopes"
+                    />
 
                   </div>
         </div>

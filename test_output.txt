@@ -1,0 +1,14 @@
+VSTest 版本 18.0.1 (x64)
+
+正在啟動測試執行，請稍候...
+總共有 1 個測試檔案與指定的模式相符。
+[xUnit.net 00:00:00.41]     Tests.Infrastructure.UnitTests.ClientServiceTests.UpdateClient_WithExistingNativeApp_AndAddingSecret_ShouldThrowException [FAIL]
+  失敗 Tests.Infrastructure.UnitTests.ClientServiceTests.UpdateClient_WithExistingNativeApp_AndAddingSecret_ShouldThrowException [156 ms]
+  錯誤訊息:
+   Assert.Throws() Failure: No exception was thrown
+Expected: typeof(System.ArgumentException)
+  堆疊追蹤:
+     at Tests.Infrastructure.UnitTests.ClientServiceTests.UpdateClient_WithExistingNativeApp_AndAddingSecret_ShouldThrowException() in C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.Infrastructure.UnitTests\ClientServiceTests.cs:line 156
+--- End of stack trace from previous location ---
+
+失敗!  - 失敗:     1，通過:     3，略過:     0，總計:     4，持續時間: 217 ms - Tests.Infrastructure.UnitTests.dll (net10.0)
