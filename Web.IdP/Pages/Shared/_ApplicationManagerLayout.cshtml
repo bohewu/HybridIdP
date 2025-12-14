@@ -49,7 +49,7 @@
             </a>
             
             @* Navigation *@
-            <nav class="sidebar-nav flex-grow-1">
+            <nav class="sidebar-nav grow">
                 @* Dashboard *@
                 <a href="/ApplicationManager" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/ApplicationManager/Index" ? "active" : "")">
                     <i class="bi bi-house-door"></i>
@@ -82,7 +82,7 @@
                         <div class="user-avatar">
                             @((User?.Identity?.Name ?? User?.FindFirst("preferred_username")?.Value ?? "AM").Substring(0, Math.Min(2, (User?.Identity?.Name ?? User?.FindFirst("preferred_username")?.Value ?? "AM").Length)).ToUpper())
                         </div>
-                        <div class="flex-grow-1">
+                        <div class="grow">
                             <div class="fw-medium small text-truncate user-info-name">@(User?.FindFirst("preferred_username")?.Value ?? User?.Identity?.Name)</div>
                             <div class="text-muted user-info-role">@Localizer["ApplicationManager"]</div>
                         </div>
@@ -145,7 +145,7 @@
         @* Scrollable Content Wrapper *@
         <div class="content-scroll-wrapper">
             @* Main Content *@
-            <main class="flex-grow-1 p-4">
+            <main class="grow p-4">
                 @RenderBody()
             </main>
             
