@@ -4,38 +4,40 @@
     ViewData["Title"] = "ApplicationManager 快速開始";
 }
 
-<div class="container p-4">
-    <h1>Application Manager — 快速開始</h1>
-    <p>此頁面為 ApplicationManager 角色或具有 clients/scopes 權限的使用者專用。</p>
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900 mb-4">Application Manager — 快速開始</h1>
+        <p class="text-lg text-gray-500 mb-8">此頁面為 ApplicationManager 角色或具有 clients/scopes 權限的使用者專用。</p>
 
-    <h2>1. 登入</h2>
-    <p>使用 ApplicationManager 帳號登入。</p>
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">1. 登入</h2>
+        <p class="text-gray-600 mb-4">使用 ApplicationManager 帳號登入。</p>
 
-    <h2>2. 檢視你的 Clients 與 Scopes</h2>
-    <p>在 Dashboard 上可以看到「My Clients」與「My Scopes」摘要，點選對應按鈕可進入管理頁面。</p>
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">2. 檢視你的 Clients 與 Scopes</h2>
+        <p class="text-gray-600 mb-4">在 Dashboard 上可以看到「My Clients」與「My Scopes」摘要，點選對應按鈕可進入管理頁面。</p>
 
-    <h2>3. 建立新的 Client</h2>
-    <ol>
-        <li>點選 <strong>Manage Clients → Create Client</strong>。</li>
-        <li>填寫 Client 名稱、Redirect URI，並設定需要的 scopes。</li>
-        <li>儲存後，系統會顯示 ClientId 與（如有）Client Secret，請妥善保管。</li>
-    </ol>
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">3. 建立新的 Client</h2>
+        <ol class="list-decimal pl-5 space-y-2 text-gray-600 mb-4">
+            <li>點選 <strong>Manage Clients → Create Client</strong>。</li>
+            <li>填寫 Client 名稱、Redirect URI，並設定需要的 scopes。</li>
+            <li>儲存後，系統會顯示 ClientId 與（如有）Client Secret，請妥善保管。</li>
+        </ol>
 
-    <h2>4. 建立 Scope</h2>
-    <ol>
-        <li>點選 <strong>Manage Scopes → Create Scope</strong>。</li>
-        <li>填寫 scope 名稱與描述，選擇是否為可選 scope。</li>
-    </ol>
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">4. 建立 Scope</h2>
+        <ol class="list-decimal pl-5 space-y-2 text-gray-600 mb-4">
+            <li>點選 <strong>Manage Scopes → Create Scope</strong>。</li>
+            <li>填寫 scope 名稱與描述，選擇是否為可選 scope。</li>
+        </ol>
 
-    <h2>5. 整合範例 (簡略)</h2>
-    <p>在應用程式端 (client) 設定 OAuth2/OIDC，使用產生的 ClientId，Redirect URI 與需要的 scopes（例如 <code>openid profile clients.read</code>）。</p>
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">5. 整合範例 (簡略)</h2>
+        <p class="text-gray-600 mb-4">在應用程式端 (client) 設定 OAuth2/OIDC，使用產生的 ClientId，Redirect URI 與需要的 scopes（例如 <code>openid profile clients.read</code>）。</p>
 
-    <h2>6. 常見問題與排除</h2>
-    <ul>
-        <li>若看到 Access Denied：請確認你已登入的帳號擁有 <code>clients.read</code> 或 <code>scopes.read</code> 權限。</li>
-        <li>若看不到文件：請聯絡系統管理員或使用頁面右下的 Support 連結。</li>
-    </ul>
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">6. 常見問題與排除</h2>
+        <ul class="list-disc pl-5 space-y-2 text-gray-600 mb-4">
+            <li>若看到 Access Denied：請確認你已登入的帳號擁有 <code>clients.read</code> 或 <code>scopes.read</code> 權限。</li>
+            <li>若看不到文件：請聯絡系統管理員或使用頁面右下的 Support 連結。</li>
+        </ul>
 
-    <hr>
-    <p class="text-muted small">如需更詳細的操作說明，請聯絡系統管理員。</p>
+        <hr class="my-8 border-gray-200">
+        <p class="text-sm text-gray-500">如需更詳細的操作說明，請聯絡系統管理員。</p>
+    </div>
 </div>

@@ -5,23 +5,29 @@
     ViewData["Title"] = Localizer["AuthorizationManagement"];
 }
 
-<div class="app-launcher" 
+<div class="app-launcher max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8" 
      data-disconnect-confirm="@Localizer["DisconnectAppConfirm"]"
      data-disconnect-failed="@Localizer["DisconnectFailed"]"
      data-disconnect-error="@Localizer["DisconnectError"]">
-    <div class="section-header">
-        <h1 class="section-title">@Localizer["AuthorizedApplications"]</h1>
-        <p class="text-muted">@Localizer["ViewAndRevokeAuthorizations"]</p>
-        <div class="app-controls">
-            <div class="search-box">
-                <i class="bi bi-search"></i>
-                <input type="text" id="appSearch" class="search-input" placeholder="@Localizer["SearchApps"]">
+    
+    <div class="section-header mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="section-title text-2xl font-bold text-gray-900">@Localizer["AuthorizedApplications"]</h1>
+            <p class="mt-1 text-sm text-gray-500">@Localizer["ViewAndRevokeAuthorizations"]</p>
+        </div>
+        
+        <div class="app-controls flex items-center gap-3 w-full sm:w-auto">
+            <div class="search-box relative flex-grow sm:flex-grow-0">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <i class="bi bi-search text-gray-400"></i>
+                </div>
+                <input type="text" id="appSearch" class="search-input block w-full rounded-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 sm:w-64" placeholder="@Localizer["SearchApps"]">
             </div>
-            <div class="view-toggle">
-                <button class="toggle-btn active" data-view="grid" title="@Localizer["GridView"]">
+            <div class="view-toggle isolate inline-flex rounded-md shadow-sm">
+                <button class="toggle-btn relative inline-flex items-center rounded-l-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-10 [&.active]:bg-indigo-600 [&.active]:text-white [&.active]:ring-indigo-600 active" data-view="grid" title="@Localizer["GridView"]">
                     <i class="bi bi-grid-3x3-gap"></i>
                 </button>
-                <button class="toggle-btn" data-view="list" title="@Localizer["ListView"]">
+                <button class="toggle-btn relative -ml-px inline-flex items-center rounded-r-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-10 [&.active]:bg-indigo-600 [&.active]:text-white [&.active]:ring-indigo-600" data-view="list" title="@Localizer["ListView"]">
                     <i class="bi bi-list-ul"></i>
                 </button>
             </div>
@@ -30,23 +36,23 @@
 
     @if (Model.Applications != null && Model.Applications.Any())
     {
-        <div class="app-container">
-            <div class="app-grid" id="appContainer">
+        <div class="app-container bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl overflow-hidden">
+            <div class="app-grid grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 p-6 [&.list-view]:grid-cols-1 [&.list-view]:gap-2" id="appContainer">
                 @foreach (var app in Model.Applications)
                 {
-                    <div class="app-card-wrapper" data-app-name="@app.DisplayName.ToLower()">
-                        <a href="@app.LoginUrl" class="app-card" title="@app.DisplayName">
-                            <div class="app-icon @GetAppIconClass(app)">
+                    <div class="app-card-wrapper relative group" data-app-name="@app.DisplayName.ToLower()">
+                        <a href="@app.LoginUrl" class="app-card flex flex-col items-center rounded-lg border border-gray-200 p-6 text-center hover:border-gray-300 rubg-white hover:bg-gray-50 hover:shadow-md transition-all [&.list-view_&]:flex-row [&.list-view_&]:text-left [&.list-view_&]:p-4" title="@app.DisplayName">
+                            <div class="app-icon h-16 w-16 flex-shrink-0 flex items-center justify-center rounded-full text-white text-2xl font-bold shadow-sm mb-4 [.list-view_&]:mb-0 [.list-view_&]:mr-4 @GetAppIconClass(app)">
                                 @GetAppInitial(app)
                             </div>
-                            <div class="app-name">@app.DisplayName</div>
+                            <div class="app-name text-sm font-semibold text-gray-900 w-full truncate">@app.DisplayName</div>
                         </a>
-                        <button class="app-disconnect-btn" 
+                        <button class="app-disconnect-btn absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-400 shadow-sm ring-1 ring-gray-900/10 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" 
                                 data-app-id="@app.ApplicationId" 
                                 data-app-name="@app.DisplayName"
                                 title="@Localizer["RevokeAuthorization"]"
                                 type="button">
-                            <i class="bi bi-x-circle"></i>
+                            <i class="bi bi-x-lg text-sm"></i>
                         </button>
                     </div>
                 }
@@ -55,12 +61,12 @@
     }
     else
     {
-        <div class="empty-state">
-            <div class="empty-state-icon">
-                <i class="bi bi-grid-3x3-gap"></i>
+        <div class="empty-state text-center py-16 px-4">
+            <div class="empty-state-icon mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gray-100 mb-4">
+                <i class="bi bi-grid-3x3-gap text-3xl text-gray-400"></i>
             </div>
-            <div class="empty-state-title">@Localizer["NoAppsAvailable"]</div>
-            <div class="empty-state-description">@Localizer["NoAppsDescription"]</div>
+            <h3 class="empty-state-title mt-2 text-sm font-semibold text-gray-900">@Localizer["NoAppsAvailable"]</h3>
+            <p class="empty-state-description mt-1 text-sm text-gray-500">@Localizer["NoAppsDescription"]</p>
         </div>
     }
 </div>
@@ -74,11 +80,22 @@
 
     private string GetAppIconClass(dynamic app)
     {
-        // Generate color class based on app name hash
+        // Return Tailwind gradient classes based on hash
         string name = app.DisplayName ?? "";
         int hash = name.GetHashCode();
-        int index = Math.Abs(hash) % 8; // 8 gradient classes (0-7)
-        return $"gradient-{index}";
+        int index = Math.Abs(hash) % 8;
+        
+        return index switch 
+        {
+            0 => "bg-gradient-to-br from-indigo-500 to-purple-600",
+            1 => "bg-gradient-to-br from-rose-400 to-red-500",
+            2 => "bg-gradient-to-br from-cyan-400 to-blue-500",
+            3 => "bg-gradient-to-br from-emerald-400 to-teal-500",
+            4 => "bg-gradient-to-br from-orange-400 to-amber-500",
+            5 => "bg-gradient-to-br from-violet-400 to-fuchsia-500",
+            6 => "bg-gradient-to-br from-pink-400 to-rose-500",
+            _ => "bg-gradient-to-br from-blue-400 to-indigo-500"
+        };
     }
 }
 
