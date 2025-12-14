@@ -227,16 +227,16 @@
 
     <footer class="bg-white border-t border-gray-200 mt-auto">
         <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
-                <div class="mb-4 md:mb-0">
+            <div class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 gap-4 md:gap-0">
+                <div class="text-center md:text-left">
                     @Localizer["FooterCopyright"] • @Localizer["AllRightsReserved"]
                 </div>
-                <div class="flex space-x-4">
-                    <a asp-area="" asp-page="/Privacy" class="hover:text-gray-900">
+                <div class="flex items-center space-x-4">
+                    <a asp-area="" asp-page="/Privacy" class="hover:text-gray-900 flex items-center gap-1">
                         <i class="bi bi-shield-check"></i> @Localizer["Privacy"]
                     </a>
                     <span class="text-gray-300">|</span>
-                        <a href="/Docs/Index" class="hover:text-gray-900">
+                        <a href="/Docs/Index" class="hover:text-gray-900 flex items-center gap-1">
                         <i class="bi bi-journal-text"></i> @Localizer["Documentation"]
                     </a>
                 </div>
