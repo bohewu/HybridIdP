@@ -18,6 +18,7 @@ public class IntrospectionController : Controller
     [HttpPost("~/connect/introspect")]
     [IgnoreAntiforgeryToken]
     [Produces("application/json")]
+    [Web.IdP.Filters.RequireClientPermission(OpenIddict.Abstractions.OpenIddictConstants.Permissions.Endpoints.Introspection)]
     public async Task<IActionResult> Introspect()
     {
         var request = HttpContext.GetOpenIddictServerRequest();

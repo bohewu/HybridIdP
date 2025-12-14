@@ -116,6 +116,7 @@ public static class ClientSeeder
                 Permissions.Endpoints.Token,
                 Permissions.Endpoints.Introspection,
                 Permissions.Endpoints.Revocation,
+                Permissions.Endpoints.PushedAuthorization, // Added PAR support
                 Permissions.GrantTypes.ClientCredentials,
                 $"{Permissions.Prefixes.Scope}api:company:read",
                 $"{Permissions.Prefixes.Scope}api:company:write"
@@ -172,6 +173,7 @@ public static class ClientSeeder
                 Permissions.Endpoints.Token,
                 Permissions.Endpoints.Introspection,
                 Permissions.Endpoints.Revocation,
+                Permissions.Endpoints.PushedAuthorization, // Added PAR support
                 Permissions.GrantTypes.ClientCredentials,
                 // Standard OIDC scopes for UserInfo endpoint testing
                 $"{Permissions.Prefixes.Scope}openid",
@@ -219,6 +221,10 @@ public static class ClientSeeder
             {
                 Permissions.Endpoints.Authorization,
                 Permissions.Endpoints.Token,
+                Permissions.Endpoints.Introspection,
+                Permissions.Endpoints.Revocation,
+                Permissions.Endpoints.EndSession,
+                Permissions.Endpoints.PushedAuthorization,
                 Permissions.GrantTypes.AuthorizationCode,
                 Permissions.GrantTypes.RefreshToken,
                 Permissions.GrantTypes.Password, // For ROPC testing
@@ -258,6 +264,10 @@ public static class ClientSeeder
             {
                 Permissions.Endpoints.Authorization,
                 Permissions.Endpoints.Token,
+                Permissions.Endpoints.Introspection,
+                Permissions.Endpoints.Revocation,
+                Permissions.Endpoints.EndSession,
+                Permissions.Endpoints.PushedAuthorization,
                 Permissions.GrantTypes.AuthorizationCode,
                 Permissions.GrantTypes.RefreshToken,
                 Permissions.Scopes.Email,
