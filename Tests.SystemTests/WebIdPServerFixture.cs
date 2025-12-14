@@ -72,7 +72,7 @@ public class WebIdPServerFixture : IAsyncLifetime
         var startInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = "run --launch-profile https --no-build --RateLimiting:Enabled=false",
+            Arguments = "run --launch-profile https --no-build --RateLimiting:Enabled=false --Security:ValidationIntervalSeconds=0",
             WorkingDirectory = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "Web.IdP"),
             UseShellExecute = false,
             CreateNoWindow = false, // Maybe true to avoid popup?

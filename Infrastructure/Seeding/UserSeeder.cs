@@ -27,6 +27,7 @@ public static class UserSeeder
             await SeedLegacyTestUserAsync(userManager, context);
             await SeedInactiveUserAsync(userManager, context);
             await SeedInactivePersonUserAsync(userManager, context);
+            await SeedAbnormalLoginTestUserAsync(userManager, context);
         }
     }
 
@@ -285,10 +286,10 @@ public static class UserSeeder
         const string password = "Test@123";
 
         var existingUser = await userManager.FindByEmailAsync(email);
-        if (existingUser != null)
-        {
-            return;
-        }
+    if (existingUser != null)
+    {
+        return;
+    }
 
         // Check if Person already exists
         var nationalIdHash = PidHasher.Hash("T123456789");
@@ -518,5 +519,107 @@ public static class UserSeeder
             person.IdentityVerifiedBy = user.Id;
             await context.SaveChangesAsync();
         }
+    }
+
+    /// <summary>
+    /// Seeds a test user with pre-existing LoginHistory records from a "known" IP.
+    /// When BlockAbnormalLogin is enabled, logging in from a "different" IP should be blocked.
+    /// Note: In System Tests, the client IP is typically ::1, so we seed history with a different IP (192.168.1.100)
+    /// to make ::1 appear as "abnormal".
+    /// </summary>
+    private static async Task SeedAbnormalLoginTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "abnormal@hybridauth.local";
+        const string password = "Abnormal@123";
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null)
+        {
+            // Reset history for test user to ensure clean state (remove any ::1 from previous runs)
+            var history = context.LoginHistories.Where(h => h.UserId == existingUser.Id);
+            context.LoginHistories.RemoveRange(history);
+            await context.SaveChangesAsync();
+
+            // Seed LoginHistory for existing user
+            await SeedAbnormalLoginHistoryAsync(context, existingUser.Id);
+            return;
+        }
+
+        var nationalIdHash = PidHasher.Hash("A987654321");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Abnormal",
+                LastName = "LoginTest",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Abnormal",
+            LastName = "LoginTest",
+            IsActive = true
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
+
+            // Seed LoginHistory records with a "known" IP
+            await SeedAbnormalLoginHistoryAsync(context, user.Id);
+        }
+    }
+
+    /// <summary>
+    /// Seeds LoginHistory records for abnormal login testing.
+    /// All records use IP 192.168.1.100, so when test logs in from ::1, it appears as "new/unknown" IP.
+    /// </summary>
+    private static async Task SeedAbnormalLoginHistoryAsync(ApplicationDbContext context, Guid userId)
+    {
+        const string knownIp = "192.168.1.100";
+        var now = DateTime.UtcNow;
+
+        // Seed 10 successful logins from the "known" IP
+        for (int i = 0; i < 10; i++)
+        {
+            context.LoginHistories.Add(new LoginHistory
+            {
+                UserId = userId,
+                LoginTime = now.AddDays(-i - 1), // Past logins
+                IpAddress = knownIp,
+                UserAgent = "Seeded Test Agent",
+                IsSuccessful = true,
+                RiskScore = 0,
+                IsFlaggedAbnormal = false
+            });
+        }
+        await context.SaveChangesAsync();
     }
 }
