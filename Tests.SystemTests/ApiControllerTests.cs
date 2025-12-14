@@ -106,28 +106,6 @@ public class ApiControllerTests : IClassFixture<WebIdPServerFixture>, IAsyncLife
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Fact(Skip = "Requires OpenIddict-issued user token with openid scope claim, not M2M client token")]
-    public async Task ScopeProtected_OpenId_WithValidToken_ReturnsOk()
-    {
-        // Note: This test requires a token issued by OpenIddict with the openid scope claim
-        // M2M client_credentials tokens don't include standard OIDC scope claims
-        // This endpoint is tested via user login flows in other test files
-        
-        // Arrange - token with openid scope
-        _httpClient.DefaultRequestHeaders.Authorization = 
-            new AuthenticationHeaderValue("Bearer", _accessToken);
-
-        // Act
-        var response = await _httpClient.GetAsync("/api/test/scopeprotected/openid");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadAsStringAsync();
-        var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
-        Assert.True(result.TryGetProperty("scope", out var scope));
-        Assert.Equal("openid", scope.GetString());
-    }
-
     [Fact]
     public async Task ScopeProtected_OpenId_NoAuth_ReturnsUnauthorized()
     {
