@@ -419,4 +419,10 @@
   <data name="RequiredField" xml:space="preserve">
     <value>The {0} field is required.</value>
   </data>
+  <data name="UserAccountDeactivated" xml:space="preserve">
+    <value>Your account has been deactivated. Please contact the administrator.</value>
+  </data>
+  <data name="PersonNotActive" xml:space="preserve">
+    <value>Your associated person record is not active. Please contact HR or the administrator.</value>
+  </data>
 </root>

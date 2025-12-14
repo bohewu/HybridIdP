@@ -414,4 +414,10 @@
   <data name="RequiredField" xml:space="preserve">
     <value>{0} 是必填的。</value>
   </data>
+  <data name="UserAccountDeactivated" xml:space="preserve">
+    <value>您的帳戶已被停用。請聯繫管理員。</value>
+  </data>
+  <data name="PersonNotActive" xml:space="preserve">
+    <value>您關聯的人員記錄目前非啟用狀態。請聯繫人資或管理員。</value>
+  </data>
 </root>
