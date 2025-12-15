@@ -30,6 +30,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
 </head>
 <body class="bg-gray-50 google-font min-h-screen flex flex-col">
-    @RenderBody()
+    <div class="google-login-container">
+        @RenderBody()
+        <partial name="_GoogleFooter" />
+    </div>
 </body>
 </html>

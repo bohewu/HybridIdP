@@ -6,52 +6,40 @@
     Layout = "_SimpleLayout";
 }
 
-<div class="google-login-container">
-    <div class="google-login-card">
-        <div class="google-login-header mb-6 text-center">
-            @* Use logo or icon if available, or just title *@
-            <h1 class="text-2xl font-normal text-gray-900 mb-2">@ViewData["Title"]</h1>
-        </div>
-        
-        <div class="google-login-body">
-            @if (Model.ShowLogoutPrompt)
-            {
-                <p class="text-center text-gray-600 mb-8">@Localizer["LogoutConfirmMessage"]</p>
-                <form method="post" class="space-y-4">
-                    <div class="flex flex-col gap-3">
-                        <button type="submit" class="btn-google-blue w-full justify-center">
-                            @Localizer["YesLogout"]
-                        </button>
-                        <a asp-page="/Index" class="btn-google-white w-full justify-center">
-                            @Localizer["Cancel"]
-                        </a>
-                    </div>
-                </form>
-            }
-            else
-            {
-                <div class="text-center mb-8">
-                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-4">
-                        <i class="bi bi-check-lg text-2xl text-green-600"></i>
-                    </div>
-                    <p class="text-gray-900 font-medium"> @Localizer["LogoutSuccessMessage"]</p>
-                </div>
-                <div class="flex flex-col gap-3">
-                    <a asp-page="/Index" class="btn-google-blue w-full justify-center text-center no-underline">
-                        @Localizer["ReturnHome"]
-                    </a>
-                </div>
-            }
-        </div>
+<div class="google-login-card">
+    <div class="google-login-header mb-6 text-center">
+        @* Use logo or icon if available, or just title *@
+        <h1 class="text-2xl font-normal text-gray-900 mb-2">@ViewData["Title"]</h1>
     </div>
     
-    @* Footer *@
-    <div class="google-footer mt-4">
-        <div class="flex gap-4 text-xs text-gray-500 justify-center">
-             <span>@Localizer["Language"]</span>
-             <span>@Localizer["Help"]</span>
-             <span>@Localizer["Privacy"]</span>
-             <span>@Localizer["Terms"]</span>
-        </div>
+    <div class="google-login-body">
+        @if (Model.ShowLogoutPrompt)
+        {
+            <p class="text-center text-gray-600 mb-8">@Localizer["LogoutConfirmMessage"]</p>
+            <form method="post" class="space-y-4">
+                <div class="flex flex-col gap-3">
+                    <button type="submit" class="btn-google-blue w-full justify-center">
+                        @Localizer["YesLogout"]
+                    </button>
+                    <a asp-page="/Index" class="btn-google-white w-full justify-center">
+                        @Localizer["Cancel"]
+                    </a>
+                </div>
+            </form>
+        }
+        else
+        {
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-4">
+                    <i class="bi bi-check-lg text-2xl text-green-600"></i>
+                </div>
+                <p class="text-gray-900 font-medium"> @Localizer["LogoutSuccessMessage"]</p>
+            </div>
+            <div class="flex flex-col gap-3">
+                <a asp-page="/Index" class="btn-google-blue w-full justify-center text-center no-underline">
+                    @Localizer["ReturnHome"]
+                </a>
+            </div>
+        }
     </div>
 </div>
