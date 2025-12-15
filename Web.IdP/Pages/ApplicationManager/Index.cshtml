@@ -2,13 +2,10 @@
 @model Web.IdP.Pages.ApplicationManager.IndexModel
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
-    ViewData["Title"] = Localizer["Dashboard"];
+    ViewData["Title"] = Localizer["Dashboard"].Value;
     ViewData["Breadcrumb"] = Localizer["Dashboard"].Value;
     Layout = "~/Pages/Shared/_ApplicationManagerLayout.cshtml";
 }
 
-<div id="app" data-user-name="@Model.UserName" data-client-count="@Model.ClientCount" data-scope-count="@Model.ScopeCount"></div>
-
-@section Scripts {
-    <script type="module" vite-src="~/src/app-manager/dashboard/main.js"></script>
-}
+<div id="app" class="vue-app-container" data-user-name="@Model.UserName" data-client-count="@Model.ClientCount" data-scope-count="@Model.ScopeCount"></div>
+<script type="module" vite-src="~/src/app-manager/dashboard/main.js"></script>
