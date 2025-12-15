@@ -198,7 +198,7 @@ const isScopeSelected = (scopeId) => {
               v-model="formData.name"
               type="text"
               :disabled="isEdit"
-              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
               :placeholder="$t('resources.form.namePlaceholder')"
               data-test-id="resources-name-input"
             />
@@ -214,7 +214,7 @@ const isScopeSelected = (scopeId) => {
               id="displayName"
               v-model="formData.displayName"
               type="text"
-              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
               :placeholder="$t('resources.form.displayNamePlaceholder')"
               data-test-id="resources-display-name-input"
             />
@@ -229,7 +229,7 @@ const isScopeSelected = (scopeId) => {
               id="description"
               v-model="formData.description"
               rows="3"
-              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm px-3 py-2"
               :placeholder="$t('resources.form.descriptionPlaceholder')"
               data-test-id="resources-description-input"
             ></textarea>
@@ -244,7 +244,7 @@ const isScopeSelected = (scopeId) => {
               id="baseUrl"
               v-model="formData.baseUrl"
               type="url"
-              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
               :placeholder="$t('resources.form.baseUrlPlaceholder')"
               data-test-id="resources-base-url-input"
             />
@@ -260,7 +260,7 @@ const isScopeSelected = (scopeId) => {
         type="submit"
         @click="handleSubmit"
         :disabled="submitting"
-        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
         data-test-id="resources-save-btn"
       >
         <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

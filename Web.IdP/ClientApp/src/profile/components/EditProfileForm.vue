@@ -2,7 +2,7 @@
   <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6" data-testid="edit-profile-form">
     <div class="px-6 py-5 border-b border-gray-200 bg-gray-50 rounded-t-lg">
       <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
-        <i class="bi bi-person-gear text-indigo-600"></i>
+        <i class="bi bi-person-gear text-google-500"></i>
         {{ t('profile.edit.title') }}
       </h3>
     </div>
@@ -34,7 +34,7 @@
             <input 
               v-model="form.phoneNumber"
               type="tel"
-              class="block w-full pl-10 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
+              class="block w-full pl-10 border border-gray-300 rounded-md focus:ring-google-500 focus:border-google-500 sm:text-sm h-10"
               :placeholder="t('profile.edit.phoneNumberPlaceholder')"
             />
           </div>
@@ -52,7 +52,7 @@
               </div>
               <select 
                 v-model="form.locale"
-                class="block w-full pl-10 border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
+                class="block w-full pl-10 border-gray-300 rounded-md focus:ring-google-500 focus:border-google-500 sm:text-sm h-10"
               >
                 <option value="">{{ t('profile.edit.selectLocale') }}</option>
                 <option value="zh-TW">繁體中文 (zh-TW)</option>
@@ -72,7 +72,7 @@
               </div>
               <select 
                 v-model="form.timeZone"
-                class="block w-full pl-10 border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-10"
+                class="block w-full pl-10 border-gray-300 rounded-md focus:ring-google-500 focus:border-google-500 sm:text-sm h-10"
               >
                 <option value="">{{ t('profile.edit.selectTimeZone') }}</option>
                 <option value="Asia/Taipei">Asia/Taipei (GMT+8)</option>
@@ -90,14 +90,14 @@
           <button 
             type="button"
             @click="resetForm"
-            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-sm font-medium transition-colors"
+            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500 text-sm font-medium transition-colors"
           >
             {{ t('profile.common.cancel') }}
           </button>
           <button 
             type="submit"
             :disabled="loading"
-            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-google-500 hover:bg-google-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <i v-if="loading" class="bi bi-arrow-repeat animate-spin mr-2"></i>
             <i v-else class="bi bi-check-lg mr-2"></i>

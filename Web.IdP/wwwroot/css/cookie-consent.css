@@ -1,4 +1,26 @@
-#cookie-consent-banner{position:fixed;right:16px;bottom:16px;z-index:1050;background:#fff;border:1px solid #ddd;padding:16px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.08);max-width:360px}
-#cookie-consent-banner .cc-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
-#cookie-consent-banner a{color:#0d6efd}
-#cookie-consent-banner p{margin:0}
+/* Cookie Consent Banner - Google Style */
+#cookie-consent-banner {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1050;
+  background: #fff;
+  border: 1px solid var(--google-gray-200, #e8eaed);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 380px;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+#cookie-consent-banner .cc-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+#cookie-consent-banner p {
+  margin: 0;
+  line-height: 1.5;
+}

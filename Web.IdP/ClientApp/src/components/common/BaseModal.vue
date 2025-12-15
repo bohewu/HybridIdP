@@ -34,7 +34,7 @@
               :disabled="loading"
               :aria-label="closeAriaLabel"
               tabindex="-1"
-              class="absolute top-4 right-4 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed z-10"
+              class="absolute top-4 right-4 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-google-500 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed z-10"
             >
               <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -65,7 +65,7 @@
               v-if="loading"
               class="absolute inset-0 bg-white bg-opacity-75 rounded-lg flex items-center justify-center"
             >
-              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-google-500"></div>
             </div>
           </div>
         </div>

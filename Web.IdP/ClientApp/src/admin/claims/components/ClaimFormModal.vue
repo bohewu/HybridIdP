@@ -98,7 +98,7 @@ const handleClose = () => {
             type="text"
             required
             :disabled="claim?.isStandard"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.namePlaceholder')"
             data-test-id="claim-name-input"
           />
@@ -111,7 +111,7 @@ const handleClose = () => {
             v-model="formData.displayName"
             type="text"
             required
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors h-10 px-3"
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm transition-colors h-10 px-3"
             :placeholder="t('claims.form.displayNamePlaceholder')"
              data-test-id="claim-display-name-input"
           />
@@ -123,7 +123,7 @@ const handleClose = () => {
           <textarea
             v-model="formData.description"
             rows="2"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors px-3 py-2"
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm transition-colors px-3 py-2"
             :placeholder="t('claims.form.descriptionPlaceholder')"
             data-test-id="claim-description-input"
           ></textarea>
@@ -137,7 +137,7 @@ const handleClose = () => {
             type="text"
             required
             :disabled="claim?.isStandard"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.claimTypePlaceholder')"
              data-test-id="claim-type-input"
           />
@@ -152,7 +152,7 @@ const handleClose = () => {
             type="text"
             required
             :disabled="claim?.isStandard"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.userPropertyPathPlaceholder')"
              data-test-id="claim-property-path-input"
           />
@@ -165,7 +165,7 @@ const handleClose = () => {
           <select
             v-model="formData.dataType"
             :disabled="claim?.isStandard"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
              data-test-id="claim-data-type-select"
           >
             <option value="String">{{ t('claims.form.dataTypes.string') }}</option>
@@ -183,7 +183,7 @@ const handleClose = () => {
               v-model="formData.isRequired"
               type="checkbox"
               :disabled="claim?.isStandard"
-              class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 disabled:bg-gray-100 h-4 w-4"
+              class="rounded border-gray-300 text-google-500 shadow-sm focus:border-google-500 focus:ring focus:ring-google-100 focus:ring-opacity-50 disabled:bg-gray-100 h-4 w-4"
               data-test-id="claim-required-checkbox"
             />
             <span class="ml-2 text-sm text-gray-700">{{ t('claims.form.isRequired') }}</span>
@@ -203,7 +203,7 @@ const handleClose = () => {
         type="submit"
         form="claim-form"
         :disabled="saving"
-        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
         data-test-id="claim-save-btn"
       >
         {{ saving ? t('claims.form.saving') : t('claims.form.save') }}

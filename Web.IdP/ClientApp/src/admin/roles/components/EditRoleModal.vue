@@ -221,7 +221,7 @@ onMounted(() => {
                           v-model="form.name"
                           type="text"
                           :disabled="role.isSystem"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors h-10 px-3"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors h-10 px-3"
                           :class="{ 'border-red-500': errors.name }"
                           required
                           :placeholder="$t('roles.createModal.roleNamePlaceholder')"
@@ -239,7 +239,7 @@ onMounted(() => {
                           id="description"
                           v-model="form.description"
                           rows="3"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors px-3 py-2"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm transition-colors px-3 py-2"
                           :placeholder="$t('roles.editModal.descriptionPlaceholder')"
                       />
                     </div>
@@ -263,7 +263,7 @@ onMounted(() => {
                                   :checked="isCategoryFullySelected(key)"
                                   :indeterminate.prop="isCategoryPartiallySelected(key)"
                                   @change="toggleAllInCategory(key)"
-                                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                  class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500 cursor-pointer"
                               />
                               <label :for="`category-${key}`" class="ml-3 text-sm font-semibold text-gray-900 cursor-pointer">
                                 {{ $t(`permissions.groups.${group.labelKey}`) }}
@@ -278,7 +278,7 @@ onMounted(() => {
                                     type="checkbox"
                                     :checked="form.permissions.includes(perm)"
                                     @change="togglePermission(perm)"
-                                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                    class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500 cursor-pointer"
                                 />
                                 <label :for="`perm-${perm}`" class="ml-3 text-sm text-gray-700 cursor-pointer">
                                   {{ $t(`permissions.items.${perm}`, perm) }}
@@ -305,7 +305,7 @@ onMounted(() => {
         type="submit"
         @click="handleSubmit"
         :disabled="saving || loadingPermissions"
-        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
+        class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 disabled:bg-gray-400 disabled:cursor-not-allowed sm:ml-3 sm:w-auto"
       >
         {{ saving ? $t('roles.editModal.updating') : $t('roles.editModal.updateButton') }}
       </button>

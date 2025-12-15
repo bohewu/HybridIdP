@@ -30,7 +30,7 @@
         <select
           :value="pageSize"
           @change="emit('page-size-change', Number($event.target.value))"
-          class="block px-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md transition-colors h-10"
+          class="block px-3 text-base border-gray-300 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm rounded-md transition-colors h-10"
         >
           <option :value="10">{{ $t('common.pagination.perPage', { count: 10 }) }}</option>
           <option :value="25">{{ $t('common.pagination.perPage', { count: 25 }) }}</option>
@@ -55,7 +55,7 @@
             :class="[
               'relative inline-flex items-center justify-center px-4 border text-sm font-medium transition-colors h-10',
               p === page
-                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                ? 'z-10 bg-google-100 border-google-500 text-google-500'
                 : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
             ]"
           >

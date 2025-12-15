@@ -87,7 +87,7 @@ defineEmits(['edit', 'delete'])
               <button
                 v-if="canUpdate"
                 @click="$emit('edit', scope)"
-                class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                class="inline-flex items-center px-3 py-1.5 border border-google-500 text-google-600 text-sm font-medium rounded-md hover:bg-google-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500"
                 :title="$t('scopes.actions.edit')"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

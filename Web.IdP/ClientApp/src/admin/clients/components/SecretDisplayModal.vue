@@ -60,7 +60,7 @@ const handleClose = () => {
               readonly
               class="block w-full rounded-md border-gray-300 bg-gray-50 py-2 pl-3 pr-24 text-gray-900 shadow-sm sm:text-sm font-mono" />
             <button type="button" @click="copySecret(secret)"
-                    class="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-indigo-600 hover:text-indigo-900">
+                    class="absolute inset-y-0 right-0 flex items-center px-3 text-sm font-medium text-google-500 hover:text-google-700">
               {{ secretCopied ? t('clients.secretModal.copied') : t('clients.secretModal.copy') }}
             </button>
           </div>
@@ -70,7 +70,7 @@ const handleClose = () => {
 
     <template #footer>
       <button type="button"
-              class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto"
+              class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto"
               @click="handleClose">
         {{ t('clients.secretModal.close') }}
       </button>

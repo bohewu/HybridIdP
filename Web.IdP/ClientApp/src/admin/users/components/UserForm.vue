@@ -203,7 +203,7 @@ onMounted(() => {
                             v-model="form.email"
                             type="email"
                             :disabled="isEdit"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors h-10 px-3"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors h-10 px-3"
                             :class="{ 'border-red-500': errors.email }"
                             required
                             :placeholder="$t('users.email')"
@@ -222,7 +222,7 @@ onMounted(() => {
                             id="userName"
                             v-model="form.userName"
                             type="text"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm transition-colors h-10 px-3"
                             :class="{ 'border-red-500': errors.userName }"
                             required
                             :placeholder="$t('users.username')"
@@ -239,7 +239,7 @@ onMounted(() => {
                             id="firstName"
                             v-model="form.firstName"
                             type="text"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm transition-colors h-10 px-3"
                             :placeholder="$t('users.firstName')"
                         />
                       </div>
@@ -253,7 +253,7 @@ onMounted(() => {
                             id="lastName"
                             v-model="form.lastName"
                             type="text"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm transition-colors h-10 px-3"
                             :placeholder="$t('users.lastName')"
                         />
                       </div>
@@ -267,7 +267,7 @@ onMounted(() => {
                             id="phoneNumber"
                             v-model="form.phoneNumber"
                             type="tel"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm transition-colors h-10 px-3"
                             :placeholder="$t('users.phoneNumber')"
                         />
                       </div>
@@ -281,7 +281,7 @@ onMounted(() => {
                             id="employeeId"
                             v-model="form.employeeId"
                             type="text"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm transition-colors h-10 px-3"
                             :placeholder="$t('users.employeeId')"
                         />
                       </div>
@@ -295,7 +295,7 @@ onMounted(() => {
                             id="department"
                             v-model="form.department"
                             type="text"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm transition-colors h-10 px-3"
                             :placeholder="$t('users.department')"
                         />
                       </div>
@@ -309,7 +309,7 @@ onMounted(() => {
                             id="jobTitle"
                             v-model="form.jobTitle"
                             type="text"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors h-10 px-3"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm transition-colors h-10 px-3"
                             :placeholder="$t('users.jobTitle')"
                         />
                       </div>
@@ -337,7 +337,7 @@ onMounted(() => {
         type="submit"
         @click="handleSubmit"
         :disabled="saving"
-        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
              xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

@@ -1,15 +1,19 @@
-@* Simple cookie consent partial. It expects the JS template below to be present when DOMContentLoaded *@
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Web.IdP.SharedResource> Localizer
+
+@* Cookie consent banner - Google style *@
 <div id="cookie-consent-template" style="display:none">
-  <div id="cookie-consent-banner" role="dialog" aria-live="polite" aria-label="Cookie 同意提示">
+  <div id="cookie-consent-banner" role="dialog" aria-live="polite" aria-label="@Localizer["CookieConsent.AriaLabel"]">
     <div>
-      <strong>Cookie 與隱私</strong>
-      <p class="small text-muted">我們只使用必要的 Cookie 以維持登入與安全。非必要 Cookie 僅在您同意後啟用。系統目前不使用第三方分析 Cookie。</p>
+      <strong class="text-gray-900">@Localizer["CookieConsent.Title"]</strong>
+      <p class="text-sm text-gray-600 mt-2 mb-0">@Localizer["CookieConsent.Description"]</p>
       <div class="cc-actions">
-        <button id="cookie-consent-decline" class="btn btn-outline-secondary btn-sm">拒絕</button>
-        <button id="cookie-consent-accept" class="btn btn-primary btn-sm">接受</button>
-        <a id="cookie-consent-close" href="#" class="btn btn-link btn-sm">關閉</a>
+        <button id="cookie-consent-decline" class="btn-google-white">@Localizer["CookieConsent.Decline"]</button>
+        <button id="cookie-consent-accept" class="btn-google-blue">@Localizer["CookieConsent.Accept"]</button>
       </div>
-      <div class="mt-2"><a href="/docs/privacy.html" target="_blank">隱私權政策</a></div>
+      <div class="mt-3">
+        <a href="/Privacy" class="text-sm link-google">@Localizer["Privacy"]</a>
+      </div>
     </div>
   </div>
 </div>

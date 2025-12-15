@@ -181,7 +181,7 @@ const handleCloseLinkDialog = () => {
       <div v-if="canUpdate" class="mb-4">
         <button
           @click="handleShowLinkDialog"
-          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-google-500 hover:bg-google-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500"
         >
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -258,12 +258,12 @@ const handleCloseLinkDialog = () => {
             v-model="searchTerm"
             type="text"
             :placeholder="t('persons.linkedAccounts.searchUsers')"
-            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm"
             @keyup.enter="handleSearchUsers"
           />
           <button
             @click="handleSearchUsers"
-            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-google-500 hover:bg-google-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500"
           >
             {{ t('persons.linkedAccounts.search') }}
           </button>
@@ -272,7 +272,7 @@ const handleCloseLinkDialog = () => {
 
       <!-- Available Users List -->
       <div v-if="loading" class="flex justify-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-google-500"></div>
       </div>
 
       <div v-else-if="availableUsers.length === 0" class="text-center py-8">
@@ -286,13 +286,13 @@ const handleCloseLinkDialog = () => {
             :key="user.id"
             @click="selectedUserId = user.id"
             class="px-4 py-3 hover:bg-gray-50 cursor-pointer"
-            :class="{ 'bg-indigo-50': selectedUserId === user.id }"
+            :class="{ 'bg-google-100': selectedUserId === user.id }"
           >
             <div class="flex items-center">
               <input
                 type="radio"
                 :checked="selectedUserId === user.id"
-                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                class="h-4 w-4 text-google-500 focus:ring-google-500 border-gray-300"
               />
               <div class="ml-3">
                 <p class="text-sm font-medium text-gray-900">{{ user.email }}</p>
@@ -309,7 +309,7 @@ const handleCloseLinkDialog = () => {
         type="button"
         @click="handleLinkAccount"
         :disabled="!selectedUserId || linking"
-        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg v-if="linking" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

@@ -464,4 +464,20 @@
   <data name="Confirm password" xml:space="preserve">
     <value>Confirm password</value>
   </data>
+  <!-- Cookie Consent -->
+  <data name="CookieConsent.AriaLabel" xml:space="preserve">
+    <value>Cookie Consent</value>
+  </data>
+  <data name="CookieConsent.Title" xml:space="preserve">
+    <value>Cookies &amp; Privacy</value>
+  </data>
+  <data name="CookieConsent.Description" xml:space="preserve">
+    <value>We only use essential cookies to maintain login and security. Non-essential cookies are only enabled with your consent. We do not use third-party analytics cookies.</value>
+  </data>
+  <data name="CookieConsent.Accept" xml:space="preserve">
+    <value>Accept</value>
+  </data>
+  <data name="CookieConsent.Decline" xml:space="preserve">
+    <value>Decline</value>
+  </data>
 </root>

@@ -28,8 +28,8 @@
       <div class="mb-8 bg-white rounded-lg shadow-sm p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('dashboard.quickStats') }}</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="text-center p-4 bg-linear-to-br from-indigo-50 to-indigo-100 rounded-lg" data-test-id="dashboard-stats-clients">
-            <div class="text-3xl font-bold text-indigo-600">{{ stats.totalClients }}</div>
+          <div class="text-center p-4 bg-linear-to-br from-google-50 to-google-100 rounded-lg" data-test-id="dashboard-stats-clients">
+            <div class="text-3xl font-bold text-google-500">{{ stats.totalClients }}</div>
             <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalClients') }}</div>
           </div>
           <div class="text-center p-4 bg-linear-to-br from-green-50 to-green-100 rounded-lg" data-test-id="dashboard-stats-scopes">
@@ -130,14 +130,14 @@
       <div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
         <!-- OIDC Clients Card -->
         <div class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6 h-full flex flex-col">
-          <div class="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
-            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex items-center justify-center w-12 h-12 bg-google-100 rounded-lg mb-4">
+            <svg class="w-6 h-6 text-google-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
             </svg>
           </div>
           <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ $t('dashboard.cards.clients.title') }}</h2>
           <p class="text-sm text-gray-600 mb-4">{{ $t('dashboard.cards.clients.description') }}</p>
-          <a href="/Admin/Clients" class="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-medium text-sm mt-auto">
+          <a href="/Admin/Clients" class="inline-flex items-center text-google-500 hover:text-google-600 font-medium text-sm mt-auto">
             {{ $t('dashboard.cards.clients.action') }}
             <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>

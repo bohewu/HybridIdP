@@ -120,7 +120,7 @@ const handleSubmit = async () => {
             type="text"
             required
             :disabled="isEdit"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
             :placeholder="$t('localization.form.keyPlaceholder')"
           />
         </div>
@@ -134,7 +134,7 @@ const handleSubmit = async () => {
             v-model="formData.culture"
             required
             :disabled="isEdit"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
             <option value="zh-TW">繁體中文 (zh-TW)</option>
             <option value="en-US">English (en-US)</option>
@@ -149,7 +149,7 @@ const handleSubmit = async () => {
             data-test-id="category-input"
             v-model="formData.category"
             type="text"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
             :placeholder="$t('localization.form.categoryPlaceholder')"
           />
         </div>
@@ -163,7 +163,7 @@ const handleSubmit = async () => {
             v-model="formData.value"
             required
             rows="3"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-3"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm p-3"
             :placeholder="$t('localization.form.valuePlaceholder')"
           ></textarea>
         </div>
@@ -177,7 +177,7 @@ const handleSubmit = async () => {
         form="localization-form"
         data-test-id="submit-btn"
         :disabled="submitting"
-        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50"
+        class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto disabled:opacity-50"
       >
         {{ submitting ? $t('localization.form.saving') : $t('localization.form.save') }}
       </button>

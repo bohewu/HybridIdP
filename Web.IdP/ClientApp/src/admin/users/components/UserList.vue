@@ -103,7 +103,7 @@ const getSortIcon = (field) => {
             <select
               :value="isActiveFilter"
               @change="emit('update:isActiveFilter', $event.target.value)"
-              class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
+              class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-google-500 transition-colors h-10"
             >
               <option value="">{{ t('users.all') }}</option>
               <option value="true">{{ t('users.active') }}</option>
@@ -203,7 +203,7 @@ const getSortIcon = (field) => {
                   <span
                     v-for="role in user.roles"
                     :key="role"
-                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-google-100 text-google-500"
                   >
                     {{ role }}
                   </span>
