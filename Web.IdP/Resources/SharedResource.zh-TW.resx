@@ -453,4 +453,10 @@
   <data name="Validation_PasswordLength" xml:space="preserve">
     <value>密碼長度必須至少 {0} 個字元</value>
   </data>
+  <data name="Email" xml:space="preserve">
+    <value>電子郵件</value>
+  </data>
+  <data name="Confirm password" xml:space="preserve">
+    <value>確認密碼</value>
+  </data>
 </root>
