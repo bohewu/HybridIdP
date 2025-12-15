@@ -62,6 +62,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IClaimsService, ClaimsService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IImpersonationService, ImpersonationService>();
+        services.AddScoped<IMfaService, MfaService>(); // Phase 20: MFA
 
         // Connect/OIDC Services
         services.AddScoped<IAuthorizationService, AuthorizationService>();
