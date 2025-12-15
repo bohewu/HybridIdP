@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using OtpNet;
 using Xunit;
 
 namespace Tests.SystemTests;
@@ -138,7 +139,40 @@ public class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, setupResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task DisableMfa_ValidPassword_DisablesMfa()
+    {
+        // First enable MFA
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        var setupResponse = await _httpClient.GetAsync("/api/account/mfa/setup");
+        var setup = await setupResponse.Content.ReadFromJsonAsync<MfaSetupDto>();
+        
+        // Generate valid TOTP
+        var totp = GenerateTotp(setup!.SharedKey);
+        
+        var verifyResponse = await _httpClient.PostAsJsonAsync("/api/account/mfa/verify", new { Code = totp });
+        Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
+
+        // Act - Disable
+        var disableResponse = await _httpClient.PostAsJsonAsync("/api/account/mfa/disable", new { Password = TEST_USER_PASSWORD });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
+        
+        // Verify status is disabled
+        var statusResponse = await _httpClient.GetAsync("/api/account/mfa/status");
+        var status = await statusResponse.Content.ReadFromJsonAsync<MfaStatusDto>();
+        Assert.False(status!.TwoFactorEnabled);
+    }
+
     #region Helper Methods
+
+    private string GenerateTotp(string secretKey)
+    {
+        var bytes = Base32Encoding.ToBytes(secretKey.Replace(" ", ""));
+        var totp = new Totp(bytes);
+        return totp.ComputeTotp();
+    }
 
     private async Task<string> GetUserTokenAsync(string username, string password)
     {
@@ -174,6 +208,7 @@ public class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         public bool TwoFactorEnabled { get; init; }
         public bool HasAuthenticator { get; init; }
         public int RecoveryCodesLeft { get; init; }
+        public bool HasPassword { get; init; }
     }
 
     private record MfaSetupDto
