@@ -20,9 +20,9 @@
   color: #111827; /* hover:text-gray-900 */
 }
 .nav-item.active {
-  background-color: #eef2ff; /* bg-indigo-50 */
-  color: #4f46e5; /* text-indigo-600 */
-  border-left: 4px solid #4f46e5;
+  background-color: #e8f0fe; /* bg-google-100 */
+  color: #1a73e8; /* text-google-500 */
+  border-left: 4px solid #1a73e8;
   margin-left: -1px;
   padding-left: 0.625rem;
 }

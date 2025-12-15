@@ -7,7 +7,8 @@ import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 const { t } = useI18n()
 
 const props = defineProps({
-  user: { type: Object, required: true }
+  user: { type: Object, required: true },
+  canUpdate: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['close', 'save'])
@@ -131,7 +132,7 @@ onMounted(() => {
                       v-for="role in availableRoles"
                       :key="role.id"
                       class="relative flex items-start p-3 border rounded-md cursor-pointer transition-all"
-                      :class="isSelected(role.name) ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-gray-300 hover:bg-gray-50'"
+                      :class="isSelected(role.name) ? 'bg-google-100 border-google-500' : 'bg-white border-gray-300 hover:bg-gray-50'"
                       @click="toggleRole(role.name)"
                     >
                       <div class="flex h-5 items-center">
@@ -141,7 +142,7 @@ onMounted(() => {
                           :checked="isSelected(role.name)"
                           @click.stop
                           @change="toggleRole(role.name)"
-                          class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500"
                         />
                       </div>
                       <div class="ml-3 flex-1">
@@ -175,7 +176,7 @@ onMounted(() => {
         type="button"
         @click="handleSave"
         :disabled="saving || loading"
-        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

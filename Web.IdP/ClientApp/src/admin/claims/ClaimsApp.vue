@@ -8,7 +8,7 @@
       <template #actions>
         <button
           @click="openCreateModal"
-          class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
+          class="inline-flex items-center justify-center px-4 py-2 bg-google-500 text-white text-sm font-medium rounded-md hover:bg-google-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
           :disabled="loading"
           data-test-id="claims-create-btn"
         >
@@ -40,7 +40,7 @@
           <div class="flex gap-2">
             <select 
               v-model="sortBy" 
-              class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
+              class="block rounded-md border-gray-300 focus:border-google-500 focus:ring-2 focus:ring-google-500 sm:text-sm transition-colors h-10"
             >
               <option value="name">{{ $t('claims.sortOptions.name') }}</option>
               <option value="displayname">{{ $t('claims.sortOptions.displayName') }}</option>
@@ -49,7 +49,7 @@
             </select>
             <select 
               v-model="sortDirection" 
-              class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
+              class="block rounded-md border-gray-300 focus:border-google-500 focus:ring-2 focus:ring-google-500 sm:text-sm transition-colors h-10"
             >
               <option value="asc">{{ $t('claims.sortDirection.asc') }}</option>
               <option value="desc">{{ $t('claims.sortDirection.desc') }}</option>
@@ -126,7 +126,7 @@
                 <div class="inline-flex gap-1">
                   <button
                     @click="openEditModal(claim)"
-                    class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    class="inline-flex items-center px-3 py-1.5 border border-google-500 text-google-600 text-sm font-medium rounded-md hover:bg-google-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500"
                     :title="$t('claims.actions.edit')"
                     data-test-id="claims-edit-btn"
                   >

@@ -64,7 +64,7 @@ defineEmits(['edit', 'delete'])
               v-if="canUpdate"
               @click="$emit('edit', resource)"
               :data-test-id="`edit-btn-${resource.id}`"
-              class="text-indigo-600 hover:text-indigo-900 mr-4"
+              class="text-google-500 hover:text-google-700 mr-4"
             >
               {{ $t('localization.actions.edit') }}
             </button>

@@ -37,6 +37,8 @@
   },
   "loginHistory": {
     "title": "Login History",
+    "loading": "Loading login history...",
+    "empty": "No login history found.",
     "userLabel": "User",
     "showAbnormalOnly": "Show Abnormal Only",
     "tableHeaders": {
@@ -50,10 +52,21 @@
     "status": {
       "success": "Success",
       "failure": "Failure",
-      "abnormal": "Abnormal"
+      "failed": "Failed",
+      "abnormal": "Abnormal",
+      "approved": "Approved"
     },
     "buttons": {
-      "close": "Close"
+      "close": "Close",
+      "approve": "Approve",
+      "approving": "Approving..."
+    },
+    "confirm": {
+      "approve": "Approve IP {ip} as trusted?"
+    },
+    "alerts": {
+      "approveSuccess": "Login approved successfully.",
+      "approveFailed": "Failed to approve: {message}"
     },
     "noRecords": "No login records"
   },

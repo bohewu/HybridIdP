@@ -9,7 +9,7 @@
           @click="savePolicy"
           data-testid="save-policy-btn"
           :disabled="isSaving || !isDirty"
-          class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
+          class="inline-flex items-center justify-center px-4 py-2 bg-google-500 text-white text-sm font-medium rounded-md hover:bg-google-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
         >
           <svg v-if="isSaving" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -49,7 +49,7 @@
         <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
           <dl class="sm:divide-y sm:divide-gray-200">
             <FormRow :label="$t('security.minLength')" for-id="minLength">
-              <input type="number" id="minLength" v-model.number="policy.minPasswordLength" min="6" max="128" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3">
+              <input type="number" id="minLength" v-model.number="policy.minPasswordLength" min="6" max="128" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
             </FormRow>
             <FormRow :label="$t('security.requireUppercase')">
               <ToggleSwitch v-model="policy.requireUppercase" />
@@ -64,7 +64,7 @@
               <ToggleSwitch v-model="policy.requireNonAlphanumeric" />
             </FormRow>
             <FormRow :label="$t('security.minCharacterTypes')" for-id="minCharacterTypes" :help-text="$t('security.minCharacterTypesHelp')">
-              <input type="number" id="minCharacterTypes" v-model.number="policy.minCharacterTypes" min="2" max="4" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3">
+              <input type="number" id="minCharacterTypes" v-model.number="policy.minCharacterTypes" min="2" max="4" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
             </FormRow>
           </dl>
         </div>
@@ -78,13 +78,13 @@
         <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
           <dl class="sm:divide-y sm:divide-gray-200">
             <FormRow :label="$t('security.historyCount')" for-id="historyCount" :help-text="$t('security.historyCountHelp')">
-              <input type="number" id="historyCount" v-model.number="policy.passwordHistoryCount" min="0" max="24" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3">
+              <input type="number" id="historyCount" v-model.number="policy.passwordHistoryCount" min="0" max="24" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
             </FormRow>
             <FormRow :label="$t('security.expirationDays')" for-id="expirationDays" :help-text="$t('security.expirationDaysHelp')">
-              <input type="number" id="expirationDays" v-model.number="policy.passwordExpirationDays" min="0" max="365" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3">
+              <input type="number" id="expirationDays" v-model.number="policy.passwordExpirationDays" min="0" max="365" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
             </FormRow>
             <FormRow :label="$t('security.minAgeDays')" for-id="minAgeDays" :help-text="$t('security.minAgeDaysHelp')">
-              <input type="number" id="minAgeDays" v-model.number="policy.minPasswordAgeDays" min="0" max="365" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3">
+              <input type="number" id="minAgeDays" v-model.number="policy.minPasswordAgeDays" min="0" max="365" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
             </FormRow>
             <FormRow :label="$t('security.allowSelfPasswordChange')" :help-text="$t('security.allowSelfPasswordChangeHelp')">
               <ToggleSwitch v-model="policy.allowSelfPasswordChange" />
@@ -101,10 +101,10 @@
         <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
           <dl class="sm:divide-y sm:divide-gray-200">
             <FormRow :label="$t('security.maxFailedAttempts')" for-id="maxFailedAttempts" :help-text="$t('security.maxFailedAttemptsHelp')">
-              <input type="number" id="maxFailedAttempts" v-model.number="policy.maxFailedAccessAttempts" min="3" max="20" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3">
+              <input type="number" id="maxFailedAttempts" v-model.number="policy.maxFailedAccessAttempts" min="3" max="20" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
             </FormRow>
             <FormRow :label="$t('security.lockoutDuration')" for-id="lockoutDuration" :help-text="$t('security.lockoutDurationHelp')">
-              <input type="number" id="lockoutDuration" v-model.number="policy.lockoutDurationMinutes" min="1" max="1440" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3">
+              <input type="number" id="lockoutDuration" v-model.number="policy.lockoutDurationMinutes" min="1" max="1440" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
             </FormRow>
           </dl>
         </div>
@@ -118,7 +118,7 @@
         <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
           <dl class="sm:divide-y sm:divide-gray-200">
             <FormRow :label="$t('security.abnormalLoginHistoryCount')" for-id="abnormalLoginHistoryCount" :help-text="$t('security.abnormalLoginHistoryCountHelp')">
-              <input type="number" id="abnormalLoginHistoryCount" v-model.number="policy.abnormalLoginHistoryCount" min="1" max="100" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3">
+              <input type="number" id="abnormalLoginHistoryCount" v-model.number="policy.abnormalLoginHistoryCount" min="1" max="100" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
             </FormRow>
             <FormRow :label="$t('security.blockAbnormalLogin')" :help-text="$t('security.blockAbnormalLoginHelp')">
               <ToggleSwitch v-model="policy.blockAbnormalLogin" />

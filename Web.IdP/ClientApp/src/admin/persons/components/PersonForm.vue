@@ -260,7 +260,7 @@ const handleClose = () => {
 								</label>
 								<input id="firstName" v-model="formData.firstName" type="text" required
 									:placeholder="t('persons.form.firstName')"
-									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 
 							<div>
@@ -269,7 +269,7 @@ const handleClose = () => {
 								</label>
 								<input id="middleName" v-model="formData.middleName" type="text"
 									:placeholder="t('persons.form.middleName')"
-									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 
 							<div>
@@ -278,7 +278,7 @@ const handleClose = () => {
 								</label>
 								<input id="lastName" v-model="formData.lastName" type="text" required
 									:placeholder="t('persons.form.lastName')"
-									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 						</div>
 
@@ -289,7 +289,7 @@ const handleClose = () => {
 							</label>
 							<input id="nickname" v-model="formData.nickname" type="text"
 								:placeholder="t('persons.form.nickname')"
-								class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+								class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 						</div>
 
 						<!-- Contact Information -->
@@ -300,7 +300,7 @@ const handleClose = () => {
 								</label>
 								<input id="email" v-model="formData.email" type="email"
 									:placeholder="t('persons.form.email')"
-									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 
 							<div>
@@ -309,7 +309,7 @@ const handleClose = () => {
 								</label>
 								<input id="phoneNumber" v-model="formData.phoneNumber" type="tel"
 									:placeholder="t('persons.form.phoneNumber')"
-									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 						</div>
 
@@ -321,7 +321,7 @@ const handleClose = () => {
 								</label>
 								<input id="employeeId" v-model="formData.employeeId" type="text"
 									:placeholder="t('persons.form.employeeId')"
-									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 
 							<div>
@@ -330,7 +330,7 @@ const handleClose = () => {
 								</label>
 								<input id="department" v-model="formData.department" type="text"
 									:placeholder="t('persons.form.department')"
-									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 
 							<div>
@@ -339,7 +339,7 @@ const handleClose = () => {
 								</label>
 								<input id="jobTitle" v-model="formData.jobTitle" type="text"
 									:placeholder="t('persons.form.jobTitle')"
-									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 						</div>
 
@@ -352,7 +352,7 @@ const handleClose = () => {
 										{{ t('persons.form.status') }}
 									</label>
 									<select id="status" v-model="formData.status"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm">
 										<option value="Pending">{{ t('persons.statuses.pending') }}</option>
 										<option value="Active">{{ t('persons.statuses.active') }}</option>
 										<option value="Suspended">{{ t('persons.statuses.suspended') }}</option>
@@ -366,7 +366,7 @@ const handleClose = () => {
 										{{ t('persons.form.startDate') }}
 									</label>
 									<input id="startDate" v-model="formData.startDate" type="date"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 								</div>
 
 								<div>
@@ -374,7 +374,7 @@ const handleClose = () => {
 										{{ t('persons.form.endDate') }}
 									</label>
 									<input id="endDate" v-model="formData.endDate" type="date"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 								</div>
 							</div>
 						</div>
@@ -390,7 +390,7 @@ const handleClose = () => {
 									</label>
 									<input id="gender" v-model="formData.gender" type="text"
 										:placeholder="t('persons.form.gender')"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 								</div>
 
 								<div>
@@ -398,7 +398,7 @@ const handleClose = () => {
 										{{ t('persons.form.birthdate') }}
 									</label>
 									<input id="birthdate" v-model="formData.birthdate" type="date"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 								</div>
 							</div>
 
@@ -408,7 +408,7 @@ const handleClose = () => {
 								</label>
 								<textarea id="address" v-model="formData.address" rows="2"
 									:placeholder="t('persons.form.address')"
-									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm"></textarea>
 							</div>
 
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-4">
@@ -417,7 +417,7 @@ const handleClose = () => {
 										{{ t('persons.form.timeZone') }}
 									</label>
 									<select id="timeZone" v-model="formData.timeZone"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm">
 										<option value="">{{ t('persons.form.selectTimeZone') }}</option>
 										<option value="Asia/Taipei">Asia/Taipei (GMT+8)</option>
 										<option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
@@ -432,7 +432,7 @@ const handleClose = () => {
 										{{ t('persons.form.locale') }}
 									</label>
 									<select id="locale" v-model="formData.locale"
-										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+										class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm">
 										<option value="">{{ t('persons.form.selectLocale') }}</option>
 										<option value="zh-TW">繁體中文 (zh-TW)</option>
 										<option value="en-US">English (en-US)</option>
@@ -458,7 +458,7 @@ const handleClose = () => {
 											'mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm',
 											identityErrors.nationalId 
 												? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-												: 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+												: 'border-gray-300 focus:ring-google-500 focus:border-google-500'
 										]" />
 									<p v-if="identityErrors.nationalId" class="mt-1 text-xs text-red-600">
 										{{ identityErrors.nationalId }}
@@ -477,7 +477,7 @@ const handleClose = () => {
 											'mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm',
 											identityErrors.passportNumber 
 												? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-												: 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+												: 'border-gray-300 focus:ring-google-500 focus:border-google-500'
 										]" />
 									<p v-if="identityErrors.passportNumber" class="mt-1 text-xs text-red-600">
 										{{ identityErrors.passportNumber }}
@@ -496,7 +496,7 @@ const handleClose = () => {
 											'mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm',
 											identityErrors.residentCertificateNumber 
 												? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-												: 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+												: 'border-gray-300 focus:ring-google-500 focus:border-google-500'
 										]" />
 									<p v-if="identityErrors.residentCertificateNumber" class="mt-1 text-xs text-red-600">
 										{{ identityErrors.residentCertificateNumber }}
@@ -528,7 +528,7 @@ const handleClose = () => {
 
 		<template #footer>
 			<button type="submit" @click="handleSubmit" :disabled="saving"
-				class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed">
+				class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed">
 				<svg v-if="saving" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg"
 					fill="none" viewBox="0 0 24 24">
 					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

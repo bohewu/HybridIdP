@@ -100,7 +100,7 @@ const copyToClipboard = (text, type) => {
       <button 
         type="button"
         @click="testConfig.show = !testConfig.show"
-        class="text-indigo-600 hover:text-indigo-900 text-sm font-medium focus:outline-none"
+        class="text-google-500 hover:text-google-700 text-sm font-medium focus:outline-none"
       >
         {{ testConfig.show ? $t('clients.form.cancel') : $t('clients.form.generator.generateButton') }}
       </button>
@@ -113,7 +113,7 @@ const copyToClipboard = (text, type) => {
          <button 
             type="button"
             @click="generateTestUrl"
-            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-google-600 bg-google-100 hover:bg-google-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500"
           >
            <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -134,7 +134,7 @@ const copyToClipboard = (text, type) => {
                type="text" 
                readonly 
                :value="testConfig.codeVerifier" 
-               class="block w-full rounded-l-md border-gray-300 bg-white text-gray-600 shadow-sm sm:text-xs h-8 px-2 focus:ring-indigo-500 focus:border-indigo-500"
+               class="block w-full rounded-l-md border-gray-300 bg-white text-gray-600 shadow-sm sm:text-xs h-8 px-2 focus:ring-google-500 focus:border-google-500"
              />
              <button 
                type="button"
@@ -157,7 +157,7 @@ const copyToClipboard = (text, type) => {
                readonly 
                :value="testConfig.url" 
                rows="3"
-               class="block w-full rounded-md border-gray-300 bg-white text-gray-600 shadow-sm sm:text-xs px-2 py-1.5 pr-12 focus:ring-indigo-500 focus:border-indigo-500"
+               class="block w-full rounded-md border-gray-300 bg-white text-gray-600 shadow-sm sm:text-xs px-2 py-1.5 pr-12 focus:ring-google-500 focus:border-google-500"
              ></textarea>
              <div class="absolute top-2 right-2">
                 <button 

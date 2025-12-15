@@ -78,7 +78,7 @@ const close = () => {
       <button 
         type="button" 
         @click="close"
-        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
+        class="inline-flex w-full justify-center rounded-md bg-google-500 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-google-600 focus:outline-none focus:ring-2 focus:ring-google-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
       >
         {{ t('common.buttons.ok') }}
       </button>
@@ -86,7 +86,7 @@ const close = () => {
         v-if="showCancel"
         type="button" 
         @click="close"
-        class="mt-2.5 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
+        class="mt-2.5 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-google-500 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
       >
         {{ t('common.buttons.cancel') }}
       </button>

@@ -28,11 +28,9 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] Shared Footer (Localized `_GoogleFooter` with Language Selector)
 - [x] Connect/Logout View (OIDC Logout styling)
 - [x] Main Layout (`_Layout.cshtml`) Refactoring
-
-### Pending
-- [ ] **Review all .vue components**: Ensure compatibility with **Tailwind CSS v4** and apply **Google Account Style** (Clean, whitespace-heavy, rounded cards).
-- [ ] Review `_ApplicationManagerLayout.cshtml` consistency.
-- [ ] Global Design Tokens update.
+- [x] **Review all .vue components**: Ensure compatibility with **Tailwind CSS v4** and apply **Google Account Style** (Clean, whitespace-heavy, rounded cards).
+- [x] Review `_ApplicationManagerLayout.cshtml` consistency.
+- [x] Global Design Tokens update.
 
 ## Short-term (high priority)
 

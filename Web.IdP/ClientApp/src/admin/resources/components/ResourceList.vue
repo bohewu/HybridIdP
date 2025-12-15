@@ -81,7 +81,7 @@ const formatDate = (dateString) => {
           </td>
           <td class="px-6 py-4">
             <div class="text-sm text-gray-900 max-w-xs truncate">
-              <a v-if="resource.baseUrl" :href="resource.baseUrl" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-900">
+              <a v-if="resource.baseUrl" :href="resource.baseUrl" target="_blank" rel="noopener noreferrer" class="text-google-500 hover:text-google-700">
                 {{ resource.baseUrl }}
               </a>
               <span v-else>-</span>
@@ -103,7 +103,7 @@ const formatDate = (dateString) => {
               <button
                 v-if="canUpdate"
                 @click="$emit('edit', resource)"
-                class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                class="inline-flex items-center px-3 py-1.5 border border-google-500 text-google-600 text-sm font-medium rounded-md hover:bg-google-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500"
                 :title="$t('resources.actions.edit')"
                 data-test-id="resources-edit-btn"
               >

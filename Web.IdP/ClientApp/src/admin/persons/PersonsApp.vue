@@ -240,7 +240,7 @@ watch([page, pageSize, search], () => {
           <button
             v-if="canCreate"
             @click="handleCreate"
-            class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
+            class="inline-flex items-center justify-center px-4 py-2 bg-google-500 text-white text-sm font-medium rounded-md hover:bg-google-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
             :disabled="loading"
           >
             <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -284,7 +284,7 @@ watch([page, pageSize, search], () => {
                 type="text"
                 data-test-id="person-search"
                 :placeholder="t('persons.search')"
-                class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors h-10"
+                class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-google-500 transition-colors h-10"
               />
             </div>
           </div>
@@ -292,7 +292,7 @@ watch([page, pageSize, search], () => {
 
         <!-- Loading State -->
         <div v-if="loading" class="flex justify-center items-center py-12">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-google-500"></div>
           <span class="ml-3 text-gray-600">{{ t('persons.loading') }}</span>
         </div>
 
@@ -340,8 +340,8 @@ watch([page, pageSize, search], () => {
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center">
                     <div class="shrink-0 h-10 w-10">
-                      <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                        <span class="text-indigo-600 font-medium text-sm">
+                      <div class="h-10 w-10 rounded-full bg-google-100 flex items-center justify-center">
+                        <span class="text-google-500 font-medium text-sm">
                           {{ person.firstName?.charAt(0) || '' }}{{ person.lastName?.charAt(0) || '' }}
                         </span>
                       </div>
@@ -392,7 +392,7 @@ watch([page, pageSize, search], () => {
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span v-if="person.accounts && person.accounts.length > 0" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                  <span v-if="person.accounts && person.accounts.length > 0" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-google-100 text-google-500">
                     {{ person.accounts.length }}
                   </span>
                   <span v-else class="text-sm text-gray-400">0</span>
@@ -414,7 +414,7 @@ watch([page, pageSize, search], () => {
                     <button
                       v-if="canRead"
                       @click="handleManageAccounts(person)"
-                      class="text-indigo-600 hover:text-indigo-900"
+                      class="text-google-500 hover:text-google-700"
                       :title="t('persons.manageAccounts')"
                     >
                       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -492,7 +492,7 @@ watch([page, pageSize, search], () => {
                 <select
                   :value="pageSize"
                   @change="handlePageSizeChange(Number($event.target.value))"
-                  class="block w-auto pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  class="block w-auto pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm rounded-md"
                 >
                   <option :value="10">{{ t('common.pagination.perPage', { count: 10 }) }}</option>
                   <option :value="25">{{ t('common.pagination.perPage', { count: 25 }) }}</option>

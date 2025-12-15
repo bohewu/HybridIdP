@@ -233,7 +233,7 @@ const saveScopeClaims = async (scopeId) => {
                         type="text"
                         required
                         :disabled="isEdit"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         :placeholder="$t('scopes.form.namePlaceholder')"
                       />
             <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.nameHelp') }}</p>
@@ -248,7 +248,7 @@ const saveScopeClaims = async (scopeId) => {
                         id="displayName"
                         v-model="formData.displayName"
                         type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
               :placeholder="$t('scopes.form.displayNamePlaceholder')"
             />
           </div>
@@ -262,7 +262,7 @@ const saveScopeClaims = async (scopeId) => {
                         id="description"
                         v-model="formData.description"
                         rows="3"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm px-3 py-2"
               :placeholder="$t('scopes.form.descriptionPlaceholder')"
             ></textarea>
           </div>
@@ -276,7 +276,7 @@ const saveScopeClaims = async (scopeId) => {
                         id="resources"
                         v-model="formData.resources"
                         rows="2"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm px-3 py-2"
               :placeholder="$t('scopes.form.resourcesPlaceholder')"
             ></textarea>
             <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.resourcesHelp') }}</p>
@@ -300,7 +300,7 @@ const saveScopeClaims = async (scopeId) => {
                           id="consentDisplayNameKey"
                           v-model="formData.consentDisplayNameKey"
                           type="text"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
                           :placeholder="$t('scopes.form.consentDisplayNameKeyPlaceholder')"
                         />
               <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.consentDisplayNameKeyHelp') }}</p>
@@ -315,7 +315,7 @@ const saveScopeClaims = async (scopeId) => {
                           id="consentDescriptionKey"
                           v-model="formData.consentDescriptionKey"
                           rows="3"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm px-3 py-2"
                           :placeholder="$t('scopes.form.consentDescriptionKeyPlaceholder')"
                         ></textarea>
               <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.consentDescriptionKeyHelp') }}</p>
@@ -330,7 +330,7 @@ const saveScopeClaims = async (scopeId) => {
                         <div class="flex space-x-2 mb-2">
                           <select
                             @change="e => { if (e.target.value) formData.iconUrl = e.target.value; e.target.value = '' }"
-                            class="block w-48 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                            class="block w-48 rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
                           >
                             <option value="">{{ $t('scopes.form.iconQuickSelect') }}</option>
                             <optgroup :label="$t('scopes.form.iconCategoryIdentity')">
@@ -366,7 +366,7 @@ const saveScopeClaims = async (scopeId) => {
                           id="iconUrl"
                           v-model="formData.iconUrl"
                           type="text"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
                           :placeholder="$t('scopes.form.iconUrlPlaceholder')"
                         />
               <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.iconUrlHelp') }}</p>
@@ -386,7 +386,7 @@ const saveScopeClaims = async (scopeId) => {
                         <select
                           id="category"
                           v-model="formData.category"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
                         >
                           <option value="">{{ $t('scopes.form.categoryNone') }}</option>
                           <option value="Profile">{{ $t('scopes.form.categoryProfile') }}</option>
@@ -406,7 +406,7 @@ const saveScopeClaims = async (scopeId) => {
                           v-model.number="formData.displayOrder"
                           type="number"
                           min="0"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
                           :placeholder="$t('scopes.form.displayOrderPlaceholder')"
                         />
               <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.displayOrderHelp') }}</p>
@@ -419,7 +419,7 @@ const saveScopeClaims = async (scopeId) => {
                             id="isRequired"
                             v-model="formData.isRequired"
                             type="checkbox"
-                            class="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                            class="mt-0.5 h-4 w-4 text-google-500 border-gray-300 rounded focus:ring-google-500"
                           />
                           <div class="ml-3">
                             <span class="block text-sm font-medium text-gray-700">
@@ -467,7 +467,7 @@ const saveScopeClaims = async (scopeId) => {
                   :value="claim.id"
                   v-model="selectedClaimIds"
                   :disabled="isStandardScope"
-                  class="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 disabled:opacity-50"
+                  class="mt-0.5 h-4 w-4 text-google-500 border-gray-300 rounded focus:ring-google-500 disabled:opacity-50"
                 />
                 <div class="ml-3 flex-1">
                   <div class="text-sm font-medium text-gray-900">
@@ -493,7 +493,7 @@ const saveScopeClaims = async (scopeId) => {
         type="submit"
         form="scope-form"
         :disabled="submitting"
-        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

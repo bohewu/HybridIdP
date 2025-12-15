@@ -37,6 +37,8 @@
   },
   "loginHistory": {
     "title": "登入紀錄",
+    "loading": "載入登入紀錄中...",
+    "empty": "找不到登入紀錄。",
     "userLabel": "使用者",
     "showAbnormalOnly": "僅顯示異常",
     "tableHeaders": {
@@ -50,10 +52,21 @@
     "status": {
       "success": "成功",
       "failure": "失敗",
-      "abnormal": "異常"
+      "failed": "失敗",
+      "abnormal": "異常",
+      "approved": "已核准"
     },
     "buttons": {
-      "close": "關閉"
+      "close": "關閉",
+      "approve": "核准",
+      "approving": "核准中..."
+    },
+    "confirm": {
+      "approve": "確定將 IP {ip} 標記為可信任？"
+    },
+    "alerts": {
+      "approveSuccess": "登入已核准。",
+      "approveFailed": "核准失敗: {message}"
     },
     "noRecords": "無登入紀錄"
   },

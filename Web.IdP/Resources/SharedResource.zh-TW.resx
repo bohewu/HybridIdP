@@ -459,4 +459,20 @@
   <data name="Confirm password" xml:space="preserve">
     <value>確認密碼</value>
   </data>
+  <!-- Cookie Consent -->
+  <data name="CookieConsent.AriaLabel" xml:space="preserve">
+    <value>Cookie 同意提示</value>
+  </data>
+  <data name="CookieConsent.Title" xml:space="preserve">
+    <value>Cookie 與隱私</value>
+  </data>
+  <data name="CookieConsent.Description" xml:space="preserve">
+    <value>我們只使用必要的 Cookie 以維持登入與安全。非必要 Cookie 僅在您同意後啟用。系統目前不使用第三方分析 Cookie。</value>
+  </data>
+  <data name="CookieConsent.Accept" xml:space="preserve">
+    <value>接受</value>
+  </data>
+  <data name="CookieConsent.Decline" xml:space="preserve">
+    <value>拒絕</value>
+  </data>
 </root>

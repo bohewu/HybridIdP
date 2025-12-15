@@ -300,7 +300,7 @@ const closeSecretModal = () => {
                           'block w-full rounded-md shadow-sm sm:text-sm h-10 px-3 disabled:bg-gray-100 disabled:cursor-not-allowed',
                           fieldErrors.clientId 
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500' 
-                            : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+                            : 'border-gray-300 focus:border-google-500 focus:ring-google-500'
                         ]"
                         :placeholder="$t('clients.form.clientIdPlaceholder')"
                       />
@@ -324,7 +324,7 @@ const closeSecretModal = () => {
                         id="displayName"
                         v-model="formData.displayName"
                         type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
                         :placeholder="$t('clients.form.displayNamePlaceholder')"
                       />
                     </div>
@@ -341,7 +341,7 @@ const closeSecretModal = () => {
                             v-model="formData.applicationType"
                             type="radio"
                             value="web"
-                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                            class="h-4 w-4 text-google-500 focus:ring-google-500 border-gray-300"
                           />
                           <label for="app-type-web" class="ml-3 block text-sm text-gray-700">
                             <span class="font-medium">{{ $t('clients.form.applicationTypeWeb') }}</span> - {{ $t('clients.form.applicationTypeWebDesc') }}
@@ -353,7 +353,7 @@ const closeSecretModal = () => {
                             v-model="formData.applicationType"
                             type="radio"
                             value="native"
-                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                            class="h-4 w-4 text-google-500 focus:ring-google-500 border-gray-300"
                           />
                           <label for="app-type-native" class="ml-3 block text-sm text-gray-700">
                             <span class="font-medium">{{ $t('clients.form.applicationTypeNative') }}</span> - {{ $t('clients.form.applicationTypeNativeDesc') }}
@@ -374,7 +374,7 @@ const closeSecretModal = () => {
                             v-model="formData.clientType"
                             type="radio"
                             value="public"
-                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                            class="h-4 w-4 text-google-500 focus:ring-google-500 border-gray-300"
                           />
                           <label for="type-public" class="ml-3 block text-sm text-gray-700">
                             <span class="font-medium">{{ $t('clients.form.clientTypePublic') }}</span> - {{ $t('clients.form.clientTypePublicDesc') }}
@@ -388,8 +388,8 @@ const closeSecretModal = () => {
                             value="confidential"
                             :disabled="isNative"
                             :class="[
-                              'h-4 w-4 focus:ring-indigo-500 border-gray-300',
-                              isNative ? 'text-gray-300 cursor-not-allowed' : 'text-indigo-600'
+                              'h-4 w-4 focus:ring-google-500 border-gray-300',
+                              isNative ? 'text-gray-300 cursor-not-allowed' : 'text-google-500'
                             ]"
                           />
                           <label for="type-confidential" class="ml-3 block text-sm text-gray-700">
@@ -427,7 +427,7 @@ const closeSecretModal = () => {
                             v-model="formData.consentType"
                             type="radio"
                             value="explicit"
-                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                            class="h-4 w-4 text-google-500 focus:ring-google-500 border-gray-300"
                           />
                           <label for="consent-explicit" class="ml-3 block text-sm text-gray-700">
                             <span class="font-medium">{{ $t('clients.form.consentTypeExplicit') }}</span> - {{ $t('clients.form.consentTypeExplicitDesc') }}
@@ -439,7 +439,7 @@ const closeSecretModal = () => {
                             v-model="formData.consentType"
                             type="radio"
                             value="implicit"
-                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                            class="h-4 w-4 text-google-500 focus:ring-google-500 border-gray-300"
                           />
                           <label for="consent-implicit" class="ml-3 block text-sm text-gray-700">
                             <span class="font-medium">{{ $t('clients.form.consentTypeImplicit') }}</span> - {{ $t('clients.form.consentTypeImplicitDesc') }}
@@ -465,7 +465,7 @@ const closeSecretModal = () => {
                           'block w-full rounded-md shadow-sm sm:text-sm px-3 py-2',
                           fieldErrors.redirectUris
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
-                            : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+                            : 'border-gray-300 focus:border-google-500 focus:ring-google-500'
                         ]"
                         :placeholder="$t('clients.form.redirectUrisPlaceholder')"
                       ></textarea>
@@ -493,7 +493,7 @@ const closeSecretModal = () => {
                           'block w-full rounded-md shadow-sm sm:text-sm px-3 py-2',
                           fieldErrors.postLogoutRedirectUris
                             ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
-                            : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+                            : 'border-gray-300 focus:border-google-500 focus:ring-google-500'
                         ]"
                         :placeholder="$t('clients.form.postLogoutRedirectUrisPlaceholder')"
                       ></textarea>
@@ -540,7 +540,7 @@ const closeSecretModal = () => {
                                   type="checkbox"
                                   :checked="formData.permissions.includes(permission.value)"
                                   @change="togglePermission(permission.value)"
-                                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                  class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500"
                                 />
                               </div>
                               <div class="ml-3 text-sm">
@@ -604,7 +604,7 @@ const closeSecretModal = () => {
         type="submit"
         @click="handleSubmit"
         :disabled="submitting"
-        class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+        class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

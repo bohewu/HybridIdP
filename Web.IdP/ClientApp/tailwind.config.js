@@ -16,6 +16,16 @@ export default {
       '2xl': '1400px', // Bootstrap: @media (min-width: 1400px)
     },
     extend: {
+      // Google 2024 Design System Colors
+      colors: {
+        'google': {
+          '50': '#f8f9fa',    // gray-50 equivalent
+          '100': '#e8f0fe',   // light blue tint (for hover/bg)
+          '500': '#1a73e8',   // primary Google blue
+          '600': '#1557b0',   // hover state
+          '700': '#004a77',   // dark/pressed state
+        },
+      },
       // Additional z-index values to match admin layout
       zIndex: {
         '30': '30',  // top-header

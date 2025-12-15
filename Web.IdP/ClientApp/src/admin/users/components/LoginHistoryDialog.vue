@@ -141,7 +141,7 @@ onMounted(() => fetchLoginHistory())
                     <input 
                       type="checkbox" 
                       v-model="showAbnormalOnly"
-                      class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                      class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500"
                     >
                     <span class="ml-2 text-sm text-gray-700">
                       {{ t('users.loginHistory.showAbnormalOnly') }}
@@ -234,7 +234,7 @@ onMounted(() => fetchLoginHistory())
                             v-if="canUpdate && login.isFlaggedAbnormal && !login.isApprovedByAdmin"
                             @click="approveLogin(login.id, login.ipAddress)"
                             :disabled="approving"
-                            class="inline-flex items-center px-3 py-1.5 border border-green-300 text-green-700 text-sm font-medium rounded-md hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="cursor-pointer inline-flex items-center px-3 py-1.5 border border-green-300 text-green-700 text-sm font-medium rounded-md hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -278,7 +278,7 @@ onMounted(() => fetchLoginHistory())
                         <select
                           v-model="pageSize"
                           @change="page = 1"
-                          class="block rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          class="block rounded-md border-gray-300 text-sm focus:border-google-500 focus:ring-google-500"
                         >
                           <option v-for="size in pageSizeOptions" :key="size" :value="size">
                             {{ size }} {{ t('users.loginHistory.pagination.pageSize') }}

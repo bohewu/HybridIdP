@@ -196,7 +196,7 @@ watch([page, pageSize, search, typeFilter, sort], () => {
         <button
           v-if="canCreate"
           @click="handleCreate"
-          class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
+          class="inline-flex items-center justify-center px-4 py-2 bg-google-500 text-white text-sm font-medium rounded-md hover:bg-google-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-10"
           :disabled="loading"
         >
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,7 +227,7 @@ watch([page, pageSize, search, typeFilter, sort], () => {
           <div class="flex gap-2">
             <select 
               v-model="typeFilter" 
-              class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
+              class="block rounded-md border-gray-300 focus:border-google-500 focus:ring-2 focus:ring-google-500 sm:text-sm transition-colors h-10"
             >
               <option value="">{{ $t('clients.filterOptions.all') }}</option>
               <option value="public">{{ $t('clients.filterOptions.public') }}</option>
@@ -235,7 +235,7 @@ watch([page, pageSize, search, typeFilter, sort], () => {
             </select>
             <select 
               v-model="sort" 
-              class="block rounded-md border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors h-10"
+              class="block rounded-md border-gray-300 focus:border-google-500 focus:ring-2 focus:ring-google-500 sm:text-sm transition-colors h-10"
             >
               <option value="clientId:asc">{{ $t('clients.sortOptions.idAsc') }}</option>
               <option value="clientId:desc">{{ $t('clients.sortOptions.idDesc') }}</option>

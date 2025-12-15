@@ -44,7 +44,7 @@ const clearFilters = () => {
               type="date"
               :value="filters.startDate"
               @input="filters.startDate = $event.target.value; updateFilters()"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-google-500 focus:border-google-500 sm:text-sm"
             />
           </div>
 
@@ -56,7 +56,7 @@ const clearFilters = () => {
               type="date"
               :value="filters.endDate"
               @input="filters.endDate = $event.target.value; updateFilters()"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-google-500 focus:border-google-500 sm:text-sm"
             />
           </div>
 
@@ -80,7 +80,7 @@ const clearFilters = () => {
             <select
               :value="filters.eventType"
               @change="filters.eventType = $event.target.value; updateFilters()"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-google-500 focus:border-google-500 sm:text-sm"
             >
               <option value="">{{ t('audit.filters.allEventTypes') }}</option>
               <option value="UserCreated">UserCreated</option>
@@ -103,7 +103,7 @@ const clearFilters = () => {
               :value="filters.ipAddress"
               @input="filters.ipAddress = $event.target.value; updateFilters()"
               :placeholder="t('audit.filters.ipPlaceholder')"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-google-500 focus:border-google-500 sm:text-sm"
             />
           </div>
 
@@ -124,7 +124,7 @@ const clearFilters = () => {
         <div class="mt-4 flex justify-end">
           <button
             @click="clearFilters"
-            class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500"
           >
             {{ t('audit.filters.clear') }}
           </button>
