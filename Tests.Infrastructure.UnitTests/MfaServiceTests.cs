@@ -273,6 +273,82 @@ public class MfaServiceTests
 
     #endregion
 
+    #region Replay Attack Prevention Tests
+
+    [Fact]
+    public async Task ValidateTotpCodeAsync_FirstUse_ReturnsTrue()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        user.TwoFactorEnabled = true;
+        user.LastTotpValidatedWindow = null; // Never validated before
+        
+        _userManagerMock.Setup(x => x.VerifyTwoFactorTokenAsync(
+            user, 
+            It.IsAny<string>(), 
+            "123456"))
+            .ReturnsAsync(true);
+        _userManagerMock.Setup(x => x.UpdateAsync(user))
+            .ReturnsAsync(IdentityResult.Success);
+
+        // Act
+        var result = await _sut.ValidateTotpCodeAsync(user, "123456");
+
+        // Assert
+        result.Should().BeTrue();
+        user.LastTotpValidatedWindow.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ValidateTotpCodeAsync_SameCodeInSameWindow_ReturnsFalse()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        user.TwoFactorEnabled = true;
+        // Simulates the same 30-second window (current window number)
+        var currentWindow = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30;
+        user.LastTotpValidatedWindow = currentWindow;
+        
+        _userManagerMock.Setup(x => x.VerifyTwoFactorTokenAsync(
+            user, 
+            It.IsAny<string>(), 
+            "123456"))
+            .ReturnsAsync(true); // Code is valid by Identity
+
+        // Act
+        var result = await _sut.ValidateTotpCodeAsync(user, "123456");
+
+        // Assert
+        result.Should().BeFalse(); // But rejected due to replay attack prevention
+    }
+
+    [Fact]
+    public async Task ValidateTotpCodeAsync_SameCodeInNewWindow_ReturnsTrue()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        user.TwoFactorEnabled = true;
+        // Previous window (more than 30 seconds ago)
+        var previousWindow = (DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30) - 2;
+        user.LastTotpValidatedWindow = previousWindow;
+        
+        _userManagerMock.Setup(x => x.VerifyTwoFactorTokenAsync(
+            user, 
+            It.IsAny<string>(), 
+            "654321"))
+            .ReturnsAsync(true);
+        _userManagerMock.Setup(x => x.UpdateAsync(user))
+            .ReturnsAsync(IdentityResult.Success);
+
+        // Act
+        var result = await _sut.ValidateTotpCodeAsync(user, "654321");
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    #endregion
+
     #region Helpers
 
     private static ApplicationUser CreateTestUser() => new()

@@ -25,6 +25,7 @@ public static class UserSeeder
             await SeedMultiRoleTestUserAsync(userManager, roleManager, context);
             await SeedStandardTestUserAsync(userManager, context);
             await SeedLegacyTestUserAsync(userManager, context);
+            await SeedPasswordlessTestUserAsync(userManager, context); // Added
             await SeedInactiveUserAsync(userManager, context);
             await SeedInactivePersonUserAsync(userManager, context);
             await SeedAbnormalLoginTestUserAsync(userManager, context);
@@ -286,10 +287,10 @@ public static class UserSeeder
         const string password = "Test@123";
 
         var existingUser = await userManager.FindByEmailAsync(email);
-    if (existingUser != null)
-    {
-        return;
-    }
+        if (existingUser != null)
+        {
+            return;
+        }
 
         // Check if Person already exists
         var nationalIdHash = PidHasher.Hash("T123456789");
@@ -621,5 +622,67 @@ public static class UserSeeder
             });
         }
         await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Seeds a test user with NO password (simulating external-only/legacy without local password).
+    /// Used for testing "Disable MFA without password" flow.
+    /// </summary>
+    private static async Task SeedPasswordlessTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "passwordless@hybridauth.local";
+        // No password const
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null) return;
+
+        var nationalIdHash = PidHasher.Hash("W123456789"); // W for WithoutPassword
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Passwordless",
+                LastName = "User",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email, // Username same as email
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Passwordless",
+            LastName = "User",
+            IsActive = true
+        };
+
+        // Create WITHOUT password
+        var result = await userManager.CreateAsync(user);
+        if (result.Succeeded)
+        {
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
+        }
     }
 }

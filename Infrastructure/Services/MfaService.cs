@@ -75,10 +75,32 @@ public class MfaService : IMfaService
 
     public async Task<bool> ValidateTotpCodeAsync(ApplicationUser user, string code, CancellationToken ct = default)
     {
-        return await _userManager.VerifyTwoFactorTokenAsync(
+        // Calculate current TOTP time window (30-second intervals since Unix epoch)
+        var currentWindow = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30;
+        
+        // Replay Attack Prevention: Check if this window was already used
+        if (user.LastTotpValidatedWindow.HasValue && user.LastTotpValidatedWindow.Value >= currentWindow)
+        {
+            // Same code already validated in this time window - reject to prevent replay
+            return false;
+        }
+        
+        // Verify the TOTP code with Identity
+        var isValid = await _userManager.VerifyTwoFactorTokenAsync(
             user,
             _userManager.Options.Tokens.AuthenticatorTokenProvider,
             code);
+        
+        if (!isValid)
+        {
+            return false;
+        }
+        
+        // Update last validated window to prevent replay
+        user.LastTotpValidatedWindow = currentWindow;
+        await _userManager.UpdateAsync(user);
+        
+        return true;
     }
 
     public async Task DisableMfaAsync(ApplicationUser user, CancellationToken ct = default)

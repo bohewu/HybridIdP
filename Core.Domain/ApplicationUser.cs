@@ -50,6 +50,13 @@ public class ApplicationUser : IdentityUser<Guid>
     public string PasswordHistory { get; set; } = "[]"; // Stores JSON array of hashed passwords
     public DateTime? LastPasswordChangeDate { get; set; }
     
+    // TOTP Replay Attack Prevention (Phase 20.1)
+    /// <summary>
+    /// Stores the TOTP time window (Unix timestamp / 30) of the last successful validation.
+    /// Used to prevent replay attacks by rejecting the same code in the same 30-second window.
+    /// </summary>
+    public long? LastTotpValidatedWindow { get; set; }
+    
     // Soft Delete
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAt { get; set; }

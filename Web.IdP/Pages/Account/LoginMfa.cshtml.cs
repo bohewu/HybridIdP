@@ -113,6 +113,13 @@ public partial class LoginMfaModel : PageModel
             return RedirectToPage("./Login");
         }
 
+        // Check if user is locked out
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            _logger.LogWarning("User account locked out.");
+            return RedirectToPage("./Lockout");
+        }
+
         // Validate that at least one code is provided
         if (string.IsNullOrWhiteSpace(Input.TotpCode) && string.IsNullOrWhiteSpace(Input.RecoveryCode))
         {
@@ -128,8 +135,17 @@ public partial class LoginMfaModel : PageModel
 
             if (isValid)
             {
+                await _userManager.ResetAccessFailedCountAsync(user);
                 await CompleteMfaSignInAsync(user, returnUrl, RememberMe, "TOTP");
                 return LocalRedirect(returnUrl);
+            }
+
+            // Record failed attempt and check for lockout
+            await _userManager.AccessFailedAsync(user);
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                _logger.LogWarning("User account locked out.");
+                return RedirectToPage("./Lockout");
             }
 
             ModelState.AddModelError(nameof(Input.TotpCode), _localizer["InvalidVerificationCode"]);
@@ -145,6 +161,7 @@ public partial class LoginMfaModel : PageModel
 
             if (isValid)
             {
+                await _userManager.ResetAccessFailedCountAsync(user);
                 await CompleteMfaSignInAsync(user, returnUrl, RememberMe, "RecoveryCode");
                 
                 // Warn user about remaining recovery codes
@@ -155,6 +172,14 @@ public partial class LoginMfaModel : PageModel
                 }
 
                 return LocalRedirect(returnUrl);
+            }
+
+            // Record failed attempt and check for lockout
+            await _userManager.AccessFailedAsync(user);
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                _logger.LogWarning("User account locked out.");
+                return RedirectToPage("./Lockout");
             }
 
             ModelState.AddModelError(nameof(Input.RecoveryCode), _localizer["InvalidRecoveryCode"]);

@@ -133,6 +133,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<DateTime?>("LastPasswordChangeDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<long?>("LastTotpValidatedWindow")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Locale")
                         .HasColumnType("nvarchar(max)");
 
