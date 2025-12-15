@@ -6,154 +6,93 @@
     Layout = "~/Pages/Shared/_ApplicationManagerLayout.cshtml";
 }
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8">
-        <h2 class="text-2xl font-normal text-gray-900">@Localizer["Welcome"], @Model.UserName</h2>
-        <p class="mt-1 text-sm text-gray-600">@Localizer["ManageYourApplicationsAndScopes"]</p>
+<div class="max-w-5xl mx-auto py-8">
+    @* Welcome Header *@
+    <div class="mb-10 text-center">
+        <h1 class="text-3xl font-normal text-gray-900 mb-2">@Localizer["Welcome"], @Model.UserName</h1>
+        <p class="text-base text-gray-600">@Localizer["ManageYourApplicationsAndScopes"]</p>
     </div>
 
-    @* Summary Cards *@
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <!-- Clients Card -->
-        <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-            <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-full bg-blue-50 p-3">
-                            <i class="bi bi-pc-display text-blue-600 text-2xl"></i>
-                        </div>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">@Localizer["MyClients"]</dt>
-                            <dd>
-                                <div class="text-lg font-bold text-gray-900">@Model.ClientCount</div>
-                            </dd>
-                        </dl>
-                    </div>
+    @* Stats Cards - Simpler design *@
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        @* Clients Card *@
+        <a href="/Admin/Clients" class="block p-6 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors group">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+                    <i class="bi bi-pc-display text-blue-600 text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-sm text-gray-500">@Localizer["MyClients"]</div>
+                    <div class="text-2xl font-medium text-gray-900">@Model.ClientCount</div>
                 </div>
             </div>
-            <div class="bg-gray-50 px-5 py-3">
-                <a href="/Admin/Clients" class="text-sm font-medium text-blue-700 hover:text-blue-900 flex items-center justify-center">
-                    @Localizer["ManageClients"] <i class="bi bi-arrow-right-circle ml-2"></i>
-                </a>
+            <div class="mt-4 text-sm text-blue-600 group-hover:underline">
+                @Localizer["ManageClients"] →
             </div>
-        </div>
+        </a>
 
-        <!-- Scopes Card -->
-        <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-            <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-full bg-green-50 p-3">
-                            <i class="bi bi-shield-lock text-green-600 text-2xl"></i>
-                        </div>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">@Localizer["MyScopes"]</dt>
-                            <dd>
-                                <div class="text-lg font-bold text-gray-900">@Model.ScopeCount</div>
-                            </dd>
-                        </dl>
-                    </div>
+        @* Scopes Card *@
+        <a href="/Admin/Scopes" class="block p-6 bg-white border border-gray-200 rounded-lg hover:border-green-300 transition-colors group">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
+                    <i class="bi bi-shield-lock text-green-600 text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-sm text-gray-500">@Localizer["MyScopes"]</div>
+                    <div class="text-2xl font-medium text-gray-900">@Model.ScopeCount</div>
                 </div>
             </div>
-            <div class="bg-gray-50 px-5 py-3">
-                <a href="/Admin/Scopes" class="text-sm font-medium text-green-700 hover:text-green-900 flex items-center justify-center">
-                    @Localizer["ManageScopes"] <i class="bi bi-arrow-right-circle ml-2"></i>
-                </a>
+            <div class="mt-4 text-sm text-green-600 group-hover:underline">
+                @Localizer["ManageScopes"] →
             </div>
-        </div>
-
-        <!-- Documentation Card -->
-        <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-            <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="rounded-full bg-cyan-50 p-3">
-                            <i class="bi bi-info-circle text-cyan-600 text-2xl"></i>
-                        </div>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">@Localizer["Documentation"]</dt>
-                            <dd>
-                                <div class="text-lg font-bold text-gray-900">@Localizer["QuickStart"]</div>
-                            </dd>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-gray-50 px-5 py-3">
-                <a href="/ApplicationManager/Docs/Quickstart" class="text-sm font-medium text-cyan-700 hover:text-cyan-900 flex items-center justify-center">
-                    @Localizer["ViewGuide"] <i class="bi bi-book ml-2"></i>
-                </a>
-            </div>
-        </div>
+        </a>
     </div>
 
-    @* Quick Actions *@
-    <div class="bg-white rounded-lg border border-gray-200 mb-8">
-        <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center">
-                <i class="bi bi-lightning mr-2"></i> @Localizer["QuickActions"]
-            </h3>
+    @* Getting Started *@
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">@Localizer["GettingStarted"]</h2>
         </div>
-        <div class="p-4 sm:p-6">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <a href="/Admin/Clients" class="flex items-center justify-center px-4 py-2 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 transition-colors">
-                    <i class="bi bi-plus-circle mr-2"></i> @Localizer["CreateClient"]
-                </a>
-                <a href="/Admin/Scopes" class="flex items-center justify-center px-4 py-2 border border-green-600 rounded-md shadow-sm text-sm font-medium text-green-600 bg-white hover:bg-green-50 transition-colors">
-                    <i class="bi bi-plus-circle mr-2"></i> @Localizer["CreateScope"]
-                </a>
-                <a href="/Admin/Clients" class="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                    <i class="bi bi-list-ul mr-2"></i> @Localizer["ViewAllClients"]
-                </a>
-                <a href="/Admin/Scopes" class="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                    <i class="bi bi-list-ul mr-2"></i> @Localizer["ViewAllScopes"]
-                </a>
-            </div>
-        </div>
-    </div>
-
-    @* Getting Started Guide *@
-    <div class="bg-white rounded-lg border border-gray-200">
-        <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center">
-                <i class="bi bi-compass mr-2"></i> @Localizer["GettingStarted"]
-            </h3>
-        </div>
-        <div class="p-4 sm:p-6">
+        <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="flex">
+                @* Step 1 *@
+                <div class="flex gap-4">
                     <div class="flex-shrink-0">
-                        <span class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600 font-bold ring-4 ring-white">1</span>
+                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-sm">1</div>
                     </div>
-                    <div class="ml-4">
-                        <h4 class="text-base font-bold text-gray-900">@Localizer["CreateClient"]</h4>
-                        <p class="mt-1 text-sm text-gray-500">@Localizer["CreateClientDescription"]</p>
+                    <div>
+                        <h3 class="font-medium text-gray-900 mb-1">@Localizer["CreateClient"]</h3>
+                        <p class="text-sm text-gray-500">@Localizer["CreateClientDescription"]</p>
                     </div>
                 </div>
-                <div class="flex">
+
+                @* Step 2 *@
+                <div class="flex gap-4">
                     <div class="flex-shrink-0">
-                        <span class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600 font-bold ring-4 ring-white">2</span>
+                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-sm">2</div>
                     </div>
-                    <div class="ml-4">
-                        <h4 class="text-base font-bold text-gray-900">@Localizer["ConfigureScopes"]</h4>
-                        <p class="mt-1 text-sm text-gray-500">@Localizer["ConfigureScopesDescription"]</p>
+                    <div>
+                        <h3 class="font-medium text-gray-900 mb-1">@Localizer["ConfigureScopes"]</h3>
+                        <p class="text-sm text-gray-500">@Localizer["ConfigureScopesDescription"]</p>
                     </div>
                 </div>
-                <div class="flex">
+
+                @* Step 3 *@
+                <div class="flex gap-4">
                     <div class="flex-shrink-0">
-                        <span class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600 font-bold ring-4 ring-white">3</span>
+                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-sm">3</div>
                     </div>
-                    <div class="ml-4">
-                        <h4 class="text-base font-bold text-gray-900">@Localizer["IntegrateApplication"]</h4>
-                        <p class="mt-1 text-sm text-gray-500">@Localizer["IntegrateApplicationDescription"]</p>
+                    <div>
+                        <h3 class="font-medium text-gray-900 mb-1">@Localizer["IntegrateApplication"]</h3>
+                        <p class="text-sm text-gray-500">@Localizer["IntegrateApplicationDescription"]</p>
                     </div>
                 </div>
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-gray-100">
+                <a href="/ApplicationManager/Docs/Quickstart" class="text-blue-600 text-sm font-medium hover:underline">
+                    <i class="bi bi-book mr-1"></i> @Localizer["ViewGuide"]
+                </a>
             </div>
         </div>
     </div>
