@@ -89,7 +89,13 @@
     <value>改為登入</value>
   </data>
   <data name="PasswordRequirementsHelp" xml:space="preserve">
-    <value>請使用 {0} 個以上的字元，並包含字母、數字和符號。</value>
+    <value>請使用 {0} 個以上的字元，並{1}。</value>
+  </data>
+  <data name="Complexity_WithSymbols" xml:space="preserve">
+    <value>包含字母、數字和符號</value>
+  </data>
+  <data name="Complexity_NoSymbols" xml:space="preserve">
+    <value>包含字母和數字</value>
   </data>
   <data name="Terms" xml:space="preserve">
     <value>條款</value>
