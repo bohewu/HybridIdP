@@ -23,17 +23,19 @@ public class RegisterModel : PageModel
     private readonly IAuditService _auditService;
     private readonly ISettingsService _settingsService;
     private readonly ITurnstileStateService _turnstileStateService;
+    private readonly ISecurityPolicyService _securityPolicyService;
 
     public RegisterModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ITurnstileService turnstileService,
-        IOptions<TurnstileOptions> turnstileOptions, // Changed
+        IOptions<TurnstileOptions> turnstileOptions,
         ILogger<RegisterModel> logger,
         IApplicationDbContext context,
         IAuditService auditService,
         ISettingsService settingsService,
-        ITurnstileStateService turnstileStateService)
+        ITurnstileStateService turnstileStateService,
+        ISecurityPolicyService securityPolicyService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -44,6 +46,7 @@ public class RegisterModel : PageModel
         _auditService = auditService;
         _settingsService = settingsService;
         _turnstileStateService = turnstileStateService;
+        _securityPolicyService = securityPolicyService;
     }
 
     [BindProperty]
@@ -54,6 +57,7 @@ public class RegisterModel : PageModel
     public bool TurnstileEnabled { get; private set; }
     public string TurnstileSiteKey => _turnstileOptions.SiteKey;
     public bool RegistrationEnabled { get; private set; } = true;
+    public SecurityPolicy? CurrentPolicy { get; private set; }
 
     public class InputModel
     {
@@ -82,6 +86,9 @@ public class RegisterModel : PageModel
             return LocalRedirect(returnUrl ?? Url.Content("~/"));
         }
         
+        // Load Security Policy
+        CurrentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
+
         // Check if registration is enabled
         RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
         
@@ -102,6 +109,9 @@ public class RegisterModel : PageModel
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
     {
         returnUrl ??= Url.Content("~/");
+        
+        // Load policy for view (in case of error redisplay)
+        CurrentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
         
         // Block registration if disabled
         var isEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
