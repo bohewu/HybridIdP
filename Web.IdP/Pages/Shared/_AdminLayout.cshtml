@@ -176,7 +176,7 @@
                             @((User?.Identity?.Name ?? User?.FindFirst("preferred_username")?.Value ?? "AD").Substring(0, Math.Min(2, (User?.Identity?.Name ?? User?.FindFirst("preferred_username")?.Value ?? "AD").Length)).ToUpper())
                         </div>
                         <div class="flex-grow overflow-hidden">
-                            <div class="font-medium text-sm text-gray-900" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">@(User?.FindFirst("preferred_username")?.Value ?? User?.Identity?.Name)</div>
+                            <div class="font-medium text-sm text-gray-900" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;" title="@(User?.FindFirst("preferred_username")?.Value ?? User?.Identity?.Name)">@(User?.FindFirst("preferred_username")?.Value ?? User?.Identity?.Name)</div>
                             <div class="text-xs text-gray-500">@Localizer["Administrator"]</div>
                         </div>
                     </div>
