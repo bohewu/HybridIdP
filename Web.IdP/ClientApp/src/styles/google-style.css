@@ -238,16 +238,12 @@
 
 @media (max-width: 600px) {
     .google-login-card {
-        border: none;
-        background-color: transparent;
-        padding: 0;
+        padding: 24px;
         max-width: 100%;
     }
     
     .google-login-container {
-        padding: 24px 16px;
-        background-color: white;
-        justify-content: center;
+        padding: 16px;
     }
 }
 

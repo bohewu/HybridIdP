@@ -458,4 +458,10 @@
   <data name="Validation_PasswordLength" xml:space="preserve">
     <value>Password must be at least {0} characters long</value>
   </data>
+  <data name="Email" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="Confirm password" xml:space="preserve">
+    <value>Confirm password</value>
+  </data>
 </root>
