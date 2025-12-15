@@ -438,4 +438,7 @@
   <data name="Help" xml:space="preserve">
     <value>說明</value>
   </data>
+  <data name="PasswordRequirementsHelp" xml:space="preserve">
+    <value>請使用 8 個以上的字元，並包含字母、數字和符號。</value>
+  </data>
 </root>
