@@ -151,7 +151,7 @@ public class MfaController : ControllerBase
         var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
         if (!isPasswordValid)
         {
-            return BadRequest(new { error = "Invalid password" });
+            return BadRequest(new { error = "invalidPassword" });
         }
 
         await _mfaService.DisableMfaAsync(user, ct);

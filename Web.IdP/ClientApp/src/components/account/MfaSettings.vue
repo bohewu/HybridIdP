@@ -281,7 +281,9 @@ async function disableMfa() {
       await loadMfaStatus();
     } else {
       const result = await response.json();
-      disableError.value = result.error || t('mfa.errors.disableFailed');
+      // Translate error key from API (e.g., 'invalidPassword' -> mfa.errors.invalidPassword)
+      const errorKey = result.error ? `mfa.errors.${result.error}` : 'mfa.errors.disableFailed';
+      disableError.value = t(errorKey);
     }
   } catch (err) {
     disableError.value = t('mfa.errors.disableFailed');

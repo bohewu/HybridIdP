@@ -89,7 +89,8 @@
       "setupFailed": "無法開始 MFA 設定",
       "invalidCode": "驗證碼無效",
       "verifyFailed": "驗證失敗",
-      "disableFailed": "停用 MFA 失敗"
+      "disableFailed": "停用 MFA 失敗",
+      "invalidPassword": "密碼錯誤"
     }
   }
 }
