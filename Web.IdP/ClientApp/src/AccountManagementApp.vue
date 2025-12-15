@@ -32,7 +32,7 @@
           />
         </div>
 
-        <!-- Linked Accounts Section -->
+      <!-- Linked Accounts Section -->
         <div v-if="linkedAccounts.length > 1" class="section-card">
           <div class="section-header">
             <h2 class="section-title">{{ t('myAccount.linkedAccounts') }}</h2>
@@ -41,6 +41,14 @@
             :accounts="linkedAccounts"
             @switch-account="handleSwitchAccount"
           />
+        </div>
+
+        <!-- Security Section (MFA) -->
+        <div class="section-card">
+          <div class="section-header">
+            <h2 class="section-title">{{ t('myAccount.security') }}</h2>
+          </div>
+          <mfa-settings />
         </div>
       </div>
     </div>
@@ -61,6 +69,7 @@ import { useI18n } from 'vue-i18n';
 import RoleList from './components/account/RoleList.vue';
 import AccountList from './components/account/AccountList.vue';
 import PasswordModal from './components/account/PasswordModal.vue';
+import MfaSettings from './components/account/MfaSettings.vue';
 import { accountApi } from './services/accountApi';
 
 const { t } = useI18n();
