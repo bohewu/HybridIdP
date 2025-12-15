@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Core.Domain.Constants;
 using OtpNet;
 using Xunit;
 
@@ -13,6 +14,13 @@ namespace Tests.SystemTests;
 /// </summary>
 public class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
+    private record MfaVerifyResponse
+    {
+        public bool Success { get; init; }
+        public string? Error { get; init; }
+        public List<string>? RecoveryCodes { get; init; }
+    }
+
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;
     private string? _userToken;
@@ -165,13 +173,129 @@ public class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         Assert.False(status!.TwoFactorEnabled);
     }
 
+    [Fact]
+    public async Task DisableMfa_PasswordlessUser_via_Impersonation()
+    {
+        // 1. Authenticate as M2M Admin (Client Credentials) to find user
+        // M2M token has explicit scopes permissions.
+        var m2mToken = await GetM2MAdminTokenAsync();
+        
+        // 2. Find Passwordless User ID & Verify Admin Role
+        var passwordlessUserEmail = "passwordless@hybridauth.local";
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", m2mToken);
+        
+        // Debug: Check Admin has roles
+        var adminSearch = await _httpClient.GetAsync($"/api/admin/users?search={AuthConstants.DefaultAdmin.Email}");
+        Assert.Equal(HttpStatusCode.OK, adminSearch.StatusCode);
+        var adminResult = await adminSearch.Content.ReadFromJsonAsync<JsonElement>();
+        var adminItems = adminResult.GetProperty("items");
+        Assert.True(adminItems.GetArrayLength() > 0, "Admin user not found");
+        var adminRoles = adminItems[0].GetProperty("roles").EnumerateArray().Select(r => r.GetString()).ToList();
+        Assert.Contains("Admin", adminRoles); // Assert Admin has Admin role in DB
+
+        var usersResponse = await _httpClient.GetAsync($"/api/admin/users?search={passwordlessUserEmail}");
+        Assert.Equal(HttpStatusCode.OK, usersResponse.StatusCode); 
+        var usersResult = await usersResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var items = usersResult.GetProperty("items");
+        Assert.True(items.GetArrayLength() > 0, "No passwordless user found"); 
+        var userId = items[0].GetProperty("id").GetString();
+
+        // 3. Authenticate as Admin User (Password Grant) for Impersonation
+        // Impersonate requires a real user, not M2M.
+        var adminUserToken = await GetUserTokenAsync(AuthConstants.DefaultAdmin.Email, AuthConstants.DefaultAdmin.Password);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminUserToken);
+
+        // 4. Start Impersonation & Capture Cookie
+        var impersonateResponse = await _httpClient.PostAsync($"/api/admin/users/{userId}/impersonate", null);
+        if (impersonateResponse.StatusCode != HttpStatusCode.OK)
+        {
+            var error = await impersonateResponse.Content.ReadAsStringAsync();
+            Assert.Fail($"Impersonate failed: {impersonateResponse.StatusCode} {error}");
+        }
+        Assert.Equal(HttpStatusCode.OK, impersonateResponse.StatusCode);
+        
+        var cookieHeaders = impersonateResponse.Headers.GetValues("Set-Cookie");
+        Assert.NotEmpty(cookieHeaders);
+        
+        // Extract all cookies (name=value) and join them
+        var cookies = cookieHeaders.Select(h => h.Split(';')[0]).ToList();
+        var cookieHeader = string.Join("; ", cookies); 
+
+        // 5. Setup MFA as Impersonated User (Using Cookie)
+        var userClient = new HttpClient(new HttpClientHandler { UseCookies = false, ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator }) 
+        { 
+            BaseAddress = _httpClient.BaseAddress 
+        };
+        userClient.DefaultRequestHeaders.Add("Cookie", cookieHeader);
+
+        var setupResponse = await userClient.GetAsync("/api/account/mfa/setup");
+        Assert.Equal(HttpStatusCode.OK, setupResponse.StatusCode);
+        var setup = await setupResponse.Content.ReadFromJsonAsync<MfaSetupDto>();
+
+        // 6. Verify & Enable MFA
+        var totpCodeVerify = GenerateTotp(setup!.SharedKey); 
+        var verifyResponse = await userClient.PostAsJsonAsync("/api/account/mfa/verify", new { Code = totpCodeVerify });
+        Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
+        var verifyResult = await verifyResponse.Content.ReadFromJsonAsync<MfaVerifyResponse>();
+        Assert.True(verifyResult!.Success, "MFA Verify failed: " + verifyResult.Error);
+
+        // REFRESH IMPERSONATION: Enabling 2FA updates SecurityStamp, invalidating the old cookie.
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminUserToken);
+        var refreshImpersonationResponse = await _httpClient.PostAsync($"/api/admin/users/{userId}/impersonate", null);
+        Assert.Equal(HttpStatusCode.OK, refreshImpersonationResponse.StatusCode);
+        var refreshCookieHeader = refreshImpersonationResponse.Headers.GetValues("Set-Cookie");
+        var distinctCookies = refreshCookieHeader.Select(h => h.Split(';')[0]).ToList();
+        var refreshedCookieString = string.Join("; ", distinctCookies);
+
+        // Update user client with new cookie
+        userClient.DefaultRequestHeaders.Remove("Cookie");
+        userClient.DefaultRequestHeaders.Add("Cookie", refreshedCookieString);
+
+        // 7. Disable MFA (Passwordless Flow)
+        var totpCodeDisable = GenerateTotp(setup!.SharedKey, offsetSeconds: 30); 
+        
+        var disableResponse = await userClient.PostAsJsonAsync("/api/account/mfa/disable", new { TotpCode = totpCodeDisable });
+        Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
+        var disableResult = await disableResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(disableResult.GetProperty("success").GetBoolean());
+    }
+    
+    private async Task<string> GetM2MAdminTokenAsync()
+    {
+        var scopes = new[]
+        {
+            "users.read", "users.impersonate"
+        };
+
+        var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = "testclient-admin",
+            ["client_secret"] = "admin-test-secret-2024",
+            ["scope"] = string.Join(" ", scopes)
+        });
+
+        var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
+        response.EnsureSuccessStatusCode();
+        
+        var content = await response.Content.ReadAsStringAsync();
+        var tokenJson = JsonDocument.Parse(content);
+        return tokenJson.RootElement.GetProperty("access_token").GetString()!;
+    }
+
+
     #region Helper Methods
 
-    private string GenerateTotp(string secretKey)
+    private string GenerateTotp(string secretKey, int offsetSeconds = 0)
     {
         var bytes = Base32Encoding.ToBytes(secretKey.Replace(" ", ""));
         var totp = new Totp(bytes);
-        return totp.ComputeTotp();
+        
+        if (offsetSeconds == 0)
+            return totp.ComputeTotp(); // Current time
+        
+        // Compute for future/past
+        return totp.ComputeTotp(DateTime.UtcNow.AddSeconds(offsetSeconds));
     }
 
     private async Task<string> GetUserTokenAsync(string username, string password)
@@ -183,7 +307,7 @@ public class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
             ["client_id"] = "testclient-public",
             ["username"] = username,
             ["password"] = password,
-            ["scope"] = "openid profile"
+            ["scope"] = "openid profile roles"
         });
 
         var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
