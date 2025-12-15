@@ -58,6 +58,10 @@ public class RegisterModel : PageModel
     public string TurnstileSiteKey => _turnstileOptions.SiteKey;
     public bool RegistrationEnabled { get; private set; } = true;
     public SecurityPolicy? CurrentPolicy { get; private set; }
+    
+    public string ComplexityRequirementKey => (CurrentPolicy?.RequireNonAlphanumeric ?? true) 
+        ? "Complexity_WithSymbols" 
+        : "Complexity_NoSymbols";
 
     public class InputModel
     {

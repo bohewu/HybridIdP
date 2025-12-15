@@ -92,7 +92,13 @@
     <value>Sign in instead</value>
   </data>
   <data name="PasswordRequirementsHelp" xml:space="preserve">
-    <value>Use {0} or more characters with a mix of letters, numbers &amp; symbols</value>
+    <value>Use {0} or more characters with {1}</value>
+  </data>
+  <data name="Complexity_WithSymbols" xml:space="preserve">
+    <value>a mix of letters, numbers &amp; symbols</value>
+  </data>
+  <data name="Complexity_NoSymbols" xml:space="preserve">
+    <value>a mix of letters &amp; numbers</value>
   </data>
   <data name="Terms" xml:space="preserve">
     <value>Terms</value>
