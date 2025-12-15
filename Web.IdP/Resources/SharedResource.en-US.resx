@@ -480,4 +480,38 @@
   <data name="CookieConsent.Decline" xml:space="preserve">
     <value>Decline</value>
   </data>
+  <!-- MFA / Two-Factor Authentication -->
+  <data name="TwoStepVerification" xml:space="preserve">
+    <value>2-Step Verification</value>
+  </data>
+  <data name="EnterAuthenticatorCode" xml:space="preserve">
+    <value>Enter the code from your authenticator app</value>
+  </data>
+  <data name="VerificationCode" xml:space="preserve">
+    <value>Verification Code</value>
+  </data>
+  <data name="UseRecoveryCode" xml:space="preserve">
+    <value>Use a recovery code instead</value>
+  </data>
+  <data name="RecoveryCode" xml:space="preserve">
+    <value>Recovery Code</value>
+  </data>
+  <data name="BackToLogin" xml:space="preserve">
+    <value>Back to login</value>
+  </data>
+  <data name="Verify" xml:space="preserve">
+    <value>Verify</value>
+  </data>
+  <data name="EnterCodeOrRecoveryCode" xml:space="preserve">
+    <value>Please enter a verification code or recovery code</value>
+  </data>
+  <data name="InvalidVerificationCode" xml:space="preserve">
+    <value>Invalid verification code</value>
+  </data>
+  <data name="InvalidRecoveryCode" xml:space="preserve">
+    <value>Invalid recovery code</value>
+  </data>
+  <data name="TotpCodeLength" xml:space="preserve">
+    <value>Code must be 6 digits</value>
+  </data>
 </root>

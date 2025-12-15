@@ -1,0 +1,116 @@
+@page
+@model Web.IdP.Pages.Account.LoginMfaModel
+@using Web.IdP.Services
+@using Core.Application
+@using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.Localization
+@inject IStringLocalizer<Web.IdP.SharedResource> Localizer
+@inject IViteManifestService ViteService
+@inject IBrandingService BrandingService
+@{
+    ViewData["Title"] = Localizer["TwoStepVerification"];
+    Layout = null;
+    var currentCulture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
+    var productName = await BrandingService.GetProductNameAsync();
+}
+
+<!DOCTYPE html>
+<html lang="@currentCulture" class="h-full bg-gray-50">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @productName</title>
+    
+    @* Tailwind CSS *@
+    @if (ViteService.IsDevelopment)
+    {
+        <script type="module" vite-src="@@vite/client"></script>
+    }
+    <link href="@ViteService.GetScriptPath("src/styles/main.css")" rel="stylesheet" />
+    <script type="module" vite-src="src/scripts/razor.js"></script>
+    
+    @* Google Fonts - Roboto for body *@
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 google-font min-h-screen flex flex-col">
+    <div class="google-login-container">
+        <div class="google-login-card">
+            <div class="google-login-header text-center">
+                <div class="flex justify-center mb-4">
+                    <div class="google-logo">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                </div>
+                <h1 class="text-2xl font-normal text-gray-900 mb-2">@Localizer["TwoStepVerification"]</h1>
+                <p class="mt-1 text-sm text-gray-500">@Localizer["EnterAuthenticatorCode"]</p>
+            </div>
+            
+            <div class="google-login-body">
+                <form method="post">
+                    <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="mfa-error-summary"></div>
+                    
+                    <input type="hidden" asp-for="ReturnUrl" />
+                    <input type="hidden" asp-for="RememberMe" />
+                    
+                    <div class="space-y-4">
+                        <div class="form-group">
+                            <label asp-for="Input.TotpCode" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["VerificationCode"]</label>
+                            <input asp-for="Input.TotpCode" 
+                                   class="input-google text-center text-2xl tracking-widest" 
+                                   placeholder="000 000" 
+                                   autocomplete="one-time-code"
+                                   inputmode="numeric"
+                                   pattern="[0-9]*"
+                                   maxlength="6"
+                                   autofocus 
+                                   data-test-id="mfa-totp-code" />
+                            <span asp-validation-for="Input.TotpCode" class="text-red-600 text-xs mt-1 block" data-test-id="mfa-code-error"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <details class="text-sm">
+                                <summary class="link-google cursor-pointer">@Localizer["UseRecoveryCode"]</summary>
+                                <div class="mt-3">
+                                    <label asp-for="Input.RecoveryCode" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["RecoveryCode"]</label>
+                                    <input asp-for="Input.RecoveryCode" 
+                                           class="input-google font-mono" 
+                                           placeholder="XXXXX-XXXXX"
+                                           data-test-id="mfa-recovery-code" />
+                                    <span asp-validation-for="Input.RecoveryCode" class="text-red-600 text-xs mt-1 block"></span>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                
+                    <div class="flex items-center justify-between mt-8">
+                        <a asp-page="./Login" class="link-google text-sm font-medium">
+                            @Localizer["BackToLogin"]
+                        </a>
+
+                        <button type="submit" 
+                                class="btn-google-blue ml-4" 
+                                data-test-id="mfa-submit">
+                            @Localizer["Verify"]
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="google-footer mt-4">
+             <select class="language-select bg-transparent border-0 text-xs cursor-pointer focus:outline-none focus:ring-0 text-gray-600">
+                <option value="en-US" selected="@(currentCulture == "en-US")">English (United States)</option>
+                <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文 (台灣)</option>
+            </select>
+            <div class="flex gap-4 text-xs">
+                <a href="/Privacy" class="hover:text-gray-900">@Localizer["Privacy"]</a>
+                <a href="/Docs" class="hover:text-gray-900">@Localizer["Help"]</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
