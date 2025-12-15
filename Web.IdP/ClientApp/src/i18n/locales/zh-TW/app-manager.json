@@ -1,0 +1,16 @@
+{
+  "Welcome": "歡迎",
+  "ManageYourApplicationsAndScopes": "管理您的應用程式和範圍",
+  "MyClients": "我的客戶端",
+  "MyScopes": "我的範圍",
+  "ManageClients": "管理客戶端",
+  "ManageScopes": "管理範圍",
+  "GettingStarted": "入門指南",
+  "CreateClient": "建立客戶端",
+  "CreateClientDescription": "註冊新的 OAuth/OIDC 客戶端應用程式",
+  "ConfigureScopes": "設定範圍",
+  "ConfigureScopesDescription": "定義客戶端可以請求的範圍",
+  "IntegrateApplication": "整合應用程式",
+  "IntegrateApplicationDescription": "使用客戶端憑證連接您的應用程式",
+  "ViewGuide": "查看指南"
+}

@@ -1,0 +1,16 @@
+{
+  "Welcome": "Welcome",
+  "ManageYourApplicationsAndScopes": "Manage your applications and scopes",
+  "MyClients": "My Clients",
+  "MyScopes": "My Scopes",
+  "ManageClients": "Manage Clients",
+  "ManageScopes": "Manage Scopes",
+  "GettingStarted": "Getting Started",
+  "CreateClient": "Create Client",
+  "CreateClientDescription": "Register a new OAuth/OIDC client application",
+  "ConfigureScopes": "Configure Scopes",
+  "ConfigureScopesDescription": "Define the scopes your clients can request",
+  "IntegrateApplication": "Integrate Application",
+  "IntegrateApplicationDescription": "Connect your application using the client credentials",
+  "ViewGuide": "View Guide"
+}
