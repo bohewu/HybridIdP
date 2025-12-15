@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using OpenIddict.Abstractions;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Account;
 
@@ -14,7 +16,7 @@ namespace Web.IdP.Controllers.Account;
 /// </summary>
 [ApiController]
 [Route("api/account/mfa")]
-[Authorize]
+[ApiAuthorize]
 public class MfaController : ControllerBase
 {
     private readonly IMfaService _mfaService;
@@ -40,7 +42,7 @@ public class MfaController : ControllerBase
     [HttpGet("status")]
     public async Task<ActionResult<MfaStatusResponse>> GetStatus(CancellationToken ct)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
         {
             return Unauthorized();
@@ -55,6 +57,25 @@ public class MfaController : ControllerBase
             RecoveryCodesLeft = recoveryCodesLeft
         });
     }
+    
+    /// <summary>
+    /// Gets the current user from either Identity cookie or Bearer token claims.
+    /// </summary>
+    private async Task<ApplicationUser?> GetCurrentUserAsync()
+    {
+        // Try UserManager first (works with Identity cookie auth)
+        var user = await _userManager.GetUserAsync(User);
+        if (user != null)
+            return user;
+        
+        // Fallback: Get user ID from Bearer token claims (OpenIddict uses "sub" claim)
+        var userId = User.GetClaim(OpenIddict.Abstractions.OpenIddictConstants.Claims.Subject);
+        
+        if (string.IsNullOrEmpty(userId))
+            return null;
+        
+        return await _userManager.FindByIdAsync(userId);
+    }
 
     /// <summary>
     /// Get TOTP setup information including QR code for authenticator apps.
@@ -62,7 +83,7 @@ public class MfaController : ControllerBase
     [HttpGet("setup")]
     public async Task<ActionResult<MfaSetupResponse>> GetSetup(CancellationToken ct)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
         {
             return Unauthorized();
@@ -84,7 +105,7 @@ public class MfaController : ControllerBase
     [HttpPost("verify")]
     public async Task<ActionResult<MfaVerifyResponse>> Verify([FromBody] MfaVerifyRequest request, CancellationToken ct)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
         {
             return Unauthorized();
@@ -120,7 +141,7 @@ public class MfaController : ControllerBase
     [HttpPost("disable")]
     public async Task<ActionResult> Disable([FromBody] MfaDisableRequest request, CancellationToken ct)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
         {
             return Unauthorized();
@@ -147,7 +168,7 @@ public class MfaController : ControllerBase
     [HttpPost("recovery-codes")]
     public async Task<ActionResult<RecoveryCodesResponse>> GenerateRecoveryCodes(CancellationToken ct)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
         {
             return Unauthorized();
