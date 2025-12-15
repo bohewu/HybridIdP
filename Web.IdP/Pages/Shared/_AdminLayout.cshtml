@@ -72,7 +72,7 @@
             @* Navigation *@
             <nav class="sidebar-nav flex-grow py-4">
                 @* Dashboard - always visible *@
-                <a href="/Admin" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Index" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                <a href="/Admin" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Index" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                     <i class="bi bi-house-door text-lg"></i>
                     <span>@Localizer["Dashboard"]</span>
                 </a>
@@ -84,28 +84,28 @@
                 }
                 @if (userPermissions.HasPermission(Permissions.Clients.Read))
                 {
-                    <a href="/Admin/Clients" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Clients" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                    <a href="/Admin/Clients" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Clients" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                         <i class="bi bi-pc-display text-lg"></i>
                         <span>@Localizer["Clients"]</span>
                     </a>
                 }
                 @if (userPermissions.HasPermission(Permissions.Scopes.Read))
                 {
-                    <a href="/Admin/Scopes" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Scopes" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                    <a href="/Admin/Scopes" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Scopes" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                         <i class="bi bi-shield-lock text-lg"></i>
                         <span>@Localizer["Scopes"]</span>
                     </a>
                 }
                 @if (userPermissions.HasPermission(Permissions.Scopes.Read))
                 {
-                    <a href="/Admin/Resources" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Resources" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                    <a href="/Admin/Resources" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Resources" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                         <i class="bi bi-boxes text-lg"></i>
                         <span>@Localizer["Resources"]</span>
                     </a>
                 }
                 @if (userPermissions.HasPermission(Permissions.Claims.Read))
                 {
-                    <a href="/Admin/Claims" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Claims" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                    <a href="/Admin/Claims" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Claims" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                         <i class="bi bi-card-list text-lg"></i>
                         <span>@Localizer["Claims"]</span>
                     </a>
@@ -118,21 +118,21 @@
                 }
                 @if (userPermissions.HasPermission(Permissions.Persons.Read))
                 {
-                    <a href="/Admin/People" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/People" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                    <a href="/Admin/People" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/People" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                         <i class="bi bi-person-vcard text-lg"></i>
                         <span>@Localizer["Persons"]</span>
                     </a>
                 }
                 @if (userPermissions.HasPermission(Permissions.Users.Read))
                 {
-                    <a href="/Admin/Users" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Users" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                    <a href="/Admin/Users" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Users" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                         <i class="bi bi-people text-lg"></i>
                         <span>@Localizer["Users"]</span>
                     </a>
                 }
                 @if (userPermissions.HasPermission(Permissions.Roles.Read))
                 {
-                    <a href="/Admin/Roles" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Roles" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                    <a href="/Admin/Roles" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Roles" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                         <i class="bi bi-award text-lg"></i>
                         <span>@Localizer["Roles"]</span>
                     </a>
@@ -143,24 +143,24 @@
                 @if (userPermissions.HasPermission(Permissions.Settings.Read))
                 {
                     <div class="nav-section-title px-4 py-2 mt-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">@Localizer["Settings"]</div>
-                    <a href="/Admin/Settings" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Settings" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                    <a href="/Admin/Settings" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Settings" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                         <i class="bi bi-gear text-lg"></i>
                         <span>@Localizer["Settings"]</span>
                     </a>
-                    <a href="/Admin/SecurityPolicies" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SecurityPolicies" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                    <a href="/Admin/SecurityPolicies" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SecurityPolicies" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                         <i class="bi bi-lock text-lg"></i>
                         <span>@Localizer["SecurityPolicies"]</span>
                     </a>
                     @if (userPermissions.HasPermission(Permissions.Localization.Read))
                     {
-                        <a href="/Admin/Localization" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Localization" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                        <a href="/Admin/Localization" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Localization" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                             <i class="bi bi-translate text-lg"></i>
                             <span>@Localizer["Localization"]</span>
                         </a>
                     }
                     @if (userPermissions.HasPermission(Permissions.Audit.Read))
                     {
-                        <a href="/Admin/Audit" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Audit" ? "active bg-blue-50 text-blue-600 border-blue-600" : "")">
+                        <a href="/Admin/Audit" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Audit" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                             <i class="bi bi-journal-text text-lg"></i>
                             <span>@Localizer["Audit"]</span>
                         </a>
@@ -172,7 +172,7 @@
             <div class="sidebar-user mt-auto p-4 border-t border-gray-200">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <div class="user-avatar flex items-center justify-center w-10 h-10 rounded-full text-white font-medium text-sm bg-blue-600">
+                        <div class="user-avatar flex items-center justify-center w-10 h-10 rounded-full text-white font-medium text-sm bg-google-500">
                             @((User?.Identity?.Name ?? User?.FindFirst("preferred_username")?.Value ?? "AD").Substring(0, Math.Min(2, (User?.Identity?.Name ?? User?.FindFirst("preferred_username")?.Value ?? "AD").Length)).ToUpper())
                         </div>
                         <div class="flex-grow overflow-hidden">
@@ -201,7 +201,7 @@
                 @* Breadcrumbs *@
                 <nav aria-label="breadcrumb" class="hidden md:block">
                     <ol class="flex items-center space-x-2 text-sm text-gray-500">
-                        <li><a href="/Admin" class="text-gray-500 hover:text-blue-600 no-underline">@Localizer["Admin"]</a></li>
+                        <li><a href="/Admin" class="text-gray-500 hover:text-google-500 no-underline">@Localizer["Admin"]</a></li>
                         @if (!string.IsNullOrEmpty(ViewData["Breadcrumb"]?.ToString()))
                         {
                             <li><span class="text-gray-300">/</span></li>
@@ -212,7 +212,7 @@
                 
                 @* Right Side *@
                 <div class="flex items-center gap-4">
-                    <a href="/" class="inline-flex items-center gap-1 px-3 py-1.5 border border-blue-600 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-50 transition-colors no-underline" title="@Localizer["BackToHome"]">
+                    <a href="/" class="inline-flex items-center gap-1 px-3 py-1.5 border border-google-500 text-google-500 rounded-md text-sm font-medium hover:bg-google-100 transition-colors no-underline" title="@Localizer["BackToHome"]">
                       <svg class="icon icon-tabler icon-tabler-home" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                         <path d="M5 12l-2 0l9 -9l9 9l-2 0"></path>
@@ -221,7 +221,7 @@
                       </svg>
                       <span>@Localizer["BackToHome"]</span>
                     </a>
-                    <a href="/" class="sm:hidden text-blue-600 hover:text-blue-700" title="@Localizer["BackToHome"]">
+                    <a href="/" class="sm:hidden text-google-500 hover:text-google-600" title="@Localizer["BackToHome"]">
                         <svg class="icon icon-tabler icon-tabler-home" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                             <path d="M5 12l-2 0l9 -9l9 9l-2 0"></path>
