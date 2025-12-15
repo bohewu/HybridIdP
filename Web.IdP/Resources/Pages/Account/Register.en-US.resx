@@ -76,4 +76,31 @@
   <data name="Already have an account? Sign in" xml:space="preserve">
     <value>Already have an account? Sign in</value>
   </data>
+  <data name="Already have an account? Sign in" xml:space="preserve">
+    <value>Already have an account? Sign in</value>
+  </data>
+  <data name="CreateAccount" xml:space="preserve">
+    <value>Create your account</value>
+  </data>
+  <data name="ConfirmPassword" xml:space="preserve">
+    <value>Confirm password</value>
+  </data>
+  <data name="Next" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="SignInInstead" xml:space="preserve">
+    <value>Sign in instead</value>
+  </data>
+  <data name="PasswordRequirementsHelp" xml:space="preserve">
+    <value>Use {0} or more characters with a mix of letters, numbers &amp; symbols</value>
+  </data>
+  <data name="Terms" xml:space="preserve">
+    <value>Terms</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="Help" xml:space="preserve">
+    <value>Help</value>
+  </data>
 </root>

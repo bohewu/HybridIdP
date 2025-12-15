@@ -76,4 +76,28 @@
   <data name="Already have an account? Sign in" xml:space="preserve">
     <value>已經有帳號了？登入</value>
   </data>
+  <data name="CreateAccount" xml:space="preserve">
+    <value>建立您的帳號</value>
+  </data>
+  <data name="ConfirmPassword" xml:space="preserve">
+    <value>確認密碼</value>
+  </data>
+  <data name="Next" xml:space="preserve">
+    <value>下一步</value>
+  </data>
+  <data name="SignInInstead" xml:space="preserve">
+    <value>改為登入</value>
+  </data>
+  <data name="PasswordRequirementsHelp" xml:space="preserve">
+    <value>請使用 {0} 個以上的字元，並包含字母、數字和符號。</value>
+  </data>
+  <data name="Terms" xml:space="preserve">
+    <value>條款</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>隱私權</value>
+  </data>
+  <data name="Help" xml:space="preserve">
+    <value>說明</value>
+  </data>
 </root>

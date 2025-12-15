@@ -68,7 +68,7 @@
                                 <span asp-validation-for="Input.ConfirmPassword" class="text-red-600 text-xs mt-1 block"></span>
                             </div>
                         </div>
-                         <p class="text-xs text-gray-500 ml-1">@Localizer["PasswordRequirementsHelp"]</p>
+                         <p class="text-xs text-gray-500 ml-1">@Localizer["PasswordRequirementsHelp", Model.CurrentPolicy?.MinPasswordLength ?? 8]</p>
                     </div>
                     
                     @if (Model.TurnstileEnabled)
