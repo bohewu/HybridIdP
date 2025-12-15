@@ -191,17 +191,13 @@ public partial class LoginModel : PageModel
                 // Check if user has MFA enabled - redirect to MFA verification page
                 if (result.User!.TwoFactorEnabled)
                 {
-                    // Store partial sign-in for 2FA verification
-                    await _signInManager.SignOutAsync();
+                    // Store user ID for 2FA verification
+                    // Identity's GetTwoFactorAuthenticationUserAsync expects ClaimTypes.NameIdentifier
+                    var identity = new System.Security.Claims.ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
+                    identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, result.User.Id.ToString()));
                     await HttpContext.SignInAsync(
                         IdentityConstants.TwoFactorUserIdScheme,
-                        new System.Security.Claims.ClaimsPrincipal(
-                            new System.Security.Claims.ClaimsIdentity(new[]
-                            {
-                                new System.Security.Claims.Claim("sub", result.User.Id.ToString())
-                            }, IdentityConstants.TwoFactorUserIdScheme)
-                        )
-                    );
+                        new System.Security.Claims.ClaimsPrincipal(identity));
                     
                     LogMfaRequired(result.User.UserName);
                     return RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = Input.RememberMe });
