@@ -34,6 +34,7 @@ Built on top of the robust **OpenIddict** framework, supporting modern security 
 - **Security Headers**: Pre-configured CSP, HSTS, and other security best practices.
 
 ### 🛠️ Developer Experience
+- **UI Framework**: Tailwind CSS for all styling (no Bootstrap dependency). Razor Pages for server-rendered views, Vue.js for Admin SPA.
 - **Docker Ready**: Includes `docker compose` for rapid deployment.
 - **Data Seeding**: Automated environments setup for Development (Test Users, Clients, Resources).
 - **Tests**: High coverage with Unit, Integration, and End-to-End (Playwright) tests.

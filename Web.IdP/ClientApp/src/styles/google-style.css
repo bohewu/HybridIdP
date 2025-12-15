@@ -1,0 +1,214 @@
+/**
+ * Google-style UI components
+ * Based on Google 2024 design language
+ */
+
+/* ========================================
+   Typography
+   ======================================== */
+.google-font {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.google-heading {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 400;
+}
+
+/* ========================================
+   Colors - CSS Custom Properties
+   ======================================== */
+:root {
+    --google-blue: #1a73e8;
+    --google-blue-hover: #1557b0;
+    --google-blue-light: #c2e7ff;
+    --google-blue-dark: #004a77;
+    --google-red: #ea4335;
+    --google-yellow: #fbbc04;
+    --google-green: #34a853;
+    --google-gray-50: #f8f9fa;
+    --google-gray-100: #f1f3f4;
+    --google-gray-200: #e8eaed;
+    --google-gray-300: #dadce0;
+    --google-gray-400: #bdc1c6;
+    --google-gray-500: #9aa0a6;
+    --google-gray-600: #80868b;
+    --google-gray-700: #5f6368;
+    --google-gray-800: #3c4043;
+    --google-gray-900: #202124;
+}
+
+/* ========================================
+   Card Component - Bootstrap-style hierarchy
+   ======================================== */
+.google-card {
+    width: 450px;
+    max-width: calc(100vw - 32px);
+    background-color: white;
+    border: 1px solid var(--google-gray-200);
+    border-radius: 8px;
+}
+
+.google-card-header {
+    padding: 24px 24px 0;
+    text-align: center;
+}
+
+.google-card-body {
+    padding: 24px;
+}
+
+.google-card-footer {
+    padding: 16px 24px 24px;
+    border-top: 1px solid var(--google-gray-200);
+}
+
+/* Standalone footer (outside card) */
+.google-footer {
+    width: 450px;
+    max-width: calc(100vw - 32px);
+    padding: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--google-gray-600);
+    gap: 16px;
+}
+
+.google-footer select {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+.google-footer select:focus {
+    border-color: var(--google-blue);
+    outline: none;
+}
+
+.google-footer select:hover {
+    background-color: var(--google-gray-100);
+}
+
+/* Form group spacing */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--google-gray-700);
+}
+
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group input[type="email"] {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    line-height: 1.5;
+    border: 1px solid var(--google-gray-300);
+    border-radius: 4px;
+    background-color: white;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus {
+    border-color: var(--google-blue);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+}
+
+.form-group input:hover:not(:focus) {
+    border-color: var(--google-gray-400);
+}
+
+/* ========================================
+   Button Components
+   ======================================== */
+.btn-google-blue {
+    background-color: var(--google-blue);
+    color: white;
+    transition: background-color 0.2s ease;
+}
+
+.btn-google-blue:hover {
+    background-color: var(--google-blue-hover);
+}
+
+.btn-google-blue:focus {
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.3);
+}
+
+.btn-google-blue:disabled {
+    background-color: var(--google-blue-light);
+    color: var(--google-blue-dark);
+    cursor: not-allowed;
+}
+
+/* ========================================
+   Input Components
+   ======================================== */
+.input-google {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 1rem;
+    line-height: 1.5;
+    border: 1px solid var(--google-gray-300);
+    border-radius: 4px;
+    background-color: white;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-google:focus {
+    border-color: var(--google-blue);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--google-blue);
+}
+
+.input-google:hover:not(:focus) {
+    border-color: var(--google-gray-400);
+}
+
+/* ========================================
+   Link Components
+   ======================================== */
+.link-google {
+    color: var(--google-blue);
+}
+
+.link-google:hover {
+    text-decoration: underline;
+}
+
+/* ========================================
+   Logo Component
+   ======================================== */
+.google-logo {
+    width: 5rem;
+    height: 5rem;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc04 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.google-logo svg {
+    width: 2.5rem;
+    height: 2.5rem;
+    color: white;
+}
