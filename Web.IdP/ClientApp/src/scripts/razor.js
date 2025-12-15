@@ -189,11 +189,18 @@ function initVueLoadingBar() {
     // Method 1: Listen for custom Vue mounted event
     window.addEventListener('vue-mounted', hideLoadingBar);
 
-    // Method 2: Check if any Vue app container has content (start checking after 200ms)
+    // Method 2: Check if page has Vue app container - if not, hide immediately
+    var vueApps = document.querySelectorAll('#app, [id$="-app"]');
+    if (vueApps.length === 0) {
+        // No Vue container found - this is a pure Razor page, hide loading bar immediately
+        hideLoadingBar();
+        return;
+    }
+
+    // Method 3: For Vue pages, check if any Vue app container has content (start checking after 200ms)
     setTimeout(function () {
         var checkInterval = setInterval(function () {
             // Check both #app and elements ending with -app
-            var vueApps = document.querySelectorAll('#app, [id$="-app"]');
             for (var i = 0; i < vueApps.length; i++) {
                 if (vueApps[i].children.length > 0) {
                     clearInterval(checkInterval);
@@ -203,7 +210,7 @@ function initVueLoadingBar() {
             }
         }, 100);
 
-        // Method 3: Timeout fallback (max 8 seconds)
+        // Method 4: Timeout fallback (max 8 seconds)
         setTimeout(function () {
             clearInterval(checkInterval);
             hideLoadingBar();
