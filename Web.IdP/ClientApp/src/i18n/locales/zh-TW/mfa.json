@@ -1,4 +1,5 @@
 {
+  "securityTitle": "安全性",
   "title": "兩步驟驗證",
   "notEnabled": "兩步驟驗證已停用",
   "enableDescription": "除了密碼外，還需要驗證碼才能登入，為您的帳戶增加額外的安全層。",
