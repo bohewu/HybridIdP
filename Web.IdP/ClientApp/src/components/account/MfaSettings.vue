@@ -114,7 +114,7 @@
     </div>
 
     <!-- Disable Modal -->
-    <div v-if="showDisableModal" class="modal-overlay" @click.self="showDisableModal = false">
+    <div v-if="showDisableModal" class="modal-overlay" @click.self="cancelDisable">
       <div class="modal-content">
         <h2>{{ t('mfa.disableTitle') }}</h2>
         <p>{{ t('mfa.disableWarning') }}</p>
@@ -131,7 +131,7 @@
         </div>
         
         <div class="modal-actions">
-          <button class="btn-cancel" @click="showDisableModal = false">{{ t('common.cancel') }}</button>
+          <button class="btn-cancel" @click="cancelDisable">{{ t('common.cancel') }}</button>
           <button class="btn-danger" @click="disableMfa">{{ t('mfa.disable') }}</button>
         </div>
       </div>
@@ -288,6 +288,12 @@ async function disableMfa() {
   } catch (err) {
     disableError.value = t('mfa.errors.disableFailed');
   }
+}
+
+function cancelDisable() {
+  showDisableModal.value = false;
+  disablePassword.value = '';
+  disableError.value = '';
 }
 
 async function regenerateCodes() {
