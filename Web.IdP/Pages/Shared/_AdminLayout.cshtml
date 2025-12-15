@@ -175,9 +175,9 @@
                         <div class="user-avatar flex items-center justify-center w-10 h-10 rounded-full text-white font-medium text-sm bg-blue-600">
                             @((User?.Identity?.Name ?? User?.FindFirst("preferred_username")?.Value ?? "AD").Substring(0, Math.Min(2, (User?.Identity?.Name ?? User?.FindFirst("preferred_username")?.Value ?? "AD").Length)).ToUpper())
                         </div>
-                        <div class="flex-grow">
-                            <div class="font-medium text-sm text-gray-900 truncate max-w-[120px]">@(User?.FindFirst("preferred_username")?.Value ?? User?.Identity?.Name)</div>
-                                <div class="text-xs text-gray-500">@Localizer["Administrator"]</div>
+                        <div class="min-w-0 flex-1">
+                            <div class="font-medium text-sm text-gray-900 truncate">@(User?.FindFirst("preferred_username")?.Value ?? User?.Identity?.Name)</div>
+                            <div class="text-xs text-gray-500">@Localizer["Administrator"]</div>
                         </div>
                     </div>
                     <a href="/Account/Logout" class="text-gray-400 hover:text-gray-600" title="Logout">
