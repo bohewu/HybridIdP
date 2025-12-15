@@ -217,7 +217,7 @@
    Login Layout Components
    ======================================== */
 .google-login-container {
-    min-height: calc(100vh - 64px - 60px); /* Adjust based on header/footer height */
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -247,7 +247,7 @@
     .google-login-container {
         padding: 24px 16px;
         background-color: white;
-        justify-content: flex-start;
+        justify-content: center;
     }
 }
 
