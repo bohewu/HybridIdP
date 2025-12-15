@@ -25,7 +25,7 @@ body.admin-layout {
 /* Hide sidebar toggle on desktop - prevent FOUC */
 @media (min-width: 768px) {
     #sidebar-toggle {
-        display: none !important;
+        visibility: hidden !important;
     }
 }
 
