@@ -212,3 +212,88 @@
     height: 2.5rem;
     color: white;
 }
+
+/* ========================================
+   Login Layout Components
+   ======================================== */
+.google-login-container {
+    min-height: calc(100vh - 64px - 60px); /* Adjust based on header/footer height */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 16px;
+    background-color: var(--google-gray-50);
+}
+
+.google-login-card {
+    width: 100%;
+    max-width: 450px; /* Standard Google Login card width */
+    background-color: white;
+    border: 1px solid var(--google-gray-200);
+    border-radius: 8px;
+    padding: 48px 40px 36px;
+    /* On mobile, remove border/padding */
+}
+
+@media (max-width: 600px) {
+    .google-login-card {
+        border: none;
+        background-color: transparent;
+        padding: 0;
+        max-width: 100%;
+    }
+    
+    .google-login-container {
+        padding: 24px 16px;
+        background-color: white;
+        justify-content: flex-start;
+    }
+}
+
+.google-login-header {
+    margin-bottom: 24px; /* Reduced from 40px for tighter feel */
+}
+
+.google-login-body {
+    width: 100%;
+}
+
+/* ========================================
+   Additional Button Variants
+   ======================================== */
+.btn-google-white {
+    background-color: white;
+    color: var(--google-blue);
+    border: 1px solid var(--google-gray-300);
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.btn-google-white:hover {
+    background-color: var(--google-gray-50);
+    color: var(--google-blue-hover);
+    border-color: var(--google-gray-400);
+}
+
+/* Update btn-google-blue to match structure */
+.btn-google-blue {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    /* existing colors defined above */
+}

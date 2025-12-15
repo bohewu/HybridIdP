@@ -5,45 +5,52 @@
     ViewData["Title"] = Localizer["LogoutTitle"];
 }
 
-<div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-center">
-        <div class="w-full max-w-md">
-            <div class="bg-white py-8 px-4 shadow rounded-lg sm:px-10 border border-gray-200">
-                <div class="text-center">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6">@ViewData["Title"]</h2>
-                    
-                    @if (Model.ShowLogoutPrompt)
-                    {
-                        <p class="mb-6 text-gray-600">@Localizer["LogoutConfirmMessage"]</p>
-                        <form method="post" class="space-y-4">
-                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
-                                @Localizer["YesLogout"]
-                            </button>
-                            <a asp-page="/Index" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                                @Localizer["Cancel"]
-                            </a>
-                        </form>
-                    }
-                    else
-                    {
-                        <div class="rounded-md bg-green-50 p-4 mb-6">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <i class="bi bi-check-circle-fill text-green-400"></i>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-medium text-green-800">
-                                        @Localizer["LogoutSuccessMessage"]
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <a asp-page="/Index" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                            @Localizer["ReturnHome"]
+<div class="google-login-container">
+    <div class="google-login-card">
+        <div class="google-login-header mb-6 text-center">
+            @* Use logo or icon if available, or just title *@
+            <h1 class="text-2xl font-normal text-gray-900 mb-2">@ViewData["Title"]</h1>
+        </div>
+        
+        <div class="google-login-body">
+            @if (Model.ShowLogoutPrompt)
+            {
+                <p class="text-center text-gray-600 mb-8">@Localizer["LogoutConfirmMessage"]</p>
+                <form method="post" class="space-y-4">
+                    <div class="flex flex-col gap-3">
+                        <button type="submit" class="btn-google-blue w-full justify-center">
+                            @Localizer["YesLogout"]
+                        </button>
+                        <a asp-page="/Index" class="btn-google-white w-full justify-center">
+                            @Localizer["Cancel"]
                         </a>
-                    }
+                    </div>
+                </form>
+            }
+            else
+            {
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-4">
+                        <i class="bi bi-check-lg text-2xl text-green-600"></i>
+                    </div>
+                    <p class="text-gray-900 font-medium"> @Localizer["LogoutSuccessMessage"]</p>
                 </div>
-            </div>
+                <div class="flex flex-col gap-3">
+                    <a asp-page="/Index" class="btn-google-blue w-full justify-center text-center no-underline">
+                        @Localizer["ReturnHome"]
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+    
+    @* Footer *@
+    <div class="google-footer mt-4">
+        <div class="flex gap-4 text-xs text-gray-500 justify-center">
+             <span>@Localizer["Language"]</span>
+             <span>@Localizer["Help"]</span>
+             <span>@Localizer["Privacy"]</span>
+             <span>@Localizer["Terms"]</span>
         </div>
     </div>
 </div>
