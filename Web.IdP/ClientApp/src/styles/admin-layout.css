@@ -287,11 +287,6 @@ main {
     .mobile-overlay.show {
         display: block;
     }
-
-    /* Ensure mobile toggle button is visible */
-    #sidebar-toggle {
-        display: inline-block !important;
-    }
 }
 
 /* Medium screens - collapsible sidebar */
