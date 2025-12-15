@@ -35,127 +35,80 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 </head>
-<body class="h-full flex items-center justify-center py-8 px-4 bg-gray-50 google-font">
-    @* Outer container for centering *@
-    <div class="flex flex-col items-center">
-        @* Google-style Card *@
-        <div class="google-card">
-            @* Card Header - Logo and Title *@
-            <div class="google-card-header">
-                <div class="flex justify-center mb-4">
-                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 via-green-400 to-yellow-400 flex items-center justify-center">
-                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<body class="bg-gray-50 google-font">
+    <div class="google-login-container">
+        <div class="google-login-card">
+            <div class="google-login-header text-center">
+                 <div class="flex justify-center mb-4">
+                    <div class="google-logo">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                     </div>
                 </div>
-                <h1 class="text-2xl font-normal text-gray-900">@productName</h1>
-                <h2 class="mt-1 text-lg text-gray-700">@Localizer["Login"]</h2>
+                <h1 class="text-2xl font-normal text-gray-900 mb-2">@productName</h1>
+                <h2 class="text-lg text-gray-700 font-normal">@Localizer["Login"]</h2>
                 <p class="mt-1 text-sm text-gray-500">@Localizer["SignInToContinue"]</p>
             </div>
             
-            @* Card Body - Form *@
-            <div class="google-card-body">
+            <div class="google-login-body">
                 <form method="post">
-                    @* Error Summary *@
-                    <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-4" role="alert" data-test-id="login-error-summary"></div>
+                    <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="login-error-summary"></div>
                     
                     <input type="hidden" asp-for="ReturnUrl" />
                     
-                    @* Email/Username *@
-                    <div class="form-group">
-                        <label for="Input_Login">@Localizer["EmailOrUsername"]</label>
-                        <input asp-for="Input.Login" type="text" 
-                               placeholder="@Localizer["EmailOrUsername"]"
-                               autocomplete="username"
-                               autofocus
-                               data-test-id="login-username" />
-                        <span asp-validation-for="Input.Login" class="text-red-600 text-xs mt-1 block" data-test-id="login-username-error"></span>
-                    </div>
-                    
-                    @* Password *@
-                    <div class="form-group">
-                        <label for="Input_Password">@Localizer["Password"]</label>
-                        <input asp-for="Input.Password"
-                               placeholder="@Localizer["Password"]"
-                               autocomplete="current-password"
-                               data-test-id="login-password" />
-                        <span asp-validation-for="Input.Password" class="text-red-600 text-xs mt-1 block" data-test-id="login-password-error"></span>
-                    </div>
-                
-                    @* Remember Me *@
-                    <div class="form-group">
-                        <div class="flex items-center">
-                            <input asp-for="Input.RememberMe" 
-                                   class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" 
-                                   data-test-id="login-remember" />
-                            <label for="Input_RememberMe" class="ml-2 text-sm text-gray-700">
-                                @Localizer["RememberMe"]
-                            </label>
+                    <div class="space-y-4">
+                        <div class="form-group">
+                            <label asp-for="Input.Login" class="sr-only">@Localizer["EmailOrUsername"]</label>
+                            <input asp-for="Input.Login" class="input-google" placeholder="@Localizer["EmailOrUsername"]" autocomplete="username" autofocus data-test-id="login-username" />
+                            <span asp-validation-for="Input.Login" class="text-red-600 text-xs mt-1 block" data-test-id="login-username-error"></span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label asp-for="Input.Password" class="sr-only">@Localizer["Password"]</label>
+                            <input asp-for="Input.Password" type="password" class="input-google" placeholder="@Localizer["Password"]" autocomplete="current-password" data-test-id="login-password" />
+                            <span asp-validation-for="Input.Password" class="text-red-600 text-xs mt-1 block" data-test-id="login-password-error"></span>
                         </div>
                     </div>
-                    
-                    @* Turnstile CAPTCHA *@
+                
                     @if (Model.TurnstileEnabled)
                     {
-                        <div class="form-group">
+                        <div class="my-6 flex justify-center">
                             <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired"></div>
                         </div>
                     }
                     
-                    @* Submit Button *@
-                    <div class="form-group" style="margin-top: 24px;">
-                        @if (Model.TurnstileEnabled)
+                    <div class="flex items-center justify-between mt-8">
+                        @if (Model.RegistrationEnabled)
                         {
-                            <button type="submit" 
-                                    class="btn-google-blue w-full py-3 px-6 rounded text-sm font-medium" 
-                                    data-test-id="login-submit" 
-                                    id="loginSubmitBtn" 
-                                    disabled>
-                                <span id="loginBtnText">@Localizer["Login"]</span>
-                                <span id="loginBtnLoading" class="hidden flex items-center justify-center">
-                                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    @Localizer["PleaseCompleteCaptcha"]
-                                </span>
-                            </button>
-                        }
-                        else
-                        {
-                            <button type="submit" 
-                                    class="btn-google-blue w-full py-3 px-6 rounded text-sm font-medium" 
-                                    data-test-id="login-submit">
-                                @Localizer["Login"]
-                            </button>
-                        }
-                    </div>
-                    
-                    @* Register Link *@
-                    @if (Model.RegistrationEnabled)
-                    {
-                        <div class="text-center mt-4">
-                            <span class="text-sm text-gray-600">@Localizer["DontHaveAccount"]</span>
-                            <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" 
-                               class="link-google text-sm font-medium ml-1">
+                            <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="link-google text-sm font-medium">
                                 @Localizer["CreateAccount"]
                             </a>
-                        </div>
-                    }
+                        }
+                        else 
+                        {
+                            <div></div> <!-- Spacer -->
+                        }
+
+                        <button type="submit" 
+                                class="btn-google-blue ml-4" 
+                                data-test-id="login-submit"
+                                id="loginSubmitBtn">
+                            @Localizer["Next"]
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
         
-        @* Footer Links *@
-        <div class="google-footer mt-1">
-            <select class="language-select bg-transparent border-0 text-xs cursor-pointer focus:outline-none focus:ring-0">
+        <div class="google-footer mt-4">
+             <select class="language-select bg-transparent border-0 text-xs cursor-pointer focus:outline-none focus:ring-0 text-gray-600">
                 <option value="en-US" selected="@(currentCulture == "en-US")">English (United States)</option>
                 <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文 (台灣)</option>
             </select>
-            <div class="flex gap-4">
-                <a href="/Privacy" class="hover:text-gray-700">@Localizer["Privacy"]</a>
-                <a href="/Docs" class="hover:text-gray-700">@Localizer["Help"]</a>
+            <div class="flex gap-4 text-xs">
+                <a href="/Privacy" class="hover:text-gray-900">@Localizer["Privacy"]</a>
+                <a href="/Docs" class="hover:text-gray-900">@Localizer["Help"]</a>
             </div>
         </div>
     </div>

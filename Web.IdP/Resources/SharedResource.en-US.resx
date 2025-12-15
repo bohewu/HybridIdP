@@ -428,4 +428,19 @@
   <data name="PersonNotActive" xml:space="preserve">
     <value>Your associated person record is not active. Please contact HR or the administrator.</value>
   </data>
+  <data name="CreateAccount" xml:space="preserve">
+    <value>Create account</value>
+  </data>
+  <data name="Next" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="SignInInstead" xml:space="preserve">
+    <value>Sign in instead</value>
+  </data>
+  <data name="Terms" xml:space="preserve">
+    <value>Terms</value>
+  </data>
+  <data name="Help" xml:space="preserve">
+    <value>Help</value>
+  </data>
 </root>

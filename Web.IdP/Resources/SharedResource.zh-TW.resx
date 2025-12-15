@@ -423,4 +423,19 @@
   <data name="PersonNotActive" xml:space="preserve">
     <value>您關聯的人員記錄目前非啟用狀態。請聯繫人資或管理員。</value>
   </data>
+  <data name="CreateAccount" xml:space="preserve">
+    <value>建立帳戶</value>
+  </data>
+  <data name="Next" xml:space="preserve">
+    <value>下一步</value>
+  </data>
+  <data name="SignInInstead" xml:space="preserve">
+    <value>改為登入</value>
+  </data>
+  <data name="Terms" xml:space="preserve">
+    <value>條款</value>
+  </data>
+  <data name="Help" xml:space="preserve">
+    <value>說明</value>
+  </data>
 </root>
