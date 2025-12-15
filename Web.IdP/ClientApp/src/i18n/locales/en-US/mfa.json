@@ -1,4 +1,5 @@
 {
+  "securityTitle": "Security",
   "title": "Two-Step Verification",
   "notEnabled": "2-Step Verification is disabled",
   "enableDescription": "Add an extra layer of security to your account by requiring a verification code in addition to your password.",
