@@ -31,6 +31,14 @@
           :external-logins="profile.externalLogins"
         />
       </div>
+
+      <!-- Security Section (MFA) -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-medium text-gray-900">{{ t('mfa.securityTitle') || 'Security' }}</h2>
+        </div>
+        <MfaSettings />
+      </div>
     </div>
   </div>
 </template>
@@ -41,6 +49,7 @@ import { useI18n } from 'vue-i18n'
 import ProfileInfoCard from './components/ProfileInfoCard.vue'
 import EditProfileForm from './components/EditProfileForm.vue'
 import ChangePasswordForm from './components/ChangePasswordForm.vue'
+import MfaSettings from '../components/account/MfaSettings.vue'
 
 const { t } = useI18n()
 const loading = ref(true)
