@@ -251,6 +251,13 @@ namespace Web.IdP.Services
                 // Add permission claims from user's roles
                 await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
 
+                // Add role claims explicitly
+                var roles = await _userManager.GetRolesAsync(user);
+                foreach (var role in roles)
+                {
+                    identity.AddClaim(new Claim(Claims.Role, role));
+                }
+
                 // Set granted scopes on identity
                 identity.SetScopes(requestedScopes);
 

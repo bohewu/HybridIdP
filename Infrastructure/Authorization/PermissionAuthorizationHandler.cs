@@ -60,11 +60,9 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
         }
         else
         {
-            // Fallback: If no active_role claim, use the first role claim
-            // This maintains backward compatibility for sessions created before Phase 11
-            activeRoleName = context.User.Claims
-                .FirstOrDefault(c => c.Type == ClaimTypes.Role)
-                ?.Value;
+            // Fallback: If no active_role claim, try ClaimTypes.Role (URI) or "role" (JWT)
+            activeRoleName = context.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value
+                             ?? context.User.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
         }
 
         if (string.IsNullOrEmpty(activeRoleName))
