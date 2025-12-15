@@ -26,8 +26,8 @@ public class SecurityHeadersMiddleware
         // Content Security Policy (CSP)
         // Allow Bootstrap CDN, Bootstrap Icons CDN, Cloudflare Turnstile, and self
         var scriptSrc = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-eval'";
-        var styleSrc = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-inline'";
-        var styleSrcElem = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-inline'";
+        var styleSrc = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com https://fonts.googleapis.com 'unsafe-inline'";
+        var styleSrcElem = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com https://fonts.googleapis.com 'unsafe-inline'";
         var styleSrcAttr = "'unsafe-inline'";
         var connectSrc = "'self' https://challenges.cloudflare.com";
         var frameSrc = "https://challenges.cloudflare.com";
@@ -54,7 +54,7 @@ public class SecurityHeadersMiddleware
             $"style-src {styleSrc}",
             $"style-src-elem {styleSrcElem}",
             $"style-src-attr {styleSrcAttr}",
-            "font-src 'self' https://cdn.jsdelivr.net data:",
+            "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:",
             "img-src 'self' data: https:",
             $"connect-src {connectSrc}",
             $"frame-src {frameSrc}",

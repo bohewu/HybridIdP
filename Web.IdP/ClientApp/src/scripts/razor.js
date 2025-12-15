@@ -1,4 +1,5 @@
 import '../styles/main.css';
+import '../styles/google-style.css';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Mobile Menu Toggle

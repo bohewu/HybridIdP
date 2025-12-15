@@ -16,7 +16,7 @@
 }
 
 <!DOCTYPE html>
-<html lang="@currentCulture" class="h-full bg-gray-50">
+<html lang="@currentCulture" class="h-full bg-white">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -30,108 +30,139 @@
     <link href="@ViteService.GetScriptPath("src/styles/main.css")" rel="stylesheet" />
     <script type="module" vite-src="src/scripts/razor.js"></script>
     
-    @* Legacy auth styles - keep until fully migrated or remove if covered by Tailwind *@
-    @* <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true"/> *@
+    @* Google Fonts - Roboto for body, will fallback gracefully *@
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 </head>
-<body class="h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
-        <div class="text-center relative">
-            <div class="absolute top-0 right-0">
-                 <partial name="_LanguageSelector" />
+<body class="h-full flex items-center justify-center py-8 px-4 bg-gray-50 google-font">
+    @* Outer container for centering *@
+    <div class="flex flex-col items-center">
+        @* Google-style Card *@
+        <div class="google-card">
+            @* Card Header - Logo and Title *@
+            <div class="google-card-header">
+                <div class="flex justify-center mb-4">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 via-green-400 to-yellow-400 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                </div>
+                <h1 class="text-2xl font-normal text-gray-900">@productName</h1>
+                <h2 class="mt-1 text-lg text-gray-700">@Localizer["Login"]</h2>
+                <p class="mt-1 text-sm text-gray-500">@Localizer["SignInToContinue"]</p>
             </div>
-
-            <h1 class="mt-6 text-3xl font-extrabold text-gray-900">@productName</h1>
             
-            <h2 class="mt-2 text-2xl font-bold text-gray-900">@ViewData["Title"]</h2>
-            <p class="mt-2 text-sm text-gray-600">@Localizer["SignInToContinue"]</p>
-        </div>
-
-        <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-200">
-            <form method="post" class="space-y-6">
-                <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-4 rounded-md text-sm mb-4" role="alert" data-test-id="login-error-summary"></div>
-                
-                <input type="hidden" asp-for="ReturnUrl" />
-                
-                <div>
-                    <label for="Input_Login" class="block text-sm font-medium text-gray-700">@Localizer["EmailOrUsername"]</label>
-                    <div class="mt-1">
+            @* Card Body - Form *@
+            <div class="google-card-body">
+                <form method="post">
+                    @* Error Summary *@
+                    <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-4" role="alert" data-test-id="login-error-summary"></div>
+                    
+                    <input type="hidden" asp-for="ReturnUrl" />
+                    
+                    @* Email/Username *@
+                    <div class="form-group">
+                        <label for="Input_Login">@Localizer["EmailOrUsername"]</label>
                         <input asp-for="Input.Login" type="text" 
-                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
-                               placeholder="@Localizer["EmailOrUsername"]" autocomplete="username" autofocus aria-label="@Localizer["EmailOrUsername"]" data-test-id="login-username" />
+                               placeholder="@Localizer["EmailOrUsername"]"
+                               autocomplete="username"
+                               autofocus
+                               data-test-id="login-username" />
+                        <span asp-validation-for="Input.Login" class="text-red-600 text-xs mt-1 block" data-test-id="login-username-error"></span>
                     </div>
-                    <span asp-validation-for="Input.Login" class="text-red-500 text-xs mt-1 block" data-test-id="login-username-error"></span>
-                </div>
-                
-                <div>
-                    <label for="Input_Password" class="block text-sm font-medium text-gray-700">@Localizer["Password"]</label>
-                    <div class="mt-1">
-                        <input asp-for="Input.Password" 
-                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
-                               placeholder="@Localizer["Password"]" autocomplete="current-password" data-test-id="login-password" />
+                    
+                    @* Password *@
+                    <div class="form-group">
+                        <label for="Input_Password">@Localizer["Password"]</label>
+                        <input asp-for="Input.Password"
+                               placeholder="@Localizer["Password"]"
+                               autocomplete="current-password"
+                               data-test-id="login-password" />
+                        <span asp-validation-for="Input.Password" class="text-red-600 text-xs mt-1 block" data-test-id="login-password-error"></span>
                     </div>
-                    <span asp-validation-for="Input.Password" class="text-red-500 text-xs mt-1 block" data-test-id="login-password-error"></span>
-                </div>
                 
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <input asp-for="Input.RememberMe" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" data-test-id="login-remember" />
-                        <label for="Input_RememberMe" class="ml-2 block text-sm text-gray-900">@Localizer["RememberMe"]</label>
+                    @* Remember Me *@
+                    <div class="form-group">
+                        <div class="flex items-center">
+                            <input asp-for="Input.RememberMe" 
+                                   class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" 
+                                   data-test-id="login-remember" />
+                            <label for="Input_RememberMe" class="ml-2 text-sm text-gray-700">
+                                @Localizer["RememberMe"]
+                            </label>
+                        </div>
                     </div>
-                </div>
-                
-                @if (Model.TurnstileEnabled)
-                {
-                    <div class="mt-4">
-                        <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired"></div>
-                    </div>
-                }
-                
-                <div>
+                    
+                    @* Turnstile CAPTCHA *@
                     @if (Model.TurnstileEnabled)
                     {
-                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" data-test-id="login-submit" id="loginSubmitBtn" disabled>
-                            <span id="loginBtnText">@Localizer["Login"]</span>
-                            <span id="loginBtnLoading" class="hidden flex items-center">
-                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                @Localizer["PleaseCompleteCaptcha"]
-                            </span>
-                        </button>
-                    }
-                    else
-                    {
-                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" data-test-id="login-submit">@Localizer["Login"]</button>
-                    }
-                </div>
-                
-                <div class="mt-6">
-                    <div class="relative">
-                        <div class="absolute inset-0 flex items-center">
-                            <div class="w-full border-t border-gray-300"></div>
+                        <div class="form-group">
+                            <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired"></div>
                         </div>
-                        <div class="relative flex justify-center text-sm">
-                            <span class="px-2 bg-white text-gray-500">
-                                @if (Model.RegistrationEnabled)
-                                {
-                                    <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="font-medium text-blue-600 hover:text-blue-500">@Localizer["DontHaveAccountRegister"]</a>
-                                }
-                            </span>
-                        </div>
+                    }
+                    
+                    @* Submit Button *@
+                    <div class="form-group" style="margin-top: 24px;">
+                        @if (Model.TurnstileEnabled)
+                        {
+                            <button type="submit" 
+                                    class="btn-google-blue w-full py-3 px-6 rounded text-sm font-medium" 
+                                    data-test-id="login-submit" 
+                                    id="loginSubmitBtn" 
+                                    disabled>
+                                <span id="loginBtnText">@Localizer["Login"]</span>
+                                <span id="loginBtnLoading" class="hidden flex items-center justify-center">
+                                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    @Localizer["PleaseCompleteCaptcha"]
+                                </span>
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="submit" 
+                                    class="btn-google-blue w-full py-3 px-6 rounded text-sm font-medium" 
+                                    data-test-id="login-submit">
+                                @Localizer["Login"]
+                            </button>
+                        }
                     </div>
-                </div>
-            </form>
+                    
+                    @* Register Link *@
+                    @if (Model.RegistrationEnabled)
+                    {
+                        <div class="text-center mt-4">
+                            <span class="text-sm text-gray-600">@Localizer["DontHaveAccount"]</span>
+                            <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" 
+                               class="link-google text-sm font-medium ml-1">
+                                @Localizer["CreateAccount"]
+                            </a>
+                        </div>
+                    }
+                </form>
+            </div>
+        </div>
+        
+        @* Footer Links *@
+        <div class="google-footer mt-1">
+            <select class="language-select bg-transparent border-0 text-xs cursor-pointer focus:outline-none focus:ring-0">
+                <option value="en-US" selected="@(currentCulture == "en-US")">English (United States)</option>
+                <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文 (台灣)</option>
+            </select>
+            <div class="flex gap-4">
+                <a href="/Privacy" class="hover:text-gray-700">@Localizer["Privacy"]</a>
+                <a href="/Docs" class="hover:text-gray-700">@Localizer["Help"]</a>
+            </div>
         </div>
     </div>
 
-    @* Replaced Bootstrap Script with nothing for now, as Login typically just needs minimal JS *@
-    @* Legacy auth styles - keep until fully migrated or remove if covered by Tailwind *@
-    @* <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true"/> *@
     @if (Model.TurnstileEnabled)
     {
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     }
 </body>
 </html>
- 
