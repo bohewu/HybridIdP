@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Core.Application;
 using Core.Domain;
 using Core.Domain.Events;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -56,8 +57,35 @@ public partial class LoginMfaModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, bool rememberMe = false)
     {
-        // Ensure user has gone through username/password screen first
+        // Debug: Check if TwoFactorUserIdScheme cookie exists
+        var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+        _logger.LogInformation("TwoFactorUserIdScheme auth result: Succeeded={Succeeded}, Principal={HasPrincipal}", 
+            twoFactorPrincipal.Succeeded, 
+            twoFactorPrincipal.Principal != null);
+        
+        if (twoFactorPrincipal.Principal != null)
+        {
+            foreach (var claim in twoFactorPrincipal.Principal.Claims)
+            {
+                _logger.LogInformation("TwoFactor Claim: {Type}={Value}", claim.Type, claim.Value);
+            }
+        }
+
+        // Try standard Identity method first
         var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
+        _logger.LogInformation("GetTwoFactorAuthenticationUserAsync returned: {HasUser}", user != null);
+        
+        // Fallback: manually look up user from cookie if Identity method fails
+        if (user == null && twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
+        {
+            var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                user = await _userManager.FindByIdAsync(userId.ToString());
+                _logger.LogInformation("Manual FindByIdAsync({UserId}) returned: {HasUser}", userId, user != null);
+            }
+        }
+        
         if (user == null)
         {
             return RedirectToPage("./Login");
@@ -72,7 +100,23 @@ public partial class LoginMfaModel : PageModel
     {
         returnUrl ??= Url.Content("~/");
 
+        // Try standard Identity method first
         var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
+        
+        // Fallback: manually look up user from cookie if Identity method fails
+        if (user == null)
+        {
+            var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+            if (twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
+            {
+                var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+                {
+                    user = await _userManager.FindByIdAsync(userId.ToString());
+                }
+            }
+        }
+        
         if (user == null)
         {
             return RedirectToPage("./Login");
