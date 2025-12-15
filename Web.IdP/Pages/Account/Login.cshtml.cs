@@ -72,6 +72,18 @@ public partial class LoginModel : PageModel
     public string TurnstileSiteKey => _turnstileOptions.SiteKey;
     public bool RegistrationEnabled { get; private set; } = true;
 
+    /// <summary>
+    /// Calculate if Turnstile should be enabled based on settings and key configuration
+    /// </summary>
+    private async Task LoadTurnstileStateAsync()
+    {
+        var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled);
+        var isEnabledFlag = dbTurnstileEnabled ?? _turnstileOptions.Enabled;
+        var hasSiteKey = !string.IsNullOrWhiteSpace(_turnstileOptions.SiteKey);
+        var hasSecretKey = !string.IsNullOrWhiteSpace(_turnstileOptions.SecretKey);
+        TurnstileEnabled = isEnabledFlag && hasSiteKey && hasSecretKey && _turnstileStateService.IsAvailable;
+    }
+
     public class InputModel
     {
         [Required(ErrorMessage = "RequiredField")]
@@ -87,8 +99,14 @@ public partial class LoginModel : PageModel
         public bool RememberMe { get; set; }
     }
 
-    public async Task OnGetAsync(string? returnUrl = null)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
     {
+        // If user is already authenticated, redirect away from login page
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return LocalRedirect(returnUrl ?? Url.Content("~/"));
+        }
+        
         if (!string.IsNullOrEmpty(returnUrl))
         {
             // Clear the existing external cookie to ensure a clean login process
@@ -98,11 +116,11 @@ public partial class LoginModel : PageModel
         // Load registration setting
         RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
 
-        // Load Turnstile enabled setting (DB overrides appsettings)
-        var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled);
-        TurnstileEnabled = (dbTurnstileEnabled ?? _turnstileOptions.Enabled) && _turnstileStateService.IsAvailable;
+        // Load Turnstile enabled state
+        await LoadTurnstileStateAsync();
 
         ReturnUrl = returnUrl;
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
@@ -113,6 +131,9 @@ public partial class LoginModel : PageModel
         {
             return Page();
         }
+        
+        // Load Turnstile enabled state for POST validation
+        await LoadTurnstileStateAsync();
         
         // Validate Turnstile if enabled
         if (TurnstileEnabled)
