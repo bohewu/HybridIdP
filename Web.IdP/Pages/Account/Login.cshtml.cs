@@ -188,6 +188,25 @@ public partial class LoginModel : PageModel
                     await _loginHistoryService.RecordLoginAsync(loginHistory);
                 }
 
+                // Check if user has MFA enabled - redirect to MFA verification page
+                if (result.User!.TwoFactorEnabled)
+                {
+                    // Store partial sign-in for 2FA verification
+                    await _signInManager.SignOutAsync();
+                    await HttpContext.SignInAsync(
+                        IdentityConstants.TwoFactorUserIdScheme,
+                        new System.Security.Claims.ClaimsPrincipal(
+                            new System.Security.Claims.ClaimsIdentity(new[]
+                            {
+                                new System.Security.Claims.Claim("sub", result.User.Id.ToString())
+                            }, IdentityConstants.TwoFactorUserIdScheme)
+                        )
+                    );
+                    
+                    LogMfaRequired(result.User.UserName);
+                    return RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = Input.RememberMe });
+                }
+
                 // Sign in user (role claims are automatically added by Identity)
                 await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
                 LogUserSignedIn(result.User!.UserName);
@@ -296,6 +315,9 @@ public partial class LoginModel : PageModel
 
     [LoggerMessage(Level = LogLevel.Information, Message = "User '{UserName}' signed in successfully.")]
     partial void LogUserSignedIn(string? userName);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User '{UserName}' requires MFA verification.")]
+    partial void LogMfaRequired(string? userName);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Login failed for user '{Login}': Account is locked out.")]
     partial void LogUserLockedOut(string login);

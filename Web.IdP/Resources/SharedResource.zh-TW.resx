@@ -475,4 +475,38 @@
   <data name="CookieConsent.Decline" xml:space="preserve">
     <value>拒絕</value>
   </data>
+  <!-- MFA / Two-Factor Authentication -->
+  <data name="TwoStepVerification" xml:space="preserve">
+    <value>兩步驟驗證</value>
+  </data>
+  <data name="EnterAuthenticatorCode" xml:space="preserve">
+    <value>請輸入驗證器應用程式的驗證碼</value>
+  </data>
+  <data name="VerificationCode" xml:space="preserve">
+    <value>驗證碼</value>
+  </data>
+  <data name="UseRecoveryCode" xml:space="preserve">
+    <value>改用救援碼</value>
+  </data>
+  <data name="RecoveryCode" xml:space="preserve">
+    <value>救援碼</value>
+  </data>
+  <data name="BackToLogin" xml:space="preserve">
+    <value>返回登入</value>
+  </data>
+  <data name="Verify" xml:space="preserve">
+    <value>驗證</value>
+  </data>
+  <data name="EnterCodeOrRecoveryCode" xml:space="preserve">
+    <value>請輸入驗證碼或救援碼</value>
+  </data>
+  <data name="InvalidVerificationCode" xml:space="preserve">
+    <value>驗證碼無效</value>
+  </data>
+  <data name="InvalidRecoveryCode" xml:space="preserve">
+    <value>救援碼無效</value>
+  </data>
+  <data name="TotpCodeLength" xml:space="preserve">
+    <value>驗證碼必須為 6 位數</value>
+  </data>
 </root>
