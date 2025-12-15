@@ -3,6 +3,7 @@
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
     ViewData["Title"] = Localizer["LogoutTitle"];
+    Layout = "_SimpleLayout";
 }
 
 <div class="google-login-container">
