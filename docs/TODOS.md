@@ -84,6 +84,18 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] Phase 18.4: Automation (PersonLifecycleJob w/ Quartz)
 - [x] E2E & System Tests verified (2.2s / 2.9s)
 
+## Phase 20 (Multi-Factor Authentication) ✅ COMPLETED
+
+- [x] Phase 20.1: TOTP MFA Implementation
+  - [x] MfaService (TDD) - 11+ tests
+  - [x] MFA API endpoints (status, setup, verify, disable, recovery-codes)
+  - [x] Login flow with MFA redirect (LoginMfa.cshtml)
+  - [x] Recovery code verification 
+  - [x] MfaSettings.vue component in Profile page
+  - [x] Support for passwordless users (Legacy/SSO) - TOTP-based disable
+  - [x] Modular i18n files (mfa.json)
+  - [x] MfaApiTests system tests
+
 ## Notes
 
 - Security scanning scripts available: `CI/security-scan.ps1`, `CI/dependency-scan.ps1`
