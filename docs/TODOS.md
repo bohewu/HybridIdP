@@ -1,7 +1,7 @@
 ---
 title: "TODOs & Backlog"
 owner: HybridIdP Team
-last-updated: 2025-12-13
+last-updated: 2025-12-15
 ---
 
 # TODOs & Technical Backlog
@@ -19,18 +19,18 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] Configurable Audit Retention via SystemSettings UI
 - [x] Implement Resource table usage for consent multi-language text - `AuthorizationService`, `LocalizationService`
 
-## UI/UX Refactoring (Google Style 2024) - Phase 20
+## ✅ UI/UX Refactoring (Google Style 2024) - COMPLETE
 
-### Completed
 - [x] Login Page (Layout, Button text, Footer, Full-bleed background)
 - [x] Register Page (Dynamic Password Policy, Localized Validation Messages)
 - [x] Logout & Access Denied Pages (Converted to standalone `_SimpleLayout`)
 - [x] Shared Footer (Localized `_GoogleFooter` with Language Selector)
 - [x] Connect/Logout View (OIDC Logout styling)
 - [x] Main Layout (`_Layout.cshtml`) Refactoring
-- [x] **Review all .vue components**: Ensure compatibility with **Tailwind CSS v4** and apply **Google Account Style** (Clean, whitespace-heavy, rounded cards).
-- [x] Review `_ApplicationManagerLayout.cshtml` consistency.
-- [x] Global Design Tokens update.
+- [x] Vue components: Google Account Style with Tailwind CSS v4
+- [x] `_AdminLayout.cshtml` & `_ApplicationManagerLayout.cshtml` consistency
+- [x] Global Design Tokens update
+- [x] CookieConsent banner refactoring with localization
 
 ## Short-term (high priority)
 
