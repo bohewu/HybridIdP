@@ -63,6 +63,7 @@
     }
   },
   "mfa": {
+    "securityTitle": "安全性",
     "notEnabled": "兩步驟驗證已關閉",
     "enableDescription": "啟用兩步驟驗證，為您的帳戶增加額外的安全保護。",
     "enable": "啟用",
