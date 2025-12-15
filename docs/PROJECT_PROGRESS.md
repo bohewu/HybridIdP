@@ -1,34 +1,34 @@
 ---
 title: "Project Progress Summary"
 owner: HybridAuthIdP Team
-last-updated: 2025-12-11
+last-updated: 2025-12-15
 ---
 
 # 專案進度摘要
 
 此檔案為快速進度總覽，列出每個 Phase 的完成狀態與指向詳細說明的連結。
 
--- Phase 1 — PostgreSQL & EF Core: 100% — `./archive/phases/phase-1-database-ef-core.md`
--- Phase 2 — OpenIddict & OIDC Flow: 100% — `./archive/phases/phase-2-openiddict-oidc.md`
--- Phase 3 — Admin UI: 100% — `./archive/phases/admin-ui-phase-3.md`
--- Phase 4 — User/Role/Client & Permissions: 100% — `./archive/phases/phase-4-user-role-client.md`
--- Phase 5 — Security / i18n / Consent / API Resources: 100% ✅ — `./archive/phases/phase-5-security-i18n-consent.md`
--- Phase 6 — Code Quality & Tests: 100% ✅ — `./archive/phases/phase-6-code-quality-tests.md`
--- Phase 7 — Audit & Monitoring: 100% — `./archive/phases/phase-7-audit-monitoring.md`
--- Phase 8 — e2e Test Refactor: 100% — `./archive/phases/phase-8-e2e-refactor.md`
--- Phase 9 — Scope Authorization & Management: 100% — `./archive/phases/phase-9-roadmap.md`
--- Phase 10 — Person & Identity: 100% ✅ (Phase 10.1-10.5 All Complete) — `./FEATURES_AND_CAPABILITIES.md#phase-10--person--identity-completed`
--- Phase 11 — Role & Account Switching: 100% ✅ (Phase 11.6 Complete) — `./FEATURES_AND_CAPABILITIES.md#phase-11--account--role-management-completed`
-   - Phase 11.6: Homepage Refactoring & Security Hardening ✅ — `./archive/phases/phase-11-6-remove-role-switch-refactor-homepage.md`, `./SECURITY_HARDENING.md`
--- Phase 12 — Admin API & HR Integration: 📋 Planned — `./phase-12-admin-api-hr-integration.md`
--- Phase 13 — OAuth Flow Enhancement: 100% ✅ — `./archive/phases/phase-13-oauth-flow-enhancement.md`
--- Phase 15 — Operational Excellence (Health & Logging): 100% ✅ — `./phase-15-operational.md`
--- Phase 16 — Advanced User Support (Impersonation): 100% ✅ — `./phase-16-impersonation.md`
--- Phase 17 — Deployment & Documentation: 100% ✅ — `./docs/DEPLOYMENT_GUIDE.md`
--- Phase 18 — Personnel Lifecycle Management: 100% ✅ — `./phase-18-personnel-lifecycle.md`
--- Phase 19 — Frontend Testing Strategy (Vitest): 50% — `./TODOS.md`
--- Phase 20 — MFA & WebAuthn: 0% — `./docs/archive/phases/phase-20-mfa-webauthn.md`
--- Phase 21 — External Identity Providers: 📋 Planned — `./docs/archive/phases/phase-21-external-idp.md`
+- Phase 1 — PostgreSQL & EF Core: 100% — `./archive/phases/phase-1-database-ef-core.md`
+- Phase 2 — OpenIddict & OIDC Flow: 100% — `./archive/phases/phase-2-openiddict-oidc.md`
+- Phase 3 — Admin UI: 100% — `./archive/phases/admin-ui-phase-3.md`
+- Phase 4 — User/Role/Client & Permissions: 100% — `./archive/phases/phase-4-user-role-client.md`
+- Phase 5 — Security / i18n / Consent / API Resources: 100% ✅ — `./archive/phases/phase-5-security-i18n-consent.md`
+- Phase 6 — Code Quality & Tests: 100% ✅ — `./archive/phases/phase-6-code-quality-tests.md`
+- Phase 7 — Audit & Monitoring: 100% — `./archive/phases/phase-7-audit-monitoring.md`
+- Phase 8 — e2e Test Refactor: 100% — `./archive/phases/phase-8-e2e-refactor.md`
+- Phase 9 — Scope Authorization & Management: 100% — `./archive/phases/phase-9-roadmap.md`
+- Phase 10 — Person & Identity: 100% ✅ (Phase 10.1-10.5 All Complete) — `./FEATURES_AND_CAPABILITIES.md#phase-10--person--identity-completed`
+- Phase 11 — Role & Account Switching: 100% ✅ (Phase 11.6 Complete) — `./FEATURES_AND_CAPABILITIES.md#phase-11--account--role-management-completed`
+  - Phase 11.6: Homepage Refactoring & Security Hardening ✅ — `./archive/phases/phase-11-6-remove-role-switch-refactor-homepage.md`, `./SECURITY_HARDENING.md`
+- Phase 12 — Admin API & HR Integration: 📋 Planned — `./phase-12-admin-api-hr-integration.md`
+- Phase 13 — OAuth Flow Enhancement: 100% ✅ — `./archive/phases/phase-13-oauth-flow-enhancement.md`
+- Phase 15 — Operational Excellence (Health & Logging): 100% ✅ — `./phase-15-operational.md`
+- Phase 16 — Advanced User Support (Impersonation): 100% ✅ — `./phase-16-impersonation.md`
+- Phase 17 — Deployment & Documentation: 100% ✅ — `./docs/DEPLOYMENT_GUIDE.md`
+- Phase 18 — Personnel Lifecycle Management: 100% ✅ — `./phase-18-personnel-lifecycle.md`
+- Phase 19 — Frontend Testing Strategy (Vitest): 100% ✅ — `./TODOS.md`
+- Phase 20 — MFA & WebAuthn: 0% 📋 Planned — `./docs/archive/phases/phase-20-mfa-webauthn.md`
+- Phase 21 — External Identity Providers: 📋 Planned — `./docs/archive/phases/phase-21-external-idp.md`
 
 Backlog & Technical Debt: `./TODOS.md`
 
@@ -40,6 +40,24 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 -- 如需更完整的歷史紀錄或截圖證據，請參閱 `./archive/historical/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
+
+## 2025-12-15: UI/UX Refactoring (Google Style 2024) Complete ✅
+
+**Implementation Summary:**
+
+Applied Google Account Style 2024 design language across all UI components for a consistent, modern look.
+
+**Key Achievements:**
+- ✅ **Tailwind Config**: Added `google-*` color palette (google-50 to google-700)
+- ✅ **Vue Components**: Updated 40+ files from `indigo-*` to `google-*` colors
+- ✅ **Razor Layouts**: Standardized `_AdminLayout`, `_ApplicationManagerLayout` with Google blue
+- ✅ **CookieConsent**: Refactored to Google style with localization support
+- ✅ **Design Tokens**: CSS custom properties in `google-style.css`
+- ✅ **i18n Fixes**: Added missing keys for loginHistory, roles, cookieConsent
+
+**Files Changed:** 50+ files across Vue components, Razor layouts, CSS, and i18n resources
+
+---
 
 ## 2025-12-11: Phase 18 Personnel Lifecycle Management Complete ✅
 
