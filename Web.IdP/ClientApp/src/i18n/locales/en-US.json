@@ -79,7 +79,8 @@
       "setupFailed": "Failed to start MFA setup",
       "invalidCode": "Invalid verification code",
       "verifyFailed": "Failed to verify code",
-      "disableFailed": "Failed to disable MFA"
+      "disableFailed": "Failed to disable MFA",
+      "invalidPassword": "Invalid password"
     }
   }
 }
