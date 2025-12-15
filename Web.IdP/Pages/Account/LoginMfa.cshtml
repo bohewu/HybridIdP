@@ -51,7 +51,10 @@
             
             <div class="google-login-body">
                 <form method="post">
-                    <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="mfa-error-summary"></div>
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div asp-validation-summary="All" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="mfa-error-summary"></div>
+                    }
                     
                     <input type="hidden" asp-for="ReturnUrl" />
                     <input type="hidden" asp-for="RememberMe" />
@@ -72,7 +75,10 @@
                         </div>
 
                         <div class="form-group">
-                            <details class="text-sm">
+                            @{
+                                var hasRecoveryCodeError = !ViewData.ModelState.IsValid && ViewData.ModelState.ContainsKey("Input.RecoveryCode");
+                            }
+                            <details class="text-sm" @(hasRecoveryCodeError ? "open" : "")>
                                 <summary class="link-google cursor-pointer">@Localizer["UseRecoveryCode"]</summary>
                                 <div class="mt-3">
                                     <label asp-for="Input.RecoveryCode" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["RecoveryCode"]</label>

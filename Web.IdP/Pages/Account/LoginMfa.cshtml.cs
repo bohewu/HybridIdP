@@ -42,7 +42,10 @@ public partial class LoginMfaModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = default!;
 
+    [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
+    
+    [BindProperty(SupportsGet = true)]
     public bool RememberMe { get; set; }
 
     public class InputModel
@@ -57,32 +60,20 @@ public partial class LoginMfaModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, bool rememberMe = false)
     {
-        // Debug: Check if TwoFactorUserIdScheme cookie exists
-        var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-        _logger.LogInformation("TwoFactorUserIdScheme auth result: Succeeded={Succeeded}, Principal={HasPrincipal}", 
-            twoFactorPrincipal.Succeeded, 
-            twoFactorPrincipal.Principal != null);
-        
-        if (twoFactorPrincipal.Principal != null)
-        {
-            foreach (var claim in twoFactorPrincipal.Principal.Claims)
-            {
-                _logger.LogInformation("TwoFactor Claim: {Type}={Value}", claim.Type, claim.Value);
-            }
-        }
-
         // Try standard Identity method first
         var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
-        _logger.LogInformation("GetTwoFactorAuthenticationUserAsync returned: {HasUser}", user != null);
         
-        // Fallback: manually look up user from cookie if Identity method fails
-        if (user == null && twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
+        // Fallback: manually look up user from cookie if Identity method fails (Guid key issue)
+        if (user == null)
         {
-            var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+            var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+            if (twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
             {
-                user = await _userManager.FindByIdAsync(userId.ToString());
-                _logger.LogInformation("Manual FindByIdAsync({UserId}) returned: {HasUser}", userId, user != null);
+                var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+                {
+                    user = await _userManager.FindByIdAsync(userId.ToString());
+                }
             }
         }
         
@@ -96,9 +87,9 @@ public partial class LoginMfaModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync(string? returnUrl = null, bool rememberMe = false)
+    public async Task<IActionResult> OnPostAsync()
     {
-        returnUrl ??= Url.Content("~/");
+        var returnUrl = ReturnUrl ?? Url.Content("~/");
 
         // Try standard Identity method first
         var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
@@ -137,7 +128,7 @@ public partial class LoginMfaModel : PageModel
 
             if (isValid)
             {
-                await CompleteMfaSignInAsync(user, returnUrl, rememberMe, "TOTP");
+                await CompleteMfaSignInAsync(user, returnUrl, RememberMe, "TOTP");
                 return LocalRedirect(returnUrl);
             }
 
@@ -148,12 +139,13 @@ public partial class LoginMfaModel : PageModel
         // Try recovery code
         if (!string.IsNullOrWhiteSpace(Input.RecoveryCode))
         {
-            var recoveryCode = Input.RecoveryCode.Replace("-", "").Replace(" ", "").Trim();
+            // Keep original format - Identity expects codes as generated (e.g., XXXXX-XXXXX)
+            var recoveryCode = Input.RecoveryCode.Trim().ToUpperInvariant();
             var isValid = await _mfaService.ValidateRecoveryCodeAsync(user, recoveryCode);
 
             if (isValid)
             {
-                await CompleteMfaSignInAsync(user, returnUrl, rememberMe, "RecoveryCode");
+                await CompleteMfaSignInAsync(user, returnUrl, RememberMe, "RecoveryCode");
                 
                 // Warn user about remaining recovery codes
                 var remainingCodes = await _userManager.CountRecoveryCodesAsync(user);
