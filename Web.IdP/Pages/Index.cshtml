@@ -5,63 +5,63 @@
     ViewData["Title"] = Localizer["HomePage"];
 }
 
-<div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-12">
-        <h1 class="text-4xl font-bold text-gray-900 mb-4">@Localizer["HomePage"]</h1>
-        <p class="text-xl text-gray-600">@Localizer["WelcomeMessage"]</p>
+<div class="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-10">
+        <h1 class="text-3xl font-normal text-gray-900 mb-2">@Localizer["HomePage"]</h1>
+        <p class="text-base text-gray-600">@Localizer["WelcomeMessage"]</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <!-- Authorization Management Card -->
-        <div class="bg-white border border-gray-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col">
+        <div class="bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors duration-200 flex flex-col">
             <div class="p-6 flex-1">
-                <a href="/Account/Authorizations" class="block mb-4 text-blue-600 text-4xl hover:text-blue-700 transition-colors">
-                    <i class="bi bi-shield-check"></i>
-                </a>
-                <h5 class="text-xl font-medium text-gray-900 mb-2">
-                    <a href="/Account/Authorizations" class="hover:text-blue-600 transition-colors">@Localizer["AuthorizationManagement"]</a>
+                <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+                    <i class="bi bi-shield-check text-blue-600 text-2xl"></i>
+                </div>
+                <h5 class="text-lg font-medium text-gray-900 mb-2">
+                    @Localizer["AuthorizationManagement"]
                 </h5>
-                <p class="text-gray-600 mb-4">@Localizer["ViewAndRevokeAuthorizations"]</p>
+                <p class="text-sm text-gray-600">@Localizer["ViewAndRevokeAuthorizations"]</p>
             </div>
-            <div class="p-6 pt-0 mt-auto">
-                 <a href="/Account/Authorizations" class="inline-block px-4 py-2 bg-blue-600 text-white font-medium text-sm leading-tight rounded hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 transition duration-150 ease-in-out">
-                    @Localizer["ViewDetails"]
+            <div class="p-6 pt-0">
+                <a href="/Account/Authorizations" class="text-blue-600 text-sm font-medium hover:underline">
+                    @Localizer["ViewDetails"] →
                 </a>
             </div>
         </div>
 
         <!-- Linked Accounts Management Card -->
-        <div class="bg-white border border-gray-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col">
-             <div class="p-6 flex-1">
-                <a href="/Account/LinkedAccounts" class="block mb-4 text-emerald-600 text-4xl hover:text-emerald-700 transition-colors">
-                    <i class="bi bi-person-lines-fill"></i>
-                </a>
-                <h5 class="text-xl font-medium text-gray-900 mb-2">
-                    <a href="/Account/LinkedAccounts" class="hover:text-emerald-600 transition-colors">@Localizer["LinkedAccountsManagement"]</a>
+        <div class="bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors duration-200 flex flex-col">
+            <div class="p-6 flex-1">
+                <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mb-4">
+                    <i class="bi bi-person-lines-fill text-green-600 text-2xl"></i>
+                </div>
+                <h5 class="text-lg font-medium text-gray-900 mb-2">
+                    @Localizer["LinkedAccountsManagement"]
                 </h5>
-                <p class="text-gray-600 mb-4">@Localizer["ManageYourLinkedAccounts"]</p>
+                <p class="text-sm text-gray-600">@Localizer["ManageYourLinkedAccounts"]</p>
             </div>
-             <div class="p-6 pt-0 mt-auto">
-                 <a href="/Account/LinkedAccounts" class="inline-block px-4 py-2 bg-blue-600 text-white font-medium text-sm leading-tight rounded hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 transition duration-150 ease-in-out">
-                    @Localizer["ViewDetails"]
+            <div class="p-6 pt-0">
+                <a href="/Account/LinkedAccounts" class="text-blue-600 text-sm font-medium hover:underline">
+                    @Localizer["ViewDetails"] →
                 </a>
             </div>
         </div>
 
         <!-- Profile Management Card -->
-        <div class="bg-white border border-gray-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col">
-             <div class="p-6 flex-1">
-                <a href="/Account/Profile" class="block mb-4 text-violet-600 text-4xl hover:text-violet-700 transition-colors">
-                    <i class="bi bi-person-circle"></i>
-                </a>
-                <h5 class="text-xl font-medium text-gray-900 mb-2">
-                    <a href="/Account/Profile" class="hover:text-violet-600 transition-colors">@Localizer["Profile"]</a>
+        <div class="bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors duration-200 flex flex-col">
+            <div class="p-6 flex-1">
+                <div class="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center mb-4">
+                    <i class="bi bi-person-circle text-purple-600 text-2xl"></i>
+                </div>
+                <h5 class="text-lg font-medium text-gray-900 mb-2">
+                    @Localizer["Profile"]
                 </h5>
-                <p class="text-gray-600 mb-4">@Localizer["ManageProfile"]</p>
+                <p class="text-sm text-gray-600">@Localizer["ManageProfile"]</p>
             </div>
-             <div class="p-6 pt-0 mt-auto">
-                 <a href="/Account/Profile" class="inline-block px-4 py-2 bg-blue-600 text-white font-medium text-sm leading-tight rounded hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 transition duration-150 ease-in-out">
-                    @Localizer["ViewDetails"]
+            <div class="p-6 pt-0">
+                <a href="/Account/Profile" class="text-blue-600 text-sm font-medium hover:underline">
+                    @Localizer["ViewDetails"] →
                 </a>
             </div>
         </div>

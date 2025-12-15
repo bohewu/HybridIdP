@@ -257,6 +257,9 @@
   <data name="Profile" xml:space="preserve">
     <value>個人檔案</value>
   </data>
+  <data name="ManageProfile" xml:space="preserve">
+    <value>管理您的個人檔案設定</value>
+  </data>
   <data name="SwitchAccount" xml:space="preserve">
     <value>切換帳號</value>
   </data>
