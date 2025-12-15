@@ -36,5 +36,9 @@
     "blockAbnormalLoginHelp": "Automatically block logins detected as abnormal.",
     "registrationSettings": "Registration Settings",
     "registrationEnabled": "Allow Public Registration",
-    "registrationEnabledHelp": "When disabled, new users cannot register accounts."
+    "registrationEnabledHelp": "When disabled, new users cannot register accounts.",
+    "validation": {
+        "minCharacterTypesRange": "Minimum character types must be between 2 and 4",
+        "passwordLengthRange": "Password length must be between 6 and 128 characters"
+    }
 }
