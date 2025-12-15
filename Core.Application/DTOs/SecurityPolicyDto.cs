@@ -7,7 +7,7 @@ public class SecurityPolicyDto
     [Range(6, 128)]
     public int MinPasswordLength { get; set; }
     
-    [Range(2, 4)]
+    [Range(2, 4, ErrorMessage = "Minimum character types must be between 2 and 4")]
     public int MinCharacterTypes { get; set; } = 3;
 
     public bool RequireUppercase { get; set; }

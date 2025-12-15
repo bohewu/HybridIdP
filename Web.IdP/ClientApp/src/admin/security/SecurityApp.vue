@@ -190,6 +190,16 @@ const fetchPolicy = async () => {
 };
 
 const savePolicy = async () => {
+  // Client-side validation
+  if (policy.value.minCharacterTypes < 2 || policy.value.minCharacterTypes > 4) {
+    notification.value = { message: t('security.validation.minCharacterTypesRange') || 'Minimum character types must be between 2 and 4', type: 'error' };
+    return;
+  }
+  if (policy.value.minPasswordLength < 6 || policy.value.minPasswordLength > 128) {
+    notification.value = { message: t('security.validation.passwordLengthRange') || 'Password length must be between 6 and 128 characters', type: 'error' };
+    return;
+  }
+  
   isSaving.value = true;
   notification.value = { message: '', type: '' };
   try {
