@@ -2,20 +2,20 @@
 @model Web.IdP.Pages.ApplicationManager.IndexModel
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
-    ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = Localizer["Dashboard"];
     Layout = "~/Pages/Shared/_ApplicationManagerLayout.cshtml";
 }
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-8">
-        <h2 class="text-2xl font-bold text-gray-900">@Localizer["Welcome"], @Model.UserName</h2>
-        <p class="mt-1 text-sm text-gray-500">@Localizer["ManageYourApplicationsAndScopes"]</p>
+        <h2 class="text-2xl font-normal text-gray-900">@Localizer["Welcome"], @Model.UserName</h2>
+        <p class="mt-1 text-sm text-gray-600">@Localizer["ManageYourApplicationsAndScopes"]</p>
     </div>
 
     @* Summary Cards *@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <!-- Clients Card -->
-        <div class="bg-white overflow-hidden rounded-lg shadow-sm border border-gray-200">
+        <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
             <div class="p-5">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -41,7 +41,7 @@
         </div>
 
         <!-- Scopes Card -->
-        <div class="bg-white overflow-hidden rounded-lg shadow-sm border border-gray-200">
+        <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
             <div class="p-5">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -67,7 +67,7 @@
         </div>
 
         <!-- Documentation Card -->
-        <div class="bg-white overflow-hidden rounded-lg shadow-sm border border-gray-200">
+        <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
             <div class="p-5">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -94,7 +94,7 @@
     </div>
 
     @* Quick Actions *@
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-8">
+    <div class="bg-white rounded-lg border border-gray-200 mb-8">
         <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
             <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center">
                 <i class="bi bi-lightning mr-2"></i> @Localizer["QuickActions"]
@@ -119,7 +119,7 @@
     </div>
 
     @* Getting Started Guide *@
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+    <div class="bg-white rounded-lg border border-gray-200">
         <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
             <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center">
                 <i class="bi bi-compass mr-2"></i> @Localizer["GettingStarted"]
