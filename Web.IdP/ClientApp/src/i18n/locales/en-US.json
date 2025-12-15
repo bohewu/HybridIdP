@@ -70,8 +70,9 @@
     "saveRecoveryCodes": "Save these recovery codes in a safe place. You'll need them if you lose access to your authenticator.",
     "done": "Done",
     "disableTitle": "Disable 2-Step Verification",
-    "disableWarning": "Disabling 2-step verification will make your account less secure. You'll need to enter your password to confirm.",
+    "disableWarning": "Disabling 2-step verification will make your account less secure.",
     "enterPassword": "Enter your password",
+    "enterTotpToDisable": "Enter verification code from your authenticator app",
     "regenerateTitle": "Regenerate Recovery Codes",
     "regenerateWarning": "This will invalidate all your existing recovery codes. Make sure to save the new codes.",
     "regenerate": "Regenerate",
@@ -80,7 +81,9 @@
       "invalidCode": "Invalid verification code",
       "verifyFailed": "Failed to verify code",
       "disableFailed": "Failed to disable MFA",
-      "invalidPassword": "Invalid password"
+      "invalidPassword": "Invalid password",
+      "totpRequired": "Verification code is required",
+      "passwordRequired": "Password is required"
     }
   }
 }
