@@ -35,6 +35,7 @@
     "title": "My Account",
     "myRoles": "My Roles",
     "linkedAccounts": "Linked Accounts",
+    "security": "Security",
     "active": "Active",
     "currentAccount": "Current",
     "switchToRole": "Switch to Role",
@@ -49,6 +50,35 @@
       "loadFailed": "Failed to load account information",
       "switchRoleFailed": "Failed to switch role",
       "switchAccountFailed": "Failed to switch account"
+    }
+  },
+  "mfa": {
+    "notEnabled": "2-Step Verification is off",
+    "enableDescription": "Add an extra layer of security to your account by enabling 2-step verification.",
+    "enable": "Enable",
+    "enabled": "2-Step Verification is on",
+    "recoveryCodesLeft": "{count} recovery codes remaining",
+    "regenerateCodes": "Regenerate Codes",
+    "disable": "Disable",
+    "setupTitle": "Set up 2-Step Verification",
+    "scanQrCode": "Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)",
+    "cantScan": "Can't scan? Enter this key manually:",
+    "enterCode": "Enter the 6-digit code from your app",
+    "verify": "Verify",
+    "setupComplete": "2-Step Verification Enabled!",
+    "saveRecoveryCodes": "Save these recovery codes in a safe place. You'll need them if you lose access to your authenticator.",
+    "done": "Done",
+    "disableTitle": "Disable 2-Step Verification",
+    "disableWarning": "Disabling 2-step verification will make your account less secure. You'll need to enter your password to confirm.",
+    "enterPassword": "Enter your password",
+    "regenerateTitle": "Regenerate Recovery Codes",
+    "regenerateWarning": "This will invalidate all your existing recovery codes. Make sure to save the new codes.",
+    "regenerate": "Regenerate",
+    "errors": {
+      "setupFailed": "Failed to start MFA setup",
+      "invalidCode": "Invalid verification code",
+      "verifyFailed": "Failed to verify code",
+      "disableFailed": "Failed to disable MFA"
     }
   }
 }

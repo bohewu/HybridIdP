@@ -45,6 +45,7 @@
     "title": "我的帳戶",
     "myRoles": "我的角色",
     "linkedAccounts": "關聯帳戶",
+    "security": "安全性",
     "active": "目前",
     "currentAccount": "目前帳戶",
     "switchToRole": "切換至此角色",
@@ -59,6 +60,35 @@
       "loadFailed": "載入帳戶資訊失敗",
       "switchRoleFailed": "切換角色失敗",
       "switchAccountFailed": "切換帳戶失敗"
+    }
+  },
+  "mfa": {
+    "notEnabled": "兩步驟驗證已關閉",
+    "enableDescription": "啟用兩步驟驗證，為您的帳戶增加額外的安全保護。",
+    "enable": "啟用",
+    "enabled": "兩步驟驗證已開啟",
+    "recoveryCodesLeft": "剩餘 {count} 組救援碼",
+    "regenerateCodes": "重新產生救援碼",
+    "disable": "停用",
+    "setupTitle": "設定兩步驟驗證",
+    "scanQrCode": "使用驗證器應用程式（如 Google Authenticator、Authy）掃描此 QR 碼",
+    "cantScan": "無法掃描？請手動輸入此金鑰：",
+    "enterCode": "輸入應用程式中的 6 位數驗證碼",
+    "verify": "驗證",
+    "setupComplete": "兩步驟驗證已啟用！",
+    "saveRecoveryCodes": "請將這些救援碼保存在安全的地方。如果您無法存取驗證器，將需要使用救援碼。",
+    "done": "完成",
+    "disableTitle": "停用兩步驟驗證",
+    "disableWarning": "停用兩步驟驗證會降低帳戶安全性。請輸入密碼以確認。",
+    "enterPassword": "請輸入您的密碼",
+    "regenerateTitle": "重新產生救援碼",
+    "regenerateWarning": "這將使所有現有的救援碼失效。請務必保存新的救援碼。",
+    "regenerate": "重新產生",
+    "errors": {
+      "setupFailed": "無法開始 MFA 設定",
+      "invalidCode": "驗證碼無效",
+      "verifyFailed": "驗證失敗",
+      "disableFailed": "停用 MFA 失敗"
     }
   }
 }
