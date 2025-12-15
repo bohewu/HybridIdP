@@ -3,33 +3,33 @@
 
 @{
     ViewData["Title"] = Localizer["Log out"];
+    Layout = "~/Pages/Shared/_SimpleLayout.cshtml";
 }
 
-<div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-center">
-        <div class="w-full max-w-md">
-            <div class="bg-white py-8 px-4 shadow rounded-lg sm:px-10 border border-gray-200">
-                <div class="text-center">
-                    <h2 class="text-2xl font-bold text-red-600 mb-2">@Localizer["Log out"]</h2>
-                    <p class="text-gray-500 mb-6">@Localizer["Are you sure you want to sign out?"]</p>
-                    
-                    <form asp-controller="Logout" asp-action="Logout" method="post" class="space-y-4">
-                        <!-- Propagate query parameters e.g., post_logout_redirect_uri -->
-                        @foreach (var query in Context.Request.Query)
-                        {
-                            <input type="hidden" name="@query.Key" value="@query.Value" />
-                        }
-                        <div class="grid gap-3">
-                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
-                                @Localizer["Yes, Sign Out"]
-                            </button>
-                            <a href="/" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                                @Localizer["Cancel"]
-                            </a>
-                        </div>
-                    </form>
-                </div>
-            </div>
+<div class="google-login-card">
+    <div class="google-login-header mb-6 text-center">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+             <i class="bi bi-box-arrow-right text-2xl text-red-600"></i>
         </div>
+        <h1 class="text-2xl font-normal text-gray-900 mb-2">@Localizer["Log out"]</h1>
+        <p class="text-base text-gray-600">@Localizer["Are you sure you want to sign out?"]</p>
+    </div>
+    
+    <div class="google-login-body">
+         <form asp-controller="Logout" asp-action="Logout" method="post" class="space-y-4">
+            <!-- Propagate query parameters e.g., post_logout_redirect_uri -->
+            @foreach (var query in Context.Request.Query)
+            {
+                <input type="hidden" name="@query.Key" value="@query.Value" />
+            }
+            <div class="flex flex-col gap-3">
+                <button type="submit" class="btn-google-blue w-full justify-center">
+                     @Localizer["Yes, Sign Out"]
+                </button>
+                <a href="/" class="btn-google-white w-full justify-center">
+                    @Localizer["Cancel"]
+                </a>
+            </div>
+        </form>
     </div>
 </div>
