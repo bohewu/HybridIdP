@@ -119,7 +119,8 @@
         <h2>{{ t('mfa.disableTitle') }}</h2>
         <p>{{ t('mfa.disableWarning') }}</p>
         
-        <div class="password-section">
+        <!-- Password verification for users with local password -->
+        <div v-if="mfaStatus.hasPassword" class="password-section">
           <label>{{ t('mfa.enterPassword') }}</label>
           <input 
             v-model="disablePassword"
@@ -127,8 +128,24 @@
             class="password-input"
             @keyup.enter="disableMfa"
           />
-          <p v-if="disableError" class="error-message">{{ disableError }}</p>
         </div>
+        
+        <!-- TOTP verification for users without local password (legacy/SSO) -->
+        <div v-else class="password-section">
+          <label>{{ t('mfa.enterTotpToDisable') }}</label>
+          <input 
+            v-model="disableTotpCode"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            placeholder="000000"
+            class="code-input"
+            @keyup.enter="disableMfa"
+          />
+        </div>
+        
+        <p v-if="disableError" class="error-message">{{ disableError }}</p>
         
         <div class="modal-actions">
           <button class="btn-cancel" @click="cancelDisable">{{ t('common.cancel') }}</button>
@@ -175,7 +192,8 @@ const loading = ref(true);
 const mfaStatus = ref({
   twoFactorEnabled: false,
   hasAuthenticator: false,
-  recoveryCodesLeft: 0
+  recoveryCodesLeft: 0,
+  hasPassword: true
 });
 
 // Setup Modal
@@ -189,6 +207,7 @@ const recoveryCodes = ref<string[]>([]);
 // Disable Modal
 const showDisableModal = ref(false);
 const disablePassword = ref('');
+const disableTotpCode = ref('');
 const disableError = ref('');
 
 // Regenerate Modal
@@ -268,16 +287,22 @@ async function disableMfa() {
   disableError.value = '';
   
   try {
+    // Build payload based on whether user has password
+    const payload = mfaStatus.value.hasPassword
+      ? { password: disablePassword.value }
+      : { totpCode: disableTotpCode.value };
+    
     const response = await fetch('/api/account/mfa/disable', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ password: disablePassword.value })
+      body: JSON.stringify(payload)
     });
     
     if (response.ok) {
       showDisableModal.value = false;
       disablePassword.value = '';
+      disableTotpCode.value = '';
       await loadMfaStatus();
     } else {
       const result = await response.json();
@@ -293,6 +318,7 @@ async function disableMfa() {
 function cancelDisable() {
   showDisableModal.value = false;
   disablePassword.value = '';
+  disableTotpCode.value = '';
   disableError.value = '';
 }
 

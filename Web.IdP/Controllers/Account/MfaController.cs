@@ -49,12 +49,14 @@ public class MfaController : ControllerBase
         }
 
         var recoveryCodesLeft = await _userManager.CountRecoveryCodesAsync(user);
+        var hasPassword = await _userManager.HasPasswordAsync(user);
 
         return Ok(new MfaStatusResponse
         {
             TwoFactorEnabled = user.TwoFactorEnabled,
             HasAuthenticator = await _userManager.GetAuthenticatorKeyAsync(user) != null,
-            RecoveryCodesLeft = recoveryCodesLeft
+            RecoveryCodesLeft = recoveryCodesLeft,
+            HasPassword = hasPassword
         });
     }
     
@@ -137,6 +139,7 @@ public class MfaController : ControllerBase
 
     /// <summary>
     /// Disable MFA for the authenticated user.
+    /// Requires password verification OR TOTP code for passwordless users.
     /// </summary>
     [HttpPost("disable")]
     public async Task<ActionResult> Disable([FromBody] MfaDisableRequest request, CancellationToken ct)
@@ -147,11 +150,36 @@ public class MfaController : ControllerBase
             return Unauthorized();
         }
 
-        // Require password verification before disabling MFA
-        var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
-        if (!isPasswordValid)
+        // Check if user has a local password
+        var hasPassword = await _userManager.HasPasswordAsync(user);
+        
+        if (hasPassword)
         {
-            return BadRequest(new { error = "invalidPassword" });
+            // User has password - require password verification
+            if (string.IsNullOrEmpty(request.Password))
+            {
+                return BadRequest(new { error = "passwordRequired" });
+            }
+            
+            var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+            if (!isPasswordValid)
+            {
+                return BadRequest(new { error = "invalidPassword" });
+            }
+        }
+        else
+        {
+            // User has no password (legacy/SSO) - require TOTP verification
+            if (string.IsNullOrEmpty(request.TotpCode))
+            {
+                return BadRequest(new { error = "totpRequired", requiresTotp = true });
+            }
+            
+            var isTotpValid = await _mfaService.ValidateTotpCodeAsync(user, request.TotpCode, ct);
+            if (!isTotpValid)
+            {
+                return BadRequest(new { error = "invalidCode" });
+            }
         }
 
         await _mfaService.DisableMfaAsync(user, ct);
@@ -198,6 +226,7 @@ public record MfaStatusResponse
     public bool TwoFactorEnabled { get; init; }
     public bool HasAuthenticator { get; init; }
     public int RecoveryCodesLeft { get; init; }
+    public bool HasPassword { get; init; }
 }
 
 public record MfaSetupResponse
@@ -221,7 +250,15 @@ public record MfaVerifyResponse
 
 public record MfaDisableRequest
 {
-    public required string Password { get; init; }
+    /// <summary>
+    /// Password for users with local credentials.
+    /// </summary>
+    public string? Password { get; init; }
+    
+    /// <summary>
+    /// TOTP code for users without local passwords (legacy/SSO).
+    /// </summary>
+    public string? TotpCode { get; init; }
 }
 
 public record RecoveryCodesResponse

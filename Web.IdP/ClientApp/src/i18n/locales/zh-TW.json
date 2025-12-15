@@ -80,8 +80,9 @@
     "saveRecoveryCodes": "請將這些救援碼保存在安全的地方。如果您無法存取驗證器，將需要使用救援碼。",
     "done": "完成",
     "disableTitle": "停用兩步驟驗證",
-    "disableWarning": "停用兩步驟驗證會降低帳戶安全性。請輸入密碼以確認。",
+    "disableWarning": "停用兩步驟驗證會降低帳戶安全性。",
     "enterPassword": "請輸入您的密碼",
+    "enterTotpToDisable": "請輸入驗證器應用程式中的驗證碼",
     "regenerateTitle": "重新產生救援碼",
     "regenerateWarning": "這將使所有現有的救援碼失效。請務必保存新的救援碼。",
     "regenerate": "重新產生",
@@ -90,7 +91,9 @@
       "invalidCode": "驗證碼無效",
       "verifyFailed": "驗證失敗",
       "disableFailed": "停用 MFA 失敗",
-      "invalidPassword": "密碼錯誤"
+      "invalidPassword": "密碼錯誤",
+      "totpRequired": "請輸入驗證碼",
+      "passwordRequired": "請輸入密碼"
     }
   }
 }
