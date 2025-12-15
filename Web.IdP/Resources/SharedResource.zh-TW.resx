@@ -441,4 +441,16 @@
   <data name="PasswordRequirementsHelp" xml:space="preserve">
     <value>請使用 8 個以上的字元，並包含字母、數字和符號。</value>
   </data>
+  <data name="Validation_Required" xml:space="preserve">
+    <value>{0} 為必填欄位</value>
+  </data>
+  <data name="Validation_Email" xml:space="preserve">
+    <value>電子郵件格式無效</value>
+  </data>
+  <data name="Validation_PasswordMismatch" xml:space="preserve">
+    <value>密碼與確認密碼不相符</value>
+  </data>
+  <data name="Validation_PasswordLength" xml:space="preserve">
+    <value>密碼長度必須至少 {0} 個字元</value>
+  </data>
 </root>

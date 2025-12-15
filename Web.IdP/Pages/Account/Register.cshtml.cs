@@ -10,6 +10,8 @@ using Microsoft.Extensions.Options; // Added
 using Core.Application.Options; // Added
 using Core.Domain.Constants; // Added
 
+using Microsoft.Extensions.Localization; // Added
+
 namespace Web.IdP.Pages.Account;
 
 public class RegisterModel : PageModel
@@ -24,6 +26,7 @@ public class RegisterModel : PageModel
     private readonly ISettingsService _settingsService;
     private readonly ITurnstileStateService _turnstileStateService;
     private readonly ISecurityPolicyService _securityPolicyService;
+    private readonly IStringLocalizer<SharedResource> _localizer;
 
     public RegisterModel(
         UserManager<ApplicationUser> userManager,
@@ -35,7 +38,8 @@ public class RegisterModel : PageModel
         IAuditService auditService,
         ISettingsService settingsService,
         ITurnstileStateService turnstileStateService,
-        ISecurityPolicyService securityPolicyService)
+        ISecurityPolicyService securityPolicyService,
+        IStringLocalizer<SharedResource> localizer)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -47,6 +51,7 @@ public class RegisterModel : PageModel
         _settingsService = settingsService;
         _turnstileStateService = turnstileStateService;
         _securityPolicyService = securityPolicyService;
+        _localizer = localizer;
     }
 
     [BindProperty]
@@ -65,20 +70,20 @@ public class RegisterModel : PageModel
 
     public class InputModel
     {
-        [Required]
-        [EmailAddress]
+        [Required(ErrorMessage = "Validation_Required")]
+        [EmailAddress(ErrorMessage = "Validation_Email")]
         [Display(Name = "Email")]
         public string Email { get; set; } = default!;
 
-        [Required]
-        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [Required(ErrorMessage = "Validation_Required")]
         [DataType(DataType.Password)]
         [Display(Name = "Password")]
         public string Password { get; set; } = default!;
 
         [DataType(DataType.Password)]
         [Display(Name = "Confirm password")]
-        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        [Required(ErrorMessage = "Validation_Required")]
+        [Compare("Password", ErrorMessage = "Validation_PasswordMismatch")]
         public string ConfirmPassword { get; set; } = default!;
     }
 
@@ -114,7 +119,7 @@ public class RegisterModel : PageModel
     {
         returnUrl ??= Url.Content("~/");
         
-        // Load policy for view (in case of error redisplay)
+        // Load policy for view (in case of error redisplay) and validation
         CurrentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
         
         // Block registration if disabled
@@ -122,6 +127,17 @@ public class RegisterModel : PageModel
         if (!isEnabled)
         {
             return Forbid();
+        }
+        
+        // Manual validation for Dynamic Password Policy
+        if (ModelState.IsValid) // Check basic attributes first
+        {
+            var minLength = CurrentPolicy?.MinPasswordLength ?? 8;
+            if (Input.Password.Length < minLength)
+            {
+                ModelState.AddModelError(string.Empty, _localizer["Validation_PasswordLength", minLength]);
+                return Page();
+            }
         }
         
         if (ModelState.IsValid)

@@ -446,4 +446,16 @@
   <data name="PasswordRequirementsHelp" xml:space="preserve">
     <value>Use 8 or more characters with a mix of letters, numbers &amp; symbols</value>
   </data>
+  <data name="Validation_Required" xml:space="preserve">
+    <value>{0} is required</value>
+  </data>
+  <data name="Validation_Email" xml:space="preserve">
+    <value>Invalid email address</value>
+  </data>
+  <data name="Validation_PasswordMismatch" xml:space="preserve">
+    <value>The password and confirmation password do not match</value>
+  </data>
+  <data name="Validation_PasswordLength" xml:space="preserve">
+    <value>Password must be at least {0} characters long</value>
+  </data>
 </root>
