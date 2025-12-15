@@ -5,47 +5,47 @@
     ViewData["Title"] = Localizer["AccessDeniedTitle"];
 }
 
-<div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-center">
-        <div class="w-full max-w-md">
-            <div class="bg-white shadow rounded-lg border border-red-200 overflow-hidden">
-                <div class="bg-red-600 px-4 py-5 sm:px-6">
-                    <h2 class="text-lg font-medium leading-6 text-white flex items-center">
-                        <i class="bi bi-shield-exclamation mr-2 text-xl"></i> @Localizer["AccessDeniedTitle"]
-                    </h2>
-                </div>
-                <div class="px-4 py-5 sm:p-6">
-                    <p class="text-lg text-gray-900 font-medium mb-2">@Localizer["AccessDeniedMessage"]</p>
-                    <p class="text-gray-500 mb-6">@Localizer["AdminPrivilegesRequired"]</p>
-                    
-                    @if (!string.IsNullOrEmpty(Model.ReturnUrl))
-                    {
-                        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <i class="bi bi-info-circle text-blue-400"></i>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm text-blue-700">
-                                        <strong>@Localizer["RequestedUrl"]</strong> <code class="bg-blue-100 px-1 py-0.5 rounded">@Model.ReturnUrl</code>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                    
-                    <div class="border-t border-gray-200 pt-6">
-                        <div class="grid gap-3">
-                            <a href="/" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                                <i class="bi bi-house-door mr-2"></i> @Localizer["ReturnHome"]
-                            </a>
-                            <a href="/Account/Logout" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                                <i class="bi bi-box-arrow-right mr-2"></i> @Localizer["LogoutAndSwitch"]
-                            </a>
-                        </div>
+<div class="google-login-container">
+    <div class="google-login-card">
+        <div class="google-login-header mb-6 text-center">
+             <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+                <i class="bi bi-shield-exclamation text-2xl text-red-600"></i>
+            </div>
+            <h1 class="text-2xl font-normal text-gray-900 mb-2">@ViewData["Title"]</h1>
+            <p class="text-base text-gray-600">@Localizer["AccessDeniedMessage"]</p>
+        </div>
+        
+        <div class="google-login-body">
+            <p class="text-center text-sm text-gray-500 mb-6">@Localizer["AdminPrivilegesRequired"]</p>
+            
+            @if (!string.IsNullOrEmpty(Model.ReturnUrl))
+            {
+                <div class="bg-gray-50 border border-gray-200 rounded-md p-3 mb-6 flex items-start gap-3">
+                    <i class="bi bi-info-circle text-blue-600 mt-0.5"></i>
+                    <div class="text-xs text-gray-600 break-all">
+                        <strong>@Localizer["RequestedUrl"]:</strong> @Model.ReturnUrl
                     </div>
                 </div>
+            }
+            
+            <div class="flex flex-col gap-3">
+                <a href="/" class="btn-google-blue w-full justify-center text-center no-underline">
+                    @Localizer["ReturnHome"]
+                </a>
+                <a href="/Account/Logout" class="btn-google-white w-full justify-center text-center no-underline">
+                    @Localizer["LogoutAndSwitch"]
+                </a>
             </div>
+        </div>
+    </div>
+   
+    @* Footer *@
+    <div class="google-footer mt-4">
+        <div class="flex gap-4 text-xs text-gray-500 justify-center">
+             <span>@Localizer["Language"]</span>
+             <span>@Localizer["Help"]</span>
+             <span>@Localizer["Privacy"]</span>
+             <span>@Localizer["Terms"]</span>
         </div>
     </div>
 </div>
