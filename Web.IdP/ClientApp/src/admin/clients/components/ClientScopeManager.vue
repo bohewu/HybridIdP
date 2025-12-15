@@ -127,29 +127,32 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <!-- Removed fixed height from root to fix overlap -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <!-- Left Column: Available Scopes -->
-    <div class="border rounded-md flex flex-col bg-white shadow-sm h-100"> <!-- Added fixed height here -->
-      <div class="p-3 border-b bg-gray-50">
-        <h4 class="font-medium text-gray-700 mb-2" data-test="csm-available-header">{{ t('clients.form.scopeManager.availableScopes') }}</h4>
+    <div class="bg-white border border-gray-200 rounded-lg flex flex-col h-[600px] shadow-sm">
+      <div class="p-4 border-b border-gray-100 bg-white rounded-t-lg z-10">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="font-normal text-lg text-gray-800" data-test="csm-available-header">{{ t('clients.form.scopeManager.availableScopes') }}</h4>
+          <span class="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
+             Total: {{ totalAvailable }}
+          </span>
+        </div>
         <div class="relative">
           <input
             type="text"
             v-model="searchQuery"
             @input="handleSearch"
             :placeholder="t('clients.form.scopeManager.searchAvailable')"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm pl-9 h-10 py-2"
+            class="block w-full rounded-md border-gray-200 bg-gray-50 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm pl-10 h-10 transition-colors hover:bg-white"
             data-test="csm-available-search"
           />
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <i class="bi bi-search text-gray-400"></i>
           </div>
         </div>
       </div>
       
-      <div class="flex-1 overflow-y-auto p-2 space-y-1 relative min-h-0">
+      <div class="flex-1 overflow-y-auto p-2 space-y-1 relative bg-white">
         <LoadingIndicator 
           v-if="loading" 
           :loading="loading" 
@@ -158,7 +161,8 @@ onMounted(() => {
           overlay 
         />
         
-        <div v-else-if="availableScopes.length === 0" class="text-center py-4 text-gray-500 text-sm">
+        <div v-else-if="availableScopes.length === 0" class="flex flex-col items-center justify-center h-full text-gray-500 text-sm">
+          <i class="bi bi-inbox text-2xl mb-2 text-gray-300"></i>
           {{ t('clients.form.scopeManager.noAvailableScopes') }}
         </div>
 
@@ -166,53 +170,62 @@ onMounted(() => {
           v-else
           v-for="scope in availableScopes"
           :key="scope.name"
-          class="flex items-center justify-between p-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 group"
+          class="flex items-center justify-between p-3 hover:bg-blue-50 rounded-md border border-transparent transition-colors group cursor-default"
           data-test="csm-available-item"
         >
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate" :title="scope.displayName || scope.name">
-              {{ scope.displayName || scope.name }}
-            </p>
-            <p class="text-xs text-gray-500 truncate" :title="scope.description">
-              {{ scope.description || scope.name }}
-            </p>
-            <div class="flex items-center mt-1 gap-1">
-                 <span v-if="scope.category" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+          <div class="flex-1 min-w-0 pr-3">
+            <div class="flex items-center gap-2">
+                <p class="text-sm font-medium text-gray-900 truncate" :title="scope.displayName || scope.name">
+                  {{ scope.displayName || scope.name }}
+                </p>
+                 <span v-if="scope.category" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-gray-100 text-gray-600 border border-gray-200">
                    {{ scope.category }}
                  </span>
             </div>
+            <p class="text-xs text-gray-500 truncate mt-0.5" :title="scope.description">
+              {{ scope.description || scope.name }}
+            </p>
           </div>
           <button
             type="button"
             @click="addScope(scope)"
             :disabled="isSelected(scope.name)"
-            class="ml-2 inline-flex items-center p-1.5 border border-transparent rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            class="inline-flex items-center justify-center w-8 h-8 rounded-full text-blue-600 hover:bg-blue-100 focus:outline-none transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+            :title="isSelected(scope.name) ? t('common.added') : t('common.add')"
           >
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
+            <i class="bi bi-plus-lg text-lg"></i>
           </button>
         </div>
       </div>
 
       <!-- Pagination -->
-      <div class="p-2 border-t bg-gray-50 flex justify-between items-center text-xs text-gray-500">
-        <button type="button" @click="prevPage" :disabled="currentPage === 1" class="px-2 py-1 rounded hover:bg-gray-200 disabled:opacity-50">
-          &lt;
+      <div class="p-3 border-t border-gray-100 bg-gray-50 rounded-b-lg flex justify-between items-center text-xs text-gray-500">
+        <button 
+            type="button" 
+            @click="prevPage" 
+            :disabled="currentPage === 1" 
+            class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+        >
+          <i class="bi bi-chevron-left"></i>
         </button>
-        <span>{{ currentPage }} / {{ Math.ceil(totalAvailable / pageSize) || 1 }} (Total: {{ totalAvailable }})</span>
-        <button type="button" @click="nextPage" :disabled="(currentPage * pageSize) >= totalAvailable" class="px-2 py-1 rounded hover:bg-gray-200 disabled:opacity-50">
-          &gt;
+        <span class="font-medium text-gray-600">Page {{ currentPage }} / {{ Math.ceil(totalAvailable / pageSize) || 1 }}</span>
+        <button 
+            type="button" 
+            @click="nextPage" 
+            :disabled="(currentPage * pageSize) >= totalAvailable" 
+            class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+        >
+           <i class="bi bi-chevron-right"></i>
         </button>
       </div>
     </div>
 
     <!-- Right Column: Selected Scopes -->
-    <div class="border rounded-md flex flex-col bg-white shadow-sm h-100" data-test="csm-selected">
-      <div class="p-3 border-b bg-gray-50">
-        <div class="flex justify-between items-center mb-2">
-          <h4 class="font-medium text-gray-700">{{ t('clients.form.scopeManager.clientScopes') }}</h4>
-          <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
+    <div class="bg-white border border-gray-200 rounded-lg flex flex-col h-[600px] shadow-sm" data-test="csm-selected">
+      <div class="p-4 border-b border-gray-100 bg-white rounded-t-lg z-10">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="font-normal text-lg text-gray-800">{{ t('clients.form.scopeManager.clientScopes') }}</h4>
+          <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
             {{ t('clients.form.scopeManager.assignedCount', { count: modelValue.length }) }}
           </span>
         </div>
@@ -221,59 +234,65 @@ onMounted(() => {
             type="text"
             v-model="clientScopeSearchQuery"
             :placeholder="t('clients.form.scopeManager.searchClient')"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm pl-9 h-10 py-2"
+            class="block w-full rounded-md border-gray-200 bg-gray-50 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm pl-10 h-10 transition-colors hover:bg-white"
             data-test="csm-selected-search"
           />
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+             <i class="bi bi-filter text-gray-400"></i>
           </div>
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
-        <div v-if="modelValue.length === 0" class="text-center py-4 text-gray-500 text-sm">
+      <div class="flex-1 overflow-y-auto p-2 space-y-1 bg-white">
+        <div v-if="modelValue.length === 0" class="flex flex-col items-center justify-center h-full text-gray-500 text-sm">
+           <i class="bi bi-clipboard-x text-2xl mb-2 text-gray-300"></i>
           {{ t('clients.form.scopeManager.noClientScopes') }}
         </div>
-        <div v-else-if="selectedScopesList.length === 0" class="text-center py-4 text-gray-500 text-sm">
+        <div v-else-if="selectedScopesList.length === 0" class="flex flex-col items-center justify-center h-full text-gray-500 text-sm">
           {{ t('common.noSearchResults') || 'No matching scopes found' }}
         </div>
 
         <div
+          v-else
           v-for="scope in selectedScopesList"
           :key="scope.name"
-          class="flex items-start justify-between p-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200"
+          class="flex items-start justify-between p-3 hover:bg-gray-50 rounded-md border border-transparent hover:border-gray-200 transition-colors group"
           data-test="csm-selected-item"
         >
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">
-              {{ scope.displayName || scope.name }}
-            </p>
-            <p class="text-xs text-gray-500 truncate">
+            <div class="flex items-center gap-2">
+                 <p class="text-sm font-medium text-gray-900 truncate">
+                  {{ scope.displayName || scope.name }}
+                </p>
+                <div v-if="isRequired(scope.name)" class="flex-shrink-0">
+                    <i class="bi bi-asterisk text-[8px] text-red-500 align-top" title="Required"></i>
+                </div>
+            </div>
+           
+            <p class="text-xs text-gray-500 truncate mt-0.5 font-mono">
                {{ scope.name }}
             </p>
           </div>
           
-          <div class="flex items-center ml-4 space-x-3">
-            <!-- Required Toggle Component -->
-            <ToggleSwitch
-              :model-value="isRequired(scope.name)"
-              @update:model-value="toggleRequired(scope.name)"
-              :label="t('clients.form.scopeManager.required')"
-              :title="t('clients.form.scopeManager.requiredHelp')"
-            />
+          <div class="flex items-center ml-4 gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+            <!-- Required Toggle Component - Simplified Layout -->
+            <div class="transform scale-90 origin-right">
+                <ToggleSwitch
+                :model-value="isRequired(scope.name)"
+                @update:model-value="toggleRequired(scope.name)"
+                :label="t('clients.form.scopeManager.required')"
+                :title="t('clients.form.scopeManager.requiredHelp')"
+                />
+            </div>
 
             <!-- Remove Button -->
             <button
               type="button"
               @click="removeScope(scope.name)"
-              class="text-gray-400 hover:text-red-500 focus:outline-none"
+              class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 focus:outline-none transition-colors"
               :title="t('clients.form.scopeManager.remove')"
             >
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <i class="bi bi-trash3"></i>
             </button>
           </div>
         </div>
