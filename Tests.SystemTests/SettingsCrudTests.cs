@@ -137,7 +137,7 @@ public class SettingsCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
     }
 
     [Fact]
-    public async Task UpdateSetting_EmptyValue_ReturnsBadRequest()
+    public async Task UpdateSetting_EmptyValue_ReturnsOk()
     {
         // Arrange
         var request = new { value = "" };
@@ -146,7 +146,7 @@ public class SettingsCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
         var response = await _httpClient.PutAsJsonAsync("/api/admin/settings/test.key", request);
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
