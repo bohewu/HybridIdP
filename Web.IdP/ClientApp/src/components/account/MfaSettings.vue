@@ -187,6 +187,10 @@ import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
 
+const emit = defineEmits<{
+  (e: 'status-changed'): void
+}>();
+
 // State
 const loading = ref(true);
 const mfaStatus = ref({
@@ -283,6 +287,7 @@ function cancelSetup() {
 function finishSetup() {
   showSetupModal.value = false;
   loadMfaStatus();
+  emit('status-changed');
 }
 
 async function disableMfa() {
@@ -306,6 +311,7 @@ async function disableMfa() {
       disablePassword.value = '';
       disableTotpCode.value = '';
       await loadMfaStatus();
+      emit('status-changed');
     } else {
       const result = await response.json();
       // Translate error key from API (e.g., 'invalidPassword' -> mfa.errors.invalidPassword)
