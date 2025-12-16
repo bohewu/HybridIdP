@@ -514,4 +514,22 @@
   <data name="TotpCodeLength" xml:space="preserve">
     <value>Code must be 6 digits</value>
   </data>
+  <data name="InvalidOrExpiredEmailCode" xml:space="preserve">
+    <value>Invalid or expired email code</value>
+  </data>
+  <data name="EmailCodeLength" xml:space="preserve">
+    <value>Email code must be 6 digits</value>
+  </data>
+  <data name="SendEmailCode" xml:space="preserve">
+    <value>Send code to email</value>
+  </data>
+  <data name="EmailCodeSent" xml:space="preserve">
+    <value>Code sent to your email</value>
+  </data>
+  <data name="UseEmailMfa" xml:space="preserve">
+    <value>Use email code</value>
+  </data>
+  <data name="UseAuthenticatorApp" xml:space="preserve">
+    <value>Use authenticator app</value>
+  </data>
 </root>

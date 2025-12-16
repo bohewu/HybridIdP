@@ -47,6 +47,11 @@ public partial class LoginMfaModel : PageModel
     
     [BindProperty(SupportsGet = true)]
     public bool RememberMe { get; set; }
+    
+    /// <summary>
+    /// Indicates if user has Email MFA enabled (used to show Email option on UI).
+    /// </summary>
+    public bool EmailMfaEnabled { get; set; }
 
     public class InputModel
     {
@@ -56,6 +61,10 @@ public partial class LoginMfaModel : PageModel
 
         [Display(Name = "RecoveryCode")]
         public string? RecoveryCode { get; set; }
+        
+        [Display(Name = "EmailCode")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "EmailCodeLength")]
+        public string? EmailCode { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, bool rememberMe = false)
@@ -84,6 +93,10 @@ public partial class LoginMfaModel : PageModel
 
         ReturnUrl = returnUrl;
         RememberMe = rememberMe;
+        
+        // Check if user has Email MFA enabled
+        EmailMfaEnabled = user.EmailMfaEnabled;
+        
         return Page();
     }
 
@@ -121,9 +134,36 @@ public partial class LoginMfaModel : PageModel
         }
 
         // Validate that at least one code is provided
-        if (string.IsNullOrWhiteSpace(Input.TotpCode) && string.IsNullOrWhiteSpace(Input.RecoveryCode))
+        if (string.IsNullOrWhiteSpace(Input.TotpCode) && string.IsNullOrWhiteSpace(Input.RecoveryCode) && string.IsNullOrWhiteSpace(Input.EmailCode))
         {
             ModelState.AddModelError(string.Empty, _localizer["EnterCodeOrRecoveryCode"]);
+            EmailMfaEnabled = user.EmailMfaEnabled;
+            return Page();
+        }
+        
+        // Try Email MFA code first (if provided)
+        if (!string.IsNullOrWhiteSpace(Input.EmailCode))
+        {
+            var emailCode = Input.EmailCode.Replace(" ", "").Trim();
+            var isValid = await _mfaService.VerifyEmailMfaCodeAsync(user, emailCode);
+            
+            if (isValid)
+            {
+                await _userManager.ResetAccessFailedCountAsync(user);
+                await CompleteMfaSignInAsync(user, returnUrl, RememberMe, "EmailMFA");
+                return LocalRedirect(returnUrl);
+            }
+            
+            // Record failed attempt and check for lockout
+            await _userManager.AccessFailedAsync(user);
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                _logger.LogWarning("User account locked out.");
+                return RedirectToPage("./Lockout");
+            }
+            
+            ModelState.AddModelError(nameof(Input.EmailCode), _localizer["InvalidOrExpiredEmailCode"]);
+            EmailMfaEnabled = user.EmailMfaEnabled;
             return Page();
         }
 
@@ -212,4 +252,35 @@ public partial class LoginMfaModel : PageModel
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "User '{UserName}' has only {Count} recovery codes remaining.")]
     partial void LogLowRecoveryCodes(string? userName, int count);
+    
+    /// <summary>
+    /// Handler for sending Email MFA code (called via AJAX from the page).
+    /// </summary>
+    public async Task<IActionResult> OnPostSendEmailCodeAsync()
+    {
+        var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
+        if (user == null)
+        {
+            // Fallback: manually look up user from cookie
+            var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+            if (twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
+            {
+                var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+                {
+                    user = await _userManager.FindByIdAsync(userId.ToString());
+                }
+            }
+        }
+        
+        if (user == null || !user.EmailMfaEnabled)
+        {
+            return new JsonResult(new { success = false, error = "notAvailable" });
+        }
+        
+        await _mfaService.SendEmailMfaCodeAsync(user);
+        _logger.LogInformation("Email MFA code sent to user {UserId} during login", user.Id);
+        
+        return new JsonResult(new { success = true });
+    }
 }
