@@ -12,7 +12,6 @@ using global::Infrastructure.Options;
 using Core.Application;
 using Core.Application.Options;
 using Web.IdP.Services;
-using Web.IdP.Constants;
 using Web.IdP.Options;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
@@ -250,12 +249,15 @@ public static class ServiceCollectionExtensions
         });
 
         // Configure Application Cookie
+        var cookieOptions = new Options.CookieOptions();
+        configuration.GetSection(Options.CookieOptions.Section).Bind(cookieOptions);
+        
         services.ConfigureApplicationCookie(options =>
         {
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax;
-            options.Cookie.Name = CookieConstants.IdentityCookieName;
+            options.Cookie.Name = cookieOptions.GetIdentityCookieName();
 
             options.Events.OnRedirectToLogin = context =>
             {
@@ -440,22 +442,26 @@ public static class ServiceCollectionExtensions
         });
         services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
 
-        // Session
+        // Session (reuse cookieOptions from identity setup scope - re-read for clarity)
         services.AddSession(options =>
         {
+            var cookieOpts = new Options.CookieOptions();
+            configuration.GetSection(Options.CookieOptions.Section).Bind(cookieOpts);
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax;
-            options.Cookie.Name = CookieConstants.SessionCookieName;
+            options.Cookie.Name = cookieOpts.GetSessionCookieName();
         });
 
         // Antiforgery
         services.AddAntiforgery(options =>
         {
+            var cookieOpts = new Options.CookieOptions();
+            configuration.GetSection(Options.CookieOptions.Section).Bind(cookieOpts);
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Strict;
-            options.Cookie.Name = CookieConstants.AntiforgeryCookieName;
+            options.Cookie.Name = cookieOpts.GetAntiforgeryCookieName();
         });
 
         // MVC & Localization support

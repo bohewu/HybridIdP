@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
-using Web.IdP.Constants;
 using Web.IdP.Middleware;
 using Web.IdP.Options;
 using Core.Application.Options;

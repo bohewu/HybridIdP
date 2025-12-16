@@ -26,7 +26,6 @@ using OpenTelemetry.Exporter.Prometheus;
 using Web.IdP.Middleware;
 using Web.IdP.Services;
 using Web.IdP.Extensions;
-using Web.IdP.Constants;
 using Web.IdP; // Added for SharedResource
 
 using Quartz;

@@ -217,7 +217,7 @@
   </data>
   <!-- Footer -->
   <data name="FooterCopyright" xml:space="preserve">
-    <value>© 2025 - HybridAuth IdP</value>
+    <value>© 2025</value>
   </data>
   <data name="AllRightsReserved" xml:space="preserve">
     <value>版權所有</value>
@@ -288,7 +288,7 @@
     <value>查看詳情</value>
   </data>
   <data name="WelcomeMessage" xml:space="preserve">
-    <value>歡迎使用 HybridAuth IdP</value>
+    <value>歡迎</value>
   </data>
   <data name="ApplicationManager" xml:space="preserve">
     <value>應用程式管理員</value>

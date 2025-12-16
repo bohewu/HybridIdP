@@ -19,7 +19,7 @@
     <value>取消</value>
   </data>
   <data name="Footer" xml:space="preserve">
-    <value>Powered by HybridAuth</value>
+    <value></value>
   </data>
   <data name="UserCodeRequired" xml:space="preserve">
     <value>請輸入驗證碼。</value>
