@@ -509,4 +509,22 @@
   <data name="TotpCodeLength" xml:space="preserve">
     <value>驗證碼必須為 6 位數</value>
   </data>
+  <data name="InvalidOrExpiredEmailCode" xml:space="preserve">
+    <value>電子郵件驗證碼無效或已過期</value>
+  </data>
+  <data name="EmailCodeLength" xml:space="preserve">
+    <value>電子郵件驗證碼必須為 6 位數</value>
+  </data>
+  <data name="SendEmailCode" xml:space="preserve">
+    <value>發送驗證碼到電子郵件</value>
+  </data>
+  <data name="EmailCodeSent" xml:space="preserve">
+    <value>驗證碼已發送至您的電子郵件</value>
+  </data>
+  <data name="UseEmailMfa" xml:space="preserve">
+    <value>使用電子郵件驗證碼</value>
+  </data>
+  <data name="UseAuthenticatorApp" xml:space="preserve">
+    <value>使用驗證器應用程式</value>
+  </data>
 </root>
