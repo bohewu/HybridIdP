@@ -19,6 +19,8 @@ public class MfaServiceTests
 {
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly Mock<IBrandingService> _brandingServiceMock;
+    private readonly Mock<IEmailService> _emailServiceMock;
+    private readonly Mock<IPasswordHasher<ApplicationUser>> _passwordHasherMock;
     private readonly MfaService _sut;
 
     public MfaServiceTests()
@@ -30,7 +32,14 @@ public class MfaServiceTests
         _brandingServiceMock = new Mock<IBrandingService>();
         _brandingServiceMock.Setup(x => x.GetAppNameAsync()).ReturnsAsync("TestApp");
         
-        _sut = new MfaService(_userManagerMock.Object, _brandingServiceMock.Object);
+        _emailServiceMock = new Mock<IEmailService>();
+        _passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
+        
+        _sut = new MfaService(
+            _userManagerMock.Object, 
+            _brandingServiceMock.Object,
+            _emailServiceMock.Object,
+            _passwordHasherMock.Object);
     }
 
     #region GetTotpSetupInfoAsync Tests
