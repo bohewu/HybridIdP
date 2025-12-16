@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace Core.Domain;
 
@@ -56,6 +57,23 @@ public class ApplicationUser : IdentityUser<Guid>
     /// Used to prevent replay attacks by rejecting the same code in the same 30-second window.
     /// </summary>
     public long? LastTotpValidatedWindow { get; set; }
+    
+    // Email MFA Fields (Phase 20.3)
+    /// <summary>
+    /// Indicates whether Email-based MFA is enabled for this user.
+    /// </summary>
+    public bool EmailMfaEnabled { get; set; } = false;
+    
+    /// <summary>
+    /// Hashed 6-digit code sent via email. Null when no code is pending.
+    /// </summary>
+    [MaxLength(128)]
+    public string? EmailMfaCode { get; set; }
+    
+    /// <summary>
+    /// Expiration time for the email MFA code. Code is invalid after this time.
+    /// </summary>
+    public DateTime? EmailMfaCodeExpiry { get; set; }
     
     // Soft Delete
     public bool IsDeleted { get; set; } = false;

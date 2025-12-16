@@ -189,7 +189,8 @@ public partial class LoginModel : PageModel
                 }
 
                 // Check if user has MFA enabled - redirect to MFA verification page
-                if (result.User!.TwoFactorEnabled)
+                // Support both TOTP MFA (TwoFactorEnabled) and Email MFA (EmailMfaEnabled)
+                if (result.User!.TwoFactorEnabled || result.User!.EmailMfaEnabled)
                 {
                     // Store user ID for 2FA verification
                     // Identity's GetTwoFactorAuthenticationUserAsync expects ClaimTypes.NameIdentifier
@@ -200,7 +201,21 @@ public partial class LoginModel : PageModel
                         new System.Security.Claims.ClaimsPrincipal(identity));
                     
                     LogMfaRequired(result.User.UserName);
-                    return RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = Input.RememberMe });
+                    
+                    // Direct redirect to appropriate MFA page
+                    if (result.User.TwoFactorEnabled)
+                    {
+                        return RedirectToPage("./LoginTotp", new { returnUrl, rememberMe = Input.RememberMe });
+                    }
+                    else if (result.User.EmailMfaEnabled)
+                    {
+                        return RedirectToPage("./LoginEmailOtp", new { returnUrl, rememberMe = Input.RememberMe });
+                    }
+                    else
+                    {
+                        // Fallback (should ideally not happen if condition check was true)
+                        return RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = Input.RememberMe });
+                    }
                 }
 
                 // Sign in user (role claims are automatically added by Identity)

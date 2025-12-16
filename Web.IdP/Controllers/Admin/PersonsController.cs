@@ -426,8 +426,8 @@ public class PersonsController : ControllerBase
             IdentityDocumentType = dto.IdentityDocumentType,
             // Phase 18: Lifecycle fields
             Status = Enum.TryParse<PersonStatus>(dto.Status, true, out var status) ? status : PersonStatus.Active,
-            StartDate = dto.StartDate,
-            EndDate = dto.EndDate
+            StartDate = dto.StartDate.HasValue ? DateTime.SpecifyKind(dto.StartDate.Value.Date, DateTimeKind.Utc) : null,
+            EndDate = dto.EndDate.HasValue ? DateTime.SpecifyKind(dto.EndDate.Value.Date, DateTimeKind.Utc) : null
         };
     }
 

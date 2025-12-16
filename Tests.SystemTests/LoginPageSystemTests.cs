@@ -227,9 +227,9 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
         Assert.True(
             finalContent.Contains("locked") || 
             finalContent.Contains("Locked") ||
-            finalContent.Contains("鎖定") ||
-            finalContent.Contains("alert-danger"),
-            $"Expected lockout message after multiple failed attempts. Content contains error: {finalContent.Contains("alert-danger")}");
+            finalContent.Contains("validation-summary-errors") ||
+            finalContent.Contains("login-error-summary"),
+            $"Expected lockout message after multiple failed attempts.\nContent: {finalContent}");
     }
 
     #endregion

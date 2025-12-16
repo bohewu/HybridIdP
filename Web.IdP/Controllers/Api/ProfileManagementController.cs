@@ -73,6 +73,7 @@ public class ProfileManagementController : ControllerBase
             HasLocalPassword = hasLocalPassword,
             AllowPasswordChange = policy.AllowSelfPasswordChange && hasLocalPassword,
             TwoFactorEnabled = user.TwoFactorEnabled,
+            EmailMfaEnabled = user.EmailMfaEnabled,
             ExternalLogins = externalLogins.Select(l => new ExternalLoginDto
             {
                 LoginProvider = l.LoginProvider,

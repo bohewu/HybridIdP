@@ -30,6 +30,11 @@
     "disableFailed": "停用 MFA 失敗",
     "invalidPassword": "密碼錯誤",
     "totpRequired": "請輸入驗證碼",
-    "passwordRequired": "請輸入密碼"
-  }
+    "passwordRequired": "請輸入密碼",
+    "toggleFailed": "切換電子郵件 MFA 失敗"
+  },
+  "emailMfa": "電子郵件驗證",
+  "emailMfaDescription": "登入時透過電子郵件接收驗證碼",
+  "emailMfaEnabled": "電子郵件驗證已啟用",
+  "emailMfaDisabled": "電子郵件驗證已停用"
 }

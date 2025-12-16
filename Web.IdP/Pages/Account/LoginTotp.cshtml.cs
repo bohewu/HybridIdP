@@ -10,21 +10,21 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Web.IdP.Pages.Account;
 
-public partial class LoginMfaModel : PageModel
+public partial class LoginTotpModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMfaService _mfaService;
     private readonly IDomainEventPublisher _eventPublisher;
-    private readonly ILogger<LoginMfaModel> _logger;
+    private readonly ILogger<LoginTotpModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
-    public LoginMfaModel(
+    public LoginTotpModel(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IMfaService mfaService,
         IDomainEventPublisher eventPublisher,
-        ILogger<LoginMfaModel> logger,
+        ILogger<LoginTotpModel> logger,
         IStringLocalizer<SharedResource> localizer)
     {
         _signInManager = signInManager;
@@ -67,9 +67,7 @@ public partial class LoginMfaModel : PageModel
             return RedirectToPage("./Login");
         }
         
-        // Router Logic:
-        // If TOTP (TwoFactorEnabled) is TRUE, show this page (default MFA).
-        // If TOTP is FALSE, check Email MFA.
+        // Verify user actually has TOTP enabled
         if (!user.TwoFactorEnabled)
         {
             // If only Email MFA, redirect there
@@ -77,7 +75,6 @@ public partial class LoginMfaModel : PageModel
             {
                 return RedirectToPage("./LoginEmailOtp", new { returnUrl, rememberMe });
             }
-            // If no MFA enabled, back to login (shouldn't be here)
             return RedirectToPage("./Login");
         }
 

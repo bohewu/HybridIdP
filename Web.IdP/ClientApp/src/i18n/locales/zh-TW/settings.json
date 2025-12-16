@@ -23,6 +23,10 @@
     "title": "系統監控",
     "description": "設定背景監控服務。"
   },
+  "validation": {
+    "required": "此欄位為必填",
+    "invalidEmail": "請輸入有效的電子郵件地址"
+  },
   "monitoring": {
     "enable": "啟用監控",
     "enable_desc": "啟用或停用背景監控服務的主開關。",
@@ -44,6 +48,7 @@
   },
   "emailSection": "電子郵件設定",
   "emailSectionDesc": "設定外寄電子郵件的 SMTP 資訊。",
+  "usingDevServer": "目前使用開發測試郵件伺服器 (Mailpit: localhost:1025)。信件將不會寄送給真實收件者。",
   "host": "SMTP 主機",
   "port": "SMTP 連接埠",
   "username": "使用者名稱",
