@@ -238,11 +238,16 @@ public class MfaController : ControllerBase
             return BadRequest(new { error = "noEmail", message = "User does not have an email address." });
         }
 
-        await _mfaService.SendEmailMfaCodeAsync(user, ct);
+        var (success, remainingSeconds) = await _mfaService.SendEmailMfaCodeAsync(user, ct);
+
+        if (!success)
+        {
+            return StatusCode(429, new { success = false, remainingSeconds, error = "rateLimitExceeded", message = $"Please wait {remainingSeconds} seconds." });
+        }
 
         _logger.LogInformation("Email MFA code sent to user {UserId}", user.Id);
 
-        return Ok(new { success = true, message = "Code sent to email." });
+        return Ok(new { success = true, remainingSeconds, message = "Code sent to email." });
     }
 
     /// <summary>

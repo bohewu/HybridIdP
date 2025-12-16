@@ -1,5 +1,5 @@
 @page
-@model Web.IdP.Pages.Account.LoginMfaModel
+@model Web.IdP.Pages.Account.LoginTotpModel
 @using Web.IdP.Services
 @using Core.Application
 @using Microsoft.Extensions.Localization
@@ -74,6 +74,7 @@
                                    data-test-id="mfa-totp-code" />
                             <span asp-validation-for="Input.TotpCode" class="text-red-600 text-xs mt-1 block" data-test-id="mfa-code-error"></span>
                         </div>
+
                         <!-- Recovery Code Section -->
                         <div class="form-group">
                             @{

@@ -7,6 +7,7 @@ using Core.Application;
 using Core.Domain;
 using Microsoft.AspNetCore.Identity;
 using QRCoder;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace Infrastructure.Services;
 
@@ -19,18 +20,21 @@ public class MfaService : IMfaService
     private readonly IBrandingService _brandingService;
     private readonly IEmailService _emailService;
     private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
+    private readonly IDistributedCache _cache;
     private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
 
     public MfaService(
         UserManager<ApplicationUser> userManager, 
         IBrandingService brandingService,
         IEmailService emailService,
-        IPasswordHasher<ApplicationUser> passwordHasher)
+        IPasswordHasher<ApplicationUser> passwordHasher,
+        IDistributedCache cache)
     {
         _userManager = userManager;
         _brandingService = brandingService;
         _emailService = emailService;
         _passwordHasher = passwordHasher;
+        _cache = cache;
     }
 
     public async Task<MfaSetupInfo> GetTotpSetupInfoAsync(ApplicationUser user, CancellationToken ct = default)
@@ -131,11 +135,25 @@ public class MfaService : IMfaService
 
     #region Email MFA (Phase 20.3)
 
-    public async Task SendEmailMfaCodeAsync(ApplicationUser user, CancellationToken ct = default)
+    public async Task<(bool Success, int RemainingSeconds)> SendEmailMfaCodeAsync(ApplicationUser user, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(user.Email))
         {
             throw new InvalidOperationException("User does not have an email address.");
+        }
+
+        // Rate Limiting Check
+        var cacheKey = $"EmailMfa_Cooldown_{user.Id}";
+        var cachedValue = await _cache.GetStringAsync(cacheKey, ct);
+        
+        if (!string.IsNullOrEmpty(cachedValue) && long.TryParse(cachedValue, out long expireTicks))
+        {
+             var validAfter = new DateTimeOffset(expireTicks, TimeSpan.Zero);
+             var remaining = (int)(validAfter - DateTimeOffset.UtcNow).TotalSeconds;
+             if (remaining > 0)
+             {
+                 return (false, remaining);
+             }
         }
 
         // Generate 6-digit numeric code
@@ -161,6 +179,16 @@ public class MfaService : IMfaService
 </html>";
 
         await _emailService.SendEmailAsync(user.Email, subject, body, isHtml: true, ct);
+
+        // Set Cooldown
+        var cooldownExpiry = DateTimeOffset.UtcNow.AddSeconds(60);
+        await _cache.SetStringAsync(
+            cacheKey, 
+            cooldownExpiry.Ticks.ToString(), 
+            new DistributedCacheEntryOptions { AbsoluteExpiration = cooldownExpiry }, 
+            ct);
+        
+        return (true, 60);
     }
 
     public async Task<bool> VerifyEmailMfaCodeAsync(ApplicationUser user, string code, CancellationToken ct = default)

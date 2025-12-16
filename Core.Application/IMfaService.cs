@@ -43,9 +43,9 @@ public interface IMfaService
     
     /// <summary>
     /// Sends a 6-digit OTP code to the user's email.
-    /// Generates a new code, hashes and stores it, sets expiry, and queues email.
+    /// Returns rate limit status (Success, RemainingSeconds).
     /// </summary>
-    Task SendEmailMfaCodeAsync(ApplicationUser user, CancellationToken ct = default);
+    Task<(bool Success, int RemainingSeconds)> SendEmailMfaCodeAsync(ApplicationUser user, CancellationToken ct = default);
     
     /// <summary>
     /// Verifies the email MFA code entered by the user.
