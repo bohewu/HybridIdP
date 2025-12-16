@@ -97,11 +97,11 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] Modular i18n files (mfa.json)
 - [x] MfaApiTests system tests
 
-### Phase 20.2: Email Architecture Enhancement (Queue System) (Pending)
-- [ ] Add Mailpit to dev environment.
-- [ ] Implement `EmailQueue` (Channel-based) and `EmailQueueProcessor` (HostedService).
-- [ ] Implement `SmtpDispatcher` for actual sending.
-- [ ] Refactor `EmailService` to producer pattern.
+### Phase 20.2: Email Architecture Enhancement (Queue System) ✅ COMPLETED
+- [x] Add Mailpit to dev environment.
+- [x] Implement `EmailQueue` (Channel-based) and `EmailQueueProcessor` (HostedService).
+- [x] Implement `SmtpDispatcher` for actual sending.
+- [x] Refactor `EmailService` to producer pattern.
 
 ### Phase 20.3: Email MFA (OTP) Logic (Pending)
 - [ ] Backend: `EmailTwoFactorEnabled` field + `IEmailSender` extensions
