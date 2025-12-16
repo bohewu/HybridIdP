@@ -195,8 +195,8 @@ onMounted(() => {
             </div>
 
             <!-- Audit Retention Section -->
-            <div class="mb-6">
-                <h3 class="text-md font-medium text-gray-900 mb-2">{{ t('settings.audit.title') }}</h3>
+            <div class="border border-gray-200 rounded-lg p-4 mb-6">
+                <h3 class="text-md font-medium text-gray-900 mb-4">{{ t('settings.audit.title') }}</h3>
                 <div class="form-control w-full max-w-sm">
                     <label class="block text-sm font-medium text-gray-700 mb-1">
                         {{ t('settings.audit.retention_days') }}
@@ -212,70 +212,70 @@ onMounted(() => {
                 </div>
             </div>
 
-            <div class="divider my-4"></div>
-
             <!-- Monitoring Section -->
-             <h3 class="text-md font-medium text-gray-900 mb-2">{{ t('settings.system.title') }}</h3>
+            <div class="border border-gray-200 rounded-lg p-4">
+                <h3 class="text-md font-medium text-gray-900 mb-4">{{ t('settings.system.title') }}</h3>
 
-            <!-- Monitoring Toggle -->
-            <div class="form-control mb-6">
-                <label class="label cursor-pointer justify-start gap-4">
-                    <span class="label-text font-bold text-gray-700 mr-4">{{ t('settings.monitoring.enable') }}</span>
-                    <input type="checkbox" class="toggle toggle-primary" v-model="settings.monitoringEnabled" :disabled="!canUpdate" />
-                </label>
-                <p class="text-sm text-gray-500 mt-1">{{ t('settings.monitoring.enable_desc') }}</p>
-            </div>
-
-            <!-- Intervals Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Activity Interval -->
-                <div class="form-control w-full">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ t('settings.monitoring.activity_interval') }}
+                <!-- Monitoring Toggle -->
+                <div class="form-control mb-6">
+                    <label class="label cursor-pointer justify-start gap-4">
+                        <span class="label-text font-bold text-gray-700 mr-4">{{ t('settings.monitoring.enable') }}</span>
+                        <input type="checkbox" class="toggle toggle-primary" v-model="settings.monitoringEnabled" :disabled="!canUpdate" />
                     </label>
-                    <div class="flex items-center gap-2">
-                        <input
-                            type="number"
-                            v-model.number="settings.activityInterval"
-                            min="1"
-                            :disabled="!canUpdate"
-                            class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
-                        />
-                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('settings.monitoring.seconds') }}</span>
-                    </div>
+                    <p class="text-sm text-gray-500 mt-1">{{ t('settings.monitoring.enable_desc') }}</p>
                 </div>
 
-                <!-- Security Interval -->
-                <div class="form-control w-full">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ t('settings.monitoring.security_interval') }}
-                    </label>
-                    <div class="flex items-center gap-2">
-                        <input
-                            type="number"
-                            v-model.number="settings.securityInterval"
-                            min="1"
-                            :disabled="!canUpdate"
-                            class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
-                        />
-                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('settings.monitoring.seconds') }}</span>
+                <!-- Intervals Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Activity Interval -->
+                    <div class="form-control w-full">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ t('settings.monitoring.activity_interval') }}
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input
+                                type="number"
+                                v-model.number="settings.activityInterval"
+                                min="1"
+                                :disabled="!canUpdate"
+                                class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
+                            />
+                            <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('settings.monitoring.seconds') }}</span>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Metrics Interval -->
-                <div class="form-control w-full">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ t('settings.monitoring.metrics_interval') }}
-                    </label>
-                     <div class="flex items-center gap-2">
-                        <input
-                            type="number"
-                            v-model.number="settings.metricsInterval"
-                            min="1"
-                            :disabled="!canUpdate"
-                            class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
-                        />
-                        <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('settings.monitoring.seconds') }}</span>
+                    <!-- Security Interval -->
+                    <div class="form-control w-full">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ t('settings.monitoring.security_interval') }}
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input
+                                type="number"
+                                v-model.number="settings.securityInterval"
+                                min="1"
+                                :disabled="!canUpdate"
+                                class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
+                            />
+                            <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('settings.monitoring.seconds') }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Interval -->
+                    <div class="form-control w-full">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ t('settings.monitoring.metrics_interval') }}
+                        </label>
+                         <div class="flex items-center gap-2">
+                            <input
+                                type="number"
+                                v-model.number="settings.metricsInterval"
+                                min="1"
+                                :disabled="!canUpdate"
+                                class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed h-10 px-3"
+                            />
+                            <span class="text-gray-500 sm:text-sm whitespace-nowrap">{{ t('settings.monitoring.seconds') }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
