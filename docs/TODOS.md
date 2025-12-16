@@ -97,13 +97,19 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] Modular i18n files (mfa.json)
 - [x] MfaApiTests system tests
 
-### Phase 20.2: Email MFA (OTP) (Pending)
+### Phase 20.2: Email Architecture Enhancement (Queue System) (Pending)
+- [ ] Add Mailpit to dev environment.
+- [ ] Implement `EmailQueue` (Channel-based) and `EmailQueueProcessor` (HostedService).
+- [ ] Implement `SmtpDispatcher` for actual sending.
+- [ ] Refactor `EmailService` to producer pattern.
+
+### Phase 20.3: Email MFA (OTP) Logic (Pending)
 - [ ] Backend: `EmailTwoFactorEnabled` field + `IEmailSender` extensions
 - [ ] Logic: `EmailMfaProvider` for 6-digit code generation/validation
 - [ ] API: `POST /api/account/mfa/email/send` & `verify`
 - [ ] UI: Login fallback logic & Profile toggle
 
-### Phase 20.3: WebAuthn Passkey - Database & Backend (Pending)
+### Phase 20.4: WebAuthn Passkey - Database & Backend (Pending)
 - [ ] Install `Fido2.AspNet` NuGet package
 - [ ] Create `UserCredential` entity (CredentialId, PublicKey, SignCount, DeviceName)
 - [ ] EF Core migration for UserCredentials table
@@ -114,7 +120,7 @@ This file contains current high-priority backlog items and remaining tasks.
 - [ ] API: `POST /api/passkey/login` - Verify signature + SignIn
 - [ ] Integrate with `ValidatePersonStatusAsync()` for Person Lifecycle check
 
-### Phase 20.4: WebAuthn Passkey - Frontend UI (Pending)
+### Phase 20.5: WebAuthn Passkey - Frontend UI (Pending)
 - [ ] User Settings page: "Manage Passkeys" section
 - [ ] "Add Passkey" button with WebAuthn registration flow
 - [ ] List registered passkeys with device names

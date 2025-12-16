@@ -44,6 +44,7 @@
   },
   "emailSection": "Email Settings",
   "emailSectionDesc": "Configure SMTP settings for outgoing emails.",
+  "usingDevServer": "Using Development Mail Server (Mailpit: localhost:1025). Emails will not be sent to real recipients.",
   "host": "SMTP Host",
   "port": "SMTP Port",
   "username": "Username",
