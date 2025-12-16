@@ -13,6 +13,12 @@
   "productName": "產品名稱",
   "productNamePlaceholder": "例如：HybridAuth IdP",
   "productNameHelp": "顯示於頁面標題與品牌資訊",
+  "copyright": "版權",
+  "copyrightPlaceholder": "例如：© 2025 - 我的公司",
+  "copyrightHelp": "顯示於頁尾與法律聲明",
+  "poweredBy": "技術提供",
+  "poweredByPlaceholder": "例如：Powered by MyProduct",
+  "poweredByHelp": "頁尾可選品牌標示（留空則隱藏）",
   "system": {
     "title": "系統監控",
     "description": "設定背景監控服務。"

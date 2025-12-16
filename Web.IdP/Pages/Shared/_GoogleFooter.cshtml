@@ -1,9 +1,12 @@
 @using Microsoft.AspNetCore.Localization
 @using Microsoft.AspNetCore.Mvc.Localization
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@inject Core.Application.IBrandingService BrandingService
 @{
     var requestCulture = Context.Features.Get<IRequestCultureFeature>();
     var currentCulture = requestCulture?.RequestCulture.Culture.Name ?? "en-US";
+    var copyright = await BrandingService.GetCopyrightAsync();
+    var poweredBy = await BrandingService.GetPoweredByAsync();
 }
 
 <div class="google-footer mt-4">
@@ -12,6 +15,11 @@
         <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文 (台灣)</option>
     </select>
     <div class="flex gap-4 text-xs">
+        <span class="text-gray-500">@copyright</span>
+        @if (!string.IsNullOrEmpty(poweredBy))
+        {
+            <span class="text-gray-400">@poweredBy</span>
+        }
         <a href="/Privacy" class="hover:text-gray-900">@Localizer["Privacy"]</a>
         <a href="/Docs" class="hover:text-gray-900">@Localizer["Help"]</a>
     </div>
