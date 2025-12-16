@@ -110,7 +110,6 @@
                                        inputmode="numeric"
                                        pattern="[0-9]*"
                                        maxlength="6"
-                                       @(Model.EmailMfaEnabled ? "" : "autofocus")
                                        data-test-id="mfa-totp-code" />
                                 <span asp-validation-for="Input.TotpCode" class="text-red-600 text-xs mt-1 block" data-test-id="mfa-code-error"></span>
                             </div>
