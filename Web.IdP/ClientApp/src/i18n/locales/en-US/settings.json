@@ -23,6 +23,10 @@
     "title": "System Monitoring",
     "description": "Configure background monitoring services."
   },
+  "validation": {
+    "required": "This field is required",
+    "invalidEmail": "Please enter a valid email address"
+  },
   "monitoring": {
     "enable": "Enable Monitoring",
     "enable_desc": "Main switch to enable or disable the background monitoring service.",
@@ -44,6 +48,7 @@
   },
   "emailSection": "Email Settings",
   "emailSectionDesc": "Configure SMTP settings for outgoing emails.",
+  "usingDevServer": "Using Development Mail Server (Mailpit: localhost:1025). Emails will not be sent to real recipients.",
   "host": "SMTP Host",
   "port": "SMTP Port",
   "username": "Username",

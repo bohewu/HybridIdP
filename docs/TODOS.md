@@ -84,17 +84,56 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] Phase 18.4: Automation (PersonLifecycleJob w/ Quartz)
 - [x] E2E & System Tests verified (2.2s / 2.9s)
 
-## Phase 20 (Multi-Factor Authentication) ✅ COMPLETED
+## Phase 20 (Multi-Factor Authentication)
 
-- [x] Phase 20.1: TOTP MFA Implementation
-  - [x] MfaService (TDD) - 11+ tests
-  - [x] MFA API endpoints (status, setup, verify, disable, recovery-codes)
-  - [x] Login flow with MFA redirect (LoginMfa.cshtml)
-  - [x] Recovery code verification 
-  - [x] MfaSettings.vue component in Profile page
-  - [x] Support for passwordless users (Legacy/SSO) - TOTP-based disable
-  - [x] Modular i18n files (mfa.json)
-  - [x] MfaApiTests system tests
+### Phase 20.1: TOTP MFA Implementation ✅ COMPLETED
+
+- [x] MfaService (TDD) - 11+ tests
+- [x] MFA API endpoints (status, setup, verify, disable, recovery-codes)
+- [x] Login flow with MFA redirect (LoginMfa.cshtml)
+- [x] Recovery code verification 
+- [x] MfaSettings.vue component in Profile page
+- [x] Support for passwordless users (Legacy/SSO) - TOTP-based disable
+- [x] Modular i18n files (mfa.json)
+- [x] MfaApiTests system tests
+
+### Phase 20.2: Email Architecture Enhancement (Queue System) ✅ COMPLETED
+- [x] Add Mailpit to dev environment.
+- [x] Implement `EmailQueue` (Channel-based) and `EmailQueueProcessor` (HostedService).
+- [x] Implement `SmtpDispatcher` for actual sending.
+- [x] Refactor `EmailService` to producer pattern.
+
+### Phase 20.3: Email MFA (OTP) Logic (Pending)
+- [ ] Backend: `EmailTwoFactorEnabled` field + `IEmailSender` extensions
+- [ ] Logic: `EmailMfaProvider` for 6-digit code generation/validation
+- [ ] API: `POST /api/account/mfa/email/send` & `verify`
+- [ ] UI: Login fallback logic & Profile toggle
+
+### Phase 20.4: WebAuthn Passkey - Database & Backend (Pending)
+- [ ] Install `Fido2.AspNet` NuGet package
+- [ ] Create `UserCredential` entity (CredentialId, PublicKey, SignCount, DeviceName)
+- [ ] EF Core migration for UserCredentials table
+- [ ] Fido2 configuration in DI (RelyingPartyId, Origins)
+- [ ] API: `POST /api/passkey/register-options` - Generate registration challenge
+- [ ] API: `POST /api/passkey/register` - Store credential after browser attestation
+- [ ] API: `POST /api/passkey/login-options` - Generate authentication challenge
+- [ ] API: `POST /api/passkey/login` - Verify signature + SignIn
+- [ ] Integrate with `ValidatePersonStatusAsync()` for Person Lifecycle check
+
+### Phase 20.5: WebAuthn Passkey - Frontend UI (Pending)
+- [ ] User Settings page: "Manage Passkeys" section
+- [ ] "Add Passkey" button with WebAuthn registration flow
+- [ ] List registered passkeys with device names
+- [ ] Delete passkey functionality
+- [ ] Login page: "Sign in with Passkey" option
+- [ ] JavaScript integration with `navigator.credentials` API
+
+### Phase 20.4: Testing & Documentation (Pending)
+- [ ] Unit tests for TOTP validation
+- [ ] Integration tests for Fido2 flows
+- [ ] E2E tests with Playwright (using Chrome's Virtual Authenticator)
+- [ ] Update `SECURITY.md` with MFA documentation
+- [ ] User guide for setting up Passkeys
 
 ## Notes
 

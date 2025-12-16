@@ -85,6 +85,11 @@ builder.Services.AddCustomIdentityAndAccess(builder.Configuration, builder.Envir
 // Register Application Services and Options
 builder.Services.AddCustomApplicationServices(builder.Configuration);
 
+// Phase 20.2: Email Architecture (Queue & Dispatcher)
+builder.Services.AddSingleton<Core.Application.Interfaces.IEmailQueue, Infrastructure.Services.EmailQueue>();
+builder.Services.AddScoped<Core.Application.Interfaces.IEmailDispatcher, Infrastructure.Services.SmtpDispatcher>();
+builder.Services.AddHostedService<Infrastructure.BackgroundServices.EmailQueueProcessor>();
+
 // Configure Rate Limiting
 builder.Services.AddCustomRateLimiting(builder.Configuration);
 
