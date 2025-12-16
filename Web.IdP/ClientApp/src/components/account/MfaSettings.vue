@@ -46,6 +46,36 @@
           </button>
         </div>
       </div>
+
+      <!-- Email MFA Section (Phase 20.3) -->
+      <div class="email-mfa-section">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </div>
+          <div class="section-text">
+            <h4>{{ t('mfa.emailMfa') }}</h4>
+            <p>{{ t('mfa.emailMfaDescription') }}</p>
+            <p v-if="userEmail" class="masked-email">{{ maskedEmail }}</p>
+          </div>
+          <div class="section-toggle">
+            <label class="toggle-switch">
+              <input 
+                type="checkbox" 
+                :checked="mfaStatus.emailMfaEnabled" 
+                @change="toggleEmailMfa"
+                :disabled="emailMfaLoading"
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <p v-if="emailMfaError" class="error-message">{{ emailMfaError }}</p>
+        <p v-if="emailMfaSuccess" class="success-message">{{ emailMfaSuccess }}</p>
+      </div>
     </div>
 
     <!-- Setup Modal -->
@@ -182,7 +212,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
@@ -197,7 +227,24 @@ const mfaStatus = ref({
   twoFactorEnabled: false,
   hasAuthenticator: false,
   recoveryCodesLeft: 0,
-  hasPassword: true
+  hasPassword: true,
+  emailMfaEnabled: false
+});
+
+// Email MFA (Phase 20.3)
+const userEmail = ref('');
+const emailMfaLoading = ref(false);
+const emailMfaError = ref('');
+const emailMfaSuccess = ref('');
+
+const maskedEmail = computed(() => {
+  if (!userEmail.value) return '';
+  const [local, domain] = userEmail.value.split('@');
+  if (!local || !domain) return userEmail.value;
+  const maskedLocal = local.length > 2 
+    ? local[0] + '***' + local[local.length - 1]
+    : local[0] + '***';
+  return `${maskedLocal}@${domain}`;
 });
 
 // Setup Modal
@@ -229,10 +276,50 @@ async function loadMfaStatus() {
     if (response.ok) {
       mfaStatus.value = await response.json();
     }
+    // Also fetch user email for Email MFA display
+    const profileResponse = await fetch('/api/account/profile', { credentials: 'include' });
+    if (profileResponse.ok) {
+      const profile = await profileResponse.json();
+      userEmail.value = profile.email || '';
+    }
   } catch (err) {
     console.error('Failed to load MFA status:', err);
   } finally {
     loading.value = false;
+  }
+}
+
+async function toggleEmailMfa() {
+  emailMfaLoading.value = true;
+  emailMfaError.value = '';
+  emailMfaSuccess.value = '';
+  
+  const endpoint = mfaStatus.value.emailMfaEnabled 
+    ? '/api/account/mfa/email/disable' 
+    : '/api/account/mfa/email/enable';
+  
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      await loadMfaStatus();
+      emailMfaSuccess.value = mfaStatus.value.emailMfaEnabled 
+        ? t('mfa.emailMfaEnabled') 
+        : t('mfa.emailMfaDisabled');
+      emit('status-changed');
+      // Clear success message after 3 seconds
+      setTimeout(() => { emailMfaSuccess.value = ''; }, 3000);
+    } else {
+      const result = await response.json();
+      emailMfaError.value = result.message || t('mfa.errors.toggleFailed');
+    }
+  } catch (err) {
+    emailMfaError.value = t('mfa.errors.toggleFailed');
+  } finally {
+    emailMfaLoading.value = false;
   }
 }
 
@@ -702,5 +789,119 @@ function finishRegenerate() {
     width: 100%;
     text-align: center;
   }
+}
+
+/* Email MFA Section (Phase 20.3) */
+.email-mfa-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e8eaed;
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.section-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f0fe;
+  color: #1a73e8;
+  flex-shrink: 0;
+}
+
+.section-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.section-text {
+  flex: 1;
+}
+
+.section-text h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.section-text p {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: #5f6368;
+}
+
+.masked-email {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: #1a73e8;
+}
+
+.section-toggle {
+  flex-shrink: 0;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #dadce0;
+  transition: 0.3s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+input:checked + .toggle-slider {
+  background-color: #1a73e8;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+input:disabled + .toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.success-message {
+  color: #137333;
+  font-size: 13px;
+  margin-top: 8px;
 }
 </style>

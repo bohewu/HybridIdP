@@ -30,6 +30,11 @@
     "disableFailed": "Failed to disable MFA",
     "invalidPassword": "Invalid password",
     "totpRequired": "Verification code is required",
-    "passwordRequired": "Password is required"
-  }
+    "passwordRequired": "Password is required",
+    "toggleFailed": "Failed to toggle Email MFA"
+  },
+  "emailMfa": "Email Verification",
+  "emailMfaDescription": "Receive a verification code via email when signing in",
+  "emailMfaEnabled": "Email verification enabled",
+  "emailMfaDisabled": "Email verification disabled"
 }
