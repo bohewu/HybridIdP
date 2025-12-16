@@ -259,6 +259,84 @@ public class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         var disableResult = await disableResponse.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(disableResult.GetProperty("success").GetBoolean());
     }
+
+    #region Email MFA Tests (Phase 20.3)
+
+    [Fact]
+    public async Task GetMfaStatus_IncludesEmailMfaEnabled()
+    {
+        // Arrange
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+
+        // Act
+        var response = await _httpClient.GetAsync("/api/account/mfa/status");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var status = await response.Content.ReadFromJsonAsync<MfaStatusDto>();
+        Assert.NotNull(status);
+        Assert.False(status.EmailMfaEnabled); // Should be disabled initially
+    }
+
+    [Fact]
+    public async Task EmailMfa_EnableDisable_Works()
+    {
+        // Arrange
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+
+        // Act - Enable
+        var enableResponse = await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
+        Assert.Equal(HttpStatusCode.OK, enableResponse.StatusCode);
+
+        // Verify enabled
+        var statusResponse = await _httpClient.GetAsync("/api/account/mfa/status");
+        var status = await statusResponse.Content.ReadFromJsonAsync<MfaStatusDto>();
+        Assert.True(status!.EmailMfaEnabled);
+
+        // Act - Disable
+        var disableResponse = await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
+        Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
+
+        // Verify disabled
+        var statusResponse2 = await _httpClient.GetAsync("/api/account/mfa/status");
+        var status2 = await statusResponse2.Content.ReadFromJsonAsync<MfaStatusDto>();
+        Assert.False(status2!.EmailMfaEnabled);
+    }
+
+    [Fact]
+    public async Task EmailMfa_SendCode_ReturnsSuccess()
+    {
+        // Arrange
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+
+        // Act
+        var response = await _httpClient.PostAsync("/api/account/mfa/email/send", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(result.GetProperty("success").GetBoolean());
+    }
+
+    [Fact]
+    public async Task EmailMfa_VerifyInvalidCode_ReturnsFalse()
+    {
+        // Arrange
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+
+        // First send code
+        await _httpClient.PostAsync("/api/account/mfa/email/send", null);
+
+        // Act - Verify with invalid code
+        var response = await _httpClient.PostAsJsonAsync("/api/account/mfa/email/verify", new { Code = "000000" });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(result.GetProperty("success").GetBoolean());
+    }
+
+    #endregion
     
     private async Task<string> GetM2MAdminTokenAsync()
     {
@@ -333,6 +411,7 @@ public class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         public bool HasAuthenticator { get; init; }
         public int RecoveryCodesLeft { get; init; }
         public bool HasPassword { get; init; }
+        public bool EmailMfaEnabled { get; init; }
     }
 
     private record MfaSetupDto
