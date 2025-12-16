@@ -56,7 +56,8 @@ public class MfaController : ControllerBase
             TwoFactorEnabled = user.TwoFactorEnabled,
             HasAuthenticator = await _userManager.GetAuthenticatorKeyAsync(user) != null,
             RecoveryCodesLeft = recoveryCodesLeft,
-            HasPassword = hasPassword
+            HasPassword = hasPassword,
+            EmailMfaEnabled = user.EmailMfaEnabled
         });
     }
     
@@ -217,6 +218,102 @@ public class MfaController : ControllerBase
             RecoveryCodes = codes.ToList()
         });
     }
+
+    #region Email MFA (Phase 20.3)
+
+    /// <summary>
+    /// Send a 6-digit verification code to the user's email.
+    /// </summary>
+    [HttpPost("email/send")]
+    public async Task<ActionResult> SendEmailMfaCode(CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        if (string.IsNullOrEmpty(user.Email))
+        {
+            return BadRequest(new { error = "noEmail", message = "User does not have an email address." });
+        }
+
+        await _mfaService.SendEmailMfaCodeAsync(user, ct);
+
+        _logger.LogInformation("Email MFA code sent to user {UserId}", user.Id);
+
+        return Ok(new { success = true, message = "Code sent to email." });
+    }
+
+    /// <summary>
+    /// Verify the email MFA code.
+    /// </summary>
+    [HttpPost("email/verify")]
+    public async Task<ActionResult> VerifyEmailMfaCode([FromBody] EmailMfaVerifyRequest request, CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        var isValid = await _mfaService.VerifyEmailMfaCodeAsync(user, request.Code, ct);
+
+        if (isValid)
+        {
+            _logger.LogInformation("Email MFA code verified for user {UserId}", user.Id);
+            return Ok(new { success = true });
+        }
+
+        return Ok(new { success = false, error = "invalidOrExpiredCode" });
+    }
+
+    /// <summary>
+    /// Enable Email MFA for the user.
+    /// </summary>
+    [HttpPost("email/enable")]
+    public async Task<ActionResult> EnableEmailMfa(CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        if (string.IsNullOrEmpty(user.Email))
+        {
+            return BadRequest(new { error = "noEmail", message = "User does not have an email address." });
+        }
+
+        await _mfaService.EnableEmailMfaAsync(user, ct);
+
+        _logger.LogInformation("User {UserId} enabled Email MFA", user.Id);
+        await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null);
+
+        return Ok(new { success = true });
+    }
+
+    /// <summary>
+    /// Disable Email MFA for the user.
+    /// </summary>
+    [HttpPost("email/disable")]
+    public async Task<ActionResult> DisableEmailMfa(CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        await _mfaService.DisableEmailMfaAsync(user, ct);
+
+        _logger.LogInformation("User {UserId} disabled Email MFA", user.Id);
+        await _auditService.LogEventAsync("EmailMfaDisabled", user.Id.ToString(), null, null, null);
+
+        return Ok(new { success = true });
+    }
+
+    #endregion
 }
 
 #region DTOs
@@ -227,6 +324,7 @@ public record MfaStatusResponse
     public bool HasAuthenticator { get; init; }
     public int RecoveryCodesLeft { get; init; }
     public bool HasPassword { get; init; }
+    public bool EmailMfaEnabled { get; init; }
 }
 
 public record MfaSetupResponse
@@ -264,6 +362,11 @@ public record MfaDisableRequest
 public record RecoveryCodesResponse
 {
     public required List<string> RecoveryCodes { get; init; }
+}
+
+public record EmailMfaVerifyRequest
+{
+    public required string Code { get; init; }
 }
 
 #endregion
