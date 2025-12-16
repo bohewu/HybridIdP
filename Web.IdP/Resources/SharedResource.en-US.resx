@@ -264,7 +264,7 @@
     <value>Profile</value>
   </data>
   <data name="ManageProfile" xml:space="preserve">
-    <value>Manage your profile settings</value>
+    <value>Manage your profile, two-step verification, and password settings</value>
   </data>
   <data name="SwitchAccount" xml:space="preserve">
     <value>Switch Account</value>

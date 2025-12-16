@@ -258,7 +258,7 @@
     <value>個人檔案</value>
   </data>
   <data name="ManageProfile" xml:space="preserve">
-    <value>管理您的個人檔案設定</value>
+    <value>管理您的個人檔案、兩步驟驗證及密碼設定</value>
   </data>
   <data name="SwitchAccount" xml:space="preserve">
     <value>切換帳號</value>
