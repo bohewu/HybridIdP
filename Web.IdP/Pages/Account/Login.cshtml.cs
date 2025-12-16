@@ -189,7 +189,8 @@ public partial class LoginModel : PageModel
                 }
 
                 // Check if user has MFA enabled - redirect to MFA verification page
-                if (result.User!.TwoFactorEnabled)
+                // Support both TOTP MFA (TwoFactorEnabled) and Email MFA (EmailMfaEnabled)
+                if (result.User!.TwoFactorEnabled || result.User!.EmailMfaEnabled)
                 {
                     // Store user ID for 2FA verification
                     // Identity's GetTwoFactorAuthenticationUserAsync expects ClaimTypes.NameIdentifier

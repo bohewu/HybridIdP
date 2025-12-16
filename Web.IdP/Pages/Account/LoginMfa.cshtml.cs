@@ -52,6 +52,11 @@ public partial class LoginMfaModel : PageModel
     /// Indicates if user has Email MFA enabled (used to show Email option on UI).
     /// </summary>
     public bool EmailMfaEnabled { get; set; }
+    
+    /// <summary>
+    /// Indicates if user has TOTP MFA enabled (used to show TOTP option on UI).
+    /// </summary>
+    public bool TwoFactorEnabled { get; set; }
 
     public class InputModel
     {
@@ -94,8 +99,9 @@ public partial class LoginMfaModel : PageModel
         ReturnUrl = returnUrl;
         RememberMe = rememberMe;
         
-        // Check if user has Email MFA enabled
+        // Check if user has Email MFA or TOTP enabled
         EmailMfaEnabled = user.EmailMfaEnabled;
+        TwoFactorEnabled = user.TwoFactorEnabled;
         
         return Page();
     }
