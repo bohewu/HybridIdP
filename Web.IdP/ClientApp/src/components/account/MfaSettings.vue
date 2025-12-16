@@ -264,7 +264,9 @@ async function verifySetup() {
       recoveryCodes.value = result.recoveryCodes || [];
       setupComplete.value = true;
     } else {
-      setupError.value = result.error || t('mfa.errors.invalidCode');
+      // Translate error key from API (e.g., 'invalidCode' -> mfa.errors.invalidCode)
+      const errorKey = result.error ? `mfa.errors.${result.error}` : 'mfa.errors.invalidCode';
+      setupError.value = t(errorKey);
     }
   } catch (err) {
     setupError.value = t('mfa.errors.verifyFailed');

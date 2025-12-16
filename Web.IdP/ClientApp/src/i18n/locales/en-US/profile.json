@@ -70,5 +70,12 @@
     "errorOccurred": "An error occurred",
     "networkError": "Network error. Please try again.",
     "reloadForLocale": "Language settings changed. Reload the page to apply changes?"
+  },
+  "security": {
+    "title": "Security Status",
+    "mfaEnabled": "Two-step verification is enabled",
+    "mfaNotEnabled": "Two-step verification is not enabled - Set up now for better security",
+    "passwordSet": "Password is set",
+    "noPassword": "Using external login only (no local password)"
   }
 }

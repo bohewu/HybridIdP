@@ -111,6 +111,7 @@ public class UserManagementService : IUserManagementService
                 EmailConfirmed = user.EmailConfirmed,
                 LastLoginDate = user.LastLoginDate,
                 CreatedAt = user.CreatedAt,
+                TwoFactorEnabled = user.TwoFactorEnabled,
                 Roles = roles.ToList()
             });
         }

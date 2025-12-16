@@ -258,6 +258,36 @@ const handleReactivate = async (user) => {
   }
 }
 
+const handleResetMfa = async (user) => {
+  if (!canUpdate.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = t('deniedMessages.update')
+    deniedPermission.value = Permissions.Users.Update
+    return
+  }
+
+  if (!confirm(t('users.mfa.resetConfirm'))) {
+    return
+  }
+
+  try {
+    const response = await fetch(`/api/admin/users/${user.id}/reset-mfa`, {
+      method: 'POST'
+    })
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}))
+      throw new Error(errData.error || `HTTP error! status: ${response.status}`)
+    }
+
+    await fetchUsers()
+    alert(t('users.mfa.resetSuccess'))
+  } catch (e) {
+    alert(t('users.errors.saveFailed') + ': ' + e.message)
+    console.error('Error resetting MFA:', e)
+  }
+}
+
 const handleFormClose = () => {
   showForm.value = false
   selectedUser.value = null
@@ -421,6 +451,7 @@ onMounted(() => {
         @manage-sessions="handleManageSessions"
         @impersonate="handleImpersonate"
         @view-login-history="handleViewLoginHistory"
+        @reset-mfa="handleResetMfa"
         @deactivate="handleDeactivate"
         @delete="handleDelete"
         @reactivate="handleReactivate"

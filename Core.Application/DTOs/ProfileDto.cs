@@ -27,6 +27,9 @@ public class ProfileDto
     // Password management flags
     public bool HasLocalPassword { get; set; }  // False for external login accounts
     public bool AllowPasswordChange { get; set; }  // Based on SecurityPolicy
+    
+    // Security status
+    public bool TwoFactorEnabled { get; set; }
 }
 
 /// <summary>

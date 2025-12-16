@@ -136,5 +136,12 @@
   },
   "tableHeaders": {
       "username": "Username"
+  },
+  "mfa": {
+    "enabled": "2FA Enabled",
+    "disabled": "2FA Disabled",
+    "reset": "Reset MFA",
+    "resetConfirm": "Are you sure you want to reset MFA for this user? They will need to set up 2FA again.",
+    "resetSuccess": "MFA has been reset successfully."
   }
 }

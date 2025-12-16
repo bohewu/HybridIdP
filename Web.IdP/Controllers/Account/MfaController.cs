@@ -133,7 +133,7 @@ public class MfaController : ControllerBase
         return Ok(new MfaVerifyResponse
         {
             Success = false,
-            Error = "Invalid verification code"
+            Error = "invalidCode"
         });
     }
 

@@ -16,5 +16,6 @@ public class UserSummaryDto
     public bool EmailConfirmed { get; set; }
     public DateTime? LastLoginDate { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool TwoFactorEnabled { get; set; }
     public List<string> Roles { get; set; } = new();
 }
