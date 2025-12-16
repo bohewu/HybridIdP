@@ -17,12 +17,20 @@ public class MfaService : IMfaService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IBrandingService _brandingService;
+    private readonly IEmailService? _emailService;
+    private readonly IPasswordHasher<ApplicationUser>? _passwordHasher;
     private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
 
-    public MfaService(UserManager<ApplicationUser> userManager, IBrandingService brandingService)
+    public MfaService(
+        UserManager<ApplicationUser> userManager, 
+        IBrandingService brandingService,
+        IEmailService? emailService = null,
+        IPasswordHasher<ApplicationUser>? passwordHasher = null)
     {
         _userManager = userManager;
         _brandingService = brandingService;
+        _emailService = emailService;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<MfaSetupInfo> GetTotpSetupInfoAsync(ApplicationUser user, CancellationToken ct = default)
@@ -120,6 +128,96 @@ public class MfaService : IMfaService
         var result = await _userManager.RedeemTwoFactorRecoveryCodeAsync(user, code);
         return result.Succeeded;
     }
+
+    #region Email MFA (Phase 20.3)
+
+    public async Task SendEmailMfaCodeAsync(ApplicationUser user, CancellationToken ct = default)
+    {
+        if (_emailService == null || _passwordHasher == null)
+        {
+            throw new InvalidOperationException("Email MFA requires IEmailService and IPasswordHasher dependencies.");
+        }
+        
+        if (string.IsNullOrEmpty(user.Email))
+        {
+            throw new InvalidOperationException("User does not have an email address.");
+        }
+
+        // Generate 6-digit numeric code
+        var random = new Random();
+        var code = random.Next(100000, 999999).ToString();
+
+        // Hash the code before storing
+        user.EmailMfaCode = _passwordHasher.HashPassword(user, code);
+        user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(10); // 10-minute expiry
+
+        await _userManager.UpdateAsync(user);
+
+        // Send email via queue
+        var subject = "Your verification code";
+        var body = $@"
+<html>
+<body style='font-family: Arial, sans-serif;'>
+    <p>Your verification code is:</p>
+    <h1 style='font-size: 32px; letter-spacing: 5px; color: #1a73e8;'>{code}</h1>
+    <p>This code will expire in 10 minutes.</p>
+    <p>If you didn't request this code, please ignore this email.</p>
+</body>
+</html>";
+
+        await _emailService.SendEmailAsync(user.Email, subject, body, isHtml: true, ct);
+    }
+
+    public async Task<bool> VerifyEmailMfaCodeAsync(ApplicationUser user, string code, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(user.EmailMfaCode))
+        {
+            return false; // No code pending
+        }
+
+        if (user.EmailMfaCodeExpiry.HasValue && user.EmailMfaCodeExpiry.Value < DateTime.UtcNow)
+        {
+            // Code expired, clear it
+            user.EmailMfaCode = null;
+            user.EmailMfaCodeExpiry = null;
+            await _userManager.UpdateAsync(user);
+            return false;
+        }
+
+        // Verify hashed code
+        if (_passwordHasher == null)
+        {
+            throw new InvalidOperationException("Email MFA requires IPasswordHasher dependency.");
+        }
+        var result = _passwordHasher.VerifyHashedPassword(user, user.EmailMfaCode, code);
+        if (result == PasswordVerificationResult.Failed)
+        {
+            return false;
+        }
+
+        // Clear the code after successful verification
+        user.EmailMfaCode = null;
+        user.EmailMfaCodeExpiry = null;
+        await _userManager.UpdateAsync(user);
+
+        return true;
+    }
+
+    public async Task EnableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default)
+    {
+        user.EmailMfaEnabled = true;
+        await _userManager.UpdateAsync(user);
+    }
+
+    public async Task DisableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default)
+    {
+        user.EmailMfaEnabled = false;
+        user.EmailMfaCode = null;
+        user.EmailMfaCodeExpiry = null;
+        await _userManager.UpdateAsync(user);
+    }
+
+    #endregion
 
     #region Private Helpers
 

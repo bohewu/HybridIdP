@@ -38,6 +38,30 @@ public interface IMfaService
     /// Validates a recovery code (consumes it if valid).
     /// </summary>
     Task<bool> ValidateRecoveryCodeAsync(ApplicationUser user, string code, CancellationToken ct = default);
+    
+    // ========== Email MFA (Phase 20.3) ==========
+    
+    /// <summary>
+    /// Sends a 6-digit OTP code to the user's email.
+    /// Generates a new code, hashes and stores it, sets expiry, and queues email.
+    /// </summary>
+    Task SendEmailMfaCodeAsync(ApplicationUser user, CancellationToken ct = default);
+    
+    /// <summary>
+    /// Verifies the email MFA code entered by the user.
+    /// Returns true if valid and not expired, clears the code on success.
+    /// </summary>
+    Task<bool> VerifyEmailMfaCodeAsync(ApplicationUser user, string code, CancellationToken ct = default);
+    
+    /// <summary>
+    /// Enables Email MFA for the user.
+    /// </summary>
+    Task EnableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default);
+    
+    /// <summary>
+    /// Disables Email MFA for the user.
+    /// </summary>
+    Task DisableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default);
 }
 
 /// <summary>
