@@ -30,25 +30,37 @@
   - "Force Re-authentication" policy supported for sensitive actions.
 - **i18n**: Modularized translations in `mfa.json`.
 
-### Phase 20.2: Email MFA (OTP) 📋 PLANNED
+### Phase 20.2: Email Architecture Enhancement (Queue System) 📋 PLANNED
+**Complexity**: ⭐⭐ Medium | **Estimate**: 1-2 days
+
+> **Goal**: Replace synchronous SMTP sending with a robust BackgroundService queue (Producer-Consumer pattern) to improve performance and reliability.
+
+- [ ] **Infrastructure**:
+  - [ ] Add **Mailpit** to `docker-compose.dev.yml` for local testing.
+  - [ ] Implement `EmailQueue` (Singleton) using `System.Threading.Channels`.
+  - [ ] Implement `SmtpDispatcher` (Scoped) for actual SMTP transmission using MailKit.
+  - [ ] Implement `EmailQueueProcessor` (HostedService) to consume messages in background.
+  - [ ] Update `EmailService` to act as Producer (enqueue only).
+
+### Phase 20.3: Email MFA (OTP) Logic 📋 PLANNED
 **Complexity**: ⭐ Low-Medium | **Estimate**: 1-2 days
 
-> **Rationale**: Provides a lower-friction MFA option and serves as a critical fallback method if TOTP device is lost.
+> **Goal**: Implement OTP generation/validation logic on top of the enhanced email infrastructure.
 
-- [ ] **Backend**:
-  - [ ] Add `EmailTwoFactorEnabled` field to User entity.
-  - [ ] Implement `IEmailSender` extensions for MFA codes (HTML template).
-  - [ ] Create `EmailMfaProvider` logic (generate/validate 6-digit numeric codes with 5-10 min expiry).
-- [ ] **API**:
+- [ ] **Data Model**:
+  - [ ] Add `EmailTwoFactorEnabled` field to `ApplicationUser`.
+  - [ ] EF Core Migration.
+- [ ] **Logic**:
+  - [ ] Create `EmailMfaProvider` logic (generate 6-digit numeric code, 5-10 min expiry).
+  - [ ] Implement HTML Email Template for OTP codes.
+- [ ] **API Endpoints**:
   - [ ] `POST /api/account/mfa/email/send`: Trigger code delivery.
-  - [ ] `POST /api/account/mfa/email/verify`: Verify code.
-- [ ] **Login Flow**:
-  - [ ] Update `LoginMfa.cshtml` to support choosing between "Authenticator App" and "Email" (if both enabled).
-  - [ ] Fallback logic implementation.
+  - [ ] `POST /api/account/mfa/email/verify`: Verify code and enable Email MFA.
 - [ ] **UI**:
-  - [ ] Profile setting to enable/disable Email MFA.
+  - [ ] Profile: Enable/Disable Email MFA toggle.
+  - [ ] Login: MFA method selection.
 
-### Phase 20.3: WebAuthn Passkey - Database & Backend 📋 PLANNED
+### Phase 20.4: WebAuthn Passkey - Database & Backend 📋 PLANNED
 **Complexity**: ⭐⭐⭐ Medium-High | **Estimate**: 2-3 days
 
 - [ ] Install `Fido2.AspNet` NuGet package.

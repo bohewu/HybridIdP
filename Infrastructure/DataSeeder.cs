@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
+using Microsoft.Extensions.Configuration;
 
 namespace Infrastructure;
 
@@ -45,10 +46,11 @@ public static class DataSeeder
         await ClientSeeder.SeedAsync(applicationManager, scopeManager, seedTestUsers);
 
         // 7. Seed Default Settings
-        await SeedDefaultSettingsAsync(context);
+        var configuration = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+        await SeedDefaultSettingsAsync(context, configuration);
     }
 
-    private static async Task SeedDefaultSettingsAsync(ApplicationDbContext context)
+    private static async Task SeedDefaultSettingsAsync(ApplicationDbContext context, Microsoft.Extensions.Configuration.IConfiguration config)
     {
         var key = Core.Domain.Constants.SettingKeys.Security.RegistrationEnabled;
         if (!await context.Settings.AnyAsync(s => s.Key == key))
@@ -59,8 +61,40 @@ public static class DataSeeder
                 Key = key,
                 Value = "false"  // Default: registration disabled
             });
-            await context.SaveChangesAsync();
         }
+
+        // Seed Email Settings from Configuration (e.g. appsettings.Development.json)
+        // We use Bind to ensure we map correctly to our Options class
+        var emailOptions = config.GetSection(Core.Application.Options.EmailOptions.SectionName).Get<Core.Application.Options.EmailOptions>();
+        
+        if (emailOptions != null)
+        {
+            var settingsToSeed = new Dictionary<string, string>
+            {
+                { Core.Domain.Constants.SettingKeys.Email.SmtpHost, emailOptions.SmtpHost },
+                { Core.Domain.Constants.SettingKeys.Email.SmtpPort, emailOptions.SmtpPort.ToString() }, // Corrected Typo 
+                { Core.Domain.Constants.SettingKeys.Email.SmtpEnableSsl, emailOptions.SmtpEnableSsl.ToString().ToLower() },
+                { Core.Domain.Constants.SettingKeys.Email.SmtpUsername, emailOptions.SmtpUsername },
+                { Core.Domain.Constants.SettingKeys.Email.SmtpPassword, emailOptions.SmtpPassword },
+                { Core.Domain.Constants.SettingKeys.Email.FromAddress, emailOptions.FromAddress },
+                { Core.Domain.Constants.SettingKeys.Email.FromName, emailOptions.FromName }
+            };
+
+            foreach (var kvp in settingsToSeed)
+            {
+                if (!await context.Settings.AnyAsync(s => s.Key == kvp.Key))
+                {
+                    context.Settings.Add(new Setting
+                    {
+                        Id = Guid.NewGuid(),
+                        Key = kvp.Key,
+                        Value = kvp.Value
+                    });
+                }
+            }
+        }
+        
+        await context.SaveChangesAsync();
 
         // Seed Default Security Policy if not exists
         if (!await context.SecurityPolicies.AnyAsync())

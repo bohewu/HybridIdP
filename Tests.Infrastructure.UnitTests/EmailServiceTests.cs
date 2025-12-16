@@ -5,57 +5,54 @@ using Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-
-using Core.Domain.Constants; // Added
+using Core.Domain.Models;
+using Core.Application.Interfaces;
 
 namespace Tests.Infrastructure.UnitTests;
 
 public class EmailServiceTests
 {
-    private readonly Mock<ISettingsService> _mockSettings;
+    private readonly Mock<IEmailQueue> _mockQueue;
     private readonly Mock<ILogger<EmailService>> _mockLogger;
     private readonly EmailService _service;
 
     public EmailServiceTests()
     {
-        _mockSettings = new Mock<ISettingsService>();
+        _mockQueue = new Mock<IEmailQueue>();
         _mockLogger = new Mock<ILogger<EmailService>>();
-        // We will need to handle the SmtpClient dependency if we want to test sending.
-        // For now, we are testing the service orchestration, but without an abstraction for SmtpClient, 
-        // we can't assert that Send was called without actually sending.
-        // So we will implement the service with a protected virtual method or a factory for SmtpClient if needed.
-        // For this iteration, we will focus on the logic that builds the message or retrieves settings.
-        
-        _service = new EmailService(_mockSettings.Object, _mockLogger.Object);
+        _service = new EmailService(_mockQueue.Object, _mockLogger.Object);
     }
 
     [Fact]
-    public async Task GetSettingsAsync_ShouldRetrieveAllMailSettings()
+    public async Task SendEmailAsync_ShouldQueueMessage()
     {
         // Arrange
-        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.SmtpHost, It.IsAny<CancellationToken>())).ReturnsAsync("smtp.example.com");
-        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.SmtpPort, It.IsAny<CancellationToken>())).ReturnsAsync("587");
-        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.SmtpUsername, It.IsAny<CancellationToken>())).ReturnsAsync("user");
-        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.SmtpPassword, It.IsAny<CancellationToken>())).ReturnsAsync("pass");
-        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.SmtpEnableSsl, It.IsAny<CancellationToken>())).ReturnsAsync("true");
-        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.FromAddress, It.IsAny<CancellationToken>())).ReturnsAsync("no-reply@example.com");
-        _mockSettings.Setup(x => x.GetValueAsync<string>(SettingKeys.Email.FromName, It.IsAny<CancellationToken>())).ReturnsAsync("Test Sender");
+        var to = "test@example.com";
+        var subject = "Subject";
+        var body = "Body";
 
         // Act
-        // We need to expose the settings retrieval logic or test it indirectly.
-        // Since SendEmailAsync will fail without a real server, we might want to separate the logic.
-        // Let's make a public method GetSettingsAsync on the service or make it internal and visible to tests.
-        // For now, I'll assume we can call a method to get settings.
-        
-        var settings = await _service.GetMailSettingsAsync();
+        await _service.SendEmailAsync(to, subject, body);
 
         // Assert
-        Assert.Equal("smtp.example.com", settings.Host);
-        Assert.Equal(587, settings.Port);
-        Assert.Equal("user", settings.Username);
-        Assert.Equal("pass", settings.Password);
-        Assert.True(settings.EnableSsl);
-        Assert.Equal("no-reply@example.com", settings.FromAddress);
-        Assert.Equal("Test Sender", settings.FromName);
+        _mockQueue.Verify(q => q.QueueEmailAsync(It.Is<EmailMessage>(
+            m => m.To == to && m.Subject == subject && m.Body == body
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendTestEmailAsync_ShouldQueueMessage()
+    {
+        // Arrange
+        var to = "test@example.com";
+        var settings = new MailSettingsDto();
+
+        // Act
+        await _service.SendTestEmailAsync(settings, to);
+
+        // Assert
+        _mockQueue.Verify(q => q.QueueEmailAsync(It.Is<EmailMessage>(
+            m => m.To == to && m.Subject == "Test Email from HybridIdP"
+        )), Times.Once);
     }
 }

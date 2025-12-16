@@ -27,7 +27,7 @@ last-updated: 2025-12-15
 - Phase 17 — Deployment & Documentation: 100% ✅ — `./docs/DEPLOYMENT_GUIDE.md`
 - Phase 18 — Personnel Lifecycle Management: 100% ✅ — `./phase-18-personnel-lifecycle.md`
 - Phase 19 — Frontend Testing Strategy (Vitest): 100% ✅ — `./TODOS.md`
-- Phase 20 — MFA & WebAuthn: 30% 🔄 In Progress (Phase 20.1 Completed, 20.2 Planned) — `./phase-20-mfa-webauthn.md`
+- Phase 20 — MFA & WebAuthn: 30% 🔄 In Progress (Phase 20.1 Completed, 20.2 Architecture Planned) — `./phase-20-mfa-webauthn.md`
 - Phase 21 — External Identity Providers: 📋 Planned — `./docs/archive/phases/phase-21-external-idp.md`
 
 Backlog & Technical Debt: `./TODOS.md`

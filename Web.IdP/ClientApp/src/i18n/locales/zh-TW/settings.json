@@ -44,6 +44,7 @@
   },
   "emailSection": "電子郵件設定",
   "emailSectionDesc": "設定外寄電子郵件的 SMTP 資訊。",
+  "usingDevServer": "目前使用開發測試郵件伺服器 (Mailpit: localhost:1025)。信件將不會寄送給真實收件者。",
   "host": "SMTP 主機",
   "port": "SMTP 連接埠",
   "username": "使用者名稱",

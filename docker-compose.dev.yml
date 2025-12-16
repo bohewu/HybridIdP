@@ -46,6 +46,15 @@ services:
     ports:
       - "6379:6379"
 
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # UI
+    environment:
+      MP_MAX_MESSAGES: 5000
+
+
 volumes:
   mssql-data:
   postgres-data:
