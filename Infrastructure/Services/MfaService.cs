@@ -17,15 +17,15 @@ public class MfaService : IMfaService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IBrandingService _brandingService;
-    private readonly IEmailService? _emailService;
-    private readonly IPasswordHasher<ApplicationUser>? _passwordHasher;
+    private readonly IEmailService _emailService;
+    private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
     private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
 
     public MfaService(
         UserManager<ApplicationUser> userManager, 
         IBrandingService brandingService,
-        IEmailService? emailService = null,
-        IPasswordHasher<ApplicationUser>? passwordHasher = null)
+        IEmailService emailService,
+        IPasswordHasher<ApplicationUser> passwordHasher)
     {
         _userManager = userManager;
         _brandingService = brandingService;
@@ -133,11 +133,6 @@ public class MfaService : IMfaService
 
     public async Task SendEmailMfaCodeAsync(ApplicationUser user, CancellationToken ct = default)
     {
-        if (_emailService == null || _passwordHasher == null)
-        {
-            throw new InvalidOperationException("Email MFA requires IEmailService and IPasswordHasher dependencies.");
-        }
-        
         if (string.IsNullOrEmpty(user.Email))
         {
             throw new InvalidOperationException("User does not have an email address.");
@@ -185,10 +180,6 @@ public class MfaService : IMfaService
         }
 
         // Verify hashed code
-        if (_passwordHasher == null)
-        {
-            throw new InvalidOperationException("Email MFA requires IPasswordHasher dependency.");
-        }
         var result = _passwordHasher.VerifyHashedPassword(user, user.EmailMfaCode, code);
         if (result == PasswordVerificationResult.Failed)
         {
