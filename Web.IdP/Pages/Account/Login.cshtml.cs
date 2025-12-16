@@ -201,7 +201,21 @@ public partial class LoginModel : PageModel
                         new System.Security.Claims.ClaimsPrincipal(identity));
                     
                     LogMfaRequired(result.User.UserName);
-                    return RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = Input.RememberMe });
+                    
+                    // Direct redirect to appropriate MFA page
+                    if (result.User.TwoFactorEnabled)
+                    {
+                        return RedirectToPage("./LoginTotp", new { returnUrl, rememberMe = Input.RememberMe });
+                    }
+                    else if (result.User.EmailMfaEnabled)
+                    {
+                        return RedirectToPage("./LoginEmailOtp", new { returnUrl, rememberMe = Input.RememberMe });
+                    }
+                    else
+                    {
+                        // Fallback (should ideally not happen if condition check was true)
+                        return RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = Input.RememberMe });
+                    }
                 }
 
                 // Sign in user (role claims are automatically added by Identity)

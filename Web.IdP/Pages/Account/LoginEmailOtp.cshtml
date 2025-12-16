@@ -1,0 +1,211 @@
+@page
+@model Web.IdP.Pages.Account.LoginEmailOtpModel
+@using Web.IdP.Services
+@using Core.Application
+@using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.Localization
+@inject IStringLocalizer<Web.IdP.SharedResource> Localizer
+@inject IViteManifestService ViteService
+@inject IBrandingService BrandingService
+@{
+    ViewData["Title"] = Localizer["TwoStepVerification"];
+    Layout = null;
+    var currentCulture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
+    var productName = await BrandingService.GetProductNameAsync();
+}
+
+<!DOCTYPE html>
+<html lang="@currentCulture" class="h-full bg-gray-50">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @productName</title>
+    
+    @* Tailwind CSS *@
+    @if (ViteService.IsDevelopment)
+    {
+        <script type="module" vite-src="@@vite/client"></script>
+    }
+    <link href="@ViteService.GetScriptPath("src/styles/main.css")" rel="stylesheet" />
+    <script type="module" vite-src="src/scripts/razor.js"></script>
+    
+    @* Google Fonts - Roboto for body *@
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 google-font min-h-screen flex flex-col">
+    <div class="google-login-container">
+        <div class="google-login-card">
+            <div class="google-login-header text-center">
+                <div class="flex justify-center mb-4">
+                    <div class="google-logo">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                </div>
+                <h1 class="text-2xl font-normal text-gray-900 mb-2">@Localizer["EmailVerification"]</h1>
+                <p class="mt-1 text-sm text-gray-500">@Localizer["EnterEmailCodeDescription"]</p>
+                <p class="text-sm font-medium text-gray-700 mt-1">@Model.MaskedEmail</p>
+            </div>
+            
+            <div class="google-login-body">
+                <form method="post">
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div asp-validation-summary="All" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="mfa-error-summary"></div>
+                    }
+                    
+                    <input type="hidden" asp-for="ReturnUrl" />
+                    <input type="hidden" asp-for="RememberMe" />
+                    
+                    <div class="space-y-4">
+                        <div class="form-group">
+                            <label asp-for="Input.EmailCode" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["VerificationCode"]</label>
+                            <div class="flex gap-2">
+                                <input asp-for="Input.EmailCode" 
+                                       class="input-google text-center text-2xl tracking-widest flex-1" 
+                                       placeholder="000000" 
+                                       autocomplete="one-time-code"
+                                       inputmode="numeric"
+                                       pattern="[0-9]*"
+                                       maxlength="6"
+                                       autofocus
+                                       data-test-id="mfa-email-code" />
+                                <button type="button" 
+                                        id="sendEmailCodeBtn"
+                                        class="btn-google-outline whitespace-nowrap px-4 w-32 justify-center"
+                                        data-test-id="mfa-send-email-code">
+                                    <span class="btn-text">@Localizer["SendCode"]</span>
+                                    <span class="countdown hidden ml-1"></span>
+                                </button>
+                            </div>
+                            <span asp-validation-for="Input.EmailCode" class="text-red-600 text-xs mt-1 block"></span>
+                            <p id="emailCodeSentMsg" class="text-green-600 text-xs mt-1 hidden transition-opacity duration-500">
+                                <i class="bi bi-check-circle-fill mr-1"></i> @Localizer["EmailCodeSent"]
+                            </p>
+                        </div>
+                    </div>
+                
+                    <div class="flex items-center justify-between mt-8">
+                        <div class="flex flex-col gap-2">
+                            <a asp-page="./Login" class="link-google text-sm font-medium">
+                                @Localizer["BackToLogin"]
+                            </a>
+                            @if (Model.TwoFactorEnabled)
+                            {
+                                <a asp-page="./LoginTotp" asp-route-returnUrl="@Model.ReturnUrl" asp-route-rememberMe="@Model.RememberMe" class="link-google text-sm">
+                                    @Localizer["UseAuthenticatorApp"]
+                                </a>
+                            }
+                        </div>
+
+                        <button type="submit" 
+                                class="btn-google-blue ml-4" 
+                                data-test-id="mfa-submit">
+                            @Localizer["Verify"]
+                        </button>
+                    </div>
+                    @Html.AntiForgeryToken()
+                </form>
+            </div>
+        </div>
+        
+        <partial name="_GoogleFooter" />
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('sendEmailCodeBtn');
+            const btnText = btn.querySelector('.btn-text');
+            const countdownSpan = btn.querySelector('.countdown');
+            const msg = document.getElementById('emailCodeSentMsg');
+            let countdownInterval;
+
+            async function sendCode() {
+                if (btn.disabled) return;
+                
+                btn.disabled = true;
+                const originalText = btnText.textContent;
+                btnText.textContent = '...';
+                
+                try {
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    const response = await fetch('@Url.Page("./LoginEmailOtp", "SendCode")', { 
+                        method: 'POST',
+                        headers: { 
+                            'RequestVerificationToken': token,
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        // Show success message
+                        msg.classList.remove('hidden');
+                        setTimeout(() => msg.classList.add('hidden'), 5000);
+                        
+                        // Start countdown
+                        startCountdown(data.remainingSeconds || 60);
+                    } else {
+                        // Handle error (e.g. rate limit hit on server side even if client thinks it's ok)
+                        const data = await response.json();
+                        if (data.remainingSeconds) {
+                            startCountdown(data.remainingSeconds);
+                             msg.classList.remove('hidden');
+                             msg.textContent = '@Localizer["PleaseWaitThenRetry"]';
+                             msg.classList.replace('text-green-600', 'text-amber-600');
+                             setTimeout(() => {
+                                 msg.classList.add('hidden');
+                                 msg.textContent = '@Localizer["EmailCodeSent"]'; // Reset text
+                                 msg.classList.replace('text-amber-600', 'text-green-600');
+                             }, 3000);
+                        } else {
+                            btn.disabled = false;
+                            btnText.textContent = originalText;
+                        }
+                    }
+                } catch (e) { 
+                    console.error(e); 
+                    btn.disabled = false;
+                    btnText.textContent = originalText;
+                }
+            }
+
+            function startCountdown(seconds) {
+                let remaining = seconds;
+                
+                // Update UI state
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btnText.textContent = '@Localizer["Resend"]';
+                countdownSpan.textContent = `(${remaining})`;
+                countdownSpan.classList.remove('hidden');
+                
+                if (countdownInterval) clearInterval(countdownInterval);
+                
+                countdownInterval = setInterval(() => {
+                    remaining--;
+                    countdownSpan.textContent = `(${remaining})`;
+                    
+                    if (remaining <= 0) {
+                        clearInterval(countdownInterval);
+                        resetButton();
+                    }
+                }, 1000);
+            }
+
+            function resetButton() {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnText.textContent = '@Localizer["SendCode"]';
+                countdownSpan.classList.add('hidden');
+            }
+
+            btn.addEventListener('click', sendCode);
+        });
+    </script>
+</body>
+</html>

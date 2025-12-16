@@ -12,7 +12,7 @@ namespace Tests.SystemTests;
 /// System tests for MFA API endpoints.
 /// Uses seeded testuser@hybridauth.local with password flow (testclient-public).
 /// </summary>
-public class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+public partial class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private record MfaVerifyResponse
     {
