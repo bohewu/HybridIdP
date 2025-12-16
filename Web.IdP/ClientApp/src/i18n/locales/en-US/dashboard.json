@@ -1,6 +1,6 @@
 {
   "title": "Admin Dashboard",
-  "subtitle": "Welcome to the HybridAuth IdP Administration Interface",
+  "subtitle": "Welcome to the Administration Interface",
   "loading": "Loading...",
   "quickStats": "Quick Stats",
   "stats": {

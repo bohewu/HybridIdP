@@ -19,7 +19,7 @@
     <value>Cancel</value>
   </data>
   <data name="Footer" xml:space="preserve">
-    <value>Powered by HybridAuth</value>
+    <value></value>
   </data>
   <data name="UserCodeRequired" xml:space="preserve">
     <value>The user code is required.</value>

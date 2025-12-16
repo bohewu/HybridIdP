@@ -223,7 +223,7 @@
   </data>
   <!-- Footer -->
   <data name="FooterCopyright" xml:space="preserve">
-    <value>© 2025 - HybridAuth IdP</value>
+    <value>© 2025</value>
   </data>
   <data name="AllRightsReserved" xml:space="preserve">
     <value>All rights reserved</value>
@@ -294,7 +294,7 @@
     <value>View Details</value>
   </data>
   <data name="WelcomeMessage" xml:space="preserve">
-    <value>Welcome to HybridAuth IdP</value>
+    <value>Welcome</value>
   </data>
   <data name="ApplicationManager" xml:space="preserve">
     <value>Application Manager</value>
