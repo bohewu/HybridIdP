@@ -136,5 +136,12 @@
   },
   "tableHeaders": {
       "username": "使用者名稱"
+  },
+  "mfa": {
+    "enabled": "已啟用兩步驟驗證",
+    "disabled": "未啟用兩步驟驗證",
+    "reset": "重設 MFA",
+    "resetConfirm": "確定要重設此使用者的 MFA 嗎？他們需要重新設定兩步驟驗證。",
+    "resetSuccess": "MFA 已成功重設。"
   }
 }

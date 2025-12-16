@@ -568,5 +568,34 @@ public class UsersController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while stopping impersonation", details = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Reset MFA for a user (admin action to force disable 2FA).
+    /// </summary>
+    /// <param name="id">User ID</param>
+    [HttpPost("{id}/reset-mfa")]
+    [HasPermission(Permissions.Users.Update)]
+    public async Task<IActionResult> ResetMfa(Guid id)
+    {
+        try
+        {
+            var user = await _userManager.FindByIdAsync(id.ToString());
+            if (user == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            // Disable 2FA
+            await _userManager.SetTwoFactorEnabledAsync(user, false);
+            // Reset authenticator key
+            await _userManager.ResetAuthenticatorKeyAsync(user);
+
+            return Ok(new { success = true, message = "MFA has been reset for the user" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while resetting MFA", details = ex.Message });
+        }
+    }
     }
 

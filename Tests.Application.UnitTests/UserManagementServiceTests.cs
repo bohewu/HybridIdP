@@ -226,6 +226,41 @@ public class UserManagementServiceTests : IDisposable
         Assert.Single(result.Items);
     }
 
+    [Fact]
+    public async Task GetUsersAsync_ShouldMapTwoFactorEnabled_WhenUserHas2FAEnabled()
+    {
+        // Arrange - Create users with different 2FA settings
+        var userWith2FA = new ApplicationUser 
+        { 
+            Email = "2fa@test.com", 
+            UserName = "user2fa", 
+            IsDeleted = false,
+            TwoFactorEnabled = true
+        };
+        var userWithout2FA = new ApplicationUser 
+        { 
+            Email = "no2fa@test.com", 
+            UserName = "userno2fa", 
+            IsDeleted = false,
+            TwoFactorEnabled = false
+        };
+        
+        await _userManager.CreateAsync(userWith2FA);
+        await _userManager.CreateAsync(userWithout2FA);
+
+        // Act
+        var result = await _service.GetUsersAsync(skip: 0, take: 25, sortBy: "email", sortDirection: "asc");
+
+        // Assert
+        Assert.Equal(2, result.TotalCount);
+        
+        var user2FADto = result.Items.First(u => u.Email == "2fa@test.com");
+        var userNo2FADto = result.Items.First(u => u.Email == "no2fa@test.com");
+        
+        Assert.True(user2FADto.TwoFactorEnabled);
+        Assert.False(userNo2FADto.TwoFactorEnabled);
+    }
+
     #endregion
 
     #region GetUserByIdAsync Tests

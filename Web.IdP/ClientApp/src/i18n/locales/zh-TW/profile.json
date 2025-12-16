@@ -70,5 +70,12 @@
     "errorOccurred": "發生錯誤",
     "networkError": "網路錯誤。請重試。",
     "reloadForLocale": "語言設定已變更。是否重新載入頁面以套用變更？"
+  },
+  "security": {
+    "title": "安全性狀態",
+    "mfaEnabled": "已啟用兩步驟驗證",
+    "mfaNotEnabled": "尚未啟用兩步驟驗證 - 立即設定以提升帳戶安全",
+    "passwordSet": "已設定密碼",
+    "noPassword": "僅使用外部登入（無本機密碼）"
   }
 }
