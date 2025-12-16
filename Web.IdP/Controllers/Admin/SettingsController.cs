@@ -64,22 +64,20 @@ public class SettingsController : ControllerBase
 
     /// <summary>
     /// PUT /api/admin/settings/{key}
-    /// Update or create a setting.
+    /// Update or create a setting. Empty value clears the setting (uses default).
     /// Body: { "value": "..." }
     /// </summary>
     [HttpPut("{key}")]
     [Authorize(Policy = Permissions.Settings.Update)]
     public async Task<IActionResult> UpdateSetting(string key, [FromBody] UpdateSettingRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Value))
-        {
-            return BadRequest(new { error = "Value is required" });
-        }
-
         var updatedBy = User.Identity?.Name ?? User.FindFirst("sub")?.Value ?? "unknown";
-        await _settings.SetValueAsync(key, request.Value, updatedBy);
+        
+        // Allow empty value to clear the setting (will use default from code)
+        var valueToSave = request.Value ?? string.Empty;
+        await _settings.SetValueAsync(key, valueToSave, updatedBy);
 
-        return Ok(new { key, value = request.Value, message = "Setting updated successfully" });
+        return Ok(new { key, value = valueToSave, message = "Setting updated successfully" });
     }
 
     /// <summary>
