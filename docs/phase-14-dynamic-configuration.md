@@ -13,7 +13,16 @@ This phase introduced dynamic configuration capabilities to allow administrators
 - **Service**: `MonitoringBackgroundService` now respects database settings.
 - **UI**: New "System" settings tab in Admin Portal.
 
-### 2. Dynamic Security Policies
+### 2. Branding Settings
+- **App Name**: Application name displayed in titles and admin UI.
+- **Product Name**: Product name displayed for branding.
+- **Copyright**: Footer copyright text (e.g., "© 2025 - My Company").
+- **Powered By**: Optional footer branding text (leave empty to hide).
+- **Service**: `IBrandingService` provides dynamic values with fallback to defaults.
+- **UI**: Configurable in Admin Portal → Settings → Branding.
+- **Usage**: Footer layouts (`_Layout`, `_AdminLayout`, `_GoogleFooter`) read from `IBrandingService`.
+
+### 3. Dynamic Security Policies
 - **Policies**:
     - Password complexity (length, character classes).
     - Password history and expiration.
@@ -22,7 +31,7 @@ This phase introduced dynamic configuration capabilities to allow administrators
 - **Service**: `SecurityPolicyService` manages policy state.
 - **UI**: New "Security" app in Admin Portal (`/admin/security/policies`).
 
-### 3. Token Lifetimes Configuration
+### 4. Token Lifetimes Configuration
 - **Configuration**: Moved token lifetimes to `appsettings.json` (Option Pattern).
 - **Settings**:
     - `TokenOptions:AccessTokenLifetimeMinutes`
