@@ -9,6 +9,8 @@ public static class SettingKeys
     {
         public const string AppName = "branding.appName";
         public const string ProductName = "branding.productName";
+        public const string Copyright = "branding.copyright";
+        public const string PoweredBy = "branding.poweredBy";
     }
 
     public static class Security

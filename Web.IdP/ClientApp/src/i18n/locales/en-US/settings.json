@@ -13,6 +13,12 @@
   "productName": "Product Name",
   "productNamePlaceholder": "e.g., HybridAuth IdP",
   "productNameHelp": "Displayed in page titles and branding",
+  "copyright": "Copyright",
+  "copyrightPlaceholder": "e.g., © 2025 - My Company",
+  "copyrightHelp": "Displayed in footer and legal notices",
+  "poweredBy": "Powered By",
+  "poweredByPlaceholder": "e.g., Powered by MyProduct",
+  "poweredByHelp": "Optional footer branding (leave empty to hide)",
   "system": {
     "title": "System Monitoring",
     "description": "Configure background monitoring services."

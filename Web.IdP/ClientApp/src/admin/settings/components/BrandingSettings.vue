@@ -20,14 +20,20 @@ const error = ref(null)
 // Form state
 const appName = ref('')
 const productName = ref('')
+const copyright = ref('')
+const poweredBy = ref('')
 
 // Track original values for change detection
 const originalAppName = ref('')
 const originalProductName = ref('')
+const originalCopyright = ref('')
+const originalPoweredBy = ref('')
 
 const hasChanges = computed(() => {
   return appName.value !== originalAppName.value || 
-         productName.value !== originalProductName.value
+         productName.value !== originalProductName.value ||
+         copyright.value !== originalCopyright.value ||
+         poweredBy.value !== originalPoweredBy.value
 })
 
 // Load settings from API
@@ -52,13 +58,19 @@ const loadSettings = async () => {
     // Extract values from settings array
     const appNameSetting = settings.find(s => s.key === 'branding.appName')
     const productNameSetting = settings.find(s => s.key === 'branding.productName')
+    const copyrightSetting = settings.find(s => s.key === 'branding.copyright')
+    const poweredBySetting = settings.find(s => s.key === 'branding.poweredBy')
     
     appName.value = appNameSetting?.value || ''
     productName.value = productNameSetting?.value || ''
+    copyright.value = copyrightSetting?.value || ''
+    poweredBy.value = poweredBySetting?.value || ''
     
     // Store originals
     originalAppName.value = appName.value
     originalProductName.value = productName.value
+    originalCopyright.value = copyright.value
+    originalPoweredBy.value = poweredBy.value
   } catch (err) {
     console.error('Failed to load branding settings:', err)
     error.value = t('settings.loadingError', { message: err.message })
@@ -106,6 +118,34 @@ const saveSettings = async () => {
         })
       )
     }
+    
+    if (copyright.value !== originalCopyright.value) {
+      updates.push(
+        fetch('/api/admin/settings/branding.copyright', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            value: copyright.value,
+            dataType: 'String'
+          })
+        })
+      )
+    }
+    
+    if (poweredBy.value !== originalPoweredBy.value) {
+      updates.push(
+        fetch('/api/admin/settings/branding.poweredBy', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            value: poweredBy.value,
+            dataType: 'String'
+          })
+        })
+      )
+    }
 
     const results = await Promise.all(updates)
     
@@ -121,13 +161,15 @@ const saveSettings = async () => {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
-        keys: ['branding.appName', 'branding.productName']
+        keys: ['branding.appName', 'branding.productName', 'branding.copyright', 'branding.poweredBy']
       })
     })
 
     // Update originals
     originalAppName.value = appName.value
     originalProductName.value = productName.value
+    originalCopyright.value = copyright.value
+    originalPoweredBy.value = poweredBy.value
 
     showSuccess.value = true
     setTimeout(() => {
@@ -150,6 +192,8 @@ const cancelChanges = () => {
   }
   appName.value = originalAppName.value
   productName.value = originalProductName.value
+  copyright.value = originalCopyright.value
+  poweredBy.value = originalPoweredBy.value
 }
 
 onMounted(() => {
@@ -237,6 +281,42 @@ onMounted(() => {
           />
           <p class="mt-1 text-xs text-gray-500">
             {{ t('settings.productNameHelp') }}
+          </p>
+        </div>
+
+        <!-- Copyright -->
+        <div>
+          <label for="copyright" class="block text-sm font-medium text-gray-700 mb-1">
+            {{ t('settings.copyright') }}
+          </label>
+          <input
+            id="copyright"
+            v-model="copyright"
+            type="text"
+            :disabled="!canUpdate"
+            :placeholder="t('settings.copyrightPlaceholder')"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          />
+          <p class="mt-1 text-xs text-gray-500">
+            {{ t('settings.copyrightHelp') }}
+          </p>
+        </div>
+
+        <!-- Powered By -->
+        <div>
+          <label for="poweredBy" class="block text-sm font-medium text-gray-700 mb-1">
+            {{ t('settings.poweredBy') }}
+          </label>
+          <input
+            id="poweredBy"
+            v-model="poweredBy"
+            type="text"
+            :disabled="!canUpdate"
+            :placeholder="t('settings.poweredByPlaceholder')"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          />
+          <p class="mt-1 text-xs text-gray-500">
+            {{ t('settings.poweredByHelp') }}
           </p>
         </div>
       </div>

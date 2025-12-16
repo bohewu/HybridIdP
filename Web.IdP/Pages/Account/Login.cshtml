@@ -101,16 +101,7 @@
             </div>
         </div>
         
-        <div class="google-footer mt-4">
-             <select class="language-select bg-transparent border-0 text-xs cursor-pointer focus:outline-none focus:ring-0 text-gray-600">
-                <option value="en-US" selected="@(currentCulture == "en-US")">English (United States)</option>
-                <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文 (台灣)</option>
-            </select>
-            <div class="flex gap-4 text-xs">
-                <a href="/Privacy" class="hover:text-gray-900">@Localizer["Privacy"]</a>
-                <a href="/Docs" class="hover:text-gray-900">@Localizer["Help"]</a>
-            </div>
-        </div>
+        <partial name="_GoogleFooter" />
     </div>
 
     @if (Model.TurnstileEnabled)
