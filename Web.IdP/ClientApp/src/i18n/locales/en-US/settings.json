@@ -23,6 +23,10 @@
     "title": "System Monitoring",
     "description": "Configure background monitoring services."
   },
+  "validation": {
+    "required": "This field is required",
+    "invalidEmail": "Please enter a valid email address"
+  },
   "monitoring": {
     "enable": "Enable Monitoring",
     "enable_desc": "Main switch to enable or disable the background monitoring service.",

@@ -89,8 +89,27 @@ const loadSettings = async () => {
   }
 }
 
+const isEmailValid = (email) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+const errors = computed(() => {
+  const errs = {}
+  if (!host.value?.trim()) errs.host = t('settings.validation.required')
+  if (!port.value) errs.port = t('settings.validation.required')
+  if (!fromAddress.value?.trim()) {
+    errs.fromAddress = t('settings.validation.required')
+  } else if (!isEmailValid(fromAddress.value)) {
+    errs.fromAddress = t('settings.validation.invalidEmail')
+  }
+  if (!fromName.value?.trim()) errs.fromName = t('settings.validation.required')
+  return errs
+})
+
+const isValid = computed(() => Object.keys(errors.value).length === 0)
+
 const saveSettings = async () => {
-  if (!hasChanges.value || !props.canUpdate) return
+  if (!hasChanges.value || !props.canUpdate || !isValid.value) return
 
   saving.value = true
   error.value = null

@@ -23,6 +23,10 @@
     "title": "系統監控",
     "description": "設定背景監控服務。"
   },
+  "validation": {
+    "required": "此欄位為必填",
+    "invalidEmail": "請輸入有效的電子郵件地址"
+  },
   "monitoring": {
     "enable": "啟用監控",
     "enable_desc": "啟用或停用背景監控服務的主開關。",
