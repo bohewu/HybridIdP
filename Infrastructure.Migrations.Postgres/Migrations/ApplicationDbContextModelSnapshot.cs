@@ -105,6 +105,16 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("EmailMfaCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("EmailMfaCodeExpiry")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("EmailMfaEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("EmployeeId")
                         .HasColumnType("text");
 
