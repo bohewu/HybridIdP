@@ -289,6 +289,11 @@ public static class UserSeeder
         var existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser != null)
         {
+            if (!existingUser.LockoutEnabled)
+            {
+                existingUser.LockoutEnabled = true;
+                await userManager.UpdateAsync(existingUser);
+            }
             return;
         }
 
@@ -330,7 +335,8 @@ public static class UserSeeder
             PersonId = person.Id,
             FirstName = "Test",
             LastName = "User",
-            IsActive = true
+            IsActive = true,
+            LockoutEnabled = true
         };
 
         var result = await userManager.CreateAsync(user, password);
