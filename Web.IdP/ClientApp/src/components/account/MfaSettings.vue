@@ -49,28 +49,36 @@
 
       <!-- Email MFA Section (Phase 20.3) -->
       <div class="email-mfa-section">
-        <div class="section-header">
-          <div class="section-icon">
+        <div class="mfa-status" :class="mfaStatus.emailMfaEnabled ? 'mfa-enabled' : 'mfa-disabled'">
+          <div class="status-icon" :class="{ enabled: mfaStatus.emailMfaEnabled }">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
               <polyline points="22,6 12,13 2,6"></polyline>
             </svg>
           </div>
-          <div class="section-text">
-            <h4>{{ t('mfa.emailMfa') }}</h4>
-            <p>{{ t('mfa.emailMfaDescription') }}</p>
+          <div class="status-text">
+            <h3>{{ t('mfa.emailMfa') }}</h3>
+            <p v-if="mfaStatus.emailMfaEnabled">{{ t('mfa.emailMfaEnabled') }}</p>
+            <p v-else>{{ t('mfa.emailMfaDescription') }}</p>
             <p v-if="userEmail" class="masked-email">{{ maskedEmail }}</p>
           </div>
-          <div class="section-toggle">
-            <label class="toggle-switch">
-              <input 
-                type="checkbox" 
-                :checked="mfaStatus.emailMfaEnabled" 
-                @change="toggleEmailMfa"
-                :disabled="emailMfaLoading"
-              />
-              <span class="toggle-slider"></span>
-            </label>
+          <div class="action-buttons">
+            <button 
+              v-if="!mfaStatus.emailMfaEnabled" 
+              class="btn-enable" 
+              @click="enableEmailMfa"
+              :disabled="emailMfaLoading"
+            >
+              {{ emailMfaLoading ? '...' : t('mfa.enable') }}
+            </button>
+            <button 
+              v-else 
+              class="btn-danger" 
+              @click="disableEmailMfa"
+              :disabled="emailMfaLoading"
+            >
+              {{ emailMfaLoading ? '...' : t('mfa.disable') }}
+            </button>
           </div>
         </div>
         <p v-if="emailMfaError" class="error-message">{{ emailMfaError }}</p>
@@ -289,28 +297,48 @@ async function loadMfaStatus() {
   }
 }
 
-async function toggleEmailMfa() {
+async function enableEmailMfa() {
   emailMfaLoading.value = true;
   emailMfaError.value = '';
   emailMfaSuccess.value = '';
   
-  const endpoint = mfaStatus.value.emailMfaEnabled 
-    ? '/api/account/mfa/email/disable' 
-    : '/api/account/mfa/email/enable';
-  
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetch('/api/account/mfa/email/enable', {
       method: 'POST',
       credentials: 'include'
     });
     
     if (response.ok) {
       await loadMfaStatus();
-      emailMfaSuccess.value = mfaStatus.value.emailMfaEnabled 
-        ? t('mfa.emailMfaEnabled') 
-        : t('mfa.emailMfaDisabled');
+      emailMfaSuccess.value = t('mfa.emailMfaEnabled');
       emit('status-changed');
-      // Clear success message after 3 seconds
+      setTimeout(() => { emailMfaSuccess.value = ''; }, 3000);
+    } else {
+      const result = await response.json();
+      emailMfaError.value = result.message || t('mfa.errors.toggleFailed');
+    }
+  } catch (err) {
+    emailMfaError.value = t('mfa.errors.toggleFailed');
+  } finally {
+    emailMfaLoading.value = false;
+  }
+}
+
+async function disableEmailMfa() {
+  emailMfaLoading.value = true;
+  emailMfaError.value = '';
+  emailMfaSuccess.value = '';
+  
+  try {
+    const response = await fetch('/api/account/mfa/email/disable', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      await loadMfaStatus();
+      emailMfaSuccess.value = t('mfa.emailMfaDisabled');
+      emit('status-changed');
       setTimeout(() => { emailMfaSuccess.value = ''; }, 3000);
     } else {
       const result = await response.json();
