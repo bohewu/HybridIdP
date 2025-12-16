@@ -27,7 +27,7 @@ last-updated: 2025-12-15
 - Phase 17 — Deployment & Documentation: 100% ✅ — `./docs/DEPLOYMENT_GUIDE.md`
 - Phase 18 — Personnel Lifecycle Management: 100% ✅ — `./phase-18-personnel-lifecycle.md`
 - Phase 19 — Frontend Testing Strategy (Vitest): 100% ✅ — `./TODOS.md`
-- Phase 20 — MFA & WebAuthn: 0% 📋 Planned — `./docs/archive/phases/phase-20-mfa-webauthn.md`
+- Phase 20 — MFA & WebAuthn: 30% 🔄 In Progress (Phase 20.1 Completed, 20.2 Planned) — `./phase-20-mfa-webauthn.md`
 - Phase 21 — External Identity Providers: 📋 Planned — `./docs/archive/phases/phase-21-external-idp.md`
 
 Backlog & Technical Debt: `./TODOS.md`
@@ -40,6 +40,26 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 -- 如需更完整的歷史紀錄或截圖證據，請參閱 `./archive/historical/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
+## 2025-12-16: Phase 20.1 TOTP MFA Complete ✅
+
+**Implementation Summary:**
+
+Phase 20.1 implements Time-based One-Time Password (TOTP) Multi-Factor Authentication, significantly enhancing account security.
+
+**Key Achievements:**
+- ✅ **TOTP Implementation**: RFC 6238 compliant TOTP generation and validation
+- ✅ **Setup Flow**: QR Code generation (internal rendering, no external API) for Google Authenticator/Authy
+- ✅ **Recovery Codes**: Generation of 10 one-time use recovery codes
+- ✅ **Security**:
+  - Rate limiting on verification attempts
+  - Session security status refresh upon MFA verification
+  - Force re-verification for sensitive actions
+- ✅ **Admin Management**: Admin can view MFA status and reset MFA for users
+- ✅ **Testing**:
+  - Extensive System Tests (MfaApiTests)
+  - Unit tests for MfaService
+
+---
 
 ## 2025-12-15: UI/UX Refactoring (Google Style 2024) Complete ✅
 
