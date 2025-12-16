@@ -1,6 +1,6 @@
 # Phase 20 — MFA & WebAuthn
 
-**Status**: 30% (Phase 20.1 Complete)
+**Status**: 45% (Phase 20.1 & 20.2 Complete)
 **Goal**: Implement comprehensive Multi-Factor Authentication (TOTP, Email, WebAuthn).
 
 ---
@@ -30,17 +30,17 @@
   - "Force Re-authentication" policy supported for sensitive actions.
 - **i18n**: Modularized translations in `mfa.json`.
 
-### Phase 20.2: Email Architecture Enhancement (Queue System) 📋 PLANNED
-**Complexity**: ⭐⭐ Medium | **Estimate**: 1-2 days
+### Phase 20.2: Email Architecture Enhancement (Queue System) ✅ COMPLETED
+**Complexity**: ⭐⭐ Medium | **Completed**: 2025-12-16
 
 > **Goal**: Replace synchronous SMTP sending with a robust BackgroundService queue (Producer-Consumer pattern) to improve performance and reliability.
 
-- [ ] **Infrastructure**:
-  - [ ] Add **Mailpit** to `docker-compose.dev.yml` for local testing.
-  - [ ] Implement `EmailQueue` (Singleton) using `System.Threading.Channels`.
-  - [ ] Implement `SmtpDispatcher` (Scoped) for actual SMTP transmission using MailKit.
-  - [ ] Implement `EmailQueueProcessor` (HostedService) to consume messages in background.
-  - [ ] Update `EmailService` to act as Producer (enqueue only).
+- [x] **Infrastructure**:
+  - [x] Add **Mailpit** to `docker-compose.dev.yml` for local testing.
+  - [x] Implement `EmailQueue` (Singleton) using `System.Threading.Channels`.
+  - [x] Implement `SmtpDispatcher` (Scoped) for actual SMTP transmission using MailKit.
+  - [x] Implement `EmailQueueProcessor` (HostedService) to consume messages in background.
+  - [x] Update `EmailService` to act as Producer (enqueue only).
 
 ### Phase 20.3: Email MFA (OTP) Logic 📋 PLANNED
 **Complexity**: ⭐ Low-Medium | **Estimate**: 1-2 days
