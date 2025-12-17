@@ -11,6 +11,7 @@ namespace Tests.SystemTests;
 /// Comprehensive MFA flow tests using programmatic TOTP code generation.
 /// Tests the complete MFA lifecycle: setup, enable, login with MFA, recovery codes, and disable.
 /// </summary>
+[Collection("MFA Tests")]
 public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
@@ -38,10 +39,28 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         _userToken = await GetUserTokenAsync(TEST_USER_EMAIL, TEST_USER_PASSWORD);
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
+        // Ensure MFA is disabled after all tests in this class (cleanup for test isolation)
+        try
+        {
+            if (_userToken != null)
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+                
+                // Try to disable TOTP MFA
+                await _httpClient.PostAsJsonAsync("/api/account/mfa/disable", new { Password = TEST_USER_PASSWORD });
+                
+                // Try to disable Email MFA
+                await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
+        
         _httpClient.Dispose();
-        return Task.CompletedTask;
     }
 
     /// <summary>
