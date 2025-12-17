@@ -1,6 +1,6 @@
 # Phase 20 — MFA & WebAuthn
 
-**Status**: 45% (Phase 20.1 & 20.2 Complete)
+**Status**: 60% (Phase 20.1, 20.2, 20.3 Complete)
 **Goal**: Implement comprehensive Multi-Factor Authentication (TOTP, Email, WebAuthn).
 
 ---
@@ -42,23 +42,29 @@
   - [x] Implement `EmailQueueProcessor` (HostedService) to consume messages in background.
   - [x] Update `EmailService` to act as Producer (enqueue only).
 
-### Phase 20.3: Email MFA (OTP) Logic 📋 PLANNED
-**Complexity**: ⭐ Low-Medium | **Estimate**: 1-2 days
+### Phase 20.3: Custom JsonStringLocalizer Implementation ✅ COMPLETED
+**Complexity**: ⭐⭐ Medium | **Completed**: 2025-12-17
 
-> **Goal**: Implement OTP generation/validation logic on top of the enhanced email infrastructure.
+> **Goal**: Replace unreliable `My.Extensions.Localization.Json` with custom lightweight JSON localizer.
 
-- [ ] **Data Model**:
-  - [ ] Add `EmailTwoFactorEnabled` field to `ApplicationUser`.
-  - [ ] EF Core Migration.
-- [ ] **Logic**:
-  - [ ] Create `EmailMfaProvider` logic (generate 6-digit numeric code, 5-10 min expiry).
-  - [ ] Implement HTML Email Template for OTP codes.
-- [ ] **API Endpoints**:
-  - [ ] `POST /api/account/mfa/email/send`: Trigger code delivery.
-  - [ ] `POST /api/account/mfa/email/verify`: Verify code and enable Email MFA.
-- [ ] **UI**:
-  - [ ] Profile: Enable/Disable Email MFA toggle.
-  - [ ] Login: MFA method selection.
+**Implementation Details:**
+- [x] **Core Components**:
+  - [x] `JsonStringLocalizer`: IStringLocalizer implementation with multi-path search and caching.
+  - [x] `JsonStringLocalizerFactory`: IStringLocalizerFactory with Options pattern.
+  - [x] `JsonLocalizationOptions`: Configuration for ResourcesPath and AdditionalAssemblyPrefixes.
+  - [x] `JsonLocalizationServiceExtensions`: DI registration via `AddJsonLocalization()`.
+- [x] **Features**:
+  - [x] Multi-path resource search (Production, Development, Cross-Project).
+  - [x] Culture fallback support (zh-TW → zh → default).
+  - [x] In-memory caching with ConcurrentDictionary.
+  - [x] Assembly prefix scanning for Infrastructure/Resources.
+- [x] **Testing**:
+  - [x] Unit Tests: 13/13 passed (JsonStringLocalizer).
+  - [x] Integration Tests: 3/3 passed (EmailTemplateLocalization).
+  - [x] System Tests: 197/197 non-Slow tests passed.
+- [x] **UX Improvements**:
+  - [x] Enhanced homepage avatar (10x10, 2-letter initials, subtitle).
+  - [x] Fixed MfaRateLimitTests test categorization.
 
 ### Phase 20.4: WebAuthn Passkey - Database & Backend 📋 PLANNED
 **Complexity**: ⭐⭐⭐ Medium-High | **Estimate**: 2-3 days
