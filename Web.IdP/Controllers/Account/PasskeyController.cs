@@ -19,6 +19,7 @@ public record LoginOptionsRequest(string? Username);
 
 [Route("api/passkey")]
 [ApiController]
+[ApiAuthorize]
 public partial class PasskeyController : ControllerBase
 {
     private readonly IPasskeyService _passkeyService;
@@ -39,13 +40,11 @@ public partial class PasskeyController : ControllerBase
     }
 
     [HttpPost("register-options")]
-    [ApiAuthorize]
     public async Task<IActionResult> MakeCredentialOptions(CancellationToken ct)
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
         {
-            _logger.LogWarning("RegisterOptions: User not found despite authentication."); // Add logging for debug
             return Unauthorized();
         }
 

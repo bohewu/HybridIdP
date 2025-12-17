@@ -1,0 +1,34 @@
+  正在判斷要還原的專案...
+  所有專案都在最新狀態，可進行還原。
+  Core.Domain -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Domain\bin\Debug\net10.0\Core.Domain.dll
+  Core.Application -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Application\bin\Debug\net10.0\Core.Application.dll
+  Tests.SystemTests -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll 的測試回合 (.NETCoreApp,Version=v10.0)
+VSTest 版本 18.0.1 (x64)
+
+正在啟動測試執行，請稍候...
+總共有 1 個測試檔案與指定的模式相符。
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.0)
+[xUnit.net 00:00:00.09]   Discovering: Tests.SystemTests
+[xUnit.net 00:00:00.15]   Discovered:  Tests.SystemTests
+[xUnit.net 00:00:00.17]   Starting:    Tests.SystemTests
+  已通過 Tests.SystemTests.MfaApiTests.GetMfaStatus_IncludesEmailMfaEnabled [181 ms]
+  已通過 Tests.SystemTests.MfaApiTests.VerifyMfa_InvalidCode_ReturnsFalse [48 ms]
+  已通過 Tests.SystemTests.MfaApiTests.DisableMfa_PasswordlessUser_via_Impersonation [1 s]
+  已通過 Tests.SystemTests.MfaApiTests.MfaEndpoints_Unauthorized_Returns401 [13 ms]
+  已通過 Tests.SystemTests.MfaApiTests.GetMfaSetup_ValidUser_ReturnsSetupInfo [23 ms]
+  已通過 Tests.SystemTests.MfaApiTests.EmailMfa_SendCode_ReturnsSuccess [94 ms]
+  已通過 Tests.SystemTests.MfaApiTests.EmailMfa_VerifyInvalidCode_ReturnsFalse [86 ms]
+  已通過 Tests.SystemTests.MfaApiTests.GetMfaStatus_ValidUser_ReturnsStatus [9 ms]
+  已通過 Tests.SystemTests.MfaApiTests.EmailMfa_EnableDisable_Works [80 ms]
+  已通過 Tests.SystemTests.MfaApiTests.DisableMfa_WrongPassword_ReturnsBadRequest [61 ms]
+  已通過 Tests.SystemTests.MfaApiTests.GenerateRecoveryCodes_MfaNotEnabled_ReturnsBadRequest [13 ms]
+  已通過 Tests.SystemTests.MfaApiTests.DisableMfa_ValidPassword_DisablesMfa [752 ms]
+[xUnit.net 00:01:10.65]   Finished:    Tests.SystemTests
+  已通過 Tests.SystemTests.MfaApiTests.EmailMfa_SendCode_RateLimiting_Works [59 s]
+
+測試回合成功。
+測試數總計: 13
+     通過: 13
+ 時間總計: 1.1872 分鐘
