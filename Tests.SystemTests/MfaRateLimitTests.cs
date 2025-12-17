@@ -7,7 +7,8 @@ namespace Tests.SystemTests;
 
 public partial class MfaApiTests
 {
-    [Fact(Skip = "Slow test - requires 60s rate limit cooldown. Run manually when needed.")]
+    [Fact]
+    [Trait("Category", "Slow")]
     public async Task EmailMfa_SendCode_RateLimiting_Works()
     {
         // Arrange
