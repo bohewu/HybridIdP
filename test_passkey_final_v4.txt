@@ -1,0 +1,25 @@
+  正在判斷要還原的專案...
+  所有專案都在最新狀態，可進行還原。
+  Core.Domain -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Domain\bin\Debug\net10.0\Core.Domain.dll
+  Core.Application -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Application\bin\Debug\net10.0\Core.Application.dll
+  Tests.SystemTests -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll 的測試回合 (.NETCoreApp,Version=v10.0)
+VSTest 版本 18.0.1 (x64)
+
+正在啟動測試執行，請稍候...
+總共有 1 個測試檔案與指定的模式相符。
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.0)
+[xUnit.net 00:00:00.08]   Discovering: Tests.SystemTests
+[xUnit.net 00:00:00.15]   Discovered:  Tests.SystemTests
+[xUnit.net 00:00:00.17]   Starting:    Tests.SystemTests
+  已通過 Tests.SystemTests.PasskeyApiTests.RegisterOptions_ValidUser_ReturnsOptions [308 ms]
+  已通過 Tests.SystemTests.PasskeyApiTests.LoginOptions_ReturnsOptions [35 ms]
+  已通過 Tests.SystemTests.PasskeyApiTests.Login_InvalidSignature_ReturnsBadRequest [19 ms]
+[xUnit.net 00:00:07.24]   Finished:    Tests.SystemTests
+  已通過 Tests.SystemTests.PasskeyApiTests.Register_WithoutOptions_ReturnsBadRequest [19 ms]
+
+測試回合成功。
+測試數總計: 4
+     通過: 4
+ 時間總計: 7.8668 秒

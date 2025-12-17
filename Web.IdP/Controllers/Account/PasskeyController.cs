@@ -19,7 +19,6 @@ public record LoginOptionsRequest(string? Username);
 
 [Route("api/passkey")]
 [ApiController]
-[ApiAuthorize]
 public partial class PasskeyController : ControllerBase
 {
     private readonly IPasskeyService _passkeyService;
@@ -40,9 +39,10 @@ public partial class PasskeyController : ControllerBase
     }
 
     [HttpPost("register-options")]
+    [ApiAuthorize]
     public async Task<IActionResult> MakeCredentialOptions(CancellationToken ct)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
             return Unauthorized();
@@ -62,7 +62,7 @@ public partial class PasskeyController : ControllerBase
     [ApiAuthorize]
     public async Task<IActionResult> MakeCredential([FromBody] System.Text.Json.JsonElement attestationResponse, CancellationToken ct)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
             return Unauthorized();
@@ -83,6 +83,23 @@ public partial class PasskeyController : ControllerBase
         }
 
         return BadRequest(new { success = false, error = result.Error });
+    }
+
+    private async Task<ApplicationUser?> GetAuthenticatedUserAsync()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user != null) return user;
+
+        // Fallback: OpenIddict uses 'sub' claim, which simple GetUserAsync might not map to NameIdentifier by default
+        var userId = User.FindFirst("sub")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        
+        // Keep logging for verification if needed, but reducing verbosity
+        if (!string.IsNullOrEmpty(userId))
+        {
+            return await _userManager.FindByIdAsync(userId);
+        }
+        
+        return null;
     }
 
     [HttpPost("login-options")]
