@@ -1,0 +1,15 @@
+  正在判斷要還原的專案...
+  所有專案都在最新狀態，可進行還原。
+  Core.Domain -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Domain\bin\Debug\net10.0\Core.Domain.dll
+  Core.Application -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Application\bin\Debug\net10.0\Core.Application.dll
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure\Services\PasskeyService.cs(58,33): error CS1729: 'RequestNewCredentialParams' 未包含使用 5 個引數的建構函式 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure\Infrastructure.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure\Services\PasskeyService.cs(86,17): error CS1729: 'GetAssertionOptionsParams' 未包含使用 3 個引數的建構函式 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure\Infrastructure.csproj]
+
+建置失敗。
+
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure\Services\PasskeyService.cs(58,33): error CS1729: 'RequestNewCredentialParams' 未包含使用 5 個引數的建構函式 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure\Infrastructure.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure\Services\PasskeyService.cs(86,17): error CS1729: 'GetAssertionOptionsParams' 未包含使用 3 個引數的建構函式 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure\Infrastructure.csproj]
+    0 個警告
+    2 個錯誤
+
+經過時間 00:00:02.32

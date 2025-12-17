@@ -35,6 +35,11 @@ public interface IMfaService
     Task<IEnumerable<string>> GenerateRecoveryCodesAsync(ApplicationUser user, int count = 10, CancellationToken ct = default);
     
     /// <summary>
+    /// Counts the number of remaining recovery codes for the user.
+    /// </summary>
+    Task<int> CountRecoveryCodesAsync(ApplicationUser user, CancellationToken ct = default);
+    
+    /// <summary>
     /// Validates a recovery code (consumes it if valid).
     /// </summary>
     Task<bool> ValidateRecoveryCodeAsync(ApplicationUser user, string code, CancellationToken ct = default);

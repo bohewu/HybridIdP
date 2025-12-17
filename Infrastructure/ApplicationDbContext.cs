@@ -5,6 +5,7 @@ using Core.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Core.Application.Interfaces;
 
 namespace Infrastructure;
 
@@ -34,6 +35,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Person> Persons => Set<Person>();
     public DbSet<ClientOwnership> ClientOwnerships => Set<ClientOwnership>();
     public DbSet<ScopeOwnership> ScopeOwnerships => Set<ScopeOwnership>();
+    // Phase 20.4
+    public DbSet<UserCredential> UserCredentials { get; set; }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -43,6 +46,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        
+        // Configure UserCredential
+        builder.Entity<UserCredential>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            // Ensure CredentialId is unique across the system (or at least per user, but FIDO2 spec usually implies global uniqueness for the ID)
+            // Storing as varbinary, good for indexing depending on DB.
+        });
         
         // Configure OpenIddict to use the default ASP.NET Core Identity entity types
         builder.UseOpenIddict<Guid>();

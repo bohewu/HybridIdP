@@ -127,14 +127,73 @@ public class MfaService : IMfaService
 
     public async Task<IEnumerable<string>> GenerateRecoveryCodesAsync(ApplicationUser user, int count = 10, CancellationToken ct = default)
     {
-        var codes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, count);
-        return codes ?? Array.Empty<string>();
+        var codes = new List<string>();
+        var hashedCodes = new List<string>();
+
+        for (int i = 0; i < count; i++)
+        {
+            var code = Guid.NewGuid().ToString("N").Substring(0, 10).ToUpperInvariant();
+            codes.Add(code);
+            hashedCodes.Add(_passwordHasher.HashPassword(user, code));
+        }
+
+        user.RecoveryCodes = System.Text.Json.JsonSerializer.Serialize(hashedCodes);
+        await _userManager.UpdateAsync(user);
+
+        return codes;
     }
 
     public async Task<bool> ValidateRecoveryCodeAsync(ApplicationUser user, string code, CancellationToken ct = default)
     {
-        var result = await _userManager.RedeemTwoFactorRecoveryCodeAsync(user, code);
-        return result.Succeeded;
+        if (string.IsNullOrEmpty(user.RecoveryCodes))
+        {
+            return false;
+        }
+
+        var hashedCodes = System.Text.Json.JsonSerializer.Deserialize<List<string>>(user.RecoveryCodes);
+        if (hashedCodes == null || hashedCodes.Count == 0)
+        {
+            return false;
+        }
+
+        string? matchedCode = null;
+        foreach (var hashedCode in hashedCodes)
+        {
+            var result = _passwordHasher.VerifyHashedPassword(user, hashedCode, code);
+            if (result == PasswordVerificationResult.Success)
+            {
+                matchedCode = hashedCode;
+                break;
+            }
+        }
+
+        if (matchedCode != null)
+        {
+            hashedCodes.Remove(matchedCode);
+            user.RecoveryCodes = System.Text.Json.JsonSerializer.Serialize(hashedCodes);
+            await _userManager.UpdateAsync(user);
+            return true;
+        }
+
+        return false;
+    }
+
+    public Task<int> CountRecoveryCodesAsync(ApplicationUser user, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(user.RecoveryCodes))
+        {
+            return Task.FromResult(0);
+        }
+
+        try
+        {
+            var hashedCodes = System.Text.Json.JsonSerializer.Deserialize<List<string>>(user.RecoveryCodes);
+            return Task.FromResult(hashedCodes?.Count ?? 0);
+        }
+        catch
+        {
+            return Task.FromResult(0);
+        }
     }
 
     #region Email MFA (Phase 20.3)

@@ -90,6 +90,29 @@ builder.Services.AddSingleton<Core.Application.Interfaces.IEmailQueue, Infrastru
 builder.Services.AddScoped<Core.Application.Interfaces.IEmailDispatcher, Infrastructure.Services.SmtpDispatcher>();
 builder.Services.AddHostedService<Infrastructure.BackgroundServices.EmailQueueProcessor>();
 
+// Phase 20.4: WebAuthn
+builder.Services.Configure<Fido2NetLib.Fido2Configuration>(builder.Configuration.GetSection("Fido2"));
+builder.Services.AddFido2(options =>
+{
+    var fido2Config = builder.Configuration.GetSection("Fido2").Get<Fido2NetLib.Fido2Configuration>();
+    options.ServerName = "HybridIdP";
+    options.ServerDomain = fido2Config?.ServerDomain ?? "localhost";
+    options.Origins = fido2Config?.Origins ?? new HashSet<string> { "https://localhost:7035" };
+    options.TimestampDriftTolerance = fido2Config?.TimestampDriftTolerance ?? 300000;
+})
+.AddCachedMetadataService(config =>
+{
+    config.AddFidoMetadataRepository();
+});
+builder.Services.AddSession(options =>
+{
+    // Short timeout for login sessions
+    options.IdleTimeout = TimeSpan.FromMinutes(5);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.IsEssential = true;
+});
+
 // Configure Rate Limiting
 builder.Services.AddCustomRateLimiting(builder.Configuration);
 
@@ -97,10 +120,14 @@ builder.Services.AddCustomRateLimiting(builder.Configuration);
 var finalRedisConn = (redisEnabled && !string.IsNullOrEmpty(redisConnectionString)) ? redisConnectionString : null;
 builder.Services.AddCustomObservability(builder.Configuration, databaseProvider, connectionString, finalRedisConn);
 
+// Phase 20.4: WebAuthn Service
+builder.Services.AddScoped<Core.Application.Interfaces.IPasskeyService, Infrastructure.Services.PasskeyService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseCustomPipeline(builder.Configuration);
+app.UseSession();
 app.MapCustomEndpoints(builder.Configuration);
 
 // Seed the database (skip in Test environment - integration tests handle seeding)

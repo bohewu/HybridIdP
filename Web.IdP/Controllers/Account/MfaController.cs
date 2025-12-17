@@ -48,7 +48,7 @@ public class MfaController : ControllerBase
             return Unauthorized();
         }
 
-        var recoveryCodesLeft = await _userManager.CountRecoveryCodesAsync(user);
+        var recoveryCodesLeft = await _mfaService.CountRecoveryCodesAsync(user, ct);
         var hasPassword = await _userManager.HasPasswordAsync(user);
 
         return Ok(new MfaStatusResponse

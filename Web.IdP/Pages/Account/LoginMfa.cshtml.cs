@@ -149,14 +149,15 @@ public partial class LoginMfaModel : PageModel
         if (!string.IsNullOrWhiteSpace(Input.RecoveryCode))
         {
             var cleanCode = Input.RecoveryCode.Replace(" ", "").Replace("-", "");
-            var result = await _userManager.RedeemTwoFactorRecoveryCodeAsync(user, cleanCode);
+            // Use MfaService for custom recovery codes
+            var success = await _mfaService.ValidateRecoveryCodeAsync(user, cleanCode);
             
-            if (result.Succeeded)
+            if (success)
             {
                 await _signInManager.SignInAsync(user, isPersistent: RememberMe);
                 _logger.LogInformation("User logged in with recovery code.");
                 
-                var remainingCodes = await _userManager.CountRecoveryCodesAsync(user);
+                var remainingCodes = await _mfaService.CountRecoveryCodesAsync(user);
                 if (remainingCodes <= 3)
                 {
                     _logger.LogWarning("User {UserName} has only {Count} recovery codes left.", user.UserName, remainingCodes);
