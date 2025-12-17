@@ -532,4 +532,19 @@
   <data name="UseAuthenticatorApp" xml:space="preserve">
     <value>Use authenticator app</value>
   </data>
+  <data name="SendCode" xml:space="preserve">
+    <value>Send code</value>
+  </data>
+  <data name="Resend" xml:space="preserve">
+    <value>Resend</value>
+  </data>
+  <data name="PleaseWaitThenRetry" xml:space="preserve">
+    <value>Please wait before requesting a new code</value>
+  </data>
+  <data name="EmailVerification" xml:space="preserve">
+    <value>Email verification</value>
+  </data>
+  <data name="EnterEmailCodeDescription" xml:space="preserve">
+    <value>We sent a verification code to your email</value>
+  </data>
 </root>

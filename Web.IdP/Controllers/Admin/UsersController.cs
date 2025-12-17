@@ -585,10 +585,16 @@ public class UsersController : ControllerBase
                 return NotFound(new { error = "User not found" });
             }
 
-            // Disable 2FA
+            // Disable TOTP 2FA
             await _userManager.SetTwoFactorEnabledAsync(user, false);
             // Reset authenticator key
             await _userManager.ResetAuthenticatorKeyAsync(user);
+            
+            // Also disable Email MFA
+            user.EmailMfaEnabled = false;
+            user.EmailMfaCode = null;
+            user.EmailMfaCodeExpiry = null;
+            await _userManager.UpdateAsync(user);
 
             return Ok(new { success = true, message = "MFA has been reset for the user" });
         }

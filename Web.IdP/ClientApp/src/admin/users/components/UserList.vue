@@ -219,7 +219,7 @@ const getSortIcon = (field) => {
                     {{ user.isActive ? $t('users.details.active') : $t('users.details.inactive') }}
                   </span>
                   <span
-                    v-if="user.twoFactorEnabled"
+                    v-if="user.twoFactorEnabled || user.emailMfaEnabled"
                     class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700"
                     :title="$t('users.mfa.enabled')"
                   >
@@ -277,7 +277,7 @@ const getSortIcon = (field) => {
                       {{ t('users.actions.viewLoginHistory') }}
                     </button>
                     <button
-                      v-if="canUpdate && user.twoFactorEnabled"
+                      v-if="canUpdate && (user.twoFactorEnabled || user.emailMfaEnabled)"
                       @click="emit('reset-mfa', user); close()"
                       class="text-left w-full block px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
                     >
