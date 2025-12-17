@@ -30,4 +30,7 @@ public class UserCredential
     
     // Optional: Store device name/model for UI
     public string? DeviceName { get; set; }
+    
+    // Track when the passkey was last used for login
+    public DateTime? LastUsedAt { get; set; }
 }

@@ -37,6 +37,13 @@ public class SecurityPolicyDto
     
     public bool AllowSelfPasswordChange { get; set; } = true;
     
+    public bool EnableTotpMfa { get; set; } = true;
+    public bool EnableEmailMfa { get; set; } = true;
+    public bool EnablePasskey { get; set; } = true;
+    
+    [Range(1, 50, ErrorMessage = "Max passkeys must be between 1 and 50")]
+    public int MaxPasskeysPerUser { get; set; } = 10;
+    
     public DateTime UpdatedUtc { get; set; }
     public string? UpdatedBy { get; set; }
 }
