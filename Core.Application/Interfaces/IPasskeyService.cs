@@ -22,4 +22,15 @@ public interface IPasskeyService
         string jsonResponse, 
         string originalOptionsJson, 
         CancellationToken ct = default);
+        
+    /// <summary>
+    /// Get all passkeys registered by a user
+    /// </summary>
+    Task<List<DTOs.UserCredentialDto>> GetUserPasskeysAsync(Guid userId, CancellationToken ct = default);
+    
+    /// <summary>
+    /// Delete a passkey by ID (must be owned by the specified user)
+    /// </summary>
+    Task<bool> DeletePasskeyAsync(Guid userId, int credentialId, CancellationToken ct = default);
 }
+

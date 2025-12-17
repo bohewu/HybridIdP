@@ -2,14 +2,20 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Core.Application;
 using Core.Application.Interfaces;
 using Core.Domain;
+using Core.Domain.Entities;
+using Core.Domain.Enums;
 using Fido2NetLib;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Infrastructure;
 
 using Web.IdP.Attributes;
 
@@ -24,28 +30,58 @@ public partial class PasskeyController : ControllerBase
     private readonly IPasskeyService _passkeyService;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ISecurityPolicyService _securityPolicyService;
+    private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<PasskeyController> _logger;
 
     public PasskeyController(
         IPasskeyService passkeyService,
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
+        ISecurityPolicyService securityPolicyService,
+        ApplicationDbContext dbContext,
         ILogger<PasskeyController> logger)
     {
         _passkeyService = passkeyService;
         _signInManager = signInManager;
         _userManager = userManager;
+        _securityPolicyService = securityPolicyService;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
     [HttpPost("register-options")]
     [ApiAuthorize]
+    [EnableRateLimiting("default")]
     public async Task<IActionResult> MakeCredentialOptions(CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
             return Unauthorized();
+        }
+
+        // 1. Get security policy
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        
+        // 2. Check if passkey is enabled
+        if (!policy.EnablePasskey)
+        {
+            _logger.LogWarning("Passkey registration blocked: feature disabled");
+            return StatusCode(403, new { error = "Passkey authentication is disabled" });
+        }
+        
+        // 3. Count existing passkeys
+        var existingCount = await _dbContext.UserCredentials
+            .CountAsync(c => c.UserId == user.Id, ct);
+        
+        if (existingCount >= policy.MaxPasskeysPerUser)
+        {
+            _logger.LogWarning("Passkey registration blocked for user {UserId}: limit reached ({Count}/{Max})", 
+                user.Id, existingCount, policy.MaxPasskeysPerUser);
+            return BadRequest(new { 
+                error = $"Maximum passkey limit reached ({policy.MaxPasskeysPerUser})" 
+            });
         }
 
         var options = await _passkeyService.GetRegistrationOptionsAsync(user, ct);
@@ -83,6 +119,34 @@ public partial class PasskeyController : ControllerBase
         }
 
         return BadRequest(new { success = false, error = result.Error });
+    }
+
+    [HttpGet("list")]
+    [ApiAuthorize]
+    public async Task<IActionResult> ListPasskeys(CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null) return Unauthorized();
+        
+        var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, ct);
+        return Ok(passkeys);
+    }
+
+    [HttpDelete("{id}")]
+    [ApiAuthorize]
+    public async Task<IActionResult> DeletePasskey(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null) return Unauthorized();
+        
+        var result = await _passkeyService.DeletePasskeyAsync(user.Id, id, ct);
+        if (!result)
+        {
+            return NotFound(new { error = "Passkey not found" });
+        }
+        
+        _logger.LogInformation("User {UserId} deleted passkey {CredentialId}", user.Id, id);
+        return Ok(new { success = true });
     }
 
     private async Task<ApplicationUser?> GetAuthenticatedUserAsync()
@@ -127,6 +191,21 @@ public partial class PasskeyController : ControllerBase
 
         if (result.Success && result.User != null)
         {
+            // 1. Check Person.Status (CRITICAL SECURITY FIX)
+            if (result.User.Person != null && result.User.Person.Status != PersonStatus.Active)
+            {
+                _logger.LogWarning("Passkey login blocked for person {PersonId} with status {Status}", result.User.Person.Id, result.User.Person.Status);
+                return BadRequest(new { success = false, error = "Account not active" });
+            }
+            
+            // 2. Check User.IsActive
+            if (!result.User.IsActive)
+            {
+                _logger.LogWarning("Passkey login blocked for deactivated user {UserId}", result.User.Id);
+                return BadRequest(new { success = false, error = "User account deactivated" });
+            }
+            
+            // 3. All checks passed - Sign in
             await _signInManager.SignInAsync(result.User, isPersistent: false);
             LogPasskeyLogin(result.User.UserName);
             return Ok(new { success = true, username = result.User.UserName });
