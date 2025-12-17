@@ -38,6 +38,24 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         await _serverFixture.EnsureServerRunningAsync();
         await Task.Delay(100);
         _userToken = await GetUserTokenAsync(TEST_USER_EMAIL, TEST_USER_PASSWORD);
+        
+        // PRE-CLEANUP: Ensure MFA is disabled before tests start
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+            
+            // Disable TOTP MFA
+            await _httpClient.PostAsJsonAsync("/api/account/mfa/disable", new { Password = TEST_USER_PASSWORD });
+            
+            // Disable Email MFA
+            await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
+            
+            await Task.Delay(50);
+        }
+        catch
+        {
+            // Ignore errors (MFA might already be disabled)
+        }
     }
 
     public async Task DisposeAsync()
