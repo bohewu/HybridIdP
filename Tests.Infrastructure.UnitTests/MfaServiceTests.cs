@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Core.Application;
+using Core.Application.Interfaces;
 using Core.Domain;
 using FluentAssertions;
 using Infrastructure.Services;
@@ -21,6 +22,7 @@ public class MfaServiceTests
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly Mock<IBrandingService> _brandingServiceMock;
     private readonly Mock<IEmailService> _emailServiceMock;
+    private readonly Mock<IEmailTemplateService> _emailTemplateServiceMock;
     private readonly Mock<IPasswordHasher<ApplicationUser>> _passwordHasherMock;
     private readonly Mock<IDistributedCache> _distributedCacheMock;
     private readonly MfaService _sut;
@@ -35,6 +37,10 @@ public class MfaServiceTests
         _brandingServiceMock.Setup(x => x.GetAppNameAsync()).ReturnsAsync("TestApp");
         
         _emailServiceMock = new Mock<IEmailService>();
+        _emailTemplateServiceMock = new Mock<IEmailTemplateService>();
+        _emailTemplateServiceMock
+            .Setup(x => x.RenderMfaCodeEmailAsync(It.IsAny<string>(), It.IsAny<int>()))
+            .ReturnsAsync(("Test Subject", "<html>Test Body</html>"));
         _passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         _distributedCacheMock = new Mock<IDistributedCache>();
         
@@ -42,6 +48,7 @@ public class MfaServiceTests
             _userManagerMock.Object, 
             _brandingServiceMock.Object,
             _emailServiceMock.Object,
+            _emailTemplateServiceMock.Object,
             _passwordHasherMock.Object,
             _distributedCacheMock.Object);
     }
@@ -372,10 +379,12 @@ public class MfaServiceTests
         user.Email = null;
         
         var emailServiceMock = new Mock<IEmailService>();
+        var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
+        emailTemplateServiceMock.Setup(x => x.RenderMfaCodeEmailAsync(It.IsAny<string>(), It.IsAny<int>())).ReturnsAsync(("Subject", "Body"));
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
         var sut = new MfaService(_userManagerMock.Object, _brandingServiceMock.Object, 
-            emailServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
+            emailServiceMock.Object, emailTemplateServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => 
@@ -388,6 +397,8 @@ public class MfaServiceTests
         // Arrange
         var user = CreateTestUser();
         var emailServiceMock = new Mock<IEmailService>();
+        var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
+        emailTemplateServiceMock.Setup(x => x.RenderMfaCodeEmailAsync(It.IsAny<string>(), It.IsAny<int>())).ReturnsAsync(("Subject", "Body"));
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
         passwordHasherMock.Setup(x => x.HashPassword(user, It.IsAny<string>()))
@@ -396,7 +407,7 @@ public class MfaServiceTests
             .ReturnsAsync(IdentityResult.Success);
 
         var sut = new MfaService(_userManagerMock.Object, _brandingServiceMock.Object,
-            emailServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
+            emailServiceMock.Object, emailTemplateServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
 
         // Act
         await sut.SendEmailMfaCodeAsync(user);
@@ -422,10 +433,11 @@ public class MfaServiceTests
         user.EmailMfaCode = null;
         
         var emailServiceMock = new Mock<IEmailService>();
+        var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
         var sut = new MfaService(_userManagerMock.Object, _brandingServiceMock.Object,
-            emailServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
+            emailServiceMock.Object, emailTemplateServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
 
         // Act
         var result = await sut.VerifyEmailMfaCodeAsync(user, "123456");
@@ -443,13 +455,14 @@ public class MfaServiceTests
         user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(-5); // Expired
         
         var emailServiceMock = new Mock<IEmailService>();
+        var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
         
         var sut = new MfaService(_userManagerMock.Object, _brandingServiceMock.Object,
-            emailServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
+            emailServiceMock.Object, emailTemplateServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
 
         // Act
         var result = await sut.VerifyEmailMfaCodeAsync(user, "123456");
@@ -469,6 +482,7 @@ public class MfaServiceTests
         user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5); // Not expired
         
         var emailServiceMock = new Mock<IEmailService>();
+        var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
         passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "123456"))
@@ -477,7 +491,7 @@ public class MfaServiceTests
             .ReturnsAsync(IdentityResult.Success);
         
         var sut = new MfaService(_userManagerMock.Object, _brandingServiceMock.Object,
-            emailServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
+            emailServiceMock.Object, emailTemplateServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
 
         // Act
         var result = await sut.VerifyEmailMfaCodeAsync(user, "123456");
@@ -497,13 +511,14 @@ public class MfaServiceTests
         user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5);
         
         var emailServiceMock = new Mock<IEmailService>();
+        var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
         passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "000000"))
             .Returns(PasswordVerificationResult.Failed);
         
         var sut = new MfaService(_userManagerMock.Object, _brandingServiceMock.Object,
-            emailServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
+            emailServiceMock.Object, emailTemplateServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
 
         // Act
         var result = await sut.VerifyEmailMfaCodeAsync(user, "000000");
@@ -520,13 +535,14 @@ public class MfaServiceTests
         user.EmailMfaEnabled = false;
         
         var emailServiceMock = new Mock<IEmailService>();
+        var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
         
         var sut = new MfaService(_userManagerMock.Object, _brandingServiceMock.Object,
-            emailServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
+            emailServiceMock.Object, emailTemplateServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
 
         // Act
         await sut.EnableEmailMfaAsync(user);
@@ -546,13 +562,14 @@ public class MfaServiceTests
         user.EmailMfaCodeExpiry = DateTime.UtcNow;
         
         var emailServiceMock = new Mock<IEmailService>();
+        var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
         
         var sut = new MfaService(_userManagerMock.Object, _brandingServiceMock.Object,
-            emailServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
+            emailServiceMock.Object, emailTemplateServiceMock.Object, passwordHasherMock.Object, distributedCacheMock.Object);
 
         // Act
         await sut.DisableEmailMfaAsync(user);
