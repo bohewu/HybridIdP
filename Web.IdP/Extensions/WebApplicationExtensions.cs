@@ -65,7 +65,7 @@ public static class WebApplicationExtensions
 
         var supportedCultures = new[] { "zh-TW", "en-US" };
         var localizationOptions = new RequestLocalizationOptions()
-            .SetDefaultCulture(supportedCultures[0])  // 預設為 zh-TW
+            .SetDefaultCulture("zh-TW")
             .AddSupportedCultures(supportedCultures)
             .AddSupportedUICultures(supportedCultures);
 

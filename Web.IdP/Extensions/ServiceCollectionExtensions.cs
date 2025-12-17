@@ -466,7 +466,7 @@ public static class ServiceCollectionExtensions
         });
 
         // MVC & Localization support
-        services.AddLocalization(options => options.ResourcesPath = "Resources");
+        services.AddJsonLocalization(options => options.ResourcesPath = new[] { "Resources" });
 
         services.AddMvc()
             .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)

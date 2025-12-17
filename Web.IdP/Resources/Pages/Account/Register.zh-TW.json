@@ -1,0 +1,18 @@
+{
+  "Register": "註冊",
+  "Create your account": "建立您的帳號",
+  "Email": "電子郵件",
+  "Password": "密碼",
+  "Confirm password": "確認密碼",
+  "Already have an account? Sign in": "已經有帳號了？登入",
+  "CreateAccount": "建立您的帳號",
+  "ConfirmPassword": "確認密碼",
+  "Next": "下一步",
+  "SignInInstead": "改為登入",
+  "PasswordRequirementsHelp": "請使用 {0} 個以上的字元，並{1}。",
+  "Complexity_WithSymbols": "包含字母、數字和符號",
+  "Complexity_NoSymbols": "包含字母和數字",
+  "Terms": "條款",
+  "Privacy": "隱私權",
+  "Help": "說明"
+}

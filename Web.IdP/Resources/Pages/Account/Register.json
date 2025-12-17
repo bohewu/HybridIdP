@@ -1,0 +1,18 @@
+{
+  "Register": "Register",
+  "Create your account": "Create your account",
+  "Email": "Email",
+  "Password": "Password",
+  "Confirm password": "Confirm password",
+  "Already have an account? Sign in": "Already have an account? Sign in",
+  "CreateAccount": "Create your account",
+  "ConfirmPassword": "Confirm password",
+  "Next": "Next",
+  "SignInInstead": "Sign in instead",
+  "PasswordRequirementsHelp": "Use {0} or more characters with {1}",
+  "Complexity_WithSymbols": "a mix of letters, numbers & symbols",
+  "Complexity_NoSymbols": "a mix of letters & numbers",
+  "Terms": "Terms",
+  "Privacy": "Privacy",
+  "Help": "Help"
+}
