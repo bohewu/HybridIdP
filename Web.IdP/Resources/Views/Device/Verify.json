@@ -1,0 +1,16 @@
+{
+  "Title": "Device Activation",
+  "Header": "Activate your device",
+  "Instruction": "Enter the code displayed on your device.",
+  "UserCodeLabel": "User code",
+  "ContinueButton": "Continue",
+  "CancelLink": "Cancel",
+  "Footer": "",
+  "UserCodeRequired": "The user code is required.",
+  "MissingSubject": "User authentication failed. Missing subject claim.",
+  "InvalidUserCode": "The specified user code is not valid. Please make sure you typed it correctly.",
+  "InvalidClient": "The client application cannot be found.",
+  "AppRequestAccess": "{0} is requesting access to your account.",
+  "UserRetrievalFailed": "The user details cannot be retrieved.",
+  "ServerError": "An unexpected error occurred."
+}

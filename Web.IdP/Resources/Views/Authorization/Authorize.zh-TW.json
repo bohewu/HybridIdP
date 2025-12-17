@@ -1,0 +1,13 @@
+{
+  "Authorize Application": "授權應用程式",
+  "is requesting access to your account": "正在請求存取您的帳號",
+  "This application will be able to:": "此應用程式將能夠：",
+  "Verify your identity": "驗證您的身分",
+  "Access your email address": "存取您的電子郵件地址",
+  "Access your profile information": "存取您的個人資料",
+  "Access your roles": "存取您的角色",
+  "Required": "必要",
+  "Allow Access": "允許存取",
+  "Deny": "拒絕",
+  "By allowing access, you agree to share the requested information with this application.": "允許存取即表示您同意與此應用程式分享所請求的資訊。"
+}
