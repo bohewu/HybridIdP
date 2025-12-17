@@ -25,6 +25,26 @@ namespace Core.Domain.Entities
         /// </summary>
         public bool AllowSelfPasswordChange { get; set; } = true;
         
+        /// <summary>
+        /// Whether TOTP (Authenticator App) MFA is available for users to enable
+        /// </summary>
+        public bool EnableTotpMfa { get; set; } = true;
+        
+        /// <summary>
+        /// Whether Email OTP MFA is available for users to enable
+        /// </summary>
+        public bool EnableEmailMfa { get; set; } = true;
+        
+        /// <summary>
+        /// Whether Passkey (WebAuthn) authentication is available for users
+        /// </summary>
+        public bool EnablePasskey { get; set; } = true;
+        
+        /// <summary>
+        /// Maximum number of passkeys a user can register (default: 10)
+        /// </summary>
+        public int MaxPasskeysPerUser { get; set; } = 10;
+        
         public DateTime UpdatedUtc { get; set; }
         public string? UpdatedBy { get; set; }
     }

@@ -765,10 +765,22 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<bool>("BlockAbnormalLogin")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("EnableEmailMfa")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnablePasskey")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableTotpMfa")
+                        .HasColumnType("bit");
+
                     b.Property<int>("LockoutDurationMinutes")
                         .HasColumnType("int");
 
                     b.Property<int>("MaxFailedAccessAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxPasskeysPerUser")
                         .HasColumnType("int");
 
                     b.Property<int>("MinCharacterTypes")
@@ -916,6 +928,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
 
                     b.Property<string>("DeviceName")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<byte[]>("PublicKey")
                         .IsRequired()
