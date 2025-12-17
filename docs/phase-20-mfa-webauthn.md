@@ -1,6 +1,6 @@
 # Phase 20 — MFA & WebAuthn
 
-**Status**: 60% (Phase 20.1, 20.2, 20.3 Complete)
+**Status**: 75% (Phase 20.1, 20.2, 20.3, 20.4 Backend Complete)
 **Goal**: Implement comprehensive Multi-Factor Authentication (TOTP, Email, WebAuthn).
 
 ---
@@ -66,18 +66,18 @@
   - [x] Enhanced homepage avatar (10x10, 2-letter initials, subtitle).
   - [x] Fixed MfaRateLimitTests test categorization.
 
-### Phase 20.4: WebAuthn Passkey - Database & Backend 📋 PLANNED
-**Complexity**: ⭐⭐⭐ Medium-High | **Estimate**: 2-3 days
+### Phase 20.4: WebAuthn Passkey - Database & Backend ✅ COMPLETED
+**Complexity**: ⭐⭐⭐ Medium-High | **Completed**: 2025-12-17
 
-- [ ] Install `Fido2.AspNet` NuGet package.
-- [ ] Create `UserCredential` entity (CredentialId, PublicKey, SignCount, DeviceName).
-- [ ] EF Core migration for `UserCredentials` table.
-- [ ] Fido2 configuration in DI (RelyingPartyId, Origins).
-- [ ] API: `POST /api/passkey/register-options` - Generate registration challenge.
-- [ ] API: `POST /api/passkey/register` - Store credential after browser attestation.
-- [ ] API: `POST /api/passkey/login-options` - Generate authentication challenge.
-- [ ] API: `POST /api/passkey/login` - Verify signature + SignIn.
-- [ ] Integrate with `ValidatePersonStatusAsync()` for Person Lifecycle check.
+- [x] Install `Fido2.AspNet` NuGet package.
+- [x] Create `UserCredential` entity (CredentialId, PublicKey, SignCount, DeviceName).
+- [x] EF Core migration for `UserCredentials` table.
+- [x] Fido2 configuration in DI (RelyingPartyId, Origins).
+- [x] API: `POST /api/passkey/register-options` - Generate registration challenge.
+- [x] API: `POST /api/passkey/register` - Store credential after browser attestation.
+- [x] API: `POST /api/passkey/login-options` - Generate authentication challenge.
+- [x] API: `POST /api/passkey/login` - Verify signature + SignIn.
+- [x] Integrate with `ValidatePersonStatusAsync()` for Person Lifecycle check.
 
 ### Phase 20.4: WebAuthn Passkey - Frontend UI 📋 PLANNED
 **Complexity**: ⭐⭐ Medium | **Estimate**: 1-2 days

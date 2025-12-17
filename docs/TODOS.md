@@ -116,16 +116,16 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] UX: Enhanced homepage avatar to match admin layout style
 - [x] Fix: MfaRateLimitTests test categorization ([Trait] instead of [Skip])
 
-### Phase 20.4: WebAuthn Passkey - Database & Backend (Pending)
-- [ ] Install `Fido2.AspNet` NuGet package
-- [ ] Create `UserCredential` entity (CredentialId, PublicKey, SignCount, DeviceName)
-- [ ] EF Core migration for UserCredentials table
-- [ ] Fido2 configuration in DI (RelyingPartyId, Origins)
-- [ ] API: `POST /api/passkey/register-options` - Generate registration challenge
-- [ ] API: `POST /api/passkey/register` - Store credential after browser attestation
-- [ ] API: `POST /api/passkey/login-options` - Generate authentication challenge
-- [ ] API: `POST /api/passkey/login` - Verify signature + SignIn
-- [ ] Integrate with `ValidatePersonStatusAsync()` for Person Lifecycle check
+### Phase 20.4: WebAuthn Passkey - Database & Backend ✅ COMPLETED
+- [x] Install `Fido2.AspNet` NuGet package
+- [x] Create `UserCredential` entity (CredentialId, PublicKey, SignCount, DeviceName)
+- [x] EF Core migration for UserCredentials table
+- [x] Fido2 configuration in DI (RelyingPartyId, Origins)
+- [x] API: `POST /api/passkey/register-options` - Generate registration challenge
+- [x] API: `POST /api/passkey/register` - Store credential after browser attestation
+- [x] API: `POST /api/passkey/login-options` - Generate authentication challenge
+- [x] API: `POST /api/passkey/login` - Verify signature + SignIn
+- [x] Integrate with `ValidatePersonStatusAsync()` for Person Lifecycle check
 
 ### Phase 20.5: WebAuthn Passkey - Frontend UI (Pending)
 - [ ] User Settings page: "Manage Passkeys" section

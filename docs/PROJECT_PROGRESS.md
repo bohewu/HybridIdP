@@ -27,7 +27,7 @@ last-updated: 2025-12-17
 - Phase 17 — Deployment & Documentation: 100% ✅ — `./docs/DEPLOYMENT_GUIDE.md`
 - Phase 18 — Personnel Lifecycle Management: 100% ✅ — `./phase-18-personnel-lifecycle.md`
 - Phase 19 — Frontend Testing Strategy (Vitest): 100% ✅ — `./TODOS.md`
-- Phase 20 — MFA & WebAuthn: 45% 🔄 In Progress (Phase 20.1 & 20.2 Completed) — `./phase-20-mfa-webauthn.md`
+- Phase 20 — MFA & WebAuthn: 75% 🔄 In Progress (Phase 20.1-20.4 Backend Completed) — `./phase-20-mfa-webauthn.md`
 - Phase 21 — External Identity Providers: 📋 Planned — `./docs/archive/phases/phase-21-external-idp.md`
 
 Backlog & Technical Debt: `./TODOS.md`
@@ -40,6 +40,37 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 -- 如需更完整的歷史紀錄或截圖證據，請參閱 `./archive/historical/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
+## 2025-12-17: Phase 20.4 WebAuthn Passkey Backend Complete ✅
+
+**Implementation Summary:**
+
+Phase 20.4 establishes the backend infrastructure for WebAuthn/Passkey support, including database schema, FIDO2 service integration, and API endpoints for registration and authentication.
+
+**Key Achievements:**
+- ✅ **Core Logic**: Implemented `PasskeyService` using `Fido2.AspNet` v4 library.
+- ✅ **Database**: Added `UserCredential` entity and migrations for PostgreSQL & SQL Server.
+- ✅ **API**: Implemented `PasskeyController` with endpoints for FIDO2 ceremony (Options/Result).
+- ✅ **Upgrade**: Upgraded `Fido2.AspNet` to the latest `4.0.0` stable version.
+- ✅ **Security**: Integrated with `ValidatePersonStatusAsync` to enforce lifecycle checks.
+- ✅ **Testing**:
+  - Validated API endpoints via System Tests.
+  - Fixed regression in PostgreSQL migrations.
+
+**Files Created/Modified:**
+- `Web.IdP/Controllers/Account/PasskeyController.cs`
+- `Infrastructure/Services/PasskeyService.cs`
+- `Core.Domain/Entities/UserCredential.cs`
+- `Infrastructure/Migrations/.../AddWebAuthnCredentials.cs`
+
+**Progress:**
+- Phase 20.1: ✅ Complete (TOTP MFA)
+- Phase 20.2: ✅ Complete (Email Queue)
+- Phase 20.3: ✅ Complete (Custom Localizer)
+- Phase 20.4: ✅ Complete (WebAuthn Backend)
+- **Phase 20 status: 75% Complete**
+
+---
+
 ## 2025-12-17: Phase 20.3 Custom JsonStringLocalizer Implementation Complete ✅
 
 **Implementation Summary:**
