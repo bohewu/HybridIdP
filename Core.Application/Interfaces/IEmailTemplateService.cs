@@ -11,5 +11,5 @@ public interface IEmailTemplateService
     /// <param name="code">The verification code</param>
     /// <param name="expiryMinutes">Minutes until code expires</param>
     /// <returns>Tuple of (subject, htmlBody)</returns>
-    Task<(string Subject, string Body)> RenderMfaCodeEmailAsync(string code, int expiryMinutes);
+    Task<(string Subject, string Body)> RenderMfaCodeEmailAsync(string code, int expiryMinutes, string? culture = null);
 }
