@@ -112,6 +112,7 @@ public class UserManagementService : IUserManagementService
                 LastLoginDate = user.LastLoginDate,
                 CreatedAt = user.CreatedAt,
                 TwoFactorEnabled = user.TwoFactorEnabled,
+                EmailMfaEnabled = user.EmailMfaEnabled,
                 Roles = roles.ToList()
             });
         }
