@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Core.Application;
+using Core.Application.Interfaces;
 using Core.Domain;
 using Microsoft.AspNetCore.Identity;
 using QRCoder;
@@ -19,6 +20,7 @@ public class MfaService : IMfaService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IBrandingService _brandingService;
     private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _emailTemplateService;
     private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
     private readonly IDistributedCache _cache;
     private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
@@ -27,12 +29,14 @@ public class MfaService : IMfaService
         UserManager<ApplicationUser> userManager, 
         IBrandingService brandingService,
         IEmailService emailService,
+        IEmailTemplateService emailTemplateService,
         IPasswordHasher<ApplicationUser> passwordHasher,
         IDistributedCache cache)
     {
         _userManager = userManager;
         _brandingService = brandingService;
         _emailService = emailService;
+        _emailTemplateService = emailTemplateService;
         _passwordHasher = passwordHasher;
         _cache = cache;
     }
@@ -166,18 +170,8 @@ public class MfaService : IMfaService
 
         await _userManager.UpdateAsync(user);
 
-        // Send email via queue
-        var subject = "Your verification code";
-        var body = $@"
-<html>
-<body style='font-family: Arial, sans-serif;'>
-    <p>Your verification code is:</p>
-    <h1 style='font-size: 32px; letter-spacing: 5px; color: #1a73e8;'>{code}</h1>
-    <p>This code will expire in 10 minutes.</p>
-    <p>If you didn't request this code, please ignore this email.</p>
-</body>
-</html>";
-
+        // Send email via template service
+        var (subject, body) = await _emailTemplateService.RenderMfaCodeEmailAsync(code, 10);
         await _emailService.SendEmailAsync(user.Email, subject, body, isHtml: true, ct);
 
         // Set Cooldown
