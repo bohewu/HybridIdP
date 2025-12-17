@@ -1,7 +1,7 @@
 ---
 title: "Project Progress Summary"
 owner: HybridAuthIdP Team
-last-updated: 2025-12-15
+last-updated: 2025-12-17
 ---
 
 # 專案進度摘要
@@ -40,6 +40,42 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 -- 如需更完整的歷史紀錄或截圖證據，請參閱 `./archive/historical/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
+## 2025-12-17: Phase 20.3 Custom JsonStringLocalizer Implementation Complete ✅
+
+**Implementation Summary:**
+
+Phase 20.3 replaces the unreliable `My.Extensions.Localization.Json` package with a custom lightweight JSON-based localizer supporting multi-path resource search and cross-project resource loading.
+
+**Key Achievements:**
+- ✅ **Core Implementation**: Custom `JsonStringLocalizer` with culture fallback and in-memory caching
+- ✅ **Factory Pattern**: `JsonStringLocalizerFactory` with Options pattern integration
+- ✅ **Configuration**: `JsonLocalizationOptions` for `ResourcesPath` and `AdditionalAssemblyPrefixes`
+- ✅ **DI Extensions**: `AddJsonLocalization` extension method for service registration
+- ✅ **Cross-Project Support**: Assembly prefix scanning for Infrastructure/Resources
+- ✅ **Testing**:
+  - Unit Tests: 13/13 passed (JsonStringLocalizer)
+  - Integration Tests: 3/3 passed (EmailTemplateLocalization)
+  - System Tests: 197/197 non-Slow tests passed (100%)
+- ✅ **UX Improvements**:
+  - Enhanced homepage avatar (10x10, 2-letter initials, subtitle)
+  - Fixed MfaRateLimitTests categorization
+
+**Files Created:**
+- `Web.IdP/Services/Localization/JsonStringLocalizer.cs`
+- `Web.IdP/Services/Localization/JsonStringLocalizerFactory.cs`
+- `Web.IdP/Services/Localization/JsonLocalizationOptions.cs`
+- `Web.IdP/Services/Localization/JsonLocalizationServiceExtensions.cs`
+- `Tests.Application.UnitTests/JsonStringLocalizerTests.cs`
+- `Tests.Application.UnitTests/EmailTemplateLocalizationTests.cs`
+
+**Progress:**
+- Phase 20.1: ✅ Complete (TOTP MFA)
+- Phase 20.2: ✅ Complete (Email Queue)
+- Phase 20.3: ✅ Complete (Custom Localizer)
+- **Phase 20 status: 60% Complete**
+
+---
+
 ## 2025-12-16: Phase 20.2 Email Architecture Enhancement Complete ✅
 
 **Implementation Summary:**

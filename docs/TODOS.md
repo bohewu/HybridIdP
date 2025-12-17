@@ -1,7 +1,7 @@
 ---
 title: "TODOs & Backlog"
 owner: HybridIdP Team
-last-updated: 2025-12-15
+last-updated: 2025-12-17
 ---
 
 # TODOs & Technical Backlog
@@ -103,11 +103,18 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] Implement `SmtpDispatcher` for actual sending.
 - [x] Refactor `EmailService` to producer pattern.
 
-### Phase 20.3: Email MFA (OTP) Logic (Pending)
-- [ ] Backend: `EmailTwoFactorEnabled` field + `IEmailSender` extensions
-- [ ] Logic: `EmailMfaProvider` for 6-digit code generation/validation
-- [ ] API: `POST /api/account/mfa/email/send` & `verify`
-- [ ] UI: Login fallback logic & Profile toggle
+### Phase 20.3: Custom JsonStringLocalizer Implementation ✅ COMPLETED
+- [x] Remove unreliable `My.Extensions.Localization.Json` package
+- [x] Backend: Custom `JsonStringLocalizer` with multi-path resource search
+- [x] Backend: `JsonStringLocalizerFactory` with Options pattern
+- [x] Backend: `JsonLocalizationOptions` for configuration  
+- [x] Backend: `JsonLocalizationServiceExtensions` for DI registration
+- [x] Configure `AdditionalAssemblyPrefixes` for Infrastructure resource scanning
+- [x] Update `EmailTemplateService` to accept optional culture parameter
+- [x] Unit Tests: 13 tests for JsonStringLocalizer (all passing)
+- [x] Integration Tests: 3 tests for EmailTemplateLocalization (all passing)
+- [x] UX: Enhanced homepage avatar to match admin layout style
+- [x] Fix: MfaRateLimitTests test categorization ([Trait] instead of [Skip])
 
 ### Phase 20.4: WebAuthn Passkey - Database & Backend (Pending)
 - [ ] Install `Fido2.AspNet` NuGet package
