@@ -43,7 +43,7 @@ public partial class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLif
     public async Task InitializeAsync()
     {
         await _serverFixture.EnsureServerRunningAsync();
-        await Task.Delay(1000);
+        await Task.Delay(100);
         
         // Get token for seeded test user using password flow with testclient-public
         _userToken = await GetUserTokenAsync(TEST_USER_EMAIL, TEST_USER_PASSWORD);

@@ -34,7 +34,7 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
     public async Task InitializeAsync()
     {
         await _serverFixture.EnsureServerRunningAsync();
-        await Task.Delay(1000);
+        await Task.Delay(100);
         _userToken = await GetUserTokenAsync(TEST_USER_EMAIL, TEST_USER_PASSWORD);
     }
 

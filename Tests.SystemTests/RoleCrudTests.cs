@@ -31,7 +31,7 @@ public class RoleCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
     public async Task InitializeAsync()
     {
         await _serverFixture.EnsureServerRunningAsync();
-        await Task.Delay(1000);
+        await Task.Delay(100);
         
         _adminToken = await GetAdminTokenAsync();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);

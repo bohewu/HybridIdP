@@ -38,7 +38,7 @@ public class UserCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
     {
         // 1. Ensure server is running
         await _serverFixture.EnsureServerRunningAsync();
-        await Task.Delay(1000);
+        await Task.Delay(100);
 
         // 2. Get admin token (M2M for testing)
         _adminToken = await GetAdminTokenAsync();

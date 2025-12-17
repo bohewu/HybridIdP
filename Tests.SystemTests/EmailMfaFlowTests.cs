@@ -37,7 +37,7 @@ public class EmailMfaFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
     public async Task InitializeAsync()
     {
         await _serverFixture.EnsureServerRunningAsync();
-        await Task.Delay(1000);
+        await Task.Delay(100);
         
         // Get token for seeded test user using password flow
         _userToken = await GetUserTokenAsync(TEST_USER_EMAIL, TEST_USER_PASSWORD);
@@ -100,7 +100,7 @@ public class EmailMfaFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
         await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
 
         // Wait to ensure clean state
-        await Task.Delay(500);
+        await Task.Delay(100);
 
         // Act - Send code (handle rate limit from previous test runs)
         var response = await _httpClient.PostAsync("/api/account/mfa/email/send", null);

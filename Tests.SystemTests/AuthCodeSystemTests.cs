@@ -32,7 +32,7 @@ public class AuthCodeSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLif
         await _serverFixture.EnsureServerRunningAsync();
         
         // Wait for full initialization
-        await Task.Delay(2000);
+        await Task.Delay(200);
     }
 
     public Task DisposeAsync()

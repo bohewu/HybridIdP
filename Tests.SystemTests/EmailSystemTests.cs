@@ -42,7 +42,7 @@ public class EmailSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         }
         
         // Wait for server to be ready
-        await Task.Delay(500);
+        await Task.Delay(100);
         _adminToken = await GetAdminTokenAsync();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
     }
@@ -101,7 +101,7 @@ public class EmailSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
                     }
                 }
             }
-            await Task.Delay(500);
+            await Task.Delay(100);
         }
 
         // Assert

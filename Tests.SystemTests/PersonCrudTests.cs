@@ -30,7 +30,7 @@ public class PersonCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
     public async Task InitializeAsync()
     {
         await _serverFixture.EnsureServerRunningAsync();
-        await Task.Delay(500);
+        await Task.Delay(100);
         _adminToken = await GetAdminTokenAsync();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
         await CleanupTestDataAsync();

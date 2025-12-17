@@ -100,7 +100,7 @@ public class WebIdPServerFixture : IAsyncLifetime
                  throw new Exception($"Web.IdP server process exited prematurely with code {_serverProcess.ExitCode}. Error: {stderr}");
 
             if (await IsServerAliveAsync()) return;
-            await Task.Delay(500);
+            await Task.Delay(100);
         }
 
         try { _serverProcess.Kill(entireProcessTree: true); } catch { }
