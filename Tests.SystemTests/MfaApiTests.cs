@@ -49,6 +49,25 @@ public partial class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLif
         
         // Get token for seeded test user using password flow with testclient-public
         _userToken = await GetUserTokenAsync(TEST_USER_EMAIL, TEST_USER_PASSWORD);
+        
+        // PRE-CLEANUP: Ensure MFA is disabled before tests start (critical for test isolation)
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+            
+            // Disable TOTP MFA if enabled
+            await _httpClient.PostAsJsonAsync("/api/account/mfa/disable", new { Password = TEST_USER_PASSWORD });
+            
+            // Disable Email MFA if enabled
+            await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
+            
+            // Small delay to ensure cleanup completes
+            await Task.Delay(50);
+        }
+        catch
+        {
+            // Ignore pre-cleanup errors (MFA might already be disabled)
+        }
     }
 
     public async Task DisposeAsync()
