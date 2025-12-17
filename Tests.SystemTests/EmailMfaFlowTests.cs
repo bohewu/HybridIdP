@@ -56,7 +56,7 @@ public class EmailMfaFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
 
     #region Email MFA Enable/Disable Flow
 
-    [Fact(Skip = "Email MFA tests - run separately")]
+    [Fact]
     public async Task EmailMfa_FullEnableDisableFlow_Works()
     {
         // Arrange
@@ -157,7 +157,7 @@ public class EmailMfaFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
         await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
     }
 
-    [Fact(Skip = "Email MFA tests - run separately")]
+    [Fact]
     public async Task EmailMfa_VerifyCode_NoCodeSent_ReturnsFalse()
     {
         // Arrange
@@ -176,7 +176,7 @@ public class EmailMfaFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
 
     #region Authentication Requirement
 
-    [Fact(Skip = "Email MFA tests - run separately")]
+    [Fact]
     public async Task EmailMfa_Endpoints_RequireAuthentication()
     {
         // Arrange - No auth header
@@ -200,7 +200,7 @@ public class EmailMfaFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
 
     #region Concurrent MFA Methods
 
-    [Fact(Skip = "Email MFA tests - run separately")]
+    [Fact]
     public async Task EmailMfa_CanCoexistWithTotpMfa()
     {
         // Arrange

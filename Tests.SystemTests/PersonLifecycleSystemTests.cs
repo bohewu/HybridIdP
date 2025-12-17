@@ -37,11 +37,6 @@ public class PersonLifecycleSystemTests : IClassFixture<WebIdPServerFixture>
         };
     }
     
-    // InitializeAsync not strictly needed if we just call Login in the test or helper
-    // But LoginAsAdmin is needed.
-    // We can call it in constructor or helper.
-    // If the server is already running (Collection scope), we can just log in.
-    
     private async Task EnsureLoggedInAsync()
     {
          await LoginAsAdminAsync();

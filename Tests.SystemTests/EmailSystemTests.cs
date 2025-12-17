@@ -81,7 +81,7 @@ public class EmailSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         // 2. Wait for background processor to process the queue
         // Retry a few times as it's async
         bool emailReceived = false;
-        int maxRetries = 30; // Wait up to 15 seconds
+        int maxRetries = 60; // Wait up to 15 seconds (250ms * 60)
         for (int i = 0; i < maxRetries; i++)
         {
             var messagesResponse = await _mailpitClient.GetAsync("/api/v1/messages");
@@ -92,16 +92,21 @@ public class EmailSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
                 
                 if (root.TryGetProperty("messages", out var messages) && messages.GetArrayLength() > 0)
                 {
-                    var msg = messages[0];
-                    var subject = msg.GetProperty("Subject").GetString();
-                    if (subject == "Test Email from HybridIdP") 
+                    // Search all messages for the one we just sent
+                    foreach (var msg in messages.EnumerateArray())
                     {
-                        emailReceived = true;
-                        break;
+                        if (msg.TryGetProperty("Subject", out var subjectProp) && 
+                            subjectProp.GetString() == "Test Email from HybridIdP")
+                        {
+                            emailReceived = true;
+                            // Optionally check Recipient or Timestamp
+                            break;
+                        }
                     }
+                    if (emailReceived) break;
                 }
             }
-            await Task.Delay(100);
+            await Task.Delay(250);
         }
 
         // Assert
