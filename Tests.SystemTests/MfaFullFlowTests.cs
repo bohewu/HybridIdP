@@ -11,6 +11,7 @@ namespace Tests.SystemTests;
 /// Comprehensive MFA flow tests using programmatic TOTP code generation.
 /// Tests the complete MFA lifecycle: setup, enable, login with MFA, recovery codes, and disable.
 /// </summary>
+[Trait("Category", "Slow")]
 [Collection("MFA Tests")]
 public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
