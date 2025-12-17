@@ -6,6 +6,11 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
+/// <summary>
+/// Device Flow E2E test - marked as Slow due to 10s timeout and external process.
+/// Run with: dotnet test --filter "Category!=Slow" to skip.
+/// </summary>
+[Trait("Category", "Slow")]
 public class DeviceFlowSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
