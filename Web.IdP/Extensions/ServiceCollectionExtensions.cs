@@ -32,6 +32,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Web.IdP;
+using Web.IdP.Services.Localization;
 
 namespace Web.IdP.Extensions;
 
@@ -465,8 +466,12 @@ public static class ServiceCollectionExtensions
             options.Cookie.Name = cookieOpts.GetAntiforgeryCookieName();
         });
 
-        // MVC & Localization support
-        services.AddJsonLocalization(options => options.ResourcesPath = new[] { "Resources" });
+        // MVC & Localization support - using custom JSON localizer
+        services.AddJsonLocalization(options =>
+        {
+            options.ResourcesPath = "Resources";
+            options.AdditionalAssemblyPrefixes = new List<string> { "Infrastructure" };
+        });
 
         services.AddMvc()
             .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)

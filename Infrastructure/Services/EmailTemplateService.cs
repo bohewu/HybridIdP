@@ -23,8 +23,14 @@ public class EmailTemplateService : IEmailTemplateService
         _localizer = localizer;
     }
 
-    public async Task<(string Subject, string Body)> RenderMfaCodeEmailAsync(string code, int expiryMinutes)
+    public async Task<(string Subject, string Body)> RenderMfaCodeEmailAsync(string code, int expiryMinutes, string? culture = null)
     {
+        // Set culture if specified
+        if (!string.IsNullOrEmpty(culture))
+        {
+            CultureInfo.CurrentUICulture = new CultureInfo(culture);
+        }
+        
         var productName = await _brandingService.GetProductNameAsync();
         var copyright = await _brandingService.GetCopyrightAsync();
         
@@ -53,3 +59,4 @@ public class EmailTemplateService : IEmailTemplateService
         return (subject, body);
     }
 }
+
