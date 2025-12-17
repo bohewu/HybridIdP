@@ -35,7 +35,7 @@ public class UserinfoFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
     public async Task InitializeAsync()
     {
         await _serverFixture.EnsureServerRunningAsync();
-        await Task.Delay(500);
+        await Task.Delay(100);
     }
 
     public Task DisposeAsync()

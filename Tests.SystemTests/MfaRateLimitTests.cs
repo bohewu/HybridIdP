@@ -18,7 +18,7 @@ public partial class MfaApiTests
         // Don't assert on enable - it may already be enabled
 
         // 2. Wait for any existing rate limit cooldown from previous test runs
-        await Task.Delay(1000); // Small delay to ensure clean state
+        await Task.Delay(100); // Small delay to ensure clean state
         
         // Try sending - if rate limited, wait and retry once
         var sendResponse1 = await _httpClient.PostAsync("/api/account/mfa/email/send", null);

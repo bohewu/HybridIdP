@@ -30,7 +30,7 @@ public class AdminApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
     public async Task InitializeAsync()
     {
         await _serverFixture.EnsureServerRunningAsync();
-        await Task.Delay(1000);
+        await Task.Delay(100);
     }
 
     public Task DisposeAsync()

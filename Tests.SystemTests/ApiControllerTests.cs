@@ -30,7 +30,7 @@ public class ApiControllerTests : IClassFixture<WebIdPServerFixture>, IAsyncLife
     public async Task InitializeAsync()
     {
         await _serverFixture.EnsureServerRunningAsync();
-        await Task.Delay(500);
+        await Task.Delay(100);
         _accessToken = await GetAccessTokenAsync();
     }
 
