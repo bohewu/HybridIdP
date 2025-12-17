@@ -127,13 +127,282 @@ $env:DATABASE_PROVIDER=$null
 
 ---
 
-### Step 1: Backend APIs
+### Step 1: Backend - Security Fixes & New APIs
 
-#### 1.1 Add List Passkeys API
+> [!IMPORTANT]
+> **參考文件**: [phase-20-4-security-issues.md](./phase-20-4-security-issues.md)
+> 
+> 此步驟修復所有已識別的安全漏洞（P0-P2 優先級）
+
+#### 1.1 實作真正的 Fido2 驗證 (🔴 P0 - CRITICAL)
+
+**Problem**: `PasskeyService` 是 STUB，永遠返回成功
+
+**Fix**: `Infrastructure/Services/PasskeyService.cs`
 
 ```csharp
-// Web.IdP/Controllers/Account/PasskeyController.cs
+public async Task<(bool Success, string? Error)> RegisterCredentialsAsync(
+    ApplicationUser user, 
+    string jsonResponse, 
+    string originalOptionsJson, 
+    CancellationToken ct = default)
+{
+    try
+    {
+        // 1. Parse the attestation response
+        var attestationResponse = AuthenticatorAttestationRawResponse.Parse(jsonResponse);
+        var options = CredentialCreateOptions.FromJson(originalOptionsJson);
+        
+        // 2. Verify with Fido2
+        var result = await _fido2.MakeNewCredentialAsync(
+            attestationResponse, 
+            options, 
+            async (args, cancellationToken) => 
+            {
+                // Callback: Check if credential ID is unique
+                var credIdBytes = args.CredentialId;
+                var exists = await _dbContext.UserCredentials
+                    .AnyAsync(c => c.CredentialId == credIdBytes, cancellationToken);
+                return !exists; // Return true if unique
+            }, 
+            ct);
+        
+        if (result.Status != "ok")
+        {
+            _logger.LogWarning("Passkey registration verification failed for user {UserId}: {Error}", 
+                user.Id, result.ErrorMessage);
+            return (false, result.ErrorMessage ?? "Verification failed");
+        }
+        
+        // 3. Extract device name from response (if provided)
+        string? deviceName = null;
+        try
+        {
+            var json = JsonDocument.Parse(jsonResponse);
+            if (json.RootElement.TryGetProperty("deviceName", out var deviceNameProp))
+            {
+                deviceName = deviceNameProp.GetString();
+            }
+        }
+        catch { /* Ignore parsing errors */ }
+        
+        // 4. Save credential to database
+        var credential = new UserCredential
+        {
+            UserId = user.Id,
+            CredentialId = result.Result.CredentialId,
+            PublicKey = result.Result.PublicKey,
+            SignatureCounter = result.Result.Counter,
+            CredType = result.Result.CredType,
+            RegDate = DateTime.UtcNow,
+            AaGuid = result.Result.Aaguid,
+            DeviceName = deviceName ?? "Unknown Device"
+        };
+        
+        _dbContext.UserCredentials.Add(credential);
+        await _dbContext.SaveChangesAsync(ct);
+        
+        _logger.LogInformation("Passkey registered successfully for user {UserId}", user.Id);
+        return (true, null);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Failed to register passkey for user {UserId}", user.Id);
+        return (false, "Registration failed");
+    }
+}
 
+public async Task<(bool Success, ApplicationUser? User, string? Error)> VerifyAssertionAsync(
+    string jsonResponse, 
+    string originalOptionsJson, 
+    CancellationToken ct = default)
+{
+    try
+    {
+        // 1. Parse the assertion response
+        var assertionResponse = AuthenticatorAssertionRawResponse.Parse(jsonResponse);
+        var options = AssertionOptions.FromJson(originalOptionsJson);
+        
+        // 2. Find the credential by ID
+        var credentialId = assertionResponse.Id;
+        var credential = await _dbContext.UserCredentials
+            .Include(c => c.User)
+                .ThenInclude(u => u.Person) // Important for Person.Status check
+            .FirstOrDefaultAsync(c => c.CredentialId == credentialId, ct);
+        
+        if (credential == null)
+        {
+            _logger.LogWarning("Passkey credential not found: {CredentialId}", credentialId);
+            return (false, null, "Invalid credential");
+        }
+        
+        // 3. Verify the assertion
+        var result = await _fido2.MakeAssertionAsync(
+            assertionResponse,
+            options,
+            credential.PublicKey,
+            credential.SignatureCounter,
+            async (args, cancellationToken) => 
+            {
+                // Callback: user handle verification (optional)
+                return true;
+            },
+            ct);
+        
+        if (result.Status != "ok")
+        {
+            _logger.LogWarning("Passkey assertion verification failed: {Error}", result.ErrorMessage);
+            return (false, null, result.ErrorMessage ?? "Verification failed");
+        }
+        
+        // 4. Update signature counter (防止 replay attacks)
+        credential.SignatureCounter = result.Counter;
+        credential.LastUsedAt = DateTime.UtcNow; // Track usage
+        await _dbContext.SaveChangesAsync(ct);
+        
+        _logger.LogInformation("Passkey verification successful for user {UserId}", credential.UserId);
+        return (true, credential.User, null);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Failed to verify passkey assertion");
+        return (false, null, "Verification failed");
+    }
+}
+```
+
+---
+
+#### 1.2 加入 Person.Status 檢查 (🔴 P1 - HIGH)
+
+**Problem**: Passkey 登入沒檢查 Person.Status，suspended 用戶仍可登入
+
+**Fix**: `Web.IdP/Controllers/Account/PasskeyController.cs`
+
+```csharp
+[HttpPost("login")]
+public async Task<IActionResult> MakeAssertion([FromBody] System.Text.Json.JsonElement clientResponse, CancellationToken ct)
+{
+    var jsonOptions = HttpContext.Session.GetString("fido2.assertionOptions");
+    if (string.IsNullOrEmpty(jsonOptions))
+    {
+        return BadRequest(new { success = false, error = "Session expired" });
+    }
+
+    var result = await _passkeyService.VerifyAssertionAsync(clientResponse.ToString(), jsonOptions, ct);
+
+    if (result.Success && result.User != null)
+    {
+        // ✅ 1. Check Person.Status (CRITICAL SECURITY FIX)
+        if (result.User.Person != null)
+        {
+            switch (result.User.Person.Status)
+            {
+                case PersonStatus.Suspended:
+                    _logger.LogWarning("Passkey login blocked for suspended person {PersonId}", result.User.Person.Id);
+                    return BadRequest(new { success = false, error = "Account suspended" });
+                
+                case PersonStatus.Inactive:
+                    _logger.LogWarning("Passkey login blocked for inactive person {PersonId}", result.User.Person.Id);
+                    return BadRequest(new { success = false, error = "Account inactive" });
+            }
+        }
+        
+        // ✅ 2. Check User.IsActive
+        if (!result.User.IsActive)
+        {
+            _logger.LogWarning("Passkey login blocked for deactivated user {UserId}", result.User.Id);
+            return BadRequest(new { success = false, error = "User account deactivated" });
+        }
+        
+        // ✅ 3. All checks passed - Sign in
+        await _signInManager.SignInAsync(result.User, isPersistent: false);
+        LogPasskeyLogin(result.User.UserName);
+        return Ok(new { success = true, username = result.User.UserName });
+    }
+
+    return BadRequest(new { success = false, error = result.Error });
+}
+```
+
+---
+
+#### 1.3 實作 MaxPasskeysPerUser 限制 (🟡 P2)
+
+**Problem**: 沒有檢查數量限制，可無限註冊
+
+**Fix**: `Web.IdP/Controllers/Account/PasskeyController.cs`
+
+```csharp
+private readonly ISecurityPolicyService _securityPolicyService;
+private readonly ApplicationDbContext _dbContext;
+
+public PasskeyController(
+    IPasskeyService passkeyService,
+    SignInManager<ApplicationUser> signInManager,
+    UserManager<ApplicationUser> userManager,
+    ILogger<PasskeyController> logger,
+    ISecurityPolicyService securityPolicyService, // Add
+    ApplicationDbContext dbContext) // Add
+{
+    _passkeyService = passkeyService;
+    _signInManager = signInManager;
+    _userManager = userManager;
+    _logger = logger;
+    _securityPolicyService = securityPolicyService;
+    _dbContext = dbContext;
+}
+
+[HttpPost("register-options")]
+[ApiAuthorize]
+[EnableRateLimiting("default")] // 🟢 P4 - Add rate limiting
+public async Task<IActionResult> MakeCredentialOptions(CancellationToken ct)
+{
+    var user = await GetAuthenticatedUserAsync();
+    if (user == null)
+    {
+        return Unauthorized();
+    }
+
+    // ✅ 1. Get security policy
+    var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+    
+    // ✅ 2. Check if passkey is enabled
+    if (!policy.EnablePasskey)
+    {
+        _logger.LogWarning("Passkey registration blocked: feature disabled");
+        return StatusCode(403, new { error = "Passkey authentication is disabled" });
+    }
+    
+    // ✅ 3. Count existing passkeys
+    var existingCount = await _dbContext.UserCredentials
+        .CountAsync(c => c.UserId == user.Id, ct);
+    
+    if (existingCount >= policy.MaxPasskeysPerUser)
+    {
+        _logger.LogWarning("Passkey registration blocked for user {UserId}: limit reached ({Count}/{Max})", 
+            user.Id, existingCount, policy.MaxPasskeysPerUser);
+        return BadRequest(new { 
+            error = $"Maximum passkey limit reached ({policy.MaxPasskeysPerUser})" 
+        });
+    }
+
+    var options = await _passkeyService.GetRegistrationOptionsAsync(user, ct);
+
+    // Store options in session for verification
+    HttpContext.Session.SetString("fido2.attestationOptions", options.ToJson());
+
+    LogRegistrationOptionsGenerated(user.UserName);
+
+    return Ok(options);
+}
+```
+
+---
+
+#### 1.4 新增 List Passkeys API (🟡 P3)
+
+```csharp
 [HttpGet("list")]
 [ApiAuthorize]
 public async Task<IActionResult> ListPasskeys(CancellationToken ct)
@@ -146,52 +415,111 @@ public async Task<IActionResult> ListPasskeys(CancellationToken ct)
 }
 ```
 
-#### 1.2 Add Delete Passkey API
+**Service 實作**:
 
 ```csharp
-[HttpDelete("{id}")]
-[ApiAuthorize]
-public async Task<IActionResult> DeletePasskey(Guid id, CancellationToken ct)
-{
-    var user = await GetAuthenticatedUserAsync();
-    if (user == null) return Unauthorized();
-    
-    var result = await _passkeyService.DeletePasskeyAsync(user.Id, id, ct);
-    if (!result) return NotFound();
-    
-    return Ok();
-}
-```
+// IPasskeyService.cs
+Task<List<UserCredentialDto>> GetUserPasskeysAsync(Guid userId, CancellationToken ct);
 
-#### 1.3 Implement PasskeyService Methods
-
-```csharp
-// Infrastructure/Services/PasskeyService.cs
-
+// PasskeyService.cs
 public async Task<List<UserCredentialDto>> GetUserPasskeysAsync(Guid userId, CancellationToken ct)
 {
     return await _dbContext.UserCredentials
         .Where(c => c.UserId == userId)
+        .OrderByDescending(c => c.RegDate)
         .Select(c => new UserCredentialDto
         {
             Id = c.Id,
             DeviceName = c.DeviceName,
             CreatedAt = c.RegDate,
-            LastUsedAt = c.LastUsedAt // Need to add this field
+            LastUsedAt = c.LastUsedAt
         })
         .ToListAsync(ct);
 }
+```
 
+**DTO**:
+
+```csharp
+// Core.Application/DTOs/UserCredentialDto.cs
+public class UserCredentialDto
+{
+    public int Id { get; set; }
+    public string? DeviceName { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? LastUsedAt { get; set; }
+}
+```
+
+---
+
+#### 1.5 新增 Delete Passkey API (🟡 P3)
+
+```csharp
+[HttpDelete("{id}")]
+[ApiAuthorize]
+public async Task<IActionResult> DeletePasskey(int id, CancellationToken ct)
+{
+    var user = await GetAuthenticatedUserAsync();
+    if (user == null) return Unauthorized();
+    
+    var result = await _passkeyService.DeletePasskeyAsync(user.Id, id, ct);
+    if (!result)
+    {
+        return NotFound(new { error = "Passkey not found" });
+    }
+    
+    _logger.LogInformation("User {UserId} deleted passkey {CredentialId}", user.Id, id);
+    return Ok(new { success = true });
+}
+```
+
+**Service 實作**:
+
+```csharp
 public async Task<bool> DeletePasskeyAsync(Guid userId, int credentialId, CancellationToken ct)
 {
     var credential = await _dbContext.UserCredentials
         .FirstOrDefaultAsync(c => c.UserId == userId && c.Id == credentialId, ct);
     
-    if (credential == null) return false;
+    if (credential == null)
+    {
+        return false; // Not found or not owned by user
+    }
     
     _dbContext.UserCredentials.Remove(credential);
     await _dbContext.SaveChangesAsync(ct);
+    
+    _logger.LogInformation("Deleted passkey {CredentialId} for user {UserId}", credentialId, userId);
     return true;
+}
+```
+
+---
+
+#### 1.6 新增 LastUsedAt 欄位到 UserCredential
+
+**Migration Required**:
+
+```csharp
+// Infrastructure.Migrations.SqlServer & Postgres
+public partial class AddLastUsedAtToUserCredential : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AddColumn<DateTime>(
+            name: "LastUsedAt",
+            table: "UserCredentials",
+            type: "datetime2", // or "timestamp" for Postgres
+            nullable: true);
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            name: "LastUsedAt",
+            table: "UserCredentials");
+    }
 }
 ```
 
