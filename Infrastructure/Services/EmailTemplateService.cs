@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Application.Interfaces;
+using Infrastructure.Resources;
 using Microsoft.Extensions.Localization;
 
 namespace Infrastructure.Services;
