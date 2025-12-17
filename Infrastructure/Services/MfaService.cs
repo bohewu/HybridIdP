@@ -171,7 +171,7 @@ public class MfaService : IMfaService
         await _userManager.UpdateAsync(user);
 
         // Send email via template service
-        var (subject, body) = await _emailTemplateService.RenderMfaCodeEmailAsync(code, 10);
+        var (subject, body) = await _emailTemplateService.RenderMfaCodeEmailAsync(code, 10, user.Locale);
         await _emailService.SendEmailAsync(user.Email, subject, body, isHtml: true, ct);
 
         // Set Cooldown

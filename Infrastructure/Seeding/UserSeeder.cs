@@ -63,7 +63,8 @@ public static class UserSeeder
                 UserName = AuthConstants.DefaultAdmin.Email,
                 Email = AuthConstants.DefaultAdmin.Email,
                 EmailConfirmed = true,
-                PersonId = adminPerson.Id // Link admin user to Person entity
+                PersonId = adminPerson.Id, // Link admin user to Person entity
+                Locale = "zh-TW"
             };
 
             var result = await userManager.CreateAsync(adminUser, AuthConstants.DefaultAdmin.Password);
@@ -139,6 +140,13 @@ public static class UserSeeder
             if (!await userManager.IsInRoleAsync(adminUser, AuthConstants.Roles.Admin))
             {
                 await userManager.AddToRoleAsync(adminUser, AuthConstants.Roles.Admin);
+            }
+
+            // Ensure Locale is set for existing admin
+            if (string.IsNullOrEmpty(adminUser.Locale))
+            {
+                adminUser.Locale = "zh-TW";
+                await userManager.UpdateAsync(adminUser);
             }
         }
     }
