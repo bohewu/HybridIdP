@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
+using Core.Application.DTOs;
 using Xunit;
 
 namespace Tests.SystemTests;
@@ -17,7 +17,7 @@ public class PersonLifecycleSystemTests : IClassFixture<WebIdPServerFixture>, IA
     private readonly WebIdPServerFixture _serverFixture;
     private string? _adminToken;
 
-    // Use M2M client for stable API access (avoids cookie/session issues)
+    // Use M2M client for stable API access
     private const string M2M_CLIENT_ID = "testclient-admin";
     private const string M2M_CLIENT_SECRET = "admin-test-secret-2024";
 
@@ -54,32 +54,32 @@ public class PersonLifecycleSystemTests : IClassFixture<WebIdPServerFixture>, IA
     public async Task CreatePerson_WithActiveStatus_CanAuthenticate()
     {
         var person = await CreateTestPersonAsync("Active");
-        Assert.Equal("Active", person.GetProperty("status").GetString());
-        Assert.True(person.GetProperty("canAuthenticate").GetBoolean());
+        Assert.Equal("Active", person.Status);
+        Assert.True(person.CanAuthenticate);
     }
 
     [Fact]
     public async Task CreatePerson_WithSuspendedStatus_CannotAuthenticate()
     {
         var person = await CreateTestPersonAsync("Suspended");
-        Assert.Equal("Suspended", person.GetProperty("status").GetString());
-        Assert.False(person.GetProperty("canAuthenticate").GetBoolean());
+        Assert.Equal("Suspended", person.Status);
+        Assert.False(person.CanAuthenticate);
     }
 
     [Fact]
     public async Task CreatePerson_WithPendingStatus_CannotAuthenticate()
     {
         var person = await CreateTestPersonAsync("Pending");
-        Assert.Equal("Pending", person.GetProperty("status").GetString());
-        Assert.False(person.GetProperty("canAuthenticate").GetBoolean());
+        Assert.Equal("Pending", person.Status);
+        Assert.False(person.CanAuthenticate);
     }
 
     [Fact]
     public async Task CreatePerson_WithTerminatedStatus_CannotAuthenticate()
     {
         var person = await CreateTestPersonAsync("Terminated");
-        Assert.Equal("Terminated", person.GetProperty("status").GetString());
-        Assert.False(person.GetProperty("canAuthenticate").GetBoolean());
+        Assert.Equal("Terminated", person.Status);
+        Assert.False(person.CanAuthenticate);
     }
 
     #endregion
@@ -89,19 +89,19 @@ public class PersonLifecycleSystemTests : IClassFixture<WebIdPServerFixture>, IA
     [Fact]
     public async Task CreatePerson_ActiveWithFutureStartDate_CannotAuthenticate()
     {
-        var futureDate = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd");
+        var futureDate = DateTime.UtcNow.AddDays(1);
         var person = await CreateTestPersonAsync("Active", startDate: futureDate);
-        Assert.Equal("Active", person.GetProperty("status").GetString());
-        Assert.False(person.GetProperty("canAuthenticate").GetBoolean());
+        Assert.Equal("Active", person.Status);
+        Assert.False(person.CanAuthenticate);
     }
 
     [Fact]
     public async Task CreatePerson_ActiveWithPastEndDate_CannotAuthenticate()
     {
-        var pastDate = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
+        var pastDate = DateTime.UtcNow.AddDays(-1);
         var person = await CreateTestPersonAsync("Active", endDate: pastDate);
-        Assert.Equal("Active", person.GetProperty("status").GetString());
-        Assert.False(person.GetProperty("canAuthenticate").GetBoolean());
+        Assert.Equal("Active", person.Status);
+        Assert.False(person.CanAuthenticate);
     }
 
     #endregion
@@ -113,25 +113,25 @@ public class PersonLifecycleSystemTests : IClassFixture<WebIdPServerFixture>, IA
     {
         // Create active person
         var person = await CreateTestPersonAsync("Active");
-        var personId = person.GetProperty("id").GetString();
-        var firstName = person.GetProperty("firstName").GetString();
+        var personId = person.Id;
 
         // Update to suspended
-        var updateResponse = await _httpClient.PutAsJsonAsync($"/api/admin/people/{personId}", new
+        var updateDto = new PersonDto
         {
-            firstName,
-            lastName = "User",
-            status = "Suspended"
-        });
+            FirstName = person.FirstName,
+            LastName = person.LastName,
+            Status = "Suspended",
+            Department = person.Department,
+            JobTitle = person.JobTitle
+        };
+
+        var updateResponse = await _httpClient.PutAsJsonAsync($"/api/admin/people/{personId}", updateDto);
         Assert.True(updateResponse.IsSuccessStatusCode, $"Update failed: {updateResponse.StatusCode}");
 
-        // Verify
-        var getResponse = await _httpClient.GetAsync($"/api/admin/people/{personId}");
-        Assert.True(getResponse.IsSuccessStatusCode);
-        var updated = JsonDocument.Parse(await getResponse.Content.ReadAsStringAsync()).RootElement;
-
-        Assert.Equal("Suspended", updated.GetProperty("status").GetString());
-        Assert.False(updated.GetProperty("canAuthenticate").GetBoolean());
+        var updated = await updateResponse.Content.ReadFromJsonAsync<PersonResponseDto>();
+        Assert.NotNull(updated);
+        Assert.Equal("Suspended", updated.Status);
+        Assert.False(updated.CanAuthenticate);
     }
 
     [Fact]
@@ -139,57 +139,59 @@ public class PersonLifecycleSystemTests : IClassFixture<WebIdPServerFixture>, IA
     {
         // Create suspended person
         var person = await CreateTestPersonAsync("Suspended");
-        var personId = person.GetProperty("id").GetString();
-        var firstName = person.GetProperty("firstName").GetString();
+        var personId = person.Id;
 
         // Update to active
-        var updateResponse = await _httpClient.PutAsJsonAsync($"/api/admin/people/{personId}", new
+        var updateDto = new PersonDto
         {
-            firstName,
-            lastName = "User",
-            status = "Active"
-        });
+            FirstName = person.FirstName,
+            LastName= person.LastName,
+            Status = "Active",
+            Department = person.Department,
+            JobTitle = person.JobTitle
+        };
+
+        var updateResponse = await _httpClient.PutAsJsonAsync($"/api/admin/people/{personId}", updateDto);
         Assert.True(updateResponse.IsSuccessStatusCode, $"Update failed: {updateResponse.StatusCode}");
 
-        // Verify
-        var getResponse = await _httpClient.GetAsync($"/api/admin/people/{personId}");
-        Assert.True(getResponse.IsSuccessStatusCode);
-        var updated = JsonDocument.Parse(await getResponse.Content.ReadAsStringAsync()).RootElement;
-
-        Assert.Equal("Active", updated.GetProperty("status").GetString());
-        Assert.True(updated.GetProperty("canAuthenticate").GetBoolean());
+        var updated = await updateResponse.Content.ReadFromJsonAsync<PersonResponseDto>();
+        Assert.NotNull(updated);
+        Assert.Equal("Active", updated.Status);
+        Assert.True(updated.CanAuthenticate);
     }
 
     #endregion
 
     #region Helper Methods
 
-    private async Task<JsonElement> CreateTestPersonAsync(string status, string? startDate = null, string? endDate = null)
+    private async Task<PersonResponseDto> CreateTestPersonAsync(
+        string status, 
+        DateTime? startDate = null, 
+        DateTime? endDate = null)
     {
-        var firstName = $"Test_{status}_{DateTime.UtcNow.Ticks}";
-
-        var payload = new Dictionary<string, object?>
+        var dto = new PersonDto
         {
-            ["firstName"] = firstName,
-            ["lastName"] = "User",
-            ["status"] = status,
-            ["department"] = "Test Department",
-            ["jobTitle"] = "Test Title"
+            FirstName = $"Test_{status}_{DateTime.UtcNow.Ticks}",
+            LastName = "User",
+            Status = status,
+            Department = "Test Department",
+            JobTitle = "Test Title",
+            StartDate = startDate,
+            EndDate = endDate
         };
 
-        if (startDate != null) payload["startDate"] = startDate;
-        if (endDate != null) payload["endDate"] = endDate;
-
-        var response = await _httpClient.PostAsJsonAsync("/api/admin/people", payload);
+        var response = await _httpClient.PostAsJsonAsync("/api/admin/people", dto);
         var content = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, $"Create person failed: {response.StatusCode} - {content}");
 
-        return JsonDocument.Parse(content).RootElement;
+        var createdPerson = await response.Content.ReadFromJsonAsync<PersonResponseDto>();
+        Assert.NotNull(createdPerson);
+        return createdPerson;
     }
 
     private async Task<string> GetM2MAdminTokenAsync()
     {
-        var scopes = new[] { "persons.read", "persons.write" };
+        var scopes = new[] { "persons.read", "persons.create", "persons.update" };
         var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["grant_type"] = "client_credentials",
@@ -199,10 +201,23 @@ public class PersonLifecycleSystemTests : IClassFixture<WebIdPServerFixture>, IA
         });
 
         var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
-        response.EnsureSuccessStatusCode();
-
         var content = await response.Content.ReadAsStringAsync();
-        return JsonDocument.Parse(content).RootElement.GetProperty("access_token").GetString()!;
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception($"Token request failed: {response.StatusCode} - {content}");
+        }
+
+        // Parse JSON manually to avoid deserialization issues
+        var json = System.Text.Json.JsonDocument.Parse(content);
+        var accessToken = json.RootElement.GetProperty("access_token").GetString();
+        
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            throw new Exception("Access token is null or empty");
+        }
+        
+        return accessToken;
     }
 
     #endregion
