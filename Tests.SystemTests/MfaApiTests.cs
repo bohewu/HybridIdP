@@ -12,6 +12,7 @@ namespace Tests.SystemTests;
 /// System tests for MFA API endpoints.
 /// Uses seeded testuser@hybridauth.local with password flow (testclient-public).
 /// </summary>
+[Collection("MFA Tests")]
 public partial class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private record MfaVerifyResponse
@@ -49,10 +50,28 @@ public partial class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLif
         _userToken = await GetUserTokenAsync(TEST_USER_EMAIL, TEST_USER_PASSWORD);
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
+        // Ensure MFA is disabled after all tests in this class (cleanup for test isolation)
+        try
+        {
+            if (_userToken != null)
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+                
+                // Try to disable TOTP MFA
+                await _httpClient.PostAsJsonAsync("/api/account/mfa/disable", new { Password = TEST_USER_PASSWORD });
+                
+                // Try to disable Email MFA
+                await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
+            }
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
+        
         _httpClient.Dispose();
-        return Task.CompletedTask;
     }
 
     [Fact]

@@ -6,6 +6,11 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
+/// <summary>
+/// Email system tests - marked as Slow due to waiting for Mailpit delivery (up to 15s).
+/// Run with: dotnet test --filter "Category!=Slow" to skip.
+/// </summary>
+[Trait("Category", "Slow")]
 public class EmailSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;

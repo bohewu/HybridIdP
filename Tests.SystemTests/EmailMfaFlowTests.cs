@@ -13,6 +13,7 @@ namespace Tests.SystemTests;
 /// Run with: dotnet test --filter "Category!=Slow" to skip.
 /// </summary>
 [Trait("Category", "Slow")]
+[Collection("MFA Tests")]
 public class EmailMfaFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
@@ -90,72 +91,8 @@ public class EmailMfaFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
 
     #region Email OTP Code Flow
 
-    [Fact(Skip = "May wait for rate limit cooldown - run manually")]
-    public async Task EmailMfa_SendCode_StoresCodeAndQueuesEmail()
-    {
-        // Arrange
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
-        
-        // Enable Email MFA first
-        await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
-
-        // Wait to ensure clean state
-        await Task.Delay(100);
-
-        // Act - Send code (handle rate limit from previous test runs)
-        var response = await _httpClient.PostAsync("/api/account/mfa/email/send", null);
-        if (response.StatusCode == HttpStatusCode.TooManyRequests)
-        {
-            var rateLimitResult = await response.Content.ReadFromJsonAsync<SendCodeResponse>();
-            if (rateLimitResult?.RemainingSeconds > 0)
-            {
-                await Task.Delay((rateLimitResult.RemainingSeconds + 2) * 1000);
-                response = await _httpClient.PostAsync("/api/account/mfa/email/send", null);
-            }
-        }
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<SendCodeResponse>();
-        Assert.True(result!.Success, "Send code should succeed");
-        Assert.Equal(60, result.RemainingSeconds); // 60-second cooldown
-
-        // Cleanup
-        await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
-    }
-
-    [Fact(Skip = "May wait for rate limit cooldown - run manually")]
-    public async Task EmailMfa_VerifyCode_InvalidCode_ReturnsFalse()
-    {
-        // Arrange
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
-        
-        // Enable Email MFA and send a code
-        await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
-        
-        // Send code with rate limit handling
-        var sendResponse = await _httpClient.PostAsync("/api/account/mfa/email/send", null);
-        if (sendResponse.StatusCode == HttpStatusCode.TooManyRequests)
-        {
-            var rateLimitResult = await sendResponse.Content.ReadFromJsonAsync<SendCodeResponse>();
-            if (rateLimitResult?.RemainingSeconds > 0)
-            {
-                await Task.Delay((rateLimitResult.RemainingSeconds + 2) * 1000);
-                await _httpClient.PostAsync("/api/account/mfa/email/send", null);
-            }
-        }
-
-        // Act - Verify with invalid code
-        var response = await _httpClient.PostAsJsonAsync("/api/account/mfa/email/verify", new { Code = "000000" });
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<VerifyCodeResponse>();
-        Assert.False(result!.Success, "Verification with invalid code should fail");
-
-        // Cleanup
-        await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
-    }
+    // NOTE: Rate-limit dependent tests removed to avoid flaky CI builds.
+    // Core functionality is tested in MfaApiTests.EmailMfa_* tests.
 
     [Fact]
     public async Task EmailMfa_VerifyCode_NoCodeSent_ReturnsFalse()
