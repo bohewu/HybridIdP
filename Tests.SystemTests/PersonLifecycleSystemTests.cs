@@ -7,6 +7,11 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
+/// <summary>
+/// Person lifecycle tests - marked as Slow due to multiple API calls per test.
+/// Run with: dotnet test --filter "Category!=Slow" to skip.
+/// </summary>
+[Trait("Category", "Slow")]
 public class PersonLifecycleSystemTests : IClassFixture<WebIdPServerFixture>
 {
     private readonly HttpClient _client;

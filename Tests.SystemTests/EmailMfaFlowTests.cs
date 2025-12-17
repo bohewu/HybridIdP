@@ -9,7 +9,10 @@ namespace Tests.SystemTests;
 /// <summary>
 /// System tests for Email MFA (OTP) login flow.
 /// Tests the complete Email OTP verification flow during authentication.
+/// Marked as Slow due to rate limit waits.
+/// Run with: dotnet test --filter "Category!=Slow" to skip.
 /// </summary>
+[Trait("Category", "Slow")]
 public class EmailMfaFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
