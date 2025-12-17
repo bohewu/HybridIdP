@@ -1,0 +1,11 @@
+  正在判斷要還原的專案...
+  所有專案都在最新狀態，可進行還原。
+  Core.Domain -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Domain\bin\Debug\net10.0\Core.Domain.dll
+  Core.Application -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Application\bin\Debug\net10.0\Core.Application.dll
+  Tests.SystemTests -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll
+
+建置成功。
+    0 個警告
+    0 個錯誤
+
+經過時間 00:00:01.68

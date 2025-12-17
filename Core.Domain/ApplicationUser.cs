@@ -85,5 +85,12 @@ public class ApplicationUser : IdentityUser<Guid>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public Guid? ModifiedBy { get; set; }
     public DateTime? ModifiedAt { get; set; }
+
+
+    // Phase 20.1: Recovery Codes
+    /// <summary>
+    /// Encrypted recovery codes (stored as text/JSON).
+    /// </summary>
+    public string? RecoveryCodes { get; set; }
 }
 
