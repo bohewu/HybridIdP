@@ -542,4 +542,7 @@
   <data name="EnterEmailCodeDescription" xml:space="preserve">
     <value>我們已將驗證碼發送至您的電子郵件</value>
   </data>
+  <data name="InvalidMfaCode" xml:space="preserve">
+    <value>驗證碼無效</value>
+  </data>
 </root>

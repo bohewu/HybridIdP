@@ -117,6 +117,14 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Get localized strings (properly encoded for JavaScript)
+            const i18n = {
+                sendCode: @Html.Raw(Json.Serialize(Localizer["SendCode"].Value)),
+                resend: @Html.Raw(Json.Serialize(Localizer["Resend"].Value)),
+                emailCodeSent: @Html.Raw(Json.Serialize(Localizer["EmailCodeSent"].Value)),
+                pleaseWaitThenRetry: @Html.Raw(Json.Serialize(Localizer["PleaseWaitThenRetry"].Value))
+            };
+
             const btn = document.getElementById('sendEmailCodeBtn');
             const btnText = btn.querySelector('.btn-text');
             const countdownSpan = btn.querySelector('.countdown');
@@ -155,11 +163,11 @@
                         if (data.remainingSeconds) {
                             startCountdown(data.remainingSeconds);
                              msg.classList.remove('hidden');
-                             msg.textContent = '@Localizer["PleaseWaitThenRetry"]';
+                             msg.textContent = i18n.pleaseWaitThenRetry;
                              msg.classList.replace('text-green-600', 'text-amber-600');
                              setTimeout(() => {
                                  msg.classList.add('hidden');
-                                 msg.textContent = '@Localizer["EmailCodeSent"]'; // Reset text
+                                 msg.textContent = i18n.emailCodeSent;
                                  msg.classList.replace('text-amber-600', 'text-green-600');
                              }, 3000);
                         } else {
@@ -180,7 +188,7 @@
                 // Update UI state
                 btn.disabled = true;
                 btn.classList.add('opacity-50', 'cursor-not-allowed');
-                btnText.textContent = '@Localizer["Resend"]';
+                btnText.textContent = i18n.resend;
                 countdownSpan.textContent = `(${remaining})`;
                 countdownSpan.classList.remove('hidden');
                 
@@ -200,7 +208,7 @@
             function resetButton() {
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                btnText.textContent = '@Localizer["SendCode"]';
+                btnText.textContent = i18n.sendCode;
                 countdownSpan.classList.add('hidden');
             }
 

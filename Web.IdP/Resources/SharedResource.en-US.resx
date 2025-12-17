@@ -547,4 +547,7 @@
   <data name="EnterEmailCodeDescription" xml:space="preserve">
     <value>We sent a verification code to your email</value>
   </data>
+  <data name="InvalidMfaCode" xml:space="preserve">
+    <value>Invalid verification code</value>
+  </data>
 </root>
