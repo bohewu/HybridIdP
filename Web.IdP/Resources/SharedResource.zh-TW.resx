@@ -527,4 +527,19 @@
   <data name="UseAuthenticatorApp" xml:space="preserve">
     <value>使用驗證器應用程式</value>
   </data>
+  <data name="SendCode" xml:space="preserve">
+    <value>發送驗證碼</value>
+  </data>
+  <data name="Resend" xml:space="preserve">
+    <value>重新發送</value>
+  </data>
+  <data name="PleaseWaitThenRetry" xml:space="preserve">
+    <value>請稍後再重新索取驗證碼</value>
+  </data>
+  <data name="EmailVerification" xml:space="preserve">
+    <value>電子郵件驗證</value>
+  </data>
+  <data name="EnterEmailCodeDescription" xml:space="preserve">
+    <value>我們已將驗證碼發送至您的電子郵件</value>
+  </data>
 </root>
