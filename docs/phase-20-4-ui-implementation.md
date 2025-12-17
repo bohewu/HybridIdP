@@ -923,13 +923,128 @@ onMounted(() => {
 ## Implementation Checklist
 
 - [ ] Step 0: SecurityPolicy updates (DB migration)
-- [ ] Step 1: Backend APIs (List, Delete)
+- [ ] Step 1: Backend APIs (List, Delete) + **System Tests**
 - [ ] Step 2: Composable `useWebAuthn.js` (JavaScript)
 - [ ] Step 3: Frontend `MfaSettings.vue` integration
 - [ ] Step 4: i18n translations (en-US, zh-TW)
 - [ ] Step 5: Admin UI Security Settings
+- [ ] Testing: System tests for all new endpoints
 - [ ] Verification: Manual testing on all browsers
 - [ ] Documentation: Update user guide
+
+---
+
+## Testing Strategy
+
+### System Tests for New APIs
+
+**File**: `Tests.SystemTests/PasskeyApiTests.cs`
+
+目前已有的測試（4個）：
+- ✅ `RegisterOptions_ValidUser_ReturnsOptions`
+- ✅ `Register_WithoutOptions_ReturnsBadRequest`
+- ✅ `LoginOptions_ReturnsOptions`
+- ✅ `Login_InvalidSignature_ReturnsBadRequest`
+
+**需要新增的測試**：
+
+```csharp
+[Fact]
+public async Task ListPasskeys_Authenticated_ReturnsUserPasskeys()
+{
+    // Arrange: User is authenticated
+    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+    
+    // Act
+    var response = await _httpClient.GetAsync("/api/passkey/list");
+    
+    // Assert
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    var passkeys = await response.Content.ReadFromJsonAsync<List<PasskeyDto>>();
+    Assert.NotNull(passkeys);
+    // Initially should be empty list
+    Assert.Empty(passkeys);
+}
+
+[Fact]
+public async Task ListPasskeys_Unauthenticated_Returns401()
+{
+    // Arrange: No authentication header
+    _httpClient.DefaultRequestHeaders.Authorization = null;
+    
+    // Act
+    var response = await _httpClient.GetAsync("/api/passkey/list");
+    
+    // Assert
+    Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+}
+
+[Fact]
+public async Task DeletePasskey_ValidId_ReturnsSuccess()
+{
+    // Arrange
+    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+    // Note: This test requires a real passkey ID, might need to register one first
+    // Or use a known test passkey ID from seeded data
+    var passkeyId = 1; // Replace with actual seeded ID
+    
+    // Act
+    var response = await _httpClient.DeleteAsync($"/api/passkey/{passkeyId}");
+    
+    // Assert
+    Assert.True(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound);
+}
+
+[Fact]
+public async Task DeletePasskey_Unauthenticated_Returns401()
+{
+    // Arrange
+    _httpClient.DefaultRequestHeaders.Authorization = null;
+    
+    // Act
+    var response = await _httpClient.DeleteAsync("/api/passkey/1");
+    
+    // Assert
+    Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+}
+
+[Fact]
+public async Task RegisterPasskey_ExceedsLimit_ReturnsBadRequest()
+{
+    // Arrange: Set SecurityPolicy.MaxPasskeysPerUser = 1 (via admin API)
+    // Then register 1 passkey successfully
+    // Act: Try to register 2nd passkey
+    // Assert: Should return 400 Bad Request with error message
+    
+    // Note: This test requires:
+    // 1. Admin API to update SecurityPolicy
+    // 2. Full WebAuthn registration flow (complex)
+    // Mark as [Fact(Skip = "Requires full WebAuthn flow")] initially
+}
+```
+
+### 測試覆蓋重點
+
+| 功能 | 測試項目 | 優先級 |
+|------|---------|--------|
+| **List API** | 認證檢查 (401) | 🔴 必須 |
+| **List API** | 回傳格式正確 | 🔴 必須 |
+| **List API** | 只回傳自己的 passkeys | 🟡 重要 |
+| **Delete API** | 認證檢查 (401) | 🔴 必須 |
+| **Delete API** | 成功刪除 | 🔴 必須 |
+| **Delete API** | 不能刪除別人的 | 🟡 重要 |
+| **Register** | 檢查數量限制 | 🟡 重要 |
+| **Register** | 檢查功能開關 | 🟢 Nice to have |
+
+### 測試執行
+
+```powershell
+# Run all passkey tests
+dotnet test Tests.SystemTests --filter "FullyQualifiedName~PasskeyApiTests"
+
+# Run specific test
+dotnet test Tests.SystemTests --filter "FullyQualifiedName~PasskeyApiTests.ListPasskeys_Authenticated_ReturnsUserPasskeys"
+```
 
 ---
 
