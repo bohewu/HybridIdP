@@ -936,7 +936,242 @@ onMounted(() => {
 
 ## Testing Strategy
 
-### System Tests for New APIs
+### 1. Service Layer Unit Tests
+
+**File**: `Tests.Infrastructure.UnitTests/Services/PasskeyServiceTests.cs`
+
+需要新增的測試：
+
+```csharp
+using Xunit;
+using Moq;
+using Infrastructure.Services;
+using Core.Application.Interfaces;
+using Core.Domain;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Fido2NetLib;
+
+public class PasskeyServiceTests
+{
+    private readonly Mock<IFido2> _mockFido2;
+    private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
+    private readonly Mock<ApplicationDbContext> _mockDbContext;
+    private readonly Mock<IConfiguration> _mockConfig;
+    private readonly Mock<ILogger<PasskeyService>> _mockLogger;
+    private readonly PasskeyService _sut;
+
+    public PasskeyServiceTests()
+    {
+        _mockFido2 = new Mock<IFido2>();
+        _mockUserManager = MockUserManager();
+        _mockDbContext = new Mock<ApplicationDbContext>();
+        _mockConfig = new Mock<IConfiguration>();
+        _mockLogger = new Mock<ILogger<PasskeyService>>();
+        
+        _mockConfig.Setup(c => c["Fido2:Origin"]).Returns("https://localhost:7035");
+        
+        _sut = new PasskeyService(
+            _mockFido2.Object,
+            _mockUserManager.Object,
+            _mockDbContext.Object,
+            _mockConfig.Object,
+            _mockLogger.Object
+        );
+    }
+
+    [Fact]
+    public async Task GetUserPasskeysAsync_ValidUser_ReturnsPasskeys()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var credentials = new List<UserCredential>
+        {
+            new UserCredential 
+            { 
+                Id = 1, 
+                UserId = userId, 
+                DeviceName = "Chrome on Windows",
+                RegDate = DateTime.UtcNow 
+            },
+            new UserCredential 
+            { 
+                Id = 2, 
+                UserId = userId, 
+                DeviceName = "Safari on macOS",
+                RegDate = DateTime.UtcNow 
+            }
+        };
+        
+        var mockSet = MockDbSet(credentials.AsQueryable());
+        _mockDbContext.Setup(db => db.UserCredentials).Returns(mockSet.Object);
+        
+        // Act
+        var result = await _sut.GetUserPasskeysAsync(userId, CancellationToken.None);
+        
+        // Assert
+        Assert.Equal(2, result.Count);
+        Assert.Equal("Chrome on Windows", result[0].DeviceName);
+    }
+
+    [Fact]
+    public async Task GetUserPasskeysAsync_NoPasskeys_ReturnsEmptyList()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var mockSet = MockDbSet(new List<UserCredential>().AsQueryable());
+        _mockDbContext.Setup(db => db.UserCredentials).Returns(mockSet.Object);
+        
+        // Act
+        var result = await _sut.GetUserPasskeysAsync(userId, CancellationToken.None);
+        
+        // Assert
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task DeletePasskeyAsync_ValidId_ReturnsTrue()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var credentialId = 1;
+        var credential = new UserCredential 
+        { 
+            Id = credentialId, 
+            UserId = userId 
+        };
+        
+        var mockSet = MockDbSet(new List<UserCredential> { credential }.AsQueryable());
+        _mockDbContext.Setup(db => db.UserCredentials).Returns(mockSet.Object);
+        _mockDbContext.Setup(db => db.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        
+        // Act
+        var result = await _sut.DeletePasskeyAsync(userId, credentialId, CancellationToken.None);
+        
+        // Assert
+        Assert.True(result);
+        _mockDbContext.Verify(db => db.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeletePasskeyAsync_NotOwnedByUser_ReturnsFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var credentialId = 1;
+        var credential = new UserCredential 
+        { 
+            Id = credentialId, 
+            UserId = otherUserId // 不是該使用者的
+        };
+        
+        var mockSet = MockDbSet(new List<UserCredential> { credential }.AsQueryable());
+        _mockDbContext.Setup(db => db.UserCredentials).Returns(mockSet.Object);
+        
+        // Act
+        var result = await _sut.DeletePasskeyAsync(userId, credentialId, CancellationToken.None);
+        
+        // Assert
+        Assert.False(result);
+        _mockDbContext.Verify(db => db.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeletePasskeyAsync_NonExistentId_ReturnsFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var mockSet = MockDbSet(new List<UserCredential>().AsQueryable());
+        _mockDbContext.Setup(db => db.UserCredentials).Returns(mockSet.Object);
+        
+        // Act
+        var result = await _sut.DeletePasskeyAsync(userId, 999, CancellationToken.None);
+        
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task RegisterCredentialsAsync_ValidData_ReturnsSuccess()
+    {
+        // Arrange
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "test@example.com" };
+        var jsonResponse = "{}"; // Mock response
+        var optionsJson = "{}"; // Mock options
+        
+        // Mock Fido2 verification success
+        var mockResult = new Mock<VerifyAssertionResult>();
+        mockResult.Setup(r => r.Status).Returns("ok");
+        _mockFido2.Setup(f => f.MakeNewCredentialAsync(
+            It.IsAny<AuthenticatorAttestationRawResponse>(),
+            It.IsAny<CredentialCreateOptions>(),
+            It.IsAny<IsCredentialIdUniqueToUserAsyncDelegate>(),
+            It.IsAny<CancellationToken>()
+        )).ReturnsAsync(mockResult.Object);
+        
+        // Act
+        var (success, error) = await _sut.RegisterCredentialsAsync(
+            user, jsonResponse, optionsJson, CancellationToken.None);
+        
+        // Assert
+        Assert.True(success);
+        Assert.Null(error);
+        _mockDbContext.Verify(db => db.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RegisterCredentialsAsync_InvalidSignature_ReturnsError()
+    {
+        // Arrange
+        var user = new ApplicationUser { Id = Guid.NewGuid() };
+        
+        // Mock Fido2 verification failure
+        var mockResult = new Mock<VerifyAssertionResult>();
+        mockResult.Setup(r => r.Status).Returns("error");
+        mockResult.Setup(r => r.ErrorMessage).Returns("Invalid signature");
+        
+        _mockFido2.Setup(f => f.MakeNewCredentialAsync(
+            It.IsAny<AuthenticatorAttestationRawResponse>(),
+            It.IsAny<CredentialCreateOptions>(),
+            It.IsAny<IsCredentialIdUniqueToUserAsyncDelegate>(),
+            It.IsAny<CancellationToken>()
+        )).ReturnsAsync(mockResult.Object);
+        
+        // Act
+        var (success, error) = await _sut.RegisterCredentialsAsync(
+            user, "{}", "{}", CancellationToken.None);
+        
+        // Assert
+        Assert.False(success);
+        Assert.Equal("Invalid signature", error);
+    }
+
+    // Helper methods
+    private static Mock<UserManager<ApplicationUser>> MockUserManager()
+    {
+        var store = new Mock<IUserStore<ApplicationUser>>();
+        return new Mock<UserManager<ApplicationUser>>(
+            store.Object, null, null, null, null, null, null, null, null);
+    }
+
+    private static Mock<DbSet<T>> MockDbSet<T>(IQueryable<T> data) where T : class
+    {
+        var mockSet = new Mock<DbSet<T>>();
+        mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(data.Provider);
+        mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(data.Expression);
+        mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(data.ElementType);
+        mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(data.GetEnumerator());
+        return mockSet;
+    }
+}
+```
+
+---
+
+### 2. System Tests for APIs
 
 **File**: `Tests.SystemTests/PasskeyApiTests.cs`
 
