@@ -67,7 +67,7 @@ public partial class PasskeyController : ControllerBase
         // 2. Check if passkey is enabled
         if (!policy.EnablePasskey)
         {
-            _logger.LogWarning("Passkey registration blocked: feature disabled");
+            LogPasskeyFeatureDisabled();
             return StatusCode(403, new { error = "Passkey authentication is disabled" });
         }
         
@@ -77,8 +77,7 @@ public partial class PasskeyController : ControllerBase
         
         if (existingCount >= policy.MaxPasskeysPerUser)
         {
-            _logger.LogWarning("Passkey registration blocked for user {UserId}: limit reached ({Count}/{Max})", 
-                user.Id, existingCount, policy.MaxPasskeysPerUser);
+            LogPasskeyLimitReached(user.Id, existingCount, policy.MaxPasskeysPerUser);
             return BadRequest(new { 
                 error = $"Maximum passkey limit reached ({policy.MaxPasskeysPerUser})" 
             });
@@ -107,7 +106,7 @@ public partial class PasskeyController : ControllerBase
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnablePasskey)
         {
-            _logger.LogWarning("Passkey registration blocked for user {UserId}: feature disabled", user.Id);
+            LogPasskeyRegistrationBlocked(user.Id);
             return StatusCode(403, new { error = "Passkey authentication is disabled" });
         }
 
@@ -152,7 +151,7 @@ public partial class PasskeyController : ControllerBase
             return NotFound(new { error = "Passkey not found" });
         }
         
-        _logger.LogInformation("User {UserId} deleted passkey {CredentialId}", user.Id, id);
+        LogPasskeyDeleted(user.Id, id);
         return Ok(new { success = true });
     }
 
@@ -201,14 +200,14 @@ public partial class PasskeyController : ControllerBase
             // 1. Check Person.Status (CRITICAL SECURITY FIX)
             if (result.User.Person != null && result.User.Person.Status != PersonStatus.Active)
             {
-                _logger.LogWarning("Passkey login blocked for person {PersonId} with status {Status}", result.User.Person.Id, result.User.Person.Status);
+                LogPasskeyLoginBlockedByStatus(result.User.Person.Id, result.User.Person.Status);
                 return BadRequest(new { success = false, error = "Account not active" });
             }
             
             // 2. Check User.IsActive
             if (!result.User.IsActive)
             {
-                _logger.LogWarning("Passkey login blocked for deactivated user {UserId}", result.User.Id);
+                LogPasskeyLoginBlockedByDeactivation(result.User.Id);
                 return BadRequest(new { success = false, error = "User account deactivated" });
             }
             
@@ -232,4 +231,22 @@ public partial class PasskeyController : ControllerBase
 
     [LoggerMessage(Level = LogLevel.Information, Message = "User '{UserName}' logged in with passkey.")]
     partial void LogPasskeyLogin(string? userName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey registration blocked: feature disabled")]
+    partial void LogPasskeyFeatureDisabled();
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey registration blocked for user {UserId}: limit reached ({Count}/{Max})")]
+    partial void LogPasskeyLimitReached(Guid userId, int count, int max);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey registration blocked for user {UserId}: feature disabled")]
+    partial void LogPasskeyRegistrationBlocked(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} deleted passkey {CredentialId}")]
+    partial void LogPasskeyDeleted(Guid userId, int credentialId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked for person {PersonId} with status {Status}")]
+    partial void LogPasskeyLoginBlockedByStatus(Guid personId, PersonStatus status);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked for deactivated user {UserId}")]
+    partial void LogPasskeyLoginBlockedByDeactivation(Guid userId);
 }

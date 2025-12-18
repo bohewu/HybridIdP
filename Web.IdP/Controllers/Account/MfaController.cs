@@ -17,7 +17,7 @@ namespace Web.IdP.Controllers.Account;
 [ApiController]
 [Route("api/account/mfa")]
 [ApiAuthorize]
-public class MfaController : ControllerBase
+public partial class MfaController : ControllerBase
 {
     private readonly IMfaService _mfaService;
     private readonly ISecurityPolicyService _securityPolicyService;
@@ -102,7 +102,7 @@ public class MfaController : ControllerBase
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableTotpMfa)
         {
-            _logger.LogWarning("TOTP setup blocked for user {UserId}: feature disabled", user.Id);
+            LogTotpSetupBlocked(user.Id);
             return StatusCode(403, new { error = "mfaDisabled" });
         }
 
@@ -131,7 +131,7 @@ public class MfaController : ControllerBase
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableTotpMfa)
         {
-            _logger.LogWarning("TOTP verification blocked for user {UserId}: feature disabled", user.Id);
+            LogTotpVerificationBlocked(user.Id);
             return StatusCode(403, new { error = "mfaDisabled" });
         }
 
@@ -139,7 +139,7 @@ public class MfaController : ControllerBase
 
         if (isValid)
         {
-            _logger.LogInformation("User {UserId} enabled MFA", user.Id);
+            LogMfaEnabled(user.Id);
             await _auditService.LogEventAsync("MfaEnabled", user.Id.ToString(), null, null, null);
 
             // Generate recovery codes
@@ -206,7 +206,7 @@ public class MfaController : ControllerBase
 
         await _mfaService.DisableMfaAsync(user, ct);
 
-        _logger.LogInformation("User {UserId} disabled MFA", user.Id);
+        LogMfaDisabled(user.Id);
         await _auditService.LogEventAsync("MfaDisabled", user.Id.ToString(), null, null, null);
 
         return Ok(new { success = true });
@@ -227,7 +227,7 @@ public class MfaController : ControllerBase
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableTotpMfa)
         {
-            _logger.LogWarning("Recovery codes regeneration blocked for user {UserId}: feature disabled", user.Id);
+            LogRecoveryCodesRegenerationBlocked(user.Id);
             return StatusCode(403, new { error = "mfaDisabled" });
         }
 
@@ -238,7 +238,7 @@ public class MfaController : ControllerBase
 
         var codes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
 
-        _logger.LogInformation("User {UserId} regenerated recovery codes", user.Id);
+        LogRecoveryCodesRegenerated(user.Id);
         await _auditService.LogEventAsync("MfaRecoveryCodesRegenerated", user.Id.ToString(), null, null, null);
 
         return Ok(new RecoveryCodesResponse
@@ -264,7 +264,7 @@ public class MfaController : ControllerBase
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableEmailMfa)
         {
-            _logger.LogWarning("Email MFA code request blocked for user {UserId}: feature disabled", user.Id);
+            LogEmailMfaCodeRequestBlocked(user.Id);
             return StatusCode(403, new { error = "mfaDisabled" });
         }
 
@@ -280,7 +280,7 @@ public class MfaController : ControllerBase
             return StatusCode(429, new { success = false, remainingSeconds, error = "rateLimitExceeded", message = $"Please wait {remainingSeconds} seconds." });
         }
 
-        _logger.LogInformation("Email MFA code sent to user {UserId}", user.Id);
+        LogEmailMfaCodeSent(user.Id);
 
         return Ok(new { success = true, remainingSeconds, message = "Code sent to email." });
     }
@@ -301,7 +301,7 @@ public class MfaController : ControllerBase
 
         if (isValid)
         {
-            _logger.LogInformation("Email MFA code verified for user {UserId}", user.Id);
+            LogEmailMfaCodeVerified(user.Id);
             return Ok(new { success = true });
         }
 
@@ -323,7 +323,7 @@ public class MfaController : ControllerBase
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableEmailMfa)
         {
-            _logger.LogWarning("Email MFA enablement blocked for user {UserId}: feature disabled", user.Id);
+            LogEmailMfaEnablementBlocked(user.Id);
             return StatusCode(403, new { error = "mfaDisabled" });
         }
 
@@ -334,7 +334,7 @@ public class MfaController : ControllerBase
 
         await _mfaService.EnableEmailMfaAsync(user, ct);
 
-        _logger.LogInformation("User {UserId} enabled Email MFA", user.Id);
+        LogEmailMfaEnabled(user.Id);
         await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null);
 
         return Ok(new { success = true });
@@ -354,11 +354,51 @@ public class MfaController : ControllerBase
 
         await _mfaService.DisableEmailMfaAsync(user, ct);
 
-        _logger.LogInformation("User {UserId} disabled Email MFA", user.Id);
+        LogEmailMfaDisabled(user.Id);
         await _auditService.LogEventAsync("EmailMfaDisabled", user.Id.ToString(), null, null, null);
 
         return Ok(new { success = true });
     }
+
+    #endregion
+
+    #region Logging
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "TOTP setup blocked for user {UserId}: feature disabled")]
+    partial void LogTotpSetupBlocked(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "TOTP verification blocked for user {UserId}: feature disabled")]
+    partial void LogTotpVerificationBlocked(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} enabled MFA")]
+    partial void LogMfaEnabled(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} disabled MFA")]
+    partial void LogMfaDisabled(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Recovery codes regeneration blocked for user {UserId}: feature disabled")]
+    partial void LogRecoveryCodesRegenerationBlocked(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} regenerated recovery codes")]
+    partial void LogRecoveryCodesRegenerated(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Email MFA code request blocked for user {UserId}: feature disabled")]
+    partial void LogEmailMfaCodeRequestBlocked(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Email MFA code sent to user {UserId}")]
+    partial void LogEmailMfaCodeSent(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Email MFA code verified for user {UserId}")]
+    partial void LogEmailMfaCodeVerified(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Email MFA enablement blocked for user {UserId}: feature disabled")]
+    partial void LogEmailMfaEnablementBlocked(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} enabled Email MFA")]
+    partial void LogEmailMfaEnabled(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} disabled Email MFA")]
+    partial void LogEmailMfaDisabled(Guid userId);
 
     #endregion
 }
