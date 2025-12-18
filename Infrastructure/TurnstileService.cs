@@ -7,7 +7,7 @@ using System.Net.Http;
 
 namespace Infrastructure;
 
-public class TurnstileService : ITurnstileService
+public partial class TurnstileService : ITurnstileService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly TurnstileOptions _options;
@@ -31,21 +31,21 @@ public class TurnstileService : ITurnstileService
         var enabled = _options.Enabled;
         if (!enabled)
         {
-            _logger.LogInformation("Turnstile is disabled via configuration. Skipping validation.");
+            LogTurnstileDisabled(_logger);
             return true;
         }
 
         // Circuit Breaker Check
         if (!_stateService.IsAvailable)
         {
-            _logger.LogWarning("Turnstile is temporarily disabled due to connectivity issues (Circuit Breaker). Skipping validation.");
+            LogTurnstileCircuitBreaker(_logger);
             return true; // Bypass validation
         }
 
         var secretKey = _options.SecretKey;
         if (string.IsNullOrEmpty(secretKey))
         {
-            _logger.LogWarning("Turnstile SecretKey is not configured. Validation will fail.");
+            LogTurnstileSecretKeyMissing(_logger);
             return false;
         }
 
@@ -74,17 +74,16 @@ public class TurnstileService : ITurnstileService
 
             if (result?.Success == true)
             {
-                _logger.LogInformation("Turnstile validation succeeded.");
+                LogTurnstileSuccess(_logger);
                 return true;
             }
 
-            _logger.LogWarning("Turnstile validation failed. Errors: {Errors}",
-                string.Join(", ", result?.ErrorCodes ?? Array.Empty<string>()));
+            LogTurnstileFailure(_logger, string.Join(", ", result?.ErrorCodes ?? Array.Empty<string>()));
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error validating Turnstile token.");
+            LogTurnstileValidationException(_logger, ex);
             return false;
         }
     }
@@ -94,4 +93,22 @@ public class TurnstileService : ITurnstileService
         public bool Success { get; set; }
         public string[]? ErrorCodes { get; set; }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Turnstile is disabled via configuration. Skipping validation.")]
+    static partial void LogTurnstileDisabled(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Turnstile is temporarily disabled due to connectivity issues (Circuit Breaker). Skipping validation.")]
+    static partial void LogTurnstileCircuitBreaker(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Turnstile SecretKey is not configured. Validation will fail.")]
+    static partial void LogTurnstileSecretKeyMissing(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Turnstile validation succeeded.")]
+    static partial void LogTurnstileSuccess(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Turnstile validation failed. Errors: {Errors}")]
+    static partial void LogTurnstileFailure(ILogger logger, string errors);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error validating Turnstile token.")]
+    static partial void LogTurnstileValidationException(ILogger logger, Exception ex);
 }

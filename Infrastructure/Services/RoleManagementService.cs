@@ -57,10 +57,10 @@ public class RoleManagementService : IRoleManagementService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var s = search.Trim();
+            var s = search.Trim().ToLower(); // EF Core translation friendly
             rolesQuery = rolesQuery.Where(r =>
-                (r.Name != null && r.Name.Contains(s)) ||
-                (r.Description != null && r.Description.Contains(s))
+                (r.Name != null && r.Name.ToLower().Contains(s)) ||
+                (r.Description != null && r.Description.ToLower().Contains(s))
             );
         }
 

@@ -17,7 +17,7 @@ namespace Core.Domain.Entities
         public int MaxFailedAccessAttempts { get; set; } = 5;
         public int LockoutDurationMinutes { get; set; } = 15;
         public int AbnormalLoginHistoryCount { get; set; } = 10; // Number of recent logins to check for abnormalities
-        public bool BlockAbnormalLogin { get; set; } = false; // Whether to block login if abnormal
+        public bool BlockAbnormalLogin { get; set; } // Whether to block login if abnormal
         
         /// <summary>
         /// Whether users are allowed to change their own passwords via profile page.
@@ -49,7 +49,7 @@ namespace Core.Domain.Entities
         /// When true, users must have TOTP or Email MFA enabled before they can register passkeys.
         /// Disabling the last MFA method will automatically revoke all passkeys.
         /// </summary>
-        public bool RequireMfaForPasskey { get; set; } = false;
+        public bool RequireMfaForPasskey { get; set; }
         
         public DateTime UpdatedUtc { get; set; }
         public string? UpdatedBy { get; set; }

@@ -8,7 +8,7 @@ public class WebIdPServerFixture : IAsyncLifetime
     // Static state for shared server
     private static readonly SemaphoreSlim _semaphore = new(1, 1);
     private static Process? _serverProcess;
-    private static int _usageCount = 0;
+    private static int _usageCount;
     
     // We use the same port for now to test "Shared Instance" parallelism.
     private const string ServerUrl = "https://localhost:7035";

@@ -33,7 +33,7 @@ public class SecurityPolicyDto
     [Range(1, 100)]
     public int AbnormalLoginHistoryCount { get; set; } = 10;
 
-    public bool BlockAbnormalLogin { get; set; } = false;
+    public bool BlockAbnormalLogin { get; set; }
     
     public bool AllowSelfPasswordChange { get; set; } = true;
     
@@ -44,7 +44,7 @@ public class SecurityPolicyDto
     [Range(1, 50, ErrorMessage = "Max passkeys must be between 1 and 50")]
     public int MaxPasskeysPerUser { get; set; } = 10;
     
-    public bool RequireMfaForPasskey { get; set; } = false;
+    public bool RequireMfaForPasskey { get; set; }
     
     public DateTime UpdatedUtc { get; set; }
     public string? UpdatedBy { get; set; }

@@ -36,12 +36,12 @@ public class ScopeExtension
     /// Whether this scope is required and cannot be opted out by the user
     /// (e.g., openid is usually required for OIDC)
     /// </summary>
-    public bool IsRequired { get; set; } = false;
+    public bool IsRequired { get; set; }
 
     /// <summary>
     /// Display order on consent screen (lower numbers appear first)
     /// </summary>
-    public int DisplayOrder { get; set; } = 0;
+    public int DisplayOrder { get; set; }
 
     /// <summary>
     /// Category for grouping on consent screen (e.g., "Profile", "API Access", "Custom")
@@ -53,5 +53,5 @@ public class ScopeExtension
     /// Default is false. OIDC scopes (openid, profile, email, roles) should be true.
     /// API scopes should typically be false to prevent M2M clients from accessing user-centric scopes.
     /// </summary>
-    public bool IsPublic { get; set; } = false;
+    public bool IsPublic { get; set; }
 }

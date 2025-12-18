@@ -8,7 +8,7 @@ namespace Infrastructure.Authorization;
 /// Validates that the user's access token contains the required scope
 /// Supports both "scope" (space-separated) and "scp" (multiple instances) claim formats
 /// </summary>
-public class ScopeAuthorizationHandler : AuthorizationHandler<ScopeRequirement>
+public partial class ScopeAuthorizationHandler : AuthorizationHandler<ScopeRequirement>
 {
     private readonly ILogger<ScopeAuthorizationHandler> _logger;
 
@@ -30,7 +30,7 @@ public class ScopeAuthorizationHandler : AuthorizationHandler<ScopeRequirement>
         var user = context.User;
         if (user == null || !user.Identity?.IsAuthenticated == true)
         {
-            _logger.LogDebug("User is not authenticated, denying access for scope: {Scope}", requirement.Scope);
+            LogUserNotAuthenticated(_logger, requirement.Scope);
             return Task.CompletedTask;
         }
 
@@ -71,17 +71,23 @@ public class ScopeAuthorizationHandler : AuthorizationHandler<ScopeRequirement>
         // Check if required scope is present (case-insensitive)
         if (scopes.Contains(requirement.Scope))
         {
-            _logger.LogDebug("User has required scope: {Scope}", requirement.Scope);
+            LogUserHasRequiredScope(_logger, requirement.Scope);
             context.Succeed(requirement);
         }
         else
         {
-            _logger.LogWarning(
-                "User does not have required scope: {RequiredScope}. Available scopes: {AvailableScopes}",
-                requirement.Scope,
-                string.Join(", ", scopes));
+            LogUserMissingScope(_logger, requirement.Scope, string.Join(", ", scopes));
         }
 
         return Task.CompletedTask;
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "User is not authenticated, denying access for scope: {Scope}")]
+    static partial void LogUserNotAuthenticated(ILogger logger, string scope);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "User has required scope: {Scope}")]
+    static partial void LogUserHasRequiredScope(ILogger logger, string scope);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "User does not have required scope: {RequiredScope}. Available scopes: {AvailableScopes}")]
+    static partial void LogUserMissingScope(ILogger logger, string requiredScope, string availableScopes);
 }

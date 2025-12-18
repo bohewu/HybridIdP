@@ -48,7 +48,7 @@ public partial class IpWhitelistAuthorizationHandler : AuthorizationHandler<IpWh
         }
 
         // Read allowed IPs from configuration dynamically
-        var allowedIPs = _options.CurrentValue.AllowedIPs ?? Array.Empty<string>(); // Added check
+        var allowedIPs = _options.CurrentValue.AllowedIPs ?? new List<string>();
 
         LogCheckingWhitelist(_logger, remoteIp, string.Join(", ", allowedIPs));
 
@@ -72,7 +72,7 @@ public partial class IpWhitelistAuthorizationHandler : AuthorizationHandler<IpWh
 
         foreach (var allowedIp in allowedIPs)
         {
-            if (allowedIp.Contains('/'))
+            if (allowedIp.Contains("/", StringComparison.Ordinal))
             {
                 // CIDR notation (e.g., "10.0.0.0/8")
                 if (IsInCidrRange(ipToCheck, allowedIp))

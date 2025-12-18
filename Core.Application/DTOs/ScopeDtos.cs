@@ -15,10 +15,10 @@ public sealed class ScopeSummary
     public string? ConsentDisplayNameKey { get; set; }
     public string? ConsentDescriptionKey { get; set; }
     public string? IconUrl { get; set; }
-    public bool IsRequired { get; set; } = false;
-    public int DisplayOrder { get; set; } = 0;
+    public bool IsRequired { get; set; }
+    public int DisplayOrder { get; set; }
     public string? Category { get; set; }
-    public bool IsPublic { get; set; } = false;
+    public bool IsPublic { get; set; }
 }
 
 /// <summary>

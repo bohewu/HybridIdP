@@ -11,7 +11,7 @@ using System.Security.Claims;
 
 namespace Infrastructure.Identity;
 
-public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser, ApplicationRole>
+public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser, ApplicationRole>
 {
     private readonly IApplicationDbContext _context;
     private readonly IAuditService _auditService;
@@ -30,12 +30,15 @@ public class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Applicati
         _logger = logger;
     }
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Orphan ApplicationUser detected: {UserId}, auto-creating Person")]
+    static partial void LogOrphanUserDetected(ILogger logger, string? userId);
+
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
     {
         // Phase 10.5: Auto-heal orphan users by creating Person if missing
         if (!user.PersonId.HasValue)
         {
-            _logger.LogWarning("Orphan ApplicationUser detected: {UserId}, auto-creating Person", user.Id);
+            LogOrphanUserDetected(_logger, user.Id.ToString());
             
             var person = new Person
             {
