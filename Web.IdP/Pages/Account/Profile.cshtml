@@ -1,6 +1,7 @@
 @page
 @model Web.IdP.Pages.Account.ProfileModel
-@inject IViewLocalizer Localizer
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
     ViewData["Title"] = Localizer["Profile"];
 }

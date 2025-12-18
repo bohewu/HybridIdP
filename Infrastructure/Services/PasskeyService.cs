@@ -245,7 +245,7 @@ public class PasskeyService : IPasskeyService
 
     public async Task<List<UserCredentialDto>> GetUserPasskeysAsync(Guid userId, CancellationToken ct = default)
     {
-        return await _dbContext.UserCredentials
+        var credentials = await _dbContext.UserCredentials
             .Where(c => c.UserId == userId)
             .OrderByDescending(c => c.RegDate)
             .Select(c => new UserCredentialDto
@@ -256,6 +256,18 @@ public class PasskeyService : IPasskeyService
                 LastUsedAt = c.LastUsedAt
             })
             .ToListAsync(ct);
+
+        // Ensure DateTimeKind is UTC for proper JSON serialization (Z suffix)
+        foreach (var cred in credentials)
+        {
+            cred.CreatedAt = DateTime.SpecifyKind(cred.CreatedAt, DateTimeKind.Utc);
+            if (cred.LastUsedAt.HasValue)
+            {
+                cred.LastUsedAt = DateTime.SpecifyKind(cred.LastUsedAt.Value, DateTimeKind.Utc);
+            }
+        }
+
+        return credentials;
     }
 
     public async Task<bool> DeletePasskeyAsync(Guid userId, int credentialId, CancellationToken ct = default)
