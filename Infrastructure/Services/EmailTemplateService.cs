@@ -37,13 +37,13 @@ public class EmailTemplateService : IEmailTemplateService
         // Get subject template
         var subjectTemplate = _localizer["MfaCode_Subject"];
         var subject = (subjectTemplate.ResourceNotFound ? "Your verification code - {ProductName}" : subjectTemplate.Value)
-            .Replace("{ProductName}", productName);
+            .Replace("{ProductName}", productName, StringComparison.Ordinal);
 
         // Get footer template
         var footerTemplate = _localizer["Email_Footer"];
         var footer = (footerTemplate.ResourceNotFound ? "" : footerTemplate.Value)
-            .Replace("{ProductName}", productName)
-            .Replace("{Copyright}", copyright);
+            .Replace("{ProductName}", productName, StringComparison.Ordinal)
+            .Replace("{Copyright}", copyright, StringComparison.Ordinal);
 
         // Get body template
         var bodyTemplate = _localizer["MfaCode_Body"];
@@ -52,9 +52,9 @@ public class EmailTemplateService : IEmailTemplateService
             : bodyTemplate.Value;
         
         var body = rawBody
-            .Replace("{Code}", code)
-            .Replace("{ExpiryMinutes}", expiryMinutes.ToString())
-            .Replace("{Footer}", footer);
+            .Replace("{Code}", code, StringComparison.Ordinal)
+            .Replace("{ExpiryMinutes}", expiryMinutes.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            .Replace("{Footer}", footer, StringComparison.Ordinal);
 
         return (subject, body);
     }

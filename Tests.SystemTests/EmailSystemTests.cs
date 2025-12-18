@@ -29,7 +29,7 @@ public class EmailSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         _httpClient = new HttpClient(handler) { BaseAddress = new Uri(_serverFixture.BaseUrl) };
         _mailpitClient = new HttpClient { BaseAddress = new Uri("http://localhost:8025") };
     }
-    private bool _mailpitAvailable = false;
+    private bool _mailpitAvailable;
 
     public async Task InitializeAsync()
     {

@@ -38,7 +38,7 @@ public class ClientAllowedScopesService : IClientAllowedScopesService
         var scopePrefix = OpenIddictConstants.Permissions.Prefixes.Scope;
         
         var scopes = permissions
-            .Where(p => p.StartsWith(scopePrefix))
+            .Where(p => p.StartsWith(scopePrefix, StringComparison.Ordinal))
             .Select(p => p.Substring(scopePrefix.Length))
             .ToList();
 
@@ -59,7 +59,7 @@ public class ClientAllowedScopesService : IClientAllowedScopesService
         // Get existing permissions that are not scope permissions
         var scopePrefix = OpenIddictConstants.Permissions.Prefixes.Scope;
         var nonScopePermissions = descriptor.Permissions
-            .Where(p => !p.StartsWith(scopePrefix))
+            .Where(p => !p.StartsWith(scopePrefix, StringComparison.Ordinal))
             .ToList();
 
         // Clear all permissions and re-add non-scope permissions

@@ -62,7 +62,7 @@ public class ApplicationUser : IdentityUser<Guid>
     /// <summary>
     /// Indicates whether Email-based MFA is enabled for this user.
     /// </summary>
-    public bool EmailMfaEnabled { get; set; } = false;
+    public bool EmailMfaEnabled { get; set; }
     
     /// <summary>
     /// Hashed 6-digit code sent via email. Null when no code is pending.
@@ -76,7 +76,7 @@ public class ApplicationUser : IdentityUser<Guid>
     public DateTime? EmailMfaCodeExpiry { get; set; }
     
     // Soft Delete
-    public bool IsDeleted { get; set; } = false;
+    public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
     

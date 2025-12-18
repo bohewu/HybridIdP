@@ -10,7 +10,7 @@ using System;
 
 namespace HybridIdP.Infrastructure.Identity
 {
-    public class DynamicPasswordValidator : IPasswordValidator<ApplicationUser>
+    public partial class DynamicPasswordValidator : PasswordValidator<ApplicationUser>
     {
         private readonly ILogger<DynamicPasswordValidator> _logger;
         private readonly ISecurityPolicyService _securityPolicyService;
@@ -21,7 +21,7 @@ namespace HybridIdP.Infrastructure.Identity
             _logger = logger;
         }
 
-        public async Task<IdentityResult> ValidateAsync(UserManager<ApplicationUser> manager, ApplicationUser user, string? password)
+        public override async Task<IdentityResult> ValidateAsync(UserManager<ApplicationUser> manager, ApplicationUser user, string? password)
         {
             var errors = new List<IdentityError>();
             if (string.IsNullOrWhiteSpace(password))
@@ -90,7 +90,7 @@ namespace HybridIdP.Infrastructure.Identity
                     }
                     catch (JsonException ex)
                     {
-                        _logger.LogError(ex, "Failed to deserialize password history for user {UserId}", user.Id);
+                        LogPasswordHistoryDeserializationFailed(_logger, ex, user.Id.ToString());
                     }
                 }
 
@@ -129,5 +129,7 @@ namespace HybridIdP.Infrastructure.Identity
 
             return errors.Count > 0 ? IdentityResult.Failed(errors.ToArray()) : IdentityResult.Success;
         }
+        [LoggerMessage(Level = LogLevel.Error, Message = "Failed to deserialize password history for user {UserId}")]
+        static partial void LogPasswordHistoryDeserializationFailed(ILogger logger, Exception ex, string userId);
     }
 }

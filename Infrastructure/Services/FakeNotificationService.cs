@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Infrastructure.Services
 {
-    public class FakeNotificationService : INotificationService
+    public partial class FakeNotificationService : INotificationService
     {
         private readonly ILogger<FakeNotificationService> _logger;
 
@@ -18,8 +18,10 @@ namespace Infrastructure.Services
         {
             // Fake implementation: just log the event
             // Future: implement SMS/email notifications
-            _logger.LogWarning("Abnormal login detected for user {UserId} from IP {IpAddress} at {LoginTime}", userId, login.IpAddress, login.LoginTime);
+            LogAbnormalLogin(_logger, userId, login.IpAddress, login.LoginTime.ToString());
             return Task.CompletedTask;
         }
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Abnormal login detected for user {UserId} from IP {IpAddress} at {LoginTime}")]
+        static partial void LogAbnormalLogin(ILogger logger, string? userId, string? ipAddress, string? loginTime);
     }
 }

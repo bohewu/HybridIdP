@@ -4,7 +4,7 @@ public class ProxyOptions
 {
     public const string Section = "Proxy";
 
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
     
     /// <summary>
     /// Semicolon separated list of IP addresses of known proxies.
@@ -18,5 +18,5 @@ public class ProxyOptions
     
     public int ForwardLimit { get; set; } = 1;
 
-    public bool RequireHeaderSymmetry { get; set; } = false;
+    public bool RequireHeaderSymmetry { get; set; }
 }

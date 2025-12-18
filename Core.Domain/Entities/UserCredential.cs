@@ -15,9 +15,11 @@ public class UserCredential
     public virtual ApplicationUser User { get; set; } = null!;
 
     [Required]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "Binary data storage for EF Core")]
     public byte[] PublicKey { get; set; } = Array.Empty<byte>();
 
     [Required]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "Binary data storage for EF Core")]
     public byte[] CredentialId { get; set; } = Array.Empty<byte>();
 
     public uint SignatureCounter { get; set; }

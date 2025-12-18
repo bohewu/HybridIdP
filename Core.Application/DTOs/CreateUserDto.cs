@@ -27,5 +27,5 @@ public class CreateUserDto
     
     // Account Settings
     public bool IsActive { get; set; } = true;
-    public bool EmailConfirmed { get; set; } = false;
+    public bool EmailConfirmed { get; set; }
 }
