@@ -23,8 +23,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     DbSet<UserClaim> IApplicationDbContext.UserClaims => Set<UserClaim>();
     public DbSet<ScopeClaim> ScopeClaims => Set<ScopeClaim>();
     public DbSet<Setting> Settings => Set<Setting>();
-    public DbSet<SecurityPolicy> SecurityPolicies { get; set; } = default!;
-    public DbSet<LoginHistory> LoginHistories { get; set; } = default!;
+    public DbSet<SecurityPolicy> SecurityPolicies => Set<SecurityPolicy>();
+    public DbSet<LoginHistory> LoginHistories => Set<LoginHistory>();
     public DbSet<ScopeExtension> ScopeExtensions => Set<ScopeExtension>();
     public DbSet<Resource> Resources => Set<Resource>();
     public DbSet<ApiResource> ApiResources => Set<ApiResource>();
@@ -36,7 +36,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<ClientOwnership> ClientOwnerships => Set<ClientOwnership>();
     public DbSet<ScopeOwnership> ScopeOwnerships => Set<ScopeOwnership>();
     // Phase 20.4
-    public DbSet<UserCredential> UserCredentials { get; set; }
+    public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {

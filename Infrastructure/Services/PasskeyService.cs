@@ -217,10 +217,10 @@ public class PasskeyService : IPasskeyService
                 OriginalOptions = options,
                 StoredPublicKey = credential.PublicKey,
                 StoredSignatureCounter = credential.SignatureCounter,
-                IsUserHandleOwnerOfCredentialIdCallback = async (args, cancellationToken) =>
+                IsUserHandleOwnerOfCredentialIdCallback = (args, cancellationToken) =>
                 {
                     // Callback: user handle verification (optional)
-                    return true;
+                    return Task.FromResult(true);
                 }
             };
             
