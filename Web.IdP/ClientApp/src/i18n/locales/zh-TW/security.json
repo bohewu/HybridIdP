@@ -37,6 +37,12 @@
     "registrationSettings": "註冊設定",
     "registrationEnabled": "允許公開註冊",
     "registrationEnabledHelp": "關閉後，新使用者將無法註冊帳戶。",
+    "mfaSettings": "MFA 與通行密鑰設定",
+    "enableTotpMfa": "啟用 TOTP MFA (驗證器應用程式)",
+    "enableEmailMfa": "啟用電子郵件 MFA",
+    "enablePasskey": "啟用通行密鑰 (Passkey)",
+    "maxPasskeysPerUser": "每位使用者最大密鑰數量",
+    "maxPasskeysPerUserHelp": "單一使用者可註冊的最大通行密鑰數量。",
     "validation": {
         "minCharacterTypesRange": "最少字元類型必須介於 2 到 4 之間",
         "passwordLengthRange": "密碼長度必須介於 6 到 128 字元之間"

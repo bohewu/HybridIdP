@@ -10,7 +10,9 @@ export function useWebAuthn() {
     const base64ToArrayBuffer = (base64) => {
         // Handle both base64 and base64url
         const base64url = base64.replace(/-/g, '+').replace(/_/g, '/');
-        const binaryString = window.atob(base64url);
+        // Add padding if needed
+        const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
+        const binaryString = window.atob(base64url + padding);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
@@ -85,41 +87,51 @@ export function useWebAuthn() {
             }));
         }
 
-        // 3. Call WebAuthn API
-        const credential = await navigator.credentials.create({
-            publicKey: options
-        });
+        try {
+            // 3. Call WebAuthn API
+            const credential = await navigator.credentials.create({
+                publicKey: options
+            });
 
-        if (!credential) {
-            throw new Error('No credential created');
+            if (!credential) {
+                throw new Error('No credential created');
+            }
+
+            // 4. Prepare response
+            const attestationResponse = {
+                id: credential.id,
+                rawId: arrayBufferToBase64(credential.rawId),
+                type: credential.type,
+                response: {
+                    clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
+                    attestationObject: arrayBufferToBase64(credential.response.attestationObject)
+                },
+                deviceName: generateDeviceName() // Auto-generate device name
+            };
+
+            // 5. Send to server
+            const registerResp = await fetch('/api/passkey/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(attestationResponse)
+            });
+
+            if (!registerResp.ok) {
+                const error = await registerResp.json();
+                throw new Error(error.error || 'Registration failed');
+            }
+
+            return await registerResp.json();
+        } catch (err) {
+            if (err.name === 'NotAllowedError') {
+                throw new Error('User canceled or biometric failed');
+            }
+            if (err.name === 'SecurityError') {
+                throw new Error('Security domain mismatch');
+            }
+            throw err;
         }
-
-        // 4. Prepare response
-        const attestationResponse = {
-            id: credential.id,
-            rawId: arrayBufferToBase64(credential.rawId),
-            type: credential.type,
-            response: {
-                clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON),
-                attestationObject: arrayBufferToBase64(credential.response.attestationObject)
-            },
-            deviceName: generateDeviceName() // Auto-generate device name
-        };
-
-        // 5. Send to server
-        const registerResp = await fetch('/api/passkey/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(attestationResponse)
-        });
-
-        if (!registerResp.ok) {
-            const error = await registerResp.json();
-            throw new Error(error.error || 'Registration failed');
-        }
-
-        return await registerResp.json();
     };
 
     const authenticateWithPasskey = async (username) => {
@@ -150,43 +162,50 @@ export function useWebAuthn() {
             }));
         }
 
-        // 3. Call WebAuthn API
-        const assertion = await navigator.credentials.get({
-            publicKey: options
-        });
+        try {
+            // 3. Call WebAuthn API
+            const assertion = await navigator.credentials.get({
+                publicKey: options
+            });
 
-        if (!assertion) {
-            throw new Error('No assertion created');
-        }
-
-        // 4. Prepare response
-        const assertionResponse = {
-            id: assertion.id,
-            rawId: arrayBufferToBase64(assertion.rawId),
-            type: assertion.type,
-            response: {
-                clientDataJSON: arrayBufferToBase64(assertion.response.clientDataJSON),
-                authenticatorData: arrayBufferToBase64(assertion.response.authenticatorData),
-                signature: arrayBufferToBase64(assertion.response.signature),
-                userHandle: assertion.response.userHandle
-                    ? arrayBufferToBase64(assertion.response.userHandle)
-                    : null
+            if (!assertion) {
+                throw new Error('No assertion created');
             }
-        };
 
-        // 5. Send to server
-        const loginResp = await fetch('/api/passkey/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(assertionResponse)
-        });
+            // 4. Prepare response
+            const assertionResponse = {
+                id: assertion.id,
+                rawId: arrayBufferToBase64(assertion.rawId),
+                type: assertion.type,
+                response: {
+                    clientDataJSON: arrayBufferToBase64(assertion.response.clientDataJSON),
+                    authenticatorData: arrayBufferToBase64(assertion.response.authenticatorData),
+                    signature: arrayBufferToBase64(assertion.response.signature),
+                    userHandle: assertion.response.userHandle
+                        ? arrayBufferToBase64(assertion.response.userHandle)
+                        : null
+                }
+            };
 
-        if (!loginResp.ok) {
-            const error = await loginResp.json();
-            throw new Error(error.error || 'Authentication failed');
+            // 5. Send to server
+            const loginResp = await fetch('/api/passkey/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(assertionResponse)
+            });
+
+            if (!loginResp.ok) {
+                const error = await loginResp.json();
+                throw new Error(error.error || 'Authentication failed');
+            }
+
+            return await loginResp.json();
+        } catch (err) {
+            if (err.name === 'NotAllowedError') {
+                throw new Error('User canceled or biometric failed');
+            }
+            throw err;
         }
-
-        return await loginResp.json();
     };
 
     return {
