@@ -19,17 +19,20 @@ public class SessionService : ISessionService
     private readonly IOpenIddictApplicationManager _applications;
     private readonly IOpenIddictTokenManager _tokens;
     private readonly IApplicationDbContext _db;
+    private readonly TimeProvider _timeProvider;
 
     public SessionService(
         IOpenIddictAuthorizationManager authorizations,
         IOpenIddictApplicationManager applications,
         IOpenIddictTokenManager tokens,
-        IApplicationDbContext dbContext)
+        IApplicationDbContext dbContext,
+        TimeProvider? timeProvider = null)
     {
         _authorizations = authorizations;
         _applications = applications;
         _tokens = tokens;
         _db = dbContext;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<IEnumerable<SessionDto>> ListSessionsAsync(Guid userId)
@@ -283,16 +286,16 @@ public class SessionService : ISessionService
         if (!string.IsNullOrEmpty(session.PreviousRefreshTokenHash) && presentedHash == session.PreviousRefreshTokenHash && presentedHash != session.CurrentRefreshTokenHash)
         {
             reuseDetected = true;
-            session.ReuseDetectedUtc = DateTime.UtcNow;
+            session.ReuseDetectedUtc = _timeProvider.GetUtcNow().DateTime;
             // Security action: mark session revoked immediately.
-            session.RevokedUtc = DateTime.UtcNow;
+            session.RevokedUtc = _timeProvider.GetUtcNow().DateTime;
             session.RevocationReason = "reuse-detected";
             // Emit audit event (append only)
             _db.AuditEvents.Add(new Core.Domain.Entities.AuditEvent
             {
                 EventType = AuditEventTypes.RefreshTokenReuseDetected,
                 UserId = userId.ToString(),
-                Timestamp = DateTime.UtcNow,
+                Timestamp = _timeProvider.GetUtcNow().DateTime,
                 Details = $"{{\"authorizationId\":\"{authorizationId}\"}}",
                 IPAddress = ipAddress,
                 UserAgent = userAgent
@@ -310,11 +313,11 @@ public class SessionService : ISessionService
         // Normal rotation: shift current to previous, set new current (always rotate even if not exact match for test compatibility)
         session.PreviousRefreshTokenHash = session.CurrentRefreshTokenHash;
         session.CurrentRefreshTokenHash = presentedHash;
-        session.LastActivityUtc = DateTime.UtcNow;
+        session.LastActivityUtc = _timeProvider.GetUtcNow().DateTime;
 
         // Sliding expiration extension logic
         var slidingExtended = false;
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().DateTime;
         var slidingWindowMinutes = 30; // placeholder policy
         var newSlidingExpiry = now.AddMinutes(slidingWindowMinutes);
         if (!session.SlidingExpiresUtc.HasValue || newSlidingExpiry > session.SlidingExpiresUtc.Value.AddMinutes(-5)) // extend when close to window end
@@ -335,7 +338,7 @@ public class SessionService : ISessionService
                 {
                     EventType = AuditEventTypes.SlidingExpirationExtended,
                     UserId = userId.ToString(),
-                    Timestamp = DateTime.UtcNow,
+                    Timestamp = _timeProvider.GetUtcNow().DateTime,
                     Details = $"{{\"authorizationId\":\"{authorizationId}\",\"newExpiresUtc\":\"{newSlidingExpiry:o}\"}}",
                     IPAddress = ipAddress,
                     UserAgent = userAgent
@@ -348,7 +351,7 @@ public class SessionService : ISessionService
         {
             EventType = AuditEventTypes.RefreshTokenRotated,
             UserId = userId.ToString(),
-            Timestamp = DateTime.UtcNow,
+            Timestamp = _timeProvider.GetUtcNow().DateTime,
             Details = $"{{\"authorizationId\":\"{authorizationId}\"}}",
             IPAddress = ipAddress,
             UserAgent = userAgent
@@ -359,7 +362,7 @@ public class SessionService : ISessionService
         await _db.SaveChangesAsync(CancellationToken.None);
 
         // Placeholder access token expiry: shorter window than refresh sliding expiry
-        var accessTokenExpires = DateTimeOffset.UtcNow.AddMinutes(5);
+        var accessTokenExpires = _timeProvider.GetUtcNow().AddMinutes(5);
         var refreshExpires = session.SlidingExpiresUtc.HasValue ? new DateTimeOffset(session.SlidingExpiresUtc.Value) : (DateTimeOffset?)null;
 
         return new RefreshResultDto(authorizationId, accessTokenExpires, refreshExpires, slidingExtended, reuseDetected);
@@ -380,13 +383,13 @@ public class SessionService : ISessionService
             return new RevokeChainResultDto(authorizationId, 0, true);
         }
 
-        session.RevokedUtc = DateTime.UtcNow;
+        session.RevokedUtc = _timeProvider.GetUtcNow().DateTime;
         session.RevocationReason = reason;
         _db.AuditEvents.Add(new Core.Domain.Entities.AuditEvent
         {
             EventType = AuditEventTypes.SessionRevoked,
             UserId = userId.ToString(),
-            Timestamp = DateTime.UtcNow,
+            Timestamp = _timeProvider.GetUtcNow().DateTime,
             Details = $"{{\"authorizationId\":\"{authorizationId}\",\"reason\":\"{reason}\"}}"
         });
 
