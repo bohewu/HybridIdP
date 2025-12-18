@@ -100,6 +100,16 @@
 
       <!-- Passkey Section (Phase 20.4) - At bottom per security model -->
       <div v-if="mfaStatus.enablePasskey" class="passkey-section">
+        <!-- Warning for non-compliant users (has passkeys but no MFA when policy requires) -->
+        <div v-if="requireMfaForPasskey && passkeys.length > 0 && !hasMfaEnabled" class="passkey-warning">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>{{ t('mfa.passkey.nonCompliantWarning') }}</span>
+        </div>
+        
         <div class="section-header">
           <div class="section-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -111,9 +121,16 @@
             <p>{{ t('mfa.passkey.description') }}</p>
           </div>
           <div class="section-action">
-            <button class="btn-enable" @click="registerNewPasskey" :disabled="passkeyLoading">
+            <button 
+              class="btn-enable" 
+              @click="registerNewPasskey" 
+              :disabled="passkeyLoading || passkeyBlockedByPolicy"
+              :title="passkeyBlockedByPolicy ? t('mfa.passkey.requiresMfa') : ''"
+              :class="{ 'btn-disabled': passkeyBlockedByPolicy }"
+            >
               {{ passkeyLoading ? '...' : t('mfa.passkey.register') }}
             </button>
+            <p v-if="passkeyBlockedByPolicy" class="blocked-hint">{{ t('mfa.passkey.requiresMfa') }}</p>
           </div>
         </div>
 
@@ -340,6 +357,17 @@ const passkeyLoading = ref(false);
 const passkeyError = ref('');
 const passkeySuccess = ref('');
 const passkeyToDelete = ref<any>(null);
+const requireMfaForPasskey = ref(false);
+
+// Computed: Check if user has any MFA enabled
+const hasMfaEnabled = computed(() => {
+  return mfaStatus.value.twoFactorEnabled || mfaStatus.value.emailMfaEnabled;
+});
+
+// Computed: Check if passkey registration should be blocked
+const passkeyBlockedByPolicy = computed(() => {
+  return requireMfaForPasskey.value && !hasMfaEnabled.value;
+});
 
 const maskedEmail = computed(() => {
   if (!userEmail.value) return '';
@@ -371,8 +399,21 @@ const regeneratedCodes = ref<string[]>([]);
 
 onMounted(async () => {
   await loadMfaStatus();
+  await loadSecurityPolicy();
   await loadPasskeys();
 });
+
+async function loadSecurityPolicy() {
+  try {
+    const response = await fetch('/api/account/security-policy', { credentials: 'include' });
+    if (response.ok) {
+      const policy = await response.json();
+      requireMfaForPasskey.value = policy.requireMfaForPasskey || false;
+    }
+  } catch (err) {
+    console.error('Failed to load security policy:', err);
+  }
+}
 
 async function loadPasskeys() {
   try {
@@ -720,6 +761,49 @@ function finishRegenerate() {
 
 .btn-enable:hover {
   background: #1557b0;
+}
+
+.btn-enable:disabled,
+.btn-enable.btn-disabled {
+  background: #dadce0;
+  color: #80868b;
+  cursor: not-allowed;
+}
+
+.btn-enable:disabled:hover,
+.btn-enable.btn-disabled:hover {
+  background: #dadce0;
+}
+
+.blocked-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #ea8600;
+}
+
+.passkey-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fef7e0;
+  border: 1px solid #fdd663;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.passkey-warning svg {
+  width: 20px;
+  height: 20px;
+  color: #ea8600;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.passkey-warning span {
+  font-size: 13px;
+  color: #5f6368;
+  line-height: 1.4;
 }
 
 .action-buttons {
