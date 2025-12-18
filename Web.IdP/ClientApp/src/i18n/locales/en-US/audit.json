@@ -24,6 +24,34 @@
     "searchPlaceholder": "Search in details...",
     "clear": "Clear Filters"
   },
+  "eventTypes": {
+    "categories": {
+      "session": "Session/Token",
+      "passkey": "Passkey",
+      "mfa": "MFA",
+      "login": "Login",
+      "admin": "Admin Operations"
+    },
+    "RefreshTokenRotated": "Token Rotated",
+    "RefreshTokenReuseDetected": "Token Reuse Detected",
+    "SessionRevoked": "Session Revoked",
+    "SlidingExpirationExtended": "Expiration Extended",
+    "PasskeyRegistered": "Passkey Registered",
+    "PasskeyDeleted": "Passkey Deleted",
+    "PasskeyAuthenticationUsed": "Passkey Used",
+    "MfaEnabled": "MFA Enabled",
+    "MfaDisabled": "MFA Disabled",
+    "EmailMfaEnabled": "Email MFA Enabled",
+    "EmailMfaDisabled": "Email MFA Disabled",
+    "LoginSucceeded": "Login Succeeded",
+    "LoginFailed": "Login Failed",
+    "RateLimitExceeded": "Rate Limit Exceeded",
+    "AdminUserCreated": "User Created (Admin)",
+    "AdminUserUpdated": "User Updated (Admin)",
+    "AdminUserDeleted": "User Deleted (Admin)",
+    "AdminRoleChanged": "Role Changed",
+    "SecurityPolicyUpdated": "Security Policy Updated"
+  },
   "export": {
     "title": "Export Audit Logs",
     "csv": "Export as CSV",

@@ -24,6 +24,34 @@
     "searchPlaceholder": "在詳細資訊中搜尋...",
     "clear": "清除篩選器"
   },
+  "eventTypes": {
+    "categories": {
+      "session": "Session/Token",
+      "passkey": "Passkey 通行密鑰",
+      "mfa": "多重要素驗證",
+      "login": "登入",
+      "admin": "管理員操作"
+    },
+    "RefreshTokenRotated": "Token 已輪換",
+    "RefreshTokenReuseDetected": "偵測到 Token 重複使用",
+    "SessionRevoked": "Session 已撤銷",
+    "SlidingExpirationExtended": "過期時間已延長",
+    "PasskeyRegistered": "Passkey 已註冊",
+    "PasskeyDeleted": "Passkey 已刪除",
+    "PasskeyAuthenticationUsed": "Passkey 已使用",
+    "MfaEnabled": "MFA 已啟用",
+    "MfaDisabled": "MFA 已停用",
+    "EmailMfaEnabled": "電子郵件 MFA 已啟用",
+    "EmailMfaDisabled": "電子郵件 MFA 已停用",
+    "LoginSucceeded": "登入成功",
+    "LoginFailed": "登入失敗",
+    "RateLimitExceeded": "超過速率限制",
+    "AdminUserCreated": "使用者已建立 (管理員)",
+    "AdminUserUpdated": "使用者已更新 (管理員)",
+    "AdminUserDeleted": "使用者已刪除 (管理員)",
+    "AdminRoleChanged": "角色已變更",
+    "SecurityPolicyUpdated": "安全性原則已更新"
+  },
   "export": {
     "title": "匯出稽核日誌",
     "csv": "匯出為 CSV",
