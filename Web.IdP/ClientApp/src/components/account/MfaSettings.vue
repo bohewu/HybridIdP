@@ -60,7 +60,45 @@
         </div>
       </div>
 
-      <!-- Passkey Section (Phase 20.4) -->
+      <!-- Email MFA Section (Phase 20.3) -->
+      <div v-if="mfaStatus.enableEmailMfa" class="email-mfa-section">
+        <div class="mfa-status" :class="mfaStatus.emailMfaEnabled ? 'mfa-enabled' : 'mfa-disabled'">
+          <div class="status-icon" :class="{ enabled: mfaStatus.emailMfaEnabled }">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </div>
+          <div class="status-text">
+            <h3>{{ t('mfa.emailMfa') }}</h3>
+            <p v-if="mfaStatus.emailMfaEnabled">{{ t('mfa.emailMfaEnabled') }}</p>
+            <p v-else>{{ t('mfa.emailMfaDescription') }}</p>
+            <p v-if="userEmail" class="masked-email">{{ maskedEmail }}</p>
+          </div>
+          <div class="action-buttons">
+            <button 
+              v-if="!mfaStatus.emailMfaEnabled" 
+              class="btn-enable" 
+              @click="enableEmailMfa"
+              :disabled="emailMfaLoading"
+            >
+              {{ emailMfaLoading ? '...' : t('mfa.enable') }}
+            </button>
+            <button 
+              v-else 
+              class="btn-danger" 
+              @click="disableEmailMfa"
+              :disabled="emailMfaLoading"
+            >
+              {{ emailMfaLoading ? '...' : t('mfa.disable') }}
+            </button>
+          </div>
+        </div>
+        <p v-if="emailMfaError" class="error-message">{{ emailMfaError }}</p>
+        <p v-if="emailMfaSuccess" class="success-message">{{ emailMfaSuccess }}</p>
+      </div>
+
+      <!-- Passkey Section (Phase 20.4) - At bottom per security model -->
       <div v-if="mfaStatus.enablePasskey" class="passkey-section">
         <div class="section-header">
           <div class="section-icon">
@@ -106,44 +144,6 @@
         
         <p v-if="passkeyError" class="error-message">{{ passkeyError }}</p>
         <p v-if="passkeySuccess" class="success-message">{{ passkeySuccess }}</p>
-      </div>
-
-      <!-- Email MFA Section (Phase 20.3) -->
-      <div v-if="mfaStatus.enableEmailMfa" class="email-mfa-section">
-        <div class="mfa-status" :class="mfaStatus.emailMfaEnabled ? 'mfa-enabled' : 'mfa-disabled'">
-          <div class="status-icon" :class="{ enabled: mfaStatus.emailMfaEnabled }">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-              <polyline points="22,6 12,13 2,6"></polyline>
-            </svg>
-          </div>
-          <div class="status-text">
-            <h3>{{ t('mfa.emailMfa') }}</h3>
-            <p v-if="mfaStatus.emailMfaEnabled">{{ t('mfa.emailMfaEnabled') }}</p>
-            <p v-else>{{ t('mfa.emailMfaDescription') }}</p>
-            <p v-if="userEmail" class="masked-email">{{ maskedEmail }}</p>
-          </div>
-          <div class="action-buttons">
-            <button 
-              v-if="!mfaStatus.emailMfaEnabled" 
-              class="btn-enable" 
-              @click="enableEmailMfa"
-              :disabled="emailMfaLoading"
-            >
-              {{ emailMfaLoading ? '...' : t('mfa.enable') }}
-            </button>
-            <button 
-              v-else 
-              class="btn-danger" 
-              @click="disableEmailMfa"
-              :disabled="emailMfaLoading"
-            >
-              {{ emailMfaLoading ? '...' : t('mfa.disable') }}
-            </button>
-          </div>
-        </div>
-        <p v-if="emailMfaError" class="error-message">{{ emailMfaError }}</p>
-        <p v-if="emailMfaSuccess" class="success-message">{{ emailMfaSuccess }}</p>
       </div>
     </div>
 
