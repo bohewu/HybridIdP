@@ -27,7 +27,7 @@ last-updated: 2025-12-17
 - Phase 17 — Deployment & Documentation: 100% ✅ — `./docs/DEPLOYMENT_GUIDE.md`
 - Phase 18 — Personnel Lifecycle Management: 100% ✅ — `./phase-18-personnel-lifecycle.md`
 - Phase 19 — Frontend Testing Strategy (Vitest): 100% ✅ — `./TODOS.md`
-- Phase 20 — MFA & WebAuthn: 75% 🔄 In Progress (Phase 20.1-20.4 Backend Completed) — `./phase-20-mfa-webauthn.md`
+- Phase 20 — MFA & WebAuthn: 100% ✅ — `./phase-20-mfa-webauthn.md`
 - Phase 21 — External Identity Providers: 📋 Planned — `./docs/archive/phases/phase-21-external-idp.md`
 
 Backlog & Technical Debt: `./TODOS.md`
@@ -40,6 +40,37 @@ Notes & Guidelines: `docs/notes-and-guidelines.md`
 -- 如需更完整的歷史紀錄或截圖證據，請參閱 `./archive/historical/PROJECT_STATUS.md`（Archive）。
 
 近期更新紀錄:
+## 2025-12-18: Phase 20.5 Testing, Security Automation & Time Refactoring Complete ✅
+
+**Implementation Summary:**
+
+Phase 20.5 completes the MFA/WebAuthn journey with comprehensive testing, architectural improvements for testability, and automated security scanning.
+
+**Key Achievements:**
+- ✅ **Passkey Verification**: Verified WebAuthn E2E registration and authentication flow (Manual Testing).
+- ✅ **Security Automation**: 
+  - Integrated **OWASP ZAP** with automated lifecycle (Start/Stop/Scan).
+  - Implemented **Radical/Deep Attack** mode using AJAX Spider and High Intensity scanning.
+  - Resolved authentication idempotency in ZAP rules.
+- ✅ **Architectural Refactoring**: 
+  - Implemented system-wide `ITimeProvider` to decouple `DateTime.UtcNow`.
+  - Refactored all time-sensitive logic (MFA, Token, Lifecycle) for perfect testability.
+- ✅ **Environment Documentation**: Updated README with WSL/Docker/Java prerequisites for ZAP testing.
+- ✅ **Optimization Evaluation**: Updated evaluation report to reflect 100% completion of initial high-priority items.
+
+**Files Created/Modified:**
+- `Tests.SystemTests/ZapSecurityTests.cs` (Radical Scan & Idempotency)
+- `Infrastructure/Services/SystemTimeProvider.cs` (Architectural refactor)
+- `Tests.SystemTests/README.md` (WSL/Java documentation)
+- `docs/todos.md` (Phase 20.5 marked complete)
+
+**Progress:**
+- Phase 20.1-20.4: ✅ Complete (MFA & Passkey Core)
+- Phase 20.5: ✅ Complete (Testing & Automation)
+- **Phase 20 status: 100% Complete** 🎉
+
+---
+
 ## 2025-12-17: Phase 20.4 WebAuthn Passkey Backend Complete ✅
 
 **Implementation Summary:**
