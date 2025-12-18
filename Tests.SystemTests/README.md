@@ -132,6 +132,12 @@ If tests fail because MFA is already enabled:
 
 ### Windows Installation
 
+**Prerequisites:**
+- **Java Runtime**: Java 11+ required (ZAP is a Java application)
+  - Download from: https://adoptium.net/ or https://www.oracle.com/java/technologies/downloads/
+  - Ensure `java` is in your PATH
+
+**ZAP Installation:**
 1. **Download ZAP**: https://www.zaproxy.org/download/
 2. **Install** to default location: `C:\Program Files\ZAP\Zed Attack Proxy\`
 
