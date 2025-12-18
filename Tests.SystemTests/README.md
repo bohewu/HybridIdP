@@ -121,3 +121,47 @@ If tests fail because MFA is already enabled:
 - `EmailSystemTests` waits up to 15 seconds for email delivery
 - Ensure Mailpit is running: `docker-compose up -d mailpit`
 - Check Mailpit UI: http://localhost:8025
+
+## Security Tests (OWASP ZAP)
+
+### Overview
+`ZapSecurityTests` provides automated security scanning using OWASP ZAP:
+- **Passive Scan**: Scans API endpoints for security issues
+- **Spider**: Crawls authenticated endpoints
+- **Active Scan**: Tests for injection vulnerabilities
+
+### Windows Installation
+
+1. **Download ZAP**: https://www.zaproxy.org/download/
+2. **Install** to default location: `C:\Program Files\ZAP\Zed Attack Proxy\`
+
+### Running ZAP Tests
+
+```bash
+# Tests will auto-start ZAP daemon if installed
+dotnet test Tests.SystemTests --filter "FullyQualifiedName~ZapSecurityTests"
+```
+
+### Behavior
+
+| Scenario | Test Behavior |
+|----------|---------------|
+| ZAP already running | Uses existing ZAP instance |
+| ZAP installed but not running | **Auto-starts** ZAP daemon |
+| ZAP not installed | **Skips** tests gracefully |
+| Tests complete | **Auto-stops** ZAP daemon |
+
+### Custom ZAP Path
+If ZAP is installed in a non-standard location:
+```bash
+# Set environment variable
+$env:ZAP_PATH = "C:\path\to\zap.bat"
+dotnet test Tests.SystemTests --filter "FullyQualifiedName~ZapSecurityTests"
+```
+
+### Search Paths
+Tests look for ZAP in these locations:
+- `C:\Program Files\ZAP\Zed Attack Proxy\zap.bat`
+- `C:\Program Files (x86)\ZAP\Zed Attack Proxy\zap.bat`
+- `C:\ZAP\zap.bat`
+- `%ZAP_PATH%` environment variable
