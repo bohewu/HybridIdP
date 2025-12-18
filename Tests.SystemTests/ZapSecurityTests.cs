@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -39,20 +40,51 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         _zapClient = new HttpClient(zapHandler) { BaseAddress = new Uri(_zapBaseUrl) };
     }
 
+    private static Process? _zapProcess;
+    private static readonly string[] ZapPaths = new[]
+    {
+        @"C:\Program Files\ZAP\Zed Attack Proxy\zap.bat",
+        @"C:\Program Files (x86)\ZAP\Zed Attack Proxy\zap.bat",
+        @"C:\ZAP\zap.bat",
+        Environment.GetEnvironmentVariable("ZAP_PATH") ?? ""
+    };
+
     public async Task InitializeAsync()
     {
-        // Check if ZAP is running
-        try
+        // Check if ZAP is already running
+        var zapRunning = await IsZapRunningAsync();
+        
+        if (!zapRunning)
         {
-            var response = await _zapClient.GetAsync("/JSON/core/view/version/");
-            if (!response.IsSuccessStatusCode)
+            // Try to auto-start ZAP
+            var zapPath = ZapPaths.FirstOrDefault(p => !string.IsNullOrEmpty(p) && File.Exists(p));
+            
+            if (zapPath == null)
             {
-                throw new SkipException("ZAP is not running. Start with: docker run -d -p 8090:8080 zaproxy/zap-stable zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true");
+                throw new SkipException("ZAP not installed. Install from https://www.zaproxy.org/download/ or set ZAP_PATH environment variable");
             }
-        }
-        catch (HttpRequestException)
-        {
-            throw new SkipException("ZAP is not running or not accessible at " + _zapBaseUrl);
+
+            // Start ZAP daemon
+            var port = new Uri(_zapBaseUrl).Port;
+            _zapProcess = Process.Start(new ProcessStartInfo
+            {
+                FileName = zapPath,
+                Arguments = $"-daemon -host 127.0.0.1 -port {port} -config api.disablekey=true",
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            });
+
+            // Wait for ZAP to be ready (max 60 seconds)
+            for (int i = 0; i < 60; i++)
+            {
+                await Task.Delay(1000);
+                if (await IsZapRunningAsync()) break;
+            }
+            
+            if (!await IsZapRunningAsync())
+            {
+                throw new SkipException("ZAP failed to start within 60 seconds");
+            }
         }
 
         // Get tokens
@@ -60,7 +92,43 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         _userToken = await GetUserTokenAsync();
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    private async Task<bool> IsZapRunningAsync()
+    {
+        try
+        {
+            var response = await _zapClient.GetAsync("/JSON/core/view/version/");
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task DisposeAsync()
+    {
+        // Stop ZAP if we started it
+        if (_zapProcess != null && !_zapProcess.HasExited)
+        {
+            try
+            {
+                // Graceful shutdown via API
+                await _zapClient.GetAsync("/JSON/core/action/shutdown/");
+                await Task.Delay(2000);
+                
+                if (!_zapProcess.HasExited)
+                {
+                    _zapProcess.Kill(entireProcessTree: true);
+                }
+            }
+            catch { }
+            finally
+            {
+                _zapProcess.Dispose();
+                _zapProcess = null;
+            }
+        }
+    }
 
     [Fact]
     public async Task ZapPassiveScan_ApiEndpoints_NoHighRiskAlerts()
