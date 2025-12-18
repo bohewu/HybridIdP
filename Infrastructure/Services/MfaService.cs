@@ -29,6 +29,7 @@ public class MfaService : IMfaService
     private readonly ISecurityPolicyService _securityPolicyService;
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<MfaService> _logger;
+    private readonly TimeProvider _timeProvider;
     private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
 
     public MfaService(
@@ -40,7 +41,8 @@ public class MfaService : IMfaService
         IDistributedCache cache,
         ISecurityPolicyService securityPolicyService,
         ApplicationDbContext dbContext,
-        ILogger<MfaService> logger)
+        ILogger<MfaService> logger,
+        TimeProvider? timeProvider = null)
     {
         _userManager = userManager;
         _brandingService = brandingService;
@@ -51,6 +53,7 @@ public class MfaService : IMfaService
         _securityPolicyService = securityPolicyService;
         _dbContext = dbContext;
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<MfaSetupInfo> GetTotpSetupInfoAsync(ApplicationUser user, CancellationToken ct = default)
@@ -244,7 +247,7 @@ public class MfaService : IMfaService
 
         // Hash the code before storing
         user.EmailMfaCode = _passwordHasher.HashPassword(user, code);
-        user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(10); // 10-minute expiry
+        user.EmailMfaCodeExpiry = _timeProvider.GetUtcNow().DateTime.AddMinutes(10); // 10-minute expiry
 
         await _userManager.UpdateAsync(user);
 
@@ -270,7 +273,7 @@ public class MfaService : IMfaService
             return false; // No code pending
         }
 
-        if (user.EmailMfaCodeExpiry.HasValue && user.EmailMfaCodeExpiry.Value < DateTime.UtcNow)
+        if (user.EmailMfaCodeExpiry.HasValue && user.EmailMfaCodeExpiry.Value < _timeProvider.GetUtcNow().DateTime)
         {
             // Code expired, clear it
             user.EmailMfaCode = null;

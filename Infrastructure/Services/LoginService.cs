@@ -20,6 +20,7 @@ public partial class LoginService : ILoginService
     private readonly IJitProvisioningService _jitProvisioningService;
     private readonly IApplicationDbContext _dbContext;
     private readonly ILogger<LoginService> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public LoginService(
         UserManager<ApplicationUser> userManager,
@@ -27,7 +28,8 @@ public partial class LoginService : ILoginService
         ILegacyAuthService legacyAuthService,
         IJitProvisioningService jitProvisioningService,
         IApplicationDbContext dbContext,
-        ILogger<LoginService> logger)
+        ILogger<LoginService> logger,
+        TimeProvider? timeProvider = null)
     {
         _userManager = userManager;
         _securityPolicyService = securityPolicyService;
@@ -35,6 +37,7 @@ public partial class LoginService : ILoginService
         _jitProvisioningService = jitProvisioningService;
         _dbContext = dbContext;
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<LoginResult> AuthenticateAsync(string login, string password)
@@ -185,7 +188,7 @@ public partial class LoginService : ILoginService
     /// <summary>
     /// Gets a user-friendly reason why the Person cannot authenticate.
     /// </summary>
-    private static string GetPersonInactiveReason(Core.Domain.Entities.Person person)
+    private string GetPersonInactiveReason(Core.Domain.Entities.Person person)
     {
         if (person.IsDeleted)
             return "Person record has been deleted";
@@ -193,7 +196,7 @@ public partial class LoginService : ILoginService
         if (person.Status != PersonStatus.Active)
             return $"Person status is {person.Status}";
         
-        var now = DateTime.UtcNow.Date;
+        var now = _timeProvider.GetUtcNow().Date;
         if (person.StartDate.HasValue && person.StartDate.Value.Date > now)
             return "Person employment has not started yet";
         
