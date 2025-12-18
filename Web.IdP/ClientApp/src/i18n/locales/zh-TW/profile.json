@@ -76,6 +76,13 @@
     "mfaEnabled": "已啟用兩步驟驗證",
     "mfaNotEnabled": "尚未啟用兩步驟驗證 - 立即設定以提升帳戶安全",
     "passwordSet": "已設定密碼",
-    "noPassword": "僅使用外部登入（無本機密碼）"
+    "noPassword": "僅使用外部登入（無本機密碼）",
+    "timeZones": {
+      "Asia/Taipei": "台北 (GMT+8)",
+      "America/Los_Angeles": "洛杉磯 (PST)",
+      "America/New_York": "紐約 (EST)",
+      "Europe/London": "倫敦 (GMT)",
+      "Asia/Tokyo": "東京 (JST)"
+    }
   }
 }
