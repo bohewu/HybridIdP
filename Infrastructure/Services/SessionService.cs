@@ -275,7 +275,7 @@ public class SessionService : ISessionService
         // If already revoked, do not rotate
         if (session.RevokedUtc.HasValue)
         {
-            var slidingExpiry = session.SlidingExpiresUtc.HasValue ? new DateTimeOffset(session.SlidingExpiresUtc.Value) : (DateTimeOffset?)null;
+            var slidingExpiry = session.SlidingExpiresUtc.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(session.SlidingExpiresUtc.Value, DateTimeKind.Utc)) : (DateTimeOffset?)null;
             return new RefreshResultDto(authorizationId, null, slidingExpiry, false, false);
         }
 
@@ -301,7 +301,7 @@ public class SessionService : ISessionService
                 UserAgent = userAgent
             });
             await _db.SaveChangesAsync(CancellationToken.None);
-            var slidingExpiry = session.SlidingExpiresUtc.HasValue ? new DateTimeOffset(session.SlidingExpiresUtc.Value) : (DateTimeOffset?)null;
+            var slidingExpiry = session.SlidingExpiresUtc.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(session.SlidingExpiresUtc.Value, DateTimeKind.Utc)) : (DateTimeOffset?)null;
             return new RefreshResultDto(authorizationId, null, slidingExpiry, false, true);
         }
 
@@ -363,7 +363,7 @@ public class SessionService : ISessionService
 
         // Placeholder access token expiry: shorter window than refresh sliding expiry
         var accessTokenExpires = _timeProvider.GetUtcNow().AddMinutes(5);
-        var refreshExpires = session.SlidingExpiresUtc.HasValue ? new DateTimeOffset(session.SlidingExpiresUtc.Value) : (DateTimeOffset?)null;
+        var refreshExpires = session.SlidingExpiresUtc.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(session.SlidingExpiresUtc.Value, DateTimeKind.Utc)) : (DateTimeOffset?)null;
 
         return new RefreshResultDto(authorizationId, accessTokenExpires, refreshExpires, slidingExtended, reuseDetected);
     }
