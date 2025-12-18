@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Interfaces;
 using Core.Domain;
 using Core.Domain.Entities;
 using Infrastructure;
@@ -24,6 +26,7 @@ public class ProfileManagementControllerTests : IDisposable
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly ApplicationDbContext _dbContext;
     private readonly Mock<ISecurityPolicyService> _mockSecurityPolicyService;
+    private readonly Mock<IPasskeyService> _mockPasskeyService;
     private readonly Mock<IAuditService> _mockAuditService;
     private readonly Mock<ILogger<ProfileManagementController>> _mockLogger;
     private readonly ProfileManagementController _controller;
@@ -44,6 +47,9 @@ public class ProfileManagementControllerTests : IDisposable
 
         // Mock other services
         _mockSecurityPolicyService = new Mock<ISecurityPolicyService>();
+        _mockPasskeyService = new Mock<IPasskeyService>();
+        _mockPasskeyService.Setup(x => x.GetUserPasskeysAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<UserCredentialDto>()); // Default: no passkeys
         _mockAuditService = new Mock<IAuditService>();
         _mockLogger = new Mock<ILogger<ProfileManagementController>>();
 
@@ -61,6 +67,7 @@ public class ProfileManagementControllerTests : IDisposable
             _mockUserManager.Object,
             _dbContext,
             _mockSecurityPolicyService.Object,
+            _mockPasskeyService.Object,
             _mockAuditService.Object,
             _mockLogger.Object
         );
