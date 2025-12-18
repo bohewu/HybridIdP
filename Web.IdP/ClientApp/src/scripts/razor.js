@@ -1,5 +1,6 @@
 import '../styles/main.css';
 import '../styles/google-style.css';
+import { useWebAuthn } from '../composables/useWebAuthn.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Mobile Menu Toggle
@@ -107,7 +108,67 @@ document.addEventListener('DOMContentLoaded', () => {
         loginText.classList.add('hidden');
         loginLoading.classList.remove('hidden');
     }
+
+    // Passkey Login Logic
+    initPasskeyLogin();
 });
+
+async function initPasskeyLogin() {
+    const passkeyBtn = document.getElementById('passkeyLoginBtn');
+    if (!passkeyBtn) return;
+
+    const { authenticateWithPasskey, isSupported } = useWebAuthn();
+    const usernameInput = document.querySelector('input[name="Input.Login"]');
+
+    if (!isSupported()) {
+        passkeyBtn.style.display = 'none';
+        return;
+    }
+
+    passkeyBtn.addEventListener('click', async () => {
+        try {
+            const username = usernameInput.value;
+            const returnUrl = passkeyBtn.getAttribute('data-return-url') || '/';
+            const result = await authenticateWithPasskey(username);
+            if (result.success) {
+                window.location.href = returnUrl;
+            }
+        } catch (err) {
+            console.error('Passkey login failed:', err);
+            // Only alert if it's not a user cancellation
+            if (err.message !== 'mfa.errors.userCanceled') {
+                alert(err.message || 'Passkey authentication failed');
+            }
+        }
+    });
+
+    // Support Conditional UI (Auto-fill) if available
+    try {
+        if (window.PublicKeyCredential && PublicKeyCredential.isConditionalMediationAvailable) {
+            const available = await PublicKeyCredential.isConditionalMediationAvailable();
+            if (available) {
+                // Trigger conditional UI handshake. 
+                // This won't pop up anything immediately; it will instead 
+                // allow the browser to show passkeys in the autocomplete dropdown.
+                authenticateWithPasskey(undefined, 'conditional')
+                    .then(result => {
+                        if (result.success) {
+                            const returnUrl = passkeyBtn.getAttribute('data-return-url') || '/';
+                            window.location.href = returnUrl;
+                        }
+                    })
+                    .catch(err => {
+                        // Silent fail for conditional UI (often ignored if aborted)
+                        if (err.name !== 'AbortError') {
+                            console.error('Conditional Passkey login failed:', err);
+                        }
+                    });
+            }
+        }
+    } catch (e) {
+        console.error('Conditional mediation check failed:', e);
+    }
+}
 
 // Turnstile Callbacks (must be global)
 window.onTurnstileSuccess = function (token) {

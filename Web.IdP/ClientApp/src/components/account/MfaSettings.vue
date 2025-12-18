@@ -449,7 +449,7 @@ async function loadMfaStatus() {
       mfaStatus.value = await response.json();
     }
     // Also fetch user email for Email MFA display
-    const profileResponse = await fetch('/api/account/profile', { credentials: 'include' });
+    const profileResponse = await fetch('/api/profile', { credentials: 'include' });
     if (profileResponse.ok) {
       const profile = await profileResponse.json();
       userEmail.value = profile.email || '';
