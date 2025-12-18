@@ -49,30 +49,32 @@ public class UserManagementService : IUserManagementService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var searchLower = search.ToLower();
             query = query.Where(u =>
-                (u.Email != null && u.Email.ToLower().Contains(searchLower)) ||
-                (u.UserName != null && u.UserName.ToLower().Contains(searchLower)) ||
-                (u.FirstName != null && u.FirstName.ToLower().Contains(searchLower)) ||
-                (u.LastName != null && u.LastName.ToLower().Contains(searchLower)));
+                (u.Email != null && u.Email.Contains(search)) ||
+                (u.UserName != null && u.UserName.Contains(search)) ||
+                (u.FirstName != null && u.FirstName.Contains(search)) ||
+                (u.LastName != null && u.LastName.Contains(search)));
         }
 
         // Apply sorting
-        query = sortBy?.ToLower() switch
+        var sortByLower = sortBy?.ToLowerInvariant();
+        var isDesc = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
+
+        query = sortByLower switch
         {
-            "username" => sortDirection?.ToLower() == "desc"
+            "username" => isDesc
                 ? query.OrderByDescending(u => u.UserName)
                 : query.OrderBy(u => u.UserName),
-            "firstname" => sortDirection?.ToLower() == "desc"
+            "firstname" => isDesc
                 ? query.OrderByDescending(u => u.FirstName)
                 : query.OrderBy(u => u.FirstName),
-            "lastname" => sortDirection?.ToLower() == "desc"
+            "lastname" => isDesc
                 ? query.OrderByDescending(u => u.LastName)
                 : query.OrderBy(u => u.LastName),
-            "createdat" => sortDirection?.ToLower() == "desc"
+            "createdat" => isDesc
                 ? query.OrderByDescending(u => u.CreatedAt)
                 : query.OrderBy(u => u.CreatedAt),
-            _ => sortDirection?.ToLower() == "desc"
+            _ => isDesc
                 ? query.OrderByDescending(u => u.Email)
                 : query.OrderBy(u => u.Email)
         };
@@ -410,9 +412,10 @@ public class UserManagementService : IUserManagementService
             return (false, new[] { "User not found" });
         }
 
+        var allowedRolesList = roles.ToList(); // Materialize to avoid multiple enumeration (CA1851)
         var currentRoles = await _userManager.GetRolesAsync(user);
-        var rolesToRemove = currentRoles.Except(roles).ToList();
-        var rolesToAdd = roles.Except(currentRoles).ToList();
+        var rolesToRemove = currentRoles.Except(allowedRolesList).ToList();
+        var rolesToAdd = allowedRolesList.Except(currentRoles).ToList();
 
         // Get all sibling accounts (same PersonId) for role synchronization
         List<ApplicationUser> siblingAccounts = new();
@@ -424,7 +427,7 @@ public class UserManagementService : IUserManagementService
         }
 
         // Remove roles from main user and siblings
-        if (rolesToRemove.Any())
+        if (rolesToRemove.Count > 0)
         {
             var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
             if (!removeResult.Succeeded)
@@ -445,7 +448,7 @@ public class UserManagementService : IUserManagementService
         }
 
         // Add roles to main user and siblings
-        if (rolesToAdd.Any())
+        if (rolesToAdd.Count > 0)
         {
             var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
             if (!addResult.Succeeded)

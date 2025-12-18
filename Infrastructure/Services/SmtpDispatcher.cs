@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services;
 
-public class SmtpDispatcher : IEmailDispatcher
+public partial class SmtpDispatcher : IEmailDispatcher
 {
     private readonly ISettingsService _settings;
     private readonly ILogger<SmtpDispatcher> _logger;
@@ -28,7 +28,7 @@ public class SmtpDispatcher : IEmailDispatcher
         
         if (string.IsNullOrWhiteSpace(mailSettings.Host))
         {
-            _logger.LogWarning("SMTP Host not configured. Email to {To} dropped.", message.To);
+            LogSmtpNotConfigured(_logger, message.To);
             return;
         }
 
@@ -69,7 +69,7 @@ public class SmtpDispatcher : IEmailDispatcher
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {To} via {Host}:{Port}", message.To, mailSettings.Host, mailSettings.Port);
+            LogEmailSendFailed(_logger, ex, message.To, mailSettings.Host, mailSettings.Port);
             throw; // Job/Queue will handle retry
         }
     }
@@ -89,4 +89,10 @@ public class SmtpDispatcher : IEmailDispatcher
         
         return settings;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "SMTP Host not configured. Email to {To} dropped.")]
+    static partial void LogSmtpNotConfigured(ILogger logger, string to);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to send email to {To} via {Host}:{Port}")]
+    static partial void LogEmailSendFailed(ILogger logger, Exception ex, string to, string host, int port);
 }

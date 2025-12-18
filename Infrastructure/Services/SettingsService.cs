@@ -127,7 +127,7 @@ public class SettingsService : ISettingsService
         return dict;
     }
 
-    public Task InvalidateAsync(string? keyOrPrefix = null)
+    public async Task InvalidateAsync(string? keyOrPrefix = null)
     {
         if (string.IsNullOrEmpty(keyOrPrefix))
         {
@@ -136,19 +136,19 @@ public class SettingsService : ISettingsService
             {
                 if (_prefixCts.TryRemove(key, out var cts))
                 {
-                    cts.Cancel();
+                    await cts.CancelAsync();
                     cts.Dispose();
                 }
             }
-            return Task.CompletedTask;
+            return;
         }
 
         // If it's a prefix, cancel the token for that prefix.
-        if (keyOrPrefix.EndsWith("."))
+        if (keyOrPrefix.EndsWith('.'))
         {
             if (_prefixCts.TryRemove(keyOrPrefix, out var cts))
             {
-                cts.Cancel();
+                await cts.CancelAsync();
                 cts.Dispose();
             }
         }
@@ -156,11 +156,9 @@ public class SettingsService : ISettingsService
         {
             _cache.Remove(CachePrefix + keyOrPrefix);
         }
-        
-        return Task.CompletedTask;
     }
     
-    private string? GetPrefix(string key)
+    private static string? GetPrefix(string key)
     {
         var parts = key.Split('.');
         return parts.Length > 1 ? $"{parts[0]}." : null;

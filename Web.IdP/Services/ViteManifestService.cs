@@ -34,6 +34,7 @@ public class ViteManifestService : IViteManifestService
     private readonly string _basePath;
     private readonly bool _isDevelopment;
     private readonly string _devServerUrl;
+    private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public bool IsDevelopment => _isDevelopment;
 
@@ -52,7 +53,7 @@ public class ViteManifestService : IViteManifestService
         if (File.Exists(manifestPath))
         {
             var json = File.ReadAllText(manifestPath);
-            _manifest = JsonSerializer.Deserialize<Dictionary<string, ViteManifestEntry>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) 
+            _manifest = JsonSerializer.Deserialize<Dictionary<string, ViteManifestEntry>>(json, _jsonOptions) 
                 ?? new Dictionary<string, ViteManifestEntry>();
         }
         else

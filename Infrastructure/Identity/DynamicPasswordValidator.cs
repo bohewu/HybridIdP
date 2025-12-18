@@ -127,7 +127,7 @@ namespace HybridIdP.Infrastructure.Identity
 
             // TODO: Implement common password blacklist (Phase 5.3) - This might require a separate service or configuration.
 
-            return errors.Any() ? IdentityResult.Failed(errors.ToArray()) : IdentityResult.Success;
+            return errors.Count > 0 ? IdentityResult.Failed(errors.ToArray()) : IdentityResult.Success;
         }
     }
 }

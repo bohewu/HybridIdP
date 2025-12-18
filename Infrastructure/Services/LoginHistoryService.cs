@@ -42,7 +42,7 @@ namespace Infrastructure.Services
             // Get recent login history
             var recentLogins = await GetLoginHistoryAsync(currentLogin.UserId, historyCount);
 
-            if (recentLogins.Count() == 0)
+            if (!recentLogins.Any())
             {
                 // First login, not abnormal
                 return false;

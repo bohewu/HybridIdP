@@ -336,7 +336,11 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
 
         // 3. Find User ID by email
         var usersResponse = await adminClient.GetAsync("/api/admin/users?search=appmanager@hybridauth.local");
-        usersResponse.EnsureSuccessStatusCode();
+        if (!usersResponse.IsSuccessStatusCode)
+        {
+            var body = await usersResponse.Content.ReadAsStringAsync();
+            throw new Exception($"Failed with {usersResponse.StatusCode}: {body}");
+        }
         var usersJson = await usersResponse.Content.ReadFromJsonAsync<JsonElement>();
         
         // Use CamelCase for properties as per standard default

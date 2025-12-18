@@ -502,10 +502,10 @@ public partial class PersonService : IPersonService
         return await _context.Persons
             .Include(p => p.Accounts)
             .Where(p => 
-                (p.FirstName != null && p.FirstName.ToLower().Contains(term)) ||
-                (p.LastName != null && p.LastName.ToLower().Contains(term)) ||
-                (p.EmployeeId != null && p.EmployeeId.ToLower().Contains(term)) ||
-                (p.Nickname != null && p.Nickname.ToLower().Contains(term)))
+                (p.FirstName != null && p.FirstName.Contains(searchTerm)) ||
+                (p.LastName != null && p.LastName.Contains(searchTerm)) ||
+                (p.EmployeeId != null && p.EmployeeId.Contains(searchTerm)) ||
+                (p.Nickname != null && p.Nickname.Contains(searchTerm)))
             .OrderBy(p => p.LastName)
             .ThenBy(p => p.FirstName)
             .Skip(skip)
@@ -528,12 +528,11 @@ public partial class PersonService : IPersonService
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            var term = searchTerm.ToLower();
             query = query.Where(u =>
-                (u.Email != null && u.Email.ToLower().Contains(term)) ||
-                (u.UserName != null && u.UserName.ToLower().Contains(term)) ||
-                (u.FirstName != null && u.FirstName.ToLower().Contains(term)) ||
-                (u.LastName != null && u.LastName.ToLower().Contains(term)));
+                (u.Email != null && u.Email.Contains(searchTerm)) ||
+                (u.UserName != null && u.UserName.Contains(searchTerm)) ||
+                (u.FirstName != null && u.FirstName.Contains(searchTerm)) ||
+                (u.LastName != null && u.LastName.Contains(searchTerm)));
         }
 
         return await query

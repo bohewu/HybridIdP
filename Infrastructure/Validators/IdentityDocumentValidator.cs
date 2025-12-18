@@ -30,7 +30,7 @@ public static class IdentityDocumentValidator
         if (string.IsNullOrWhiteSpace(nationalId)) 
             return false;
 
-        nationalId = nationalId.Trim().ToUpper();
+        nationalId = nationalId.Trim().ToUpperInvariant();
 
         // Format check: 1 letter + 9 digits
         if (nationalId.Length != 10) 
@@ -41,11 +41,8 @@ public static class IdentityDocumentValidator
             return false;
 
         // Letter must be valid (A-Z)
-        if (!LetterValues.ContainsKey(nationalId[0])) 
+        if (!LetterValues.TryGetValue(nationalId[0], out int letterValue)) 
             return false;
-
-        // Checksum validation
-        int letterValue = LetterValues[nationalId[0]];
         int[] weights = { 1, 9, 8, 7, 6, 5, 4, 3, 2, 1 }; // 10 weights total
 
         // Convert letter to two digits (e.g., A=10 → [1, 0])
@@ -77,7 +74,7 @@ public static class IdentityDocumentValidator
         if (string.IsNullOrWhiteSpace(passportNumber)) 
             return false;
 
-        passportNumber = passportNumber.Trim().ToUpper();
+        passportNumber = passportNumber.Trim().ToUpperInvariant();
 
         // Taiwan passport format: 9 alphanumeric characters (e.g., 300123456)
         // International standard: 6-12 characters
@@ -98,7 +95,7 @@ public static class IdentityDocumentValidator
         if (string.IsNullOrWhiteSpace(residentCert)) 
             return false;
 
-        residentCert = residentCert.Trim().ToUpper();
+        residentCert = residentCert.Trim().ToUpperInvariant();
 
         // Taiwan Resident Certificate format: Similar to National ID
         // Format: 2 letters + 8 digits (e.g., AA12345678) or 1 letter + 9 digits

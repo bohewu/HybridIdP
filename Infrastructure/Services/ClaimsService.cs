@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services;
 
-public class ClaimsService : IClaimsService
+public partial class ClaimsService : IClaimsService
 {
     private readonly IApplicationDbContext _db;
     private readonly ILogger<ClaimsService>? _logger;
@@ -37,30 +37,32 @@ public class ClaimsService : IClaimsService
         // Apply search filter
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var searchLower = search.ToLower();
             query = query.Where(c =>
-                c.Name.ToLower().Contains(searchLower) ||
-                c.DisplayName.ToLower().Contains(searchLower) ||
-                (c.Description != null && c.Description.ToLower().Contains(searchLower)) ||
-                c.ClaimType.ToLower().Contains(searchLower));
+                c.Name.Contains(search) ||
+                c.DisplayName.Contains(search) ||
+                (c.Description != null && c.Description.Contains(search)) ||
+                c.ClaimType.Contains(search));
         }
 
         // Get total count before pagination
         var totalCount = await query.CountAsync();
 
         // Apply sorting
-        query = sortBy.ToLower() switch
+        var sortByLower = (sortBy ?? "name").ToLowerInvariant();
+        var isDesc = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
+
+        query = sortByLower switch
         {
-            "displayname" => sortDirection.ToLower() == "desc"
+            "displayname" => isDesc
                 ? query.OrderByDescending(c => c.DisplayName)
                 : query.OrderBy(c => c.DisplayName),
-            "claimtype" => sortDirection.ToLower() == "desc"
+            "claimtype" => isDesc
                 ? query.OrderByDescending(c => c.ClaimType)
                 : query.OrderBy(c => c.ClaimType),
-            "type" => sortDirection.ToLower() == "desc"
+            "type" => isDesc
                 ? query.OrderByDescending(c => c.IsStandard)
                 : query.OrderBy(c => c.IsStandard),
-            _ => sortDirection.ToLower() == "desc"
+            _ => isDesc
                 ? query.OrderByDescending(c => c.Name)
                 : query.OrderBy(c => c.Name)
         };
@@ -148,7 +150,10 @@ public class ClaimsService : IClaimsService
         _db.UserClaims.Add(claim);
         await _db.SaveChangesAsync(CancellationToken.None);
 
-        _logger?.LogInformation("Created custom claim '{ClaimName}' with ID {ClaimId}", claim.Name, claim.Id);
+        if (_logger != null)
+        {
+            LogClaimCreated(_logger, claim.Name, claim.Id);
+        }
 
         return new ClaimDefinitionDto
         {
@@ -237,7 +242,10 @@ public class ClaimsService : IClaimsService
 
         await _db.SaveChangesAsync(CancellationToken.None);
 
-        _logger?.LogInformation("Updated claim '{ClaimName}' (ID: {ClaimId})", claim.Name, claim.Id);
+        if (_logger != null)
+        {
+            LogClaimUpdated(_logger, claim.Name, claim.Id);
+        }
 
         return new ClaimDefinitionDto
         {
@@ -282,6 +290,18 @@ public class ClaimsService : IClaimsService
         _db.UserClaims.Remove(claim);
         await _db.SaveChangesAsync(CancellationToken.None);
 
-        _logger?.LogInformation("Deleted claim '{ClaimName}' (ID: {ClaimId})", claim.Name, id);
+        if (_logger != null)
+        {
+            LogClaimDeleted(_logger, claim.Name, id);
+        }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Created custom claim '{ClaimName}' with ID {ClaimId}")]
+    static partial void LogClaimCreated(ILogger logger, string claimName, int claimId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Updated claim '{ClaimName}' (ID: {ClaimId})")]
+    static partial void LogClaimUpdated(ILogger logger, string claimName, int claimId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Deleted claim '{ClaimName}' (ID: {ClaimId})")]
+    static partial void LogClaimDeleted(ILogger logger, string claimName, int claimId);
 }

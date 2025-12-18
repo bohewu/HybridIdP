@@ -76,7 +76,7 @@ public class ClientService : IClientService
                 Type = clientType!,
                 ApplicationType = applicationType!,
                 ConsentType = consentType!,
-                RedirectUrisCount = redirectUris.Count()
+                RedirectUrisCount = redirectUris.Length
             });
         }
 
@@ -275,23 +275,14 @@ public class ClientService : IClientService
             descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit))
         {
             // Authorization code and implicit flows need response_type:code
-            if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.Code))
-            {
-                descriptor.Permissions.Add(Permissions.ResponseTypes.Code);
-            }
+            descriptor.Permissions.Add(Permissions.ResponseTypes.Code);
         }
         
         if (descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit))
         {
             // Implicit flow also needs response_type:token and id_token
-            if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.Token))
-            {
-                descriptor.Permissions.Add(Permissions.ResponseTypes.Token);
-            }
-            if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.IdToken))
-            {
-                descriptor.Permissions.Add(Permissions.ResponseTypes.IdToken);
-            }
+            descriptor.Permissions.Add(Permissions.ResponseTypes.Token);
+            descriptor.Permissions.Add(Permissions.ResponseTypes.IdToken);
         }
 
         // Phase 13.2: Validate M2M clients cannot request public (OIDC) scopes
@@ -451,23 +442,14 @@ public class ClientService : IClientService
                 descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit))
             {
                 // Authorization code and implicit flows need response_type:code
-                if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.Code))
-                {
-                    descriptor.Permissions.Add(Permissions.ResponseTypes.Code);
-                }
+                descriptor.Permissions.Add(Permissions.ResponseTypes.Code);
             }
             
             if (descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit))
             {
                 // Implicit flow also needs response_type:token and id_token
-                if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.Token))
-                {
-                    descriptor.Permissions.Add(Permissions.ResponseTypes.Token);
-                }
-                if (!descriptor.Permissions.Contains(Permissions.ResponseTypes.IdToken))
-                {
-                    descriptor.Permissions.Add(Permissions.ResponseTypes.IdToken);
-                }
+                descriptor.Permissions.Add(Permissions.ResponseTypes.Token);
+                descriptor.Permissions.Add(Permissions.ResponseTypes.IdToken);
             }
 
             // Phase 13.2: Validate M2M clients cannot request public (OIDC) scopes

@@ -40,7 +40,7 @@ public partial class ApiResourceService : IApiResourceService
         }
 
         // Sorting
-        query = (sort?.ToLower()) switch
+        query = (sort?.ToLowerInvariant()) switch
         {
             "name" => query.OrderBy(r => r.Name),
             "name_desc" => query.OrderByDescending(r => r.Name),
@@ -278,12 +278,11 @@ public partial class ApiResourceService : IApiResourceService
 
     public async Task<List<string>> GetAudiencesByScopesAsync(IEnumerable<string> scopeNames)
     {
-        if (scopeNames == null || !scopeNames.Any())
+        var scopeNamesList = scopeNames?.ToList();
+        if (scopeNamesList == null || scopeNamesList.Count == 0)
         {
             return [];
         }
-
-        var scopeNamesList = scopeNames.ToList();
         
         // First, resolve scope names to scope IDs via OpenIddict
         var scopeIds = new List<string>();

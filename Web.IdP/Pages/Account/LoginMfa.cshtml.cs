@@ -101,7 +101,7 @@ public partial class LoginMfaModel : PageModel
         // Check for lockout
         if (await _userManager.IsLockedOutAsync(user))
         {
-            _logger.LogWarning("User account locked out.");
+            LogAccountLocked(_logger);
             return RedirectToPage("./Lockout");
         }
 
@@ -120,7 +120,7 @@ public partial class LoginMfaModel : PageModel
             if (isValid)
             {
                 await _signInManager.SignInAsync(user, isPersistent: RememberMe);
-                _logger.LogInformation("User logged in with TOTP 2FA.");
+                LogLoginWithTotp(_logger);
                 
                 await _eventPublisher.PublishAsync(new LoginAttemptEvent(
                     userId: user.Id.ToString(),
@@ -155,12 +155,12 @@ public partial class LoginMfaModel : PageModel
             if (success)
             {
                 await _signInManager.SignInAsync(user, isPersistent: RememberMe);
-                _logger.LogInformation("User logged in with recovery code.");
+                LogLoginWithRecovery(_logger);
                 
                 var remainingCodes = await _mfaService.CountRecoveryCodesAsync(user);
                 if (remainingCodes <= 3)
                 {
-                    _logger.LogWarning("User {UserName} has only {Count} recovery codes left.", user.UserName, remainingCodes);
+                    LogLowRecoveryCodes(_logger, user.UserName ?? "Unknown", remainingCodes);
                 }
 
                 return LocalRedirect(returnUrl);
@@ -202,4 +202,16 @@ public partial class LoginMfaModel : PageModel
         
         return user;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "User account locked out.")]
+    static partial void LogAccountLocked(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User logged in with TOTP 2FA.")]
+    static partial void LogLoginWithTotp(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "User logged in with recovery code.")]
+    static partial void LogLoginWithRecovery(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "User {UserName} has only {Count} recovery codes left.")]
+    static partial void LogLowRecoveryCodes(ILogger logger, string userName, int count);
 }
