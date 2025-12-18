@@ -313,7 +313,8 @@ public static class ServiceCollectionExtensions
                        .RequireProofKeyForCodeExchange();
 
                 options.AllowRefreshTokenFlow()
-                       .SetRefreshTokenLifetime(TimeSpan.FromMinutes(tokenOptions.RefreshTokenLifetimeMinutes));
+                       .SetRefreshTokenLifetime(TimeSpan.FromMinutes(tokenOptions.RefreshTokenLifetimeMinutes))
+                       .SetRefreshTokenReuseLeeway(TimeSpan.Zero);
 
                 options.SetAccessTokenLifetime(TimeSpan.FromMinutes(tokenOptions.AccessTokenLifetimeMinutes));
 
