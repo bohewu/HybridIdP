@@ -31,6 +31,7 @@ public class ProfileDto
     // Security status
     public bool TwoFactorEnabled { get; set; }
     public bool EmailMfaEnabled { get; set; }
+    public bool PasskeyEnabled { get; set; }
 }
 
 /// <summary>

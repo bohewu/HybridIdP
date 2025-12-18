@@ -328,6 +328,7 @@ const allMfaDisabled = computed(() => {
 
 // Email MFA (Phase 20.3)
 const userEmail = ref('');
+const userTimeZone = ref('');
 const emailMfaLoading = ref(false);
 const emailMfaError = ref('');
 const emailMfaSuccess = ref('');
@@ -432,13 +433,19 @@ async function deletePasskey() {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleString(undefined, {
+  const options: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit'
-  });
+  };
+  
+  if (userTimeZone.value) {
+    options.timeZone = userTimeZone.value;
+  }
+  
+  return new Date(dateStr).toLocaleString(undefined, options);
 }
 
 async function loadMfaStatus() {
@@ -453,6 +460,7 @@ async function loadMfaStatus() {
     if (profileResponse.ok) {
       const profile = await profileResponse.json();
       userEmail.value = profile.email || '';
+      userTimeZone.value = profile.timeZone || '';
     }
   } catch (err) {
     console.error('Failed to load MFA status:', err);
