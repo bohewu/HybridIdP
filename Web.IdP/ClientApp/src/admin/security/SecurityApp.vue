@@ -110,6 +110,29 @@
         </div>
       </div>
 
+      <!-- MFA & Passkey Settings (Phase 20.4) -->
+      <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+        <div class="px-4 py-5 sm:px-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('security.mfaSettings') }}</h3>
+        </div>
+        <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <dl class="sm:divide-y sm:divide-gray-200">
+            <FormRow :label="$t('security.enableTotpMfa')">
+              <ToggleSwitch v-model="policy.enableTotpMfa" />
+            </FormRow>
+            <FormRow :label="$t('security.enableEmailMfa')">
+              <ToggleSwitch v-model="policy.enableEmailMfa" />
+            </FormRow>
+            <FormRow :label="$t('security.enablePasskey')">
+              <ToggleSwitch v-model="policy.enablePasskey" />
+            </FormRow>
+            <FormRow :label="$t('security.maxPasskeysPerUser')" for-id="maxPasskeys" :help-text="$t('security.maxPasskeysPerUserHelp')">
+              <input type="number" id="maxPasskeys" v-model.number="policy.maxPasskeysPerUser" min="1" max="10" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
+            </FormRow>
+          </dl>
+        </div>
+      </div>
+
       <!-- Abnormal Login Detection -->
       <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <div class="px-4 py-5 sm:px-6">

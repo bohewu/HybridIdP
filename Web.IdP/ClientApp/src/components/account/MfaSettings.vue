@@ -47,6 +47,54 @@
         </div>
       </div>
 
+      <!-- Passkey Section (Phase 20.4) -->
+      <div class="passkey-section">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+            </svg>
+          </div>
+          <div class="section-text">
+            <h3>{{ t('mfa.passkey.title') }}</h3>
+            <p>{{ t('mfa.passkey.description') }}</p>
+          </div>
+          <div class="section-action">
+            <button class="btn-enable" @click="registerNewPasskey" :disabled="passkeyLoading">
+              {{ passkeyLoading ? '...' : t('mfa.passkey.register') }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="passkeys.length > 0" class="passkey-list">
+          <h4>{{ t('mfa.passkey.registered') }}</h4>
+          <div v-for="pk in passkeys" :key="pk.id" class="passkey-item">
+            <div class="pk-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                <line x1="12" y1="18" x2="12.01" y2="18"></line>
+              </svg>
+            </div>
+            <div class="pk-info">
+              <p class="pk-name">{{ pk.deviceName }}</p>
+              <p class="pk-meta">
+                {{ t('mfa.passkey.createdAt') }}: {{ formatDate(pk.createdAt) }} | 
+                {{ t('mfa.passkey.lastUsed') }}: {{ pk.lastUsedAt ? formatDate(pk.lastUsedAt) : t('mfa.passkey.neverUsed') }}
+              </p>
+            </div>
+            <button class="btn-pk-delete" @click="confirmDeletePasskey(pk)" :title="t('mfa.passkey.delete')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <p v-if="passkeyError" class="error-message">{{ passkeyError }}</p>
+        <p v-if="passkeySuccess" class="success-message">{{ passkeySuccess }}</p>
+      </div>
+
       <!-- Email MFA Section (Phase 20.3) -->
       <div class="email-mfa-section">
         <div class="mfa-status" :class="mfaStatus.emailMfaEnabled ? 'mfa-enabled' : 'mfa-disabled'">
@@ -83,6 +131,22 @@
         </div>
         <p v-if="emailMfaError" class="error-message">{{ emailMfaError }}</p>
         <p v-if="emailMfaSuccess" class="success-message">{{ emailMfaSuccess }}</p>
+      </div>
+    </div>
+
+    <!-- Passkey Delete Confirmation Modal -->
+    <div v-if="passkeyToDelete" class="modal-overlay" @click.self="passkeyToDelete = null">
+      <div class="modal-content">
+        <h2>{{ t('mfa.passkey.deleteConfirmTitle') }}</h2>
+        <p>{{ t('mfa.passkey.deleteConfirmMessage') }}</p>
+        <p class="delete-target"><strong>{{ passkeyToDelete.deviceName }}</strong></p>
+        
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="passkeyToDelete = null">{{ t('common.cancel') }}</button>
+          <button class="btn-danger" @click="deletePasskey" :disabled="passkeyLoading">
+            {{ passkeyLoading ? '...' : t('mfa.passkey.delete') }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -222,6 +286,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useWebAuthn } from '../../composables/useWebAuthn';
 
 const { t } = useI18n();
 
@@ -244,6 +309,14 @@ const userEmail = ref('');
 const emailMfaLoading = ref(false);
 const emailMfaError = ref('');
 const emailMfaSuccess = ref('');
+
+// Passkeys (Phase 20.4)
+const { registerPasskey } = useWebAuthn();
+const passkeys = ref<any[]>([]);
+const passkeyLoading = ref(false);
+const passkeyError = ref('');
+const passkeySuccess = ref('');
+const passkeyToDelete = ref<any>(null);
 
 const maskedEmail = computed(() => {
   if (!userEmail.value) return '';
@@ -275,7 +348,76 @@ const regeneratedCodes = ref<string[]>([]);
 
 onMounted(async () => {
   await loadMfaStatus();
+  await loadPasskeys();
 });
+
+async function loadPasskeys() {
+  try {
+    const response = await fetch('/api/passkey/list', { credentials: 'include' });
+    if (response.ok) {
+      passkeys.value = await response.json();
+    }
+  } catch (err) {
+    console.error('Failed to load passkeys:', err);
+  }
+}
+
+async function registerNewPasskey() {
+  passkeyLoading.value = true;
+  passkeyError.value = '';
+  passkeySuccess.value = '';
+  
+  try {
+    await registerPasskey();
+    passkeySuccess.value = t('mfa.passkey.registerSuccess');
+    await loadPasskeys();
+    setTimeout(() => { passkeySuccess.value = ''; }, 3000);
+  } catch (err: any) {
+    passkeyError.value = err.message || t('mfa.errors.registerPasskeyFailed');
+  } finally {
+    passkeyLoading.value = false;
+  }
+}
+
+function confirmDeletePasskey(pk: any) {
+  passkeyToDelete.value = pk;
+}
+
+async function deletePasskey() {
+  if (!passkeyToDelete.value) return;
+  
+  passkeyLoading.value = true;
+  passkeyError.value = '';
+  
+  try {
+    const response = await fetch(`/api/passkey/${passkeyToDelete.value.id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      passkeyToDelete.value = null;
+      await loadPasskeys();
+    } else {
+      const result = await response.json();
+      passkeyError.value = result.error || t('mfa.errors.deletePasskeyFailed');
+    }
+  } catch (err) {
+    passkeyError.value = t('mfa.errors.deletePasskeyFailed');
+  } finally {
+    passkeyLoading.value = false;
+  }
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleString(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
 
 async function loadMfaStatus() {
   loading.value = true;
@@ -817,6 +959,104 @@ function finishRegenerate() {
     width: 100%;
     text-align: center;
   }
+}
+
+/* Passkey Section (Phase 20.4) */
+.passkey-section {
+  margin-top: 24px;
+  padding: 24px 0;
+  border-top: 1px solid #e8eaed;
+}
+
+.passkey-list {
+  margin-top: 20px;
+}
+
+.passkey-list h4 {
+  font-size: 13px;
+  font-weight: 500;
+  color: #5f6368;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.passkey-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+
+.pk-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  background: #e6f4ea;
+  color: #137333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pk-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.pk-info {
+  flex: 1;
+}
+
+.pk-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #202124;
+  margin: 0;
+}
+
+.pk-meta {
+  font-size: 12px;
+  color: #5f6368;
+  margin: 4px 0 0;
+}
+
+.btn-pk-delete {
+  background: none;
+  border: none;
+  color: #5f6368;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-pk-delete:hover {
+  background: #fce8e6;
+  color: #c5221f;
+}
+
+.btn-pk-delete svg {
+  width: 18px;
+  height: 18px;
+}
+
+.delete-target {
+  margin: 16px 0;
+  padding: 12px;
+  background: #f1f3f4;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.section-action {
+  flex-shrink: 0;
 }
 
 /* Email MFA Section (Phase 20.3) */

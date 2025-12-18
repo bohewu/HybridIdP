@@ -31,7 +31,25 @@
     "invalidPassword": "密碼錯誤",
     "totpRequired": "請輸入驗證碼",
     "passwordRequired": "請輸入密碼",
-    "toggleFailed": "切換電子郵件 MFA 失敗"
+    "toggleFailed": "切換電子郵件 MFA 失敗",
+    "registerPasskeyFailed": "註冊密鑰失敗",
+    "deletePasskeyFailed": "刪除密鑰失敗",
+    "loadPasskeysFailed": "載入密鑰清單失敗"
+  },
+  "passkey": {
+    "title": "通行密鑰 (Passkeys)",
+    "description": "使用通行密鑰，透過指紋、臉部辨識或安全金鑰登入您的帳戶。",
+    "register": "註冊新密鑰",
+    "registered": "已註冊的密鑰",
+    "noPasskeys": "尚未註冊任何密鑰。",
+    "deviceName": "裝置名稱",
+    "createdAt": "建立於",
+    "lastUsed": "最後使用",
+    "neverUsed": "未使用過",
+    "delete": "刪除",
+    "deleteConfirmTitle": "刪除密鑰",
+    "deleteConfirmMessage": "確定要刪除此密鑰嗎？刪除後您將無法再使用它進行登入。",
+    "registerSuccess": "密鑰註冊成功"
   },
   "emailMfa": "電子郵件驗證",
   "emailMfaDescription": "登入時透過電子郵件接收驗證碼",

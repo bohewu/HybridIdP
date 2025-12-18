@@ -37,6 +37,12 @@
     "registrationSettings": "Registration Settings",
     "registrationEnabled": "Allow Public Registration",
     "registrationEnabledHelp": "When disabled, new users cannot register accounts.",
+    "mfaSettings": "MFA & Passkey Settings",
+    "enableTotpMfa": "Enable TOTP MFA (Authenticator App)",
+    "enableEmailMfa": "Enable Email MFA",
+    "enablePasskey": "Enable Passkey (WebAuthn)",
+    "maxPasskeysPerUser": "Max Passkeys Per User",
+    "maxPasskeysPerUserHelp": "Maximum number of passkeys a single user can register.",
     "validation": {
         "minCharacterTypesRange": "Minimum character types must be between 2 and 4",
         "passwordLengthRange": "Password length must be between 6 and 128 characters"
