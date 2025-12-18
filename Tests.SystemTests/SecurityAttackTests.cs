@@ -248,30 +248,19 @@ public class SecurityAttackTests : IClassFixture<WebIdPServerFixture>, IAsyncLif
         // Wait a moment to ensure DB is updated
         await Task.Delay(200);
         
+        // With RefreshTokenReuseLeeway set to Zero, the old token should be invalidated immediately.
         // Try to use the ORIGINAL refresh token again
-        var (status2, _, error2) = await RefreshTokenAsync(_refreshToken);
+        var (status2, _, _) = await RefreshTokenAsync(_refreshToken);
+        
+        // Expect BadRequest (or Unauthorized)
         System.Console.WriteLine($"Original token reuse result: {status2}");
         
-        // Document the behavior - there are multiple valid configurations:
-        // 1. Rotation + Revocation: Old token rejected (400/401) 
-        // 2. Rotation + No Revocation: Both tokens work temporarily
-        // 3. No Rotation: Same token always works
-        //
-        // All are valid depending on OpenIddict configuration
-        // We just verify the system responds predictably
-        
         Assert.True(
-            status2 == HttpStatusCode.OK || 
-            status2 == HttpStatusCode.BadRequest || 
-            status2 == HttpStatusCode.Unauthorized,
-            $"Response should be predictable. Got: {status2}"
+            status2 == HttpStatusCode.BadRequest,
+            $"Expected BadRequest (revoked) for reused token. Got: {status2}"
         );
         
-        // Log security note if old token still works after rotation
-        if (isRotated && status2 == HttpStatusCode.OK)
-        {
-            System.Console.WriteLine("SECURITY NOTE: Old refresh token still valid after rotation. Consider enabling immediate revocation in OpenIddict settings.");
-        }
+        System.Console.WriteLine("SECURITY CHECK PASSED: Old refresh token was revoked.");
     }
 
     #endregion
