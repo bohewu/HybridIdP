@@ -32,6 +32,7 @@ public partial class PasskeyController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ISecurityPolicyService _securityPolicyService;
     private readonly ApplicationDbContext _dbContext;
+    private readonly IAuditService _auditService;
     private readonly ILogger<PasskeyController> _logger;
 
     public PasskeyController(
@@ -40,6 +41,7 @@ public partial class PasskeyController : ControllerBase
         UserManager<ApplicationUser> userManager,
         ISecurityPolicyService securityPolicyService,
         ApplicationDbContext dbContext,
+        IAuditService auditService,
         ILogger<PasskeyController> logger)
     {
         _passkeyService = passkeyService;
@@ -47,6 +49,7 @@ public partial class PasskeyController : ControllerBase
         _userManager = userManager;
         _securityPolicyService = securityPolicyService;
         _dbContext = dbContext;
+        _auditService = auditService;
         _logger = logger;
     }
 
@@ -137,6 +140,12 @@ public partial class PasskeyController : ControllerBase
         if (result.Success)
         {
             LogPasskeyRegistered(user.UserName);
+            await _auditService.LogEventAsync(
+                Core.Domain.Constants.AuditEventTypes.PasskeyRegistered,
+                user.Id.ToString(),
+                null, // details
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                Request.Headers["User-Agent"].FirstOrDefault());
             return Ok(new { success = true });
         }
 
@@ -168,6 +177,12 @@ public partial class PasskeyController : ControllerBase
         }
         
         LogPasskeyDeleted(user.Id, id);
+        await _auditService.LogEventAsync(
+            Core.Domain.Constants.AuditEventTypes.PasskeyDeleted,
+            user.Id.ToString(),
+            $"{{\"passkeyId\":{id}}}",
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            Request.Headers["User-Agent"].FirstOrDefault());
         return Ok(new { success = true });
     }
 
