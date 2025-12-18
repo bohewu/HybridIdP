@@ -314,7 +314,7 @@ public static class ServiceCollectionExtensions
 
                 options.AllowRefreshTokenFlow()
                        .SetRefreshTokenLifetime(TimeSpan.FromMinutes(tokenOptions.RefreshTokenLifetimeMinutes))
-                       .SetRefreshTokenReuseLeeway(TimeSpan.Zero);
+                       .SetRefreshTokenReuseLeeway(TimeSpan.FromSeconds(tokenOptions.RefreshTokenReuseLeewaySeconds));
 
                 options.SetAccessTokenLifetime(TimeSpan.FromMinutes(tokenOptions.AccessTokenLifetimeMinutes));
 
