@@ -40,7 +40,7 @@ describe('useWebAuthn', () => {
         it('throws error if WebAuthn not supported', async () => {
             vi.stubGlobal('window', { ...window, PublicKeyCredential: undefined });
             const { registerPasskey } = useWebAuthn();
-            await expect(registerPasskey()).rejects.toThrow('WebAuthn not supported');
+            await expect(registerPasskey()).rejects.toThrow('mfa.errors.webAuthnNotSupported');
         });
 
         it('successfully registers a passkey', async () => {
@@ -93,7 +93,7 @@ describe('useWebAuthn', () => {
             error.name = 'NotAllowedError';
             navigator.credentials.create.mockRejectedValueOnce(error);
 
-            await expect(registerPasskey()).rejects.toThrow('User canceled or biometric failed');
+            await expect(registerPasskey()).rejects.toThrow('mfa.errors.userCanceled');
         });
     });
 });

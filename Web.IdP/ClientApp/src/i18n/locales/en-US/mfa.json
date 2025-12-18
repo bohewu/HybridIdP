@@ -34,7 +34,12 @@
     "toggleFailed": "Failed to toggle Email MFA",
     "registerPasskeyFailed": "Failed to register passkey",
     "deletePasskeyFailed": "Failed to delete passkey",
-    "loadPasskeysFailed": "Failed to load passkey list"
+    "loadPasskeysFailed": "Failed to load passkey list",
+    "webAuthnNotSupported": "WebAuthn not supported by your browser",
+    "userCanceled": "User canceled or biometric failed",
+    "securityError": "Security domain mismatch",
+    "registrationOptionsFailed": "Failed to get registration options",
+    "loginOptionsFailed": "Failed to get login options"
   },
   "passkey": {
     "title": "Passkeys",

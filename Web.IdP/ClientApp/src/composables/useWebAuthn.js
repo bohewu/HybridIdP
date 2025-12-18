@@ -61,7 +61,7 @@ export function useWebAuthn() {
 
     const registerPasskey = async () => {
         if (!isSupported()) {
-            throw new Error('WebAuthn not supported');
+            throw new Error('mfa.errors.webAuthnNotSupported');
         }
 
         // 1. Get options from server
@@ -71,7 +71,7 @@ export function useWebAuthn() {
         });
 
         if (!optionsResp.ok) {
-            throw new Error('Failed to get registration options');
+            throw new Error('mfa.errors.registrationOptionsFailed');
         }
 
         const options = await optionsResp.json();
@@ -125,10 +125,10 @@ export function useWebAuthn() {
             return await registerResp.json();
         } catch (err) {
             if (err.name === 'NotAllowedError') {
-                throw new Error('User canceled or biometric failed');
+                throw new Error('mfa.errors.userCanceled');
             }
             if (err.name === 'SecurityError') {
-                throw new Error('Security domain mismatch');
+                throw new Error('mfa.errors.securityError');
             }
             throw err;
         }
@@ -136,7 +136,7 @@ export function useWebAuthn() {
 
     const authenticateWithPasskey = async (username) => {
         if (!isSupported()) {
-            throw new Error('WebAuthn not supported');
+            throw new Error('mfa.errors.webAuthnNotSupported');
         }
 
         // 1. Get assertion options
@@ -147,7 +147,7 @@ export function useWebAuthn() {
         });
 
         if (!optionsResp.ok) {
-            throw new Error('Failed to get login options');
+            throw new Error('mfa.errors.loginOptionsFailed');
         }
 
         const options = await optionsResp.json();
@@ -202,7 +202,7 @@ export function useWebAuthn() {
             return await loginResp.json();
         } catch (err) {
             if (err.name === 'NotAllowedError') {
-                throw new Error('User canceled or biometric failed');
+                throw new Error('mfa.errors.userCanceled');
             }
             throw err;
         }
