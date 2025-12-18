@@ -128,7 +128,8 @@ If tests fail because MFA is already enabled:
 `ZapSecurityTests` provides automated security scanning using OWASP ZAP:
 - **Passive Scan**: Scans API endpoints for security issues
 - **Spider**: Crawls authenticated endpoints
-- **Active Scan**: Tests for injection vulnerabilities
+- **Active Scan**: Tests for standard injection vulnerabilities
+- **Deep Attack (Aggressive)**: Uses AJAX Spider and high-intensity Active Scanning for comprehensive vulnerability detection.
 
 ### Windows Installation
 
@@ -136,6 +137,7 @@ If tests fail because MFA is already enabled:
 - **Java Runtime**: Java 11+ required (ZAP is a Java application)
   - Download from: https://adoptium.net/ or https://www.oracle.com/java/technologies/downloads/
   - Ensure `java` is in your PATH
+- **WSL (Optional)**: If running ZAP via Docker, ensure `dotnet` is installed **inside** your WSL distribution to run tests from there.
 
 **ZAP Installation:**
 1. **Download ZAP**: https://www.zaproxy.org/download/

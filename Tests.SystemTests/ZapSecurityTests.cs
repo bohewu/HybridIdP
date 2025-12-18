@@ -243,6 +243,65 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         Assert.Empty(injectionAlerts);
     }
 
+    [Fact(Skip = "Aggressive scan - run manually for deep investigation")]
+    public async Task ZapDeepAttack_AggressiveScan_ComprehensiveTesting()
+    {
+        // 1. Configure for Aggressive Attack
+        // Set attack strength to HIGH and alert threshold to LOW (catch more)
+        await _zapClient.GetAsync("/JSON/ascan/action/setPolicyAttackStrength/?id=default&attackStrength=HIGH");
+        await _zapClient.GetAsync("/JSON/ascan/action/setPolicyAlertThreshold/?id=default&alertThreshold=LOW");
+
+        // 2. Configure authentication
+        await ConfigureZapAuthenticationAsync(_adminToken);
+
+        // 3. Deep Crawl via AJAX Spider (better for SPAs)
+        var ajaxSpiderResponse = await _zapClient.GetAsync(
+            $"/JSON/ajaxSpider/action/scan/?url={Uri.EscapeDataString(_idpBaseUrl)}&inScopeOnly=true");
+        
+        if (ajaxSpiderResponse.IsSuccessStatusCode)
+        {
+            // Wait for AJAX spider (max 5 minutes)
+            var ajaxTimeout = DateTime.UtcNow.AddMinutes(5);
+            while (DateTime.UtcNow < ajaxTimeout)
+            {
+                var statusResponse = await _zapClient.GetAsync("/JSON/ajaxSpider/view/status/");
+                var statusContent = await statusResponse.Content.ReadFromJsonAsync<JsonElement>();
+                var status = statusContent.GetProperty("status").GetString();
+                if (status == "stopped") break;
+                await Task.Delay(5000);
+            }
+        }
+
+        // 4. Intensive Active Scan
+        var scanResponse = await _zapClient.GetAsync(
+            $"/JSON/ascan/action/scan/?url={Uri.EscapeDataString(_idpBaseUrl)}&recurse=true&inScopeOnly=true");
+        
+        Assert.True(scanResponse.IsSuccessStatusCode, "Active scan should start");
+
+        var scanContent = await scanResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var scanId = scanContent.GetProperty("scan").GetString();
+
+        // Wait for deep active scan (max 10 minutes)
+        var timeout = DateTime.UtcNow.AddMinutes(10);
+        while (DateTime.UtcNow < timeout)
+        {
+            var statusResponse = await _zapClient.GetAsync($"/JSON/ascan/view/status/?scanId={scanId}");
+            var statusContent = await statusResponse.Content.ReadFromJsonAsync<JsonElement>();
+            var status = statusContent.GetProperty("status").GetString();
+            if (status == "100") break;
+            await Task.Delay(10000);
+        }
+
+        // 5. Verify Results - Fail on ANY Medium or High risk
+        var alerts = await GetZapAlertsAsync();
+        var criticalAlerts = alerts.Where(a => 
+            a.Risk?.Equals("High", StringComparison.OrdinalIgnoreCase) == true ||
+            a.Risk?.Equals("Medium", StringComparison.OrdinalIgnoreCase) == true
+        ).ToList();
+
+        Assert.Empty(criticalAlerts);
+    }
+
     #region Helper Methods
 
     private async Task ConfigureZapAuthenticationAsync(string bearerToken)
