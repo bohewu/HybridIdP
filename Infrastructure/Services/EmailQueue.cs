@@ -33,4 +33,26 @@ public class EmailQueue : IEmailQueue
     {
         return _queue.Reader.ReadAsync(ct);
     }
+
+    /// <summary>
+    /// Signal that no more writes will occur. Call during graceful shutdown.
+    /// </summary>
+    public void Complete()
+    {
+        _queue.Writer.Complete();
+    }
+
+    /// <summary>
+    /// Try to read a message without blocking (for draining remaining messages on shutdown).
+    /// </summary>
+    public bool TryDequeue(out EmailMessage? message)
+    {
+        return _queue.Reader.TryRead(out message);
+    }
+
+    /// <summary>
+    /// Get approximate count of pending messages.
+    /// </summary>
+    public int PendingCount => _queue.Reader.Count;
 }
+
