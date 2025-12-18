@@ -44,6 +44,8 @@ public class SecurityPolicyDto
     [Range(1, 50, ErrorMessage = "Max passkeys must be between 1 and 50")]
     public int MaxPasskeysPerUser { get; set; } = 10;
     
+    public bool RequireMfaForPasskey { get; set; } = false;
+    
     public DateTime UpdatedUtc { get; set; }
     public string? UpdatedBy { get; set; }
 }

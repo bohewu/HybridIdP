@@ -129,6 +129,9 @@
             <FormRow :label="$t('security.maxPasskeysPerUser')" for-id="maxPasskeys" :help-text="$t('security.maxPasskeysPerUserHelp')">
               <input type="number" id="maxPasskeys" v-model.number="policy.maxPasskeysPerUser" min="1" max="10" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
             </FormRow>
+            <FormRow :label="$t('security.requireMfaForPasskey')" :help-text="$t('security.requireMfaForPasskeyHelp')">
+              <ToggleSwitch v-model="policy.requireMfaForPasskey" data-testid="require-mfa-for-passkey-toggle" />
+            </FormRow>
           </dl>
         </div>
       </div>

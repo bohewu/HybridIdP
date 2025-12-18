@@ -45,6 +45,12 @@ namespace Core.Domain.Entities
         /// </summary>
         public int MaxPasskeysPerUser { get; set; } = 10;
         
+        /// <summary>
+        /// When true, users must have TOTP or Email MFA enabled before they can register passkeys.
+        /// Disabling the last MFA method will automatically revoke all passkeys.
+        /// </summary>
+        public bool RequireMfaForPasskey { get; set; } = false;
+        
         public DateTime UpdatedUtc { get; set; }
         public string? UpdatedBy { get; set; }
     }

@@ -804,6 +804,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<bool>("RequireLowercase")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("RequireMfaForPasskey")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("RequireNonAlphanumeric")
                         .HasColumnType("bit");
 
