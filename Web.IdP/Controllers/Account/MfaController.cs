@@ -20,17 +20,20 @@ namespace Web.IdP.Controllers.Account;
 public class MfaController : ControllerBase
 {
     private readonly IMfaService _mfaService;
+    private readonly ISecurityPolicyService _securityPolicyService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAuditService _auditService;
     private readonly ILogger<MfaController> _logger;
 
     public MfaController(
         IMfaService mfaService,
+        ISecurityPolicyService securityPolicyService,
         UserManager<ApplicationUser> userManager,
         IAuditService auditService,
         ILogger<MfaController> logger)
     {
         _mfaService = mfaService;
+        _securityPolicyService = securityPolicyService;
         _userManager = userManager;
         _auditService = auditService;
         _logger = logger;
@@ -50,6 +53,7 @@ public class MfaController : ControllerBase
 
         var recoveryCodesLeft = await _mfaService.CountRecoveryCodesAsync(user, ct);
         var hasPassword = await _userManager.HasPasswordAsync(user);
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
 
         return Ok(new MfaStatusResponse
         {
@@ -57,7 +61,10 @@ public class MfaController : ControllerBase
             HasAuthenticator = await _userManager.GetAuthenticatorKeyAsync(user) != null,
             RecoveryCodesLeft = recoveryCodesLeft,
             HasPassword = hasPassword,
-            EmailMfaEnabled = user.EmailMfaEnabled
+            EmailMfaEnabled = user.EmailMfaEnabled,
+            EnableTotpMfa = policy.EnableTotpMfa,
+            EnableEmailMfa = policy.EnableEmailMfa,
+            EnablePasskey = policy.EnablePasskey
         });
     }
     
@@ -92,6 +99,13 @@ public class MfaController : ControllerBase
             return Unauthorized();
         }
 
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (!policy.EnableTotpMfa)
+        {
+            _logger.LogWarning("TOTP setup blocked for user {UserId}: feature disabled", user.Id);
+            return StatusCode(403, new { error = "mfaDisabled" });
+        }
+
         var setupInfo = await _mfaService.GetTotpSetupInfoAsync(user, ct);
 
         return Ok(new MfaSetupResponse
@@ -112,6 +126,13 @@ public class MfaController : ControllerBase
         if (user == null)
         {
             return Unauthorized();
+        }
+
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (!policy.EnableTotpMfa)
+        {
+            _logger.LogWarning("TOTP verification blocked for user {UserId}: feature disabled", user.Id);
+            return StatusCode(403, new { error = "mfaDisabled" });
         }
 
         var isValid = await _mfaService.VerifyAndEnableTotpAsync(user, request.Code, ct);
@@ -203,6 +224,13 @@ public class MfaController : ControllerBase
             return Unauthorized();
         }
 
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (!policy.EnableTotpMfa)
+        {
+            _logger.LogWarning("Recovery codes regeneration blocked for user {UserId}: feature disabled", user.Id);
+            return StatusCode(403, new { error = "mfaDisabled" });
+        }
+
         if (!user.TwoFactorEnabled)
         {
             return BadRequest(new { error = "MFA is not enabled" });
@@ -231,6 +259,13 @@ public class MfaController : ControllerBase
         if (user == null)
         {
             return Unauthorized();
+        }
+
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (!policy.EnableEmailMfa)
+        {
+            _logger.LogWarning("Email MFA code request blocked for user {UserId}: feature disabled", user.Id);
+            return StatusCode(403, new { error = "mfaDisabled" });
         }
 
         if (string.IsNullOrEmpty(user.Email))
@@ -285,6 +320,13 @@ public class MfaController : ControllerBase
             return Unauthorized();
         }
 
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (!policy.EnableEmailMfa)
+        {
+            _logger.LogWarning("Email MFA enablement blocked for user {UserId}: feature disabled", user.Id);
+            return StatusCode(403, new { error = "mfaDisabled" });
+        }
+
         if (string.IsNullOrEmpty(user.Email))
         {
             return BadRequest(new { error = "noEmail", message = "User does not have an email address." });
@@ -330,6 +372,9 @@ public record MfaStatusResponse
     public int RecoveryCodesLeft { get; init; }
     public bool HasPassword { get; init; }
     public bool EmailMfaEnabled { get; init; }
+    public bool EnableTotpMfa { get; init; }
+    public bool EnableEmailMfa { get; init; }
+    public bool EnablePasskey { get; init; }
 }
 
 public record MfaSetupResponse

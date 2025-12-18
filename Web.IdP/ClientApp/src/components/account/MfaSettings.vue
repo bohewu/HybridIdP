@@ -6,9 +6,22 @@
     </div>
 
     <!-- MFA Status Display -->
+    <div v-else-if="allMfaDisabled" class="all-mfa-disabled">
+      <div class="disabled-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          <line x1="2" y1="2" x2="22" y2="22"></line>
+        </svg>
+      </div>
+      <h3>{{ t('mfa.allDisabledTitle') }}</h3>
+      <p>{{ t('mfa.allDisabledDescription') }}</p>
+    </div>
+
+    <!-- MFA Status Display -->
     <div v-else class="mfa-content">
       <!-- MFA Disabled State -->
-      <div v-if="!mfaStatus.twoFactorEnabled" class="mfa-status mfa-disabled">
+      <div v-if="mfaStatus.enableTotpMfa && !mfaStatus.twoFactorEnabled" class="mfa-status mfa-disabled">
         <div class="status-icon">
           <svg class="icon-shield-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M19.69 14a6.9 6.9 0 0 0 .31-2V5l-8-3-3.16 1.18"></path>
@@ -26,7 +39,7 @@
       </div>
 
       <!-- MFA Enabled State -->
-      <div v-else class="mfa-status mfa-enabled">
+      <div v-else-if="mfaStatus.enableTotpMfa && mfaStatus.twoFactorEnabled" class="mfa-status mfa-enabled">
         <div class="status-icon enabled">
           <svg class="icon-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
@@ -48,7 +61,7 @@
       </div>
 
       <!-- Passkey Section (Phase 20.4) -->
-      <div class="passkey-section">
+      <div v-if="mfaStatus.enablePasskey" class="passkey-section">
         <div class="section-header">
           <div class="section-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -96,7 +109,7 @@
       </div>
 
       <!-- Email MFA Section (Phase 20.3) -->
-      <div class="email-mfa-section">
+      <div v-if="mfaStatus.enableEmailMfa" class="email-mfa-section">
         <div class="mfa-status" :class="mfaStatus.emailMfaEnabled ? 'mfa-enabled' : 'mfa-disabled'">
           <div class="status-icon" :class="{ enabled: mfaStatus.emailMfaEnabled }">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -301,7 +314,16 @@ const mfaStatus = ref({
   hasAuthenticator: false,
   recoveryCodesLeft: 0,
   hasPassword: true,
-  emailMfaEnabled: false
+  emailMfaEnabled: false,
+  enableTotpMfa: true,
+  enableEmailMfa: true,
+  enablePasskey: true
+});
+
+const allMfaDisabled = computed(() => {
+  return !mfaStatus.value.enableTotpMfa && 
+         !mfaStatus.value.enableEmailMfa && 
+         !mfaStatus.value.enablePasskey;
 });
 
 // Email MFA (Phase 20.3)
@@ -1057,6 +1079,38 @@ function finishRegenerate() {
 
 .section-action {
   flex-shrink: 0;
+}
+
+/* All MFA Disabled (Phase 20.4) */
+.all-mfa-disabled {
+  text-align: center;
+  padding: 48px 24px;
+  background: #f8f9fa;
+  border: 1px dashed #dadce0;
+  border-radius: 12px;
+  margin-top: 24px;
+}
+
+.disabled-icon {
+  color: #bdc1c6;
+  margin-bottom: 16px;
+}
+
+.disabled-icon svg {
+  width: 48px;
+  height: 48px;
+}
+
+.all-mfa-disabled h3 {
+  font-size: 18px;
+  color: #202124;
+  margin: 0 0 8px;
+}
+
+.all-mfa-disabled p {
+  font-size: 14px;
+  color: #5f6368;
+  margin: 0;
 }
 
 /* Email MFA Section (Phase 20.3) */

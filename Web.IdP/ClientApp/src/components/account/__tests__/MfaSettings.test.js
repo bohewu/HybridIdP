@@ -26,7 +26,12 @@ describe('MfaSettings.vue', () => {
         // Default mock for profile
         fetch.mockResolvedValue({
             ok: true,
-            json: () => Promise.resolve({ email: 'test@example.com' })
+            json: () => Promise.resolve({ 
+                email: 'test@example.com',
+                enableTotpMfa: true,
+                enableEmailMfa: true,
+                enablePasskey: true
+            })
         });
         
         // Setup default mock return for useWebAuthn
@@ -45,9 +50,9 @@ describe('MfaSettings.vue', () => {
     });
 
     it('lists registered passkeys', async () => {
-        // Mock passkey list response
+        // Mock passkey list and status response
         fetch.mockImplementation((url) => {
-            if (url === '/api/passkey/list') {
+            if (url.includes('/api/passkey/list')) {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve([
@@ -55,7 +60,15 @@ describe('MfaSettings.vue', () => {
                     ])
                 });
             }
-            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+            return Promise.resolve({ 
+                ok: true, 
+                json: () => Promise.resolve({ 
+                    email: 'test@example.com',
+                    enableTotpMfa: true,
+                    enableEmailMfa: true,
+                    enablePasskey: true
+                }) 
+            });
         });
 
         const wrapper = mount(MfaSettings);
@@ -78,7 +91,7 @@ describe('MfaSettings.vue', () => {
 
     it('shows delete confirmation modal when delete button clicked', async () => {
         fetch.mockImplementation((url) => {
-            if (url === '/api/passkey/list') {
+            if (url.includes('/api/passkey/list')) {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve([
@@ -86,7 +99,15 @@ describe('MfaSettings.vue', () => {
                     ])
                 });
             }
-            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+            return Promise.resolve({ 
+                ok: true, 
+                json: () => Promise.resolve({ 
+                    email: 'test@example.com',
+                    enableTotpMfa: true,
+                    enableEmailMfa: true,
+                    enablePasskey: true
+                }) 
+            });
         });
 
         const wrapper = mount(MfaSettings);
@@ -99,5 +120,24 @@ describe('MfaSettings.vue', () => {
         const modal = wrapper.find('.modal-content h2');
         expect(modal.exists()).toBe(true);
         expect(modal.text()).toBe('mfa.passkey.deleteConfirmTitle');
+    });
+
+    it('shows all disabled message when all MFA methods are turned off by policy', async () => {
+        fetch.mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({ 
+                email: 'test@example.com',
+                enableTotpMfa: false,
+                enableEmailMfa: false,
+                enablePasskey: false
+            })
+        });
+
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+
+        expect(wrapper.find('.all-mfa-disabled').exists()).toBe(true);
+        expect(wrapper.find('.all-mfa-disabled h3').text()).toBe('mfa.allDisabledTitle');
+        expect(wrapper.find('.mfa-content').exists()).toBe(false);
     });
 });

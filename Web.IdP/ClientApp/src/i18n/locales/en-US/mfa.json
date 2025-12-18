@@ -59,5 +59,7 @@
   "emailMfa": "Email Verification",
   "emailMfaDescription": "Receive a verification code via email when signing in",
   "emailMfaEnabled": "Email verification enabled",
-  "emailMfaDisabled": "Email verification disabled"
+  "emailMfaDisabled": "Email verification disabled",
+  "allDisabledTitle": "Multi-Factor Authentication is Disabled",
+  "allDisabledDescription": "The administrator has disabled all multi-factor authentication methods for this system."
 }
