@@ -67,4 +67,46 @@ public class EmailQueueProcessorTests
         // Assert
         _mockDispatcher.Verify(d => d.SendAsync(message, It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_GracefulShutdown_DrainsRemainingEmails()
+    {
+        // Arrange
+        var message1 = new EmailMessage { To = "first@test.com" };
+        var message2 = new EmailMessage { To = "second@test.com" };
+        var cts = new CancellationTokenSource();
+        
+        // Setup: First dequeue blocks, then TryDequeue returns messages during drain
+        _mockQueue.Setup(q => q.DequeueAsync(It.IsAny<CancellationToken>()))
+            .Returns(async (CancellationToken ct) => {
+                await Task.Delay(10000, ct); // Will be cancelled
+                return null!;
+            });
+        
+        // During drain, TryDequeue returns messages then false
+        var drainCallCount = 0;
+        _mockQueue.Setup(q => q.TryDequeue(out It.Ref<EmailMessage?>.IsAny))
+            .Returns((out EmailMessage? msg) => {
+                drainCallCount++;
+                if (drainCallCount == 1) { msg = message1; return true; }
+                if (drainCallCount == 2) { msg = message2; return true; }
+                msg = null;
+                return false;
+            });
+        
+        var processor = new EmailQueueProcessor(_mockQueue.Object, _mockScopeFactory.Object, _mockLogger.Object);
+
+        // Act
+        var executeTask = processor.StartAsync(cts.Token);
+        await Task.Delay(50); // Let it start
+        cts.Cancel(); // Trigger graceful shutdown
+        
+        try { await executeTask; } catch (OperationCanceledException) { }
+        await Task.Delay(200); // Allow drain to complete
+
+        // Assert - Both messages should have been dispatched during drain
+        _mockDispatcher.Verify(d => d.SendAsync(message1, It.IsAny<CancellationToken>()), Times.Once);
+        _mockDispatcher.Verify(d => d.SendAsync(message2, It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
+
