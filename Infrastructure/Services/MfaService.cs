@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,8 +8,10 @@ using Core.Application;
 using Core.Application.Interfaces;
 using Core.Domain;
 using Microsoft.AspNetCore.Identity;
-using QRCoder;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
+using QRCoder;
 
 namespace Infrastructure.Services;
 
@@ -23,6 +26,9 @@ public class MfaService : IMfaService
     private readonly IEmailTemplateService _emailTemplateService;
     private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
     private readonly IDistributedCache _cache;
+    private readonly ISecurityPolicyService _securityPolicyService;
+    private readonly ApplicationDbContext _dbContext;
+    private readonly ILogger<MfaService> _logger;
     private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
 
     public MfaService(
@@ -31,7 +37,10 @@ public class MfaService : IMfaService
         IEmailService emailService,
         IEmailTemplateService emailTemplateService,
         IPasswordHasher<ApplicationUser> passwordHasher,
-        IDistributedCache cache)
+        IDistributedCache cache,
+        ISecurityPolicyService securityPolicyService,
+        ApplicationDbContext dbContext,
+        ILogger<MfaService> logger)
     {
         _userManager = userManager;
         _brandingService = brandingService;
@@ -39,6 +48,9 @@ public class MfaService : IMfaService
         _emailTemplateService = emailTemplateService;
         _passwordHasher = passwordHasher;
         _cache = cache;
+        _securityPolicyService = securityPolicyService;
+        _dbContext = dbContext;
+        _logger = logger;
     }
 
     public async Task<MfaSetupInfo> GetTotpSetupInfoAsync(ApplicationUser user, CancellationToken ct = default)
@@ -123,6 +135,13 @@ public class MfaService : IMfaService
     {
         await _userManager.SetTwoFactorEnabledAsync(user, false);
         await _userManager.ResetAuthenticatorKeyAsync(user);
+        
+        // Cascading revocation: if policy requires MFA for passkeys and this was the last MFA method
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (policy.RequireMfaForPasskey && !user.EmailMfaEnabled)
+        {
+            await RevokeAllPasskeysAsync(user.Id, ct);
+        }
     }
 
     public async Task<IEnumerable<string>> GenerateRecoveryCodesAsync(ApplicationUser user, int count = 10, CancellationToken ct = default)
@@ -287,6 +306,30 @@ public class MfaService : IMfaService
         user.EmailMfaCode = null;
         user.EmailMfaCodeExpiry = null;
         await _userManager.UpdateAsync(user);
+        
+        // Cascading revocation: if policy requires MFA for passkeys and this was the last MFA method
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (policy.RequireMfaForPasskey && !user.TwoFactorEnabled)
+        {
+            await RevokeAllPasskeysAsync(user.Id, ct);
+        }
+    }
+    
+    /// <summary>
+    /// Revokes all passkeys for the user when MFA is disabled with RequireMfaForPasskey policy.
+    /// </summary>
+    private async Task RevokeAllPasskeysAsync(Guid userId, CancellationToken ct)
+    {
+        var passkeys = await _dbContext.UserCredentials
+            .Where(c => c.UserId == userId)
+            .ToListAsync(ct);
+        
+        if (passkeys.Any())
+        {
+            _dbContext.UserCredentials.RemoveRange(passkeys);
+            await _dbContext.SaveChangesAsync(ct);
+            _logger.LogWarning("Revoked {Count} passkeys for user {UserId} due to MFA disable with RequireMfaForPasskey policy", passkeys.Count, userId);
+        }
     }
 
     #endregion

@@ -71,7 +71,23 @@ public partial class PasskeyController : ControllerBase
             return StatusCode(403, new { error = "Passkey authentication is disabled" });
         }
         
-        // 3. Count existing passkeys
+        // 3. Check RequireMfaForPasskey policy - API validation
+        if (policy.RequireMfaForPasskey)
+        {
+            var hasTotpMfa = user.TwoFactorEnabled;
+            var hasEmailMfa = user.EmailMfaEnabled;
+            
+            if (!hasTotpMfa && !hasEmailMfa)
+            {
+                LogPasskeyBlockedNoMfa(user.Id);
+                return StatusCode(403, new { 
+                    error = "MfaRequiredForPasskey",
+                    message = "You must enable TOTP or Email MFA before registering a passkey"
+                });
+            }
+        }
+        
+        // 4. Count existing passkeys
         var existingCount = await _dbContext.UserCredentials
             .CountAsync(c => c.UserId == user.Id, ct);
         
@@ -240,6 +256,9 @@ public partial class PasskeyController : ControllerBase
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey registration blocked for user {UserId}: feature disabled")]
     partial void LogPasskeyRegistrationBlocked(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey registration blocked for user {UserId}: MFA required but not enabled")]
+    partial void LogPasskeyBlockedNoMfa(Guid userId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} deleted passkey {CredentialId}")]
     partial void LogPasskeyDeleted(Guid userId, int credentialId);

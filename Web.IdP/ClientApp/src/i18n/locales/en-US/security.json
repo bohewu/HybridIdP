@@ -43,6 +43,8 @@
     "enablePasskey": "Enable Passkey (WebAuthn)",
     "maxPasskeysPerUser": "Max Passkeys Per User",
     "maxPasskeysPerUserHelp": "Maximum number of passkeys a single user can register.",
+    "requireMfaForPasskey": "Require MFA for Passkeys",
+    "requireMfaForPasskeyHelp": "When enabled, users must have TOTP or Email MFA active before registering passkeys. Disabling MFA will automatically revoke all passkeys.",
     "validation": {
         "minCharacterTypesRange": "Minimum character types must be between 2 and 4",
         "passwordLengthRange": "Password length must be between 6 and 128 characters"

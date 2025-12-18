@@ -54,7 +54,9 @@
     "delete": "刪除",
     "deleteConfirmTitle": "刪除密鑰",
     "deleteConfirmMessage": "確定要刪除此密鑰嗎？刪除後您將無法再使用它進行登入。",
-    "registerSuccess": "密鑰註冊成功"
+    "registerSuccess": "密鑰註冊成功",
+    "requiresMfa": "您必須先啟用 TOTP 或電子郵件 MFA",
+    "nonCompliantWarning": "如果不啟用 MFA，您的通行密鑰可能會被撤銷。安全策略要求使用通行密鑰時必須啟用 MFA。"
   },
   "emailMfa": "電子郵件驗證",
   "emailMfaDescription": "登入時透過電子郵件接收驗證碼",
