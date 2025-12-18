@@ -60,7 +60,7 @@
                     <div class="space-y-4">
                         <div class="form-group">
                             <label asp-for="Input.Login" class="sr-only">@Localizer["EmailOrUsername"]</label>
-                            <input asp-for="Input.Login" class="input-google" placeholder="@Localizer["EmailOrUsername"]" autocomplete="username" autofocus data-test-id="login-username" />
+                            <input asp-for="Input.Login" class="input-google" placeholder="@Localizer["EmailOrUsername"]" autocomplete="username webauthn" autofocus data-test-id="login-username" />
                             <span asp-validation-for="Input.Login" class="text-red-600 text-xs mt-1 block" data-test-id="login-username-error"></span>
                         </div>
                         
@@ -90,12 +90,27 @@
                             <div></div> <!-- Spacer -->
                         }
 
-                        <button type="submit" 
-                                class="btn-google-blue ml-4" 
-                                data-test-id="login-submit"
-                                id="loginSubmitBtn">
-                            @Localizer["Login"]
-                        </button>
+                        <div class="flex space-x-2">
+                             @if (Model.PasskeyEnabled)
+                             {
+                                <button type="button" 
+                                        id="passkeyLoginBtn"
+                                        title="@Localizer["LoginWithPasskey"]"
+                                        class="btn-google-outline p-2 flex items-center justify-center"
+                                        data-test-id="passkey-login-btn">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                    </svg>
+                                </button>
+                             }
+
+                            <button type="submit" 
+                                    class="btn-google-blue" 
+                                    data-test-id="login-submit"
+                                    id="loginSubmitBtn">
+                                @Localizer["Login"]
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -107,6 +122,60 @@
     @if (Model.TurnstileEnabled)
     {
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    }
+
+    @if (Model.PasskeyEnabled)
+    {
+        <script type="module">
+            import { useWebAuthn } from '/src/composables/useWebAuthn.js';
+
+            document.addEventListener('DOMContentLoaded', async () => {
+                const { authenticateWithPasskey, isSupported } = useWebAuthn();
+                const passkeyBtn = document.getElementById('passkeyLoginBtn');
+                const usernameInput = document.querySelector('input[name="Input.Login"]');
+
+                if (!isSupported()) {
+                    if (passkeyBtn) passkeyBtn.style.display = 'none';
+                    return;
+                }
+
+                // Handle manual button click
+                if (passkeyBtn) {
+                    passkeyBtn.addEventListener('click', async () => {
+                        try {
+                            const username = usernameInput.value;
+                            const result = await authenticateWithPasskey(username);
+                            if (result.success) {
+                                window.location.href = '@Html.Raw(Model.ReturnUrl ?? Url.Content("~/"))';
+                            }
+                        } catch (err) {
+                            console.error('Passkey login failed:', err);
+                            // Only alert if it's not a user cancellation
+                            if (err.message !== 'mfa.errors.userCanceled') {
+                                alert(err.message || 'Passkey authentication failed');
+                            }
+                        }
+                    });
+                }
+
+                // Support Conditional UI (Auto-fill) if available
+                try {
+                    if (PublicKeyCredential.isConditionalMediationAvailable) {
+                        const available = await PublicKeyCredential.isConditionalMediationAvailable();
+                        if (available) {
+                            // Conditional UI handshake happens automatically in supported browsers
+                            // when autocomplete="username webauthn" is present.
+                            // However, we still need to trigger the get() call with mediation: 'conditional'
+                            // This is handled inside our authenticateWithPasskey if we pass a special flag, 
+                            // but for simplicity here we just focus on the button for now.
+                            // Full Conditional UI implementation would require updating useWebAuthn.
+                        }
+                    }
+                } catch (e) {
+                    console.error('Conditional mediation check failed:', e);
+                }
+            });
+        </script>
     }
 </body>
 </html>

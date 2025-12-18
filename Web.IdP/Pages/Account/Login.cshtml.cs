@@ -71,6 +71,7 @@ public partial class LoginModel : PageModel
     public bool TurnstileEnabled { get; private set; }
     public string TurnstileSiteKey => _turnstileOptions.SiteKey;
     public bool RegistrationEnabled { get; private set; } = true;
+    public bool PasskeyEnabled { get; private set; } = true;
 
     /// <summary>
     /// Calculate if Turnstile should be enabled based on settings and key configuration
@@ -96,7 +97,9 @@ public partial class LoginModel : PageModel
         public string Password { get; set; } = default!;
 
         [Display(Name = "RememberMe")]
-        public bool RememberMe { get; set; }
+        public bool RememberMe { get; private set; }
+
+        public void SetRememberMe(bool value) => RememberMe = value;
     }
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
@@ -115,6 +118,10 @@ public partial class LoginModel : PageModel
 
         // Load registration setting
         RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
+        
+        // Load Passkey enabled state
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        PasskeyEnabled = policy.EnablePasskey;
 
         // Load Turnstile enabled state
         await LoadTurnstileStateAsync();
@@ -127,13 +134,16 @@ public partial class LoginModel : PageModel
     {
         returnUrl ??= Url.Content("~/");
 
+        // Load settings needed for UI re-rendering
+        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        PasskeyEnabled = policy.EnablePasskey;
+        await LoadTurnstileStateAsync();
+
         if (!ModelState.IsValid)
         {
             return Page();
         }
-        
-        // Load Turnstile enabled state for POST validation
-        await LoadTurnstileStateAsync();
         
         // Validate Turnstile if enabled
         if (TurnstileEnabled)
@@ -174,8 +184,8 @@ public partial class LoginModel : PageModel
                     await _notificationService.NotifyAbnormalLoginAsync(result.User!.Id.ToString(), loginHistory);
 
                     // Check if we should block abnormal logins
-                    var policy = await _securityPolicyService.GetCurrentPolicyAsync();
-                    if (policy.BlockAbnormalLogin)
+                    var currentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
+                    if (currentPolicy.BlockAbnormalLogin)
                     {
                         LogAbnormalLoginBlocked(result.User!.UserName, loginHistory.IpAddress);
                         ModelState.AddModelError(string.Empty, _localizer["AbnormalLoginBlocked"]);
