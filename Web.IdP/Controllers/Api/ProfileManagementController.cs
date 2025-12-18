@@ -11,6 +11,7 @@ using Infrastructure;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Core.Application.Interfaces;
 
 namespace Web.IdP.Controllers.Api;
 
@@ -25,6 +26,7 @@ public class ProfileManagementController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ApplicationDbContext _dbContext;
     private readonly ISecurityPolicyService _securityPolicyService;
+    private readonly IPasskeyService _passkeyService;
     private readonly IAuditService _auditService;
     private readonly ILogger<ProfileManagementController> _logger;
 
@@ -32,12 +34,14 @@ public class ProfileManagementController : ControllerBase
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext dbContext,
         ISecurityPolicyService securityPolicyService,
+        IPasskeyService passkeyService,
         IAuditService auditService,
         ILogger<ProfileManagementController> logger)
     {
         _userManager = userManager;
         _dbContext = dbContext;
         _securityPolicyService = securityPolicyService;
+        _passkeyService = passkeyService;
         _auditService = auditService;
         _logger = logger;
     }
@@ -74,6 +78,7 @@ public class ProfileManagementController : ControllerBase
             AllowPasswordChange = policy.AllowSelfPasswordChange && hasLocalPassword,
             TwoFactorEnabled = user.TwoFactorEnabled,
             EmailMfaEnabled = user.EmailMfaEnabled,
+            PasskeyEnabled = (await _passkeyService.GetUserPasskeysAsync(user.Id)).Any(),
             ExternalLogins = externalLogins.Select(l => new ExternalLoginDto
             {
                 LoginProvider = l.LoginProvider,
