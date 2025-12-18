@@ -47,6 +47,7 @@ public class SecurityPolicyController : ControllerBase
             EnableTotpMfa = policy.EnableTotpMfa,
             EnableEmailMfa = policy.EnableEmailMfa,
             MaxPasskeysPerUser = policy.MaxPasskeysPerUser,
+            RequireMfaForPasskey = policy.RequireMfaForPasskey,
             UpdatedUtc = policy.UpdatedUtc,
             UpdatedBy = policy.UpdatedBy
         };
