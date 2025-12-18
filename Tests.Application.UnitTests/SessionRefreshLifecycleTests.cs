@@ -10,12 +10,14 @@ using Moq;
 using OpenIddict.Abstractions;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Tests.Application.UnitTests;
 
 /// <summary>
 /// Failing (RED) tests defining expected behavior for refresh rotation, reuse detection and chain revocation.
 /// Implementation will be added to SessionService to satisfy these tests.
+/// Now uses FakeTimeProvider for deterministic time control.
 /// </summary>
 public class SessionRefreshLifecycleTests
 {
@@ -24,6 +26,8 @@ public class SessionRefreshLifecycleTests
     private readonly Mock<IOpenIddictTokenManager> _tokens = new();
     private readonly ApplicationDbContext _db;
     private readonly SessionService _service;
+    private readonly FakeTimeProvider _timeProvider;
+    private readonly DateTimeOffset _fixedTime;
 
     public SessionRefreshLifecycleTests()
     {
@@ -31,7 +35,11 @@ public class SessionRefreshLifecycleTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _db = new ApplicationDbContext(options);
-        _service = new SessionService(_authz.Object, _apps.Object, _tokens.Object, _db);
+        
+        // Use FakeTimeProvider for deterministic time
+        _fixedTime = new DateTimeOffset(2024, 6, 15, 12, 0, 0, TimeSpan.Zero);
+        _timeProvider = new FakeTimeProvider(_fixedTime);
+        _service = new SessionService(_authz.Object, _apps.Object, _tokens.Object, _db, _timeProvider);
     }
 
     [Fact]
@@ -44,8 +52,8 @@ public class SessionRefreshLifecycleTests
             UserId = userId,
             AuthorizationId = authId,
             CurrentRefreshTokenHash = "hash_old",
-            AbsoluteExpiresUtc = DateTime.UtcNow.AddHours(8),
-            SlidingExpiresUtc = DateTime.UtcNow.AddMinutes(30),
+            AbsoluteExpiresUtc = _fixedTime.DateTime.AddHours(8),
+            SlidingExpiresUtc = _fixedTime.DateTime.AddMinutes(2), // Near expiry, will be extended
             SlidingExtensionCount = 0
         });
         await _db.SaveChangesAsync(CancellationToken.None);
@@ -55,7 +63,11 @@ public class SessionRefreshLifecycleTests
 
         // Assert desired post-conditions
         Assert.Equal(authId, result.AuthorizationId);
-        Assert.True(result.RefreshTokenExpiresAt > DateTimeOffset.UtcNow.AddMinutes(25)); // sliding extended
+        Assert.NotNull(result.RefreshTokenExpiresAt);
+        // Sliding window is 30 min, so after extension it should be _fixedTime + 30min
+        // Use UtcTicks for timezone-safe comparison
+        var expectedExpiryUtc = _fixedTime.UtcDateTime.AddMinutes(30);
+        Assert.Equal(expectedExpiryUtc.Ticks, result.RefreshTokenExpiresAt!.Value.UtcTicks);
         Assert.False(result.ReuseDetected);
         Assert.True(result.SlidingExtended);
     }
@@ -71,8 +83,8 @@ public class SessionRefreshLifecycleTests
             AuthorizationId = authId,
             CurrentRefreshTokenHash = "hash_current",
             PreviousRefreshTokenHash = "hash_previous",
-            AbsoluteExpiresUtc = DateTime.UtcNow.AddHours(2),
-            SlidingExpiresUtc = DateTime.UtcNow.AddMinutes(20),
+            AbsoluteExpiresUtc = _fixedTime.DateTime.AddHours(2),
+            SlidingExpiresUtc = _fixedTime.DateTime.AddMinutes(20),
             SlidingExtensionCount = 1
         });
         await _db.SaveChangesAsync(CancellationToken.None);
@@ -96,8 +108,8 @@ public class SessionRefreshLifecycleTests
             AuthorizationId = authId,
             CurrentRefreshTokenHash = "hash_current",
             PreviousRefreshTokenHash = "hash_previous",
-            AbsoluteExpiresUtc = DateTime.UtcNow.AddHours(2),
-            SlidingExpiresUtc = DateTime.UtcNow.AddMinutes(20)
+            AbsoluteExpiresUtc = _fixedTime.DateTime.AddHours(2),
+            SlidingExpiresUtc = _fixedTime.DateTime.AddMinutes(20)
         });
         await _db.SaveChangesAsync(CancellationToken.None);
 
@@ -121,8 +133,8 @@ public class SessionRefreshLifecycleTests
     {
         var userId = Guid.NewGuid();
         var authId = "auth-abs-1";
-        var absolute = DateTime.UtcNow.AddMinutes(10);
-        var sliding = DateTime.UtcNow.AddMinutes(2);
+        var absolute = _fixedTime.DateTime.AddMinutes(10);
+        var sliding = _fixedTime.DateTime.AddMinutes(2);
         _db.UserSessions.Add(new UserSession
         {
             UserId = userId,
@@ -139,8 +151,9 @@ public class SessionRefreshLifecycleTests
         Assert.Equal(authId, result.AuthorizationId);
         Assert.True(result.SlidingExtended);
         Assert.NotNull(result.RefreshTokenExpiresAt);
-        // Should be capped at absolute expiry
-        Assert.Equal(new DateTimeOffset(absolute), result.RefreshTokenExpiresAt);
+        // Should be capped at absolute expiry (use UTC for comparison)
+        var expectedAbsolute = new DateTimeOffset(DateTime.SpecifyKind(absolute, DateTimeKind.Utc));
+        Assert.Equal(expectedAbsolute, result.RefreshTokenExpiresAt);
     }
 
     [Fact]
@@ -153,7 +166,7 @@ public class SessionRefreshLifecycleTests
             UserId = userId,
             AuthorizationId = authId,
             CurrentRefreshTokenHash = "hash_current",
-            RevokedUtc = DateTime.UtcNow
+            RevokedUtc = _fixedTime.DateTime
         });
         await _db.SaveChangesAsync(CancellationToken.None);
 
@@ -171,13 +184,13 @@ public class SessionRefreshLifecycleTests
     {
         var userId = Guid.NewGuid();
         var authId = "auth-audit-1";
-        var sliding = DateTime.UtcNow.AddMinutes(2);
+        var sliding = _fixedTime.DateTime.AddMinutes(2);
         _db.UserSessions.Add(new UserSession
         {
             UserId = userId,
             AuthorizationId = authId,
             CurrentRefreshTokenHash = "hash_old",
-            AbsoluteExpiresUtc = DateTime.UtcNow.AddHours(1),
+            AbsoluteExpiresUtc = _fixedTime.DateTime.AddHours(1),
             SlidingExpiresUtc = sliding,
             SlidingExtensionCount = 0
         });
@@ -202,7 +215,7 @@ public class SessionRefreshLifecycleTests
             UserId = userId,
             AuthorizationId = authId,
             CurrentRefreshTokenHash = "hash_current",
-            AbsoluteExpiresUtc = DateTime.UtcNow.AddHours(1)
+            AbsoluteExpiresUtc = _fixedTime.DateTime.AddHours(1)
         });
         await _db.SaveChangesAsync(CancellationToken.None);
 
