@@ -79,15 +79,25 @@
 - [x] API: `POST /api/passkey/login` - Verify signature + SignIn.
 - [x] Integrate with `ValidatePersonStatusAsync()` for Person Lifecycle check.
 
-### Phase 20.4: WebAuthn Passkey - Frontend UI 📋 PLANNED
-**Complexity**: ⭐⭐ Medium | **Estimate**: 1-2 days
+### Phase 20.4: WebAuthn Passkey - Frontend UI ✅ COMPLETED
+**Complexity**: ⭐⭐ Medium | **Completed**: 2025-12-18
 
-- [ ] User Settings page: "Manage Passkeys" section.
-- [ ] "Add Passkey" button with WebAuthn registration flow.
-- [ ] List registered passkeys with device names.
-- [ ] Delete passkey functionality.
-- [ ] Login page: "Sign in with Passkey" option.
-- [ ] JavaScript integration with `navigator.credentials` API.
+- [x] User Settings page: "Manage Passkeys" section.
+- [x] "Add Passkey" button with WebAuthn registration flow.
+- [x] List registered passkeys with device names.
+- [x] Delete passkey functionality.
+- [x] Login page: "Sign in with Passkey" option.
+- [x] JavaScript integration with `navigator.credentials` API.
+
+### Phase 20.4 Enhancement: Configurable Strong Security Model 📋 PLANNED
+**Complexity**: ⭐⭐ Medium | **Estimate**: 1-2 days
+**Details**: [Phase 20.4 Enhancement Plan](./phase%2020.4_enhancement_plan.md)
+
+- [ ] Database: `RequireMfaForPasskey` in `SecurityPolicies`.
+- [ ] Backend: Enforce MFA prerequisite for registration.
+- [ ] Backend: Auto-revoke passkeys when MFA is disabled.
+- [ ] UI: Configurable toggle in Admin Security Settings.
+- [ ] UI: Warning for non-compliant users in MfaSettings.
 
 ---
 
