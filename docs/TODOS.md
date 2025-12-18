@@ -174,10 +174,13 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] API: `POST /api/passkey/login` - Verify signature + SignIn
 - [x] Integrate with `ValidatePersonStatusAsync()` for Person Lifecycle check
 
-### Phase 20.5: Testing & Documentation (Pending)
-- [ ] E2E tests with Playwright (using Chrome's Virtual Authenticator)
-- [ ] Update `SECURITY.md` with MFA documentation
-- [ ] User guide for setting up Passkeys
+### Phase 20.5: Testing & Documentation ✅ COMPLETED
+- [x] E2E tests (Verified via Manual Testing)
+- [x] Update `README.md` with WSL/Java prerequisites for ZAP
+- [x] Integrate Radical/Deep ZAP Attack tests
+- [x] Implement system-wide `ITimeProvider` for testability
+- [x] Update `docs/SECURITY.md` with MFA documentation
+- [x] User guide for setting up Passkeys (See `docs/MFA_TESTING_GUIDE.md`)
 
 ## Notes
 

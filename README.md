@@ -8,6 +8,7 @@ A comprehensive Identity Provider Administration System.
 - [Features](docs/FEATURES.md)
 - [Impersonation Guide](docs/Impersonation.md)
 - [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
+- [Security Policy](docs/SECURITY.md) 🛡️
 
 ## Key Features
 
