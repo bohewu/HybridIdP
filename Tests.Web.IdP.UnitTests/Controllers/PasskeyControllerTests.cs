@@ -28,6 +28,7 @@ public class PasskeyControllerTests
     private readonly Mock<SignInManager<ApplicationUser>> _signInManagerMock;
     private readonly Mock<ISecurityPolicyService> _securityPolicyServiceMock;
     private readonly ApplicationDbContext _dbContext;
+    private readonly Mock<IAuditService> _auditServiceMock;
     private readonly Mock<ILogger<PasskeyController>> _loggerMock;
     private readonly Mock<ISession> _sessionMock;
     private readonly PasskeyController _controller;
@@ -52,6 +53,7 @@ public class PasskeyControllerTests
             .Options;
         _dbContext = new ApplicationDbContext(options);
 
+        _auditServiceMock = new Mock<IAuditService>();
         _loggerMock = new Mock<ILogger<PasskeyController>>();
         
         // Mock Session
@@ -65,6 +67,7 @@ public class PasskeyControllerTests
             _userManagerMock.Object,
             _securityPolicyServiceMock.Object,
             _dbContext,
+            _auditServiceMock.Object,
             _loggerMock.Object
         )
         {
