@@ -75,11 +75,9 @@
                 class="block w-full pl-10 border-gray-300 rounded-md focus:ring-google-500 focus:border-google-500 sm:text-sm h-10"
               >
                 <option value="">{{ t('profile.edit.selectTimeZone') }}</option>
-                <option value="Asia/Taipei">Asia/Taipei (GMT+8)</option>
-                <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
-                <option value="America/New_York">America/New_York (EST)</option>
-                <option value="Europe/London">Europe/London (GMT)</option>
-                <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                <option v-for="(label, tz) in availableTimeZones" :key="tz" :value="tz">
+                  {{ label }}
+                </option>
               </select>
             </div>
           </div>
@@ -110,7 +108,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits, watch } from 'vue'
+import { ref, defineProps, defineEmits, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
@@ -126,6 +124,14 @@ const { t } = useI18n()
 const loading = ref(false)
 const showSuccess = ref(false)
 const error = ref(null)
+
+const availableTimeZones = computed(() => ({
+  'Asia/Taipei': t('profile.security.timeZones.Asia/Taipei'),
+  'America/Los_Angeles': t('profile.security.timeZones.America/Los_Angeles'),
+  'America/New_York': t('profile.security.timeZones.America/New_York'),
+  'Europe/London': t('profile.security.timeZones.Europe/London'),
+  'Asia/Tokyo': t('profile.security.timeZones.Asia/Tokyo')
+}))
 
 const form = ref({
   phoneNumber: '',

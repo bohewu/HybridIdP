@@ -76,6 +76,13 @@
     "mfaEnabled": "Two-step verification is enabled",
     "mfaNotEnabled": "Two-step verification is not enabled - Set up now for better security",
     "passwordSet": "Password is set",
-    "noPassword": "Using external login only (no local password)"
+    "noPassword": "Using external login only (no local password)",
+    "timeZones": {
+      "Asia/Taipei": "Taipei (GMT+8)",
+      "America/Los_Angeles": "Los Angeles (PST)",
+      "America/New_York": "New York (EST)",
+      "Europe/London": "London (GMT)",
+      "Asia/Tokyo": "Tokyo (JST)"
+    }
   }
 }
