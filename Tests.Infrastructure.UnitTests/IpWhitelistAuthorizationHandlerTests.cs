@@ -27,7 +27,7 @@ public class IpWhitelistAuthorizationHandlerTests
 
     private void SetupAllowedIPs(params string[] allowedIPs)
     {
-        var options = new ObservabilityOptions { AllowedIPs = allowedIPs };
+        var options = new ObservabilityOptions { AllowedIPs = new List<string>(allowedIPs) };
         _mockOptions.Setup(x => x.CurrentValue).Returns(options);
         
         _handler = new IpWhitelistAuthorizationHandler(
