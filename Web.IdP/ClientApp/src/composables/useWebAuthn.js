@@ -134,7 +134,7 @@ export function useWebAuthn() {
         }
     };
 
-    const authenticateWithPasskey = async (username) => {
+    const authenticateWithPasskey = async (username, mediation = 'optional') => {
         if (!isSupported()) {
             throw new Error('mfa.errors.webAuthnNotSupported');
         }
@@ -165,7 +165,8 @@ export function useWebAuthn() {
         try {
             // 3. Call WebAuthn API
             const assertion = await navigator.credentials.get({
-                publicKey: options
+                publicKey: options,
+                mediation: mediation // 'optional' (default) or 'conditional' (auto-fill)
             });
 
             if (!assertion) {

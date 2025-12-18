@@ -175,5 +175,6 @@
   "PleaseWaitThenRetry": "Please wait before requesting a new code",
   "EmailVerification": "Email verification",
   "EnterEmailCodeDescription": "We sent a verification code to your email",
-  "InvalidMfaCode": "Invalid verification code"
+  "InvalidMfaCode": "Invalid verification code",
+  "LoginWithPasskey": "Sign in with a Passkey"
 }

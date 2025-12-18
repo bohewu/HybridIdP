@@ -175,5 +175,6 @@
   "PleaseWaitThenRetry": "請稍後再重新索取驗證碼",
   "EmailVerification": "電子郵件驗證",
   "EnterEmailCodeDescription": "我們已將驗證碼發送至您的電子郵件",
-  "InvalidMfaCode": "驗證碼無效"
+  "InvalidMfaCode": "驗證碼無效",
+  "LoginWithPasskey": "使用 Passkey 登入"
 }
