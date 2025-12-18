@@ -33,7 +33,10 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
             ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
         };
         _httpClient = new HttpClient(handler) { BaseAddress = new Uri(_idpBaseUrl) };
-        _zapClient = new HttpClient { BaseAddress = new Uri(_zapBaseUrl) };
+        
+        // ZAP client needs to bypass corporate proxy for local Docker connection
+        var zapHandler = new HttpClientHandler { UseProxy = false };
+        _zapClient = new HttpClient(zapHandler) { BaseAddress = new Uri(_zapBaseUrl) };
     }
 
     public async Task InitializeAsync()
