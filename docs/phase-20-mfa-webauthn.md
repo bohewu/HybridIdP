@@ -1,6 +1,6 @@
 # Phase 20 — MFA & WebAuthn
 
-**Status**: 75% (Phase 20.1, 20.2, 20.3, 20.4 Backend Complete)
+**Status**: 100% Complete (All Sub-Phases Completed)
 **Goal**: Implement comprehensive Multi-Factor Authentication (TOTP, Email, WebAuthn).
 
 ---
@@ -89,15 +89,17 @@
 - [x] Login page: "Sign in with Passkey" option.
 - [x] JavaScript integration with `navigator.credentials` API.
 
-### Phase 20.4 Enhancement: Configurable Strong Security Model 📋 PLANNED
-**Complexity**: ⭐⭐ Medium | **Estimate**: 1-2 days
+### Phase 20.4 Enhancement: Configurable Strong Security Model ✅ COMPLETED
+**Complexity**: ⭐⭐ Medium | **Completed**: 2025-12-18
 **Details**: [Phase 20.4 Enhancement Plan](./phase%2020.4_enhancement_plan.md)
 
-- [ ] Database: `RequireMfaForPasskey` in `SecurityPolicies`.
-- [ ] Backend: Enforce MFA prerequisite for registration.
-- [ ] Backend: Auto-revoke passkeys when MFA is disabled.
-- [ ] UI: Configurable toggle in Admin Security Settings.
-- [ ] UI: Warning for non-compliant users in MfaSettings.
+- [x] Database: `RequireMfaForPasskey` in `SecurityPolicies` (SQL Server + PostgreSQL migrations)
+- [x] Backend: Enforce MFA prerequisite for registration (`PasskeyController.MakeCredentialOptions`)
+- [x] Backend: Auto-revoke passkeys when last MFA disabled (`MfaService`)
+- [x] Admin UI: Toggle in Security Settings (`SecurityApp.vue`)
+- [x] User Profile UI: Disable button + warning banner (`MfaSettings.vue`)
+- [x] API: `/api/account/security-policy` endpoint (`AccountSecurityController`)
+- [x] System Tests: `PasskeyApiTests`, `AccountSecurityApiTests` (all passing)
 
 ---
 
@@ -115,6 +117,6 @@
 ---
 
 ## Dependencies
-- `Fido2.AspNet` (Pending)
-- `OtpNet` (Implemented)
+- `Fido2.AspNet` (Implemented ✅)
+- `OtpNet` (Implemented ✅)
 
