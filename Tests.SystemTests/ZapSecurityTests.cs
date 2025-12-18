@@ -302,6 +302,8 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
 
     private async Task<string> GetAdminTokenAsync()
     {
+        // testclient-admin redirected to m2m-test-secret-2024 if using ClientSeeder defaults
+        // but testclient-admin in ClientSeeder actually uses admin-test-secret-2024
         var scopes = new[] { "users.read", "persons.read", "roles.read", "clients.read", "scopes.read" };
         var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
         {
@@ -324,10 +326,10 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["grant_type"] = "password",
-            ["client_id"] = "testclient",
-            ["client_secret"] = "test-secret-2024",
-            ["username"] = "testuser@example.com",
-            ["password"] = "Test123!",
+            ["client_id"] = "testclient-public", // Seeded in ClientSeeder
+            // Public clients don't use secrets for ROPC in our config
+            ["username"] = "admin@hybridauth.local", // Seeded in UserSeeder
+            ["password"] = "Admin@123",              // Seeded in UserSeeder
             ["scope"] = "openid profile email"
         });
 
