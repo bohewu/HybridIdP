@@ -115,7 +115,11 @@ public static class DataSeeder
                 AbnormalLoginHistoryCount = 10,
                 BlockAbnormalLogin = false,
                 UpdatedUtc = DateTime.UtcNow,
-                UpdatedBy = "System"
+                UpdatedBy = "System",
+                EnablePasskey = true,
+                EnableTotpMfa = true,
+                EnableEmailMfa = true,
+                MaxPasskeysPerUser = 5
             });
             await context.SaveChangesAsync();
         }

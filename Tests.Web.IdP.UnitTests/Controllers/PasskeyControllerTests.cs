@@ -16,6 +16,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Web.IdP.Controllers.Account;
 using Xunit;
+using Core.Domain;
+using Infrastructure;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
 
@@ -82,7 +84,7 @@ public class PasskeyControllerTests
         _sessionMock.Setup(s => s.TryGetValue("fido2.assertionOptions", out sessionValue)).Returns(true);
 
         _passkeyServiceMock.Setup(x => x.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new WebAuthnResult { Success = true, User = user });
+            .ReturnsAsync((true, user, (string?)null));
 
         var clientResponse = System.Text.Json.JsonDocument.Parse("{}").RootElement;
 
@@ -95,9 +97,12 @@ public class PasskeyControllerTests
         // Use reflection or dynamic to check error property? Or just check type.
         // Assuming implementation returns new { success = false, error = "Account not active" }
         // Using dynamic for simplicity in test
-        dynamic data = val!;
-        Assert.False((bool)data.success);
-        Assert.Equal("Account not active", (string)data.error);
+        var data = badRequest.Value!;
+        var success = (bool?)data.GetType().GetProperty("success")?.GetValue(data);
+        var error = (string?)data.GetType().GetProperty("error")?.GetValue(data);
+        
+        Assert.False(success);
+        Assert.Equal("Account not active", error);
         
         // Verify SignIn was NOT called
         _signInManagerMock.Verify(x => x.SignInAsync(It.IsAny<ApplicationUser>(), It.IsAny<bool>(), It.IsAny<string>()), Times.Never);
@@ -115,7 +120,7 @@ public class PasskeyControllerTests
         _sessionMock.Setup(s => s.TryGetValue("fido2.assertionOptions", out sessionValue)).Returns(true);
 
         _passkeyServiceMock.Setup(x => x.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new WebAuthnResult { Success = true, User = user });
+            .ReturnsAsync((true, user, (string?)null));
 
         var clientResponse = System.Text.Json.JsonDocument.Parse("{}").RootElement;
 
@@ -124,9 +129,12 @@ public class PasskeyControllerTests
 
         // Assert
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        dynamic data = badRequest.Value!;
-        Assert.False((bool)data.success);
-        Assert.Equal("User account deactivated", (string)data.error);
+        var data = badRequest.Value!;
+        var success = (bool?)data.GetType().GetProperty("success")?.GetValue(data);
+        var error = (string?)data.GetType().GetProperty("error")?.GetValue(data);
+
+        Assert.False(success);
+        Assert.Equal("User account deactivated", error);
 
         _signInManagerMock.Verify(x => x.SignInAsync(It.IsAny<ApplicationUser>(), It.IsAny<bool>(), It.IsAny<string>()), Times.Never);
     }
@@ -142,7 +150,7 @@ public class PasskeyControllerTests
         _sessionMock.Setup(s => s.TryGetValue("fido2.assertionOptions", out sessionValue)).Returns(true);
 
         _passkeyServiceMock.Setup(x => x.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new WebAuthnResult { Success = true, User = user });
+            .ReturnsAsync((true, user, (string?)null));
 
         var clientResponse = System.Text.Json.JsonDocument.Parse("{}").RootElement;
 
@@ -151,9 +159,12 @@ public class PasskeyControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        dynamic data = okResult.Value!;
-        Assert.True((bool)data.success);
-        Assert.Equal("testuser", (string)data.username);
+        var data = okResult.Value!;
+        var success = (bool?)data.GetType().GetProperty("success")?.GetValue(data);
+        var username = (string?)data.GetType().GetProperty("username")?.GetValue(data);
+
+        Assert.True(success);
+        Assert.Equal("testuser", username);
 
         // Verify SignIn WAS called
         _signInManagerMock.Verify(x => x.SignInAsync(user, false, null), Times.Once);
