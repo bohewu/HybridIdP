@@ -306,7 +306,10 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
 
     private async Task ConfigureZapAuthenticationAsync(string bearerToken)
     {
-        // Add a replacer rule to inject Authorization header
+        // 1. Try to remove existing rule if it exists to avoid "already_exists" error
+        await _zapClient.GetAsync("/JSON/replacer/action/removeRule/?description=BearerAuth");
+
+        // 2. Add a replacer rule to inject Authorization header
         var response = await _zapClient.GetAsync(
             $"/JSON/replacer/action/addRule/?description=BearerAuth&enabled=true&matchType=REQ_HEADER&matchRegex=false&matchString=Authorization&replacement=Bearer%20{bearerToken}&initiators=");
         
