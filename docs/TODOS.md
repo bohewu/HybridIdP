@@ -1,7 +1,7 @@
 ---
 title: "TODOs & Backlog"
 owner: HybridIdP Team
-last-updated: 2025-12-17
+last-updated: 2025-12-18
 ---
 
 # TODOs & Technical Backlog
@@ -127,17 +127,54 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] API: `POST /api/passkey/login` - Verify signature + SignIn
 - [x] Integrate with `ValidatePersonStatusAsync()` for Person Lifecycle check
 
-### Phase 20.5: WebAuthn Passkey - Frontend UI (Pending)
-- [ ] User Settings page: "Manage Passkeys" section
-- [ ] "Add Passkey" button with WebAuthn registration flow
-- [ ] List registered passkeys with device names
-- [ ] Delete passkey functionality
-- [ ] Login page: "Sign in with Passkey" option
-- [ ] JavaScript integration with `navigator.credentials` API
+### Phase 20.4: WebAuthn Passkey - Frontend UI ✅ COMPLETED
+- [x] User Settings page: "Manage Passkeys" section
+- [x] "Add Passkey" button with WebAuthn registration flow
+- [x] List registered passkeys with device names
+- [x] Delete passkey functionality
+- [x] Login page: "Sign in with Passkey" option
+- [x] JavaScript integration with `navigator.credentials` API
 
-### Phase 20.4: Testing & Documentation (Pending)
-- [ ] Unit tests for TOTP validation
-- [ ] Integration tests for Fido2 flows
+### Phase 20.4 Enhancement: Configurable Strong Security Model ✅ COMPLETED
+- [x] Database: `RequireMfaForPasskey` in `SecurityPolicies`
+- [x] Backend: Enforce MFA prerequisite for registration (API validation)
+- [x] Backend: Auto-revoke passkeys when last MFA is disabled
+- [x] Admin UI: Configurable toggle in Security Settings
+- [x] User Profile UI: Disable button & warning for non-compliant users
+- [x] API: `/api/account/security-policy` endpoint for frontend
+- [x] System Tests: `PasskeyApiTests`, `AccountSecurityApiTests`
+
+### Phase 20.2: Email Architecture Enhancement (Queue System) ✅ COMPLETED
+- [x] Add Mailpit to dev environment.
+- [x] Implement `EmailQueue` (Channel-based) and `EmailQueueProcessor` (HostedService).
+- [x] Implement `SmtpDispatcher` for actual sending.
+- [x] Refactor `EmailService` to producer pattern.
+
+### Phase 20.3: Custom JsonStringLocalizer Implementation ✅ COMPLETED
+- [x] Remove unreliable `My.Extensions.Localization.Json` package
+- [x] Backend: Custom `JsonStringLocalizer` with multi-path resource search
+- [x] Backend: `JsonStringLocalizerFactory` with Options pattern
+- [x] Backend: `JsonLocalizationOptions` for configuration  
+- [x] Backend: `JsonLocalizationServiceExtensions` for DI registration
+- [x] Configure `AdditionalAssemblyPrefixes` for Infrastructure resource scanning
+- [x] Update `EmailTemplateService` to accept optional culture parameter
+- [x] Unit Tests: 13 tests for JsonStringLocalizer (all passing)
+- [x] Integration Tests: 3 tests for EmailTemplateLocalization (all passing)
+- [x] UX: Enhanced homepage avatar to match admin layout style
+- [x] Fix: MfaRateLimitTests test categorization ([Trait] instead of [Skip])
+
+### Phase 20.4: WebAuthn Passkey - Database & Backend ✅ COMPLETED
+- [x] Install `Fido2.AspNet` NuGet package
+- [x] Create `UserCredential` entity (CredentialId, PublicKey, SignCount, DeviceName)
+- [x] EF Core migration for UserCredentials table
+- [x] Fido2 configuration in DI (RelyingPartyId, Origins)
+- [x] API: `POST /api/passkey/register-options` - Generate registration challenge
+- [x] API: `POST /api/passkey/register` - Store credential after browser attestation
+- [x] API: `POST /api/passkey/login-options` - Generate authentication challenge
+- [x] API: `POST /api/passkey/login` - Verify signature + SignIn
+- [x] Integrate with `ValidatePersonStatusAsync()` for Person Lifecycle check
+
+### Phase 20.5: Testing & Documentation (Pending)
 - [ ] E2E tests with Playwright (using Chrome's Virtual Authenticator)
 - [ ] Update `SECURITY.md` with MFA documentation
 - [ ] User guide for setting up Passkeys
@@ -148,5 +185,5 @@ This file contains current high-priority backlog items and remaining tasks.
 - Test project warnings suppressed via `<NoWarn>` in .csproj
 
 ---
-_Last updated: 2025-12-13_
+_Last updated: 2025-12-18_
 
