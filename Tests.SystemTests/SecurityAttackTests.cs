@@ -245,22 +245,20 @@ public class SecurityAttackTests : IClassFixture<WebIdPServerFixture>, IAsyncLif
         var isRotated = newRefreshToken != null && newRefreshToken != _refreshToken;
         System.Console.WriteLine($"Refresh Token Rotation: {(isRotated ? "ENABLED (new token differs)" : "REUSE ALLOWED (same or no token)")}");
         
-        // Wait a moment to ensure DB is updated
-        await Task.Delay(200);
-        
-        // With RefreshTokenReuseLeeway set to Zero, the old token should be invalidated immediately.
+        // With RefreshTokenReuseLeeway set to 60s, the old token should still be valid for a short window.
+        // This handles "lost response" scenarios where client retries.
         // Try to use the ORIGINAL refresh token again
         var (status2, _, _) = await RefreshTokenAsync(_refreshToken);
         
-        // Expect BadRequest (or Unauthorized)
+        // Expect OK (Leeway Active)
         System.Console.WriteLine($"Original token reuse result: {status2}");
         
         Assert.True(
-            status2 == HttpStatusCode.BadRequest,
-            $"Expected BadRequest (revoked) for reused token. Got: {status2}"
+            status2 == HttpStatusCode.OK,
+            $"Expected OK (reuse allowed within leeway). Got: {status2}"
         );
         
-        System.Console.WriteLine("SECURITY CHECK PASSED: Old refresh token was revoked.");
+        System.Console.WriteLine("RELIABILITY CHECK PASSED: Old refresh token is valid within leeway window.");
     }
 
     #endregion

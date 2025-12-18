@@ -18,4 +18,10 @@ public class TokenOptions
     /// Device code lifetime in minutes. Default: 30.
     /// </summary>
     public int DeviceCodeLifetimeMinutes { get; set; } = 30;
+
+    /// <summary>
+    /// Refresh token reuse leeway in seconds. Default: 60.
+    /// Set to 0 for immediate revocation (higher security but lower reliability).
+    /// </summary>
+    public int RefreshTokenReuseLeewaySeconds { get; set; } = 60;
 }
