@@ -14,6 +14,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using Core.Domain;
+using Infrastructure;
 
 namespace Tests.Infrastructure.UnitTests;
 
@@ -167,15 +169,12 @@ public class PasskeyServiceTests
         var options = new CredentialCreateOptions 
         { 
             Challenge = new byte[] { 1, 2, 3 },
-            User = new Fido2User { Id = Encoding.UTF8.GetBytes("testuser") }
+            User = new Fido2User { Id = Encoding.UTF8.GetBytes("testuser") },
+            PubKeyCredParams = new List<PubKeyCredParam>(),
+            Rp = new PublicKeyCredentialRpEntity("localhost", "HybridIdP")
         };
         
-        _fido2Mock.Setup(x => x.RequestNewCredential(
-            It.IsAny<Fido2User>(), 
-            It.IsAny<List<PublicKeyCredentialDescriptor>>(), 
-            It.IsAny<AuthenticatorSelection>(), 
-            It.IsAny<AttestationConveyancePreference>(), 
-            It.IsAny<AuthenticationExtensionsClientInputs>()))
+        _fido2Mock.Setup(x => x.RequestNewCredential(It.IsAny<RequestNewCredentialParams>()))
             .Returns(options);
 
         // Act

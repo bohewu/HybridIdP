@@ -43,6 +43,10 @@ public class SecurityPolicyController : ControllerBase
             AbnormalLoginHistoryCount = policy.AbnormalLoginHistoryCount,
             BlockAbnormalLogin = policy.BlockAbnormalLogin,
             AllowSelfPasswordChange = policy.AllowSelfPasswordChange,
+            EnablePasskey = policy.EnablePasskey,
+            EnableTotpMfa = policy.EnableTotpMfa,
+            EnableEmailMfa = policy.EnableEmailMfa,
+            MaxPasskeysPerUser = policy.MaxPasskeysPerUser,
             UpdatedUtc = policy.UpdatedUtc,
             UpdatedBy = policy.UpdatedBy
         };

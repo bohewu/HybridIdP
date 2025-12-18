@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Fido2NetLib;
 using Xunit;
+using Core.Application.DTOs;
 
 namespace Tests.SystemTests;
 
@@ -37,6 +38,9 @@ public class PasskeyApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
         
         // Get token for seeded test user
         _userToken = await GetUserTokenAsync(TEST_USER_EMAIL, TEST_USER_PASSWORD);
+        
+        // Ensure Passkey feature is enabled
+        await EnsurePasskeyEnabledAsync();
     }
 
     public Task DisposeAsync()
@@ -121,5 +125,26 @@ public class PasskeyApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
         var content = await response.Content.ReadAsStringAsync();
         var tokenJson = JsonDocument.Parse(content);
         return tokenJson.RootElement.GetProperty("access_token").GetString()!;
+    }
+    
+    private async Task EnsurePasskeyEnabledAsync()
+    {
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        var response = await _httpClient.GetAsync("/api/admin/security/policies");
+        
+        // If we can't reach the admin API, we can't ensure the policy. 
+        // Failing here is better than failing obscurely later.
+        response.EnsureSuccessStatusCode();
+        
+        var policy = await response.Content.ReadFromJsonAsync<SecurityPolicyDto>();
+        
+        if (policy != null && (!policy.EnablePasskey || policy.MaxPasskeysPerUser < 1))
+        {
+            policy.EnablePasskey = true;
+            if (policy.MaxPasskeysPerUser < 1) policy.MaxPasskeysPerUser = 5;
+            
+            var putResponse = await _httpClient.PutAsJsonAsync("/api/admin/security/policies", policy);
+            putResponse.EnsureSuccessStatusCode();
+        }
     }
 }

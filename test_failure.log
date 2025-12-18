@@ -1,0 +1,67 @@
+  正在判斷要還原的專案...
+  所有專案都在最新狀態，可進行還原。
+  Core.Domain -> C:\repos\HybridIdP\Core.Domain\bin\Debug\net10.0\Core.Domain.dll
+  Core.Application -> C:\repos\HybridIdP\Core.Application\bin\Debug\net10.0\Core.Application.dll
+  Tests.SystemTests -> C:\repos\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll
+  Infrastructure -> C:\repos\HybridIdP\Infrastructure\bin\Debug\net10.0\Infrastructure.dll
+C:\repos\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll 的測試回合 (.NETCoreApp,Version=v10.0)
+VSTest 版本 18.0.1 (x64)
+
+正在啟動測試執行，請稍候...
+總共有 1 個測試檔案與指定的模式相符。
+C:\repos\HybridIdP\Tests.SystemTests\bin\Debug\net10.0\Tests.SystemTests.dll
+  Infrastructure.Migrations.SqlServer -> C:\repos\HybridIdP\Infrastructure.Migrations.SqlServer\bin\Debug\net10.0\Infrastructure.Migrations.SqlServer.dll
+  Infrastructure.Migrations.Postgres -> C:\repos\HybridIdP\Infrastructure.Migrations.Postgres\bin\Debug\net10.0\Infrastructure.Migrations.Postgres.dll
+C:\repos\HybridIdP\Tests.Infrastructure.UnitTests\PasskeyServiceTests.cs(23,39): error CS0246: 找不到類型或命名空間名稱 'ApplicationUser' (是否遺漏了 using 指示詞或組件參考?) [C:\repos\HybridIdP\Tests.Infrastructure.UnitTests\Tests.Infrastructure.UnitTests.csproj]
+C:\repos\HybridIdP\Tests.Infrastructure.UnitTests\PasskeyServiceTests.cs(24,22): error CS0246: 找不到類型或命名空間名稱 'ApplicationDbContext' (是否遺漏了 using 指示詞或組件參考?) [C:\repos\HybridIdP\Tests.Infrastructure.UnitTests\Tests.Infrastructure.UnitTests.csproj]
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.0)
+[xUnit.net 00:00:00.11]   Discovering: Tests.SystemTests
+[xUnit.net 00:00:00.17]   Discovered:  Tests.SystemTests
+[xUnit.net 00:00:00.19]   Starting:    Tests.SystemTests
+  Web.IdP -> C:\repos\HybridIdP\Web.IdP\bin\Debug\net10.0\Web.IdP.dll
+  Tests.Application.UnitTests -> C:\repos\HybridIdP\Tests.Application.UnitTests\bin\Debug\net10.0\Tests.Application.UnitTests.dll
+C:\repos\HybridIdP\Tests.Application.UnitTests\bin\Debug\net10.0\Tests.Application.UnitTests.dll 的測試回合 (.NETCoreApp,Version=v10.0)
+  Tests.Infrastructure.IntegrationTests -> C:\repos\HybridIdP\Tests.Infrastructure.IntegrationTests\bin\Debug\net10.0\Tests.Infrastructure.IntegrationTests.dll
+C:\repos\HybridIdP\Tests.Web.IdP.UnitTests\Controllers\PasskeyControllerTests.cs(25,39): error CS0246: 找不到類型或命名空間名稱 'ApplicationUser' (是否遺漏了 using 指示詞或組件參考?) [C:\repos\HybridIdP\Tests.Web.IdP.UnitTests\Tests.Web.IdP.UnitTests.csproj]
+C:\repos\HybridIdP\Tests.Web.IdP.UnitTests\Controllers\PasskeyControllerTests.cs(26,41): error CS0246: 找不到類型或命名空間名稱 'ApplicationUser' (是否遺漏了 using 指示詞或組件參考?) [C:\repos\HybridIdP\Tests.Web.IdP.UnitTests\Tests.Web.IdP.UnitTests.csproj]
+C:\repos\HybridIdP\Tests.Web.IdP.UnitTests\Controllers\PasskeyControllerTests.cs(28,22): error CS0246: 找不到類型或命名空間名稱 'ApplicationDbContext' (是否遺漏了 using 指示詞或組件參考?) [C:\repos\HybridIdP\Tests.Web.IdP.UnitTests\Tests.Web.IdP.UnitTests.csproj]
+VSTest 版本 18.0.1 (x64)
+
+C:\repos\HybridIdP\Tests.Infrastructure.IntegrationTests\bin\Debug\net10.0\Tests.Infrastructure.IntegrationTests.dll 的測試回合 (.NETCoreApp,Version=v10.0)
+VSTest 版本 18.0.1 (x64)
+
+正在啟動測試執行，請稍候...
+總共有 1 個測試檔案與指定的模式相符。
+C:\repos\HybridIdP\Tests.Application.UnitTests\bin\Debug\net10.0\Tests.Application.UnitTests.dll
+正在啟動測試執行，請稍候...
+總共有 1 個測試檔案與指定的模式相符。
+C:\repos\HybridIdP\Tests.Infrastructure.IntegrationTests\bin\Debug\net10.0\Tests.Infrastructure.IntegrationTests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.0)
+[xUnit.net 00:00:00.08]   Discovering: Tests.Application.UnitTests
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.0)
+[xUnit.net 00:00:00.17]   Discovered:  Tests.Application.UnitTests
+沒有任何測試符合 C:\repos\HybridIdP\Tests.Application.UnitTests\bin\Debug\net10.0\Tests.Application.UnitTests.dll 中的指定 testcase 篩選 `FullyQualifiedName~RegisterOptions_ValidUser_ReturnsOptions`
+[xUnit.net 00:00:00.08]   Discovering: Tests.Infrastructure.IntegrationTests
+
+[xUnit.net 00:00:00.12]   Discovered:  Tests.Infrastructure.IntegrationTests
+沒有任何測試符合 C:\repos\HybridIdP\Tests.Infrastructure.IntegrationTests\bin\Debug\net10.0\Tests.Infrastructure.IntegrationTests.dll 中的指定 testcase 篩選 `FullyQualifiedName~RegisterOptions_ValidUser_ReturnsOptions`
+
+[xUnit.net 00:00:04.95]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:04.95]       Expected: OK
+[xUnit.net 00:00:04.95]       Actual:   Forbidden
+[xUnit.net 00:00:04.95]       Stack Trace:
+[xUnit.net 00:00:04.95]         C:\repos\HybridIdP\Tests.SystemTests\PasskeyApiTests.cs(58,0): at Tests.SystemTests.PasskeyApiTests.RegisterOptions_ValidUser_ReturnsOptions()
+[xUnit.net 00:00:04.95]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:04.96]   Finished:    Tests.SystemTests
+  失敗 Tests.SystemTests.PasskeyApiTests.RegisterOptions_ValidUser_ReturnsOptions [142 ms]
+  錯誤訊息:
+   Assert.Equal() Failure: Values differ
+Expected: OK
+Actual:   Forbidden
+  堆疊追蹤:
+     at Tests.SystemTests.PasskeyApiTests.RegisterOptions_ValidUser_ReturnsOptions() in C:\repos\HybridIdP\Tests.SystemTests\PasskeyApiTests.cs:line 58
+--- End of stack trace from previous location ---
+
+測試數總計: 1
+     失敗: 1
+ 時間總計: 5.5527 秒

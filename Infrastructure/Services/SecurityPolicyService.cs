@@ -68,6 +68,12 @@ public partial class SecurityPolicyService : ISecurityPolicyService
         policy.BlockAbnormalLogin = policyDto.BlockAbnormalLogin;
         policy.AllowSelfPasswordChange = policyDto.AllowSelfPasswordChange;
         
+        // MFA & Passkey Toggles
+        policy.EnablePasskey = policyDto.EnablePasskey;
+        policy.EnableTotpMfa = policyDto.EnableTotpMfa;
+        policy.EnableEmailMfa = policyDto.EnableEmailMfa;
+        policy.MaxPasskeysPerUser = policyDto.MaxPasskeysPerUser;
+        
         // Update metadata
         policy.UpdatedUtc = DateTime.UtcNow;
         policy.UpdatedBy = updatedBy;
