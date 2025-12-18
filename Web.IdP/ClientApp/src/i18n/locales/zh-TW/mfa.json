@@ -34,7 +34,12 @@
     "toggleFailed": "切換電子郵件 MFA 失敗",
     "registerPasskeyFailed": "註冊密鑰失敗",
     "deletePasskeyFailed": "刪除密鑰失敗",
-    "loadPasskeysFailed": "載入密鑰清單失敗"
+    "loadPasskeysFailed": "載入密鑰清單失敗",
+    "webAuthnNotSupported": "您的瀏覽器不支援 WebAuthn",
+    "userCanceled": "使用者已取消或生物辨識失敗",
+    "securityError": "安全性網域不匹配",
+    "registrationOptionsFailed": "取得註冊選項失敗",
+    "loginOptionsFailed": "取得登入選項失敗"
   },
   "passkey": {
     "title": "通行密鑰 (Passkeys)",

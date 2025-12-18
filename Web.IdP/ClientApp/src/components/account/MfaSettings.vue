@@ -373,7 +373,7 @@ async function registerNewPasskey() {
     await loadPasskeys();
     setTimeout(() => { passkeySuccess.value = ''; }, 3000);
   } catch (err: any) {
-    passkeyError.value = err.message || t('mfa.errors.registerPasskeyFailed');
+    passkeyError.value = t(err.message) || t('mfa.errors.registerPasskeyFailed');
   } finally {
     passkeyLoading.value = false;
   }
