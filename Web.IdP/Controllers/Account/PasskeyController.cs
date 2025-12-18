@@ -104,6 +104,13 @@ public partial class PasskeyController : ControllerBase
             return Unauthorized();
         }
 
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (!policy.EnablePasskey)
+        {
+            _logger.LogWarning("Passkey registration blocked for user {UserId}: feature disabled", user.Id);
+            return StatusCode(403, new { error = "Passkey authentication is disabled" });
+        }
+
         var jsonOptions = HttpContext.Session.GetString("fido2.attestationOptions");
         if (string.IsNullOrEmpty(jsonOptions))
         {
