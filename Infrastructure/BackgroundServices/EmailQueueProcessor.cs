@@ -13,7 +13,7 @@ namespace Infrastructure.BackgroundServices;
 /// Background service that processes emails from the queue.
 /// Implements graceful shutdown to drain remaining emails before stopping.
 /// </summary>
-public class EmailQueueProcessor : BackgroundService
+public partial class EmailQueueProcessor : BackgroundService
 {
     private readonly IEmailQueue _emailQueue;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -31,7 +31,7 @@ public class EmailQueueProcessor : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Email Queue Processor started.");
+        LogProcessorStarted(_logger);
 
         try
         {
@@ -45,22 +45,22 @@ public class EmailQueueProcessor : BackgroundService
         catch (OperationCanceledException)
         {
             // Shutdown requested - proceed to drain
-            _logger.LogInformation("Email Queue Processor received shutdown signal. Draining remaining emails...");
+            LogShutdownSignalReceived(_logger);
         }
         catch (ChannelClosedException)
         {
             // Channel was completed - normal during shutdown
-            _logger.LogInformation("Email queue channel closed.");
+            LogChannelClosed(_logger);
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex, "Email Queue Processor crashed unexpectedly.");
+            LogProcessorCrashed(_logger, ex);
         }
 
         // GRACEFUL SHUTDOWN: Drain remaining emails from queue
         await DrainRemainingEmailsAsync();
         
-        _logger.LogInformation("Email Queue Processor stopped.");
+        LogProcessorStopped(_logger);
     }
 
     /// <summary>
@@ -86,7 +86,7 @@ public class EmailQueueProcessor : BackgroundService
                 catch (Exception ex)
                 {
                     failedCount++;
-                    _logger.LogError(ex, "Failed to send email to {To} during shutdown drain", message.To);
+                    LogDrainFailed(_logger, ex, message.To);
                     // In production, consider persisting to DB or Dead Letter Queue here
                 }
             }
@@ -94,9 +94,7 @@ public class EmailQueueProcessor : BackgroundService
 
         if (drainedCount > 0 || failedCount > 0)
         {
-            _logger.LogInformation(
-                "Graceful shutdown complete. Drained {Drained} emails, {Failed} failed.",
-                drainedCount, failedCount);
+            LogShutdownComplete(_logger, drainedCount, failedCount);
         }
     }
 
@@ -109,14 +107,41 @@ public class EmailQueueProcessor : BackgroundService
             
             await dispatcher.SendAsync(message, ct);
             
-            _logger.LogInformation("Email sent successfully to {To}", message.To);
+            LogEmailSent(_logger, message.To);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogError(ex, "Error processing email to {To}", message.To);
+            LogProcessingError(_logger, ex, message.To);
             // In a real system, we'd add retry logic or Dead Letter Queue here
             throw; // Re-throw to let drain logic handle it
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Email Queue Processor started.")]
+    static partial void LogProcessorStarted(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Email Queue Processor received shutdown signal. Draining remaining emails...")]
+    static partial void LogShutdownSignalReceived(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Email queue channel closed.")]
+    static partial void LogChannelClosed(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Critical, Message = "Email Queue Processor crashed unexpectedly.")]
+    static partial void LogProcessorCrashed(ILogger logger, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Email Queue Processor stopped.")]
+    static partial void LogProcessorStopped(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to send email to {To} during shutdown drain")]
+    static partial void LogDrainFailed(ILogger logger, Exception ex, string to);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Graceful shutdown complete. Drained {Drained} emails, {Failed} failed.")]
+    static partial void LogShutdownComplete(ILogger logger, int drained, int failed);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Email sent successfully to {To}")]
+    static partial void LogEmailSent(ILogger logger, string to);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error processing email to {To}")]
+    static partial void LogProcessingError(ILogger logger, Exception ex, string to);
 }
 

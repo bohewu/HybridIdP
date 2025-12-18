@@ -24,11 +24,11 @@ public class LocalizationManagementService : ILocalizationManagementService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            search = search.Trim().ToLower();
+            search = search.Trim();
             query = query.Where(r => 
-                r.Key.ToLower().Contains(search) || 
-                r.Value.ToLower().Contains(search) ||
-                (r.Category != null && r.Category.ToLower().Contains(search)));
+                r.Key.Contains(search) || 
+                r.Value.Contains(search) ||
+                (r.Category != null && r.Category.Contains(search)));
         }
 
         var totalCount = await query.CountAsync();

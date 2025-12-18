@@ -482,14 +482,16 @@ public class ScopeService : IScopeService
             .ToList();
 
         HashSet<string> allowedSet;
-        if (grantedScopes == null || !grantedScopes.Any())
+        var grantedScopesList = grantedScopes?.ToList();
+
+        if (grantedScopesList == null || grantedScopesList.Count == 0)
         {
             // Only required scopes are allowed when nothing explicitly granted
             allowedSet = requiredSet.ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
         else
         {
-            var grantedSet = grantedScopes
+            var grantedSet = grantedScopesList
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Select(s => s.Trim())
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);

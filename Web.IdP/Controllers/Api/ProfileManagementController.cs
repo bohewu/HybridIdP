@@ -78,7 +78,7 @@ public class ProfileManagementController : ControllerBase
             AllowPasswordChange = policy.AllowSelfPasswordChange && hasLocalPassword,
             TwoFactorEnabled = user.TwoFactorEnabled,
             EmailMfaEnabled = user.EmailMfaEnabled,
-            PasskeyEnabled = (await _passkeyService.GetUserPasskeysAsync(user.Id)).Any(),
+            PasskeyEnabled = (await _passkeyService.GetUserPasskeysAsync(user.Id)).Count > 0,
             ExternalLogins = externalLogins.Select(l => new ExternalLoginDto
             {
                 LoginProvider = l.LoginProvider,

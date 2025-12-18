@@ -13,7 +13,7 @@ namespace Infrastructure.Authorization;
 /// Supports IPv4, IPv6, and CIDR notation
 /// Reads allowed IPs from configuration dynamically on each request
 /// </summary>
-public class IpWhitelistAuthorizationHandler : AuthorizationHandler<IpWhitelistRequirement>
+public partial class IpWhitelistAuthorizationHandler : AuthorizationHandler<IpWhitelistRequirement>
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IOptionsMonitor<ObservabilityOptions> _options; // Changed to IOptionsMonitor for dynamic updates
@@ -36,32 +36,30 @@ public class IpWhitelistAuthorizationHandler : AuthorizationHandler<IpWhitelistR
         var httpContext = _httpContextAccessor.HttpContext;
         if (httpContext == null)
         {
-            _logger.LogWarning("HttpContext is null, denying access");
+            LogHttpContextNull(_logger);
             return Task.CompletedTask;
         }
 
         var remoteIp = httpContext.Connection.RemoteIpAddress;
         if (remoteIp == null)
         {
-            _logger.LogWarning("Remote IP address is null, denying access");
+            LogRemoteIpNull(_logger);
             return Task.CompletedTask;
         }
 
         // Read allowed IPs from configuration dynamically
-        var allowedIPs = _options.CurrentValue.AllowedIPs; // Changed
+        var allowedIPs = _options.CurrentValue.AllowedIPs ?? Array.Empty<string>(); // Added check
 
-        _logger.LogInformation("Checking IP whitelist: RemoteIP={RemoteIp}, AllowedIPs={AllowedIPs}", 
-            remoteIp, string.Join(", ", allowedIPs));
+        LogCheckingWhitelist(_logger, remoteIp, string.Join(", ", allowedIPs));
 
         if (IsIpAllowed(remoteIp, allowedIPs))
         {
-            _logger.LogInformation("IP {RemoteIp} is allowed, granting access", remoteIp);
+            LogIpAllowed(_logger, remoteIp);
             context.Succeed(requirement);
         }
         else
         {
-            _logger.LogWarning("IP {RemoteIp} is not in whitelist (configured: {AllowedIPs}), denying access", 
-                remoteIp, string.Join(", ", allowedIPs));
+            LogIpNotWhitelisted(_logger, remoteIp, string.Join(", ", allowedIPs));
         }
 
         return Task.CompletedTask;
@@ -149,8 +147,26 @@ public class IpWhitelistAuthorizationHandler : AuthorizationHandler<IpWhitelistR
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error parsing CIDR notation: {Cidr}", cidr);
+            LogCidrParseError(_logger, ex, cidr);
             return false;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "HttpContext is null, denying access")]
+    static partial void LogHttpContextNull(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Remote IP address is null, denying access")]
+    static partial void LogRemoteIpNull(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Checking IP whitelist: RemoteIP={RemoteIp}, AllowedIPs={AllowedIPs}")]
+    static partial void LogCheckingWhitelist(ILogger logger, IPAddress remoteIp, string allowedIPs);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "IP {RemoteIp} is allowed, granting access")]
+    static partial void LogIpAllowed(ILogger logger, IPAddress remoteIp);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "IP {RemoteIp} is not in whitelist (configured: {AllowedIPs}), denying access")]
+    static partial void LogIpNotWhitelisted(ILogger logger, IPAddress remoteIp, string allowedIPs);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error parsing CIDR notation: {Cidr}")]
+    static partial void LogCidrParseError(ILogger logger, Exception ex, string cidr);
 }

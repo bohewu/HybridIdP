@@ -57,16 +57,16 @@ public class RoleManagementService : IRoleManagementService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var s = search.Trim().ToLower();
+            var s = search.Trim();
             rolesQuery = rolesQuery.Where(r =>
-                (r.Name != null && r.Name.ToLower().Contains(s)) ||
-                (r.Description != null && r.Description.ToLower().Contains(s))
+                (r.Name != null && r.Name.Contains(s)) ||
+                (r.Description != null && r.Description.Contains(s))
             );
         }
 
         // Sorting
-        var sortField = (sortBy ?? "name").ToLower();
-        var asc = (sortDirection ?? "asc").ToLower() != "desc";
+        var sortField = (sortBy ?? "name").ToLowerInvariant();
+        var asc = !string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
         rolesQuery = (sortField) switch
         {
             "createdat" => asc ? rolesQuery.OrderBy(r => r.CreatedAt) : rolesQuery.OrderByDescending(r => r.CreatedAt),
@@ -222,7 +222,7 @@ public class RoleManagementService : IRoleManagementService
         var invalidPermissions = (updateDto.Permissions ?? new List<string>())
             .Where(p => !allPermissions.Contains(p))
             .ToList();
-        if (invalidPermissions.Any())
+        if (invalidPermissions.Count > 0)
         {
             return (false, new[] { $"Invalid permissions: {string.Join(", ", invalidPermissions)}" });
         }
@@ -291,7 +291,7 @@ public class RoleManagementService : IRoleManagementService
         return Task.FromResult(Permissions.GetAll());
     }
 
-    private List<string> ParsePermissions(string? permissionsString)
+    private static List<string> ParsePermissions(string? permissionsString)
     {
         if (string.IsNullOrWhiteSpace(permissionsString))
             return new List<string>();
@@ -301,7 +301,7 @@ public class RoleManagementService : IRoleManagementService
             .ToList();
     }
 
-    private string? SerializePermissions(List<string> permissions)
+    private static string? SerializePermissions(List<string> permissions)
     {
         if (permissions == null || permissions.Count == 0)
             return null;

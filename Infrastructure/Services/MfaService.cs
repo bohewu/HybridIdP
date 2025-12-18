@@ -327,7 +327,7 @@ public class MfaService : IMfaService
             .Where(c => c.UserId == userId)
             .ToListAsync(ct);
         
-        if (passkeys.Any())
+        if (passkeys.Count > 0)
         {
             _dbContext.UserCredentials.RemoveRange(passkeys);
             await _dbContext.SaveChangesAsync(ct);

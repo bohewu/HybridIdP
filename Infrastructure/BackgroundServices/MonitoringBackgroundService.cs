@@ -9,7 +9,7 @@ namespace Infrastructure.BackgroundServices;
 /// Background service that periodically broadcasts monitoring data to connected SignalR clients.
 /// Provides real-time updates for activity stats, security alerts, and system metrics.
 /// </summary>
-public class MonitoringBackgroundService : BackgroundService
+public partial class MonitoringBackgroundService : BackgroundService
 {
     private readonly IServiceProvider serviceProvider;
     private readonly ILogger<MonitoringBackgroundService> logger;
@@ -34,7 +34,7 @@ public class MonitoringBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("Monitoring Background Service started");
+        LogServiceStarted(logger);
 
         // Wait a bit before starting to allow the application to fully initialize
         await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
@@ -92,18 +92,18 @@ public class MonitoringBackgroundService : BackgroundService
             catch (OperationCanceledException)
             {
                 // Normal cancellation, don't log as error
-                logger.LogInformation("Monitoring Background Service is stopping");
+                LogServiceStopping(logger);
                 break;
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error occurred in Monitoring Background Service");
+                LogServiceError(logger, ex);
                 // Continue running even if an error occurs
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             }
         }
 
-        logger.LogInformation("Monitoring Background Service stopped");
+        LogServiceStopped(logger);
     }
 
     /// <summary>
@@ -113,12 +113,12 @@ public class MonitoringBackgroundService : BackgroundService
     {
         try
         {
-            logger.LogDebug("Broadcasting activity stats update");
+            LogBroadcastingActivity(logger);
             await monitoringService.BroadcastActivityStatsUpdateAsync();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to broadcast activity stats");
+            LogActivityBroadcastFailed(logger, ex);
         }
     }
 
@@ -129,12 +129,12 @@ public class MonitoringBackgroundService : BackgroundService
     {
         try
         {
-            logger.LogDebug("Broadcasting security alerts update");
+            LogBroadcastingSecurity(logger);
             await monitoringService.BroadcastSecurityAlertsUpdateAsync();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to broadcast security alerts");
+            LogSecurityBroadcastFailed(logger, ex);
         }
     }
 
@@ -145,19 +145,52 @@ public class MonitoringBackgroundService : BackgroundService
     {
         try
         {
-            logger.LogDebug("Broadcasting system metrics update");
+            LogBroadcastingSystem(logger);
             await monitoringService.BroadcastSystemMetricsUpdateAsync();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to broadcast system metrics");
+            LogSystemBroadcastFailed(logger, ex);
         }
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        logger.LogInformation("Monitoring Background Service is stopping gracefully");
+        LogServiceStoppingGracefully(logger);
         await base.StopAsync(cancellationToken);
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Monitoring Background Service started")]
+    static partial void LogServiceStarted(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Monitoring Background Service is stopping")]
+    static partial void LogServiceStopping(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error occurred in Monitoring Background Service")]
+    static partial void LogServiceError(ILogger logger, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Monitoring Background Service stopped")]
+    static partial void LogServiceStopped(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Broadcasting activity stats update")]
+    static partial void LogBroadcastingActivity(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to broadcast activity stats")]
+    static partial void LogActivityBroadcastFailed(ILogger logger, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Broadcasting security alerts update")]
+    static partial void LogBroadcastingSecurity(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to broadcast security alerts")]
+    static partial void LogSecurityBroadcastFailed(ILogger logger, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Broadcasting system metrics update")]
+    static partial void LogBroadcastingSystem(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to broadcast system metrics")]
+    static partial void LogSystemBroadcastFailed(ILogger logger, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Monitoring Background Service is stopping gracefully")]
+    static partial void LogServiceStoppingGracefully(ILogger logger);
 }
 
