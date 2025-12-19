@@ -46,7 +46,7 @@ public class DeviceFlowSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncL
     {
         // Arrange
         var projectDir = GetProjectDirectory();
-        var testClientDir = Path.Combine(projectDir, "..", "TestClient.Device");
+        var testClientDir = Path.Combine(projectDir, "..", "samples", "TestClient.Device");
         var outputPath = Path.Combine(Path.GetTempPath(), $"device_results_{Guid.NewGuid()}.json");
         
         // Ensure we are logged in first
