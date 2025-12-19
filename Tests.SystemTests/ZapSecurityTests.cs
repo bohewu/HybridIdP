@@ -74,16 +74,26 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
                 WindowStyle = ProcessWindowStyle.Hidden
             });
 
-            // Wait for ZAP to be ready (max 60 seconds)
-            for (int i = 0; i < 60; i++)
+            // Wait for ZAP to be ready (max 120 seconds)
+            for (int i = 0; i < 120; i++)
             {
                 await Task.Delay(1000);
-                if (await IsZapRunningAsync()) break;
+                if (await IsZapRunningAsync()) 
+                {
+                    Debug.WriteLine($"ZAP started successfully on port {port} after {i} seconds.");
+                    break;
+                }
+                if (i % 10 == 0) Debug.WriteLine($"Waiting for ZAP to start... ({i}s)");
             }
             
             if (!await IsZapRunningAsync())
             {
-                throw new SkipException("ZAP failed to start within 60 seconds");
+                // Check if process crashed
+                if (_zapProcess != null && _zapProcess.HasExited)
+                {
+                    throw new SkipException($"ZAP process exited prematurely with code {_zapProcess.ExitCode}");
+                }
+                throw new SkipException("ZAP failed to start within 120 seconds");
             }
         }
 
