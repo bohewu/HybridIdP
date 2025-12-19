@@ -160,7 +160,8 @@ This file contains current high-priority backlog items and remaining tasks.
 - [ ] **Phase 20.6: OIDC AMR Claims & MFA Enforcement** (Planned)
   - [ ] Implement `amr` tracking (Passkey `hwk` satisfies MFA requirement)
   - [ ] Implement `MfaSetup` page for on-the-fly enrollment (No-logout refresh)
-  - [ ] Support `acr_values=mfa` in `AuthorizationService`
+  - [ ] Support `acr_values=mfa` in `AuthorizationService` (Zero Trust logic)
+  - [ ] Implement Mandatory MFA Enrollment with Configurable Grace Period
   - [ ] Propagate standard `amr`/`acr` claims to OIDC tokens
 
 ## Notes
