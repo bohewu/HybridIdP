@@ -10,6 +10,9 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 4.  **強制首登 MFA (Force MFA on First Login)**：
     *   新增系統設定：`ForceMfaSetupOnFirstLogin`。
     *   若啟用，使用者登入後若無任何 MFA/Passkey，將強制跳轉至 `MfaSetup` 完成綁定後才可使用系統。
+5.  **防止移除最後一項 MFA (Prevent Last MFA Removal)**：
+    *   若 `ForceMfaSetupOnFirstLogin` 為真，系統必須禁止使用者移除（Disable/Delete）最後一個有效的驗證因素（TOTP, Email 或最後一個 Passkey）。
+    *   此限制必須同時在 **前端 UI**（禁用按鈕）與 **後端 API**（返回 400 錯誤）中實作。
 
 ## Proposed Changes
 
@@ -34,6 +37,13 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 - **Interactive Selection**: Display enabled MFA options (TOTP, Email) or Passkey registration based on `SecurityPolicy`.
 - **Session Update**: Call `_signInManager.SignInAsync` after setup to update claims.
 - **Redirect**: Directly back to `returnUrl` (OIDC authorize endpoint) or Home.
+
+#### [MODIFY] [MfaController.cs](file:///c:/repos/HybridIdP/Web.IdP/Controllers/Account/MfaController.cs)
+- **API Enforcement**: In `/disable` and `/email/disable` endpoints, check if `ForceMfaSetupOnFirstLogin` is active.
+- If the method being disabled is the only one left, return `BadRequest` with error code `lastMfaExclusionRequired`.
+
+#### [MODIFY] [PasskeyController.cs](file:///c:/repos/HybridIdP/Web.IdP/Controllers/Account/PasskeyController.cs)
+- **API Enforcement**: If deleting a passkey, check if it's the last one and no other MFA (TOTP/Email) is active under the mandatory policy.
 
 #### [MODIFY] [AuthorizationService.cs](file:///c:/repos/HybridIdP/Web.IdP/Services/AuthorizationService.cs)
 - Check `acr_values=mfa`.
@@ -77,3 +87,4 @@ If `acr_values=mfa` is requested but cannot be fulfilled, return:
 - System test: Request `acr_values=mfa` with a password-only user -> Verify redirect to `MfaSetup`.
 - System test: Request `acr_values=mfa` with a Passkey user -> Verify direct token issuance with `hwk` claim.
 - System test: Enable `ForceMfaSetupOnFirstLogin` -> Verify new users are forced to `MfaSetup`.
+- **Enforcement Test**: Attempt to call API to disable the only MFA method when policy is active -> Verify 400 error.
