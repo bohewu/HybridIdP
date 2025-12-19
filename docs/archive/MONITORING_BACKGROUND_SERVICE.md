@@ -1,4 +1,4 @@
-﻿# Monitoring Background Service
+# Monitoring Background Service
 
 ## 概述
 

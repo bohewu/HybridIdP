@@ -6,7 +6,7 @@
 
   - **Project Name:** HybridAuthIdP
   - **Objective:** Create a robust, production-ready IdP supporting local and legacy authentication.
-  - **Technology Stack:** .NET 9, ASP.NET Core, EF Core, PostgreSQL, OpenIddict 6.x, Vue 3, Docker.
+  - **Technology Stack:** .NET 10+, ASP.NET Core, EF Core, PostgreSQL, OpenIddict 6.x, Vue 3, Docker.
   - **UI Tech:** Razor Pages with Bootstrap 5 (User-Facing), Vue 3 with Tailwind CSS (Admin UI).
   - **Architecture:** Clean Architecture with TDD for critical logic.
 

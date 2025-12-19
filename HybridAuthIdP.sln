@@ -15,7 +15,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Application.UnitTests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Infrastructure.IntegrationTests", "Tests.Infrastructure.IntegrationTests\Tests.Infrastructure.IntegrationTests.csproj", "{7BD7C1B3-3CAD-41D7-A2BD-8C6BB8979344}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient", "TestClient\TestClient.csproj", "{34E14B97-66FB-48D8-8D53-69C1A1DDED73}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient", "samples\TestClient\TestClient.csproj", "{34E14B97-66FB-48D8-8D53-69C1A1DDED73}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Infrastructure.UnitTests", "Tests.Infrastructure.UnitTests\Tests.Infrastructure.UnitTests.csproj", "{728D369E-AFA2-4B35-A37E-9F5CF39068F0}"
 EndProject
@@ -25,15 +25,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure.Migrations.P
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Web.IdP.UnitTests", "Tests.Web.IdP.UnitTests\Tests.Web.IdP.UnitTests.csproj", "{602A5E88-4F7D-489E-88DA-51DCB4970CCB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient.Device", "TestClient.Device\TestClient.Device.csproj", "{3C4EA71B-C644-43D0-9C9C-3253DBD48C0A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient.Device", "samples\TestClient.Device\TestClient.Device.csproj", "{3C4EA71B-C644-43D0-9C9C-3253DBD48C0A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.SystemTests", "Tests.SystemTests\Tests.SystemTests.csproj", "{7B9AC523-FE84-44A1-964B-EF6BE8CC18EF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient.M2M", "TestClient.M2M\TestClient.M2M.csproj", "{0F040A26-E5BB-46F1-A26B-2710BA424361}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient.M2M", "samples\TestClient.M2M\TestClient.M2M.csproj", "{0F040A26-E5BB-46F1-A26B-2710BA424361}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.LegacyApi", "Tests.LegacyApi\Tests.LegacyApi.csproj", "{91320D71-017E-4DB4-9F46-A1698B521574}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient.Impersonation", "TestClient.Impersonation\TestClient.Impersonation.csproj", "{253370E9-9F0F-40B2-96F4-A251A1E92A5C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient.Impersonation", "samples\TestClient.Impersonation\TestClient.Impersonation.csproj", "{253370E9-9F0F-40B2-96F4-A251A1E92A5C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

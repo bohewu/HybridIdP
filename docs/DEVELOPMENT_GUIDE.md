@@ -1014,7 +1014,7 @@ setup() {
 
 ### Backend
 
--   **Framework**: ASP.NET Core .NET 9
+-   **Framework**: ASP.NET Core .NET 10+
 -   **Database**: PostgreSQL 17
 -   **ORM**: Entity Framework Core 9
 -   **Authentication**: OpenIddict 6.x

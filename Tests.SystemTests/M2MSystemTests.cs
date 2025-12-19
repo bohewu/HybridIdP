@@ -24,7 +24,7 @@ public class M2MSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
     {
         // Arrange
         var projectDir = GetProjectDirectory();
-        var testClientDir = Path.Combine(projectDir, "..", "TestClient.M2M");
+        var testClientDir = Path.Combine(projectDir, "..", "samples", "TestClient.M2M");
         var outputPath = Path.Combine(Path.GetTempPath(), $"m2m_results_{Guid.NewGuid()}.json");
 
         // Act
