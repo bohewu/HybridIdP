@@ -32,7 +32,7 @@ HybridAuth IdP Admin Portal 採用**混合架構**，結合伺服器端渲染（
 
 | 層級 | 技術棧 | 負責範圍 | 為何選擇 |
 |------|--------|----------|----------|
-| **Layout Layer** | Bootstrap 5 (CDN) | 外框結構：Sidebar、Header、Footer | ・穩定、不依賴構建工具<br>・即使 JS 失敗也能顯示<br>・SEO 友好 |
+| **Layout Layer** | Tailwind CSS (CDN/Vite) | 外框結構：Sidebar、Header、Footer | ・高度靈活、組件化<br>・一致的設計語言<br>・現代化 UI/UX |
 | **Routing Layer** | ASP.NET Core Razor Pages | URL 路由、權限驗證、頁面渲染 | ・伺服器端安全驗證<br>・每次導航都檢查 `[Authorize]`<br>・無法繞過後端直接訪問 |
 | **Content Layer** | Vue.js 3 + Tailwind CSS | 主要內容區域、CRUD 互動 | ・響應式資料綁定<br>・元件化開發<br>・現代化 UI/UX |
 | **Data Layer** | ASP.NET Core Web API | RESTful API、業務邏輯 | ・統一的資料存取介面<br>・API 級別的授權驗證 |
@@ -64,21 +64,17 @@ HybridAuth IdP Admin Portal 採用**混合架構**，結合伺服器端渲染（
 
 ## 🛠️ 技術棧詳解
 
-### Bootstrap 5 (Layout Layer)
+### Tailwind CSS (Layout & Content Layer)
 
-**用途**：Admin Layout 外框（`_AdminLayout.cshtml`）
+**用途**：所有 UI 元素的樣式（Layout 外框與 Vue 組件內容）
 
-**載入方式**：CDN（Content Delivery Network）
-
-```html
-// See docs/examples/architecture_bootstrap_cdn_load.html.example
-```
+**載入方式**：Vite 構建（生產環境）/ Vite Dev Server（開發環境）
 
 **優勢**：
--   ✅ **無需構建**：直接從 CDN 載入，不依賴 Vite
--   ✅ **快速載入**：CDN 分佈全球，低延遲
--   ✅ **穩定可靠**：成熟的框架，廣泛使用
--   ✅ **瀏覽器快取**：多個網站共用 CDN，快取命中率高
+-   ✅ **一致性**：全站統一使用 Tailwind CSS
+-   ✅ **靈活性**：輕鬆自訂樣式，無框架限制
+-   ✅ **高效能**：JIT 編譯僅產生所需的 CSS
+-   ✅ **開發體驗**：即時預覽變更，無需刷新
 
 **使用範例**：
 
@@ -164,10 +160,10 @@ HybridAuth IdP Admin Portal 採用**混合架構**，結合伺服器端渲染（
 
 ### 開發體驗
 
-**Bootstrap 5 部分**（不需要 Vite）：
--   ✅ Layout 結構立即可見
--   ✅ 修改 `_AdminLayout.cshtml` → 重新整理即可看到變更
--   ✅ 不依賴 Vite dev server
+**Layout 部分**（整合在 Vite 中）：
+-   ✅ Layout 結構與樣式由 Tailwind 管理
+-   ✅ 修改 `_AdminLayout.cshtml` 配合 Tailwind class
+-   ✅ 受益於 Vite 的快速構建
 
 **Vue.js 部分**（需要 Vite）：
 -   ✅ 修改 `.vue` 檔案 → HMR 自動更新（Hot Module Replacement）
@@ -178,14 +174,14 @@ HybridAuth IdP Admin Portal 採用**混合架構**，結合伺服器端渲染（
 
 ## 🎨 樣式策略
 
-### Bootstrap 5 vs Tailwind CSS
+### Styling Strategy (Tailwind CSS)
+
+本專案完全採用 **Tailwind CSS** 作為樣式解決方案，取代了早期的 Bootstrap。
 
 | 使用場景 | 技術選擇 | 原因 |
 |----------|----------|------|
-| **Layout 外框** | Bootstrap 5 | 穩定、不依賴構建、CDN 快取 |
-| **Navigation** | Bootstrap 5 | 成熟的導航組件（`.nav`, `.navbar`） |
-| **Grid System** | Bootstrap 5 | 響應式網格（`.container`, `.row`, `.col-*`） |
-| **Vue 組件內容** | Tailwind CSS | 靈活、Utility-first、現代化 |
+| **全站樣式** | Tailwind CSS | 靈活、Utility-first、一致性 |
+| **Grid & Flex** | Tailwind CSS | 強大的佈局系統 |
 | **互動式 UI** | Tailwind CSS | 快速原型開發、自訂樣式簡單 |
 
 ### 範例對比
@@ -261,9 +257,9 @@ HybridAuth IdP Admin Portal 採用**混合架構**，結合伺服器端渲染（
 ```
 
 ✅ **優勢**：
--   Layout 使用 Bootstrap（穩定、無構建依賴）
--   Content 使用 Vue + Tailwind（靈活、現代化）
--   責任分離，易於維護
+-   一致性：全站統一技術棧
+-   Content 使用 Vue + Tailwind
+-   易於維護
 
 ---
 
@@ -343,20 +339,20 @@ HybridAuth IdP Admin Portal 採用**混合架構**，結合伺服器端渲染（
 -   ✅ SEO 友好（搜尋引擎可索引 HTML 結構）
 -   ❌ Vue Router 是客戶端路由，可被停用 JS 繞過
 
-### Q2: 為什麼 Layout 用 Bootstrap 而不是 Tailwind？
+### Q2: 為什麼不繼續使用 Bootstrap？
 
-**A**: 穩定性和獨立性：
--   ✅ Bootstrap 從 CDN 載入，不依賴 Vite
--   ✅ 即使 Vite 故障，Layout 仍正常顯示
--   ✅ 瀏覽器快取命中率高（多網站共用 CDN）
--   ✅ 成熟穩定，組件豐富
+**A**: 現代化與開發體驗：
+-   ✅ Tailwind 提供更強大的設計靈活性
+-   ✅ 減少 CSS bundle 大小
+-   ✅ 全站樣式統一，避免兩套框架的維護成本
+-   ✅ 與 Vue.js 元件化開發完美結合
 
-### Q3: 如何確保 Vite 和 Bootstrap 不衝突？
+### Q3: 使用 Tailwind 有什麼好處？
 
-**A**: 樣式隔離：
--   Bootstrap 只用於 `_AdminLayout.cshtml`（外框）
--   Tailwind 只用於 Vue 組件內部（`.vue` 檔案）
--   兩者不共用 DOM 元素，不會樣式衝突
+**A**: 
+-   Utility-first 模式加快開發速度
+-   易於實現自訂設計語言
+-   編譯後的 CSS 極小
 
 ### Q4: 生產環境如何部署？
 
@@ -377,15 +373,15 @@ HybridAuth IdP Admin Portal 採用**混合架構**，結合伺服器端渲染（
 
 ## ✅ 總結
 
-HybridAuth IdP 採用**混合架構**，結合 Bootstrap 5 和 Vue.js 3 的優勢：
+HybridAuth IdP 採用**現代化架構**，結合 Tailwind CSS 和 Vue.js 3 的優勢：
 
 | 優勢 | 說明 |
 |------|------|
 | 🔐 **安全** | 伺服器端路由 + 授權，無法繞過 |
 | 🚀 **效能** | Bootstrap CDN 快取 + Vue.js 按需載入 |
-| 🎨 **靈活** | Bootstrap 穩定 Layout + Tailwind 現代 UI |
-| 🛠️ **易維護** | 責任分離，技術棧各司其職 |
-| 📱 **響應式** | Bootstrap Grid + Tailwind Utilities |
+| 🎨 **靈活** | Tailwind 一致性現代 UI |
+| 🛠️ **易維護** | 技術棧各司其職 |
+| 📱 **響應式** | Tailwind Flex/Grid |
 | 🔍 **SEO 友好** | 伺服器端渲染基礎結構 |
 
 這個架構設計經過深思熟慮，兼顧**安全性、效能、開發體驗和可維護性**，是生產環境的最佳實踐。
