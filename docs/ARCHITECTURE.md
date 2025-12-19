@@ -1,23 +1,18 @@
-## Session & Refresh Token Lifecycle (Stub)
-
-This section (work-in-progress) will define the local `UserSession` model decoupled from OpenIddict internals to support:
-
-- Refresh token rotation (one-time use) with secure hashing (no raw storage).
-- Sliding expiration extensions governed by per-client and global policies (max absolute lifetime enforced).
-- Reuse (replay) detection by tracking previous refresh token hash and marking audit events.
-- Cascade revocation: single session or entire chain with audit reason and cache invalidation hooks.
-- Audit events: `RefreshTokenRotated`, `RefreshTokenReuseDetected`, `SessionRevoked`, `SlidingExpirationExtended`.
-- Integration points: Monitoring dashboards, security anomaly detection, scope/settings cache invalidation.
-
-Upcoming implementation phases will replace placeholder methods in `SessionService` (see `RefreshAsync`, `RevokeChainAsync`) guided by the failing unit tests in `SessionRefreshLifecycleTests`.
-
-Current status: initial implementation completed for rotation, reuse detection (previous-token replay), sliding window extension (30m policy placeholder) and chain revocation with audit events. Hashing is a temporary deterministic mapping pending upgrade to cryptographic hashing (SHA256 + salt). Further enhancements will externalize policy (per-client) and strengthen concurrency handling.
-
 # HybridAuth IdP 架構指南
 
 ## 🎯 簡介
 
-本文件詳細說明 HybridAuth IdP Admin Portal 的混合架構設計，結合伺服器端渲染（SSR）和客戶端互動（SPA）的優勢。它整合了原有的 `architecture_hybrid_bootstrap_vue.md` 和 `idp_vue_mpa_structure.md`，提供全面的架構概覽、設計原則、技術棧詳解、安全考量、開發工作流程、樣式策略、效能考量、遷移策略以及常見問題解答。
+本文件詳細說明 HybridAuth IdP Admin Portal 的混合架構設計，內容涵蓋架構概覽、設計原則、技術棧詳解、安全考量、開發工作流程、樣式策略、效能考量、遷移策略以及常見問題解答。
+
+---
+
+## 🔐 Session & Refresh Token Lifecycle
+
+本章節定義了與 OpenIddict 內部解耦的 `UserSession` 模型，支援：
+- Refresh token 輪轉（單次使用）與安全雜湊儲存。
+- 基於客戶端與全域策略的滑動過期擴展。
+- 透過追蹤前次 Token 雜湊進行重放攻擊偵測。
+- 階層式撤銷：單一會話或整條 Token 鏈撤銷。
 
 ---
 
@@ -37,10 +32,10 @@ HybridAuth IdP Admin Portal 採用**混合架構**，結合伺服器端渲染（
 
 | 層級 | 技術棧 | 負責範圍 | 為何選擇 |
 |------|--------|----------|----------|
-| **Layout Layer** | Bootstrap 5 (CDN) | 外框結構：Sidebar、Header、Footer | ✅ 穩定、不依賴構建工具<br>✅ 即使 JS 失敗也能顯示<br>✅ SEO 友好 |
-| **Routing Layer** | ASP.NET Core Razor Pages | URL 路由、權限驗證、頁面渲染 | ✅ 伺服器端安全驗證<br>✅ 每次導航都檢查 `[Authorize]`<br>✅ 無法繞過後端直接訪問 |
-| **Content Layer** | Vue.js 3 + Tailwind CSS | 主要內容區域、CRUD 互動 | ✅ 響應式資料綁定<br>✅ 元件化開發<br>✅ 現代化 UI/UX |
-| **Data Layer** | ASP.NET Core Web API | RESTful API、業務邏輯 | ✅ 統一的資料存取介面<br>✅ API 級別的授權驗證 |
+| **Layout Layer** | Bootstrap 5 (CDN) | 外框結構：Sidebar、Header、Footer | ・穩定、不依賴構建工具<br>・即使 JS 失敗也能顯示<br>・SEO 友好 |
+| **Routing Layer** | ASP.NET Core Razor Pages | URL 路由、權限驗證、頁面渲染 | ・伺服器端安全驗證<br>・每次導航都檢查 `[Authorize]`<br>・無法繞過後端直接訪問 |
+| **Content Layer** | Vue.js 3 + Tailwind CSS | 主要內容區域、CRUD 互動 | ・響應式資料綁定<br>・元件化開發<br>・現代化 UI/UX |
+| **Data Layer** | ASP.NET Core Web API | RESTful API、業務邏輯 | ・統一的資料存取介面<br>・API 級別的授權驗證 |
 
 ### 2. **安全優先（Security-First）**
 
@@ -49,10 +44,10 @@ HybridAuth IdP Admin Portal 採用**混合架構**，結合伺服器端渲染（
 ```
 
 **為什麼不用 Vue Router？**
--   ❌ 前端路由守衛可被繞過（修改 JS、停用 JS）
--   ❌ 初次載入需要額外 API 呼叫驗證身份
--   ❌ SEO 不友好，需要額外的 SSR 配置
--   ✅ **Razor Pages** 提供伺服器端路由 + 授權，安全可靠
+- ❌ 前端路由守衛可被繞過（修改 JS、停用 JS）
+- ❌ 初次載入需要額外 API 呼叫驗證身份
+- ❌ SEO 不友好，需要額外的 SSR 配置
+- ✅ **Razor Pages** 提供伺服器端路由 + 授權，安全可靠
 
 ### 3. **漸進增強（Progressive Enhancement）**
 
@@ -659,3 +654,65 @@ PUT  /api/admin/clients/{id}/required-scopes → Set required scopes
 - [SCOPE_AUTHORIZATION.md](./SCOPE_AUTHORIZATION.md) - Developer guide for using scope-based authorization
 - [phase-9-scope-authorization.md](./archive/phases/phase-9-scope-authorization.md) - Implementation details and verification
 - [E2E Testing Guide](../e2e/README.md) - Testing scope authorization flows
+
+---
+
+## 👤 Identity & Person Model (身分與 Person 模型)
+
+### 核心概念
+
+#### Person vs ApplicationUser
+
+```
+Person (1) ─────┬───→ ApplicationUser (AD Account)
+                │         └── AspNetUserLogins (ActiveDirectory)
+                │
+                ├───→ ApplicationUser (Google Account)
+                │         └── AspNetUserLogins (Google)
+                │
+                └───→ ApplicationUser (Local Password)
+                          └── PasswordHash (in AspNetUsers table)
+```
+
+#### 設計原則
+
+1. **Person = 真實身分（Physical Identity）**
+   - 代表一個真實的人，儲存身分證件資訊：NationalId, EmployeeId。
+   - **一個人只有一個 Person 記錄**。
+2. **ApplicationUser = 登入帳號（Authentication Account）**
+   - 代表一個登入方式，一個 Person 可以有多個 ApplicationUser。
+   - 透過 PersonId 連結到 PersonLock。
+
+### JIT Provisioning 流程
+
+當使用者透過外部提供者（AD, Google）首次登入時，系統會自動建立 Person 與 ApplicationUser 的關聯。詳細實作請參考 `JitProvisioningService.cs`。
+
+---
+
+## 🚪 SSO Entry Portal (SSO 入口導航)
+
+### 目的
+提供統一的應用程式入口，讓使用者可以從一個地方 SSO 到所有獲授權的應用程式。
+
+### 架構組件
+1. **HybridAuth IdP**: 負責驗證使用者身份與發放 Token。
+2. **SSO Entry Portal**: 獨立的應用程式，負責根據使用者 Role 顯示可用應用清單。
+3. **Target Applications**: 驗證來自 IdP 的 Token 並提供功能。
+
+---
+
+## 📊 Monitoring & Background Services (監控與後端服務)
+
+### 概述
+`MonitoringBackgroundService` 負責定期從資料庫獲取監控數據（如活動統計、安全警報、系統指標），並透過 SignalR (`MonitoringHub`) 廣播給客戶端。
+
+### 更新頻率
+- **活動統計**: 5 秒
+- **安全警報**: 10 秒
+- **系統指標**: 15 秒
+
+### 監控內容
+- **Activity Stats**: 活躍會話、登入成功/失敗次數、風險分數。
+- **Security Alerts**: 異常登入行為檢測、暴力破壞攻擊預警。
+- **System Metrics**: 整合 Prometheus 指標。
+

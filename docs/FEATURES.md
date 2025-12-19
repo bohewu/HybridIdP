@@ -22,21 +22,21 @@ Turnstile 設定在 `appsettings.json` 中配置：
 
 #### 設定
 
--   **Enabled** (bool): 設定為 `true` 以在登入和註冊頁面啟用 Turnstile CAPTCHA。設定為 `false` 則禁用（預設）。
--   **SiteKey** (string): 您的 Cloudflare Turnstile 網站金鑰（向用戶顯示的公開金鑰）。
--   **SecretKey** (string): 您的 Cloudflare Turnstile 秘密金鑰（用於伺服器端驗證）。
+- **Enabled** (bool): 設定為 `true` 以在登入和註冊頁面啟用 Turnstile CAPTCHA。設定為 `false` 則禁用（預設）。
+- **SiteKey** (string): 您的 Cloudflare Turnstile 網站金鑰（向用戶顯示的公開金鑰）。
+- **SecretKey** (string): 您的 Cloudflare Turnstile 秘密金鑰（用於伺服器端驗證）。
 
 #### 獲取 Turnstile 金鑰
 
-1.  登入您的 [Cloudflare 儀表板](https://dash.cloudflare.com/)。
-2.  導航到側邊欄中的 **Turnstile**。
-3.  點擊 **新增網站**。
-4.  配置您的網站：
-    -   **網站名稱**: 例如 "HybridAuthIdP"
-    -   **網域**: 開發環境為 `localhost`，或您的生產網域。
-    -   **小工具模式**: 選擇 "Managed"（推薦）或 "Non-interactive"。
-5.  點擊 **建立**。
-6.  複製 **網站金鑰** 和 **秘密金鑰**，並將它們添加到您的 `appsettings.json` 或環境變數中。
+1. 登入您的 [Cloudflare 儀表板](https://dash.cloudflare.com/)。
+2. 導航到側邊欄中的 **Turnstile**。
+3. 點擊 **新增網站**。
+4. 配置您的網站：
+   - **網站名稱**: 例如 "HybridAuthIdP"
+   - **網域**: 開發環境為 `localhost`，或您的生產網域。
+   - **小工具模式**: 選擇 "Managed"（推薦）或 "Non-interactive"。
+5. 點擊 **建立**。
+6. 複製 **網站金鑰** 和 **秘密金鑰**，並將它們添加到您的 `appsettings.json` 或環境變數中。
 
 #### 範例配置 (啟用)
 
@@ -409,3 +409,23 @@ Turnstile 驗證服務實作於：
 -   為驗證連結創建電子郵件模板。
 -   實施 Razor Page (`/Account/VerifyEmail`) 來處理驗證連結並確認用戶的電子郵件。
 -   修改登入流程以檢查 `EmailConfirmed` 狀態。
+
+---
+
+## 4. 使用者模擬 (User Impersonation)
+
+### 概述
+使用者模擬允許獲授權的管理員以任何使用者身份登入，以便重現問題並提供直接支援。此功能受到嚴格的權限控制與審計日誌保護。
+
+### 使用方式
+1. **開始模擬**: 在管理後台的**使用者列表**中，點擊目標使用者的「...」選單，選擇「Login As」。
+2. **模擬期間**: 畫面最上方會顯示警告橫幅「You are currently impersonating {User}」，提供切換回管理員的按鈕。
+3. **停止模擬**: 點擊橫幅中的「Switch Back」按鈕。
+
+### 安全與權限
+- **權限要求**: 必須具備 `Permissions.Users.Impersonate`。
+- **防範越權**: 管理員無法模擬其他管理員，以防止權限提升。
+- **審計追蹤**: 模擬期間的所有操作都會記錄 `Actor` (模擬者) 的身分。
+
+---
+**Last Updated**: 2025-12-19
