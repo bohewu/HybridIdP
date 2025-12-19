@@ -8,8 +8,9 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 2.  **二擇一 (XOR)**：保持現有邏輯，完成 Passkey 驗證即不需補 OTP，反之亦然。
 3.  **無縫註冊 (Smooth Enrollment)**：在 `MfaSetup` 頁面完成綁定後，立即刷新 Session Cookie 並導回 OIDC 流程，不需重新登入。
 4.  **強制啟動 MFA (Mandatory MFA Enrollment)**：
-    *   新增系統設定：`EnforceMandatoryMfaEnrollment`。
-    *   **對象：所有帳戶**。不論是新建立還是既有帳戶，只要目前的 Security Policy 被啟動，使用者在下一次登入時若偵測到無任何有效的 MFA/Passkey，將強制跳轉至 `MfaSetup` 完成綁定後才可繼續使用系統。
+    *   新增系統設定：`EnforceMandatoryMfaEnrollment` (Boolean) 與 `MfaEnforcementGracePeriodDays` (Int)。
+    *   **對象：所有帳戶**。且採取 **Zero Trust** 原則，即使外部 SSO 登入也需符合此地 MFA 規範。
+    *   **緩衝期**：使用者在登入後若未合規，系統會根據 `GracePeriodDays` 給予提醒或寬限，逾期後強制跳轉至 `MfaSetup`。
 5.  **防止移除最後一項 MFA (Prevent Last MFA Removal)**：
     *   若 `ForceMfaSetupOnFirstLogin` 為真，系統必須禁止使用者移除（Disable/Delete）最後一個有效的驗證因素（TOTP, Email 或最後一個 Passkey）。
     *   此限制必須同時在 **前端 UI**（禁用按鈕）與 **後端 API**（返回 400 錯誤）中實作。
@@ -22,7 +23,9 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 - Add constants for `amr` values: `pwd`, `otp`, `mfa`, `hwk`.
 
 #### [MODIFY] [SecurityPolicy.cs](file:///c:/repos/HybridIdP/Core.Domain/Entities/SecurityPolicy.cs)
-- Add `EnforceMandatoryMfaEnrollment` boolean property.
+- Add `EnforceMandatoryMfaEnrollment` (Boolean) property.
+- Add `MfaEnforcementGracePeriodDays` (Integer) property.
+- Add `FirstLoginAt` or `MfaRequirementNotifiedAt` to `ApplicationUser` for grace period tracking.
 
 ### Web IdP
 
@@ -67,6 +70,13 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 | Password | `["pwd"]` | No |
 | TOTP / Email OTP | `["pwd", "mfa", "otp"]` | Yes |
 | Passkey (WebAuthn) | `["hwk", "user"]` | Yes (Per NIST/modern OIDC) |
+| Recovery Code | `["pwd", "mfa"]` | Yes |
+
+### 邊界情況策略 (Edge Case Policy)
+*   **External SSO**: 採取 Zero Trust 原則，外部 IdP 的驗證狀態不自動繼承，仍需在本系統內綁定 MFA 以滿足 `amr: mfa`。
+*   **Impersonation**: 切換身份登入不自動帶入受測者的 MFA 聲明，確保審計追蹤真實驗證強度。
+*   **M2M Flow**: Client Credentials 不支援互動式 MFA。若請求 `acr_values=mfa`，系統直接回傳錯誤。
+*   **Stale Claim Check**: `AuthorizationService` 核發 Token 前會即時校驗資料庫 MFA 狀態，防止使用者剛關閉 MFA 卻仍能用舊 Session 獲取高權限 Token。
 
 ### OIDC Error Handling
 
