@@ -157,6 +157,11 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] Implement system-wide `ITimeProvider` for testability
 - [x] Update `docs/SECURITY.md` with MFA documentation
 - [x] User guide for setting up Passkeys (See `docs/MFA_TESTING_GUIDE.md`)
+- [ ] **Phase 20.6: OIDC AMR Claims & MFA Enforcement** (Planned)
+  - [ ] Implement `amr` tracking (Passkey `hwk` satisfies MFA requirement)
+  - [ ] Implement `MfaSetup` page for on-the-fly enrollment (No-logout refresh)
+  - [ ] Support `acr_values=mfa` in `AuthorizationService`
+  - [ ] Propagate standard `amr`/`acr` claims to OIDC tokens
 
 ## Notes
 
