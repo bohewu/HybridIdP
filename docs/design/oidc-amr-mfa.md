@@ -12,8 +12,11 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
     *   **對象：所有帳戶**。且採取 **Zero Trust** 原則，即使外部 SSO 登入也需符合此地 MFA 規範。
     *   **緩衝期**：使用者在登入後若未合規，系統會根據 `GracePeriodDays` 給予提醒或寬限，逾期後強制跳轉至 `MfaSetup`。
 5.  **防止移除最後一項 MFA (Prevent Last MFA Removal)**：
-    *   若 `ForceMfaSetupOnFirstLogin` 為真，系統必須禁止使用者移除（Disable/Delete）最後一個有效的驗證因素（TOTP, Email 或最後一個 Passkey）。
+    *   若 `EnforceMandatoryMfaEnrollment` 為真，系統必須禁止使用者移除（Disable/Delete）最後一個有效的驗證因素（TOTP, Email 或最後一個 Passkey）。
     *   此限制必須同時在 **前端 UI**（禁用按鈕）與 **後端 API**（返回 400 錯誤）中實作。
+    *   **即便繞過**：若使用者因任何原因處於「無 MFA」狀態且政策開啟，下一次登入時仍會被攔截導向註冊頁。
+6.  **擴充性 (Extensibility)**：
+    *   架構設計支援未來整合外部 SSO (Google/MS)。在 External Callback 流程中，可透過 Claims Mapping 決定是否將外部 MFA 聲明信任並映射至本地 `amr`。
 
 ## Proposed Changes
 
