@@ -7,9 +7,9 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 1.  **Passkey = MFA**: 由於 Passkey 包含硬體持有 (`hwk`) 與使用者驗證 (`user`)，技術上直接視為滿足 MFA 要求。
 2.  **二擇一 (XOR)**：保持現有邏輯，完成 Passkey 驗證即不需補 OTP，反之亦然。
 3.  **無縫註冊 (Smooth Enrollment)**：在 `MfaSetup` 頁面完成綁定後，立即刷新 Session Cookie 並導回 OIDC 流程，不需重新登入。
-4.  **強制首登 MFA (Force MFA on First Login)**：
-    *   新增系統設定：`ForceMfaSetupOnFirstLogin`。
-    *   若啟用，使用者登入後若無任何 MFA/Passkey，將強制跳轉至 `MfaSetup` 完成綁定後才可使用系統。
+4.  **強制啟動 MFA (Mandatory MFA Enrollment)**：
+    *   新增系統設定：`EnforceMandatoryMfaEnrollment`。
+    *   **對象：所有帳戶**。不論是新建立還是既有帳戶，只要目前的 Security Policy 被啟動，使用者在下一次登入時若偵測到無任何有效的 MFA/Passkey，將強制跳轉至 `MfaSetup` 完成綁定後才可繼續使用系統。
 5.  **防止移除最後一項 MFA (Prevent Last MFA Removal)**：
     *   若 `ForceMfaSetupOnFirstLogin` 為真，系統必須禁止使用者移除（Disable/Delete）最後一個有效的驗證因素（TOTP, Email 或最後一個 Passkey）。
     *   此限制必須同時在 **前端 UI**（禁用按鈕）與 **後端 API**（返回 400 錯誤）中實作。
@@ -22,13 +22,13 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 - Add constants for `amr` values: `pwd`, `otp`, `mfa`, `hwk`.
 
 #### [MODIFY] [SecurityPolicy.cs](file:///c:/repos/HybridIdP/Core.Domain/Entities/SecurityPolicy.cs)
-- Add `ForceMfaSetupOnFirstLogin` boolean property.
+- Add `EnforceMandatoryMfaEnrollment` boolean property.
 
 ### Web IdP
 
 #### [MODIFY] [Login.cshtml.cs](file:///c:/repos/HybridIdP/Web.IdP/Pages/Account/Login.cshtml.cs)
 - Add `amr: pwd` claim to the identity when a user signs in with password.
-- Check `ForceMfaSetupOnFirstLogin`. If true and user has no MFA, redirect to `MfaSetup`.
+- Check `EnforceMandatoryMfaEnrollment`. If true and user has no MFA, redirect to `MfaSetup`.
 
 #### [MODIFY] [LoginTotp.cshtml.cs](file:///c:/repos/HybridIdP/Web.IdP/Pages/Account/LoginTotp.cshtml.cs)
 - Add `amr: ["pwd", "mfa", "otp"]` claims upon success.
@@ -39,7 +39,7 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 - **Redirect**: Directly back to `returnUrl` (OIDC authorize endpoint) or Home.
 
 #### [MODIFY] [MfaController.cs](file:///c:/repos/HybridIdP/Web.IdP/Controllers/Account/MfaController.cs)
-- **API Enforcement**: In `/disable` and `/email/disable` endpoints, check if `ForceMfaSetupOnFirstLogin` is active.
+- **API Enforcement**: In `/disable` and `/email/disable` endpoints, check if `EnforceMandatoryMfaEnrollment` is active.
 - If the method being disabled is the only one left, return `BadRequest` with error code `lastMfaExclusionRequired`.
 
 #### [MODIFY] [PasskeyController.cs](file:///c:/repos/HybridIdP/Web.IdP/Controllers/Account/PasskeyController.cs)
@@ -86,5 +86,5 @@ If `acr_values=mfa` is requested but cannot be fulfilled, return:
 ### Automated Tests
 - System test: Request `acr_values=mfa` with a password-only user -> Verify redirect to `MfaSetup`.
 - System test: Request `acr_values=mfa` with a Passkey user -> Verify direct token issuance with `hwk` claim.
-- System test: Enable `ForceMfaSetupOnFirstLogin` -> Verify new users are forced to `MfaSetup`.
+- System test: Enable `EnforceMandatoryMfaEnrollment` -> Verify all non-compliant users are forced to `MfaSetup` upon login.
 - **Enforcement Test**: Attempt to call API to disable the only MFA method when policy is active -> Verify 400 error.
