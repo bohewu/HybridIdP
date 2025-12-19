@@ -120,4 +120,63 @@ dotnet test Web.IdP.SystemTests
 Check the database tables `ApiResources` and `ApiResourceScopes` to confirm `company_api` and `inventory_api` are populated.
 
 ---
-**Last Updated**: 2024-12-10
+---
+
+## 5. MFA Testing Guide (多重因素驗證測試)
+
+本專案支援多種 MFA 方式，包含 TOTP、Email OTP 以及 Passkey。
+
+### TOTP (驗證碼產生器)
+- **手動測試**: 進入「個人設定」 -> 「MFA 設定」 -> 「Setup Authenticator」，使用手機 App (Microsoft/Google Authenticator) 掃描。
+- **技巧**: 複製密鑰並使用網頁版工具 (如 [totp.app](https://totp.app/))，無需手機。
+
+### Email OTP (信箱驗證碼)
+- **手動測試**: 在設定頁點擊「發送驗證碼」。
+- **技巧**: 使用 [Mailpit](http://localhost:8025) 攔截本地郵件，無需真實收信。
+
+### Passkey (WebAuthn)
+- **手動測試**: 使用電腦生物辨識或 Yubikey。
+- **技巧**: 使用 Chrome DevTools -> WebAuthn 面板建立虛擬金鑰測試。
+
+---
+
+## 6. Manual Testing: Device Authorization Flow
+
+### Step 1: Initiate Request
+```powershell
+curl --location 'https://localhost:7035/connect/device' `
+--header 'Content-Type: application/x-www-form-urlencoded' `
+--data-urlencode 'client_id=testclient-device' `
+--data-urlencode 'scope=openid profile offline_access'
+```
+
+### Step 2: Approve
+1. 瀏覽器開啟 `https://localhost:7035/connect/verify`。
+2. 輸入 `user_code` 並登入。
+
+### Step 3: Get Token
+```powershell
+curl --location 'https://localhost:7035/connect/token' `
+--header 'Content-Type: application/x-www-form-urlencoded' `
+--data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:device_code' `
+--data-urlencode 'client_id=testclient-device' `
+--data-urlencode 'device_code=[DEVICE_CODE]'
+```
+
+---
+
+## 7. E2E Test Client Credentials
+
+### Public Client (`testclient-public`)
+- **Client Type**: Public (SPA/Mobile)
+- **Grant Types**: Auth code + PKCE, Refresh token
+- **Redirect URI**: `https://localhost:7001/signin-oidc`
+- **Secret**: None (Requires PKCE)
+
+### M2M Client (`testclient-m2m`)
+- **Client Type**: Confidential
+- **Secret**: `m2m-test-secret-2024`
+
+---
+**Last Updated**: 2025-12-19
+
