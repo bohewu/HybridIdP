@@ -83,7 +83,9 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 *   **External SSO / AD / Legacy**: 採取 Zero Trust 原則，外部或舊系統之驗證狀態不自動繼承，仍需在本系統內透過 `MfaSetup` 補足 MFA 以滿足 `amr: mfa` 等級。
 *   **Impersonation**: 切換身份登入不自動帶入受測者的 MFA 聲明，確保審計追蹤真實驗證強度。
 *   **M2M Flow**: Client Credentials 不支援互動式 MFA。若請求 `acr_values=mfa`，系統直接回傳錯誤。
-*   **Stale Claim Check**: `AuthorizationService` 核發 Token 前會即時校驗資料庫 MFA 狀態，防止使用者剛關閉 MFA 卻仍能用舊 Session 獲取高權限 Token。
+*   **Stale Claim / Race Condition Check**:
+    *   **情境**：使用者在多裝置操作，例如在裝置 A 授權時，剛好在裝置 B 關閉了 MFA。
+    *   **對策**：`AuthorizationService` 在核發 Token 前會即時校驗資料庫 MFA 狀態。若資料庫顯示已無可用 MFA，即便 Cookie 仍帶有 `amr: mfa` 聲明，系統亦應將其視為「未達標」並重新挑戰。
 
 ### OIDC Error Handling
 
