@@ -104,36 +104,38 @@
                                     <i class="bi bi-chevron-down text-gray-400 text-xs ml-1"></i>
                                 </button>
                             </div>
-                            <!-- Dropdown menu -->
-                            <div class="origin-top-right absolute right-0 mt-1 w-56 rounded-lg border border-gray-200 py-1 bg-white focus:outline-none hidden group-hover:block z-50">
-                                @if (User.IsInRole(Roles.Admin) && hasAdminPermissions)
-                                {
-                                    <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Admin/Index">
-                                        <i class="bi bi-speedometer2 mr-2"></i> @Localizer["AdminConsole"]
+                            <!-- Dropdown menu - Use pt-2 as a bridge to prevent hover loss -->
+                            <div class="origin-top-right absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50">
+                                <div class="rounded-lg border border-gray-200 py-1 bg-white shadow-lg focus:outline-none">
+                                    @if (User.IsInRole(Roles.Admin) && hasAdminPermissions)
+                                    {
+                                        <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Admin/Index">
+                                            <i class="bi bi-speedometer2 mr-2"></i> @Localizer["AdminConsole"]
+                                        </a>
+                                        <div class="border-t border-gray-100 my-1"></div>
+                                    }
+                                    else if (hasClientScopePermissions)
+                                    {
+                                        <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/ApplicationManager/Index">
+                                            <i class="bi bi-diagram-3 mr-2"></i> @Localizer["ApplicationManager"]
+                                        </a>
+                                        <div class="border-t border-gray-100 my-1"></div>
+                                    }
+                                    
+                                    <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/Authorizations">
+                                        <i class="bi bi-shield-check mr-2"></i> @Localizer["AuthorizationManagement"]
+                                    </a>
+                                    <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/LinkedAccounts">
+                                        <i class="bi bi-person-lines-fill mr-2"></i> @Localizer["LinkedAccounts"]
+                                    </a>
+                                    <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/Profile">
+                                        <i class="bi bi-person-circle mr-2"></i> @Localizer["Profile"]
                                     </a>
                                     <div class="border-t border-gray-100 my-1"></div>
-                                }
-                                else if (hasClientScopePermissions)
-                                {
-                                    <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/ApplicationManager/Index">
-                                        <i class="bi bi-diagram-3 mr-2"></i> @Localizer["ApplicationManager"]
+                                    <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/Logout">
+                                        <i class="bi bi-box-arrow-right mr-2"></i> @Localizer["Logout"]
                                     </a>
-                                    <div class="border-t border-gray-100 my-1"></div>
-                                }
-                                
-                                <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/Authorizations">
-                                    <i class="bi bi-shield-check mr-2"></i> @Localizer["AuthorizationManagement"]
-                                </a>
-                                <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/LinkedAccounts">
-                                    <i class="bi bi-person-lines-fill mr-2"></i> @Localizer["LinkedAccounts"]
-                                </a>
-                                <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/Profile">
-                                    <i class="bi bi-person-circle mr-2"></i> @Localizer["Profile"]
-                                </a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/Logout">
-                                    <i class="bi bi-box-arrow-right mr-2"></i> @Localizer["Logout"]
-                                </a>
+                                </div>
                             </div>
                         </div>
                     }
