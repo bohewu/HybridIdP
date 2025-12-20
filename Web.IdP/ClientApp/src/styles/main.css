@@ -1,3 +1,37 @@
 @import "tailwindcss";
+
+@source "../../index.html";
+@source "../**/*.{vue,js,ts,jsx,tsx}";
+@source "../../../**/*.cshtml";
+@source "../../../**/*.razor";
+
+@theme {
+    /* Match Bootstrap 5 breakpoints for consistency */
+    --breakpoint-sm: 576px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 992px;
+    --breakpoint-xl: 1200px;
+    --breakpoint-2xl: 1400px;
+
+    /* Google 2024 Design System Colors */
+    --color-google-50: #f8f9fa;
+    --color-google-100: #e8f0fe;
+    --color-google-500: #1a73e8;
+    --color-google-600: #1557b0;
+    --color-google-700: #004a77;
+
+    /* Additional z-index values to match admin layout */
+    --z-index-top-header: 30;
+    --z-index-mobile-overlay: 35;
+    --z-index-sidebar: 40;
+    --z-index-modal: 50;
+    --z-index-modal-nested: 60;
+    --z-index-alert: 9999;
+
+    /* Match the sidebar width */
+    --spacing-sidebar: 260px;
+    --spacing-sidebar-md: 220px;
+}
+
 @import './admin-layout.css';
 @import './google-style.css';
