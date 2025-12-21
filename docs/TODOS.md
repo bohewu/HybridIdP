@@ -173,6 +173,15 @@ This file contains current high-priority backlog items and remaining tasks.
   - [ ] Update SystemTests and IntegrationTests to handle CSRF tokens (requires passing tokens in test requests).
   - [ ] Verify no disruption to standard OIDC Bearer-token endpoints.
 
+## ⚡ Performance Optimization (Backlog)
+
+- [ ] **AuthorizationService Hot Path Optimization**
+  - [ ] Add short-term `IMemoryCache` for Client/Scope lookups (reduce DB roundtrips).
+  - [ ] Avoid `.ToList()` when `.Any()` suffices on enumerables.
+  - [ ] Consider pre-computed `HasMfa` claim to reduce runtime Claims iteration.
+  - [ ] Evaluate Scope caching strategy in `LoadScopeInfosAsync`.
+  - [ ] Profile with APM to identify actual bottlenecks before optimization.
+
 ## Notes
 
 - Security scanning scripts available: `CI/security-scan.ps1`, `CI/dependency-scan.ps1`
