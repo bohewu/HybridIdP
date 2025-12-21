@@ -11,7 +11,10 @@
       <h1 class="title">{{ t('mfa.setupPageTitle') }}</h1>
       
       <!-- Grace Period Info -->
-      <div v-if="!gracePeriodExpired" class="grace-info">
+      <div v-if="isMfaEnforced" class="grace-expired enforced">
+        <p class="expired-text">{{ t('mfa.enforcedMessage') || 'MFA is strictly required for this session.' }}</p>
+      </div>
+      <div v-else-if="!gracePeriodExpired" class="grace-info">
         <p class="grace-text">
           {{ t('mfa.gracePeriodMessage', { days: remainingGraceDays }) }}
         </p>
@@ -170,6 +173,7 @@ const { registerPasskey: webAuthnRegister } = useWebAuthn()
 // Data from HTML
 const gracePeriodExpired = ref(false)
 const remainingGraceDays = ref(0)
+const isMfaEnforced = ref(false)
 const returnUrl = ref('/')
 const csrfToken = ref('')
 const skipActionUrl = ref('/Account/MfaSetup?handler=Skip')
@@ -215,6 +219,7 @@ onMounted(async () => {
   if (mountEl) {
     gracePeriodExpired.value = mountEl.dataset.gracePeriodExpired === 'true'
     remainingGraceDays.value = parseInt(mountEl.dataset.remainingGraceDays || '0', 10)
+    isMfaEnforced.value = mountEl.dataset.isMfaEnforced === 'true'
     returnUrl.value = mountEl.dataset.returnUrl || '/'
     csrfToken.value = mountEl.dataset.csrfToken || ''
   }
@@ -408,6 +413,15 @@ async function registerPasskey() {
   font-size: 0.875rem;
   font-weight: 500;
   margin: 0;
+}
+
+.grace-expired.enforced {
+  background-color: #fff7ed;
+  border-color: #fdba74;
+}
+
+.grace-expired.enforced .expired-text {
+  color: #c2410c;
 }
 
 .info-box {

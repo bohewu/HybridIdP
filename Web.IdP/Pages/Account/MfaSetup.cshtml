@@ -33,6 +33,7 @@
         <div id="mfa-setup-app"
              data-grace-period-expired="@Model.GracePeriodExpired.ToString().ToLower()"
              data-remaining-grace-days="@Model.RemainingGraceDays"
+             data-is-mfa-enforced="@Model.IsMfaEnforced.ToString().ToLower()"
              data-return-url="@Model.ReturnUrl"
              data-csrf-token="@csrfToken">
         </div>

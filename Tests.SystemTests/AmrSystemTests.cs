@@ -70,6 +70,32 @@ public class AmrSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
     }
 
     [Fact]
+    public async Task Authorize_WithAcrValuesMfa_MfaSetupPage_HidesSkipButton()
+    {
+        // 1. Login with seeded NO-MFA user
+        var username = "amr-nomfa@hybridauth.local";
+        var password = "Test@123";
+        var (token, _) = await GetLoginPageAsync();
+        var loginContent = CreateLoginForm(username, password, token);
+        await _httpClient.PostAsync("/Account/Login", loginContent);
+        
+        // 2. Request Authorize with acr_values=mfa
+        var redirectUri = WebUtility.UrlEncode("https://localhost:7035/signin-oidc");
+        var url = $"/connect/authorize?client_id=testclient-public&redirect_uri={redirectUri}&response_type=code&scope=openid profile&acr_values=mfa&code_challenge=xyz&code_challenge_method=S256&nonce=abc&state=123";
+        
+        var authResponse = await _httpClient.GetAsync(url);
+        var location = authResponse.Headers.Location?.ToString();
+        
+        // 3. Get MfaSetup page
+        var mfaSetupResponse = await _httpClient.GetAsync(location);
+        var mfaSetupHtml = await mfaSetupResponse.Content.ReadAsStringAsync();
+        
+        // Assert: data-is-mfa-enforced should be true
+        Assert.Contains("data-is-mfa-enforced=\"true\"", mfaSetupHtml);
+        Assert.Contains("data-grace-period-expired=\"true\"", mfaSetupHtml);
+    }
+
+    [Fact]
     public async Task Authorize_WithAcrValuesMfa_WithEnrollment_Succeeds()
     {
         // 1. Login with seeded MFA user
