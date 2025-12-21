@@ -36,6 +36,7 @@ public class MfaSetupModel : PageModel
     public bool GracePeriodExpired { get; private set; }
 
     public int RemainingGraceDays { get; private set; }
+    public bool IsMfaEnforced { get; private set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -68,7 +69,40 @@ public class MfaSetupModel : PageModel
              // If NotifiedAt is null, it means they just got flagged, so grace period starts now (not expired)
         }
 
+        // UX Improvement: If acr_values=mfa was requested, MFA is enforced for this session.
+        // Hide skip button and show "Enforced" message.
+        IsMfaEnforced = IsMfaEnforcedInReturnUrl(ReturnUrl);
+        if (IsMfaEnforced)
+        {
+            GracePeriodExpired = true;
+        }
+
         return Page();
+    }
+
+    private bool IsMfaEnforcedInReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrEmpty(returnUrl)) return false;
+
+        try
+        {
+            var uri = new Uri(returnUrl, UriKind.RelativeOrAbsolute);
+            var query = uri.IsAbsoluteUri ? uri.Query : returnUrl.Contains('?') ? returnUrl.Substring(returnUrl.IndexOf('?')) : "";
+            
+            if (string.IsNullOrEmpty(query)) return false;
+
+            var queryString = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query);
+            if (queryString.TryGetValue("acr_values", out var acrValues))
+            {
+                return acrValues.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains("mfa");
+            }
+        }
+        catch
+        {
+            // Fallback for non-URL returnUrls
+        }
+
+        return false;
     }
 
     public async Task<IActionResult> OnPostSkipAsync()

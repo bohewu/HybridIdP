@@ -176,5 +176,8 @@
   "EmailVerification": "電子郵件驗證",
   "EnterEmailCodeDescription": "我們已將驗證碼發送至您的電子郵件",
   "InvalidMfaCode": "驗證碼無效",
-  "LoginWithPasskey": "使用 Passkey 登入"
+  "LoginWithPasskey": "使用 Passkey 登入",
+  "mfa.enforcedMessage": "您目前的請求要求必須使用兩步驟驗證。請立即完成設定以繼續。",
+  "mfa.gracePeriodMessage": "為了您的帳號安全，系統要求啟用兩步驟驗證。您還有 {days} 天的時間可以完成設定。",
+  "mfa.gracePeriodExpiredMessage": "兩步驟驗證設定寬限期已過。您必須完成設定才能繼續操作。"
 }
