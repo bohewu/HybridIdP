@@ -32,8 +32,8 @@ public class MfaSetupModel : PageModel
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
 
-    [BindProperty(SupportsGet = true)]
-    public bool GracePeriodExpired { get; set; }
+    // Handled internally, not bound from URL
+    public bool GracePeriodExpired { get; private set; }
 
     public int RemainingGraceDays { get; private set; }
 
@@ -46,10 +46,23 @@ public class MfaSetupModel : PageModel
         }
 
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
-        if (user.MfaRequirementNotifiedAt != null)
+        
+        // Default to expired if policy enforces it, until we prove otherwise
+        GracePeriodExpired = false;
+
+        if (policy.EnforceMandatoryMfaEnrollment)
         {
-            var expiry = user.MfaRequirementNotifiedAt.Value.AddDays(policy.MfaEnforcementGracePeriodDays);
-            RemainingGraceDays = (int)Math.Max(0, (expiry - DateTime.UtcNow).TotalDays);
+             if (user.MfaRequirementNotifiedAt != null)
+             {
+                var expiry = user.MfaRequirementNotifiedAt.Value.AddDays(policy.MfaEnforcementGracePeriodDays);
+                RemainingGraceDays = (int)Math.Max(0, (expiry - DateTime.UtcNow).TotalDays);
+                
+                if (DateTime.UtcNow > expiry)
+                {
+                    GracePeriodExpired = true;
+                }
+             }
+             // If NotifiedAt is null, it means they just got flagged, so grace period starts now (not expired)
         }
 
         return Page();

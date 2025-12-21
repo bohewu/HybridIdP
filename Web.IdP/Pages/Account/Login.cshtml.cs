@@ -273,7 +273,7 @@ public partial class LoginModel : PageModel
                                 new System.Security.Claims.ClaimsPrincipal(identity));
 
                             // Redirect to MFA Setup
-                            return RedirectToPage("./MfaSetup", new { returnUrl, gracePeriodExpired });
+                            return RedirectToPage("./MfaSetup", new { returnUrl });
                         }
                     }
                 }
