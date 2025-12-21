@@ -265,6 +265,13 @@ public partial class LoginModel : PageModel
                                 }
                             }
 
+                            // Store user ID for 2FA setup access using partial authentication
+                            var identity = new System.Security.Claims.ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
+                            identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, result.User.Id.ToString()));
+                            await HttpContext.SignInAsync(
+                                IdentityConstants.TwoFactorUserIdScheme,
+                                new System.Security.Claims.ClaimsPrincipal(identity));
+
                             // Redirect to MFA Setup
                             return RedirectToPage("./MfaSetup", new { returnUrl, gracePeriodExpired });
                         }
