@@ -65,8 +65,8 @@
 
 /* Standalone footer (outside card) */
 .google-footer {
-    width: 450px;
-    max-width: calc(100vw - 32px);
+    width: 100%;
+    max-width: 450px;
     padding: 0;
     display: flex;
     justify-content: space-between;
@@ -228,7 +228,8 @@
 
 .google-login-card {
     width: 100%;
-    max-width: 450px; /* Standard Google Login card width */
+    max-width: 450px;
+    /* Standard Google Login card width */
     background-color: white;
     border: 1px solid var(--google-gray-200);
     border-radius: 8px;
@@ -241,14 +242,15 @@
         padding: 24px;
         max-width: 100%;
     }
-    
+
     .google-login-container {
         padding: 16px;
     }
 }
 
 .google-login-header {
-    margin-bottom: 24px; /* Reduced from 40px for tighter feel */
+    margin-bottom: 24px;
+    /* Reduced from 40px for tighter feel */
 }
 
 .google-login-body {
@@ -318,4 +320,3 @@
     cursor: not-allowed;
     opacity: 0.5;
 }
-
