@@ -250,20 +250,12 @@ public partial class LoginModel : PageModel
                         {
                             // User has NO MFA enabled and NO Passkeys registered
                             // Check grace period
-                            var gracePeriodExpired = false;
                             if (result.User.MfaRequirementNotifiedAt == null)
                             {
                                 result.User.MfaRequirementNotifiedAt = DateTime.UtcNow;
                                 await _userManager.UpdateAsync(result.User);
                             }
-                            else
-                            {
-                                var expiry = result.User.MfaRequirementNotifiedAt.Value.AddDays(currentPolicy.MfaEnforcementGracePeriodDays);
-                                if (DateTime.UtcNow > expiry)
-                                {
-                                    gracePeriodExpired = true;
-                                }
-                            }
+                            // Expiry is now checked entirely in MfaSetup page
 
                             // Store user ID for 2FA setup access using partial authentication
                             var identity = new System.Security.Claims.ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
