@@ -57,15 +57,23 @@ public class MfaSetupModel : PageModel
 
     public async Task<IActionResult> OnPostSkipAsync()
     {
-        if (GracePeriodExpired)
-        {
-            return Page(); // Cannot skip if expired
-        }
-
         var user = await GetTwoFactorUserAsync();
         if (user == null)
         {
             return RedirectToPage("./Login");
+        }
+
+        // SECURITY FIX: Re-validate grace period server-side
+        // Do not trust the GracePeriodExpired bind property
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (policy.EnforceMandatoryMfaEnrollment && user.MfaRequirementNotifiedAt != null)
+        {
+             var expiry = user.MfaRequirementNotifiedAt.Value.AddDays(policy.MfaEnforcementGracePeriodDays);
+             if (DateTime.UtcNow > expiry)
+             {
+                 // Grace period expired, cannot skip
+                 return Page(); 
+             }
         }
 
         // Sign in user temporarily since they skipped MFA for now (within grace period)
