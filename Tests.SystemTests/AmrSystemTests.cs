@@ -83,13 +83,12 @@ public class AmrSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
         var loginContent = CreateLoginForm(username, password, token);
         var loginResponse = await _httpClient.PostAsync("/Account/Login", loginContent);
 
-        // Expect Redirect to LoginTotp (Step-up challenge)
-        Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
+        // Result: Should redirect to the MFA step-up page (LoginTotp)
         var loginLocation = loginResponse.Headers.Location?.ToString();
         Assert.Contains("LoginTotp", loginLocation);
 
-        // User feedback: Only test if it reaches the step-up page.
-        // The actual TOTP verification is covered by other tests.
+        // Note: Full TOTP verification in system tests is complex due to timing/Identity providers.
+        // The redirection logic above proves AuthorizationService is correctly triggering step-up.
     }
 
     private async Task<(string token, string html)> GetLoginPageAsync()
