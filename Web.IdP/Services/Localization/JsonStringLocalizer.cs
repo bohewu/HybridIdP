@@ -102,13 +102,23 @@ public class JsonStringLocalizer : IStringLocalizer
         
         return _resourceCache.GetOrAdd(cacheKey, _ =>
         {
+            // Extract directory and file parts from baseName
+            // baseName could be "Authorize" (simple) or "Views/Authorization/Authorize" (path-based)
+            var directory = Path.GetDirectoryName(_baseName) ?? string.Empty;
+            var fileBaseName = Path.GetFileName(_baseName);
+            
             var fileName = string.IsNullOrEmpty(cultureName)
-                ? $"{_baseName}.json"
-                : $"{_baseName}.{cultureName}.json";
+                ? $"{fileBaseName}.json"
+                : $"{fileBaseName}.{cultureName}.json";
 
             foreach (var searchPath in _searchPaths)
             {
-                var filePath = Path.Combine(searchPath, fileName);
+                // Combine searchPath with directory part of baseName
+                var resourceDir = string.IsNullOrEmpty(directory)
+                    ? searchPath
+                    : Path.Combine(searchPath, directory);
+                    
+                var filePath = Path.Combine(resourceDir, fileName);
                 if (File.Exists(filePath))
                 {
                     try
@@ -119,7 +129,7 @@ public class JsonStringLocalizer : IStringLocalizer
                     }
                     catch (JsonException)
                     {
-                        // Log and continue to next path
+                        // Continue to next path on JSON parse error
                     }
                 }
             }
