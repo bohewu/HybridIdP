@@ -72,12 +72,11 @@ public class MfaSetupModel : PageModel
         // UX Improvement: If acr_values=mfa was requested, MFA is enforced for this session.
         // Hide skip button and show "Enforced" message.
         // Read from session (set by AuthorizationService) for security - no URL tampering possible
+        // Note: We do NOT clear the flag here - it will be cleared when user completes MFA setup and is redirected away
         IsMfaEnforced = HttpContext.Session.GetString("MfaEnforcedByAcr") == "true";
         if (IsMfaEnforced)
         {
             GracePeriodExpired = true;
-            // Clear the session flag after reading (one-time use)
-            HttpContext.Session.Remove("MfaEnforcedByAcr");
         }
 
         return Page();
