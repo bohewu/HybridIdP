@@ -177,6 +177,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     {
                         // User needs MFA but has none enrolled.
                         // Redirect to MfaSetup enrollment flow.
+                        // Store the "enforced by acr_values" flag in session for security (not URL param)
+                        _httpContextAccessor.HttpContext?.Session.SetString("MfaEnforcedByAcr", "true");
                         var returnUrl = Microsoft.AspNetCore.Http.Extensions.UriHelper.GetEncodedPathAndQuery(Request);
                         return new RedirectResult($"/Account/MfaSetup?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}");
                     }

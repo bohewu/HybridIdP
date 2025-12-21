@@ -71,42 +71,16 @@ public class MfaSetupModel : PageModel
 
         // UX Improvement: If acr_values=mfa was requested, MFA is enforced for this session.
         // Hide skip button and show "Enforced" message.
-        IsMfaEnforced = IsMfaEnforcedInReturnUrl(ReturnUrl);
+        // Read from session (set by AuthorizationService) for security - no URL tampering possible
+        IsMfaEnforced = HttpContext.Session.GetString("MfaEnforcedByAcr") == "true";
         if (IsMfaEnforced)
         {
             GracePeriodExpired = true;
+            // Clear the session flag after reading (one-time use)
+            HttpContext.Session.Remove("MfaEnforcedByAcr");
         }
 
         return Page();
-    }
-
-    private bool IsMfaEnforcedInReturnUrl(string? returnUrl)
-    {
-        if (string.IsNullOrEmpty(returnUrl)) return false;
-
-        try
-        {
-            // URL-decode the returnUrl first (it may be encoded when passed as a query parameter)
-            var decodedUrl = System.Net.WebUtility.UrlDecode(returnUrl);
-            
-            // Extract query string from the decoded URL
-            var queryIndex = decodedUrl.IndexOf('?');
-            if (queryIndex < 0) return false;
-            
-            var query = decodedUrl.Substring(queryIndex);
-            var queryString = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query);
-            
-            if (queryString.TryGetValue("acr_values", out var acrValues))
-            {
-                return acrValues.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains("mfa");
-            }
-        }
-        catch
-        {
-            // Fallback for non-URL returnUrls
-        }
-
-        return false;
     }
 
     public async Task<IActionResult> OnPostSkipAsync()
