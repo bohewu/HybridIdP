@@ -71,6 +71,13 @@ builder.Services.AddAuthentication(options =>
                 context.ProtocolMessage.Scope = (currentScope + " api:invalid:read").Trim();
             }
         }
+
+        // Support acr_values from Challenge properties
+        if (context.Properties.Items.TryGetValue("acr_values", out var acrValues))
+        {
+            context.ProtocolMessage.AcrValues = acrValues;
+        }
+
         return Task.CompletedTask;
     };
 });

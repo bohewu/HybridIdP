@@ -13,8 +13,7 @@ public class MfaSetupAuthorizeAttribute : AuthorizeAttribute
 {
     public MfaSetupAuthorizeAttribute()
     {
-        // Only TwoFactorUserIdScheme - for users in the middle of MFA enrollment.
-        // Fully authenticated users should use the regular /api/account/mfa/* endpoints.
-        AuthenticationSchemes = IdentityConstants.TwoFactorUserIdScheme;
+        // Support both TwoFactorUserIdScheme (during login) and standard ApplicationScheme (step-up after login).
+        AuthenticationSchemes = $"{IdentityConstants.ApplicationScheme},{IdentityConstants.TwoFactorUserIdScheme}";
     }
 }

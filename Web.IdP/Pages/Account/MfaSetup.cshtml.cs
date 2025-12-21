@@ -42,9 +42,12 @@ public class MfaSetupModel : PageModel
         var user = await GetTwoFactorUserAsync();
         if (user == null)
         {
+            _localizer["User not found or not authenticated."].ToString(); // Diagnostic hint
             return RedirectToPage("./Login");
         }
 
+        _signInManager.Context.Items["MfaEnforcementUser"] = user; // Internal tracking
+        
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         
         // Default to expired if policy enforces it, until we prove otherwise
@@ -96,19 +99,28 @@ public class MfaSetupModel : PageModel
 
     private async Task<ApplicationUser?> GetTwoFactorUserAsync()
     {
+        // First try the standard Identity TFA state (stored in a cookie by SignInManager)
         var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
-        if (user == null)
+        if (user != null) return user;
+
+        // If not in TFA state, check if the user is already fully authenticated (step-up enrollment scenario)
+        if (User.Identity?.IsAuthenticated == true)
         {
-            var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-            if (twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
+            user = await _userManager.GetUserAsync(User);
+            if (user != null) return user;
+        }
+
+        // Fallback for manual check of the 2FA principal
+        var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+        if (twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
+        {
+            var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
             {
-                var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
-                {
-                    user = await _userManager.FindByIdAsync(userId.ToString());
-                }
+                user = await _userManager.FindByIdAsync(userId.ToString());
             }
         }
+        
         return user;
     }
 }

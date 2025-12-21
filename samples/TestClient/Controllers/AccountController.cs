@@ -98,4 +98,17 @@ public class AccountController : Controller
         // Reuse the profile view for simplicity.
         return View("Profile");
     }
+
+    public IActionResult LoginMfa()
+    {
+        // Challenge with acr_values=mfa
+        return Challenge(new AuthenticationProperties
+        {
+            RedirectUri = "/Account/Profile",
+            Items =
+            {
+                { "acr_values", "mfa" }
+            }
+        }, AuthenticationSchemes.OpenIdConnect);
+    }
 }

@@ -124,7 +124,10 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             // Phase: acr_values=mfa enforcement
             var acrValues = request.GetAcrValues().ToList();
-            var mfaRequired = acrValues.Contains("mfa");
+            _logger.LogInformation("HandleAuthorizeRequestAsync: Request Details - AcrValues: {AcrValues}, Prompt: {Prompt}, MaxAge: {MaxAge}", 
+                string.Join(", ", acrValues), request.Prompt, request.MaxAge);
+            
+            var mfaRequired = acrValues.Any(v => v.Equals("mfa", StringComparison.OrdinalIgnoreCase));
             
             // Also check Mandatory MFA Policy
             var policy = await _securityPolicyService.GetCurrentPolicyAsync();
@@ -137,9 +140,15 @@ namespace Web.IdP.Services // Keep consistent namespace case
             if (mfaRequired)
             {
                 // Check if user has MFA claims in current session (amr: mfa or amr: hwk)
-                var amrClaims = userPrincipal.FindAll("amr").Select(c => c.Value).ToList();
-                var hasMfaClaim = amrClaims.Contains(Core.Domain.Constants.AuthConstants.Amr.Mfa) || 
-                                  amrClaims.Contains(Core.Domain.Constants.AuthConstants.Amr.HardwareKey);
+                // Use a case-insensitive check and also support standard authentication method claim type
+                var amrClaims = userPrincipal.Claims
+                    .Where(c => c.Type == "amr" || c.Type == System.Security.Claims.ClaimTypes.AuthenticationMethod)
+                    .Select(c => c.Value)
+                    .ToList();
+                
+                var hasMfaClaim = amrClaims.Any(v => 
+                    v.Equals(Core.Domain.Constants.AuthConstants.Amr.Mfa, StringComparison.OrdinalIgnoreCase) || 
+                    v.Equals(Core.Domain.Constants.AuthConstants.Amr.HardwareKey, StringComparison.OrdinalIgnoreCase));
 
                 if (!hasMfaClaim)
                 {
@@ -161,9 +170,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
                              return new RedirectResult($"/Account/LoginEmailOtp?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}");
                         }
                         
-                        // Otherwise default to LoginTotp (which can usually handle or fallback)
-                        // Note: If using LoginMfa selector, redirect there. Assuming LoginTotp for now as per plan.
-                        return new RedirectResult($"/Account/LoginTotp?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}");
+                        // Otherwise default to LoginMfa (the consolidated MFA selector)
+                        return new RedirectResult($"/Account/LoginMfa?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}");
                     }
                     else
                     {
@@ -259,7 +267,6 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
                 // Add custom claims (email, roles, etc.)
-                // Add custom claims (email, roles, etc.)
                 if (user != null)
                 {
                     identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
@@ -273,10 +280,15 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
                     await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes);
 
-                    // Copy AMR claims from userPrincipal
-                    foreach (var amr in userPrincipal.FindAll("amr"))
+                    // Copy AMR claims from userPrincipal (robustly checking multiple types)
+                    var amrValues = userPrincipal.Claims
+                        .Where(c => c.Type == "amr" || c.Type == System.Security.Claims.ClaimTypes.AuthenticationMethod)
+                        .Select(c => c.Value)
+                        .Distinct();
+
+                    foreach (var amrValue in amrValues)
                     {
-                        identity.AddClaim(new Claim("amr", amr.Value));
+                        identity.AddClaim(new Claim("amr", amrValue));
                     }
 
                     // Set ACR if requested and present
@@ -426,10 +438,15 @@ namespace Web.IdP.Services // Keep consistent namespace case
             // Add claims mapped by effective (allowed) scopes
             await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, effectiveScopes);
 
-            // Copy AMR claims from userPrincipal
-            foreach (var amr in userPrincipal.FindAll("amr"))
+            // Copy AMR claims from userPrincipal (robustly checking multiple types)
+            var amrValuesSubmit = userPrincipal.Claims
+                .Where(c => c.Type == "amr" || c.Type == System.Security.Claims.ClaimTypes.AuthenticationMethod)
+                .Select(c => c.Value)
+                .Distinct();
+
+            foreach (var amrValue in amrValuesSubmit)
             {
-                identity.AddClaim(new Claim("amr", amr.Value));
+                identity.AddClaim(new Claim("amr", amrValue));
             }
 
             // Set ACR if requested and present
