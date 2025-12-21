@@ -157,12 +157,21 @@ This file contains current high-priority backlog items and remaining tasks.
 - [x] Implement system-wide `ITimeProvider` for testability
 - [x] Update `docs/SECURITY.md` with MFA documentation
 - [x] User guide for setting up Passkeys (See `docs/MFA_TESTING_GUIDE.md`)
-- [ ] **Phase 20.6: OIDC AMR Claims & MFA Enforcement** (Planned)
-  - [ ] Implement `amr` tracking (Passkey `hwk` satisfies MFA requirement)
-  - [ ] Implement `MfaSetup` page for on-the-fly enrollment (No-logout refresh)
-  - [ ] Support `acr_values=mfa` in `AuthorizationService` (Zero Trust logic)
-  - [ ] Implement Mandatory MFA Enrollment with Configurable Grace Period
-  - [ ] Propagate standard `amr`/`acr` claims to OIDC tokens
+- [x] **Phase 20.6: OIDC AMR Claims & MFA Enforcement** (COMPLETE)
+  - [x] Implement `amr` tracking (Passkey `hwk` satisfies MFA requirement)
+  - [x] Implement `MfaSetup` page for on-the-fly enrollment (No-logout refresh)
+  - [x] Support `acr_values=mfa` in `AuthorizationService` (Zero Trust logic)
+  - [x] Implement Mandatory MFA Enrollment with Configurable Grace Period
+  - [x] Propagate standard `amr`/`acr` claims to OIDC tokens
+  - [x] Fix infinite redirect loop and enrollment API access in `MfaSetup`
+  
+## 🔐 Security Hardening (Backlog)
+
+- [ ] **Global CSRF Protection for Internal APIs**
+  - [ ] Add `[AutoValidateAntiforgeryToken]` or `[ValidateAntiForgeryToken]` to all cookie-based Controllers (e.g., `ProfileManagementController`, `MyAccountController`).
+  - [ ] Update Vue frontend apps (`ProfileApp.vue`, etc.) to include `X-XSRF-TOKEN` in all mutating requests (PUT/POST/DELETE).
+  - [ ] Update SystemTests and IntegrationTests to handle CSRF tokens (requires passing tokens in test requests).
+  - [ ] Verify no disruption to standard OIDC Bearer-token endpoints.
 
 ## Notes
 
@@ -170,4 +179,4 @@ This file contains current high-priority backlog items and remaining tasks.
 - Test project warnings suppressed via `<NoWarn>` in .csproj
 
 ---
-_Last updated: 2025-12-18_
+_Last updated: 2025-12-21_
