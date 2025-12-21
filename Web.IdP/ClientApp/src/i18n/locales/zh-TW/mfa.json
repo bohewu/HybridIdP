@@ -63,5 +63,12 @@
   "emailMfaEnabled": "電子郵件驗證已啟用",
   "emailMfaDisabled": "電子郵件驗證已停用",
   "allDisabledTitle": "多重身分驗證 (MFA) 已停用",
-  "allDisabledDescription": "系統管理員已停用此系統的所有多重身分驗證方法。"
+  "allDisabledDescription": "系統管理員已停用此系統的所有多重身分驗證方法。",
+  "setupPageTitle": "設定兩步驟驗證",
+  "gracePeriodMessage": "您還有 {days} 天的時間來設定兩步驟驗證，之後將成為必要條件。",
+  "gracePeriodExpiredMessage": "寬限期已過期。您必須設定兩步驟驗證才能繼續。",
+  "whyRequiredTitle": "為什麼需要這樣做？",
+  "whyRequiredDescription": "您的組織要求使用兩步驟驗證來保護您的帳戶和敏感資料。",
+  "skipForNow": "稍後再設定",
+  "logout": "登出"
 }

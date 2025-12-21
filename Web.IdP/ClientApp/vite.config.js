@@ -38,7 +38,8 @@ export default defineConfig(({ command }) => ({
         'admin-audit': './src/admin/audit/main.js',
         'admin-resources': './src/admin/resources/main.js',
         'admin-monitoring': './src/admin/monitoring/main.js',
-        'profile': './src/profile/main.js'
+        'profile': './src/profile/main.js',
+        'mfa-setup': './src/mfa-setup/main.js'
       }
     }
   },
