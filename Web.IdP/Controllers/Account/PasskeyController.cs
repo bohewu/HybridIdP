@@ -274,9 +274,17 @@ public partial class PasskeyController : ControllerBase
             // Add AMR to session
             AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.HardwareKey);
             AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.UserPresence);
-            AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa);
+            AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa); // Passkey counts as MFA
 
-            await _signInManager.SignInAsync(result.User, isPersistent: false);
+            // Issue cookie with amr claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.HardwareKey),
+                new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.UserPresence),
+                new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Mfa)
+            };
+
+            await _signInManager.SignInWithClaimsAsync(result.User, isPersistent: false, claims);
             LogPasskeyLogin(result.User.UserName);
             return Ok(new { success = true, username = result.User.UserName });
         }

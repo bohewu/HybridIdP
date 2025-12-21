@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Interfaces;
 using Core.Domain;
 using Core.Domain.Constants;
 using Infrastructure;
@@ -44,6 +45,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
         private readonly ILogger<AuthorizationService> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IClaimsEnrichmentService _claimsEnricher;
+        private readonly ISecurityPolicyService _securityPolicyService;
+        private readonly IPasskeyService _passkeyService;
 
         public AuthorizationService(
             IOpenIddictApplicationManager applicationManager,
@@ -60,7 +63,9 @@ namespace Web.IdP.Services // Keep consistent namespace case
             IClientScopeRequestProcessor clientScopeProcessor,
             ILogger<AuthorizationService> logger,
             IHttpContextAccessor httpContextAccessor,
-            IClaimsEnrichmentService claimsEnricher)
+            IClaimsEnrichmentService claimsEnricher,
+            ISecurityPolicyService securityPolicyService,
+            IPasskeyService passkeyService)
         {
             _applicationManager = applicationManager;
             _authorizationManager = authorizationManager;
@@ -77,6 +82,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
             _claimsEnricher = claimsEnricher;
+            _securityPolicyService = securityPolicyService;
+            _passkeyService = passkeyService;
         }
 
         private HttpContext HttpContext => _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("HttpContext is not available.");
@@ -107,22 +114,64 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     });
             }
 
-            // Phase: acr_values=mfa enforcement
-            var acrValues = request.GetAcrValues();
-            if (acrValues.Contains("mfa"))
+            // Retrieve user object early for MFA checks
+            var user = await _userManager.GetUserAsync(userPrincipal);
+            if (user == null)
             {
+                 // Should not happen if IsAuthenticated is true
+                 throw new InvalidOperationException("User not found.");
+            }
+
+            // Phase: acr_values=mfa enforcement
+            var acrValues = request.GetAcrValues().ToList();
+            var mfaRequired = acrValues.Contains("mfa");
+            
+            // Also check Mandatory MFA Policy
+            var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+            if (policy.EnforceMandatoryMfaEnrollment)
+            {
+                // If checking enrollment, we treat it as if MFA is required for this session
+                mfaRequired = true;
+            }
+
+            if (mfaRequired)
+            {
+                // Check if user has MFA claims in current session (amr: mfa or amr: hwk)
                 var amrClaims = userPrincipal.FindAll("amr").Select(c => c.Value).ToList();
-                if (!amrClaims.Contains(AuthConstants.Amr.Mfa))
+                var hasMfaClaim = amrClaims.Contains(Core.Domain.Constants.AuthConstants.Amr.Mfa) || 
+                                  amrClaims.Contains(Core.Domain.Constants.AuthConstants.Amr.HardwareKey);
+
+                if (!hasMfaClaim)
                 {
-                    var amrList = string.Join(", ", amrClaims);
-                    _logger.LogInformation("MFA required by acr_values but not present in principal. Challenging user.");
-                    return new ChallengeResult(
-                        authenticationSchemes: new[] { IdentityConstants.ApplicationScheme },
-                        properties: new AuthenticationProperties
+                    _logger.LogInformation("MFA required (acr_values=mfa or mandatory policy) but not present in principal. Evaluating next step.");
+
+                    var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id);
+                    var hasPasskeys = passkeys.Count > 0;
+
+                    // Check if user has capability to perform MFA.
+                    if (user.TwoFactorEnabled || user.EmailMfaEnabled || hasPasskeys)
+                    {
+                        // User has MFA enrolled but session is not MFA (e.g. just password login).
+                        // Challenge step-up.
+                        var returnUrl = Microsoft.AspNetCore.Http.Extensions.UriHelper.GetEncodedPathAndQuery(Request);
+                        
+                        // If user only has Email MFA, direct them there
+                        if (user.EmailMfaEnabled && !user.TwoFactorEnabled && !hasPasskeys) 
                         {
-                            RedirectUri = Request.PathBase + Request.Path + Request.QueryString + (Request.QueryString.HasValue ? "&" : "?") + "prompt=login",
-                            Items = { ["prompt"] = "login" }
-                        });
+                             return new RedirectResult($"/Account/LoginEmailOtp?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}");
+                        }
+                        
+                        // Otherwise default to LoginTotp (which can usually handle or fallback)
+                        // Note: If using LoginMfa selector, redirect there. Assuming LoginTotp for now as per plan.
+                        return new RedirectResult($"/Account/LoginTotp?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}");
+                    }
+                    else
+                    {
+                        // User needs MFA but has none enrolled.
+                        // Redirect to MfaSetup enrollment flow.
+                        var returnUrl = Microsoft.AspNetCore.Http.Extensions.UriHelper.GetEncodedPathAndQuery(Request);
+                        return new RedirectResult($"/Account/MfaSetup?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}");
+                    }
                 }
             }
 
@@ -210,7 +259,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
                 // Add custom claims (email, roles, etc.)
-                var user = await _userManager.GetUserAsync(userPrincipal);
+                // Add custom claims (email, roles, etc.)
                 if (user != null)
                 {
                     identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))

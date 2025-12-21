@@ -30,6 +30,8 @@ public static class UserSeeder
             await SeedInactivePersonUserAsync(userManager, context);
             await SeedAbnormalLoginTestUserAsync(userManager, context);
             await SeedMfaEnforcementTestUserAsync(userManager, context);
+            await SeedAmrNoMfaTestUserAsync(userManager, context);
+            await SeedAmrMfaTestUserAsync(userManager, context);
         }
     }
 
@@ -757,6 +759,135 @@ public static class UserSeeder
         var result = await userManager.CreateAsync(user, password);
         if (result.Succeeded)
         {
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Seeds a test user with NO MFA, for AMR testing (acr_values=mfa -> Redirect to Setup).
+    /// </summary>
+    private static async Task SeedAmrNoMfaTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "amr-nomfa@hybridauth.local";
+        const string password = "Test@123";
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null) return;
+
+        var nationalIdHash = PidHasher.Hash("N000000001");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Amr",
+                LastName = "NoMfa",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Amr",
+            LastName = "NoMfa",
+            IsActive = true,
+            TwoFactorEnabled = false,
+            EmailMfaEnabled = false
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Seeds a test user WITH MFA (TOTP) enabled, for AMR testing (acr_values=mfa -> LoginTotp).
+    /// Secret is hardcoded to "KBQXG5DSMVZWK3TU" (Base32).
+    /// </summary>
+    private static async Task SeedAmrMfaTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "amr-mfa@hybridauth.local";
+        const string password = "Test@123";
+        const string sharedKey = "KBQXG5DSMVZWK3TU"; // Known Base32 Secret
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null) return;
+
+        var nationalIdHash = PidHasher.Hash("M000000002");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Amr",
+                LastName = "WithMfa",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Amr",
+            LastName = "WithMfa",
+            IsActive = true,
+            TwoFactorEnabled = true, // Enabled!
+            EmailMfaEnabled = false
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
+            // Set the TOTP Secret manually
+            await userManager.SetAuthenticationTokenAsync(user, "[Internal]", "AuthenticatorKey", sharedKey);
+
             person.CreatedBy = user.Id;
             person.IdentityVerifiedBy = user.Id;
             await context.SaveChangesAsync();

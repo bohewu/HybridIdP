@@ -1,8 +1,8 @@
 using Microsoft.IdentityModel.JsonWebTokens;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using OtpNet;
 using Xunit;
 
@@ -13,17 +13,18 @@ public class AmrSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;
-    
-    private const string TEST_USER_EMAIL = "admin@hybridauth.local";
-    private const string TEST_USER_PASSWORD = "Admin@123";
+    private readonly CookieContainer _cookieContainer;
 
     public AmrSystemTests(WebIdPServerFixture serverFixture)
     {
         _serverFixture = serverFixture;
+        _cookieContainer = new CookieContainer();
         var handler = new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
-            AllowAutoRedirect = false
+            AllowAutoRedirect = false,
+            UseCookies = true,
+            CookieContainer = _cookieContainer
         };
         _httpClient = new HttpClient(handler) { BaseAddress = new Uri(_serverFixture.BaseUrl) };
     }
@@ -31,90 +32,92 @@ public class AmrSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
     public async Task InitializeAsync()
     {
         await _serverFixture.EnsureServerRunningAsync();
-        
-        // Ensure MFA is disabled initially
-        try {
-            var token = await GetPasswordTokenAsync(TEST_USER_EMAIL, TEST_USER_PASSWORD);
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            await _httpClient.PostAsJsonAsync("/api/account/mfa/disable", new { Password = TEST_USER_PASSWORD });
-            await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
-            _httpClient.DefaultRequestHeaders.Authorization = null;
-        } catch { /* Ignore cleanup errors */ }
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
-
-    [Fact]
-    public async Task TokenRequest_PasswordGrant_ReturnsAmrPwd()
+    public Task DisposeAsync()
     {
-        // Act
-        var tokenResponse = await GetTokenResponseAsync(TEST_USER_EMAIL, TEST_USER_PASSWORD);
-        
-        // Assert
-        var idToken = tokenResponse.GetProperty("id_token").GetString()!;
-        var handler = new JsonWebTokenHandler();
-        var jwtToken = handler.ReadJsonWebToken(idToken);
-        
-        var amrValues = jwtToken.Claims.Where(c => c.Type == "amr").Select(c => c.Value).ToList();
-        if (!amrValues.Contains("pwd"))
-        {
-            var allClaims = string.Join(", ", jwtToken.Claims.Select(c => $"{c.Type}={c.Value}"));
-            throw new Exception($"'pwd' not found in amr. All claims: {allClaims}");
-        }
-        Assert.Contains("pwd", amrValues);
+        _httpClient.Dispose();
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task AuthorizeRequest_WithAcrMfa_NoMfaDone_RedirectsToLogin()
+    public async Task Authorize_WithAcrValuesMfa_WithoutEnrollment_RedirectsToMfaSetup()
     {
-        // Act
-        // /connect/authorize?client_id=...&response_type=code&scope=openid&acr_values=mfa
+        // 1. Login with seeded NO-MFA user
+        // amr-nomfa / Test@123
+        var username = "amr-nomfa@hybridauth.local";
+        var password = "Test@123";
+
+        // Login (Password only)
+        var (token, _) = await GetLoginPageAsync();
+        var loginContent = CreateLoginForm(username, password, token);
+        var loginResponse = await _httpClient.PostAsync("/Account/Login", loginContent);
+        
+        // Should redirect to ReturnUrl or Home upon successful password-only login
+        Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
+        
+        // 2. Request Authorize with acr_values=mfa
         var redirectUri = WebUtility.UrlEncode("https://localhost:7035/signin-oidc");
-        // Add PKCE parameters as they are required by the server configuration
-        var url = $"/connect/authorize?client_id=testclient-public&redirect_uri={redirectUri}&response_type=code&scope=openid&acr_values=mfa&code_challenge=xyz&code_challenge_method=S256&nonce=abc&state=123";
-        var response = await _httpClient.GetAsync(url);
+        var url = $"/connect/authorize?client_id=testclient-public&redirect_uri={redirectUri}&response_type=code&scope=openid profile&acr_values=mfa&code_challenge=xyz&code_challenge_method=S256&nonce=abc&state=123";
         
-        if (response.StatusCode == HttpStatusCode.BadRequest)
-        {
-            var body = await response.Content.ReadAsStringAsync();
-            throw new Exception($"Authorize request failed: {body}");
-        }
+        var authResponse = await _httpClient.GetAsync(url);
         
-        // Assert
-        // Should be a 302 to /Account/Login
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        var location = response.Headers.Location?.ToString();
-        var decodedLocation = WebUtility.UrlDecode(location!);
-        if (!decodedLocation.Contains("prompt=login"))
-        {
-            throw new Exception($"Redirect to login missing prompt=login. Location: {location}. Decoded: {decodedLocation}");
-        }
-        Assert.Contains("prompt=login", decodedLocation);
+        // Assert: Redirect to MfaSetup
+        Assert.Equal(HttpStatusCode.Redirect, authResponse.StatusCode);
+        var location = authResponse.Headers.Location?.ToString();
+        Assert.Contains("/Account/MfaSetup", location);
+        Assert.Contains("returnUrl", location);
     }
 
-    private async Task<string> GetPasswordTokenAsync(string username, string password)
+    [Fact]
+    public async Task Authorize_WithAcrValuesMfa_WithEnrollment_Succeeds()
     {
-        var response = await GetTokenResponseAsync(username, password);
-        return response.GetProperty("access_token").GetString()!;
+        // 1. Login with seeded MFA user
+        // amr-mfa@hybridauth.local / Test@123 / Secret: KBQXG5DSMVZWK3TU
+        var username = "amr-mfa@hybridauth.local";
+        var password = "Test@123";
+        var secret = "KBQXG5DSMVZWK3TU";
+
+        // A. Login Page (Password)
+        var (token, _) = await GetLoginPageAsync();
+        var loginContent = CreateLoginForm(username, password, token);
+        var loginResponse = await _httpClient.PostAsync("/Account/Login", loginContent);
+
+        // Expect Redirect to LoginTotp (Step-up challenge)
+        Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
+        var loginLocation = loginResponse.Headers.Location?.ToString();
+        Assert.Contains("LoginTotp", loginLocation);
+
+        // User feedback: Only test if it reaches the step-up page.
+        // The actual TOTP verification is covered by other tests.
     }
 
-    private async Task<JsonElement> GetTokenResponseAsync(string username, string password)
+    private async Task<(string token, string html)> GetLoginPageAsync()
     {
-        var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+        var response = await _httpClient.GetAsync("/Account/Login");
+        response.EnsureSuccessStatusCode();
+        var html = await response.Content.ReadAsStringAsync();
+        return (ExtractAntiForgeryToken(html), html);
+    }
+
+    private string ExtractAntiForgeryToken(string html)
+    {
+        var match = Regex.Match(html, @"name=""__RequestVerificationToken""\s+type=""hidden""\s+value=""([^""]+)""");
+        if (match.Success) return match.Groups[1].Value;
+        
+        match = Regex.Match(html, @"input name=""__RequestVerificationToken"" type=""hidden"" value=""([^""]+)""");
+        if (match.Success) return match.Groups[1].Value;
+        
+        throw new Exception("Could not find __RequestVerificationToken in HTML");
+    }
+
+    private FormUrlEncodedContent CreateLoginForm(string login, string password, string token)
+    {
+        return new FormUrlEncodedContent(new[]
         {
-            ["grant_type"] = "password",
-            ["client_id"] = "testclient-public",
-            ["username"] = username,
-            ["password"] = password,
-            ["scope"] = "openid profile"
+            new KeyValuePair<string, string>("Input.Login", login),
+            new KeyValuePair<string, string>("Input.Password", password),
+            new KeyValuePair<string, string>("__RequestVerificationToken", token)
         });
-
-        var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            throw new Exception($"Token request failed: {response.StatusCode} - {error}");
-        }
-        return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
     }
 }

@@ -11,6 +11,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Web.IdP.Services;
 using System.Threading.Tasks;
+using Core.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System;
@@ -37,6 +38,8 @@ namespace Tests.Application.UnitTests
         private readonly Mock<ILogger<AuthorizationService>> _mockLogger;
         private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
         private readonly Mock<IClaimsEnrichmentService> _mockClaimsEnricher;
+        private readonly Mock<ISecurityPolicyService> _mockSecurityPolicyService;
+        private readonly Mock<IPasskeyService> _mockPasskeyService;
         private readonly AuthorizationService _authorizationService;
 
         public AuthorizationServiceTests()
@@ -56,6 +59,8 @@ namespace Tests.Application.UnitTests
             _mockLogger = new Mock<ILogger<AuthorizationService>>();
             _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
             _mockClaimsEnricher = new Mock<IClaimsEnrichmentService>();
+            _mockSecurityPolicyService = new Mock<ISecurityPolicyService>();
+            _mockPasskeyService = new Mock<IPasskeyService>();
 
             // Default setup
             _mockClaimsEnricher.Setup(x => x.AddScopeMappedClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
@@ -78,7 +83,9 @@ namespace Tests.Application.UnitTests
                 _mockClientScopeProcessor.Object,
                 _mockLogger.Object,
                 _mockHttpContextAccessor.Object,
-                _mockClaimsEnricher.Object
+                _mockClaimsEnricher.Object,
+                _mockSecurityPolicyService.Object,
+                _mockPasskeyService.Object
             );
         }
 
@@ -130,7 +137,9 @@ namespace Tests.Application.UnitTests
                 _mockClientScopeProcessor.Object,
                 _mockLogger.Object,
                 httpContextAccessor.Object,
-                _mockClaimsEnricher.Object
+                _mockClaimsEnricher.Object,
+                _mockSecurityPolicyService.Object,
+                _mockPasskeyService.Object
             );
 
             // Act
@@ -167,7 +176,9 @@ namespace Tests.Application.UnitTests
                 _mockClientScopeProcessor.Object,
                 _mockLogger.Object,
                 httpContextAccessor.Object,
-                _mockClaimsEnricher.Object
+                _mockClaimsEnricher.Object,
+                _mockSecurityPolicyService.Object,
+                _mockPasskeyService.Object
             );
 
             // Act & Assert

@@ -118,10 +118,18 @@ public partial class LoginTotpModel : PageModel
             var isValid = await _mfaService.ValidateTotpCodeAsync(user, Input.TotpCode);
             if (isValid)
             {
-                AddAmrToSession(AuthConstants.Amr.Otp);
-                AddAmrToSession(AuthConstants.Amr.Mfa);
+                AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa);
+                AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Otp);
 
-                await _signInManager.SignInAsync(user, isPersistent: RememberMe);
+                // Create the principal with the new claims for the cookie
+                 var claims = new List<System.Security.Claims.Claim>
+                {
+                    new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Mfa),
+                    new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Otp)
+                };
+
+                await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
+                
                 _logger.LogInformation("User logged in with TOTP 2FA.");
                 
                 await _eventPublisher.PublishAsync(new LoginAttemptEvent(

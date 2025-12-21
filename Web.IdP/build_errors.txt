@@ -1,0 +1,44 @@
+  正在判斷要還原的專案...
+  所有專案都在最新狀態，可進行還原。
+  Core.Domain -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Domain\bin\Debug\net10.0\Core.Domain.dll
+  Core.Application -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Core.Application\bin\Debug\net10.0\Core.Application.dll
+  Infrastructure -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure\bin\Debug\net10.0\Infrastructure.dll
+  Infrastructure.Migrations.SqlServer -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure.Migrations.SqlServer\bin\Debug\net10.0\Infrastructure.Migrations.SqlServer.dll
+  Infrastructure.Migrations.Postgres -> C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Infrastructure.Migrations.Postgres\bin\Debug\net10.0\Infrastructure.Migrations.Postgres.dll
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(115,32): error CS0103: 名稱 '_securityPolicyService' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(135,25): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(135,50): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(135,80): error CS0103: 名稱 'HasPasskeysAsync' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(135,97): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(139,41): error CS0103: 名稱 '_linkGenerator' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(139,135): error CS1061: 'OpenIddictRequest' 未包含 'RequestId' 的定義，也找不到可接受類型 'OpenIddictRequest' 第一個引數的可存取擴充方法 'RequestId' (是否遺漏 using 指示詞或組件參考?) [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(142,29): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(142,54): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(142,87): error CS0103: 名稱 'HasPasskeysAsync' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(142,104): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(144,37): error CS0103: 名稱 '_challengeService' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(148,32): error CS0103: 名稱 '_challengeService' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(154,41): error CS0103: 名稱 '_linkGenerator' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(154,135): error CS1061: 'OpenIddictRequest' 未包含 'RequestId' 的定義，也找不到可接受類型 'OpenIddictRequest' 第一個引數的可存取擴充方法 'RequestId' (是否遺漏 using 指示詞或組件參考?) [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+
+建置失敗。
+
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(115,32): error CS0103: 名稱 '_securityPolicyService' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(135,25): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(135,50): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(135,80): error CS0103: 名稱 'HasPasskeysAsync' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(135,97): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(139,41): error CS0103: 名稱 '_linkGenerator' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(139,135): error CS1061: 'OpenIddictRequest' 未包含 'RequestId' 的定義，也找不到可接受類型 'OpenIddictRequest' 第一個引數的可存取擴充方法 'RequestId' (是否遺漏 using 指示詞或組件參考?) [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(142,29): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(142,54): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(142,87): error CS0103: 名稱 'HasPasskeysAsync' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(142,104): error CS0103: 名稱 'user' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(144,37): error CS0103: 名稱 '_challengeService' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(148,32): error CS0103: 名稱 '_challengeService' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(154,41): error CS0103: 名稱 '_linkGenerator' 不存在於目前的內容中 [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Services\AuthorizationService.cs(154,135): error CS1061: 'OpenIddictRequest' 未包含 'RequestId' 的定義，也找不到可接受類型 'OpenIddictRequest' 第一個引數的可存取擴充方法 'RequestId' (是否遺漏 using 指示詞或組件參考?) [C:\Users\bohewu.BOHE-WU-NEW-PC\Desktop\IdP\HybridIdP\Web.IdP\Web.IdP.csproj]
+    0 個警告
+    15 個錯誤
+
+經過時間 00:00:04.19
