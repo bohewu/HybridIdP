@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using Web.IdP.Attributes;
+using Core.Application.Interfaces;
 
 namespace Web.IdP.Controllers.Account;
 
@@ -23,6 +24,7 @@ public partial class MfaController : ControllerBase
     private readonly ISecurityPolicyService _securityPolicyService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAuditService _auditService;
+    private readonly IPasskeyService _passkeyService;
     private readonly ILogger<MfaController> _logger;
 
     public MfaController(
@@ -30,12 +32,14 @@ public partial class MfaController : ControllerBase
         ISecurityPolicyService securityPolicyService,
         UserManager<ApplicationUser> userManager,
         IAuditService auditService,
+        IPasskeyService passkeyService,
         ILogger<MfaController> logger)
     {
         _mfaService = mfaService;
         _securityPolicyService = securityPolicyService;
         _userManager = userManager;
         _auditService = auditService;
+        _passkeyService = passkeyService;
         _logger = logger;
     }
 
@@ -170,6 +174,21 @@ public partial class MfaController : ControllerBase
         if (user == null)
         {
             return Unauthorized();
+        }
+
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (policy.EnforceMandatoryMfaEnrollment)
+        {
+            // Check if this (TOTP) is the last factor
+            var otherFactors = 0;
+            if (user.EmailMfaEnabled) otherFactors++;
+            var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, ct);
+            otherFactors += passkeys.Count;
+
+            if (otherFactors == 0)
+            {
+                return BadRequest(new { error = "mandatoryMfaEnforced" });
+            }
         }
 
         // Check if user has a local password
@@ -350,6 +369,21 @@ public partial class MfaController : ControllerBase
         if (user == null)
         {
             return Unauthorized();
+        }
+
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (policy.EnforceMandatoryMfaEnrollment)
+        {
+            // Check if this (Email MFA) is the last factor
+            var otherFactors = 0;
+            if (user.TwoFactorEnabled) otherFactors++;
+            var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, ct);
+            otherFactors += passkeys.Count;
+
+            if (otherFactors == 0)
+            {
+                return BadRequest(new { error = "mandatoryMfaEnforced" });
+            }
         }
 
         await _mfaService.DisableEmailMfaAsync(user, ct);

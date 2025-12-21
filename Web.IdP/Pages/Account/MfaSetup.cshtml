@@ -1,0 +1,93 @@
+@page
+@model Web.IdP.Pages.Account.MfaSetupModel
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Web.IdP.SharedResource> Localizer
+@inject Web.IdP.Services.IViteManifestService ViteService
+@inject Core.Application.IBrandingService BrandingService
+@{
+    ViewData["Title"] = Localizer["MfaSetupRequired"];
+    Layout = null;
+    var productName = await BrandingService.GetProductNameAsync();
+}
+
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @productName</title>
+    <link href="@ViteService.GetScriptPath("src/styles/main.css")" rel="stylesheet" />
+    <script type="module" vite-src="src/scripts/razor.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 google-font min-h-screen flex flex-col">
+    <div class="google-login-container">
+        <div class="google-login-card">
+            <div class="google-login-header text-center">
+                <div class="flex justify-center mb-4">
+                    <div class="google-logo">
+                        <svg class="icon text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                </div>
+                <h1 class="text-2xl font-normal text-gray-900 mb-2">@Localizer["MfaStepUpTitle"]</h1>
+                @if (Model.GracePeriodExpired)
+                {
+                    <p class="text-red-600 text-sm font-medium">@Localizer["MfaGracePeriodExpiredMessage"]</p>
+                }
+                else
+                {
+                    <p class="text-gray-600 text-sm">@Localizer["MfaGracePeriodActiveMessage", Model.RemainingGraceDays]</p>
+                }
+            </div>
+            
+            <div class="google-login-body space-y-6">
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start space-x-3">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-blue-800">@Localizer["WhyMfaRequiredTitle"]</h3>
+                        <p class="text-xs text-blue-700 mt-1">@Localizer["WhyMfaRequiredDescription"]</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <a href="/profile?tab=security" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors group">
+                        <div class="h-10 w-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            <i class="bi bi-shield-check text-xl"></i>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-sm font-medium text-gray-900">@Localizer["SetupMfaNow"]</h4>
+                            <p class="text-xs text-gray-500">@Localizer["SetupMfaDescription"]</p>
+                        </div>
+                        <i class="bi bi-chevron-right text-gray-400 group-hover:text-blue-600"></i>
+                    </a>
+                </div>
+
+                <div class="flex items-center justify-between pt-4">
+                    @if (!Model.GracePeriodExpired)
+                    {
+                        <form method="post" asp-page-handler="Skip">
+                            <input type="hidden" asp-for="ReturnUrl" />
+                            <button type="submit" class="text-sm font-medium text-gray-600 hover:text-gray-900">
+                                @Localizer["SkipForNow"]
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a asp-page="./Logout" class="text-sm font-medium text-gray-600 hover:text-gray-900">
+                            @Localizer["Logout"]
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+        <partial name="_GoogleFooter" />
+    </div>
+</body>
+</html>

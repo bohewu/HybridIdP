@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 
 namespace Infrastructure.Identity;
 
@@ -15,6 +16,7 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
 {
     private readonly IApplicationDbContext _context;
     private readonly IAuditService _auditService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<MyUserClaimsPrincipalFactory> _logger;
 
     public MyUserClaimsPrincipalFactory(
@@ -23,10 +25,12 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
         IOptions<IdentityOptions> optionsAccessor,
         IApplicationDbContext context,
         IAuditService auditService,
+        IHttpContextAccessor httpContextAccessor,
         ILogger<MyUserClaimsPrincipalFactory> logger) : base(userManager, roleManager, optionsAccessor)
     {
         _context = context;
         _auditService = auditService;
+        _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
 
@@ -156,6 +160,32 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
         foreach (var permission in permissions)
         {
             identity.AddClaim(new Claim("permission", permission));
+        }
+
+        // Phase: AMR Claims
+        // Read AMR from session (populated during Login/MFA pages)
+        var session = _httpContextAccessor.HttpContext?.Session;
+        if (session != null)
+        {
+            var amrJson = session.GetString("AuthenticationMethods");
+            if (!string.IsNullOrEmpty(amrJson))
+            {
+                try
+                {
+                    var amrValues = JsonSerializer.Deserialize<List<string>>(amrJson);
+                    if (amrValues != null)
+                    {
+                        foreach (var amr in amrValues)
+                        {
+                            identity.AddClaim(new Claim("amr", amr));
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    _logger.LogWarning("Failed to deserialize AMR from session.");
+                }
+            }
         }
 
         return identity;

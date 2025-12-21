@@ -170,12 +170,31 @@ public partial class PasskeyController : ControllerBase
         var user = await GetAuthenticatedUserAsync();
         if (user == null) return Unauthorized();
         
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (policy.EnforceMandatoryMfaEnrollment)
+        {
+            // Check if this (passkeys) is the last MFA factor
+            var existingCount = await _dbContext.UserCredentials.CountAsync(c => c.UserId == user.Id, ct);
+            if (existingCount == 1)
+            {
+                // Last passkey - check other factors
+                var otherFactors = 0;
+                if (user.TwoFactorEnabled) otherFactors++;
+                if (user.EmailMfaEnabled) otherFactors++;
+
+                if (otherFactors == 0)
+                {
+                    return BadRequest(new { error = "mandatoryMfaEnforced" });
+                }
+            }
+        }
+
         var result = await _passkeyService.DeletePasskeyAsync(user.Id, id, ct);
         if (!result)
         {
             return NotFound(new { error = "Passkey not found" });
         }
-        
+
         LogPasskeyDeleted(user.Id, id);
         await _auditService.LogEventAsync(
             Core.Domain.Constants.AuditEventTypes.PasskeyDeleted,
@@ -243,6 +262,11 @@ public partial class PasskeyController : ControllerBase
             }
             
             // 3. All checks passed - Sign in
+            // Add AMR to session
+            AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.HardwareKey);
+            AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.UserPresence);
+            AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa);
+
             await _signInManager.SignInAsync(result.User, isPersistent: false);
             LogPasskeyLogin(result.User.UserName);
             return Ok(new { success = true, username = result.User.UserName });
@@ -283,4 +307,18 @@ public partial class PasskeyController : ControllerBase
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked for deactivated user {UserId}")]
     partial void LogPasskeyLoginBlockedByDeactivation(Guid userId);
+
+    private void AddAmrToSession(string amr)
+    {
+        var currentAmrJson = HttpContext.Session.GetString("AuthenticationMethods");
+        List<string> amrList = string.IsNullOrEmpty(currentAmrJson) 
+            ? new List<string>() 
+            : JsonSerializer.Deserialize<List<string>>(currentAmrJson) ?? new List<string>();
+        
+        if (!amrList.Contains(amr))
+        {
+            amrList.Add(amr);
+            HttpContext.Session.SetString("AuthenticationMethods", JsonSerializer.Serialize(amrList));
+        }
+    }
 }

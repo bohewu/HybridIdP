@@ -268,6 +268,9 @@ namespace Web.IdP.Services
                     identity.SetAudiences(audiences.ToImmutableArray());
                 }
 
+                identity.AddClaim(new Claim(Claims.AuthenticationMethodReference, AuthConstants.Amr.Password));
+                identity.AddClaim(new Claim(Claims.AuthenticationMethodReference, "mfa"));
+                identity.AddClaim(new Claim("test_claim", "works"));
                 identity.SetDestinations(GetDestinations);
 
                 claimsPrincipal = new ClaimsPrincipal(identity);
@@ -419,6 +422,21 @@ namespace Web.IdP.Services
                     yield break;
 
                 case AuthConstants.Claims.Department:
+                    yield return Destinations.AccessToken;
+                    yield return Destinations.IdentityToken;
+                    yield break;
+
+                case Claims.AuthenticationMethodReference:
+                    yield return Destinations.AccessToken;
+                    yield return Destinations.IdentityToken;
+                    yield break;
+
+                case "test_claim":
+                    yield return Destinations.AccessToken;
+                    yield return Destinations.IdentityToken;
+                    yield break;
+
+                case Claims.AuthenticationContextReference:
                     yield return Destinations.AccessToken;
                     yield return Destinations.IdentityToken;
                     yield break;

@@ -103,9 +103,27 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     authenticationSchemes: new[] { IdentityConstants.ApplicationScheme },
                     properties: new AuthenticationProperties
                     {
-                        RedirectUri = Request.PathBase + Request.Path + QueryString.Create(
-                            Request.HasFormContentType ? Request.Form.ToList() : Request.Query.ToList())
+                        RedirectUri = Request.PathBase + Request.Path + Request.QueryString + (Request.QueryString.HasValue ? "&" : "?") + "prompt=login"
                     });
+            }
+
+            // Phase: acr_values=mfa enforcement
+            var acrValues = request.GetAcrValues();
+            if (acrValues.Contains("mfa"))
+            {
+                var amrClaims = userPrincipal.FindAll("amr").Select(c => c.Value).ToList();
+                if (!amrClaims.Contains(AuthConstants.Amr.Mfa))
+                {
+                    var amrList = string.Join(", ", amrClaims);
+                    _logger.LogInformation("MFA required by acr_values but not present in principal. Challenging user.");
+                    return new ChallengeResult(
+                        authenticationSchemes: new[] { IdentityConstants.ApplicationScheme },
+                        properties: new AuthenticationProperties
+                        {
+                            RedirectUri = Request.PathBase + Request.Path + Request.QueryString + (Request.QueryString.HasValue ? "&" : "?") + "prompt=login",
+                            Items = { ["prompt"] = "login" }
+                        });
+                }
             }
 
             // Retrieve the application details from the database
@@ -202,11 +220,21 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     var roles = await _userManager.GetRolesAsync(user);
                     identity.SetClaims(Claims.Role, [..roles]);
 
-                    // Add permission claims from user's roles
+                    // Enrichment
                     await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
-
-                    // Enrich with scope-mapped claims from DB based on requested scopes
                     await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes);
+
+                    // Copy AMR claims from userPrincipal
+                    foreach (var amr in userPrincipal.FindAll("amr"))
+                    {
+                        identity.AddClaim(new Claim("amr", amr.Value));
+                    }
+
+                    // Set ACR if requested and present
+                    if (acrValues.Contains("mfa") && userPrincipal.FindAll("amr").Any(c => c.Value == AuthConstants.Amr.Mfa))
+                    {
+                        identity.SetClaim(Claims.AuthenticationContextReference, "mfa");
+                    }
                 }
 
                 // Add audience (aud) claims from API Resources associated with requested scopes
@@ -349,6 +377,19 @@ namespace Web.IdP.Services // Keep consistent namespace case
             // Add claims mapped by effective (allowed) scopes
             await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, effectiveScopes);
 
+            // Copy AMR claims from userPrincipal
+            foreach (var amr in userPrincipal.FindAll("amr"))
+            {
+                identity.AddClaim(new Claim("amr", amr.Value));
+            }
+
+            // Set ACR if requested and present
+            var acrValuesSubmit = request.GetAcrValues();
+            if (acrValuesSubmit.Contains("mfa") && userPrincipal.FindAll("amr").Any(c => c.Value == AuthConstants.Amr.Mfa))
+            {
+                identity.SetClaim(Claims.AuthenticationContextReference, "mfa");
+            }
+
             // Audiences based on effective scopes
             var audiences = await _apiResourceService.GetAudiencesByScopesAsync(effectiveScopes);
             if (audiences.Count > 0)
@@ -439,6 +480,16 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     yield break;
 
                 case AuthConstants.Claims.Department:
+                    yield return Destinations.AccessToken;
+                    yield return Destinations.IdentityToken;
+                    yield break;
+
+                case "amr":
+                    yield return Destinations.AccessToken;
+                    yield return Destinations.IdentityToken;
+                    yield break;
+
+                case Claims.AuthenticationContextReference:
                     yield return Destinations.AccessToken;
                     yield return Destinations.IdentityToken;
                     yield break;
