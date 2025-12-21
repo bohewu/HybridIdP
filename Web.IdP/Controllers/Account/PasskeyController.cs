@@ -274,7 +274,7 @@ public partial class PasskeyController : ControllerBase
             // Add AMR to session
             AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.HardwareKey);
             AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.UserPresence);
-            AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa); // Passkey counts as MFA
+            AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa);
 
             // Issue cookie with amr claims
             var claims = new List<System.Security.Claims.Claim>

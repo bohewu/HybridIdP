@@ -307,7 +307,7 @@ public class AdminApiMiscTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
             maxPasskeysPerUser = 5,
             requireMfaForPasskey = false,
             enforceMandatoryMfaEnrollment = true, // ON - conflicts with no MFA methods!
-            mfaEnforcementGracePeriodDays = 3
+            mfaEnforcementGracePeriodDays = 0 // Set grace period to 0 as per instruction
         };
 
         // Act
@@ -328,7 +328,7 @@ public class AdminApiMiscTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
             "scopes.read", "scopes.create", "scopes.update", "scopes.delete",
             "audit.read",
             "localization.read", "localization.create", "localization.update", "localization.delete",
-            "monitoring.read"
+            "monitoring.read", "settings.read", "settings.update"
         };
         var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
         {

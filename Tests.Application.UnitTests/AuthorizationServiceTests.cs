@@ -5,6 +5,8 @@ using OpenIddict.Abstractions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Core.Domain;
+using Core.Domain.Entities;
+using Core.Domain.Constants;
 using Infrastructure;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
@@ -211,6 +213,10 @@ namespace Tests.Application.UnitTests
             _mockApplicationManager.Setup(m => m.GetPermissionsAsync(client, default))
                 .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.ResponseTypes.Token)); // Has Token but needs Code
 
+            // Setup User
+            _mockUserManager.Setup(m => m.GetUserAsync(user)).ReturnsAsync(new ApplicationUser { Id = Guid.NewGuid() });
+            _mockSecurityPolicyService.Setup(x => x.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy());
+
             // Act
             var result = await _authorizationService.HandleAuthorizeRequestAsync(user, request, null);
 
@@ -243,6 +249,10 @@ namespace Tests.Application.UnitTests
             // Setup Missing Permission
             _mockApplicationManager.Setup(m => m.GetPermissionsAsync(client, default))
                 .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.ResponseTypes.Code)); // Has Code but needs Token
+
+            // Setup User
+            _mockUserManager.Setup(m => m.GetUserAsync(user)).ReturnsAsync(new ApplicationUser { Id = Guid.NewGuid() });
+            _mockSecurityPolicyService.Setup(x => x.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy());
 
             // Act
             var result = await _authorizationService.HandleAuthorizeRequestAsync(user, request, null);

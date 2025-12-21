@@ -70,9 +70,10 @@ public class MfaSetupRedirectionTests : IClassFixture<WebIdPServerFixture>, IAsy
         
         try
         {
-            if (!originalEnforcement)
+            if (!originalEnforcement || policy.MfaEnforcementGracePeriodDays != 0)
             {
                 policy.EnforceMandatoryMfaEnrollment = true;
+                policy.MfaEnforcementGracePeriodDays = 0; // Force immediate redirection
                 policy.EnableTotpMfa = true; 
                 
                 var updateResponse = await apiClient.PutAsJsonAsync("/api/admin/security/policies", policy);
