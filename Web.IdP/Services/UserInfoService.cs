@@ -87,6 +87,13 @@ public class UserInfoService : IUserInfoService
             }
         }
 
+        // Handle amr claims (special case - multiple values)
+        var amrClaims = principal.GetClaims(Claims.AuthenticationMethodReference).ToList();
+        if (amrClaims.Count > 0)
+        {
+            userinfo["amr"] = amrClaims.Count == 1 ? amrClaims[0] : amrClaims;
+        }
+
         return userinfo;
     }
 
