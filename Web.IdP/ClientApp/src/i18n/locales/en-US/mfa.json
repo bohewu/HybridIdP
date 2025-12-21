@@ -67,6 +67,7 @@
   "allDisabledDescription": "The administrator has disabled all multi-factor authentication methods for this system.",
   "setupPageTitle": "Set Up Two-Step Verification",
   "gracePeriodMessage": "You have {days} days left to set up two-step verification before it becomes required.",
+  "enforcedMessage": "MFA is strictly required for your current request. Please complete setup to proceed.",
   "gracePeriodExpiredMessage": "The grace period has expired. You must set up two-step verification to continue.",
   "whyRequiredTitle": "Why is this required?",
   "whyRequiredDescription": "Your organization requires two-step verification to protect your account and sensitive data.",
