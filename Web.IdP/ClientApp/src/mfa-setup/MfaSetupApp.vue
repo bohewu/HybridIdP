@@ -291,7 +291,10 @@ async function verifyTotp() {
 function finishTotpSetup() {
   showTotpModal.value = false
   successMessage.value = t('mfa.setupComplete')
-  setTimeout(() => { successMessage.value = '' }, 5000)
+  // Redirect to ReturnUrl after short delay
+  setTimeout(() => { 
+    window.location.href = returnUrl.value
+  }, 1000)
 }
 
 async function enableEmailMfa() {
@@ -307,7 +310,10 @@ async function enableEmailMfa() {
     if (res.ok) {
       await loadData()
       successMessage.value = t('mfa.emailMfaEnabled')
-      setTimeout(() => { successMessage.value = '' }, 3000)
+      // Redirect to ReturnUrl after short delay
+      setTimeout(() => { 
+        window.location.href = returnUrl.value
+      }, 1000)
     } else {
       errorMessage.value = t('mfa.errors.toggleFailed')
     }
@@ -337,7 +343,7 @@ async function registerPasskey() {
 
 <style scoped>
 .mfa-setup-container {
-  max-width: 600px;
+  max-width: 450px;
   margin: 0 auto;
   padding: 2rem 1rem;
 }

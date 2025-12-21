@@ -146,6 +146,10 @@ public partial class MfaSetupApiController : ControllerBase
             LogMfaEnabled(user.Id);
             await _auditService.LogEventAsync("MfaEnabled", user.Id.ToString(), null, null, null);
 
+            // UX Improvement: Sign in user fully so they can access the app immediately
+            // This prevents redirection back to Login page
+            await _signInManager.SignInAsync(user, isPersistent: false);
+
             // Generate recovery codes
             var recoveryCodes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
 
@@ -190,6 +194,9 @@ public partial class MfaSetupApiController : ControllerBase
 
         LogEmailMfaEnabled(user.Id);
         await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null);
+
+        // UX Improvement: Sign in user fully
+        await _signInManager.SignInAsync(user, isPersistent: false);
 
         return Ok(new { success = true });
     }
