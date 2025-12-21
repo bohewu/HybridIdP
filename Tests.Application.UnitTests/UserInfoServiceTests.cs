@@ -221,6 +221,54 @@ public class UserInfoServiceTests
         Assert.Equal(false, result[Claims.EmailVerified]);
     }
 
+    [Fact]
+    public async Task GetUserInfoAsync_ReturnsAmrClaims()
+    {
+        // Arrange
+        var mockDb = CreateMockDbContext(new List<ScopeClaim>());
+        var service = new UserInfoService(mockDb.Object);
+
+        var claims = new List<Claim>
+        {
+            new Claim(Claims.Subject, "user123"),
+            new Claim(Claims.AuthenticationMethodReference, "pwd"),
+            new Claim("scope", "openid")
+        };
+        var principal = CreatePrincipal(claims);
+
+        // Act
+        var result = await service.GetUserInfoAsync(principal);
+
+        // Assert
+        Assert.Equal("pwd", result["amr"]);
+    }
+
+    [Fact]
+    public async Task GetUserInfoAsync_MultipleAmrClaims_ReturnsAmrList()
+    {
+        // Arrange
+        var mockDb = CreateMockDbContext(new List<ScopeClaim>());
+        var service = new UserInfoService(mockDb.Object);
+
+        var claims = new List<Claim>
+        {
+            new Claim(Claims.Subject, "user123"),
+            new Claim(Claims.AuthenticationMethodReference, "pwd"),
+            new Claim(Claims.AuthenticationMethodReference, "mfa"),
+            new Claim("scope", "openid")
+        };
+        var principal = CreatePrincipal(claims);
+
+        // Act
+        var result = await service.GetUserInfoAsync(principal);
+
+        // Assert
+        var amr = result["amr"] as List<string>;
+        Assert.NotNull(amr);
+        Assert.Contains("pwd", amr);
+        Assert.Contains("mfa", amr);
+    }
+
     #region Helper Methods
 
     private static ClaimsPrincipal CreatePrincipal(List<Claim> claims)
