@@ -45,7 +45,7 @@
                         {
                             @if (groupedScopes.Count() > 1 && !string.IsNullOrEmpty(group.Key))
                             {
-                                <h6 class="mt-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider pl-2">@group.Key</h6>
+                                <h6 class="mt-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider pl-2">@Localizer[group.Key]</h6>
                             }
                             
                             <div class="space-y-1 mb-4">
@@ -162,12 +162,5 @@
     </div>
 
     @* Footer *@
-    <div class="google-footer mt-4">
-        <div class="flex gap-4 text-xs text-gray-500 justify-center">
-             <span>@Localizer["Language"]</span>
-             <span>@Localizer["Help"]</span>
-             <span>@Localizer["Privacy"]</span>
-             <span>@Localizer["Terms"]</span>
-        </div>
-    </div>
+    @await Html.PartialAsync("~/Pages/Shared/_GoogleFooter.cshtml")
 </div>

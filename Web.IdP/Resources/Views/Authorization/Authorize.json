@@ -9,5 +9,12 @@
   "Required": "Required",
   "Allow Access": "Allow Access",
   "Deny": "Deny",
-  "By allowing access, you agree to share the requested information with this application.": "By allowing access, you agree to share the requested information with this application."
+  "By allowing access, you agree to share the requested information with this application.": "By allowing access, you agree to share the requested information with this application.",
+  "Language": "Language",
+  "Help": "Help",
+  "Privacy": "Privacy",
+  "Terms": "Terms",
+  "Identity": "Identity",
+  "Security": "Security",
+  "General": "General"
 }

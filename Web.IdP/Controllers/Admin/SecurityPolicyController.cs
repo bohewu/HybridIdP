@@ -48,6 +48,8 @@ public class SecurityPolicyController : ControllerBase
             EnableEmailMfa = policy.EnableEmailMfa,
             MaxPasskeysPerUser = policy.MaxPasskeysPerUser,
             RequireMfaForPasskey = policy.RequireMfaForPasskey,
+            EnforceMandatoryMfaEnrollment = policy.EnforceMandatoryMfaEnrollment,
+            MfaEnforcementGracePeriodDays = policy.MfaEnforcementGracePeriodDays,
             UpdatedUtc = policy.UpdatedUtc,
             UpdatedBy = policy.UpdatedBy
         };

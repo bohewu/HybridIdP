@@ -74,6 +74,8 @@ public partial class SecurityPolicyService : ISecurityPolicyService
         policy.EnableEmailMfa = policyDto.EnableEmailMfa;
         policy.MaxPasskeysPerUser = policyDto.MaxPasskeysPerUser;
         policy.RequireMfaForPasskey = policyDto.RequireMfaForPasskey;
+        policy.EnforceMandatoryMfaEnrollment = policyDto.EnforceMandatoryMfaEnrollment;
+        policy.MfaEnforcementGracePeriodDays = policyDto.MfaEnforcementGracePeriodDays;
         
         // Update metadata
         policy.UpdatedUtc = DateTime.UtcNow;

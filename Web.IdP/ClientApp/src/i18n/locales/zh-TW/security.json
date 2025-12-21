@@ -45,6 +45,10 @@
     "maxPasskeysPerUserHelp": "單一使用者可註冊的最大通行密鑰數量。",
     "requireMfaForPasskey": "通行密鑰需要 MFA",
     "requireMfaForPasskeyHelp": "啟用後，使用者必須先啟用 TOTP 或電子郵件 MFA 才能註冊通行密鑰。停用 MFA 將自動撤銷所有通行密鑰。",
+    "enforceMandatoryMfaEnrollment": "強制執行 MFA 註冊",
+    "enforceMandatoryMfaEnrollmentHelp": "啟用後，未註冊 MFA 的使用者將被強制要求先設定一個 MFA 因素才能繼續。",
+    "mfaEnforcementGracePeriodDays": "MFA 註冊寬限期（天）",
+    "mfaEnforcementGracePeriodDaysHelp": "使用者在受到通知後，在強制執行生效前可以繼續不使用 MFA 的天數 (0-30)。",
     "validation": {
         "minCharacterTypesRange": "最少字元類型必須介於 2 到 4 之間",
         "passwordLengthRange": "密碼長度必須介於 6 到 128 字元之間"

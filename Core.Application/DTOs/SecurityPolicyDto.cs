@@ -45,6 +45,11 @@ public class SecurityPolicyDto
     public int MaxPasskeysPerUser { get; set; } = 10;
     
     public bool RequireMfaForPasskey { get; set; }
+
+    public bool EnforceMandatoryMfaEnrollment { get; set; }
+
+    [Range(0, 30)]
+    public int MfaEnforcementGracePeriodDays { get; set; } = 3;
     
     public DateTime UpdatedUtc { get; set; }
     public string? UpdatedBy { get; set; }
