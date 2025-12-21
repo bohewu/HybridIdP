@@ -1,6 +1,7 @@
 @page
 @model Web.IdP.Pages.Account.MfaSetupModel
 @using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.Localization
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 @inject Web.IdP.Services.IViteManifestService ViteService
 @inject Core.Application.IBrandingService BrandingService
@@ -10,15 +11,18 @@
     Layout = null;
     var productName = await BrandingService.GetProductNameAsync();
     var csrfToken = Antiforgery.GetAndStoreTokens(HttpContext).RequestToken;
+    var currentCulture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
 }
 
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-gray-50">
+<html lang="@currentCulture" class="h-full bg-gray-50">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="locale" content="@currentCulture" />
     <title>@ViewData["Title"] - @productName</title>
     <link href="@ViteService.GetScriptPath("src/styles/main.css")" rel="stylesheet" />
+    <script type="module" vite-src="src/scripts/razor.js"></script>
     <script type="module" vite-src="src/mfa-setup/main.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -32,7 +36,10 @@
              data-return-url="@Model.ReturnUrl"
              data-csrf-token="@csrfToken">
         </div>
+        
+        <div class="max-w-[450px] w-full mx-auto">
+            <partial name="_GoogleFooter" />
+        </div>
     </div>
-    <partial name="_GoogleFooter" />
 </body>
 </html>
