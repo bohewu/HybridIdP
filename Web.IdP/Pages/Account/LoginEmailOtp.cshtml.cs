@@ -148,8 +148,10 @@ public partial class LoginEmailOtpModel : PageModel
             AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Otp);
 
             // Create the principal with the new claims for the cookie
+            // Both pwd and MFA/OTP are satisfied.
              var claims = new List<System.Security.Claims.Claim>
             {
+                new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Password),
                 new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Mfa),
                 new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Otp)
             };

@@ -309,8 +309,15 @@ public partial class LoginModel : PageModel
                     }
                 }
 
+                // Add AMR to session and issue cookie with amr: pwd
+                AddAmrToSession(AuthConstants.Amr.Password);
+                var amrClaimsList = new List<System.Security.Claims.Claim>
+                {
+                    new System.Security.Claims.Claim("amr", AuthConstants.Amr.Password)
+                };
+
                 // Sign in user (role claims are automatically added by Identity)
-                await _signInManager.SignInAsync(result.User!, isPersistent: Input.RememberMe);
+                await _signInManager.SignInWithClaimsAsync(result.User!, isPersistent: Input.RememberMe, amrClaimsList);
                 LogUserSignedIn(result.User!.UserName);
                 
                 // Publish audit event for successful login

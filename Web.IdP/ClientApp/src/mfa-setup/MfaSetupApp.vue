@@ -270,7 +270,10 @@ async function verifyTotp() {
   try {
     const res = await fetch('/api/account/mfa-setup/totp/verify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-XSRF-TOKEN': csrfToken.value
+      },
       credentials: 'include',
       body: JSON.stringify({ code: totpCode.value })
     })
@@ -304,6 +307,9 @@ async function enableEmailMfa() {
   try {
     const res = await fetch('/api/account/mfa-setup/email/enable', {
       method: 'POST',
+      headers: {
+        'X-XSRF-TOKEN': csrfToken.value
+      },
       credentials: 'include'
     })
     
