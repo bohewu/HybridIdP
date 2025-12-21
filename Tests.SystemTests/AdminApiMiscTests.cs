@@ -273,6 +273,52 @@ public class AdminApiMiscTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    // ===== SecurityPolicy Tests =====
+
+    [Fact]
+    public async Task SecurityPolicy_EnforceMfaWithoutMfaMethod_ReturnsBadRequest()
+    {
+        // Arrange - Get current policy first
+        var getResponse = await _httpClient.GetAsync("/api/admin/security/policies");
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+        var policyJson = await getResponse.Content.ReadAsStringAsync();
+        var policy = JsonSerializer.Deserialize<JsonElement>(policyJson, _jsonOptions);
+
+        // Create an invalid policy: MFA enforcement ON but all MFA methods OFF
+        var invalidPolicy = new
+        {
+            minPasswordLength = policy.GetProperty("minPasswordLength").GetInt32(),
+            requireUppercase = policy.GetProperty("requireUppercase").GetBoolean(),
+            requireLowercase = policy.GetProperty("requireLowercase").GetBoolean(),
+            requireDigit = policy.GetProperty("requireDigit").GetBoolean(),
+            requireNonAlphanumeric = policy.GetProperty("requireNonAlphanumeric").GetBoolean(),
+            minCharacterTypes = policy.GetProperty("minCharacterTypes").GetInt32(),
+            passwordHistoryCount = policy.GetProperty("passwordHistoryCount").GetInt32(),
+            passwordExpirationDays = policy.GetProperty("passwordExpirationDays").GetInt32(),
+            minPasswordAgeDays = policy.GetProperty("minPasswordAgeDays").GetInt32(),
+            maxFailedAccessAttempts = policy.GetProperty("maxFailedAccessAttempts").GetInt32(),
+            lockoutDurationMinutes = policy.GetProperty("lockoutDurationMinutes").GetInt32(),
+            abnormalLoginHistoryCount = policy.GetProperty("abnormalLoginHistoryCount").GetInt32(),
+            blockAbnormalLogin = policy.GetProperty("blockAbnormalLogin").GetBoolean(),
+            allowSelfPasswordChange = policy.GetProperty("allowSelfPasswordChange").GetBoolean(),
+            enablePasskey = false,     // OFF - all MFA methods disabled!
+            enableTotpMfa = false,     // OFF
+            enableEmailMfa = false,    // OFF
+            maxPasskeysPerUser = 5,
+            requireMfaForPasskey = false,
+            enforceMandatoryMfaEnrollment = true, // ON - conflicts with no MFA methods!
+            mfaEnforcementGracePeriodDays = 3
+        };
+
+        // Act
+        var response = await _httpClient.PutAsJsonAsync("/api/admin/security/policies", invalidPolicy);
+
+        // Assert - Should fail with 400 Bad Request
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errorContent = await response.Content.ReadAsStringAsync();
+        Assert.Contains("MFA", errorContent, StringComparison.OrdinalIgnoreCase);
+    }
+
     // ===== Helper Methods =====
 
     private async Task<string> GetAdminTokenAsync()

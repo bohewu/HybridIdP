@@ -231,6 +231,15 @@ const savePolicy = async () => {
     notification.value = { message: t('security.validation.passwordLengthRange') || 'Password length must be between 6 and 128 characters', type: 'error' };
     return;
   }
+  if (policy.value.maxPasskeysPerUser < 1 || policy.value.maxPasskeysPerUser > 50) {
+    notification.value = { message: t('security.validation.maxPasskeysRange') || 'Max passkeys per user must be between 1 and 50', type: 'error' };
+    return;
+  }
+  // Validate MFA enforcement requires at least one MFA method enabled (including Passkey)
+  if (policy.value.enforceMandatoryMfaEnrollment && !policy.value.enableTotpMfa && !policy.value.enableEmailMfa && !policy.value.enablePasskey) {
+    notification.value = { message: t('security.validation.mfaEnforcementRequiresMfaEnabled') || 'Cannot enable mandatory MFA enrollment without at least one MFA method enabled.', type: 'error' };
+    return;
+  }
   
   isSaving.value = true;
   notification.value = { message: '', type: '' };

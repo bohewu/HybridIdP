@@ -51,6 +51,9 @@
     "mfaEnforcementGracePeriodDaysHelp": "Number of days a user can bypass MFA enrollment after being notified before enforcement takes effect (0-30).",
     "validation": {
         "minCharacterTypesRange": "Minimum character types must be between 2 and 4",
-        "passwordLengthRange": "Password length must be between 6 and 128 characters"
+        "passwordLengthRange": "Password length must be between 6 and 128 characters",
+        "maxPasskeysRange": "Max passkeys per user must be between 1 and 50",
+        "mfaEnforcementRequiresMfaEnabled": "Cannot enable mandatory MFA enrollment without at least one MFA method (TOTP, Email, or Passkey) enabled.",
+        "mfaMethodRequiredWhenEnforcementEnabled": "Cannot disable all MFA methods while mandatory MFA enrollment is enabled. Please disable enforcement first."
     }
 }
