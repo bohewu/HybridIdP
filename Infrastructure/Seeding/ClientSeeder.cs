@@ -211,7 +211,8 @@ public static class ClientSeeder
             DisplayName = "Test Client (Public)",
             RedirectUris = 
             {
-                new Uri("https://localhost:7001/signin-oidc")
+                new Uri("https://localhost:7001/signin-oidc"),
+                new Uri("https://localhost:7035/signin-oidc")
             },
             PostLogoutRedirectUris = 
             {

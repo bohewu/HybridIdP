@@ -29,6 +29,7 @@ public static class UserSeeder
             await SeedInactiveUserAsync(userManager, context);
             await SeedInactivePersonUserAsync(userManager, context);
             await SeedAbnormalLoginTestUserAsync(userManager, context);
+            await SeedMfaEnforcementTestUserAsync(userManager, context);
         }
     }
 
@@ -692,6 +693,68 @@ public static class UserSeeder
 
         // Create WITHOUT password
         var result = await userManager.CreateAsync(user);
+        if (result.Succeeded)
+        {
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Seeds a test user with NO MFA factors enabled, used for testing MFA enforcement.
+    /// </summary>
+    private static async Task SeedMfaEnforcementTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "mfa-enforce@hybridauth.local";
+        const string password = "Test@123";
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null) return;
+
+        var nationalIdHash = PidHasher.Hash("M123456789"); // M for MFA Enforce
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Mfa",
+                LastName = "Enforce",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Mfa",
+            LastName = "Enforce",
+            IsActive = true,
+            TwoFactorEnabled = false,
+            EmailMfaEnabled = false
+        };
+
+        var result = await userManager.CreateAsync(user, password);
         if (result.Succeeded)
         {
             person.CreatedBy = user.Id;

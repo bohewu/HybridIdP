@@ -50,6 +50,16 @@ namespace Core.Domain.Entities
         /// Disabling the last MFA method will automatically revoke all passkeys.
         /// </summary>
         public bool RequireMfaForPasskey { get; set; }
+
+        /// <summary>
+        /// When true, users are forced to enroll in at least one MFA factor.
+        /// </summary>
+        public bool EnforceMandatoryMfaEnrollment { get; set; }
+
+        /// <summary>
+        /// The number of days a user can continue without MFA after being notified before enforcement blocks login.
+        /// </summary>
+        public int MfaEnforcementGracePeriodDays { get; set; } = 3;
         
         public DateTime UpdatedUtc { get; set; }
         public string? UpdatedBy { get; set; }

@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 using Core.Application;
 using Core.Domain;
+using Core.Domain.Constants;
 using Core.Domain.Events;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace Web.IdP.Pages.Account;
 
@@ -142,6 +144,9 @@ public partial class LoginEmailOtpModel : PageModel
         
         if (isValid)
         {
+            AddAmrToSession(AuthConstants.Amr.Otp);
+            AddAmrToSession(AuthConstants.Amr.Mfa);
+
             await _signInManager.SignInAsync(user, isPersistent: RememberMe);
             _logger.LogInformation("User logged in with Email MFA.");
             
@@ -217,5 +222,19 @@ public partial class LoginEmailOtpModel : PageModel
         }
         
         return user;
+    }
+
+    private void AddAmrToSession(string amr)
+    {
+        var currentAmrJson = HttpContext.Session.GetString("AuthenticationMethods");
+        List<string> amrList = string.IsNullOrEmpty(currentAmrJson) 
+            ? new List<string>() 
+            : JsonSerializer.Deserialize<List<string>>(currentAmrJson) ?? new List<string>();
+        
+        if (!amrList.Contains(amr))
+        {
+            amrList.Add(amr);
+            HttpContext.Session.SetString("AuthenticationMethods", JsonSerializer.Serialize(amrList));
+        }
     }
 }

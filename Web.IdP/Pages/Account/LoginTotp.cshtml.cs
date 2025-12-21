@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 using Core.Application;
 using Core.Domain;
+using Core.Domain.Constants;
 using Core.Domain.Events;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace Web.IdP.Pages.Account;
 
@@ -116,6 +118,9 @@ public partial class LoginTotpModel : PageModel
             var isValid = await _mfaService.ValidateTotpCodeAsync(user, Input.TotpCode);
             if (isValid)
             {
+                AddAmrToSession(AuthConstants.Amr.Otp);
+                AddAmrToSession(AuthConstants.Amr.Mfa);
+
                 await _signInManager.SignInAsync(user, isPersistent: RememberMe);
                 _logger.LogInformation("User logged in with TOTP 2FA.");
                 
@@ -150,6 +155,8 @@ public partial class LoginTotpModel : PageModel
             
             if (result.Succeeded)
             {
+                AddAmrToSession(AuthConstants.Amr.Mfa); // Recovery code is still mfa, but not otp? Actually design says "mfa" for recovery.
+
                 await _signInManager.SignInAsync(user, isPersistent: RememberMe);
                 _logger.LogInformation("User logged in with recovery code.");
                 
@@ -197,5 +204,19 @@ public partial class LoginTotpModel : PageModel
         }
         
         return user;
+    }
+
+    private void AddAmrToSession(string amr)
+    {
+        var currentAmrJson = HttpContext.Session.GetString("AuthenticationMethods");
+        List<string> amrList = string.IsNullOrEmpty(currentAmrJson) 
+            ? new List<string>() 
+            : JsonSerializer.Deserialize<List<string>>(currentAmrJson) ?? new List<string>();
+        
+        if (!amrList.Contains(amr))
+        {
+            amrList.Add(amr);
+            HttpContext.Session.SetString("AuthenticationMethods", JsonSerializer.Serialize(amrList));
+        }
     }
 }

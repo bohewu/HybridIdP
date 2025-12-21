@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options; // Added
 using Microsoft.AspNetCore.RateLimiting;
+using Core.Application.Interfaces;
+using System.Text.Json;
 
 namespace Web.IdP.Pages.Account;
 
@@ -32,6 +34,7 @@ public partial class LoginModel : PageModel
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ITurnstileStateService _turnstileStateService; // Added
     private readonly ISettingsService _settingsService; // Added
+    private readonly IPasskeyService _passkeyService;
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
@@ -46,7 +49,8 @@ public partial class LoginModel : PageModel
         ILogger<LoginModel> logger,
         IStringLocalizer<SharedResource> localizer,
         ITurnstileStateService turnstileStateService,
-        ISettingsService settingsService) // Added
+        ISettingsService settingsService,
+        IPasskeyService passkeyService) // Added
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -61,6 +65,7 @@ public partial class LoginModel : PageModel
         _localizer = localizer;
         _turnstileStateService = turnstileStateService; // Added
         _settingsService = settingsService; // Added
+        _passkeyService = passkeyService;
     }
 
     [BindProperty]
@@ -125,6 +130,9 @@ public partial class LoginModel : PageModel
 
         // Load Turnstile enabled state
         await LoadTurnstileStateAsync();
+
+        // Clear AMR session on Get
+        HttpContext.Session.Remove("AuthenticationMethods");
 
         ReturnUrl = returnUrl;
         return Page();
@@ -225,6 +233,41 @@ public partial class LoginModel : PageModel
                     {
                         // Fallback (should ideally not happen if condition check was true)
                         return RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = Input.RememberMe });
+                    }
+                }
+
+                // Add AMR to session
+                AddAmrToSession(AuthConstants.Amr.Password);
+
+                // Check for mandatory MFA enrollment
+                if (!result.User!.TwoFactorEnabled && !result.User!.EmailMfaEnabled)
+                {
+                    var currentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
+                    if (currentPolicy.EnforceMandatoryMfaEnrollment)
+                    {
+                        var passkeys = await _passkeyService.GetUserPasskeysAsync(result.User.Id);
+                        if (passkeys.Count == 0)
+                        {
+                            // User has NO MFA enabled and NO Passkeys registered
+                            // Check grace period
+                            var gracePeriodExpired = false;
+                            if (result.User.MfaRequirementNotifiedAt == null)
+                            {
+                                result.User.MfaRequirementNotifiedAt = DateTime.UtcNow;
+                                await _userManager.UpdateAsync(result.User);
+                            }
+                            else
+                            {
+                                var expiry = result.User.MfaRequirementNotifiedAt.Value.AddDays(currentPolicy.MfaEnforcementGracePeriodDays);
+                                if (DateTime.UtcNow > expiry)
+                                {
+                                    gracePeriodExpired = true;
+                                }
+                            }
+
+                            // Redirect to MFA Setup
+                            return RedirectToPage("./MfaSetup", new { returnUrl, gracePeriodExpired });
+                        }
                     }
                 }
 
@@ -351,4 +394,18 @@ public partial class LoginModel : PageModel
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Login failed for user '{Login}': Invalid credentials.")]
     partial void LogInvalidCredentials(string login);
+
+    private void AddAmrToSession(string amr)
+    {
+        var currentAmrJson = HttpContext.Session.GetString("AuthenticationMethods");
+        List<string> amrList = string.IsNullOrEmpty(currentAmrJson) 
+            ? new List<string>() 
+            : JsonSerializer.Deserialize<List<string>>(currentAmrJson) ?? new List<string>();
+        
+        if (!amrList.Contains(amr))
+        {
+            amrList.Add(amr);
+            HttpContext.Session.SetString("AuthenticationMethods", JsonSerializer.Serialize(amrList));
+        }
+    }
 }

@@ -5,6 +5,7 @@ using Infrastructure;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -37,8 +38,9 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
             IOptions<IdentityOptions> optionsAccessor,
             IApplicationDbContext context,
             IAuditService auditService,
+            IHttpContextAccessor httpContextAccessor,
             ILogger<MyUserClaimsPrincipalFactory> logger)
-            : base(userManager, roleManager, optionsAccessor, context, auditService, logger)
+            : base(userManager, roleManager, optionsAccessor, context, auditService, httpContextAccessor, logger)
         {
             _testContext = context;
             _testAuditService = auditService;
@@ -149,8 +151,11 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
         _optionsAccessorMock.Setup(o => o.Value).Returns(new IdentityOptions());
 
         _auditServiceMock = new Mock<IAuditService>();
+        _httpContextAccessorMock = new Mock<IHttpContextAccessor>();
         _loggerMock = new Mock<ILogger<MyUserClaimsPrincipalFactory>>();
     }
+
+    private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
 
     public void Dispose()
     {
@@ -169,6 +174,7 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
             _optionsAccessorMock.Object,
             context,
             _auditServiceMock.Object,
+            _httpContextAccessorMock.Object,
             _loggerMock.Object);
 
         var user = new ApplicationUser
@@ -221,6 +227,7 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
             _optionsAccessorMock.Object,
             context,
             _auditServiceMock.Object,
+            _httpContextAccessorMock.Object,
             _loggerMock.Object);
 
         var person = new Person

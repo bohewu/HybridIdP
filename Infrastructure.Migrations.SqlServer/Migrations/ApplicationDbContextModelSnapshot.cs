@@ -155,6 +155,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<DateTime?>("MfaRequirementNotifiedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("MiddleName")
                         .HasColumnType("nvarchar(max)");
 
@@ -774,6 +777,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<bool>("EnableTotpMfa")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("EnforceMandatoryMfaEnrollment")
+                        .HasColumnType("bit");
+
                     b.Property<int>("LockoutDurationMinutes")
                         .HasColumnType("int");
 
@@ -781,6 +787,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("MaxPasskeysPerUser")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MfaEnforcementGracePeriodDays")
                         .HasColumnType("int");
 
                     b.Property<int>("MinCharacterTypes")

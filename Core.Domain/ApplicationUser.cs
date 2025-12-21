@@ -86,6 +86,11 @@ public class ApplicationUser : IdentityUser<Guid>
     public Guid? ModifiedBy { get; set; }
     public DateTime? ModifiedAt { get; set; }
 
+    /// <summary>
+    /// Tracks when the user was first notified about mandatory MFA requirement.
+    /// Used for grace period calculations.
+    /// </summary>
+    public DateTime? MfaRequirementNotifiedAt { get; set; }
 
     // Phase 20.1: Recovery Codes
     /// <summary>
@@ -93,4 +98,3 @@ public class ApplicationUser : IdentityUser<Guid>
     /// </summary>
     public string? RecoveryCodes { get; set; }
 }
-

@@ -82,4 +82,17 @@ public static class AuthConstants
     {
         public const string ResourceServer = "resource_server";
     }
+
+    /// <summary>
+    /// Authentication Methods References values.
+    /// </summary>
+    public static class Amr
+    {
+        public const string Password = "pwd";
+        public const string Otp = "otp";
+        public const string Mfa = "mfa";
+        public const string HardwareKey = "hwk";
+        public const string UserPresence = "user";
+        public const string RecoveryCode = "mfa";
+    }
 }

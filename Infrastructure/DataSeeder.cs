@@ -119,7 +119,9 @@ public static class DataSeeder
                 EnablePasskey = true,
                 EnableTotpMfa = true,
                 EnableEmailMfa = true,
-                MaxPasskeysPerUser = 5
+                MaxPasskeysPerUser = 5,
+                EnforceMandatoryMfaEnrollment = false,
+                MfaEnforcementGracePeriodDays = 3
             });
             await context.SaveChangesAsync();
         }
