@@ -124,8 +124,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             // Phase: acr_values=mfa enforcement
             var acrValues = request.GetAcrValues().ToList();
-            _logger.LogInformation("HandleAuthorizeRequestAsync: Request Details - AcrValues: {AcrValues}, Prompt: {Prompt}, MaxAge: {MaxAge}", 
-                string.Join(", ", acrValues), request.Prompt, request.MaxAge);
+            LogAuthorizeRequestDetails(string.Join(", ", acrValues), request.Prompt, request.MaxAge);
             
             var mfaRequired = acrValues.Any(v => v.Equals("mfa", StringComparison.OrdinalIgnoreCase));
             
@@ -224,7 +223,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             if (request.HasResponseType(ResponseTypes.IdToken) && !permissions.Contains(OpenIddictConstants.Permissions.ResponseTypes.IdToken))
             {
-                _logger.LogWarning("Client {ClientId} requested response_type=id_token without permission.", request.ClientId);
+                LogUnauthorizedIdTokenRequest(request.ClientId);
                  return new ForbidResult(
                     authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
                     properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -656,5 +655,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
         [LoggerMessage(Level = LogLevel.Information, Message = "No audiences found for effective scopes: {Scopes}")]
         partial void LogNoAudiencesForAuth(string scopes);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "HandleAuthorizeRequestAsync: Request Details - AcrValues: {AcrValues}, Prompt: {Prompt}, MaxAge: {MaxAge}")]
+        partial void LogAuthorizeRequestDetails(string acrValues, string? prompt, long? maxAge);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Client {ClientId} requested response_type=id_token without permission.")]
+        partial void LogUnauthorizedIdTokenRequest(string? clientId);
     }
 }
