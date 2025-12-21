@@ -11,7 +11,45 @@ public static class ScopeSeeder
     public static async Task SeedAsync(IOpenIddictScopeManager scopeManager, ApplicationDbContext context)
     {
         await SeedScopesAsync(scopeManager);
+        await SeedScopeExtensionsAsync(scopeManager, context);
         await SeedUserClaimsAndMappingsAsync(context, scopeManager);
+    }
+
+    private static async Task SeedScopeExtensionsAsync(IOpenIddictScopeManager scopeManager, ApplicationDbContext context)
+    {
+        var extensions = new[]
+        {
+            new { Name = Scopes.OpenId, DisplayNameKey = "scope.openid.display", DescriptionKey = "scope.openid.description", Icon = "bi bi-person-badge", IsRequired = true, Order = 1, Category = "Identity" },
+            new { Name = Scopes.Profile, DisplayNameKey = "scope.profile.display", DescriptionKey = "scope.profile.description", Icon = "bi bi-person", IsRequired = false, Order = 2, Category = "Identity" },
+            new { Name = Scopes.Email, DisplayNameKey = "scope.email.display", DescriptionKey = "scope.email.description", Icon = "bi bi-envelope", IsRequired = false, Order = 3, Category = "Identity" },
+            new { Name = Scopes.Phone, DisplayNameKey = "scope.phone.display", DescriptionKey = "scope.phone.description", Icon = "bi bi-phone", IsRequired = false, Order = 4, Category = "Identity" },
+            new { Name = Scopes.Address, DisplayNameKey = "scope.address.display", DescriptionKey = "scope.address.description", Icon = "bi bi-geo-alt", IsRequired = false, Order = 5, Category = "Identity" },
+            new { Name = AuthConstants.Scopes.Roles, DisplayNameKey = "scope.roles.display", DescriptionKey = "scope.roles.description", Icon = "bi bi-shield-check", IsRequired = false, Order = 6, Category = "Identity" }
+        };
+
+        foreach (var ext in extensions)
+        {
+            var scope = await scopeManager.FindByNameAsync(ext.Name);
+            if (scope != null)
+            {
+                var scopeId = await scopeManager.GetIdAsync(scope);
+                if (scopeId != null && !await context.ScopeExtensions.AnyAsync(e => e.ScopeId == scopeId))
+                {
+                    context.ScopeExtensions.Add(new ScopeExtension
+                    {
+                        ScopeId = scopeId,
+                        ConsentDisplayNameKey = ext.DisplayNameKey,
+                        ConsentDescriptionKey = ext.DescriptionKey,
+                        IconUrl = ext.Icon,
+                        IsRequired = ext.IsRequired,
+                        DisplayOrder = ext.Order,
+                        Category = ext.Category,
+                        IsPublic = true
+                    });
+                }
+            }
+        }
+        await context.SaveChangesAsync();
     }
 
     private static async Task SeedScopesAsync(IOpenIddictScopeManager scopeManager)

@@ -9,5 +9,12 @@
   "Required": "必要",
   "Allow Access": "允許存取",
   "Deny": "拒絕",
-  "By allowing access, you agree to share the requested information with this application.": "允許存取即表示您同意與此應用程式分享所請求的資訊。"
+  "By allowing access, you agree to share the requested information with this application.": "允許存取即表示您同意與此應用程式分享所請求的資訊。",
+  "Language": "語言",
+  "Help": "說明",
+  "Privacy": "隱私權",
+  "Terms": "條款",
+  "Identity": "身分識別",
+  "Security": "安全性",
+  "General": "一般"
 }
