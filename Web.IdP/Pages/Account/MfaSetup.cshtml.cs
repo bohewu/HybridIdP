@@ -86,12 +86,16 @@ public class MfaSetupModel : PageModel
 
         try
         {
-            var uri = new Uri(returnUrl, UriKind.RelativeOrAbsolute);
-            var query = uri.IsAbsoluteUri ? uri.Query : returnUrl.Contains('?') ? returnUrl.Substring(returnUrl.IndexOf('?')) : "";
+            // URL-decode the returnUrl first (it may be encoded when passed as a query parameter)
+            var decodedUrl = System.Net.WebUtility.UrlDecode(returnUrl);
             
-            if (string.IsNullOrEmpty(query)) return false;
-
+            // Extract query string from the decoded URL
+            var queryIndex = decodedUrl.IndexOf('?');
+            if (queryIndex < 0) return false;
+            
+            var query = decodedUrl.Substring(queryIndex);
             var queryString = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query);
+            
             if (queryString.TryGetValue("acr_values", out var acrValues))
             {
                 return acrValues.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains("mfa");
