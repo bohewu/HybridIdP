@@ -127,7 +127,7 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseCustomPipeline(builder.Configuration);
-app.UseSession();
+
 app.MapCustomEndpoints(builder.Configuration);
 
 // Seed the database (skip in Test environment - integration tests handle seeding)
