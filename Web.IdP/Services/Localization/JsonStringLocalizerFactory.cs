@@ -75,7 +75,82 @@ public class JsonStringLocalizerFactory : IStringLocalizerFactory
 
     public IStringLocalizer Create(string baseName, string location)
     {
-        return GetOrCreateLocalizer(baseName);
+        // For views, ASP.NET passes the full namespace path as baseName
+        // e.g., baseName = "Web.IdP.Views.Authorization.Authorize", location = ""
+        // We need to convert this to a resource path like "Views/Authorization/Authorize"
+        var resourceName = BuildResourcePath(baseName, location);
+        return GetOrCreateLocalizer(resourceName);
+    }
+
+    private static string BuildResourcePath(string baseName, string location)
+    {
+        // If baseName is empty, nothing to do
+        if (string.IsNullOrEmpty(baseName))
+        {
+            return baseName;
+        }
+
+        // ASP.NET's ViewLocalizer passes the full namespace path in baseName
+        // e.g., "Web.IdP.Views.Authorization.Authorize" or "Web.IdP.Pages.Account.Login"
+        // We need to extract from "Views" or "Pages" onwards
+        
+        var parts = baseName.Split('.');
+        var resourcePathParts = new List<string>();
+        var foundViewsOrPages = false;
+        
+        foreach (var part in parts)
+        {
+            if (part.Equals("Views", StringComparison.OrdinalIgnoreCase) ||
+                part.Equals("Pages", StringComparison.OrdinalIgnoreCase))
+            {
+                foundViewsOrPages = true;
+            }
+            
+            if (foundViewsOrPages)
+            {
+                resourcePathParts.Add(part);
+            }
+        }
+        
+        // If we found Views/Pages path, join with path separator
+        if (resourcePathParts.Count > 0)
+        {
+            return Path.Combine(resourcePathParts.ToArray());
+        }
+        
+        // If location contains Views/Pages, try that instead
+        if (!string.IsNullOrEmpty(location))
+        {
+            parts = location.Split('.');
+            resourcePathParts.Clear();
+            foundViewsOrPages = false;
+            
+            foreach (var part in parts)
+            {
+                if (part.Equals("Views", StringComparison.OrdinalIgnoreCase) ||
+                    part.Equals("Pages", StringComparison.OrdinalIgnoreCase))
+                {
+                    foundViewsOrPages = true;
+                }
+                
+                if (foundViewsOrPages)
+                {
+                    resourcePathParts.Add(part);
+                }
+            }
+            
+            if (resourcePathParts.Count > 0)
+            {
+                // Append the basename (last part) to the path
+                var shortBaseName = baseName.Split('.').LastOrDefault() ?? baseName;
+                resourcePathParts.Add(shortBaseName);
+                return Path.Combine(resourcePathParts.ToArray());
+            }
+        }
+        
+        // Fallback: if baseName contains dots, use the last segment only
+        var lastDot = baseName.LastIndexOf('.');
+        return lastDot >= 0 ? baseName.Substring(lastDot + 1) : baseName;
     }
 
     private IStringLocalizer GetOrCreateLocalizer(string baseName)
