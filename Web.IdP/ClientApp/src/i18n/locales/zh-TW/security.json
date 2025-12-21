@@ -51,6 +51,9 @@
     "mfaEnforcementGracePeriodDaysHelp": "使用者在受到通知後，在強制執行生效前可以繼續不使用 MFA 的天數 (0-30)。",
     "validation": {
         "minCharacterTypesRange": "最少字元類型必須介於 2 到 4 之間",
-        "passwordLengthRange": "密碼長度必須介於 6 到 128 字元之間"
+        "passwordLengthRange": "密碼長度必須介於 6 到 128 字元之間",
+        "maxPasskeysRange": "每位使用者最大密鑰數量必須介於 1 到 50 之間",
+        "mfaEnforcementRequiresMfaEnabled": "無法在沒有啟用任何 MFA 方法 (TOTP、電子郵件或通行密鑰) 的情況下啟用強制 MFA 註冊。",
+        "mfaMethodRequiredWhenEnforcementEnabled": "無法在強制 MFA 註冊啟用的情況下停用所有 MFA 方法。請先停用強制執行。"
     }
 }

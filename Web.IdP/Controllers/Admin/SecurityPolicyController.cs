@@ -66,9 +66,17 @@ public class SecurityPolicyController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var updatedBy = User.FindFirstValue(ClaimTypes.Name) ?? "Unknown";
-        await _securityPolicyService.UpdatePolicyAsync(policyDto, updatedBy);
-
-        return NoContent(); // 204 No Content is appropriate for a successful update
+        try
+        {
+            var updatedBy = User.FindFirstValue(ClaimTypes.Name) ?? "Unknown";
+            await _securityPolicyService.UpdatePolicyAsync(policyDto, updatedBy);
+            return NoContent(); // 204 No Content is appropriate for a successful update
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Business rule validation failed
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return BadRequest(ModelState);
+        }
     }
 }

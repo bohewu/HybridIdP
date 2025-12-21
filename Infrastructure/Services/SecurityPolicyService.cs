@@ -44,6 +44,14 @@ public partial class SecurityPolicyService : ISecurityPolicyService
 
     public async Task UpdatePolicyAsync(SecurityPolicyDto policyDto, string updatedBy)
     {
+        // Business rule validation: Cannot enable mandatory MFA enrollment without at least one MFA method enabled
+        // Passkeys count as MFA since Login.cshtml.cs checks for them as an alternative to TOTP/Email MFA
+        if (policyDto.EnforceMandatoryMfaEnrollment && !policyDto.EnableTotpMfa && !policyDto.EnableEmailMfa && !policyDto.EnablePasskey)
+        {
+            throw new InvalidOperationException(
+                "Cannot enable mandatory MFA enrollment without at least one MFA method (TOTP, Email, or Passkey) enabled.");
+        }
+
         var policy = await _db.SecurityPolicies.FirstOrDefaultAsync();
         if (policy == null)
         {
