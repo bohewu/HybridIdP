@@ -54,7 +54,7 @@ public partial class PasskeyController : ControllerBase
     }
 
     [HttpPost("register-options")]
-    [ApiAuthorize]
+    [MfaAwareApiAuthorize]
     [EnableRateLimiting("default")]
     public async Task<IActionResult> MakeCredentialOptions(CancellationToken ct)
     {
@@ -113,7 +113,7 @@ public partial class PasskeyController : ControllerBase
     }
 
     [HttpPost("register")]
-    [ApiAuthorize]
+    [MfaAwareApiAuthorize]
     public async Task<IActionResult> MakeCredential([FromBody] System.Text.Json.JsonElement attestationResponse, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
@@ -146,6 +146,15 @@ public partial class PasskeyController : ControllerBase
                 null, // details
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
                 Request.Headers["User-Agent"].FirstOrDefault());
+
+            // FIX: If user is in MFA Setup (partial auth), sign them in fully now that they have a passkey
+            if (User.Identity != null && User.Identity.AuthenticationType == IdentityConstants.TwoFactorUserIdScheme)
+            {
+                 // Add AMR to session
+                AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa); // They just set up MFA
+                await _signInManager.SignInAsync(user, isPersistent: false);
+            }
+
             return Ok(new { success = true });
         }
 
@@ -153,7 +162,7 @@ public partial class PasskeyController : ControllerBase
     }
 
     [HttpGet("list")]
-    [ApiAuthorize]
+    [MfaAwareApiAuthorize]
     public async Task<IActionResult> ListPasskeys(CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
@@ -164,7 +173,7 @@ public partial class PasskeyController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [ApiAuthorize]
+    [MfaAwareApiAuthorize]
     public async Task<IActionResult> DeletePasskey(int id, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();

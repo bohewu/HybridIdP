@@ -464,7 +464,7 @@ async function deletePasskey() {
       await loadPasskeys();
     } else {
       const result = await response.json();
-      passkeyError.value = result.error || t('mfa.errors.deletePasskeyFailed');
+      passkeyError.value = result.error ? t(`mfa.errors.${result.error}`) : t('mfa.errors.deletePasskeyFailed');
     }
   } catch (err) {
     passkeyError.value = t('mfa.errors.deletePasskeyFailed');

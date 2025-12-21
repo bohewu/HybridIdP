@@ -332,7 +332,10 @@ async function registerPasskey() {
     await webAuthnRegister()
     await loadData()
     successMessage.value = t('mfa.passkey.registerSuccess')
-    setTimeout(() => { successMessage.value = '' }, 3000)
+    // Redirect to ReturnUrl after short delay, similar to TOTP/Email flow
+    setTimeout(() => { 
+      window.location.href = returnUrl.value
+    }, 1000)
   } catch (err) {
     errorMessage.value = err.message || t('mfa.errors.registerPasskeyFailed')
   } finally {
