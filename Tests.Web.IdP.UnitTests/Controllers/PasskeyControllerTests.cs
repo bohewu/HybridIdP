@@ -17,6 +17,7 @@ using Moq;
 using Web.IdP.Controllers.Account;
 using Xunit;
 using Core.Domain;
+using Core.Domain.Constants;
 using Infrastructure;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
@@ -169,7 +170,11 @@ public class PasskeyControllerTests
         Assert.True(success);
         Assert.Equal("testuser", username);
 
-        // Verify SignIn WAS called
-        _signInManagerMock.Verify(x => x.SignInAsync(user, false, null), Times.Once);
+        // Verify SignIn WAS called with [hwk, user, mfa] AMR claims
+        _signInManagerMock.Verify(x => x.SignInWithClaimsAsync(user, false, It.Is<IEnumerable<Claim>>(c => 
+            c.Any(claim => claim.Type == "amr" && claim.Value == Core.Domain.Constants.AuthConstants.Amr.HardwareKey) &&
+            c.Any(claim => claim.Type == "amr" && claim.Value == Core.Domain.Constants.AuthConstants.Amr.UserPresence) &&
+            c.Any(claim => claim.Type == "amr" && claim.Value == Core.Domain.Constants.AuthConstants.Amr.Mfa)
+        )), Times.Once);
     }
 }
