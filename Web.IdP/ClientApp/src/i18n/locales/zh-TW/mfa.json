@@ -39,7 +39,8 @@
     "userCanceled": "使用者已取消或生物辨識失敗",
     "securityError": "安全性網域不匹配",
     "registrationOptionsFailed": "取得註冊選項失敗",
-    "loginOptionsFailed": "取得登入選項失敗"
+    "loginOptionsFailed": "取得登入選項失敗",
+    "mandatoryMfaEnforced": "無法刪除最後一個 MFA 方法，因為系統強制要求 MFA。"
   },
   "passkey": {
     "title": "通行密鑰 (Passkeys)",

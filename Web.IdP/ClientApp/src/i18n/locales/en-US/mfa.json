@@ -39,7 +39,8 @@
     "userCanceled": "User canceled or biometric failed",
     "securityError": "Security domain mismatch",
     "registrationOptionsFailed": "Failed to get registration options",
-    "loginOptionsFailed": "Failed to get login options"
+    "loginOptionsFailed": "Failed to get login options",
+    "mandatoryMfaEnforced": "Cannot remove the last MFA method when MFA is mandatory."
   },
   "passkey": {
     "title": "Passkeys",
