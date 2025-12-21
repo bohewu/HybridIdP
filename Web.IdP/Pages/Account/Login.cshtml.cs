@@ -257,15 +257,54 @@ public partial class LoginModel : PageModel
                             }
                             // Expiry is now checked entirely in MfaSetup page
 
-                            // Store user ID for 2FA setup access using partial authentication
-                            var identity = new System.Security.Claims.ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
-                            identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, result.User.Id.ToString()));
-                            await HttpContext.SignInAsync(
-                                IdentityConstants.TwoFactorUserIdScheme,
-                                new System.Security.Claims.ClaimsPrincipal(identity));
+                            // 1. Issue AMR: pwd claim (Password authentication)
+                            // We use a list to support multiple values as per spec (though here it's just one initially)
+                            var amrList = new List<string> { Core.Domain.Constants.AuthConstants.Amr.Password };
+                            await HttpContext.Session.LoadAsync();
+                            HttpContext.Session.SetString("AuthenticationMethods", System.Text.Json.JsonSerializer.Serialize(amrList));
+                            
+                            // 2. Check Mandatory MFA Policy
+                            // If policy is enforced and user has NO MFA, force them to setup
+                            if (currentPolicy.EnforceMandatoryMfaEnrollment)
+                            {
+                                // Check if grace period is active or expired
+                                var isGracePeriodActive = false;
+                                if (result.User.MfaRequirementNotifiedAt != null)
+                                {
+                                     var expiry = result.User.MfaRequirementNotifiedAt.Value.AddDays(currentPolicy.MfaEnforcementGracePeriodDays);
+                                     if (DateTime.UtcNow < expiry)
+                                     {
+                                         isGracePeriodActive = true;
+                                     }
+                                }
+                                else
+                                {
+                                    // First time notification - active
+                                    isGracePeriodActive = true; 
+                                }
 
-                            // Redirect to MFA Setup
-                            return RedirectToPage("./MfaSetup", new { returnUrl });
+                                // If grace period expired, force setup
+                                if (!isGracePeriodActive)
+                                {
+                                    // Store user ID for 2FA setup access using partial authentication
+                                    var identity = new System.Security.Claims.ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
+                                    identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, result.User.Id.ToString()));
+                                    await HttpContext.SignInAsync(IdentityConstants.TwoFactorUserIdScheme, new System.Security.Claims.ClaimsPrincipal(identity));
+
+                                    return RedirectToPage("./MfaSetup", new { returnUrl });
+                                }
+                            }
+                            
+                            // Normal flow or Grace Period Active
+                            // Issue cookie with amr claim
+                            var claims = new List<System.Security.Claims.Claim>
+                            {
+                                new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Password)
+                            };
+                            
+                            // Note: SignInAsync below merges these claims into the principal
+                            await _signInManager.SignInWithClaimsAsync(result.User, Input.RememberMe, claims);
+                            return LocalRedirect(returnUrl);
                         }
                     }
                 }
