@@ -111,6 +111,37 @@ public partial class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLif
     }
 
     [Fact]
+    public async Task VerifyAmrClaimsInToken()
+    {
+        // Arrange
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+
+        // Act - Call UserInfo endpoint to see claims
+        var response = await _httpClient.GetAsync("/connect/userinfo");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var userInfo = await response.Content.ReadFromJsonAsync<JsonElement>();
+        
+        // OpenIddict maps Claims.AuthenticationMethodReference to "amr"
+        // Since we did password login, it should have "pwd" amr
+        if (userInfo.TryGetProperty("amr", out var amrProperty))
+        {
+            var amrs = amrProperty.ValueKind == JsonValueKind.Array 
+                ? amrProperty.EnumerateArray().Select(x => x.GetString()).ToList()
+                : new List<string?> { amrProperty.GetString() };
+            
+            Assert.Contains(AuthConstants.Amr.Password, amrs);
+            // TokenService also hardcoded "mfa" for now in password grant
+            Assert.Contains("mfa", amrs);
+        }
+        else
+        {
+            Assert.Fail("UserInfo does not contain 'amr' claim");
+        }
+    }
+
+    [Fact]
     public async Task GetMfaSetup_ValidUser_ReturnsSetupInfo()
     {
         // Arrange
