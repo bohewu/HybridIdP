@@ -24,9 +24,11 @@
     "keyPlaceholder": "e.g. scope.email.title",
     "culture": "Culture",
     "category": "Category",
-    "categoryPlaceholder": "e.g. Consent, UI...",
+    "selectCategory": "Select a category",
     "value": "Value",
     "valuePlaceholder": "Enter translated text...",
+    "isEnabled": "Enabled",
+    "isEnabledHelp": "Disabled resources will not be returned by localization services",
     "save": "Save",
     "saving": "Saving...",
     "cancel": "Cancel"
@@ -42,5 +44,16 @@
     "keyDesc": "Key (Z-A)",
     "categoryAsc": "Category (A-Z)",
     "categoryDesc": "Category (Z-A)"
+  },
+  "categories": {
+    "Consent": "OAuth Consent",
+    "LoginNotice": "Login Page Notice",
+    "Email": "Email Templates",
+    "Error": "Error Messages",
+    "UI": "General UI",
+    "Validation": "Validation Messages",
+    "Navigation": "Navigation",
+    "Notification": "Notifications",
+    "Custom": "Custom"
   }
 }

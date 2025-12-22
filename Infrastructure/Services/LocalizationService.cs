@@ -20,13 +20,13 @@ public class LocalizationService : ILocalizationService
     /// <summary>
     /// Gets the localized string for the given key and culture.
     /// Falls back to default culture ("en-US") if not found.
-    /// Returns null if no resource found.
+    /// Returns null if no resource found or resource is disabled.
     /// </summary>
     public async Task<string?> GetLocalizedStringAsync(string key, string culture)
     {
-        // Try exact culture match
+        // Try exact culture match (only enabled resources)
         var resource = await _db.Resources
-            .FirstOrDefaultAsync(r => r.Key == key && r.Culture == culture);
+            .FirstOrDefaultAsync(r => r.Key == key && r.Culture == culture && r.IsEnabled);
 
         if (resource != null)
         {
@@ -37,7 +37,7 @@ public class LocalizationService : ILocalizationService
         if (culture != "en-US")
         {
             resource = await _db.Resources
-                .FirstOrDefaultAsync(r => r.Key == key && r.Culture == "en-US");
+                .FirstOrDefaultAsync(r => r.Key == key && r.Culture == "en-US" && r.IsEnabled);
 
             if (resource != null)
             {

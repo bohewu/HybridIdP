@@ -24,9 +24,11 @@
     "keyPlaceholder": "例如 scope.email.title",
     "culture": "語系",
     "category": "分類",
-    "categoryPlaceholder": "例如 Consent, UI...",
+    "selectCategory": "選擇分類",
     "value": "翻譯內容",
     "valuePlaceholder": "請輸入翻譯後的文字...",
+    "isEnabled": "啟用",
+    "isEnabledHelp": "停用的翻譯資源不會被系統使用",
     "save": "儲存",
     "saving": "儲存中...",
     "cancel": "取消"
@@ -42,5 +44,16 @@
     "keyDesc": "Key (Z-A)",
     "categoryAsc": "分類 (A-Z)",
     "categoryDesc": "分類 (Z-A)"
+  },
+  "categories": {
+    "Consent": "OAuth 授權",
+    "LoginNotice": "登入頁公告",
+    "Email": "Email 範本",
+    "Error": "錯誤訊息",
+    "UI": "一般介面",
+    "Validation": "驗證訊息",
+    "Navigation": "導覽選單",
+    "Notification": "系統通知",
+    "Custom": "自訂"
   }
 }

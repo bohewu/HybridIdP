@@ -2,6 +2,8 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseModal from '@/components/common/BaseModal.vue'
+import ToggleSwitch from '@/components/common/ToggleSwitch.vue'
+import { ResourceCategories, getAllCategories } from '@/utils/resourceCategories'
 
 const { t } = useI18n()
 
@@ -18,11 +20,15 @@ const isEdit = computed(() => props.resource !== null)
 const submitting = ref(false)
 const error = ref(null)
 
+// Get all available categories
+const categories = getAllCategories()
+
 const formData = ref({
   key: '',
   culture: 'zh-TW',
   value: '',
-  category: ''
+  category: '',
+  isEnabled: true
 })
 
 // Initialize form
@@ -30,16 +36,18 @@ watch(() => props.resource, (newVal) => {
   if (newVal) {
     formData.value = {
       key: newVal.key,
-      culture: newVal.culture, // Usually readonly in update but API allows value/category update only
+      culture: newVal.culture,
       value: newVal.value,
-      category: newVal.category || ''
+      category: newVal.category || '',
+      isEnabled: newVal.isEnabled !== false // Default to true if undefined
     }
   } else {
     formData.value = {
       key: '',
-      culture: 'zh-TW', // Default
+      culture: 'zh-TW',
       value: '',
-      category: ''
+      category: '',
+      isEnabled: true
     }
   }
 }, { immediate: true })
@@ -58,13 +66,15 @@ const handleSubmit = async () => {
     const payload = isEdit.value 
         ? {
             value: formData.value.value,
-            category: formData.value.category || null
+            category: formData.value.category || null,
+            isEnabled: formData.value.isEnabled
           }
         : {
             key: formData.value.key,
             culture: formData.value.culture,
             value: formData.value.value,
-            category: formData.value.category || null
+            category: formData.value.category || null,
+            isEnabled: formData.value.isEnabled
         }
 
     const response = await fetch(url, {
@@ -144,14 +154,17 @@ const handleSubmit = async () => {
         <!-- Category -->
         <div>
           <label for="category" class="block text-sm font-medium text-gray-700">{{ $t('localization.form.category') }}</label>
-          <input
+          <select
             id="category"
-            data-test-id="category-input"
+            data-test-id="category-select"
             v-model="formData.category"
-            type="text"
             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
-            :placeholder="$t('localization.form.categoryPlaceholder')"
-          />
+          >
+            <option value="">{{ $t('localization.form.selectCategory') }}</option>
+            <option v-for="cat in categories" :key="cat" :value="cat">
+              {{ $t(`localization.categories.${cat}`) }}
+            </option>
+          </select>
         </div>
 
         <!-- Value -->
@@ -166,6 +179,15 @@ const handleSubmit = async () => {
             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm p-3"
             :placeholder="$t('localization.form.valuePlaceholder')"
           ></textarea>
+        </div>
+
+        <!-- IsEnabled Toggle -->
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">{{ $t('localization.form.isEnabled') }}</label>
+            <p class="text-xs text-gray-500">{{ $t('localization.form.isEnabledHelp') }}</p>
+          </div>
+          <ToggleSwitch v-model="formData.isEnabled" data-test-id="is-enabled-toggle" />
         </div>
 
       </form>

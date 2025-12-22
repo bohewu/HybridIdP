@@ -27,9 +27,14 @@ public class Resource
     public required string Value { get; set; }
 
     /// <summary>
-    /// Optional category for organizing resources (e.g., "Scope", "Error", "UI")
+    /// Optional category for organizing resources (e.g., "Consent", "LoginNotice", "Email")
     /// </summary>
     public string? Category { get; set; }
+
+    /// <summary>
+    /// Whether this resource is enabled. Disabled resources are not returned by localization services.
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
 
     /// <summary>
     /// Date created (UTC)

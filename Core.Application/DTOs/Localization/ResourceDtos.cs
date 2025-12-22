@@ -10,6 +10,7 @@ public class ResourceDto
     public required string Culture { get; set; }
     public required string Value { get; set; }
     public string? Category { get; set; }
+    public bool IsEnabled { get; set; }
     public DateTime UpdatedUtc { get; set; }
 }
 
@@ -28,6 +29,8 @@ public class CreateResourceRequest
 
     [MaxLength(100)]
     public string? Category { get; set; }
+    
+    public bool IsEnabled { get; set; } = true;
 }
 
 public class UpdateResourceRequest
@@ -37,6 +40,8 @@ public class UpdateResourceRequest
 
     [MaxLength(100)]
     public string? Category { get; set; }
+    
+    public bool? IsEnabled { get; set; }
 }
 
 public class PagedResourcesDto
