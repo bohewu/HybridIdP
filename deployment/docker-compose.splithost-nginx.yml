@@ -1,0 +1,100 @@
+# HybridIdP - Split-Host with Local Nginx (Most Secure)
+#
+# Architecture:
+#   Host A (External RP) ──HTTP:8080──► Host B (Local Nginx) ──Docker Network──► App
+#
+# Security layers:
+#   1. iptables DOCKER-USER chain (optional, extra layer)
+#   2. Nginx allow/deny (only accepts traffic from Host A)
+#   3. App in internal Docker network (not directly exposed)
+#
+# Usage:
+#   1. Set ALLOWED_PROXY_IPS in .env (semicolon-separated)
+#   2. docker compose -f docker-compose.splithost-nginx.yml --env-file .env up -d
+
+services:
+  # Local Nginx - The only exposed service
+  nginx-gateway:
+    image: nginx:alpine
+    ports:
+      # Expose to external reverse proxy
+      - "${INTERNAL_IP:-0.0.0.0}:8080:80"
+    volumes:
+      - ./nginx/splithost-gateway.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - idp-service
+
+  # HybridIdP App - NOT exposed, only accessible via Docker network
+  idp-service:
+    build:
+      context: ../
+      dockerfile: Web.IdP/Dockerfile
+    # NO ports exposed - only accessible from nginx-gateway
+    environment:
+      - ASPNETCORE_URLS=http://+:80
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - DATABASE_PROVIDER=${DATABASE_PROVIDER:-SqlServer}
+      - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection}
+      - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection}
+      - ConnectionStrings__RedisConnection=${ConnectionStrings__RedisConnection}
+      - Redis__Enabled=${Redis__Enabled:-true}
+      # Trust the local nginx-gateway
+      - Proxy__Enabled=true
+      - Proxy__KnownProxies=172.16.0.0/12;192.168.0.0/16;10.0.0.0/8
+      - Certificates__EncryptionCertificatePath=/app/certs/encryption.pfx
+      - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
+      - Certificates__SigningCertificatePath=/app/certs/signing.pfx
+      - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
+    volumes:
+      - ./certs:/app/certs:ro
+    networks:
+      - backend  # Only on backend network
+    depends_on:
+      - mssql-service
+      - postgres-service
+      - redis-service
+
+  mssql-service:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-YourStrong!Passw0rd}"
+    # No external port - only Docker network
+    networks:
+      - backend
+    volumes:
+      - mssql-data:/var/opt/mssql
+
+  postgres-service:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: hybridauth_idp
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    # No external port - only Docker network
+    networks:
+      - backend
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis-service:
+    image: redis:alpine
+    # No external port - only Docker network
+    networks:
+      - backend
+    volumes:
+      - redis-data:/data
+
+networks:
+  frontend:
+    # External access allowed (nginx-gateway)
+  backend:
+    internal: true  # No external access - isolated network
+
+volumes:
+  mssql-data:
+  postgres-data:
+  redis-data:
