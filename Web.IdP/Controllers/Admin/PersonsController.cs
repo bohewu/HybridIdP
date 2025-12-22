@@ -116,7 +116,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching persons with term: {SearchTerm}", term);
+            _logger.LogError(ex, "Error searching persons with term: {SearchTerm}", term?.Replace(Environment.NewLine, ""));
             return StatusCode(500, "An error occurred while searching persons");
         }
     }

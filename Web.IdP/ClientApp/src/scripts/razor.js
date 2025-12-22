@@ -125,10 +125,33 @@ async function initPasskeyLogin() {
         return;
     }
 
+    // Safe redirect - only allow relative URLs or same-origin
+    function safeRedirect(url) {
+        const defaultUrl = '/';
+        if (!url) return defaultUrl;
+        
+        // Only allow relative URLs starting with /
+        if (url.startsWith('/') && !url.startsWith('//')) {
+            return url;
+        }
+        
+        // Check if same origin
+        try {
+            const parsed = new URL(url, window.location.origin);
+            if (parsed.origin === window.location.origin) {
+                return url;
+            }
+        } catch {
+            // Invalid URL
+        }
+        
+        return defaultUrl;
+    }
+
     passkeyBtn.addEventListener('click', async () => {
         try {
             const username = usernameInput.value;
-            const returnUrl = passkeyBtn.getAttribute('data-return-url') || '/';
+            const returnUrl = safeRedirect(passkeyBtn.getAttribute('data-return-url'));
             const result = await authenticateWithPasskey(username);
             if (result.success) {
                 window.location.href = returnUrl;
@@ -153,7 +176,7 @@ async function initPasskeyLogin() {
                 authenticateWithPasskey(undefined, 'conditional')
                     .then(result => {
                         if (result.success) {
-                            const returnUrl = passkeyBtn.getAttribute('data-return-url') || '/';
+                            const returnUrl = safeRedirect(passkeyBtn.getAttribute('data-return-url'));
                             window.location.href = returnUrl;
                         }
                     })
