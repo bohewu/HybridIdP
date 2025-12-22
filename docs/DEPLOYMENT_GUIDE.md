@@ -162,7 +162,9 @@ For connecting to an existing external database (e.g., Azure SQL, Amazon RDS, or
 
 ### Mode D: Split-Host Deployment (Reverse Proxy on Host A, App on Host B)
 
-For scenarios where a reverse proxy (Nginx, BunkerWeb, Traefik, etc.) runs on a separate host from HybridIdP:
+For scenarios where a reverse proxy (Nginx, BunkerWeb, Traefik, etc.) runs on a separate host from HybridIdP.
+
+**Files**: `docker-compose.splithost.yml`
 
 ```
 ┌─────────────────────┐          ┌─────────────────────┐
@@ -173,18 +175,30 @@ For scenarios where a reverse proxy (Nginx, BunkerWeb, Traefik, etc.) runs on a 
 └─────────────────────┘          └─────────────────────┘
 ```
 
-**Host B (HybridIdP) Configuration:**
+#### Security Considerations
 
-1. Use `docker-compose.internal.yml` which exposes port `8080`.
-2. Configure `.env`:
+> [!CAUTION]
+> Docker bypasses UFW/firewalld by default! Use IP binding to restrict access.
+
+The `docker-compose.splithost.yml` binds ports to a specific internal IP instead of `0.0.0.0`, ensuring only your internal network can reach the services.
+
+#### Host B (HybridIdP) Configuration
+
+1. Configure `.env`:
    ```bash
-   # Enable forwarded headers support
-   Proxy__Enabled=true
-   # Trust the reverse proxy IP (Host A)
-   Proxy__KnownProxies=192.168.1.10
+   # This host's internal IP (ports will only bind to this IP)
+   INTERNAL_IP=192.168.1.20
+   
+   # Reverse proxy host's IP (for forwarded headers validation)
+   PROXY_HOST_IP=192.168.1.10
    ```
 
-**Host A (Reverse Proxy) Configuration:**
+2. Run:
+   ```bash
+   docker compose -f docker-compose.splithost.yml --env-file .env up -d
+   ```
+
+#### Host A (Reverse Proxy) Configuration
 
 Configure your reverse proxy to forward to Host B:
 
