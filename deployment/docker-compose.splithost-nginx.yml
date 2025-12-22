@@ -24,6 +24,11 @@ services:
     networks:
       - frontend
       - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
     depends_on:
       - idp-service
 
@@ -52,6 +57,11 @@ services:
       - ./certs:/app/certs:ro
     networks:
       - backend  # Only on backend network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "30"
     depends_on:
       - mssql-service
       - postgres-service
@@ -87,6 +97,11 @@ services:
       - backend
     volumes:
       - redis-data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
 
 networks:
   frontend:
