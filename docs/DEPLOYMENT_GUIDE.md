@@ -178,18 +178,42 @@ For scenarios where a reverse proxy (Nginx, BunkerWeb, Traefik, etc.) runs on a 
 #### Security Considerations
 
 > [!CAUTION]
-> Docker bypasses UFW/firewalld by default! Use IP binding to restrict access.
+> Docker bypasses UFW/firewalld by default! Use iptables + IP binding for proper security.
 
-The `docker-compose.splithost.yml` binds ports to a specific internal IP instead of `0.0.0.0`, ensuring only your internal network can reach the services.
+##### Recommended: iptables + Interface Binding
+
+1. **Bind to internal IP** in `.env`:
+   ```bash
+   INTERNAL_IP=192.168.1.20
+   ```
+
+2. **Add iptables rule** to only allow Host A:
+   ```bash
+   # Only allow reverse proxy (192.168.1.10) to connect to port 8080
+   iptables -I DOCKER-USER -i eth0 -p tcp --dport 8080 ! -s 192.168.1.10 -j DROP
+   
+   # Persist the rule (Ubuntu/Debian)
+   apt install iptables-persistent
+   netfilter-persistent save
+   ```
+
+##### How Security Layers Work Together
+
+| Layer | Component | Purpose |
+|-------|-----------|---------|
+| Network | iptables `DOCKER-USER` | Only allow specific source IPs |
+| Network | `INTERNAL_IP` binding | Only listen on internal interface |
+| Application | `Proxy__KnownProxies` | Trust forwarded headers from specific IPs only |
+| Application | `ForwardedHeadersMiddleware` | Process `X-Forwarded-For`, `X-Forwarded-Proto` |
 
 #### Host B (HybridIdP) Configuration
 
 1. Configure `.env`:
    ```bash
-   # This host's internal IP (ports will only bind to this IP)
+   # Bind to internal interface only
    INTERNAL_IP=192.168.1.20
    
-   # Reverse proxy host's IP (for forwarded headers validation)
+   # Trust reverse proxy for forwarded headers
    PROXY_HOST_IP=192.168.1.10
    ```
 
@@ -200,7 +224,7 @@ The `docker-compose.splithost.yml` binds ports to a specific internal IP instead
 
 #### Host A (Reverse Proxy) Configuration
 
-Configure your reverse proxy to forward to Host B:
+Configure your reverse proxy to forward to Host B. **No plugins required** - standard nginx includes `ngx_http_realip_module`:
 
 ```nginx
 # Nginx example
