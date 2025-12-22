@@ -296,6 +296,16 @@ public static class ServiceCollectionExtensions
             })
             .AddServer(options =>
             {
+                // Optional: Set a fixed issuer URI for tokens.
+                // If not set, OpenIddict uses the request URL automatically.
+                // Recommended for production when behind a reverse proxy.
+                // Can be configured via environment variable: OpenIddict__Issuer
+                var issuerUri = configuration["OpenIddict:Issuer"];
+                if (!string.IsNullOrEmpty(issuerUri))
+                {
+                    options.SetIssuer(new Uri(issuerUri));
+                }
+
                 options.SetAuthorizationEndpointUris("/connect/authorize")
                        .SetTokenEndpointUris("/connect/token")
                        .SetUserInfoEndpointUris("/connect/userinfo")
