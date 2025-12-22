@@ -15,7 +15,12 @@
     "culture": "語系",
     "value": "內容",
     "category": "分類",
+    "status": "狀態",
     "actions": "操作"
+  },
+  "status": {
+    "enabled": "啟用",
+    "disabled": "停用"
   },
   "form": {
     "createTitle": "新增翻譯",

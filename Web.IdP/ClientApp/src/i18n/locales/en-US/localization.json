@@ -15,7 +15,12 @@
     "culture": "Culture",
     "value": "Value",
     "category": "Category",
+    "status": "Status",
     "actions": "Actions"
+  },
+  "status": {
+    "enabled": "Enabled",
+    "disabled": "Disabled"
   },
   "form": {
     "createTitle": "Create Resource",

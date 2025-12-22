@@ -38,6 +38,9 @@ defineEmits(['edit', 'delete'])
           <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             {{ $t('localization.table.category') }}
           </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            {{ $t('localization.table.status') }}
+          </th>
           <th scope="col" class="relative px-6 py-3">
             <span class="sr-only">{{ $t('localization.table.actions') }}</span>
           </th>
@@ -58,6 +61,16 @@ defineEmits(['edit', 'delete'])
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
             {{ resource.category || '-' }}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm">
+            <span v-if="resource.isEnabled" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <span class="w-2 h-2 mr-1 bg-green-500 rounded-full"></span>
+              {{ $t('localization.status.enabled') }}
+            </span>
+            <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              <span class="w-2 h-2 mr-1 bg-gray-400 rounded-full"></span>
+              {{ $t('localization.status.disabled') }}
+            </span>
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
             <button
