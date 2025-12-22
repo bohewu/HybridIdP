@@ -254,6 +254,78 @@ server {
 > [!IMPORTANT]
 > The `X-Forwarded-Proto` header is critical. If not set correctly, HybridIdP will generate `http://` URLs instead of `https://`, breaking OAuth flows.
 
+### Mode E: Split-Host + External Database (最安全)
+
+連接外部 SQL Server/PostgreSQL，不包含本地資料庫容器。
+
+**Files**: `docker-compose.splithost-nginx-nodb.yml`
+
+**架構：**
+```
+┌─────────────────────────────────────────┐
+│  Docker Host                            │
+│  ┌─────────────────┐                    │
+│  │ nginx-gateway   │ ← 唯一暴露         │
+│  └────────┬────────┘                    │
+│  ┌────────▼────────┐ ┌─────────────┐    │
+│  │ idp-service     │ │ redis       │    │
+│  └────────┬────────┘ └─────────────┘    │
+└───────────┼─────────────────────────────┘
+            │ TCP:1433
+            ▼
+   External SQL Server
+```
+
+**設定：**
+1. 編輯 `.env` 設定外部資料庫連線：
+   ```bash
+   DATABASE_PROVIDER=SqlServer
+   ConnectionStrings__SqlServerConnection=Server=your-sql-server;Database=HybridAuthIdP;User Id=sa;Password=xxx;TrustServerCertificate=True;
+   ```
+
+2. 編輯 `nginx/splithost-gateway.conf` 設定允許的 Proxy IP
+
+3. 啟動：
+   ```bash
+   docker compose -f docker-compose.splithost-nginx-nodb.yml --env-file .env up -d
+   ```
+
+---
+
+## 驗證部署
+
+### 快速驗證 (在 Host 上)
+
+```bash
+# 檢查容器狀態
+docker compose ps
+
+# 檢查健康狀態
+curl -k http://localhost:8080/health
+
+# 查看 logs（如果有問題）
+docker compose logs -f idp-service
+```
+
+### 完整驗證
+
+| 檢查項目 | 命令 / 方法 |
+|----------|-------------|
+| 容器運行 | `docker compose ps` |
+| 健康狀態 | `curl http://localhost:8080/health` |
+| OIDC 設定 | `curl http://localhost:8080/.well-known/openid-configuration` |
+| 登入頁面 | 瀏覽器開啟 `http://localhost:8080` |
+| DB 連線 | 查看 logs 無連線錯誤 |
+
+### 常見問題
+
+| 問題 | 解決方案 |
+|------|----------|
+| 容器不斷重啟 | `docker compose logs idp-service` 查看錯誤 |
+| 無法連接 DB | 檢查 `.env` 的連線字串和網路 |
+| 502 Bad Gateway | idp-service 未啟動，檢查 logs |
+| HTTP 而非 HTTPS | 確認 `X-Forwarded-Proto` header 設定 |
+
 ---
 
 ## Database & Redis
@@ -267,3 +339,4 @@ To switch between SQL Server and PostgreSQL:
 ### Redis Caching
 - **Enable**: Set `Redis__Enabled=true` in `.env`.
 - **Disable**: Set `Redis__Enabled=false`. The application will fall back to In-Memory caching.
+
