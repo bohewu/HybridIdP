@@ -19,7 +19,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/people")]
 [ApiAuthorize]
-public class PersonsController : ControllerBase
+public partial class PersonsController : ControllerBase
 {
     private readonly IPersonService _personService;
     private readonly ILogger<PersonsController> _logger;
@@ -62,7 +62,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving persons list");
+            LogErrorRetrievingPersonsList(ex);
             return StatusCode(500, "An error occurred while retrieving persons");
         }
     }
@@ -84,7 +84,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving person {PersonId}", id);
+            LogErrorRetrievingPerson(ex, id);
             return StatusCode(500, "An error occurred while retrieving the person");
         }
     }
@@ -116,7 +116,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching persons with term: {SearchTerm}", term?.Replace(Environment.NewLine, ""));
+            LogErrorSearchingPersons(ex, term?.Replace(Environment.NewLine, "") ?? string.Empty);
             return StatusCode(500, "An error occurred while searching persons");
         }
     }
@@ -153,7 +153,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating person: {Message}", ex.Message);
+            LogErrorCreatingPerson(ex, ex.Message);
             return StatusCode(500, "An error occurred while creating the person");
         }
     }
@@ -189,7 +189,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating person {PersonId}", id);
+            LogErrorUpdatingPerson(ex, id);
             return StatusCode(500, "An error occurred while updating the person");
         }
     }
@@ -220,7 +220,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting person {PersonId}", id);
+            LogErrorDeletingPerson(ex, id);
             return StatusCode(500, "An error occurred while deleting the person");
         }
     }
@@ -252,7 +252,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving accounts for person {PersonId}", id);
+            LogErrorRetrievingAccounts(ex, id);
             return StatusCode(500, "An error occurred while retrieving accounts");
         }
     }
@@ -283,12 +283,12 @@ public class PersonsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation when linking account {UserId} to person {PersonId}", dto.UserId, id);
+            LogWarningInvalidLinkOperation(ex, dto.UserId, id);
             return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error linking account {UserId} to person {PersonId}", dto.UserId, id);
+            LogErrorLinkingAccount(ex, dto.UserId, id);
             return StatusCode(500, "An error occurred while linking the account");
         }
     }
@@ -319,7 +319,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error unlinking account {UserId}", userId);
+            LogErrorUnlinkingAccount(ex, userId);
             return StatusCode(500, "An error occurred while unlinking the account");
         }
     }
@@ -347,7 +347,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving available users");
+            LogErrorRetrievingAvailableUsers(ex);
             return StatusCode(500, "An error occurred while retrieving available users");
         }
     }
@@ -381,7 +381,7 @@ public class PersonsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error verifying identity for person {PersonId}", id);
+            LogErrorVerifyingIdentity(ex, id);
             return StatusCode(500, "An error occurred while verifying the identity");
         }
     }
@@ -488,6 +488,46 @@ public class PersonsController : ControllerBase
             }).ToList()
         };
     }
+
+    #endregion
+
+    #region LoggerMessage Methods
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error retrieving persons list")]
+    partial void LogErrorRetrievingPersonsList(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error retrieving person {PersonId}")]
+    partial void LogErrorRetrievingPerson(Exception ex, Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error searching persons with term: {SearchTerm}")]
+    partial void LogErrorSearchingPersons(Exception ex, string searchTerm);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error creating person: {Message}")]
+    partial void LogErrorCreatingPerson(Exception ex, string message);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error updating person {PersonId}")]
+    partial void LogErrorUpdatingPerson(Exception ex, Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error deleting person {PersonId}")]
+    partial void LogErrorDeletingPerson(Exception ex, Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error retrieving accounts for person {PersonId}")]
+    partial void LogErrorRetrievingAccounts(Exception ex, Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid operation when linking account {UserId} to person {PersonId}")]
+    partial void LogWarningInvalidLinkOperation(Exception ex, Guid userId, Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error linking account {UserId} to person {PersonId}")]
+    partial void LogErrorLinkingAccount(Exception ex, Guid userId, Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error unlinking account {UserId}")]
+    partial void LogErrorUnlinkingAccount(Exception ex, Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error retrieving available users")]
+    partial void LogErrorRetrievingAvailableUsers(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error verifying identity for person {PersonId}")]
+    partial void LogErrorVerifyingIdentity(Exception ex, Guid personId);
 
     #endregion
 }
