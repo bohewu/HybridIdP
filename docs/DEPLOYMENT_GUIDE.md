@@ -160,6 +160,59 @@ For connecting to an existing external database (e.g., Azure SQL, Amazon RDS, or
     *   You can comment out the `depends_on` sections for `mssql-service` or `postgres-service` in your chosen YAML file.
     *   Optionally, remove the `mssql-service` and `postgres-service` blocks entirely if you don't need them.
 
+### Mode D: Split-Host Deployment (Reverse Proxy on Host A, App on Host B)
+
+For scenarios where a reverse proxy (Nginx, BunkerWeb, Traefik, etc.) runs on a separate host from HybridIdP:
+
+```
+┌─────────────────────┐          ┌─────────────────────┐
+│  Host A (Proxy)     │   HTTP   │  Host B (App)       │
+│  Nginx/BunkerWeb    │ ───────► │  HybridIdP          │
+│  192.168.1.10       │  :8080   │  192.168.1.20       │
+│  (SSL Termination)  │          │  (Internal Mode)    │
+└─────────────────────┘          └─────────────────────┘
+```
+
+**Host B (HybridIdP) Configuration:**
+
+1. Use `docker-compose.internal.yml` which exposes port `8080`.
+2. Configure `.env`:
+   ```bash
+   # Enable forwarded headers support
+   Proxy__Enabled=true
+   # Trust the reverse proxy IP (Host A)
+   Proxy__KnownProxies=192.168.1.10
+   ```
+
+**Host A (Reverse Proxy) Configuration:**
+
+Configure your reverse proxy to forward to Host B:
+
+```nginx
+# Nginx example
+upstream hybrididp {
+    server 192.168.1.20:8080;
+}
+
+server {
+    listen 443 ssl;
+    server_name idp.example.com;
+
+    # SSL configuration...
+
+    location / {
+        proxy_pass http://hybrididp;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+> [!IMPORTANT]
+> The `X-Forwarded-Proto` header is critical. If not set correctly, HybridIdP will generate `http://` URLs instead of `https://`, breaking OAuth flows.
+
 ---
 
 ## Database & Redis
