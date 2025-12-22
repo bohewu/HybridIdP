@@ -31,7 +31,17 @@ public static class LocalizationSeeder
             new { Key = "scope.openid.display", Culture = "zh-TW", Value = "驗證您的身分", Category = "Consent" },
             new { Key = "scope.openid.description", Culture = "zh-TW", Value = "此範圍允許應用程式驗證您的身分，並將您的登入與帳號連結。", Category = "Consent" },
             new { Key = "scope.roles.display", Culture = "zh-TW", Value = "存取您的角色", Category = "Consent" },
-            new { Key = "scope.roles.description", Culture = "zh-TW", Value = "此範圍允許應用程式查看您所屬的群組或角色。", Category = "Consent" }
+            new { Key = "scope.roles.description", Culture = "zh-TW", Value = "此範圍允許應用程式查看您所屬的群組或角色。", Category = "Consent" },
+            
+            // Login Notice Examples (en-US)
+            new { Key = "LoginNotice.DevEnvironment", Culture = "en-US", Value = "🔧 This is a development environment", Category = "LoginNotice" },
+            new { Key = "LoginNotice.UseCompanyEmail", Culture = "en-US", Value = "Please use your company email to sign in", Category = "LoginNotice" },
+            new { Key = "LoginNotice.ContactIT", Culture = "en-US", Value = "Need help? Contact IT support", Category = "LoginNotice" },
+            
+            // Login Notice Examples (zh-TW)
+            new { Key = "LoginNotice.DevEnvironment", Culture = "zh-TW", Value = "🔧 這是開發環境", Category = "LoginNotice" },
+            new { Key = "LoginNotice.UseCompanyEmail", Culture = "zh-TW", Value = "請使用公司電子郵件登入", Category = "LoginNotice" },
+            new { Key = "LoginNotice.ContactIT", Culture = "zh-TW", Value = "需要協助？請聯繫 IT 部門", Category = "LoginNotice" }
         };
 
         foreach (var res in resources)
