@@ -61,6 +61,32 @@ HybridIdP uses **OpenIddict**, which requires valid X.509 certificates to sign a
 
 ## Configuration
 
+### Quick Setup (Recommended)
+
+Use the interactive setup script to generate a `.env` file with secure passwords:
+
+**Windows (PowerShell):**
+```powershell
+cd deployment
+.\setup-env.ps1
+```
+
+**Linux/macOS (Bash):**
+```bash
+cd deployment
+chmod +x setup-env.sh
+./setup-env.sh
+```
+
+The script will:
+- Prompt for deployment mode (Nginx/Internal)
+- Prompt for database provider (SqlServer/PostgreSQL)
+- Generate secure random passwords
+- Optionally generate OpenIddict certificates
+- Create a complete `.env` file
+
+### Manual Configuration
+
 1. Copy the example environment file:
    ```bash
    cd deployment
