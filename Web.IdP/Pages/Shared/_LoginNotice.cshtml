@@ -1,8 +1,21 @@
 @using Web.IdP.Options
+@using Core.Application
+@using Microsoft.AspNetCore.Localization
 @model LoginNotice
+@inject ILocalizationService LocalizationService
 
 @if (Model != null && !string.IsNullOrWhiteSpace(Model.Message))
 {
+    // Support i18n: if message starts with @, treat it as a localization key from DB
+    var message = Model.Message;
+    if (message.StartsWith("@"))
+    {
+        var key = message.Substring(1);
+        var culture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
+        var localized = await LocalizationService.GetLocalizedStringAsync(key, culture);
+        message = localized ?? message; // Fallback to key if not found
+    }
+    
     var cssClass = Model.Type?.ToLower() switch
     {
         "info" => "bg-blue-50 border-blue-400 text-blue-700",
@@ -50,7 +63,7 @@
                         break;
                 }
             </span>
-            <span>@Html.Raw(Model.Message)</span>
+            <span>@Html.Raw(message)</span>
         </div>
     </div>
 }
