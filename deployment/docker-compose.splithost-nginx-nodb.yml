@@ -19,7 +19,7 @@
 # Usage:
 #   1. Edit nginx/splithost-gateway.conf to allow your reverse proxy IP
 #   2. Set your external DB connection string in .env
-#   3. docker compose -f docker-compose.production.yml --env-file .env up -d
+#   3. docker compose -f docker-compose.splithost-nginx-nodb.yml --env-file .env up -d
 
 services:
   # Local Nginx Gateway - The only exposed service
