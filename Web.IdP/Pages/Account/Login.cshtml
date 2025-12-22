@@ -2,17 +2,21 @@
 @model Web.IdP.Pages.Account.LoginModel
 @using Web.IdP.TagHelpers
 @using Web.IdP.Services
+@using Web.IdP.Options
 @using Core.Application
 @using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Options
 @using Microsoft.AspNetCore.Localization
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 @inject IViteManifestService ViteService
 @inject IBrandingService BrandingService
+@inject IOptions<BrandingOptions> BrandingOptions
 @{
     ViewData["Title"] = Localizer["Login"];
     Layout = null;
     var currentCulture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
     var productName = await BrandingService.GetProductNameAsync();
+    var loginNotices = BrandingOptions.Value.LoginNotices;
 }
 
 <!DOCTYPE html>
@@ -37,6 +41,14 @@
 </head>
 <body class="bg-gray-50 google-font min-h-screen flex flex-col">
     <div class="google-login-container">
+        @* Top Notice - Above the card *@
+        @if (loginNotices?.Top != null && !string.IsNullOrWhiteSpace(loginNotices.Top.Message))
+        {
+            <div class="w-full max-w-md mx-auto mb-4">
+                <partial name="_LoginNotice" model="loginNotices.Top" />
+            </div>
+        }
+        
         <div class="google-login-card">
             <div class="google-login-header text-center">
                  <div class="flex justify-center mb-4">
@@ -54,6 +66,14 @@
             <div class="google-login-body">
                 <form method="post">
                     <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="login-error-summary"></div>
+                    
+                    @* Form Notice - Inside form, before inputs *@
+                    @if (loginNotices?.Form != null && !string.IsNullOrWhiteSpace(loginNotices.Form.Message))
+                    {
+                        <div class="mb-4">
+                            <partial name="_LoginNotice" model="loginNotices.Form" />
+                        </div>
+                    }
                     
                     <input type="hidden" asp-for="ReturnUrl" />
                     
@@ -113,6 +133,14 @@
                             </button>
                         </div>
                     </div>
+                    
+                    @* Bottom Notice - After submit button *@
+                    @if (loginNotices?.Bottom != null && !string.IsNullOrWhiteSpace(loginNotices.Bottom.Message))
+                    {
+                        <div class="mt-6">
+                            <partial name="_LoginNotice" model="loginNotices.Bottom" />
+                        </div>
+                    }
                 </form>
             </div>
         </div>
