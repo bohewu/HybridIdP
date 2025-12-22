@@ -1,0 +1,80 @@
+# HybridIdP - Split-Host Deployment (App Only)
+#
+# Use this file when:
+# - Reverse Proxy (Nginx/BunkerWeb/Traefik) runs on a DIFFERENT host
+# - This host only runs HybridIdP + optional database/redis
+#
+# Security: This config binds ports to a specific internal IP to prevent
+# external access. Replace INTERNAL_IP with your actual internal IP.
+#
+# Usage:
+#   1. Set INTERNAL_IP in .env to this host's internal IP (e.g., 192.168.1.20)
+#   2. docker compose -f docker-compose.splithost.yml --env-file .env up -d
+
+services:
+  idp-service:
+    build:
+      context: ../
+      dockerfile: Web.IdP/Dockerfile
+    ports:
+      # SECURITY: Only bind to internal IP, not 0.0.0.0
+      # This prevents direct external access, only your reverse proxy can connect
+      - "${INTERNAL_IP:-127.0.0.1}:8080:80"
+    environment:
+      - ASPNETCORE_URLS=http://+:80
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - DATABASE_PROVIDER=${DATABASE_PROVIDER:-SqlServer}
+      - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection}
+      - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection}
+      - ConnectionStrings__RedisConnection=${ConnectionStrings__RedisConnection}
+      - Redis__Enabled=${Redis__Enabled:-true}
+      # IMPORTANT: Must be true for split-host deployments
+      - Proxy__Enabled=true
+      # IMPORTANT: Set this to your reverse proxy host's IP
+      - Proxy__KnownProxies=${PROXY_HOST_IP}
+      - Certificates__EncryptionCertificatePath=/app/certs/encryption.pfx
+      - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
+      - Certificates__SigningCertificatePath=/app/certs/signing.pfx
+      - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
+    volumes:
+      - ./certs:/app/certs:ro
+    depends_on:
+      - mssql-service
+      - postgres-service
+      - redis-service
+
+  mssql-service:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-YourStrong!Passw0rd}"
+    ports:
+      # Database only accessible from internal network
+      - "${INTERNAL_IP:-127.0.0.1}:1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+
+  postgres-service:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: hybridauth_idp
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    ports:
+      # Database only accessible from internal network
+      - "${INTERNAL_IP:-127.0.0.1}:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis-service:
+    image: redis:alpine
+    ports:
+      # Redis only accessible from internal network
+      - "${INTERNAL_IP:-127.0.0.1}:6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  mssql-data:
+  postgres-data:
+  redis-data:
