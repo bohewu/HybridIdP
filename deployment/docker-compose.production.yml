@@ -1,0 +1,105 @@
+# HybridIdP - Split-Host with Local Nginx, External Database
+#
+# Architecture:
+#   Host A (External RP) ──HTTP:8080──► Host B (Local Nginx) ──Docker Network──► App
+#                                                                    │
+#                                                                    ▼
+#                                                            External SQL Server
+#
+# Use case:
+#   - IdP + Redis run in Docker on this host
+#   - SQL Server/PostgreSQL is on a separate host (existing DB server)
+#   - Most secure and production-ready configuration
+#
+# Security:
+#   - App in internal Docker network (not directly exposed)
+#   - Only nginx-gateway is exposed
+#   - Nginx filters by IP allowlist
+#
+# Usage:
+#   1. Edit nginx/splithost-gateway.conf to allow your reverse proxy IP
+#   2. Set your external DB connection string in .env
+#   3. docker compose -f docker-compose.production.yml --env-file .env up -d
+
+services:
+  # Local Nginx Gateway - The only exposed service
+  nginx-gateway:
+    image: nginx:alpine
+    ports:
+      - "${INTERNAL_IP:-0.0.0.0}:8080:80"
+    volumes:
+      - ./nginx/splithost-gateway.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - frontend
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    depends_on:
+      - idp-service
+    restart: unless-stopped
+
+  # HybridIdP Application - NOT exposed, only accessible via Docker network
+  idp-service:
+    build:
+      context: ../
+      dockerfile: Web.IdP/Dockerfile
+    # NO ports exposed - only accessible from nginx-gateway
+    environment:
+      - ASPNETCORE_URLS=http://+:80
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      # Database - connects to EXTERNAL SQL Server/PostgreSQL
+      - DATABASE_PROVIDER=${DATABASE_PROVIDER:-SqlServer}
+      - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection}
+      - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection}
+      # Redis - connects to local redis-service
+      - Redis__Enabled=${Redis__Enabled:-true}
+      - ConnectionStrings__RedisConnection=redis-service:6379
+      # Proxy settings - trust local nginx-gateway
+      - Proxy__Enabled=true
+      - Proxy__KnownProxies=172.16.0.0/12;192.168.0.0/16;10.0.0.0/8
+      # OpenIddict Certificates
+      - Certificates__EncryptionCertificatePath=/app/certs/encryption.pfx
+      - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
+      - Certificates__SigningCertificatePath=/app/certs/signing.pfx
+      - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
+      # Optional: Fixed issuer for production
+      - OpenIddict__Issuer=${OpenIddict__Issuer:-}
+    volumes:
+      - ./certs:/app/certs:ro
+    networks:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "30"
+    depends_on:
+      - redis-service
+    restart: unless-stopped
+
+  # Redis - Session cache and distributed caching
+  redis-service:
+    image: redis:alpine
+    # No external port - only Docker network
+    networks:
+      - backend
+    volumes:
+      - redis-data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    restart: unless-stopped
+
+networks:
+  frontend:
+    # External access (nginx-gateway only)
+  backend:
+    internal: true  # Isolated - no external access
+
+volumes:
+  redis-data:
