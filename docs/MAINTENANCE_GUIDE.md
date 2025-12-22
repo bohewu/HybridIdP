@@ -100,6 +100,55 @@ docker logs idp-service > idp-service.log 2>&1
 /var/lib/docker/containers/<container-id>/<container-id>-json.log
 ```
 
+### 選擇 Logging Driver
+
+Docker 支援多種 logging driver，根據需求選擇：
+
+| Driver | 優點 | 缺點 | 適合場景 |
+|--------|------|------|----------|
+| **json-file** (預設) | 本地可查、易備份 | 需另外收集 | 小規模、搭配 Vector |
+| **syslog** | 即時轉發、不落地 | 本地無法查 | 已有 Syslog/SIEM |
+| **loki** | 直送 Loki | 依賴網路 | 純 Loki 環境 |
+
+#### 使用 json-file (目前設定)
+
+```yaml
+# Compose 已預設使用此設定
+logging:
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "30"
+```
+
+#### 使用 syslog 直送
+
+如果有現有 Syslog server 或 SIEM，可改用 syslog driver：
+
+```yaml
+# 修改 docker-compose 中的服務
+idp-service:
+  logging:
+    driver: "syslog"
+    options:
+      syslog-address: "tcp://192.168.1.100:514"
+      syslog-format: "rfc5424"
+      tag: "hybrididp-{{.Name}}"
+```
+
+**直送到 VictoriaLogs (syslog)：**
+
+```yaml
+# VictoriaLogs 支援 syslog 協議
+logging:
+  driver: "syslog"
+  options:
+    syslog-address: "tcp://victorialogs:514"
+    tag: "{{.Name}}"
+```
+
+> **注意**：使用 syslog driver 後，`docker logs` 命令將無法查看，需透過 log server 查詢。
+
 ---
 
 ## Loki + Grafana 設定
