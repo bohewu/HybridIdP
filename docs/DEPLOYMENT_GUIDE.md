@@ -166,6 +166,9 @@ For scenarios where a reverse proxy (Nginx, BunkerWeb, Traefik, etc.) runs on a 
 
 **Files**: `docker-compose.splithost.yml`
 
+> [!TIP]
+> For detailed step-by-step instructions, see [SPLIT_HOST_SECURITY.md](../deployment/SPLIT_HOST_SECURITY.md)
+
 ```
 ┌─────────────────────┐          ┌─────────────────────┐
 │  Host A (Proxy)     │   HTTP   │  Host B (App)       │
