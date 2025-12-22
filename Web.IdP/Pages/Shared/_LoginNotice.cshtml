@@ -13,7 +13,12 @@
         var key = message.Substring(1);
         var culture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
         var localized = await LocalizationService.GetLocalizedStringAsync(key, culture);
-        message = localized ?? message; // Fallback to key if not found
+        // If resource is disabled or not found, don't show the notice
+        if (string.IsNullOrEmpty(localized))
+        {
+            return;
+        }
+        message = localized;
     }
     
     var cssClass = Model.Type?.ToLower() switch
