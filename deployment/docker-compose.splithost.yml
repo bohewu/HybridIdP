@@ -17,9 +17,11 @@ services:
       context: ../
       dockerfile: Web.IdP/Dockerfile
     ports:
-      # SECURITY: Only bind to internal IP, not 0.0.0.0
-      # This prevents direct external access, only your reverse proxy can connect
-      - "${INTERNAL_IP:-127.0.0.1}:8080:80"
+      # Option 1: Bind to specific internal IP (recommended if host has public IP)
+      #   Set INTERNAL_IP=192.168.1.20 to only listen on internal network
+      # Option 2: Leave INTERNAL_IP unset to bind to all interfaces (0.0.0.0)
+      #   Relies on firewall + Proxy__KnownProxies for security
+      - "${INTERNAL_IP:-0.0.0.0}:8080:80"
     environment:
       - ASPNETCORE_URLS=http://+:80
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
