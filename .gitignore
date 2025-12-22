@@ -51,3 +51,12 @@ test-*.md
 # Security scan reports
 security-reports/
 
+# Deployment secrets (NEVER commit these)
+deployment/.env
+deployment/certs/*.pfx
+deployment/certs/*.key
+deployment/certs/*.pem
+
+# Local overrides
+appsettings.local.json
+appsettings.*.local.json
