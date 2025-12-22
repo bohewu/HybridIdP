@@ -1,0 +1,366 @@
+#!/bin/bash
+#
+# Interactive .env file generator for HybridIdP deployment.
+#
+# This script interactively prompts for deployment configuration and generates
+# a .env file with secure, randomly-generated passwords.
+#
+# Run from the deployment/ directory: ./setup-env.sh
+#
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_PATH="$SCRIPT_DIR/.env"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+print_title() { echo -e "\n${CYAN}=== $1 ===${NC}"; }
+print_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+print_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+
+# Generate a secure random password
+generate_password() {
+    local length=${1:-24}
+    local sql_safe=${2:-false}
+    
+    if [ "$sql_safe" = true ]; then
+        # SQL-safe: avoid problematic characters
+        LC_ALL=C tr -dc 'A-Za-z0-9!@#$_+-' < /dev/urandom | head -c "$length"
+    else
+        LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&*_-+=' < /dev/urandom | head -c "$length"
+    fi
+    
+    echo
+}
+
+# Prompt user for input with default value
+prompt_with_default() {
+    local prompt="$1"
+    local default="$2"
+    local result
+    
+    if [ -n "$default" ]; then
+        read -rp "$prompt [$default]: " result
+        echo "${result:-$default}"
+    else
+        read -rp "$prompt: " result
+        echo "$result"
+    fi
+}
+
+# Prompt for choice selection
+prompt_choice() {
+    local prompt="$1"
+    shift
+    local choices=("$@")
+    local default_index=0
+    
+    echo -e "\n$prompt"
+    for i in "${!choices[@]}"; do
+        local marker="[ ]"
+        if [ "$i" -eq "$default_index" ]; then
+            marker="[*]"
+        fi
+        echo "  $((i+1)). $marker ${choices[$i]}"
+    done
+    
+    read -rp "Enter choice (1-${#choices[@]}) [default: 1]: " selection
+    
+    if [ -z "$selection" ]; then
+        echo "${choices[$default_index]}"
+    else
+        local idx=$((selection - 1))
+        if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#choices[@]}" ]; then
+            echo "${choices[$idx]}"
+        else
+            echo "${choices[$default_index]}"
+        fi
+    fi
+}
+
+# Main script
+cat << 'EOF'
+
+  _    _       _          _     _ ___     _____  
+ | |  | |     | |        (_)   | |_  |   |  __ \ 
+ | |__| |_   _| |__  _ __ _  __| | | | __| |__) |
+ |  __  | | | | '_ \| '__| |/ _` | | |/ /|  ___/ 
+ | |  | | |_| | |_) | |  | | (_| | |   < | |     
+ |_|  |_|\__, |_.__/|_|  |_|\__,_| |_|\_\|_|     
+          __/ |                   |______|       
+         |___/                                   
+                                                 
+    Environment Setup Wizard (Linux)
+
+EOF
+
+# Check for existing .env
+if [ -f "$ENV_PATH" ]; then
+    print_warn "Existing .env file found at: $ENV_PATH"
+    read -rp "Overwrite? (y/N): " overwrite
+    if [[ ! "$overwrite" =~ ^[Yy]$ ]]; then
+        print_info "Creating backup and continuing..."
+        backup_path="$ENV_PATH.backup.$(date +%Y%m%d_%H%M%S)"
+        cp "$ENV_PATH" "$backup_path"
+        print_info "Backup created: $backup_path"
+    fi
+fi
+
+print_title "Deployment Mode"
+deployment_mode=$(prompt_choice "Select deployment mode:" \
+    "Nginx Reverse Proxy (Recommended - includes SSL termination)" \
+    "Internal/Load Balancer (No SSL container - external LB handles SSL)")
+
+use_nginx=false
+[[ "$deployment_mode" == *"Nginx"* ]] && use_nginx=true
+
+print_title "Database Configuration"
+db_provider=$(prompt_choice "Select database provider:" \
+    "SqlServer (Microsoft SQL Server 2022)" \
+    "PostgreSQL (PostgreSQL 17)")
+
+use_sqlserver=false
+[[ "$db_provider" == *"SqlServer"* ]] && use_sqlserver=true
+
+print_title "Generating Secure Passwords"
+mssql_password=$(generate_password 24 true)
+postgres_password=$(generate_password 24)
+encryption_cert_password=$(generate_password 20)
+signing_cert_password=$(generate_password 20)
+print_info "Random passwords generated successfully."
+
+print_title "Redis Configuration"
+redis_choice=$(prompt_choice "Enable Redis for distributed caching?" \
+    "Yes (Recommended for production)" \
+    "No (Use in-memory caching)")
+
+redis_enabled=true
+[[ "$redis_choice" == *"No"* ]] && redis_enabled=false
+
+print_title "Proxy Configuration"
+if [ "$use_nginx" = true ]; then
+    proxy_enabled="true"
+else
+    proxy_choice=$(prompt_choice "Is there a reverse proxy/load balancer in front?" \
+        "No" \
+        "Yes")
+    [[ "$proxy_choice" == *"Yes"* ]] && proxy_enabled="true" || proxy_enabled="false"
+fi
+
+print_title "Optional: External Services"
+
+# Email Settings
+echo -e "\nEmail (SMTP) Configuration (press Enter to skip for later):"
+smtp_host=$(prompt_with_default "SMTP Host" "")
+if [ -n "$smtp_host" ]; then
+    smtp_port=$(prompt_with_default "SMTP Port" "587")
+    smtp_enable_ssl=$(prompt_with_default "Enable SSL (true/false)" "true")
+    smtp_username=$(prompt_with_default "SMTP Username" "")
+    smtp_password=$(prompt_with_default "SMTP Password" "")
+    smtp_from_address=$(prompt_with_default "From Address" "noreply@example.com")
+    smtp_from_name=$(prompt_with_default "From Name" "HybridIdP")
+fi
+
+# Turnstile
+echo -e "\nCloudflare Turnstile (Bot Protection) - press Enter to skip:"
+turnstile_site_key=$(prompt_with_default "Turnstile Site Key" "")
+if [ -n "$turnstile_site_key" ]; then
+    turnstile_secret_key=$(prompt_with_default "Turnstile Secret Key" "")
+fi
+
+print_title "Generating .env file"
+
+# Determine DATABASE_PROVIDER value
+db_provider_value="SqlServer"
+[ "$use_sqlserver" = false ] && db_provider_value="PostgreSQL"
+
+# Build the .env content
+cat > "$ENV_PATH" << EOF
+# HybridIdP Deployment Environment Variables
+# Generated by setup-env.sh at $(date '+%Y-%m-%d %H:%M:%S')
+# =============================================================================
+
+# ASP.NET Core Environment
+ASPNETCORE_ENVIRONMENT=Production
+
+# Database Provider: SqlServer or PostgreSQL
+DATABASE_PROVIDER=$db_provider_value
+
+# Database Connection Strings
+# The service names (mssql-service, postgres-service) are Docker Compose service names.
+# For external DBs, replace with your actual host/IP.
+ConnectionStrings__SqlServerConnection=Server=mssql-service;Database=HybridAuthIdP;User Id=sa;Password=$mssql_password;TrustServerCertificate=True;
+ConnectionStrings__PostgreSqlConnection=Host=postgres-service;Port=5432;Database=hybridauth_idp;Username=user;Password=$postgres_password;
+ConnectionStrings__RedisConnection=redis-service:6379
+
+# Database Credentials (for container initialization)
+MSSQL_SA_PASSWORD=$mssql_password
+POSTGRES_USER=user
+POSTGRES_PASSWORD=$postgres_password
+POSTGRES_DB=hybridauth_idp
+
+# Redis Configuration
+Redis__Enabled=$redis_enabled
+
+# Proxy Configuration
+Proxy__Enabled=$proxy_enabled
+Proxy__KnownProxies=172.16.0.0/12;192.168.0.0/16;10.0.0.0/8
+
+# OpenIddict Certificates
+# These passwords protect the PFX files in deployment/certs/
+ENCRYPTION_CERT_PASSWORD=$encryption_cert_password
+SIGNING_CERT_PASSWORD=$signing_cert_password
+EOF
+
+# Add optional SMTP config
+if [ -n "$smtp_host" ]; then
+    cat >> "$ENV_PATH" << EOF
+
+# Email Settings (SMTP)
+EmailSettings__SmtpHost=$smtp_host
+EmailSettings__SmtpPort=$smtp_port
+EmailSettings__SmtpEnableSsl=$smtp_enable_ssl
+EmailSettings__SmtpUsername=$smtp_username
+EmailSettings__SmtpPassword=$smtp_password
+EmailSettings__FromAddress=$smtp_from_address
+EmailSettings__FromName=$smtp_from_name
+EOF
+fi
+
+# Add optional Turnstile config
+if [ -n "$turnstile_site_key" ]; then
+    cat >> "$ENV_PATH" << EOF
+
+# Cloudflare Turnstile (Bot Protection)
+Turnstile__SiteKey=$turnstile_site_key
+Turnstile__SecretKey=$turnstile_secret_key
+EOF
+fi
+
+# Add token and rate limiting defaults
+cat >> "$ENV_PATH" << EOF
+
+# Token Security Options
+TokenOptions__AccessTokenLifetimeMinutes=15
+TokenOptions__RefreshTokenLifetimeMinutes=20160
+TokenOptions__RefreshTokenReuseLeewaySeconds=60
+
+# Rate Limiting (Production Defaults)
+RateLimiting__Enabled=true
+RateLimiting__LoginPermitLimit=5
+RateLimiting__LoginWindowSeconds=60
+EOF
+
+print_info ".env file created at: $ENV_PATH"
+
+print_title "Certificate Generation"
+certs_dir="$SCRIPT_DIR/certs"
+if [ ! -d "$certs_dir" ]; then
+    mkdir -p "$certs_dir"
+    print_info "Created certs directory: $certs_dir"
+fi
+
+# Check for existing certificates
+encryption_pfx="$certs_dir/encryption.pfx"
+signing_pfx="$certs_dir/signing.pfx"
+
+if [ -f "$encryption_pfx" ] && [ -f "$signing_pfx" ]; then
+    print_warn "Certificates already exist in $certs_dir"
+    print_warn "If you want to regenerate, delete them and run this script again."
+else
+    generate_certs=$(prompt_choice "Generate self-signed certificates for OpenIddict?" \
+        "Yes (using OpenSSL)" \
+        "No (I'll provide my own or use Step-CA)")
+    
+    if [[ "$generate_certs" == *"Yes"* ]]; then
+        # Check if OpenSSL is available
+        if command -v openssl &> /dev/null; then
+            print_info "Generating certificates with OpenSSL..."
+            pushd "$certs_dir" > /dev/null
+            
+            # Encryption certificate
+            openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
+                -keyout encryption.key -out encryption.crt \
+                -subj "/CN=HybridIdP Encryption" 2>/dev/null
+            
+            openssl pkcs12 -export -out encryption.pfx \
+                -inkey encryption.key -in encryption.crt \
+                -password "pass:$encryption_cert_password" 2>/dev/null
+            
+            # Signing certificate
+            openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
+                -keyout signing.key -out signing.crt \
+                -subj "/CN=HybridIdP Signing" 2>/dev/null
+            
+            openssl pkcs12 -export -out signing.pfx \
+                -inkey signing.key -in signing.crt \
+                -password "pass:$signing_cert_password" 2>/dev/null
+            
+            # Cleanup key/crt files
+            rm -f *.key *.crt
+            
+            popd > /dev/null
+            print_info "Certificates generated successfully!"
+        else
+            print_warn "OpenSSL not found. Please install OpenSSL or generate certificates manually."
+            cat << EOF
+
+To generate certificates manually with Step-CA, run:
+  step ca certificate "HybridIdP Encryption" encryption.crt encryption.key --kty RSA --size 4096
+  step certificate p12 $certs_dir/encryption.pfx encryption.crt encryption.key --password=$encryption_cert_password
+  
+  step ca certificate "HybridIdP Signing" signing.crt signing.key --kty RSA --size 4096
+  step certificate p12 $certs_dir/signing.pfx signing.crt signing.key --password=$signing_cert_password
+
+Or with OpenSSL:
+  cd $certs_dir
+  openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout encryption.key -out encryption.crt -subj "/CN=HybridIdP Encryption"
+  openssl pkcs12 -export -out encryption.pfx -inkey encryption.key -in encryption.crt -password pass:$encryption_cert_password
+  
+  openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout signing.key -out signing.crt -subj "/CN=HybridIdP Signing"
+  openssl pkcs12 -export -out signing.pfx -inkey signing.key -in signing.crt -password pass:$signing_cert_password
+EOF
+        fi
+    else
+        cat << EOF
+
+To generate certificates with Step-CA, run:
+  step ca certificate "HybridIdP Encryption" encryption.crt encryption.key --kty RSA --size 4096
+  step certificate p12 $certs_dir/encryption.pfx encryption.crt encryption.key --password=$encryption_cert_password
+  
+  step ca certificate "HybridIdP Signing" signing.crt signing.key --kty RSA --size 4096
+  step certificate p12 $certs_dir/signing.pfx signing.crt signing.key --password=$signing_cert_password
+EOF
+    fi
+fi
+
+print_title "Setup Complete!"
+
+compose_file="docker-compose.internal.yml"
+[ "$use_nginx" = true ] && compose_file="docker-compose.nginx.yml"
+
+cat << EOF
+
+Next steps:
+1. Review the generated .env file: $ENV_PATH
+2. Ensure certificates exist in: $certs_dir
+3. Start the application:
+
+   docker compose -f $compose_file --env-file .env up -d
+
+4. Access the application:
+EOF
+
+if [ "$use_nginx" = true ]; then
+    echo "   - HTTPS: https://localhost (via Nginx)"
+else
+    echo "   - HTTP: http://localhost:8080 (behind your LB)"
+fi
+
+echo -e "\nFor more details, see docs/DEPLOYMENT_GUIDE.md\n"
