@@ -1,8 +1,18 @@
 # Split-Host Deployment Security Guide
 
 This guide provides step-by-step instructions for securing HybridIdP in a split-host deployment where:
-- **Host A** = Reverse Proxy (Nginx/BunkerWeb)
+- **Host A** = External Reverse Proxy (Nginx/BunkerWeb)
 - **Host B** = HybridIdP Application
+
+## Deployment Options
+
+| Option | Compose File | Security Level | Use Case |
+|--------|--------------|----------------|----------|
+| **Direct Expose** | `docker-compose.splithost.yml` | Medium | Simple setup, relies on iptables |
+| **Local Nginx** | `docker-compose.splithost-nginx.yml` | High | App in internal network, nginx filters IPs |
+
+> [!TIP]
+> **Recommended**: Use `splithost-nginx.yml` for production. The app is completely isolated in Docker internal network.
 
 ---
 
