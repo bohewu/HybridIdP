@@ -9,6 +9,7 @@
 - [備份策略](#備份策略)
 - [Log 管理](#log-管理)
 - [Loki + Grafana 設定](#loki--grafana-設定)
+- [VictoriaLogs 設定 (輕量替代方案)](#victorialogs-設定-輕量替代方案)
 - [健康檢查](#健康檢查)
 - [常見維運任務](#常見維運任務)
 
@@ -225,6 +226,122 @@ docker compose -f docker-compose.logging.yml up -d
 
 # 最近 1 小時的 500 錯誤
 {container_name=~".*idp.*"} |= "500" | json
+```
+
+---
+
+## VictoriaLogs 設定 (輕量替代方案)
+
+VictoriaLogs 來自 VictoriaMetrics 團隊，資源消耗極低，適合資源有限的環境。
+
+### Loki vs VictoriaLogs
+
+| 考量 | Loki | VictoriaLogs |
+|------|------|--------------|
+| **RAM 消耗** | 中等 | ✅ 極低 (5-10x 更少) |
+| **查詢速度** | 快 | ✅ 更快 |
+| **壓縮效率** | 好 | ✅ 更好 (10-30x) |
+| **成熟度** | ✅ 成熟 | 較新 (2023) |
+| **Grafana 整合** | ✅ 原生 | ✅ 支援 |
+
+### 快速部署
+
+創建 `docker-compose.logging-victorialogs.yml`：
+
+```yaml
+services:
+  victorialogs:
+    image: victoriametrics/victoria-logs:latest
+    ports:
+      - "9428:9428"
+    volumes:
+      - vlogs-data:/vlogs
+    command:
+      - -storageDataPath=/vlogs
+      - -retentionPeriod=90d
+      - -syslog.listenAddr.tcp=:514
+
+  vector:
+    image: timberio/vector:latest-alpine
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./vector.toml:/etc/vector/vector.toml:ro
+    depends_on:
+      - victorialogs
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - victorialogs
+
+volumes:
+  vlogs-data:
+  grafana-data:
+```
+
+創建 `vector.toml`：
+
+```toml
+[sources.docker_logs]
+type = "docker_logs"
+
+[transforms.parse]
+type = "remap"
+inputs = ["docker_logs"]
+source = '''
+.timestamp = now()
+.container = .container_name
+'''
+
+[sinks.victorialogs]
+type = "http"
+inputs = ["parse"]
+uri = "http://victorialogs:9428/insert/jsonline?_stream_fields=container"
+encoding.codec = "json"
+framing.method = "newline_delimited"
+```
+
+### 啟動
+
+```bash
+docker compose -f docker-compose.logging-victorialogs.yml up -d
+```
+
+### 設定 Grafana
+
+1. 開啟 `http://your-host:3000`
+2. 安裝 VictoriaLogs 插件：
+   ```bash
+   docker exec -it grafana grafana-cli plugins install victoriametrics-logs-datasource
+   docker compose restart grafana
+   ```
+3. **Connections** → **Data Sources** → **Add data source**
+4. 選擇 **VictoriaLogs**
+5. URL: `http://victorialogs:9428`
+6. **Save & Test**
+
+### 常用查詢
+
+```
+# 查看所有 logs
+*
+
+# 篩選容器
+container:idp-service
+
+# 關鍵字搜尋
+"error" OR "exception"
+
+# 組合查詢
+container:idp-service AND "Login"
 ```
 
 ---
