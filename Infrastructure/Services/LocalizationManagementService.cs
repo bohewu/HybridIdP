@@ -55,6 +55,7 @@ public class LocalizationManagementService : ILocalizationManagementService
                 Culture = r.Culture,
                 Value = r.Value,
                 Category = r.Category,
+                IsEnabled = r.IsEnabled,
                 UpdatedUtc = r.UpdatedUtc
             })
             .ToListAsync();
@@ -74,6 +75,7 @@ public class LocalizationManagementService : ILocalizationManagementService
             Culture = r.Culture,
             Value = r.Value,
             Category = r.Category,
+            IsEnabled = r.IsEnabled,
             UpdatedUtc = r.UpdatedUtc
         };
     }
@@ -93,6 +95,7 @@ public class LocalizationManagementService : ILocalizationManagementService
             Culture = request.Culture,
             Value = request.Value,
             Category = request.Category,
+            IsEnabled = request.IsEnabled,
             CreatedUtc = DateTime.UtcNow,
             UpdatedUtc = DateTime.UtcNow
         };
@@ -107,6 +110,7 @@ public class LocalizationManagementService : ILocalizationManagementService
             Culture = resource.Culture,
             Value = resource.Value,
             Category = resource.Category,
+            IsEnabled = resource.IsEnabled,
             UpdatedUtc = resource.UpdatedUtc
         };
     }
@@ -118,6 +122,10 @@ public class LocalizationManagementService : ILocalizationManagementService
 
         resource.Value = request.Value;
         resource.Category = request.Category;
+        if (request.IsEnabled.HasValue)
+        {
+            resource.IsEnabled = request.IsEnabled.Value;
+        }
         resource.UpdatedUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(default);
