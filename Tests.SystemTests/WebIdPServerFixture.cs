@@ -68,6 +68,10 @@ public class WebIdPServerFixture : IAsyncLifetime
 
     private async Task StartServerAsync()
     {
+        // Allow overriding database provider via environment variable
+        // Default: SqlServer (set TEST_DATABASE_PROVIDER=PostgreSQL to test PostgreSQL compatibility)
+        var databaseProvider = Environment.GetEnvironmentVariable("TEST_DATABASE_PROVIDER") ?? "SqlServer";
+        
         // ... (unchanged arguments)
         var startInfo = new ProcessStartInfo
         {
@@ -79,6 +83,9 @@ public class WebIdPServerFixture : IAsyncLifetime
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
+        
+        // Set database provider for tests
+        startInfo.EnvironmentVariables["DATABASE_PROVIDER"] = databaseProvider;
         // ...
 
         _serverProcess = Process.Start(startInfo);
