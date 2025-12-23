@@ -93,7 +93,7 @@
                         @if (!string.IsNullOrEmpty(Model.CustomForgotPasswordUrl))
                         {
                             <div class="text-right">
-                                <a href="@Model.CustomForgotPasswordUrl" class="text-sm link-google" data-test-id="forgot-password-link">
+                                <a href="@Model.CustomForgotPasswordUrl" target="_blank" rel="noopener noreferrer" class="text-sm link-google" data-test-id="forgot-password-link">
                                     @Localizer["ForgotPassword"]
                                 </a>
                             </div>
