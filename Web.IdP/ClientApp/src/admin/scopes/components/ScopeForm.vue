@@ -168,8 +168,8 @@ const handleSubmit = async () => {
 
     const savedScope = await response.json()
 
-    // Save claims mapping
-    if (savedScope.id) {
+    // Save claims mapping (skip for standard OIDC scopes which have fixed claims)
+    if (savedScope.id && !isStandardScope.value) {
       await saveScopeClaims(savedScope.id)
     }
 
