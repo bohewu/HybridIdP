@@ -19,7 +19,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/people")]
 [ApiAuthorize]
-[AutoValidateAntiforgeryToken]
+[ValidateCsrfForCookies]
 public partial class PersonsController : ControllerBase
 {
     private readonly IPersonService _personService;

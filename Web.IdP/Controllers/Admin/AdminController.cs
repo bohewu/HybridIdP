@@ -21,7 +21,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/[controller]")]
 [ApiAuthorize]
-[AutoValidateAntiforgeryToken]
+[ValidateCsrfForCookies]
 public class AdminController : ControllerBase
 {
 
