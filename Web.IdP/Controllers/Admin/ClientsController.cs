@@ -16,7 +16,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/clients")]
 [ApiAuthorize]
-[AutoValidateAntiforgeryToken]
+[ValidateCsrfForCookies]
 public class ClientsController : ControllerBase
 {
     private readonly IClientService _clientService;

@@ -14,7 +14,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/audit")]
 [ApiAuthorize]
-[AutoValidateAntiforgeryToken]
+[ValidateCsrfForCookies]
 public class AuditController : ControllerBase
 {
     private readonly IAuditService _auditService;

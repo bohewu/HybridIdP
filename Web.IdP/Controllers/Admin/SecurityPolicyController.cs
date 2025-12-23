@@ -11,7 +11,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/security/policies")]
 [ApiAuthorize]
-[AutoValidateAntiforgeryToken]
+[ValidateCsrfForCookies]
 public class SecurityPolicyController : ControllerBase
 {
     private readonly ISecurityPolicyService _securityPolicyService;

@@ -17,7 +17,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/scopes")]
 [ApiAuthorize]
-[AutoValidateAntiforgeryToken]
+[ValidateCsrfForCookies]
 public class ScopesController : ControllerBase
 {
     private readonly IScopeService _scopeService;

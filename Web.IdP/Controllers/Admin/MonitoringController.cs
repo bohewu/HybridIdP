@@ -14,7 +14,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/monitoring")]
 [ApiAuthorize]
-[AutoValidateAntiforgeryToken]
+[ValidateCsrfForCookies]
 public class MonitoringController : ControllerBase
 {
     private readonly IMonitoringService _monitoringService;

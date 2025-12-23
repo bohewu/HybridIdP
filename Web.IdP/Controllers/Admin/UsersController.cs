@@ -24,7 +24,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/users")]
 [ApiAuthorize]
-[AutoValidateAntiforgeryToken]
+[ValidateCsrfForCookies]
 public class UsersController : ControllerBase
 {
     private readonly IUserManagementService _userManagementService;

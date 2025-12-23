@@ -13,7 +13,7 @@ namespace Web.IdP.Controllers.Admin;
 [Route("api/admin/logging")]
 [ApiController]
 [ApiAuthorize]
-[AutoValidateAntiforgeryToken]
+[ValidateCsrfForCookies]
 public class LoggingController : ControllerBase
 {
     private readonly IDynamicLoggingService _loggingService;

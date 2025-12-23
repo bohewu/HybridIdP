@@ -9,7 +9,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/[controller]")]
 [ApiAuthorize]
-[AutoValidateAntiforgeryToken]
+[ValidateCsrfForCookies]
 public class SettingsController : ControllerBase
 {
     private readonly ISettingsService _settings;
