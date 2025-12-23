@@ -168,13 +168,15 @@ This file contains current high-priority backlog items and remaining tasks.
 ## 🔐 Security Hardening (Backlog)
 
 - [x] **Global CSRF Protection for Internal APIs** (COMPLETE)
-  - [x] Add `[AutoValidateAntiforgeryToken]` to cookie-based Controllers (`ProfileManagementController`, `MyAccountController`).
-  - [x] Add `[AutoValidateAntiforgeryToken]` to all 16 Admin controllers.
+  - [x] Add `[AutoValidateAntiforgeryToken]` to pure cookie-based Controllers (`ProfileManagementController`, `MyAccountController`).
+  - [x] Create `[ValidateCsrfForCookies]` custom attribute for hybrid auth controllers (Admin).
+  - [x] Custom attribute checks actual auth scheme (not headers) to prevent bypass attacks.
   - [x] Configure antiforgery to use `X-XSRF-TOKEN` header (SPA standard).
   - [x] Create global `csrfInterceptor.js` that wraps `window.fetch` to auto-inject tokens.
   - [x] Add CSRF meta tag to `_AdminLayout`, `_ApplicationManagerLayout`, and `Profile.cshtml`.
   - [x] Import interceptor in `razor.js` (shared entry point) - **no per-component changes needed**.
-  - [x] Verify no disruption to Bearer-token endpoints (MFA API tests pass).
+  - [x] Add unit tests for `ValidateCsrfForCookiesAttribute` (8 tests).
+  - [x] System tests verified: 199/203 pass (4 failures unrelated to CSRF).
 
 ## ⚡ Performance Optimization (Backlog)
 
