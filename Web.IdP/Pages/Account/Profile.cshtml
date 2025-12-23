@@ -2,11 +2,13 @@
 @model Web.IdP.Pages.Account.ProfileModel
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     ViewData["Title"] = Localizer["Profile"];
+    var csrfToken = Antiforgery.GetAndStoreTokens(HttpContext).RequestToken;
 }
 
-<div id="profile-app"></div>
+<div id="profile-app" data-csrf-token="@csrfToken"></div>
 
 @section Scripts {
     <script type="module" vite-src="~/src/profile/main.js"></script>

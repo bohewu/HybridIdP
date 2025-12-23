@@ -162,6 +162,10 @@ const props = defineProps({
   externalLogins: {
     type: Array,
     default: () => []
+  },
+  csrfToken: {
+    type: String,
+    default: ''
   }
 })
 
@@ -237,11 +241,16 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
+    const headers = {
+      'Content-Type': 'application/json'
+    }
+    if (props.csrfToken) {
+      headers['X-XSRF-TOKEN'] = props.csrfToken
+    }
+    
     const res = await fetch('/api/profile/change-password', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers,
       credentials: 'include',
       body: JSON.stringify(form.value)
     })

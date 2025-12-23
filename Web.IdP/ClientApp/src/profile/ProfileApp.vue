@@ -19,7 +19,8 @@
         <!-- Edit Profile Form (Editable Person fields) -->
         <EditProfileForm 
           v-if="profile && profile.person" 
-          :profile="profile" 
+          :profile="profile"
+          :csrf-token="csrfToken"
           @updated="loadProfile" 
         />
 
@@ -29,6 +30,7 @@
           :allow-password-change="profile.allowPasswordChange"
           :has-local-password="profile.hasLocalPassword"
           :external-logins="profile.externalLogins"
+          :csrf-token="csrfToken"
         />
       </div>
 
@@ -54,6 +56,16 @@ import MfaSettings from '../components/account/MfaSettings.vue'
 const { t } = useI18n()
 const loading = ref(true)
 const profile = ref(null)
+const csrfToken = ref('')
+
+onMounted(() => {
+  // Read CSRF token from data attribute
+  const mountEl = document.getElementById('profile-app')
+  if (mountEl?.dataset?.csrfToken) {
+    csrfToken.value = mountEl.dataset.csrfToken
+  }
+  loadProfile()
+})
 
 const loadProfile = async () => {
   loading.value = true
@@ -77,7 +89,5 @@ const loadProfile = async () => {
   }
 }
 
-onMounted(() => {
-  loadProfile()
-})
+// loadProfile defined below, onMounted calls it above
 </script>

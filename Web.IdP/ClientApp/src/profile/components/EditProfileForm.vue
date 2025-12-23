@@ -115,6 +115,10 @@ const props = defineProps({
   profile: {
     type: Object,
     required: true
+  },
+  csrfToken: {
+    type: String,
+    default: ''
   }
 })
 
@@ -187,11 +191,16 @@ const handleSubmit = async () => {
   const localeChanged = newLocale !== originalLocale;
 
   try {
+    const headers = {
+      'Content-Type': 'application/json'
+    }
+    if (props.csrfToken) {
+      headers['X-XSRF-TOKEN'] = props.csrfToken
+    }
+    
     const res = await fetch('/api/profile', {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers,
       credentials: 'include',
       body: JSON.stringify(form.value)
     })
