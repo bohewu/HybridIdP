@@ -167,11 +167,12 @@ This file contains current high-priority backlog items and remaining tasks.
   
 ## 🔐 Security Hardening (Backlog)
 
-- [ ] **Global CSRF Protection for Internal APIs**
-  - [ ] Add `[AutoValidateAntiforgeryToken]` or `[ValidateAntiForgeryToken]` to all cookie-based Controllers (e.g., `ProfileManagementController`, `MyAccountController`).
-  - [ ] Update Vue frontend apps (`ProfileApp.vue`, etc.) to include `X-XSRF-TOKEN` in all mutating requests (PUT/POST/DELETE).
-  - [ ] Update SystemTests and IntegrationTests to handle CSRF tokens (requires passing tokens in test requests).
-  - [ ] Verify no disruption to standard OIDC Bearer-token endpoints.
+- [x] **Global CSRF Protection for Internal APIs** (COMPLETE)
+  - [x] Add `[AutoValidateAntiforgeryToken]` to cookie-based Controllers (`ProfileManagementController`, `MyAccountController`).
+  - [x] Configure antiforgery to use `X-XSRF-TOKEN` header (SPA standard).
+  - [x] Update Vue frontend apps (`ProfileApp.vue`, etc.) to include `X-XSRF-TOKEN` in mutating requests.
+  - [x] Create `useCsrfToken.js` composable for frontend token handling.
+  - [x] Verify no disruption to Bearer-token endpoints (Admin API, MFA API use Bearer tokens - no CSRF needed).
 
 ## ⚡ Performance Optimization (Backlog)
 
@@ -188,4 +189,4 @@ This file contains current high-priority backlog items and remaining tasks.
 - Test project warnings suppressed via `<NoWarn>` in .csproj
 
 ---
-_Last updated: 2025-12-21_
+_Last updated: 2025-12-23_
