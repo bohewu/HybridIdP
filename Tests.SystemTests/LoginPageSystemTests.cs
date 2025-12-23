@@ -35,6 +35,12 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
     public async Task InitializeAsync()
     {
         await _serverFixture.EnsureServerRunningAsync();
+        // Clear any leftover cookies and headers from previous tests
+        foreach (Cookie cookie in _cookieContainer.GetAllCookies())
+        {
+            cookie.Expired = true;
+        }
+        _httpClient.DefaultRequestHeaders.Remove("X-XSRF-TOKEN");
     }
 
     public Task DisposeAsync()
