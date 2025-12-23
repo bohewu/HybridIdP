@@ -176,5 +176,6 @@
   "EmailVerification": "Email verification",
   "EnterEmailCodeDescription": "We sent a verification code to your email",
   "InvalidMfaCode": "Invalid verification code",
-  "LoginWithPasskey": "Sign in with a Passkey"
+  "LoginWithPasskey": "Sign in with a Passkey",
+  "ForgotPassword": "Forgot password?"
 }

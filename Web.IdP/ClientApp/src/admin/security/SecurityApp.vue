@@ -158,6 +158,20 @@
           </dl>
         </div>
       </div>
+
+      <!-- Login Page Customization -->
+      <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+        <div class="px-4 py-5 sm:px-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ $t('security.loginPageCustomization') || 'Login Page Customization' }}</h3>
+        </div>
+        <div class="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <dl class="sm:divide-y sm:divide-gray-200">
+            <FormRow :label="$t('security.customForgotPasswordUrl') || 'Custom Forgot Password URL'" for-id="customForgotPasswordUrl" :help-text="$t('security.customForgotPasswordUrlHelp') || 'External URL for forgot password page (for legacy systems). Leave empty to hide the link.'">
+              <input type="url" id="customForgotPasswordUrl" v-model="policy.customForgotPasswordUrl" placeholder="https://legacy.example.com/forgot-password" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3">
+            </FormRow>
+          </dl>
+        </div>
+      </div>
     </div>
   </div>
 </template>

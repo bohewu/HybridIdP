@@ -89,6 +89,15 @@
                             <input asp-for="Input.Password" type="password" class="input-google" placeholder="@Localizer["Password"]" autocomplete="current-password" data-test-id="login-password" />
                             <span asp-validation-for="Input.Password" class="text-red-600 text-xs mt-1 block" data-test-id="login-password-error"></span>
                         </div>
+                        
+                        @if (!string.IsNullOrEmpty(Model.CustomForgotPasswordUrl))
+                        {
+                            <div class="text-right">
+                                <a href="@Model.CustomForgotPasswordUrl" class="text-sm link-google" data-test-id="forgot-password-link">
+                                    @Localizer["ForgotPassword"]
+                                </a>
+                            </div>
+                        }
                     </div>
                 
                     @if (Model.TurnstileEnabled)

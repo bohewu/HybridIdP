@@ -84,6 +84,7 @@ public partial class SecurityPolicyService : ISecurityPolicyService
         policy.RequireMfaForPasskey = policyDto.RequireMfaForPasskey;
         policy.EnforceMandatoryMfaEnrollment = policyDto.EnforceMandatoryMfaEnrollment;
         policy.MfaEnforcementGracePeriodDays = policyDto.MfaEnforcementGracePeriodDays;
+        policy.CustomForgotPasswordUrl = policyDto.CustomForgotPasswordUrl;
         
         // Update metadata
         policy.UpdatedUtc = DateTime.UtcNow;

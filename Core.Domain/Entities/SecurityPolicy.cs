@@ -61,6 +61,13 @@ namespace Core.Domain.Entities
         /// </summary>
         public int MfaEnforcementGracePeriodDays { get; set; } = 3;
         
+        /// <summary>
+        /// Custom URL for legacy "Forgot Password" link on login page.
+        /// If empty/null, no forgot password link is shown (since this system doesn't have built-in forgot password yet).
+        /// Example: https://legacy.example.com/forgot-password
+        /// </summary>
+        public string? CustomForgotPasswordUrl { get; set; }
+        
         public DateTime UpdatedUtc { get; set; }
         public string? UpdatedBy { get; set; }
     }
