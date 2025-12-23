@@ -49,6 +49,9 @@
     "enforceMandatoryMfaEnrollmentHelp": "When enabled, users without enrolled MFA factors will be forced to set up one before they can proceed.",
     "mfaEnforcementGracePeriodDays": "MFA Enrollment Grace Period (Days)",
     "mfaEnforcementGracePeriodDaysHelp": "Number of days a user can bypass MFA enrollment after being notified before enforcement takes effect (0-30).",
+    "loginPageCustomization": "Login Page Customization",
+    "customForgotPasswordUrl": "Custom Forgot Password URL",
+    "customForgotPasswordUrlHelp": "External URL for forgot password page (for legacy systems). Leave empty to hide the link on the login page.",
     "validation": {
         "minCharacterTypesRange": "Minimum character types must be between 2 and 4",
         "passwordLengthRange": "Password length must be between 6 and 128 characters",

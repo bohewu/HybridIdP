@@ -49,6 +49,9 @@
     "enforceMandatoryMfaEnrollmentHelp": "啟用後，未註冊 MFA 的使用者將被強制要求先設定一個 MFA 因素才能繼續。",
     "mfaEnforcementGracePeriodDays": "MFA 註冊寬限期（天）",
     "mfaEnforcementGracePeriodDaysHelp": "使用者在受到通知後，在強制執行生效前可以繼續不使用 MFA 的天數 (0-30)。",
+    "loginPageCustomization": "登入頁面自訂設定",
+    "customForgotPasswordUrl": "自訂忘記密碼網址",
+    "customForgotPasswordUrlHelp": "忘記密碼頁面的外部網址（適用於舊系統）。留空則不在登入頁面顯示連結。",
     "validation": {
         "minCharacterTypesRange": "最少字元類型必須介於 2 到 4 之間",
         "passwordLengthRange": "密碼長度必須介於 6 到 128 字元之間",

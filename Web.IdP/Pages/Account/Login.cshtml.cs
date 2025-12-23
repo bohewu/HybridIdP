@@ -77,6 +77,7 @@ public partial class LoginModel : PageModel
     public string TurnstileSiteKey => _turnstileOptions.SiteKey;
     public bool RegistrationEnabled { get; private set; } = true;
     public bool PasskeyEnabled { get; private set; } = true;
+    public string? CustomForgotPasswordUrl { get; private set; }
 
     /// <summary>
     /// Calculate if Turnstile should be enabled based on settings and key configuration
@@ -127,6 +128,7 @@ public partial class LoginModel : PageModel
         // Load Passkey enabled state
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         PasskeyEnabled = policy.EnablePasskey;
+        CustomForgotPasswordUrl = policy.CustomForgotPasswordUrl;
 
         // Load Turnstile enabled state
         await LoadTurnstileStateAsync();
@@ -146,6 +148,7 @@ public partial class LoginModel : PageModel
         RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         PasskeyEnabled = policy.EnablePasskey;
+        CustomForgotPasswordUrl = policy.CustomForgotPasswordUrl;
         await LoadTurnstileStateAsync();
 
         if (!ModelState.IsValid)

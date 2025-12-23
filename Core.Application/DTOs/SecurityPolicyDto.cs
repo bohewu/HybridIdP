@@ -51,6 +51,12 @@ public class SecurityPolicyDto
     [Range(0, 30)]
     public int MfaEnforcementGracePeriodDays { get; set; } = 3;
     
+    /// <summary>
+    /// Custom URL for "Forgot Password" link on login page (for legacy systems).
+    /// </summary>
+    [MaxLength(500)]
+    public string? CustomForgotPasswordUrl { get; set; }
+    
     public DateTime UpdatedUtc { get; set; }
     public string? UpdatedBy { get; set; }
 }

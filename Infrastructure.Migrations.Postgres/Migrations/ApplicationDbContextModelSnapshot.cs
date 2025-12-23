@@ -769,6 +769,9 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Property<bool>("BlockAbnormalLogin")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("CustomForgotPasswordUrl")
+                        .HasColumnType("text");
+
                     b.Property<bool>("EnableEmailMfa")
                         .HasColumnType("boolean");
 
