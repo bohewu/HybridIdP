@@ -265,6 +265,8 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
             // 3. Enable BlockAbnormalLogin
             policy.BlockAbnormalLogin = true;
             // Note: UpdatePolicy requires all fields in DTO. Since we got full DTO from Get, we can send it back.
+            // Get CSRF token for Admin cookie session
+            await SetCsrfTokenAsync(_httpClient);
             var updateResponse = await _httpClient.PutAsJsonAsync("/api/admin/security/policies", policy);
             updateResponse.EnsureSuccessStatusCode();
 
@@ -346,7 +348,8 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
         // Use CamelCase for properties as per standard default
         var userId = usersJson.GetProperty("items")[0].GetProperty("id").GetString();
 
-        // 4. Revoke Sessions
+        // 4. Revoke Sessions (need CSRF token for cookie auth)
+        await SetCsrfTokenAsync(adminClient);
         var revokeResponse = await adminClient.PostAsync($"/api/admin/users/{userId}/sessions/revoke-all", null);
         revokeResponse.EnsureSuccessStatusCode();
 
@@ -384,6 +387,31 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
         if (match.Success) return match.Groups[1].Value;
         
         throw new Exception("Could not find __RequestVerificationToken in HTML");
+    }
+
+    private async Task SetCsrfTokenAsync(HttpClient client)
+    {
+        // Get any Admin page to extract CSRF token from meta tag
+        var response = await client.GetAsync("/Admin");
+        if (!response.IsSuccessStatusCode)
+        {
+            // Try home page as fallback
+            response = await client.GetAsync("/");
+        }
+        var html = await response.Content.ReadAsStringAsync();
+        
+        // Extract CSRF token from meta tag
+        var match = Regex.Match(html, @"meta\s+name=""csrf-token""\s+content=""([^""]+)""");
+        if (!match.Success)
+        {
+            match = Regex.Match(html, @"content=""([^""]+)""\s+name=""csrf-token""");
+        }
+        
+        if (match.Success)
+        {
+            client.DefaultRequestHeaders.Remove("X-XSRF-TOKEN");
+            client.DefaultRequestHeaders.Add("X-XSRF-TOKEN", match.Groups[1].Value);
+        }
     }
 
     private static FormUrlEncodedContent CreateLoginForm(string login, string password, string token)
