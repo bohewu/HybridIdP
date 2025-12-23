@@ -15,6 +15,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/resources")]
 [ApiAuthorize]
+[AutoValidateAntiforgeryToken]
 public class ApiResourcesController : ControllerBase
 {
     private readonly IApiResourceService _apiResourceService;

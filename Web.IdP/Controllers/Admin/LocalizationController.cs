@@ -14,6 +14,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/localization")]
 [ApiAuthorize]
+[AutoValidateAntiforgeryToken]
 public class LocalizationController : ControllerBase
 {
     private readonly ILocalizationManagementService _service;

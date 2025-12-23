@@ -15,6 +15,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/roles")]
 [ApiAuthorize]
+[AutoValidateAntiforgeryToken]
 public class RolesController : ControllerBase
 {
     private readonly IRoleManagementService _roleManagementService;

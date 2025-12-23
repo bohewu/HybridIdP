@@ -9,6 +9,7 @@
 @inject IBrandingService BrandingService
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @inject IViteManifestService ViteService
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 
 @{
     // Get user permissions once for the entire layout
@@ -16,6 +17,7 @@
     var currentCulture = System.Globalization.CultureInfo.CurrentUICulture.Name;
     var appName = await BrandingService.GetAppNameAsync();
     var productName = await BrandingService.GetProductNameAsync();
+    var csrfToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
 }
 
 <!DOCTYPE html>
@@ -24,6 +26,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
     <meta name="locale" content="@currentCulture" />
+    <meta name="csrf-token" content="@csrfToken" />
     <title>@ViewData["Title"] - @productName @Localizer["AdminPortal"]</title>
     
     @* Tailwind CSS *@

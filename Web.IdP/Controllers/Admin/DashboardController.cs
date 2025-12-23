@@ -15,6 +15,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/dashboard")] // preserve existing URL segment used by frontend
 [ApiAuthorize]
+[AutoValidateAntiforgeryToken]
 public class DashboardController : ControllerBase
 {
     private readonly IOpenIddictApplicationManager _applicationManager;

@@ -15,6 +15,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/permissions")]
 [ApiAuthorize]
+[AutoValidateAntiforgeryToken]
 public class PermissionsController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
