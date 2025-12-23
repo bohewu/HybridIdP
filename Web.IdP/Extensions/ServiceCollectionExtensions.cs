@@ -475,6 +475,8 @@ public static class ServiceCollectionExtensions
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Strict;
             options.Cookie.Name = cookieOpts.GetAntiforgeryCookieName();
+            // Use X-XSRF-TOKEN header (standard name for SPAs like Angular/Vue)
+            options.HeaderName = "X-XSRF-TOKEN";
         });
 
         // MVC & Localization support - using custom JSON localizer
