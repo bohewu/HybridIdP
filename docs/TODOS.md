@@ -169,10 +169,12 @@ This file contains current high-priority backlog items and remaining tasks.
 
 - [x] **Global CSRF Protection for Internal APIs** (COMPLETE)
   - [x] Add `[AutoValidateAntiforgeryToken]` to cookie-based Controllers (`ProfileManagementController`, `MyAccountController`).
+  - [x] Add `[AutoValidateAntiforgeryToken]` to all 16 Admin controllers.
   - [x] Configure antiforgery to use `X-XSRF-TOKEN` header (SPA standard).
-  - [x] Update Vue frontend apps (`ProfileApp.vue`, etc.) to include `X-XSRF-TOKEN` in mutating requests.
-  - [x] Create `useCsrfToken.js` composable for frontend token handling.
-  - [x] Verify no disruption to Bearer-token endpoints (Admin API, MFA API use Bearer tokens - no CSRF needed).
+  - [x] Create global `csrfInterceptor.js` that wraps `window.fetch` to auto-inject tokens.
+  - [x] Add CSRF meta tag to `_AdminLayout`, `_ApplicationManagerLayout`, and `Profile.cshtml`.
+  - [x] Import interceptor in `razor.js` (shared entry point) - **no per-component changes needed**.
+  - [x] Verify no disruption to Bearer-token endpoints (MFA API tests pass).
 
 ## ⚡ Performance Optimization (Backlog)
 
