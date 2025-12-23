@@ -21,6 +21,7 @@ namespace Web.IdP.Controllers.Api;
 [Authorize]
 [ApiController]
 [Route("api/profile")]
+[AutoValidateAntiforgeryToken]
 public class ProfileManagementController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;

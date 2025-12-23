@@ -16,6 +16,7 @@ namespace Web.IdP.Controllers.Api.Api;
 [Authorize]
 [ApiController]
 [Route("api/my")]
+[AutoValidateAntiforgeryToken]
 public class MyAccountController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
