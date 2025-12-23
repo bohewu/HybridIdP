@@ -1,5 +1,6 @@
 import '../styles/main.css';
 import '../styles/google-style.css';
+import '../utils/csrfInterceptor.js';  // Enable automatic CSRF token for all fetch requests
 import { useWebAuthn } from '../composables/useWebAuthn.js';
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -16,6 +16,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/claims")]
 [ApiAuthorize]
+[AutoValidateAntiforgeryToken]
 public class ClaimsController : ControllerBase
 {
     private readonly IClaimsService _claimsService;
