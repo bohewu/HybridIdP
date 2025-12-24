@@ -144,10 +144,14 @@ if (Test-Path $envPath) {
 Write-Title "Deployment Mode"
 $deploymentMode = Read-Choice -Prompt "Select deployment mode:" -Choices @(
     "Nginx Reverse Proxy (Recommended - includes SSL termination)",
-    "Internal/Load Balancer (No SSL container - external LB handles SSL)"
+    "Internal/Load Balancer (No SSL container - external LB handles SSL)",
+    "Split-Host + Nginx + Internal DB (Docker DB included)",
+    "Split-Host + Nginx + External DB (External DB server)"
 ) -DefaultIndex 0
 
 $useNginx = $deploymentMode -like "*Nginx*"
+$useSplitHost = $deploymentMode -like "*Split-Host*"
+$useExternalDb = $deploymentMode -like "*External DB*"
 
 Write-Title "Database Configuration"
 $dbProvider = Read-Choice -Prompt "Select database provider:" -Choices @(
@@ -156,6 +160,33 @@ $dbProvider = Read-Choice -Prompt "Select database provider:" -Choices @(
 ) -DefaultIndex 0
 
 $useSqlServer = $dbProvider -like "*SqlServer*"
+
+# If using external DB, prompt for connection details
+if ($useExternalDb) {
+    Write-Title "External Database Connection"
+    Write-Warn "You selected external database. Please provide connection details."
+    
+    if ($useSqlServer) {
+        $externalDbHost = Read-PromptWithDefault -Prompt "SQL Server Host (e.g., db.example.com,1433)" -Default "localhost,1433"
+        $externalDbName = Read-PromptWithDefault -Prompt "Database Name" -Default "hybridauth_idp"
+        $externalDbUser = Read-PromptWithDefault -Prompt "Database User" -Default "idp_app"
+        $externalDbPassword = Read-PromptWithDefault -Prompt "Database Password" -Default "" -Secret
+        if ([string]::IsNullOrWhiteSpace($externalDbPassword)) {
+            $externalDbPassword = New-SecurePassword -Length 24 -SqlSafe
+            Write-Info "Generated random password: $externalDbPassword"
+        }
+    } else {
+        $externalDbHost = Read-PromptWithDefault -Prompt "PostgreSQL Host" -Default "localhost"
+        $externalDbPort = Read-PromptWithDefault -Prompt "PostgreSQL Port" -Default "5432"
+        $externalDbName = Read-PromptWithDefault -Prompt "Database Name" -Default "hybridauth_idp"
+        $externalDbUser = Read-PromptWithDefault -Prompt "Database User" -Default "idp_app"
+        $externalDbPassword = Read-PromptWithDefault -Prompt "Database Password" -Default "" -Secret
+        if ([string]::IsNullOrWhiteSpace($externalDbPassword)) {
+            $externalDbPassword = New-SecurePassword -Length 24
+            Write-Info "Generated random password: $externalDbPassword"
+        }
+    }
+}
 
 Write-Title "Generating Secure Passwords"
 $mssqlPassword = New-SecurePassword -Length 24 -SqlSafe
@@ -214,17 +245,27 @@ ASPNETCORE_ENVIRONMENT=Production
 DATABASE_PROVIDER=$(if ($useSqlServer) { "SqlServer" } else { "PostgreSQL" })
 
 # Database Connection Strings
-# The service names (mssql-service, postgres-service) are Docker Compose service names.
-# For external DBs, replace with your actual host/IP.
-ConnectionStrings__SqlServerConnection=Server=mssql-service;Database=HybridAuthIdP;User Id=sa;Password=$mssqlPassword;TrustServerCertificate=True;
-ConnectionStrings__PostgreSqlConnection=Host=postgres-service;Port=5432;Database=hybridauth_idp;Username=user;Password=$postgresPassword;
+$(if ($useExternalDb) {
+"# External database connection (user-provided)"
+if ($useSqlServer) {
+"ConnectionStrings__SqlServerConnection=Server=$externalDbHost;Database=$externalDbName;User Id=$externalDbUser;Password=$externalDbPassword;Encrypt=True;TrustServerCertificate=True"
+} else {
+"ConnectionStrings__PostgreSqlConnection=Host=$externalDbHost;Port=$externalDbPort;Database=$externalDbName;Username=$externalDbUser;Password=$externalDbPassword"
+}
+} else {
+"# Docker internal database (mssql-service, postgres-service are Docker Compose service names)"
+"ConnectionStrings__SqlServerConnection=Server=mssql-service;Database=hybridauth_idp;User Id=sa;Password=$mssqlPassword;Encrypt=True;TrustServerCertificate=True"
+"ConnectionStrings__PostgreSqlConnection=Host=postgres-service;Port=5432;Database=hybridauth_idp;Username=user;Password=$postgresPassword"
+})
 ConnectionStrings__RedisConnection=redis-service:6379
 
-# Database Credentials (for container initialization)
-MSSQL_SA_PASSWORD=$mssqlPassword
-POSTGRES_USER=user
-POSTGRES_PASSWORD=$postgresPassword
-POSTGRES_DB=hybridauth_idp
+$(if (-not $useExternalDb) {
+"# Database Credentials (for Docker container initialization)"
+"MSSQL_SA_PASSWORD=$mssqlPassword"
+"POSTGRES_USER=user"
+"POSTGRES_PASSWORD=$postgresPassword"
+"POSTGRES_DB=hybridauth_idp"
+})
 
 # Redis Configuration
 Redis__Enabled=$($redisEnabled.ToString().ToLower())
@@ -369,19 +410,38 @@ To generate certificates with Step-CA, run:
 
 Write-Title "Setup Complete!"
 
-$composeFile = if ($useNginx) { "docker-compose.nginx.yml" } else { "docker-compose.internal.yml" }
+$composeFile = if ($useSplitHost) {
+    if ($useExternalDb) { "docker-compose.splithost-nginx-nodb.yml" } else { "docker-compose.splithost-nginx.yml" }
+} elseif ($useNginx) {
+    "docker-compose.nginx.yml"
+} else {
+    "docker-compose.internal.yml"
+}
+
+$accessUrl = if ($useSplitHost) {
+    "- HTTP: http://localhost:8080 (via Nginx gateway, behind external RP)"
+} elseif ($useNginx) {
+    "- HTTPS: https://localhost (via Nginx)"
+} else {
+    "- HTTP: http://localhost:8080 (behind your LB)"
+}
 
 Write-Host @"
 
 Next steps:
 1. Review the generated .env file: $envPath
 2. Ensure certificates exist in: $certsDir
-3. Start the application:
+$(if ($useSplitHost) {
+"3. Edit nginx/splithost-gateway.conf to set allowed proxy IPs"
+"4. Start the application:" 
+} else {
+"3. Start the application:"
+})
 
    docker compose -f $composeFile --env-file .env up -d
 
-4. Access the application:
-   $(if ($useNginx) { "- HTTPS: https://localhost (via Nginx)" } else { "- HTTP: http://localhost:8080 (behind your LB)" })
+$(if ($useSplitHost) { "5." } else { "4." }) Access the application:
+   $accessUrl
 
 For more details, see docs/DEPLOYMENT_GUIDE.md
 
