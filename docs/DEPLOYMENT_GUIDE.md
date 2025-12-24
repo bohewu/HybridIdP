@@ -1,6 +1,6 @@
  # HybridIdP Deployment Guide
 
-This guide covers the deployment of HybridIdP using Docker Compose, supporting both **Internal** (behind Load Balancer) and **Nginx Reverse Proxy** modes.
+This guide covers the deployment of HybridIdP using Docker Compose, supporting multiple deployment modes.
 
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
@@ -9,7 +9,10 @@ This guide covers the deployment of HybridIdP using Docker Compose, supporting b
 4. [Deployment Modes](#deployment-modes)
    - [Mode A: Nginx Reverse Proxy (Recommended)](#mode-a-nginx-reverse-proxy-recommended)
    - [Mode B: Internal / Load Balancer](#mode-b-internal--load-balancer)
-5. [Database & Redis](#database--redis)
+   - [Mode C: Split-Host + Internal DB](#mode-c-split-host--internal-db)
+   - [Mode D: Split-Host + External DB](#mode-d-split-host--external-db)
+5. [SSH Tunnel Testing](#ssh-tunnel-testing)
+6. [Database & Redis](#database--redis)
 
 ---
 
@@ -79,11 +82,17 @@ chmod +x setup-env.sh
 ```
 
 The script will:
-- Prompt for deployment mode (Nginx/Internal)
+- Prompt for deployment mode:
+  1. **Nginx Reverse Proxy** - Recommended, includes SSL termination
+  2. **Internal/Load Balancer** - No SSL container, external LB handles SSL
+  3. **Split-Host + Internal DB** - Docker DB included, Nginx gateway
+  4. **Split-Host + External DB** - External DB server, minimal containers
 - Prompt for database provider (SqlServer/PostgreSQL)
+- For external DB mode: prompt for DB host, name, user, password
 - Generate secure random passwords
 - Optionally generate OpenIddict certificates
 - Create a complete `.env` file
+- Output the correct `docker compose` command to run
 
 ### Manual Configuration
 
@@ -150,15 +159,70 @@ Runs HybridIdP and Databases only. Assumes you have an external Load Balancer (A
 docker compose -f docker-compose.internal.yml --env-file .env up -d
 ```
 
-### Mode C: External Database
-For connecting to an existing external database (e.g., Azure SQL, Amazon RDS, or a dedicated VM) instead of containerized instances.
+### Mode C: Split-Host + Internal DB
 
-1.  **Configure `.env`**:
-    *   Set `ConnectionStrings__SqlServerConnection` or `ConnectionStrings__PostgreSqlConnection` to point to your external host.
-    *   Example: `Server=my-azure-sql.database.windows.net;Database=HybridAuthIdP;...`
-2.  **Modify Docker Compose**:
-    *   You can comment out the `depends_on` sections for `mssql-service` or `postgres-service` in your chosen YAML file.
-    *   Optionally, remove the `mssql-service` and `postgres-service` blocks entirely if you don't need them.
+For scenarios where a reverse proxy runs on a separate host from HybridIdP, with databases running in Docker.
+
+**Files**: `docker-compose.splithost-nginx.yml`
+
+```
+┌─────────────────────┐          ┌─────────────────────────────────┐
+│  Host A (Proxy)     │   HTTP   │  Host B (Docker)                │
+│  Nginx/BunkerWeb    │ ───────► │  nginx-gateway:8080             │
+│  192.168.1.10       │  :8080   │    └─► idp-service              │
+│  (SSL Termination)  │          │    └─► mssql/postgres + redis   │
+└─────────────────────┘          └─────────────────────────────────┘
+```
+
+**Run:**
+```bash
+docker compose -f docker-compose.splithost-nginx.yml --env-file .env up -d
+```
+
+### Mode D: Split-Host + External DB
+
+Most secure production configuration: external database, minimal Docker containers.
+
+**Files**: `docker-compose.splithost-nginx-nodb.yml`
+
+```
+┌─────────────────────┐          ┌─────────────────────────────────┐
+│  Host A (Proxy)     │   HTTP   │  Host B (Docker)                │
+│  Nginx/BunkerWeb    │ ───────► │  nginx-gateway:8080             │
+│  192.168.1.10       │  :8080   │    └─► idp-service              │
+│  (SSL Termination)  │          │    └─► redis (session cache)    │
+└─────────────────────┘          └──────────┬──────────────────────┘
+                                             │ TCP:1433
+                                             ▼
+                                    External SQL Server
+```
+
+**setup-env 會詢問外部 DB 連線資訊：**
+```
+SQL Server Host (e.g., db.example.com,1433): your-db-host,1433
+Database Name [hybridauth_idp]: hybridauth_idp
+Database User [idp_app]: idp_app
+Database Password: ********
+```
+
+**生成的連線字串格式：**
+```bash
+ConnectionStrings__SqlServerConnection=Server=your-db-host,1433;Database=hybridauth_idp;User Id=idp_app;Password=xxx;Encrypt=True;TrustServerCertificate=True
+```
+
+**Run:**
+```bash
+docker compose -f docker-compose.splithost-nginx-nodb.yml --env-file .env up -d
+```
+
+> [!TIP]
+> For SQL Server Contained Database mode, create a contained user in your DB:
+> ```sql
+> ALTER DATABASE hybridauth_idp SET CONTAINMENT = PARTIAL;
+> USE hybridauth_idp;
+> CREATE USER idp_app WITH PASSWORD = 'YourSecurePassword!';
+> ALTER ROLE db_owner ADD MEMBER idp_app;
+> ```
 
 ### Mode D: Split-Host Deployment (Reverse Proxy on Host A, App on Host B)
 
@@ -254,41 +318,39 @@ server {
 > [!IMPORTANT]
 > The `X-Forwarded-Proto` header is critical. If not set correctly, HybridIdP will generate `http://` URLs instead of `https://`, breaking OAuth flows.
 
-### Mode E: Split-Host + External Database (最安全)
+---
 
-連接外部 SQL Server/PostgreSQL，不包含本地資料庫容器。
+## SSH Tunnel Testing
 
-**Files**: `docker-compose.splithost-nginx-nodb.yml`
+在設定 DNS 之前，可以使用 SSH Tunnel 直接測試 Docker 容器是否正常運作。
 
-**架構：**
-```
-┌─────────────────────────────────────────┐
-│  Docker Host                            │
-│  ┌─────────────────┐                    │
-│  │ nginx-gateway   │ ← 唯一暴露         │
-│  └────────┬────────┘                    │
-│  ┌────────▼────────┐ ┌─────────────┐    │
-│  │ idp-service     │ │ redis       │    │
-│  └────────┬────────┘ └─────────────┘    │
-└───────────┼─────────────────────────────┘
-            │ TCP:1433
-            ▼
-   External SQL Server
-```
+### 步驟
 
-**設定：**
-1. 編輯 `.env` 設定外部資料庫連線：
+1. **建立 SSH Tunnel** (在你的電腦上執行):
    ```bash
-   DATABASE_PROVIDER=SqlServer
-   ConnectionStrings__SqlServerConnection=Server=your-sql-server;Database=HybridAuthIdP;User Id=sa;Password=xxx;TrustServerCertificate=True;
+   # 連接到 Host 的 nginx-gateway (port 8080)
+   ssh -L 8080:localhost:8080 user@your-host-ip
    ```
 
-2. 編輯 `nginx/splithost-gateway.conf` 設定允許的 Proxy IP
-
-3. 啟動：
-   ```bash
-   docker compose -f docker-compose.splithost-nginx-nodb.yml --env-file .env up -d
+2. **瀏覽器測試**:
    ```
+   http://localhost:8080         # 首頁
+   http://localhost:8080/Admin   # Admin UI
+   ```
+
+3. **確認沒問題後，設定 DNS**:
+   ```
+   id.yourcompany.com → A記錄 → Host IP
+   ```
+
+### 驗證清單
+
+| 檢查項目 | 預期結果 |
+|----------|----------|
+| 首頁載入 | 看到登入頁面 |
+| Admin UI | 能夠登入 Admin Dashboard |
+| OIDC 設定 | `/.well-known/openid-configuration` 回傳 JSON |
+| 健康檢查 | `/health` 回傳正常 |
 
 ---
 
