@@ -55,17 +55,24 @@ Powered by **OpenIddict**:
 
 ## ⚡ Quick Start
 
-1. **Prerequisites**: Docker Desktop, .NET 10 SDK+, Node.js.
-2. **Infrastructure**:
+### Development
+1. **Prerequisites**: Docker Desktop, .NET 10 SDK+.
+2. **Run Infrastructure**:
    ```bash
    docker compose -f docker-compose.dev.yml up -d
    ```
-3. **Run**:
+3. **Run App**:
    ```bash
    dotnet run --project Web.IdP
    ```
-4. **Admin UI**:
-   Navigate to `https://localhost:7035` and login with default dev credentials.
+
+### Production Deployment
+**Use the Setup Wizard (Recommended)**:
+```bash
+cd deployment
+./setup-env.ps1  # or ./setup-env.sh
+```
+This handles certificates, passwords, and architecture selection involved in a production setup. See [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) for details.
 
 ---
 

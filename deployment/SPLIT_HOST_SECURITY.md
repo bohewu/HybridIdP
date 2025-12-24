@@ -1,8 +1,40 @@
 # Split-Host Deployment Security Guide
 
-This guide provides step-by-step instructions for securing HybridIdP in a split-host deployment where:
-- **Host A** = External Reverse Proxy (Nginx/BunkerWeb)
-- **Host B** = HybridIdP Application
+> [!IMPORTANT]
+> This is an **Advanced Hardening Guide**. Most users should first run the `setup-env` script and select a Split-Host mode. Use this guide to further harden the network layer (iptables) or understand the architecture.
+
+This guide details the security architecture and hardening steps for a **Split-Host** deployment.
+
+## Why Split-Host? (The DMZ Concept)
+
+In high-security environments, we often separate the **Internet-Facing** components from the **Data & Application** components.
+
+*   **Host A (DMZ / Public Zone)**:
+    *   **Role**: Reverse Proxy (Nginx, HAProxy, etc.).
+    *   **Exposure**: Open to the public internet (Ports 80/443).
+    *   **Risk**: If compromised, the attacker only gains access to the proxy, not the database or application secrets.
+*   **Host B (Trusted Zone / Intranet)**:
+    *   **Role**: HybridIdP Application + Database.
+    *   **Exposure**: **NO** public internet access. Only accepts traffic from Host A.
+    *   **Benefit**: Your identity data (compliance) and keys are isolated from the public edge.
+
+This guide ensures that Host B is strictly locked down to *only* talk to Host A.
+
+## Architecture
+
+```
+┌──────────────────────────┐          ┌──────────────────────────────────────────┐
+│  Host A (DMZ)            │          │  Host B (Trusted Zone)                   │
+│  [ Public IP ]           │          │  [ Internal IP: 192.168.1.20 ]           │
+│                          │ Traffic  │                                          │
+│  ┌────────────────────┐  │ ───────► │  ┌─────────────────┐   ┌──────────────┐  │
+│  │ Reverse Proxy      │  │ (8080)   │  │ Nginx Gateway   │──►│ HybridIdP    │  │
+│  │ (SSL Termination)  │  │          │  │ (Docker)        │   │ (App)        │  │
+│  └────────────────────┘  │          │  └─────────────────┘   └──────────────┘  │
+└──────────────────────────┘          └──────────────────────────────────────────┘
+```
+
+---
 
 ## Deployment Options
 
