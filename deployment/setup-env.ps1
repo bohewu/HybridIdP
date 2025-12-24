@@ -68,8 +68,8 @@ function Read-PromptWithDefault {
     
     if ($Secret) {
         Write-Host $fullPrompt -NoNewline
-        $input = Read-Host -AsSecureString
-        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($input)
+        $secureInput = Read-Host -AsSecureString
+        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureInput)
         $value = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
         [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
     } else {

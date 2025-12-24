@@ -56,32 +56,36 @@ prompt_with_default() {
 
 # Prompt for choice selection
 prompt_choice() {
-    local prompt="$1"
-    shift
+    local __resultvar=$1
+    local prompt=$2
+    shift 2
     local choices=("$@")
     local default_index=0
     
-    echo -e "\n$prompt" >&2
+    echo -e "\n$prompt"
     for i in "${!choices[@]}"; do
         local marker="[ ]"
         if [ "$i" -eq "$default_index" ]; then
             marker="[*]"
         fi
-        echo "  $((i+1)). $marker ${choices[$i]}" >&2
+        echo "  $((i+1)). $marker ${choices[$i]}"
     done
     
     read -rp "Enter choice (1-${#choices[@]}) [default: 1]: " selection
     
+    local selected_value
     if [ -z "$selection" ]; then
-        echo "${choices[$default_index]}"
+        selected_value="${choices[$default_index]}"
     else
         local idx=$((selection - 1))
         if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#choices[@]}" ]; then
-            echo "${choices[$idx]}"
+            selected_value="${choices[$idx]}"
         else
-            echo "${choices[$default_index]}"
+            selected_value="${choices[$default_index]}"
         fi
     fi
+    
+    eval $__resultvar="'$selected_value'"
 }
 
 # Main script
@@ -113,11 +117,12 @@ if [ -f "$ENV_PATH" ]; then
 fi
 
 print_title "Deployment Mode"
-deployment_mode=$(prompt_choice "Select deployment mode:" \
+deployment_mode=""
+prompt_choice "deployment_mode" "Select deployment mode:" \
     "Nginx Reverse Proxy (Recommended - includes SSL termination)" \
     "Internal/Load Balancer (No SSL container - external LB handles SSL)" \
     "Split-Host + Nginx + Internal DB (Docker DB included)" \
-    "Split-Host + Nginx + External DB (External DB server)")
+    "Split-Host + Nginx + External DB (External DB server)"
 
 use_nginx=false
 use_split_host=false
@@ -139,9 +144,10 @@ if [ "$use_split_host" = true ]; then
 fi
 
 print_title "Database Configuration"
-db_provider=$(prompt_choice "Select database provider:" \
+db_provider=""
+prompt_choice "db_provider" "Select database provider:" \
     "SqlServer (Microsoft SQL Server 2022)" \
-    "PostgreSQL (PostgreSQL 17)")
+    "PostgreSQL (PostgreSQL 17)"
 
 use_sqlserver=false
 [[ "$db_provider" == *"SqlServer"* ]] && use_sqlserver=true
@@ -183,9 +189,10 @@ signing_cert_password=$(generate_password 20)
 print_info "Random passwords generated successfully."
 
 print_title "Redis Configuration"
-redis_choice=$(prompt_choice "Enable Redis for distributed caching?" \
+redis_choice=""
+prompt_choice "redis_choice" "Enable Redis for distributed caching?" \
     "Yes (Recommended for production)" \
-    "No (Use in-memory caching)")
+    "No (Use in-memory caching)"
 
 redis_enabled=true
 [[ "$redis_choice" == *"No"* ]] && redis_enabled=false
@@ -194,9 +201,10 @@ print_title "Proxy Configuration"
 if [ "$use_nginx" = true ]; then
     proxy_enabled="true"
 else
-    proxy_choice=$(prompt_choice "Is there a reverse proxy/load balancer in front?" \
+    proxy_choice=""
+    prompt_choice "proxy_choice" "Is there a reverse proxy/load balancer in front?" \
         "No" \
-        "Yes")
+        "Yes"
     [[ "$proxy_choice" == *"Yes"* ]] && proxy_enabled="true" || proxy_enabled="false"
 fi
 
