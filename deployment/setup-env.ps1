@@ -358,73 +358,40 @@ if ((Test-Path $encryptionPfx) -and (Test-Path $signingPfx)) {
     Write-Warn "Certificates already exist in $certsDir"
     Write-Warn "If you want to regenerate, delete them and run this script again."
 } else {
-    $generateCerts = Read-Choice -Prompt "Generate self-signed certificates for OpenIddict?" -Choices @(
-        "Yes (using OpenSSL)",
-        "No (I'll provide my own or use Step-CA)"
-    ) -DefaultIndex 0
-    
-    if ($generateCerts -like "*Yes*") {
-        # Check if OpenSSL is available
-        $opensslPath = (Get-Command openssl -ErrorAction SilentlyContinue).Source
-        if (-not $opensslPath) {
-            Write-Warn "OpenSSL not found in PATH. Please install OpenSSL or generate certificates manually."
-            Write-Host @"
-
-To generate certificates manually with Step-CA, run:
-  step ca certificate "HybridIdP Encryption" encryption.crt encryption.key --kty RSA --size 4096
-  step certificate p12 encryption.pfx encryption.crt encryption.key --password=$encryptionCertPassword
-  
-  step ca certificate "HybridIdP Signing" signing.crt signing.key --kty RSA --size 4096
-  step certificate p12 signing.pfx signing.crt signing.key --password=$signingCertPassword
-
-Or with OpenSSL:
-  cd $certsDir
-  openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout encryption.key -out encryption.crt -subj "/CN=HybridIdP Encryption"
-  openssl pkcs12 -export -out encryption.pfx -inkey encryption.key -in encryption.crt -password pass:$encryptionCertPassword
-  
-  openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout signing.key -out signing.crt -subj "/CN=HybridIdP Signing"
-  openssl pkcs12 -export -out signing.pfx -inkey signing.key -in signing.crt -password pass:$signingCertPassword
-"@
-        } else {
-            Write-Info "Generating certificates with OpenSSL..."
-            Push-Location $certsDir
-            try {
-                # Encryption certificate
-                & openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes `
-                    -keyout encryption.key -out encryption.crt `
-                    -subj "/CN=HybridIdP Encryption" 2>$null
-                
-                & openssl pkcs12 -export -out encryption.pfx `
-                    -inkey encryption.key -in encryption.crt `
-                    -password pass:$encryptionCertPassword 2>$null
-                
-                # Signing certificate
-                & openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes `
-                    -keyout signing.key -out signing.crt `
-                    -subj "/CN=HybridIdP Signing" 2>$null
-                
-                & openssl pkcs12 -export -out signing.pfx `
-                    -inkey signing.key -in signing.crt `
-                    -password pass:$signingCertPassword 2>$null
-                
-                # Cleanup key/crt files (optional, keep only pfx)
-                Remove-Item -Path "*.key", "*.crt" -Force -ErrorAction SilentlyContinue
-                
-                Write-Info "Certificates generated successfully!"
-            } finally {
-                Pop-Location
-            }
-        }
+    # Default to generating with OpenSSL
+    $opensslPath = (Get-Command openssl -ErrorAction SilentlyContinue).Source
+    if (-not $opensslPath) {
+        Write-Warn "OpenSSL not found in PATH. Please install OpenSSL or generate certificates manually."
+        Write-Host "Place 'encryption.pfx' and 'signing.pfx' in: $certsDir"
     } else {
-        Write-Host @"
-
-To generate certificates with Step-CA, run:
-  step ca certificate "HybridIdP Encryption" encryption.crt encryption.key --kty RSA --size 4096
-  step certificate p12 deployment/certs/encryption.pfx encryption.crt encryption.key --password=$encryptionCertPassword
-  
-  step ca certificate "HybridIdP Signing" signing.crt signing.key --kty RSA --size 4096
-  step certificate p12 deployment/certs/signing.pfx signing.crt signing.key --password=$signingCertPassword
-"@
+        Write-Info "Generating certificates with OpenSSL..."
+        Push-Location $certsDir
+        try {
+            # Encryption certificate
+            & openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes `
+                -keyout encryption.key -out encryption.crt `
+                -subj "/CN=HybridIdP Encryption" 2>$null
+            
+            & openssl pkcs12 -export -out encryption.pfx `
+                -inkey encryption.key -in encryption.crt `
+                -password pass:$encryptionCertPassword 2>$null
+            
+            # Signing certificate
+            & openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes `
+                -keyout signing.key -out signing.crt `
+                -subj "/CN=HybridIdP Signing" 2>$null
+            
+            & openssl pkcs12 -export -out signing.pfx `
+                -inkey signing.key -in signing.crt `
+                -password pass:$signingCertPassword 2>$null
+            
+            # Cleanup key/crt files (optional, keep only pfx)
+            Remove-Item -Path "*.key", "*.crt" -Force -ErrorAction SilentlyContinue
+            
+            Write-Info "Certificates generated successfully!"
+        } finally {
+            Pop-Location
+        }
     }
 }
 

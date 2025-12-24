@@ -108,6 +108,21 @@ HybridIdP requires two certificates: **Encryption** and **Signing**.
 mkdir -p deployment/certs
 cd deployment/certs
 
+### Alternative: Using Step-CA
+If you prefer `step-ca`:
+
+```bash
+# Encryption Cert
+step ca certificate "HybridIdP Encryption" encryption.crt encryption.key --kty RSA --size 4096
+step certificate p12 encryption.pfx encryption.crt encryption.key --password=YOUR_PASSWORD
+
+# Signing Cert
+step ca certificate "HybridIdP Signing" signing.crt signing.key --kty RSA --size 4096
+step certificate p12 signing.pfx signing.crt signing.key --password=YOUR_PASSWORD
+```
+
+### Alternative: Using OpenSSL
+```bash
 # Generate Encryption Cert
 openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout encryption.key -out encryption.crt -subj "/CN=HybridIdP Encryption"
 openssl pkcs12 -export -out encryption.pfx -inkey encryption.key -in encryption.crt -password pass:YOUR_PASSWORD
@@ -123,5 +138,27 @@ openssl pkcs12 -export -out signing.pfx -inkey signing.key -in signing.crt -pass
 ### Database & Redis Options
 -   **Redis**: Set `Redis__Enabled=false` to use In-Memory caching (not recommended for multi-instance production).
 -   **External DB**: Update `ConnectionStrings__...` with your real server details.
+
+### Connecting to Remote Step-CA (e.g., on Host C)
+If your **Step-CA** is running on a different machine (e.g., **Host C** with IP `192.168.1.50`) and using an internal hostname (e.g., `ca.internal`), Docker containers might fail to resolve it.
+
+**Option A: Manual Host Mapping (Recommended for Static IPs)**
+Directly map the hostname to Host C's IP.
+```yaml
+services:
+  idp-service:
+    extra_hosts:
+      - "ca.internal:192.168.1.50" # Map ca.internal to Host C IP
+```
+
+**Option B: Custom Internal DNS**
+If you have an Internal DNS Server (e.g., AD DC) that knows where `ca.internal` is:
+```yaml
+services:
+  idp-service:
+    dns:
+      - 192.168.1.1  # Your Internal DNS Server IP
+      - 8.8.8.8      # Fallback
+```
 
 
