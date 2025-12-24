@@ -10,3 +10,17 @@ services:
   mssql-service:
     environment:
       - MSSQL_SA_PASSWORD=NewStrong!Passw0rd
+
+# Example: Connecting to an external Legacy Network
+# networks:
+#   default:
+#     name: idp_network
+#   legacy_network:
+#     external: true
+#     name: existing_legacy_network_name
+#
+# services:
+#   idp-service:
+#     networks:
+#       - default
+#       - legacy_network

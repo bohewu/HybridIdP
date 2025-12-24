@@ -31,10 +31,10 @@ function New-SecurePassword {
     
     $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     if (-not $SqlSafe) {
-        $chars += "!@#$%^&*_-+="
+        $chars += "!@#%^&*_-+=" # Removed $ to avoid variable interpolation issues
     } else {
         # SQL Server SA password requirements: uppercase, lowercase, number, special
-        $chars += "!@#$_-+"
+        $chars += "!@#_-+" # Removed $
     }
     
     $bytes = New-Object byte[] $Length

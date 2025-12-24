@@ -60,3 +60,4 @@ deployment/certs/*.pem
 # Local overrides
 appsettings.local.json
 appsettings.*.local.json
+deployment/docker-compose.override.yml

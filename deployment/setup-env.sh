@@ -30,10 +30,10 @@ generate_password() {
     local sql_safe=${2:-false}
     
     if [ "$sql_safe" = true ]; then
-        # SQL-safe: avoid problematic characters
-        LC_ALL=C tr -dc 'A-Za-z0-9!@#$_+-' < /dev/urandom | head -c "$length"
+        # SQL-safe: avoid problematic characters (including $ to prevent shell interpolation)
+        LC_ALL=C tr -dc 'A-Za-z0-9!@#_+-' < /dev/urandom | head -c "$length"
     else
-        LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&_*+=-' < /dev/urandom | head -c "$length"
+        LC_ALL=C tr -dc 'A-Za-z0-9!@#%^&_*+=-' < /dev/urandom | head -c "$length"
     fi
     
     echo
