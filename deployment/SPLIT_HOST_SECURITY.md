@@ -58,35 +58,66 @@ This guide ensures that Host B is strictly locked down to *only* talk to Host A.
 
 ## Step 1: Identify Network Interface (Host B)
 
-First, identify the correct network interface for your iptables rules.
-
-```bash
-# List all network interfaces
-ip addr show
-
-# Example output:
-# 1: lo: <LOOPBACK,UP,LOWER_UP> ...
-#     inet 127.0.0.1/8 scope host lo
-# 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
-#     inet 192.168.1.20/24 brd 192.168.1.255 scope global eth0
-# 3: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> ...
-#     inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
-```
-
-**Key interfaces:**
-- `eth0` (or `ens33`, `enp0s3`) = Physical network interface (use this for iptables)
-- `docker0` = Docker bridge (don't use this)
-- `lo` = Loopback (localhost only)
+First, identify the correct network interface.
 
 **Find your internal IP:**
 ```bash
-# Get the IP address of your main interface
-hostname -I | awk '{print $1}'
+# Get the IP address of your internal interface (e.g., eth0)
+hostname -I
+# Example Output: 192.168.1.20
 ```
 
 ---
 
-## Step 2: Configure iptables (Host B)
+## Configuration Management
+
+If you need to change your network binding after running the setup script (e.g., if your IP changes), you simply edit the `.env` file.
+
+### How to Change IP Binding
+1.  Open `.env`:
+    ```bash
+    nano .env
+    ```
+2.  Find and modify the `INTERNAL_IP` variable:
+    ```bash
+    # Set to 0.0.0.0 to listen on ALL interfaces (Reset to default)
+    # Set to 192.168.1.20 to listen ONLY on that specific IP
+    INTERNAL_IP=192.168.1.20
+    ```
+3.  Restart the container:
+    ```bash
+    docker compose up -d
+    ```
+
+```
+
+### How to Update Trusted Proxy
+If your Reverse Proxy (Host A) IP changes, update `Proxy__KnownProxies`:
+```bash
+# Add your new Host A IP here
+Proxy__KnownProxies=192.168.1.10;172.16.0.0/12;...
+```
+
+---
+
+## Step 2: Haden File Permissions
+
+The `.env` file contains highly sensitive secrets (database passwords, certificate passwords). You **must** restrict access to it.
+
+```bash
+# Only allow the owner (root/current user) to read/write
+chmod 600 deployment/.env
+```
+
+Also, ensure your certificate private keys are protected:
+```bash
+chmod 600 deployment/certs/*.pfx
+chmod 600 deployment/certs/*.key
+```
+
+---
+
+## Step 3: Configure iptables (Host B)
 
 ### 2.1 Verify Docker is Using the DOCKER-USER Chain
 
