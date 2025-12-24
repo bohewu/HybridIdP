@@ -153,6 +153,15 @@ $useNginx = $deploymentMode -like "*Nginx*"
 $useSplitHost = $deploymentMode -like "*Split-Host*"
 $useExternalDb = $deploymentMode -like "*External DB*"
 
+if ($useSplitHost) {
+    Write-Title "Split-Host Network Configuration"
+    Write-Info "For Split-Host mode, we can bind to a specific internal IP for security."
+    $internalIp = Read-PromptWithDefault -Prompt "Internal IP to bind to (Host B IP)" -Default "0.0.0.0"
+    
+    Write-Info "We need to trust the external Reverse Proxy (Host A) to correctly parse headers."
+    $proxyHostIp = Read-PromptWithDefault -Prompt "External Reverse Proxy IP (Host A IP)" -Default ""
+}
+
 Write-Title "Database Configuration"
 $dbProvider = Read-Choice -Prompt "Select database provider:" -Choices @(
     "SqlServer (Microsoft SQL Server 2022)",
@@ -207,6 +216,14 @@ Write-Title "Proxy Configuration"
 $proxyEnabled = if ($useNginx) { "true" } else {
     $proxyChoice = Read-Choice -Prompt "Is there a reverse proxy/load balancer in front?" -Choices @("Yes", "No") -DefaultIndex 1
     if ($proxyChoice -eq "Yes") { "true" } else { "false" }
+}
+
+$knownProxies = "172.16.0.0/12;192.168.0.0/16;10.0.0.0/8"
+if ($useSplitHost -and $proxyHostIp) {
+    # If specific proxy IP is known, we can be more specific, or just append it to ensure it's trusted
+    # For strict security, we might want ONLY this IP, but for ease of use with Docker networks, we keep the CIDRs too or just add it.
+    # Let's use the specific IP if provided to be explicit in the config.
+    $knownProxies = "$proxyHostIp;172.16.0.0/12;192.168.0.0/16;10.0.0.0/8"
 }
 
 Write-Title "Optional: External Services"
@@ -272,7 +289,10 @@ Redis__Enabled=$($redisEnabled.ToString().ToLower())
 
 # Proxy Configuration
 Proxy__Enabled=$proxyEnabled
-Proxy__KnownProxies=172.16.0.0/12;192.168.0.0/16;10.0.0.0/8
+Proxy__KnownProxies=$knownProxies
+
+# Network Binding (Split-Host)
+INTERNAL_IP=$(if ($internalIp) { $internalIp } else { "0.0.0.0" })
 
 # OpenIddict Certificates
 # These passwords protect the PFX files in deployment/certs/

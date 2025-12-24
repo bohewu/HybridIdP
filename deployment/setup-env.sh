@@ -126,6 +126,18 @@ use_external_db=false
 [[ "$deployment_mode" == *"Split-Host"* ]] && use_split_host=true
 [[ "$deployment_mode" == *"External DB"* ]] && use_external_db=true
 
+internal_ip="0.0.0.0"
+proxy_host_ip=""
+
+if [ "$use_split_host" = true ]; then
+    print_title "Split-Host Network Configuration"
+    print_info "For Split-Host mode, we can bind to a specific internal IP for security."
+    internal_ip=$(prompt_with_default "Internal IP to bind to (Host B IP)" "0.0.0.0")
+    
+    print_info "We need to trust the external Reverse Proxy (Host A) to correctly parse headers."
+    proxy_host_ip=$(prompt_with_default "External Reverse Proxy IP (Host A IP)" "")
+fi
+
 print_title "Database Configuration"
 db_provider=$(prompt_choice "Select database provider:" \
     "SqlServer (Microsoft SQL Server 2022)" \
@@ -186,6 +198,11 @@ else
         "No" \
         "Yes")
     [[ "$proxy_choice" == *"Yes"* ]] && proxy_enabled="true" || proxy_enabled="false"
+fi
+
+known_proxies="172.16.0.0/12;192.168.0.0/16;10.0.0.0/8"
+if [ "$use_split_host" = true ] && [ -n "$proxy_host_ip" ]; then
+    known_proxies="$proxy_host_ip;172.16.0.0/12;192.168.0.0/16;10.0.0.0/8"
 fi
 
 print_title "Optional: External Services"
@@ -260,7 +277,10 @@ Redis__Enabled=$redis_enabled
 
 # Proxy Configuration
 Proxy__Enabled=$proxy_enabled
-Proxy__KnownProxies=172.16.0.0/12;192.168.0.0/16;10.0.0.0/8
+Proxy__KnownProxies=$known_proxies
+
+# Network Binding (Split-Host)
+INTERNAL_IP=$internal_ip
 
 # OpenIddict Certificates
 # These passwords protect the PFX files in deployment/certs/
