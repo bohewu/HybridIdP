@@ -61,13 +61,13 @@ prompt_choice() {
     local choices=("$@")
     local default_index=0
     
-    echo -e "\n$prompt"
+    echo -e "\n$prompt" >&2
     for i in "${!choices[@]}"; do
         local marker="[ ]"
         if [ "$i" -eq "$default_index" ]; then
             marker="[*]"
         fi
-        echo "  $((i+1)). $marker ${choices[$i]}"
+        echo "  $((i+1)). $marker ${choices[$i]}" >&2
     done
     
     read -rp "Enter choice (1-${#choices[@]}) [default: 1]: " selection
@@ -344,69 +344,37 @@ if [ -f "$encryption_pfx" ] && [ -f "$signing_pfx" ]; then
     print_warn "Certificates already exist in $certs_dir"
     print_warn "If you want to regenerate, delete them and run this script again."
 else
-    generate_certs=$(prompt_choice "Generate self-signed certificates for OpenIddict?" \
-        "Yes (using OpenSSL)" \
-        "No (I'll provide my own or use Step-CA)")
-    
-    if [[ "$generate_certs" == *"Yes"* ]]; then
-        # Check if OpenSSL is available
-        if command -v openssl &> /dev/null; then
-            print_info "Generating certificates with OpenSSL..."
-            pushd "$certs_dir" > /dev/null
-            
-            # Encryption certificate
-            openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
-                -keyout encryption.key -out encryption.crt \
-                -subj "/CN=HybridIdP Encryption" 2>/dev/null
-            
-            openssl pkcs12 -export -out encryption.pfx \
-                -inkey encryption.key -in encryption.crt \
-                -password "pass:$encryption_cert_password" 2>/dev/null
-            
-            # Signing certificate
-            openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
-                -keyout signing.key -out signing.crt \
-                -subj "/CN=HybridIdP Signing" 2>/dev/null
-            
-            openssl pkcs12 -export -out signing.pfx \
-                -inkey signing.key -in signing.crt \
-                -password "pass:$signing_cert_password" 2>/dev/null
-            
-            # Cleanup key/crt files
-            rm -f *.key *.crt
-            
-            popd > /dev/null
-            print_info "Certificates generated successfully!"
-        else
-            print_warn "OpenSSL not found. Please install OpenSSL or generate certificates manually."
-            cat << EOF
-
-To generate certificates manually with Step-CA, run:
-  step ca certificate "HybridIdP Encryption" encryption.crt encryption.key --kty RSA --size 4096
-  step certificate p12 $certs_dir/encryption.pfx encryption.crt encryption.key --password=$encryption_cert_password
-  
-  step ca certificate "HybridIdP Signing" signing.crt signing.key --kty RSA --size 4096
-  step certificate p12 $certs_dir/signing.pfx signing.crt signing.key --password=$signing_cert_password
-
-Or with OpenSSL:
-  cd $certs_dir
-  openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout encryption.key -out encryption.crt -subj "/CN=HybridIdP Encryption"
-  openssl pkcs12 -export -out encryption.pfx -inkey encryption.key -in encryption.crt -password pass:$encryption_cert_password
-  
-  openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout signing.key -out signing.crt -subj "/CN=HybridIdP Signing"
-  openssl pkcs12 -export -out signing.pfx -inkey signing.key -in signing.crt -password pass:$signing_cert_password
-EOF
-        fi
+    # Default to generating with OpenSSL
+    if command -v openssl &> /dev/null; then
+        print_info "Generating certificates with OpenSSL..."
+        pushd "$certs_dir" > /dev/null
+        
+        # Encryption certificate
+        openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
+            -keyout encryption.key -out encryption.crt \
+            -subj "/CN=HybridIdP Encryption" 2>/dev/null
+        
+        openssl pkcs12 -export -out encryption.pfx \
+            -inkey encryption.key -in encryption.crt \
+            -password "pass:$encryption_cert_password" 2>/dev/null
+        
+        # Signing certificate
+        openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
+            -keyout signing.key -out signing.crt \
+            -subj "/CN=HybridIdP Signing" 2>/dev/null
+        
+        openssl pkcs12 -export -out signing.pfx \
+            -inkey signing.key -in signing.crt \
+            -password "pass:$signing_cert_password" 2>/dev/null
+        
+        # Cleanup key/crt files
+        rm -f *.key *.crt
+        
+        popd > /dev/null
+        print_info "Certificates generated successfully!"
     else
-        cat << EOF
-
-To generate certificates with Step-CA, run:
-  step ca certificate "HybridIdP Encryption" encryption.crt encryption.key --kty RSA --size 4096
-  step certificate p12 $certs_dir/encryption.pfx encryption.crt encryption.key --password=$encryption_cert_password
-  
-  step ca certificate "HybridIdP Signing" signing.crt signing.key --kty RSA --size 4096
-  step certificate p12 $certs_dir/signing.pfx signing.crt signing.key --password=$signing_cert_password
-EOF
+        print_warn "OpenSSL not found. Please install OpenSSL or generate certificates manually."
+        echo "Place 'encryption.pfx' and 'signing.pfx' in: $certs_dir"
     fi
 fi
 
