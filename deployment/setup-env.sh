@@ -62,13 +62,15 @@ prompt_choice() {
     local choices=("$@")
     local default_index=0
     
-    echo -e "\n$prompt"
+    # Print to stderr to ensure visibility even if stdout is redirected
+    echo "" >&2
+    echo "$prompt" >&2
     for i in "${!choices[@]}"; do
         local marker="[ ]"
         if [ "$i" -eq "$default_index" ]; then
             marker="[*]"
         fi
-        echo "  $((i+1)). $marker ${choices[$i]}"
+        echo "  $((i+1)). $marker ${choices[$i]}" >&2
     done
     
     read -rp "Enter choice (1-${#choices[@]}) [default: 1]: " selection
