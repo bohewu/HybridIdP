@@ -33,7 +33,7 @@ generate_password() {
         # SQL-safe: avoid problematic characters
         LC_ALL=C tr -dc 'A-Za-z0-9!@#$_+-' < /dev/urandom | head -c "$length"
     else
-        LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&*_-+=' < /dev/urandom | head -c "$length"
+        LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&_*+=-' < /dev/urandom | head -c "$length"
     fi
     
     echo
@@ -188,7 +188,12 @@ mssql_password=$(generate_password 24 true)
 postgres_password=$(generate_password 24)
 encryption_cert_password=$(generate_password 20)
 signing_cert_password=$(generate_password 20)
-print_info "Random passwords generated successfully."
+
+print_info "Random passwords generated successfully:"
+echo "  - MSSQL_SA_PASSWORD: $mssql_password" >&2
+echo "  - POSTGRES_PASSWORD: $postgres_password" >&2
+echo "  - ENCRYPTION_CERT_PASSWORD: $encryption_cert_password" >&2
+echo "  - SIGNING_CERT_PASSWORD: $signing_cert_password" >&2
 
 print_title "Redis Configuration"
 redis_choice=""
