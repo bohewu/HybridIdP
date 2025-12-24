@@ -159,6 +159,30 @@ services:
     dns:
       - 192.168.1.1  # Your Internal DNS Server IP
       - 8.8.8.8      # Fallback
+
+### Connecting to External Docker Networks (Legacy Services)
+If your IdP needs to connect to another service running in a different Docker Compose project (e.g., a **Legacy Service**), you can join its network without modifying the main `docker-compose.yml`.
+
+1.  **Identify the Network Name**: Run `docker network ls` to find the network name (e.g., `legacy_backend`).
+2.  **Create `deployment/docker-compose.override.yml`**:
+    ```yaml
+    services:
+      idp-service:
+        networks:
+          - legacy_network
+
+    networks:
+      legacy_network:
+        external: true
+        name: legacy_backend  # Actual name from 'docker network ls'
+    ```
+    > **Note**: `docker-compose.override.yml` is git-ignored, so your local setting won't be overwritten by updates.
+
+3.  **Start with Override**:
+    You must explicitly include both files when starting:
+    ```bash
+    docker compose -f docker-compose.splithost-nginx.yml -f docker-compose.override.yml --env-file .env up -d
+    ```
 ```
 
 
