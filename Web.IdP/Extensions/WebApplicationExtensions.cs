@@ -91,7 +91,7 @@ public static class WebApplicationExtensions
         configuration.GetSection(ObservabilityOptions.MonitoringSection).Bind(observabilityOptions);
         configuration.GetSection(ObservabilityOptions.ObservabilitySection).Bind(observabilityOptions);
 
-        if (observabilityOptions.PrometheusEnabled)
+        if (observabilityOptions.Enabled && observabilityOptions.PrometheusEnabled)
         {
             app.MapPrometheusScrapingEndpoint()
                 .RequireAuthorization("PrometheusMetrics");
