@@ -25,6 +25,8 @@ services:
       - Branding__AppName=${Branding__AppName:-HybridAuth}
       - Branding__ProductName=${Branding__ProductName:-HybridAuth IdP}
       - Branding__Copyright=${Branding__Copyright:-© 2025}
+      # Observability - Internal Metrics Scraping
+      - Observability__MetricsBaseUrl=http://localhost:80
       # Optional OpenIddict Issuer
       - OpenIddict__Issuer=${OpenIddict__Issuer:-}
     volumes:
