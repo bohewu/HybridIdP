@@ -69,6 +69,24 @@ If you choose Mode C or D, the wizard will ask for:
 - **Internal IP**: The IP of the host machine to bind the gateway to (e.g., `192.168.1.20`). This prevents exposure on public interfaces.
 - **Proxy Host IP**: The IP of your external Reverse Proxy (Host A) to trust for forwarding headers.
 
+### IP Allowlist Configuration (Split-Host)
+For Split-Host deployments, you need to configure the Nginx IP allowlist:
+
+1. **Copy the example file**:
+   ```bash
+   cd deployment/nginx
+   cp ip-allowlist.conf.example ip-allowlist.conf
+   ```
+
+2. **Edit `ip-allowlist.conf`** to allow your reverse proxy's IP:
+   ```nginx
+   allow 192.168.1.10;    # Your Host A IP
+   deny all;
+   ```
+
+> [!NOTE]
+> The `ip-allowlist.conf` file is gitignored, so your customizations won't be overwritten by updates.
+
 > [!TIP]
 > For a deep dive into hardening the Split-Host architecture (DMZ v.s. Trusted Zone), read the [Split-Host Security Guide](../deployment/SPLIT_HOST_SECURITY.md).
 
