@@ -96,15 +96,36 @@ else
     warn "Neither 'nc' nor 'timeout' available. Skipping TCP test."
 fi
 
-# 4. Test HTTP connectivity
+# 4. Test HTTP connectivity - Try /health endpoint first
 info "Step 2: Testing HTTP connectivity..."
 
+# Derive base URL and try /health endpoint
+BASE_URL="${PROTOCOL}://${HOST}:${PORT}"
+HEALTH_URL="${BASE_URL}/health"
+
 if command -v curl &> /dev/null; then
-    # Try HEAD request first (less invasive)
+    info "Trying health endpoint: $HEALTH_URL"
+    HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "$HEALTH_URL" 2>/dev/null || echo "000")
+    
+    if [ "$HEALTH_CODE" = "200" ]; then
+        info "Health endpoint responded! Status: $HEALTH_CODE"
+        echo ""
+        info "=== Legacy Auth Connectivity Test Complete ==="
+        info "The legacy system is healthy and reachable."
+        exit 0
+    elif [ "$HEALTH_CODE" = "404" ]; then
+        warn "No /health endpoint found. Testing login URL directly..."
+    elif [ "$HEALTH_CODE" != "000" ]; then
+        warn "Health endpoint returned: $HEALTH_CODE. Testing login URL directly..."
+    else
+        warn "Could not reach health endpoint. Testing login URL directly..."
+    fi
+    
+    # Fallback: Test the login URL directly
+    info "Testing login endpoint: $LOGIN_URL"
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 -X HEAD "$LOGIN_URL" 2>/dev/null || echo "000")
     
     if [ "$HTTP_CODE" = "000" ]; then
-        # HEAD might not work, try GET
         HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 -X GET "$LOGIN_URL" 2>/dev/null || echo "000")
     fi
     
@@ -121,7 +142,7 @@ if command -v curl &> /dev/null; then
         warn "HTTP 404 - Endpoint not found. Check if the URL path is correct."
         exit 1
     elif [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-        info "HTTP request successful (unexpected for login endpoint). Status: $HTTP_CODE"
+        info "HTTP request successful. Status: $HTTP_CODE"
     else
         warn "HTTP request returned status: $HTTP_CODE"
         echo "This may still be OK if the endpoint requires POST with credentials."
