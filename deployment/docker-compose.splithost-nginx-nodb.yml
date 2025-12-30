@@ -107,7 +107,8 @@ networks:
   frontend:
     # External access (nginx-gateway only)
   backend:
-    internal: true  # Isolated - no external access
+    # internal: true  <-- REMOVED to allow connection to external Database/SMTP
+    driver: bridge
 
 volumes:
   redis-data:
