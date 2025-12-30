@@ -141,7 +141,13 @@ openssl pkcs12 -export -out signing.pfx -inkey signing.key -in signing.crt -pass
 -   **Redis**: Set `Redis__Enabled=false` to use In-Memory caching (not recommended for multi-instance production).
 -   **External DB**: Update `ConnectionStrings__...` with your real server details.
 
-### Connecting to Remote Step-CA (e.g., on Host C)
+### Troubleshooting Manual Setup
+**"Permission denied" when reading .env:**
+If you see an error like `open .env: permission denied`, you may have created the file as `root` (e.g., via `sudo`) or set strict permissions (e.g., `chmod 600`) while the file is owned by another user.
+Ensure your current user owns the file:
+```bash
+sudo chown $(whoami) deployment/.env
+```
 If your **Step-CA** is running on a different machine (e.g., **Host C** with IP `192.168.1.50`) and using an internal hostname (e.g., `ca.internal`), Docker containers might fail to resolve it.
 
 **Option A: Manual Host Mapping (Recommended for Static IPs)**
