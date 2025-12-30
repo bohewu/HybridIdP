@@ -149,19 +149,36 @@ Write-Host "Since the legacy system is typically only accessible from within Doc
 Write-Host "we'll test using a curl container connected to the same network as idp-service."
 Write-Host ""
 
-# Detect container name and its network
+# Detect container name and its networks
 $idpContainer = docker ps --filter "name=idp-service" --format "{{.Names}}" 2>$null | Select-Object -First 1
 $networkName = ""
 
 if ($idpContainer) {
-    # Get the network(s) the idp-service is connected to
-    $detectedNetwork = docker inspect $idpContainer --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>$null
-    $detectedNetwork = ($detectedNetwork -split ' ')[0]
+    # Get all networks the idp-service is connected to
+    $detectedNetworks = docker inspect $idpContainer --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>$null
+    $networkArray = ($detectedNetworks.Trim() -split ' ') | Where-Object { $_ -ne '' }
     
-    if ($detectedNetwork) {
+    if ($networkArray.Count -gt 0) {
         Write-Info "Detected idp-service container: $idpContainer"
-        Write-Info "Detected network: $detectedNetwork"
-        $networkName = $detectedNetwork
+        Write-Info "Connected networks: $($networkArray -join ', ')"
+        
+        if ($networkArray.Count -gt 1) {
+            Write-Host ""
+            Write-Host "Multiple networks detected. Choose one:"
+            for ($i = 0; $i -lt $networkArray.Count; $i++) {
+                Write-Host "  $($i + 1)) $($networkArray[$i])"
+            }
+            $netChoice = Read-Host "Enter choice [1-$($networkArray.Count)]"
+            
+            if ($netChoice -match '^\d+$' -and [int]$netChoice -ge 1 -and [int]$netChoice -le $networkArray.Count) {
+                $networkName = $networkArray[[int]$netChoice - 1]
+            } else {
+                $networkName = $networkArray[0]
+                Write-Warn "Invalid choice, using first network: $networkName"
+            }
+        } else {
+            $networkName = $networkArray[0]
+        }
     }
 } else {
     Write-Warn "idp-service container not found. Will try to detect network from docker-compose files."
