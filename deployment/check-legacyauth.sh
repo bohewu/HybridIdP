@@ -162,17 +162,39 @@ echo "Since the legacy system is typically only accessible from within Docker,"
 echo "we'll test using a curl container connected to the same network as idp-service."
 echo ""
 
-# Detect container name and its network
+# Detect container name and its networks
 IDP_CONTAINER=$(docker ps --filter "name=idp-service" --format "{{.Names}}" 2>/dev/null | head -n1)
 
 if [ -n "$IDP_CONTAINER" ]; then
-    # Get the network(s) the idp-service is connected to
-    DETECTED_NETWORK=$(docker inspect "$IDP_CONTAINER" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null | awk '{print $1}')
+    # Get all networks the idp-service is connected to
+    DETECTED_NETWORKS=$(docker inspect "$IDP_CONTAINER" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null)
     
-    if [ -n "$DETECTED_NETWORK" ]; then
+    if [ -n "$DETECTED_NETWORKS" ]; then
         info "Detected idp-service container: $IDP_CONTAINER"
-        info "Detected network: $DETECTED_NETWORK"
-        NETWORK_NAME="$DETECTED_NETWORK"
+        info "Connected networks: $DETECTED_NETWORKS"
+        
+        # Convert to array
+        read -ra NETWORK_ARRAY <<< "$DETECTED_NETWORKS"
+        
+        if [ ${#NETWORK_ARRAY[@]} -gt 1 ]; then
+            echo ""
+            echo "Multiple networks detected. Choose one:"
+            i=1
+            for net in "${NETWORK_ARRAY[@]}"; do
+                echo "  $i) $net"
+                ((i++))
+            done
+            read -p "Enter choice [1-${#NETWORK_ARRAY[@]}]: " NET_CHOICE
+            
+            if [[ "$NET_CHOICE" =~ ^[0-9]+$ ]] && [ "$NET_CHOICE" -ge 1 ] && [ "$NET_CHOICE" -le ${#NETWORK_ARRAY[@]} ]; then
+                NETWORK_NAME="${NETWORK_ARRAY[$((NET_CHOICE-1))]}"
+            else
+                NETWORK_NAME="${NETWORK_ARRAY[0]}"
+                warn "Invalid choice, using first network: $NETWORK_NAME"
+            fi
+        else
+            NETWORK_NAME="${NETWORK_ARRAY[0]}"
+        fi
     fi
 else
     warn "idp-service container not found. Will try to detect network from docker-compose files."
