@@ -84,6 +84,8 @@ If you choose Mode C or D, the wizard will ask for:
     ```bash
     curl -k http://localhost:8080/health  # Port depends on mode (80/443/8080)
     ```
+    > [!IMPORTANT]
+    > If you configured `INTERNAL_IP` to a specific IP (e.g., `192.168.x.x`), `curl localhost` will fail because the service is strictly bound to that IP. Use the configured IP instead: `curl -k http://192.168.x.x:8080/health`.
 3.  **OpenID Discovery**:
     Navigate to `https://your-domain/.well-known/openid-configuration` and ensure it returns JSON data.
 
