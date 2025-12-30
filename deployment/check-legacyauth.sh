@@ -156,71 +156,57 @@ info "=== Legacy Auth Connectivity Test Complete ==="
 info "The endpoint appears to be reachable from the host."
 echo ""
 
-# 5. Offer Docker network test options
+# 5. Offer Docker network test
 echo -e "${YELLOW}=== Docker Network Test (Recommended) ===${NC}"
 echo "Since the legacy system is typically only accessible from within Docker,"
-echo "you should test from the idp-service container:"
+echo "we'll test using a curl container connected to the same network as idp-service."
 echo ""
 
-# Detect container name
+# Detect container name and its network
 IDP_CONTAINER=$(docker ps --filter "name=idp-service" --format "{{.Names}}" 2>/dev/null | head -n1)
 
 if [ -n "$IDP_CONTAINER" ]; then
-    echo -e "${CYAN}Option 1 (Recommended): Test from idp-service container:${NC}"
-    echo "  docker exec $IDP_CONTAINER curl -v $HEALTH_URL"
+    # Get the network(s) the idp-service is connected to
+    DETECTED_NETWORK=$(docker inspect "$IDP_CONTAINER" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null | awk '{print $1}')
+    
+    if [ -n "$DETECTED_NETWORK" ]; then
+        info "Detected idp-service container: $IDP_CONTAINER"
+        info "Detected network: $DETECTED_NETWORK"
+        NETWORK_NAME="$DETECTED_NETWORK"
+    fi
+else
+    warn "idp-service container not found. Will try to detect network from docker-compose files."
+    
+    # Fallback: Try to detect the network name from docker-compose
+    if [ -f "$SCRIPT_DIR/docker-compose.splithost-nginx-nodb.yml" ]; then
+        NETWORK_NAME="deployment_backend"
+    elif [ -f "$SCRIPT_DIR/docker-compose.nginx.yml" ]; then
+        NETWORK_NAME="deployment_default"
+    fi
+fi
+
+if [ -z "$NETWORK_NAME" ]; then
+    echo "Could not auto-detect network."
+    echo "To find your network name, run: docker network ls"
+    read -p "Enter Docker network name: " NETWORK_NAME
+fi
+
+if [ -z "$NETWORK_NAME" ]; then
+    error "No network name provided. Cannot run Docker test."
+else
     echo ""
-    echo -e "${CYAN}Option 2: Test with standalone curl container:${NC}"
-else
-    warn "idp-service container not found. Make sure it's running."
-    echo -e "${CYAN}Option: Test with standalone curl container:${NC}"
-fi
-
-# Try to detect the network name
-NETWORK_NAME=""
-if [ -f "$SCRIPT_DIR/docker-compose.splithost-nginx-nodb.yml" ]; then
-    NETWORK_NAME="deployment_backend"
-elif [ -f "$SCRIPT_DIR/docker-compose.nginx.yml" ]; then
-    NETWORK_NAME="deployment_default"
-fi
-
-if [ -n "$NETWORK_NAME" ]; then
+    echo -e "${CYAN}Command to run:${NC}"
     echo "  docker run --rm --network $NETWORK_NAME curlimages/curl -v $HEALTH_URL"
-else
-    echo "  docker run --rm --network <YOUR_NETWORK> curlimages/curl -v $HEALTH_URL"
-    echo "  (To find network: docker network ls)"
-fi
-
-echo ""
-echo "Choose test method:"
-echo "  1) Test from idp-service container (recommended)"
-echo "  2) Test with standalone curl container"
-echo "  n) Skip"
-read -p "Enter choice [1/2/n]: " TEST_CHOICE
-
-case "$TEST_CHOICE" in
-    1)
-        if [ -n "$IDP_CONTAINER" ]; then
-            info "Running: docker exec $IDP_CONTAINER curl -v $HEALTH_URL"
-            docker exec "$IDP_CONTAINER" curl -v "$HEALTH_URL"
-        else
-            error "idp-service container not found. Please start it first."
-        fi
-        ;;
-    2)
-        if [ -z "$NETWORK_NAME" ]; then
-            read -p "Enter Docker network name: " NETWORK_NAME
-        fi
-        if [ -n "$NETWORK_NAME" ]; then
-            info "Running: docker run --rm --network $NETWORK_NAME curlimages/curl -v $HEALTH_URL"
-            docker run --rm --network "$NETWORK_NAME" curlimages/curl -v "$HEALTH_URL"
-        else
-            error "No network name provided."
-        fi
-        ;;
-    *)
+    echo ""
+    read -p "Run this test now? (Y/n): " RUN_TEST
+    
+    if [ "$RUN_TEST" != "n" ] && [ "$RUN_TEST" != "N" ]; then
+        info "Running: docker run --rm --network $NETWORK_NAME curlimages/curl -v $HEALTH_URL"
+        docker run --rm --network "$NETWORK_NAME" curlimages/curl -v "$HEALTH_URL"
+    else
         info "Skipping Docker network test."
-        ;;
-esac
+    fi
+fi
 
 echo ""
 echo -e "${YELLOW}Next Steps:${NC}"
