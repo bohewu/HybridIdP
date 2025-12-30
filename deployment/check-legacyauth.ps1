@@ -87,18 +87,41 @@ try {
     exit 1
 }
 
-# 4. Test HTTP connectivity (OPTIONS or HEAD request)
+# 4. Test HTTP connectivity - Try /health endpoint first if available
 Write-Info "Step 2: Testing HTTP connectivity..."
+
+# Derive base URL and try /health endpoint
+$baseUrl = "$($uri.Scheme)://$($uri.Authority)"
+$healthUrl = "$baseUrl/health"
+
+Write-Info "Trying health endpoint: $healthUrl"
 try {
-    # Use Invoke-WebRequest with Method HEAD or OPTIONS (less invasive)
-    # Some servers may reject OPTIONS, so we try HEAD first
+    $healthResponse = Invoke-WebRequest -Uri $healthUrl -Method GET -TimeoutSec 10 -UseBasicParsing -ErrorAction Stop
+    Write-Info "Health endpoint responded! Status: $($healthResponse.StatusCode)"
+    Write-Host ""
+    Write-Info "=== Legacy Auth Connectivity Test Complete ==="
+    Write-Info "The legacy system is healthy and reachable."
+    exit 0
+} catch {
+    $healthStatus = $_.Exception.Response.StatusCode.value__
+    if ($healthStatus -eq 200) {
+        Write-Info "Health endpoint healthy."
+    } elseif ($healthStatus -eq 404) {
+        Write-Warn "No /health endpoint found. Testing login URL directly..."
+    } else {
+        Write-Warn "Health endpoint returned: $healthStatus. Testing login URL directly..."
+    }
+}
+
+# Fallback: Test the login URL directly
+Write-Info "Testing login endpoint: $loginUrl"
+try {
     $response = Invoke-WebRequest -Uri $loginUrl -Method HEAD -TimeoutSec 10 -UseBasicParsing -ErrorAction SilentlyContinue
     Write-Info "HTTP HEAD request successful. Status: $($response.StatusCode)"
 } catch {
-    # HEAD might not be allowed, try a GET (likely to fail auth but that's OK)
     try {
         $response = Invoke-WebRequest -Uri $loginUrl -Method GET -TimeoutSec 10 -UseBasicParsing -ErrorAction Stop
-        Write-Info "HTTP GET request successful (unexpected for login endpoint). Status: $($response.StatusCode)"
+        Write-Info "HTTP GET request successful. Status: $($response.StatusCode)"
     } catch [System.Net.WebException] {
         $statusCode = $_.Exception.Response.StatusCode.value__
         if ($statusCode -eq 401 -or $statusCode -eq 403 -or $statusCode -eq 405) {
