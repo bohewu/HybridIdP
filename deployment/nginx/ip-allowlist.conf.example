@@ -1,0 +1,11 @@
+# IP Allowlist Configuration
+# Copy this file to ip-allowlist.conf and customize
+
+# Only allow traffic from your external reverse proxy (Host A)
+# Add your reverse proxy IPs here:
+
+allow 192.168.1.10;    # Host A - Primary reverse proxy
+# allow 192.168.1.11;  # Host A - Secondary (if applicable)
+# allow 10.0.0.0/8;    # Or allow entire internal network
+
+deny all;              # Deny everything else

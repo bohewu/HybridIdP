@@ -29,6 +29,7 @@ services:
       - "${INTERNAL_IP:-0.0.0.0}:8080:80"
     volumes:
       - ./nginx/splithost-gateway.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ip-allowlist.conf:/etc/nginx/conf.d/ip-allowlist.conf:ro
     networks:
       - frontend
       - backend
