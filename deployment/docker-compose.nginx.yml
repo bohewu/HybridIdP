@@ -17,6 +17,16 @@ services:
       - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx
       - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
+      # Fido2
+      - Fido2__ServerDomain=${Fido2__ServerDomain:-localhost}
+      - Fido2__Origins=${Fido2__Origins:-https://localhost:7035}
+      - Fido2__TimestampDriftTolerance=${Fido2__TimestampDriftTolerance:-300000}
+      # Branding
+      - Branding__AppName=${Branding__AppName:-HybridAuth}
+      - Branding__ProductName=${Branding__ProductName:-HybridAuth IdP}
+      - Branding__Copyright=${Branding__Copyright:-© 2025}
+      # Optional OpenIddict Issuer
+      - OpenIddict__Issuer=${OpenIddict__Issuer:-}
     volumes:
       - ./certs:/app/certs:ro # Mount certs from deployment/certs
     logging:

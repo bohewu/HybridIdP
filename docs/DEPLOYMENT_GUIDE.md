@@ -133,7 +133,7 @@ openssl pkcs12 -export -out signing.pfx -inkey signing.key -in signing.crt -pass
 ```
 
 > [!IMPORTANT]
-> You must update `ENCRYPTION_CERT_PASSWORD` and `SIGNING_CERT_PASSWORD` in your `.env` file to match the passwords used above.
+> You must update `ENCRYPTION_CERT_PASSWORD` and `SIGNING_CERT_PASSWORD` in your `.env` file to match the passwords used above. **Always wrap the values in single quotes (e.g., `'password'`) to prevent issues with special characters like `#`.**
 
 ### Database & Redis Options
 -   **Redis**: Set `Redis__Enabled=false` to use In-Memory caching (not recommended for multi-instance production).

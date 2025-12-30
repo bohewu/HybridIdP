@@ -247,6 +247,20 @@ if ($turnstileSiteKey) {
     $turnstileSecretKey = Read-PromptWithDefault -Prompt "Turnstile Secret Key" -Default ""
 }
 
+Write-Title "Fido2 / WebAuthn Configuration"
+Write-Info "Configuration for Passkey/WebAuthn support."
+$fido2Domain = Read-PromptWithDefault -Prompt "Server Domain (e.g. localhost, idp.example.com)" -Default "localhost"
+$fido2Origins = Read-PromptWithDefault -Prompt "Allowed Origins (comma-separated)" -Default "https://localhost:7035"
+
+Write-Title "Branding Configuration"
+$appName = Read-PromptWithDefault -Prompt "Application Name" -Default "HybridAuth"
+$productName = Read-PromptWithDefault -Prompt "Product Name" -Default "HybridAuth IdP"
+$copyright = Read-PromptWithDefault -Prompt "Copyright Text" -Default "© $(Get-Date -Format 'yyyy')"
+
+Write-Title "Advanced: OpenIddict Issuer"
+Write-Info "Optional: Set a fixed issuer URI. Recommended for production behind reverse proxy."
+$oidcIssuer = Read-PromptWithDefault -Prompt "Issuer URI (leave empty for auto-detect)" -Default ""
+
 Write-Title "Generating .env file"
 
 # Build the .env content
@@ -265,23 +279,23 @@ DATABASE_PROVIDER=$(if ($useSqlServer) { "SqlServer" } else { "PostgreSQL" })
 $(if ($useExternalDb) {
 "# External database connection (user-provided)"
 if ($useSqlServer) {
-"ConnectionStrings__SqlServerConnection=Server=$externalDbHost;Database=$externalDbName;User Id=$externalDbUser;Password=$externalDbPassword;Encrypt=True;TrustServerCertificate=True"
+"ConnectionStrings__SqlServerConnection='Server=$externalDbHost;Database=$externalDbName;User Id=$externalDbUser;Password=$externalDbPassword;Encrypt=True;TrustServerCertificate=True'"
 } else {
-"ConnectionStrings__PostgreSqlConnection=Host=$externalDbHost;Port=$externalDbPort;Database=$externalDbName;Username=$externalDbUser;Password=$externalDbPassword"
+"ConnectionStrings__PostgreSqlConnection='Host=$externalDbHost;Port=$externalDbPort;Database=$externalDbName;Username=$externalDbUser;Password=$externalDbPassword'"
 }
 } else {
 "# Docker internal database (mssql-service, postgres-service are Docker Compose service names)"
-"ConnectionStrings__SqlServerConnection=Server=mssql-service;Database=hybridauth_idp;User Id=sa;Password=$mssqlPassword;Encrypt=True;TrustServerCertificate=True"
-"ConnectionStrings__PostgreSqlConnection=Host=postgres-service;Port=5432;Database=hybridauth_idp;Username=user;Password=$postgresPassword"
+"ConnectionStrings__SqlServerConnection='Server=mssql-service;Database=hybridauth_idp;User Id=sa;Password=$mssqlPassword;Encrypt=True;TrustServerCertificate=True'"
+"ConnectionStrings__PostgreSqlConnection='Host=postgres-service;Port=5432;Database=hybridauth_idp;Username=user;Password=$postgresPassword'"
 })
-ConnectionStrings__RedisConnection=redis-service:6379
+ConnectionStrings__RedisConnection='redis-service:6379'
 
 $(if (-not $useExternalDb) {
 "# Database Credentials (for Docker container initialization)"
-"MSSQL_SA_PASSWORD=$mssqlPassword"
-"POSTGRES_USER=user"
-"POSTGRES_PASSWORD=$postgresPassword"
-"POSTGRES_DB=hybridauth_idp"
+"MSSQL_SA_PASSWORD='$mssqlPassword'"
+"POSTGRES_USER='user'"
+"POSTGRES_PASSWORD='$postgresPassword'"
+"POSTGRES_DB='hybridauth_idp'"
 })
 
 # Redis Configuration
@@ -296,8 +310,8 @@ INTERNAL_IP=$(if ($internalIp) { $internalIp } else { "0.0.0.0" })
 
 # OpenIddict Certificates
 # These passwords protect the PFX files in deployment/certs/
-ENCRYPTION_CERT_PASSWORD=$encryptionCertPassword
-SIGNING_CERT_PASSWORD=$signingCertPassword
+ENCRYPTION_CERT_PASSWORD='$encryptionCertPassword'
+SIGNING_CERT_PASSWORD='$signingCertPassword'
 "@
 
 # Add optional SMTP config
@@ -305,13 +319,13 @@ if ($smtpHost) {
     $envContent += @"
 
 # Email Settings (SMTP)
-EmailSettings__SmtpHost=$smtpHost
-EmailSettings__SmtpPort=$smtpPort
-EmailSettings__SmtpEnableSsl=$smtpEnableSsl
-EmailSettings__SmtpUsername=$smtpUsername
-EmailSettings__SmtpPassword=$smtpPassword
-EmailSettings__FromAddress=$smtpFromAddress
-EmailSettings__FromName=$smtpFromName
+EmailSettings__SmtpHost='$smtpHost'
+EmailSettings__SmtpPort='$smtpPort'
+EmailSettings__SmtpEnableSsl='$smtpEnableSsl'
+EmailSettings__SmtpUsername='$smtpUsername'
+EmailSettings__SmtpPassword='$smtpPassword'
+EmailSettings__FromAddress='$smtpFromAddress'
+EmailSettings__FromName='$smtpFromName'
 "@
 }
 
@@ -320,8 +334,35 @@ if ($turnstileSiteKey) {
     $envContent += @"
 
 # Cloudflare Turnstile (Bot Protection)
-Turnstile__SiteKey=$turnstileSiteKey
-Turnstile__SecretKey=$turnstileSecretKey
+Turnstile__SiteKey='$turnstileSiteKey'
+Turnstile__SecretKey='$turnstileSecretKey'
+"@
+}
+
+# Add Fido2 Config
+$envContent += @"
+
+# Fido2 / WebAuthn Configuration
+Fido2__ServerDomain='$fido2Domain'
+Fido2__Origins='$fido2Origins'
+Fido2__TimestampDriftTolerance=300000
+"@
+
+# Add Branding Config
+$envContent += @"
+
+# Branding Configuration
+Branding__AppName='$appName'
+Branding__ProductName='$productName'
+Branding__Copyright='$copyright'
+"@
+
+# Add OpenIddict Issuer if set
+if ($oidcIssuer) {
+    $envContent += @"
+
+# OpenIddict Issuer
+OpenIddict__Issuer='$oidcIssuer'
 "@
 }
 
@@ -374,7 +415,7 @@ if ((Test-Path $encryptionPfx) -and (Test-Path $signingPfx)) {
             
             & openssl pkcs12 -export -out encryption.pfx `
                 -inkey encryption.key -in encryption.crt `
-                -password pass:$encryptionCertPassword 2>$null
+                -password "pass:$encryptionCertPassword" 2>$null
             
             # Signing certificate
             & openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes `
@@ -383,7 +424,7 @@ if ((Test-Path $encryptionPfx) -and (Test-Path $signingPfx)) {
             
             & openssl pkcs12 -export -out signing.pfx `
                 -inkey signing.key -in signing.crt `
-                -password pass:$signingCertPassword 2>$null
+                -password "pass:$signingCertPassword" 2>$null
             
             # Cleanup key/crt files (optional, keep only pfx)
             Remove-Item -Path "*.key", "*.crt" -Force -ErrorAction SilentlyContinue

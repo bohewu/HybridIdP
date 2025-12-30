@@ -97,7 +97,16 @@ builder.Services.AddFido2(options =>
     var fido2Config = builder.Configuration.GetSection("Fido2").Get<Fido2NetLib.Fido2Configuration>();
     options.ServerName = "HybridIdP";
     options.ServerDomain = fido2Config?.ServerDomain ?? "localhost";
-    options.Origins = fido2Config?.Origins ?? new HashSet<string> { "https://localhost:7035" };
+    
+    // Support comma-separated origins from environment variables (Fido2__Origins)
+    var origins = fido2Config?.Origins ?? new HashSet<string> { "https://localhost:7035" };
+    var originsString = builder.Configuration["Fido2:Origins"];
+    if (!string.IsNullOrEmpty(originsString) && originsString.Contains(","))
+    {
+        origins = new HashSet<string>(originsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    }
+    
+    options.Origins = origins;
     options.TimestampDriftTolerance = fido2Config?.TimestampDriftTolerance ?? 300000;
 })
 .AddCachedMetadataService(config =>

@@ -241,6 +241,20 @@ if [ -n "$turnstile_site_key" ]; then
     turnstile_secret_key=$(prompt_with_default "Turnstile Secret Key" "")
 fi
 
+print_title "Fido2 / WebAuthn Configuration"
+print_info "Configuration for Passkey/WebAuthn support."
+fido2_domain=$(prompt_with_default "Server Domain (e.g. localhost, idp.example.com)" "localhost")
+fido2_origins=$(prompt_with_default "Allowed Origins (comma-separated)" "https://localhost:7035")
+
+print_title "Branding Configuration"
+app_name=$(prompt_with_default "Application Name" "HybridAuth")
+product_name=$(prompt_with_default "Product Name" "HybridAuth IdP")
+copyright=$(prompt_with_default "Copyright Text" "© $(date +%Y)")
+
+print_title "Advanced: OpenIddict Issuer"
+print_info "Optional: Set a fixed issuer URI. Recommended for production behind reverse proxy."
+oidc_issuer=$(prompt_with_default "Issuer URI (leave empty for auto-detect)" "")
+
 print_title "Generating .env file"
 
 # Determine DATABASE_PROVIDER value
@@ -252,23 +266,23 @@ if [ "$use_external_db" = true ]; then
     # External DB connection
     if [ "$use_sqlserver" = true ]; then
         db_connection_content="# External database connection (user-provided)
-ConnectionStrings__SqlServerConnection=Server=$external_db_host;Database=$external_db_name;User Id=$external_db_user;Password=$external_db_password;Encrypt=True;TrustServerCertificate=True"
+ConnectionStrings__SqlServerConnection='Server=$external_db_host;Database=$external_db_name;User Id=$external_db_user;Password=$external_db_password;Encrypt=True;TrustServerCertificate=True'"
     else
         db_connection_content="# External database connection (user-provided)
-ConnectionStrings__PostgreSqlConnection=Host=$external_db_host;Port=$external_db_port;Database=$external_db_name;Username=$external_db_user;Password=$external_db_password"
+ConnectionStrings__PostgreSqlConnection='Host=$external_db_host;Port=$external_db_port;Database=$external_db_name;Username=$external_db_user;Password=$external_db_password'"
     fi
     db_credentials_content=""
 else
     # Docker internal DB
     db_connection_content="# Docker internal database (mssql-service, postgres-service are Docker Compose service names)
-ConnectionStrings__SqlServerConnection=Server=mssql-service;Database=hybridauth_idp;User Id=sa;Password=$mssql_password;Encrypt=True;TrustServerCertificate=True
-ConnectionStrings__PostgreSqlConnection=Host=postgres-service;Port=5432;Database=hybridauth_idp;Username=user;Password=$postgres_password"
+ConnectionStrings__SqlServerConnection='Server=mssql-service;Database=hybridauth_idp;User Id=sa;Password=$mssql_password;Encrypt=True;TrustServerCertificate=True'
+ConnectionStrings__PostgreSqlConnection='Host=postgres-service;Port=5432;Database=hybridauth_idp;Username=user;Password=$postgres_password'"
     db_credentials_content="
 # Database Credentials (for Docker container initialization)
-MSSQL_SA_PASSWORD=$mssql_password
-POSTGRES_USER=user
-POSTGRES_PASSWORD=$postgres_password
-POSTGRES_DB=hybridauth_idp"
+MSSQL_SA_PASSWORD='$mssql_password'
+POSTGRES_USER='user'
+POSTGRES_PASSWORD='$postgres_password'
+POSTGRES_DB='hybridauth_idp'"
 fi
 
 cat > "$ENV_PATH" << EOF
@@ -284,7 +298,7 @@ DATABASE_PROVIDER=$db_provider_value
 
 # Database Connection Strings
 $db_connection_content
-ConnectionStrings__RedisConnection=redis-service:6379
+ConnectionStrings__RedisConnection='redis-service:6379'
 $db_credentials_content
 
 # Redis Configuration
@@ -299,8 +313,8 @@ INTERNAL_IP=$internal_ip
 
 # OpenIddict Certificates
 # These passwords protect the PFX files in deployment/certs/
-ENCRYPTION_CERT_PASSWORD=$encryption_cert_password
-SIGNING_CERT_PASSWORD=$signing_cert_password
+ENCRYPTION_CERT_PASSWORD='$encryption_cert_password'
+SIGNING_CERT_PASSWORD='$signing_cert_password'
 EOF
 
 # Add optional SMTP config
@@ -308,13 +322,13 @@ if [ -n "$smtp_host" ]; then
     cat >> "$ENV_PATH" << EOF
 
 # Email Settings (SMTP)
-EmailSettings__SmtpHost=$smtp_host
-EmailSettings__SmtpPort=$smtp_port
-EmailSettings__SmtpEnableSsl=$smtp_enable_ssl
-EmailSettings__SmtpUsername=$smtp_username
-EmailSettings__SmtpPassword=$smtp_password
-EmailSettings__FromAddress=$smtp_from_address
-EmailSettings__FromName=$smtp_from_name
+EmailSettings__SmtpHost='$smtp_host'
+EmailSettings__SmtpPort='$smtp_port'
+EmailSettings__SmtpEnableSsl='$smtp_enable_ssl'
+EmailSettings__SmtpUsername='$smtp_username'
+EmailSettings__SmtpPassword='$smtp_password'
+EmailSettings__FromAddress='$smtp_from_address'
+EmailSettings__FromName='$smtp_from_name'
 EOF
 fi
 
@@ -323,8 +337,35 @@ if [ -n "$turnstile_site_key" ]; then
     cat >> "$ENV_PATH" << EOF
 
 # Cloudflare Turnstile (Bot Protection)
-Turnstile__SiteKey=$turnstile_site_key
-Turnstile__SecretKey=$turnstile_secret_key
+Turnstile__SiteKey='$turnstile_site_key'
+Turnstile__SecretKey='$turnstile_secret_key'
+EOF
+fi
+
+# Add Fido2 Config
+cat >> "$ENV_PATH" << EOF
+
+# Fido2 / WebAuthn Configuration
+Fido2__ServerDomain='$fido2_domain'
+Fido2__Origins='$fido2_origins'
+Fido2__TimestampDriftTolerance=300000
+EOF
+
+# Add Branding Config
+cat >> "$ENV_PATH" << EOF
+
+# Branding Configuration
+Branding__AppName='$app_name'
+Branding__ProductName='$product_name'
+Branding__Copyright='$copyright'
+EOF
+
+# Add OpenIddict Issuer if set
+if [ -n "$oidc_issuer" ]; then
+    cat >> "$ENV_PATH" << EOF
+
+# OpenIddict Issuer
+OpenIddict__Issuer='$oidc_issuer'
 EOF
 fi
 
