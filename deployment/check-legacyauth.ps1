@@ -143,9 +143,72 @@ try {
     }
 }
 
+# 5. Offer Docker network test options
+Write-Host "=== Docker Network Test (Recommended) ===" -ForegroundColor Yellow
+Write-Host "Since the legacy system is typically only accessible from within Docker,"
+Write-Host "you should test from the idp-service container:"
 Write-Host ""
-Write-Info "=== Legacy Auth Connectivity Test Complete ==="
-Write-Info "The endpoint appears to be reachable."
+
+# Detect container name
+$idpContainer = docker ps --filter "name=idp-service" --format "{{.Names}}" 2>$null | Select-Object -First 1
+
+if ($idpContainer) {
+    Write-Host "Option 1 (Recommended): Test from idp-service container:" -ForegroundColor Cyan
+    Write-Host "  docker exec $idpContainer curl -v $healthUrl"
+    Write-Host ""
+    Write-Host "Option 2: Test with standalone curl container:" -ForegroundColor Cyan
+} else {
+    Write-Warn "idp-service container not found. Make sure it's running."
+    Write-Host "Option: Test with standalone curl container:" -ForegroundColor Cyan
+}
+
+# Try to detect the network name from docker-compose
+$networkName = ""
+if (Test-Path (Join-Path $ScriptDir "docker-compose.splithost-nginx-nodb.yml")) {
+    $networkName = "deployment_backend"
+} elseif (Test-Path (Join-Path $ScriptDir "docker-compose.nginx.yml")) {
+    $networkName = "deployment_default"
+}
+
+if ($networkName) {
+    Write-Host "  docker run --rm --network $networkName curlimages/curl -v $healthUrl"
+} else {
+    Write-Host "  docker run --rm --network <YOUR_NETWORK> curlimages/curl -v $healthUrl"
+    Write-Host "  (To find network: docker network ls)"
+}
+
+Write-Host ""
+Write-Host "Choose test method:"
+Write-Host "  1) Test from idp-service container (recommended)"
+Write-Host "  2) Test with standalone curl container"
+Write-Host "  n) Skip"
+$testChoice = Read-Host "Enter choice [1/2/n]"
+
+switch ($testChoice) {
+    "1" {
+        if ($idpContainer) {
+            Write-Info "Running: docker exec $idpContainer curl -v $healthUrl"
+            docker exec $idpContainer curl -v $healthUrl
+        } else {
+            Write-ErrorMsg "idp-service container not found. Please start it first."
+        }
+    }
+    "2" {
+        if (-not $networkName) {
+            $networkName = Read-Host "Enter Docker network name"
+        }
+        if ($networkName) {
+            Write-Info "Running: docker run --rm --network $networkName curlimages/curl -v $healthUrl"
+            docker run --rm --network $networkName curlimages/curl -v $healthUrl
+        } else {
+            Write-ErrorMsg "No network name provided."
+        }
+    }
+    default {
+        Write-Info "Skipping Docker network test."
+    }
+}
+
 Write-Host ""
 Write-Host "Next Steps:" -ForegroundColor Yellow
 Write-Host "  1. Ensure LegacyAuth__Secret is correctly configured."

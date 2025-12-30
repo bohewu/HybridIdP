@@ -153,7 +153,75 @@ fi
 
 echo ""
 info "=== Legacy Auth Connectivity Test Complete ==="
-info "The endpoint appears to be reachable."
+info "The endpoint appears to be reachable from the host."
+echo ""
+
+# 5. Offer Docker network test options
+echo -e "${YELLOW}=== Docker Network Test (Recommended) ===${NC}"
+echo "Since the legacy system is typically only accessible from within Docker,"
+echo "you should test from the idp-service container:"
+echo ""
+
+# Detect container name
+IDP_CONTAINER=$(docker ps --filter "name=idp-service" --format "{{.Names}}" 2>/dev/null | head -n1)
+
+if [ -n "$IDP_CONTAINER" ]; then
+    echo -e "${CYAN}Option 1 (Recommended): Test from idp-service container:${NC}"
+    echo "  docker exec $IDP_CONTAINER curl -v $HEALTH_URL"
+    echo ""
+    echo -e "${CYAN}Option 2: Test with standalone curl container:${NC}"
+else
+    warn "idp-service container not found. Make sure it's running."
+    echo -e "${CYAN}Option: Test with standalone curl container:${NC}"
+fi
+
+# Try to detect the network name
+NETWORK_NAME=""
+if [ -f "$SCRIPT_DIR/docker-compose.splithost-nginx-nodb.yml" ]; then
+    NETWORK_NAME="deployment_backend"
+elif [ -f "$SCRIPT_DIR/docker-compose.nginx.yml" ]; then
+    NETWORK_NAME="deployment_default"
+fi
+
+if [ -n "$NETWORK_NAME" ]; then
+    echo "  docker run --rm --network $NETWORK_NAME curlimages/curl -v $HEALTH_URL"
+else
+    echo "  docker run --rm --network <YOUR_NETWORK> curlimages/curl -v $HEALTH_URL"
+    echo "  (To find network: docker network ls)"
+fi
+
+echo ""
+echo "Choose test method:"
+echo "  1) Test from idp-service container (recommended)"
+echo "  2) Test with standalone curl container"
+echo "  n) Skip"
+read -p "Enter choice [1/2/n]: " TEST_CHOICE
+
+case "$TEST_CHOICE" in
+    1)
+        if [ -n "$IDP_CONTAINER" ]; then
+            info "Running: docker exec $IDP_CONTAINER curl -v $HEALTH_URL"
+            docker exec "$IDP_CONTAINER" curl -v "$HEALTH_URL"
+        else
+            error "idp-service container not found. Please start it first."
+        fi
+        ;;
+    2)
+        if [ -z "$NETWORK_NAME" ]; then
+            read -p "Enter Docker network name: " NETWORK_NAME
+        fi
+        if [ -n "$NETWORK_NAME" ]; then
+            info "Running: docker run --rm --network $NETWORK_NAME curlimages/curl -v $HEALTH_URL"
+            docker run --rm --network "$NETWORK_NAME" curlimages/curl -v "$HEALTH_URL"
+        else
+            error "No network name provided."
+        fi
+        ;;
+    *)
+        info "Skipping Docker network test."
+        ;;
+esac
+
 echo ""
 echo -e "${YELLOW}Next Steps:${NC}"
 echo "  1. Ensure LegacyAuth__Secret is correctly configured."
