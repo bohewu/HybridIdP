@@ -18,4 +18,6 @@ RUN dotnet publish Web.IdP/Web.IdP.csproj -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app/publish .
+# Explicitly copy the frontend build artifacts in case dotnet publish missed them
+COPY --from=build /source/Web.IdP/wwwroot/dist ./wwwroot/dist
 ENTRYPOINT ["dotnet", "Web.IdP.dll"]
