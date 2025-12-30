@@ -21,12 +21,12 @@ services:
     # Use this when Legacy Auth is in a separate docker-compose with its own network
     networks:
       - backend           # Keep the default network
-      - app-shared-net    # Add the external network where Legacy Auth resides
+      - legacy-network    # Add the external network where Legacy Auth resides
 
     # Option 2: Add manual DNS entries
     # Use this if you can't share networks (e.g., Legacy Auth is on a different host)
     # extra_hosts:
-    #   - "auth-proxy-svc:172.20.0.5"  # Replace with actual IP of Legacy Auth
+    #   - "legacy-auth-host:172.20.0.5"  # Replace with actual IP of Legacy Auth
 
   mssql-service:
     environment:
@@ -38,9 +38,10 @@ services:
 
 # Declare the external network where Legacy Auth resides
 # The network must already exist (created by Legacy Auth's docker-compose)
-# To create manually: docker network create app-shared-net
+# To create manually: docker network create <your-legacy-network-name>
 networks:
-  app-shared-net:
+  legacy-network:
     external: true
+    name: your-legacy-network-name  # Replace with actual network name
   backend:
     # Keep existing backend network from main compose file
