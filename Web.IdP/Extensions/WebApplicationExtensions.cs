@@ -46,9 +46,21 @@ public static class WebApplicationExtensions
             // Add KnownProxies
             if (!string.IsNullOrEmpty(proxyOptions.KnownProxies))
             {
-                foreach (var ip in proxyOptions.KnownProxies.Split(';', StringSplitOptions.RemoveEmptyEntries))
+                foreach (var ipOrCidr in proxyOptions.KnownProxies.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 {
-                    if (IPAddress.TryParse(ip, out var address))
+                    // Check for CIDR notation (e.g., 10.0.0.0/8)
+                    if (ipOrCidr.Contains('/'))
+                    {
+                        var parts = ipOrCidr.Split('/');
+                        if (parts.Length == 2 && 
+                            IPAddress.TryParse(parts[0], out var networkIp) && 
+                            int.TryParse(parts[1], out var prefixLength))
+                        {
+                            options.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(networkIp, prefixLength));
+                        }
+                    }
+                    // Check for simple IP
+                    else if (IPAddress.TryParse(ipOrCidr, out var address))
                     {
                         options.KnownProxies.Add(address);
                     }
