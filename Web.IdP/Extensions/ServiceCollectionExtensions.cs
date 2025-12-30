@@ -137,10 +137,15 @@ public static class ServiceCollectionExtensions
         var appInfoOptions = new AppInfoOptions();
         configuration.GetSection(AppInfoOptions.Section).Bind(appInfoOptions);
 
-        var serviceName = appInfoOptions.ServiceName;
-        var serviceVersion = appInfoOptions.ServiceVersion;
+        var observabilityOptions = new ObservabilityOptions();
+        configuration.GetSection(ObservabilityOptions.ObservabilitySection).Bind(observabilityOptions);
 
-        services.AddOpenTelemetry()
+        if (observabilityOptions.Enabled)
+        {
+            var serviceName = appInfoOptions.ServiceName;
+            var serviceVersion = appInfoOptions.ServiceVersion;
+
+            services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
                 .AddService(serviceName: serviceName, serviceVersion: serviceVersion))
             .WithTracing(tracing => tracing
@@ -170,6 +175,7 @@ public static class ServiceCollectionExtensions
                 .AddRuntimeInstrumentation()
                 .AddProcessInstrumentation()
                 .AddPrometheusExporter());
+        }
 
         // Add Health Checks
         var healthChecksBuilder = services.AddHealthChecks();
