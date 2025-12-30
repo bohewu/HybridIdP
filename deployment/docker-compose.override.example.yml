@@ -1,26 +1,46 @@
+# docker-compose.override.example.yml
+# Copy this file to docker-compose.override.yml and customize as needed.
+# This file is automatically merged with your main docker-compose file.
+
 services:
   idp-service:
     environment:
       # Override environment variables here
       - ASPNETCORE_ENVIRONMENT=Development
+      # Enable detailed logging for debugging
+      # - Logging__LogLevel__Default=Information
     ports:
       # Expose additional ports if needed
       - "5000:5000"
+    
+    # ========================================
+    # Legacy Auth Network Connection Options
+    # ========================================
+    
+    # Option 1: Connect to external network (RECOMMENDED)
+    # Use this when Legacy Auth is in a separate docker-compose with its own network
+    networks:
+      - backend           # Keep the default network
+      - app-shared-net    # Add the external network where Legacy Auth resides
+
+    # Option 2: Add manual DNS entries
+    # Use this if you can't share networks (e.g., Legacy Auth is on a different host)
+    # extra_hosts:
+    #   - "auth-proxy-svc:172.20.0.5"  # Replace with actual IP of Legacy Auth
 
   mssql-service:
     environment:
       - MSSQL_SA_PASSWORD=NewStrong!Passw0rd
 
-# Example: Connecting to an external Legacy Network
-# networks:
-#   default:
-#     name: idp_network
-#   legacy_network:
-#     external: true
-#     name: existing_legacy_network_name
-#
-# services:
-#   idp-service:
-#     networks:
-#       - default
-#       - legacy_network
+# ========================================
+# Network Declarations
+# ========================================
+
+# Declare the external network where Legacy Auth resides
+# The network must already exist (created by Legacy Auth's docker-compose)
+# To create manually: docker network create app-shared-net
+networks:
+  app-shared-net:
+    external: true
+  backend:
+    # Keep existing backend network from main compose file
