@@ -226,6 +226,98 @@ public class JitProvisioningServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProvisionExternalUser_ExistingPerson_ShouldUpdateFields()
+    {
+        // Arrange - Create Person with minimal info
+        var existingPerson = new Person
+        {
+            Id = Guid.NewGuid(),
+            Email = "john@company.com",
+            FirstName = "John",
+            LastName = null, // Missing last name
+            Department = null, // Missing department
+            CreatedAt = DateTime.UtcNow
+        };
+        await _context.Persons.AddAsync(existingPerson);
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear(); // Clear tracker to simulate new request
+
+        var externalAuth = new ExternalAuthResult
+        {
+            Provider = "ActiveDirectory",
+            ProviderKey = "john@ad",
+            Email = "john@company.com",
+            FirstName = "John",
+            LastName = "Doe", // New data
+            Department = "IT", // New data
+            NationalId = "A123456789" // New PID data
+        };
+
+        _userManagerMock.Setup(um => um.FindByLoginAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((ApplicationUser?)null);
+        _userManagerMock.Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Success);
+        _userManagerMock.Setup(um => um.AddLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<UserLoginInfo>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        // Act
+        var result = await _service.ProvisionExternalUserAsync(externalAuth);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(existingPerson.Id, result.PersonId);
+        
+        // Verify Person was updated
+        var updatedPerson = await _context.Persons.FirstOrDefaultAsync(p => p.Id == existingPerson.Id);
+        Assert.NotNull(updatedPerson);
+        Assert.Equal("Doe", updatedPerson.LastName); // Should be updated
+        Assert.Equal("IT", updatedPerson.Department); // Should be updated
+        Assert.NotNull(updatedPerson.NationalId); // Should be set (hashed)
+        Assert.NotNull(updatedPerson.ModifiedAt); // Should have modification timestamp
+    }
+
+    [Fact]
+    public async Task ProvisionExternalUser_ExistingPerson_ShouldNotOverwriteExistingPidFields()
+    {
+        // Arrange - Create Person with existing NationalId
+        var existingPerson = new Person
+        {
+            Id = Guid.NewGuid(),
+            Email = "john@company.com",
+            FirstName = "John",
+            NationalId = PidHasher.Hash("A123456789"), // Already has NationalId
+            CreatedAt = DateTime.UtcNow
+        };
+        await _context.Persons.AddAsync(existingPerson);
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+
+        var externalAuth = new ExternalAuthResult
+        {
+            Provider = "ActiveDirectory",
+            ProviderKey = "john@ad",
+            Email = "john@company.com",
+            FirstName = "John",
+            NationalId = "B987654321" // Different NationalId - should NOT overwrite!
+        };
+
+        _userManagerMock.Setup(um => um.FindByLoginAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((ApplicationUser?)null);
+        _userManagerMock.Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Success);
+        _userManagerMock.Setup(um => um.AddLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<UserLoginInfo>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        // Act
+        await _service.ProvisionExternalUserAsync(externalAuth);
+
+        // Assert - NationalId should NOT be overwritten
+        var updatedPerson = await _context.Persons.FirstOrDefaultAsync(p => p.Id == existingPerson.Id);
+        Assert.NotNull(updatedPerson);
+        Assert.Equal(PidHasher.Hash("A123456789"), updatedPerson.NationalId); // Original value preserved
+    }
+
+    [Fact]
     public async Task ProvisionExternalUser_NoEmail_ShouldUseProviderKeyAsUsername()
     {
         // Arrange
