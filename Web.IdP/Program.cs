@@ -93,25 +93,7 @@ builder.Services.AddHostedService<Infrastructure.BackgroundServices.EmailQueuePr
 // Phase 20.4: WebAuthn
 builder.Services.Configure<Fido2NetLib.Fido2Configuration>(builder.Configuration.GetSection("Fido2"));
 
-builder.Services.PostConfigure<Fido2NetLib.Fido2Configuration>(options =>
-{
-    // 1. ServerName Fallback: Fido2:ServerName -> Branding:AppName -> Default
-    if (string.IsNullOrEmpty(options.ServerName))
-    {
-        options.ServerName = builder.Configuration["Branding:AppName"] ?? "HybridIdP";
-    }
-
-    // 2. Origins Parsing: Handle single or comma-separated string from Env Vars
-    var originsString = builder.Configuration["Fido2:Origins"];
-    if (!string.IsNullOrEmpty(originsString))
-    {
-        options.Origins = new HashSet<string>(originsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-    }
-    
-    // 3. Defaults
-    if (string.IsNullOrEmpty(options.ServerDomain)) options.ServerDomain = "localhost";
-    if (options.TimestampDriftTolerance == 0) options.TimestampDriftTolerance = 300000;
-});
+builder.Services.ConfigureOptions<Web.IdP.Options.ConfigureFido2Options>();
 
 // Register Fido2 service (Options are already configured above)
 builder.Services.AddFido2(options => {})
