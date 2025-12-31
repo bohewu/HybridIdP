@@ -334,11 +334,11 @@ fi
 
 # Add optional Turnstile config
 if [ -n "$turnstile_site_key" ]; then
-    cat >> "$ENV_PATH" << EOF
+    cat >> "$ENV_PATH" <<EOF
 
 # Cloudflare Turnstile (Bot Protection)
-Turnstile__SiteKey='$turnstile_site_key'
-Turnstile__SecretKey='$turnstile_secret_key'
+Turnstile__SiteKey=$turnstile_site_key
+Turnstile__SecretKey=$turnstile_secret_key
 EOF
 fi
 
