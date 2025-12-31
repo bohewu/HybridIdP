@@ -101,8 +101,9 @@ builder.Services.AddFido2(options =>
     // Support comma-separated origins from environment variables (Fido2__Origins)
     var origins = fido2Config?.Origins ?? new HashSet<string> { "https://localhost:7035" };
     var originsString = builder.Configuration["Fido2:Origins"];
-    if (!string.IsNullOrEmpty(originsString) && originsString.Contains(","))
+    if (!string.IsNullOrEmpty(originsString))
     {
+        // Split by comma deals with both single and multiple values correctly
         origins = new HashSet<string>(originsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
     
