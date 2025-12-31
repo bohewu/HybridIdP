@@ -21,7 +21,4 @@ public class IndexModel : PageModel
     {
         ProductName = await _brandingService.GetProductNameAsync();
     }
-        // Simple homepage with navigation cards
-        // No data loading needed
-    }
 }
