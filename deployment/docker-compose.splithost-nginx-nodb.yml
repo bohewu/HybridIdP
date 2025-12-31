@@ -87,6 +87,14 @@ services:
       # Legacy Auth (optional) - set in .env if using legacy authentication
       - LegacyAuth__LoginUrl=${LegacyAuth__LoginUrl:-}
       - LegacyAuth__Secret=${LegacyAuth__Secret:-}
+      # Rate Limiting
+      - RateLimiting__Enabled=${RateLimiting__Enabled:-true}
+      - RateLimiting__LoginPermitLimit=${RateLimiting__LoginPermitLimit:-5}
+      - RateLimiting__LoginWindowSeconds=${RateLimiting__LoginWindowSeconds:-60}
+      # Token Options
+      - TokenOptions__AccessTokenLifetimeMinutes=${TokenOptions__AccessTokenLifetimeMinutes:-15}
+      - TokenOptions__RefreshTokenLifetimeMinutes=${TokenOptions__RefreshTokenLifetimeMinutes:-20160}
+      - TokenOptions__RefreshTokenReuseLeewaySeconds=${TokenOptions__RefreshTokenReuseLeewaySeconds:-60}
     volumes:
       - ./certs:/app/certs:ro
       - dataprotection-keys:/app/keys  # Persist Data Protection keys across restarts
