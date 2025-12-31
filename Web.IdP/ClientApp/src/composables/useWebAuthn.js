@@ -165,8 +165,6 @@ export function useWebAuthn() {
             }));
         }
 
-        }
-
         // If starting an explicit (modal) authentication, abort any pending conditional UI request first
         // to prevent "request already pending" errors (especially on mobile/Safari).
         if (mediation === 'optional' && conditionalAbortController) {

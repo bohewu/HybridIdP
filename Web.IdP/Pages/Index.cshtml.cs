@@ -7,18 +7,20 @@ namespace Web.IdP.Pages;
 public class IndexModel : PageModel
 {
     private readonly ILogger<IndexModel> _logger;
-    private readonly Web.IdP.Options.BrandingOptions _brandingOptions;
+    private readonly Core.Application.IBrandingService _brandingService;
 
-    public IndexModel(ILogger<IndexModel> logger, Microsoft.Extensions.Options.IOptions<Web.IdP.Options.BrandingOptions> brandingOptions)
+    public IndexModel(ILogger<IndexModel> logger, Core.Application.IBrandingService brandingService)
     {
         _logger = logger;
-        _brandingOptions = brandingOptions.Value;
+        _brandingService = brandingService;
     }
 
-    public string ProductName => _brandingOptions.ProductName;
+    public string ProductName { get; private set; } = string.Empty;
 
-    public void OnGet()
+    public async Task OnGet()
     {
+        ProductName = await _brandingService.GetProductNameAsync();
+    }
         // Simple homepage with navigation cards
         // No data loading needed
     }
