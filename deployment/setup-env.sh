@@ -241,15 +241,17 @@ if [ -n "$turnstile_site_key" ]; then
     turnstile_secret_key=$(prompt_with_default "Turnstile Secret Key" "")
 fi
 
-print_title "Fido2 / WebAuthn Configuration"
-print_info "Configuration for Passkey/WebAuthn support."
-fido2_domain=$(prompt_with_default "Server Domain (e.g. localhost, idp.example.com)" "localhost")
-fido2_origins=$(prompt_with_default "Allowed Origins (comma-separated)" "https://localhost:7035")
 
 print_title "Branding Configuration"
 app_name=$(prompt_with_default "Application Name" "HybridAuth")
 product_name=$(prompt_with_default "Product Name" "HybridAuth IdP")
 copyright=$(prompt_with_default "Copyright Text" "© $(date +%Y)")
+
+print_title "Fido2 / WebAuthn Configuration"
+print_info "Configuration for Passkey/WebAuthn support."
+fido2_server_name=$(prompt_with_default "Server Name (Passkey prompt title)" "$app_name")
+fido2_domain=$(prompt_with_default "Server Domain (e.g. localhost, idp.example.com)" "localhost")
+fido2_origins=$(prompt_with_default "Allowed Origins (comma-separated)" "https://localhost:7035")
 
 print_title "Advanced: OpenIddict Issuer"
 print_info "Optional: Set a fixed issuer URI. Recommended for production behind reverse proxy."
@@ -346,6 +348,7 @@ fi
 cat >> "$ENV_PATH" << EOF
 
 # Fido2 / WebAuthn Configuration
+Fido2__ServerName='$fido2_server_name'
 Fido2__ServerDomain='$fido2_domain'
 Fido2__Origins='$fido2_origins'
 Fido2__TimestampDriftTolerance=300000

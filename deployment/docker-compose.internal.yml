@@ -14,6 +14,11 @@ services:
       - ConnectionStrings__RedisConnection=${ConnectionStrings__RedisConnection}
       - Redis__Enabled=${Redis__Enabled:-true}
       - Proxy__Enabled=${Proxy__Enabled:-false} # Internal mode usually implies no upstream proxy, or handled via LB
+      # Fido2
+      - Fido2__ServerName=${Fido2__ServerName:-}
+      - Fido2__ServerDomain=${Fido2__ServerDomain:-localhost}
+      - Fido2__Origins=${Fido2__Origins:-https://localhost:7035}
+      - Fido2__TimestampDriftTolerance=${Fido2__TimestampDriftTolerance:-300000}
       - Certificates__EncryptionCertificatePath=/app/certs/encryption.pfx
       - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx

@@ -34,6 +34,11 @@ services:
       - Proxy__Enabled=true
       # IMPORTANT: Set this to your reverse proxy host's IP
       - Proxy__KnownProxies=${PROXY_HOST_IP}
+      # Fido2
+      - Fido2__ServerName=${Fido2__ServerName:-}
+      - Fido2__ServerDomain=${Fido2__ServerDomain:-localhost}
+      - Fido2__Origins=${Fido2__Origins:-https://localhost:7035}
+      - Fido2__TimestampDriftTolerance=${Fido2__TimestampDriftTolerance:-300000}
       - Certificates__EncryptionCertificatePath=/app/certs/encryption.pfx
       - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx
