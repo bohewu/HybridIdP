@@ -92,24 +92,29 @@ builder.Services.AddHostedService<Infrastructure.BackgroundServices.EmailQueuePr
 
 // Phase 20.4: WebAuthn
 builder.Services.Configure<Fido2NetLib.Fido2Configuration>(builder.Configuration.GetSection("Fido2"));
-builder.Services.AddFido2(options =>
+
+builder.Services.PostConfigure<Fido2NetLib.Fido2Configuration>(options =>
 {
-    var fido2Config = builder.Configuration.GetSection("Fido2").Get<Fido2NetLib.Fido2Configuration>();
-    options.ServerName = builder.Configuration["Fido2:ServerName"] ?? builder.Configuration["Branding:AppName"] ?? "HybridIdP";
-    options.ServerDomain = fido2Config?.ServerDomain ?? "localhost";
-    
-    // Support comma-separated origins from environment variables (Fido2__Origins)
-    var origins = fido2Config?.Origins ?? new HashSet<string> { "https://localhost:7035" };
+    // 1. ServerName Fallback: Fido2:ServerName -> Branding:AppName -> Default
+    if (string.IsNullOrEmpty(options.ServerName))
+    {
+        options.ServerName = builder.Configuration["Branding:AppName"] ?? "HybridIdP";
+    }
+
+    // 2. Origins Parsing: Handle single or comma-separated string from Env Vars
     var originsString = builder.Configuration["Fido2:Origins"];
     if (!string.IsNullOrEmpty(originsString))
     {
-        // Split by comma deals with both single and multiple values correctly
-        origins = new HashSet<string>(originsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        options.Origins = new HashSet<string>(originsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
     
-    options.Origins = origins;
-    options.TimestampDriftTolerance = fido2Config?.TimestampDriftTolerance ?? 300000;
-})
+    // 3. Defaults
+    if (string.IsNullOrEmpty(options.ServerDomain)) options.ServerDomain = "localhost";
+    if (options.TimestampDriftTolerance == 0) options.TimestampDriftTolerance = 300000;
+});
+
+// Register Fido2 service (Options are already configured above)
+builder.Services.AddFido2(options => {})
 .AddCachedMetadataService(config =>
 {
     config.AddFidoMetadataRepository();
