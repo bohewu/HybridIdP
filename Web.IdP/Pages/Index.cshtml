@@ -7,8 +7,8 @@
 
 <div class="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-10">
-        <h1 class="text-3xl font-normal text-gray-900 mb-2">@Localizer["HomePage"]</h1>
-        <p class="text-base text-gray-600">@Localizer["WelcomeMessage"]</p>
+        <h1 class="text-3xl font-normal text-gray-900 mb-2">@Model.ProductName</h1>
+        <p class="text-base text-gray-600">@string.Format(Localizer["WelcomeMessage"], Model.ProductName)</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

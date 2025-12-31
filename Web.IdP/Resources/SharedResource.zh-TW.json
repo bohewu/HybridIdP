@@ -91,7 +91,7 @@
   "SwitchAccountFailed": "切換帳號失敗",
   "SwitchAccountError": "切換帳號時發生錯誤",
   "ViewDetails": "查看詳情",
-  "WelcomeMessage": "歡迎",
+  "WelcomeMessage": "歡迎來到 {0}",
   "ApplicationManager": "應用程式管理員",
   "ApplicationManagement": "應用程式管理",
   "ManageYourApplicationsAndScopes": "管理您的應用程式和範圍",
