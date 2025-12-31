@@ -118,6 +118,8 @@ public partial class LoginService : ILoginService
              ProviderKey = legacyResult.ExternalId ?? login,
              Email = legacyResult.Email,
              DisplayName = legacyResult.FullName,
+             // Legacy API typically only provides FullName, use it as FirstName for Person
+             FirstName = legacyResult.FullName,
              Department = legacyResult.Department,
              JobTitle = legacyResult.JobTitle,
              PhoneNumber = legacyResult.Phone,
