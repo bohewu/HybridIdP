@@ -1,12 +1,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
-# Use Taiwan apt mirror for faster downloads (tw.archive.ubuntu.com for Ubuntu, debian.csie.ntu.edu.tw for Debian)
-RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
-        sed -i 's|deb.debian.org|debian.csie.ntu.edu.tw|g' /etc/apt/sources.list.d/debian.sources; \
-    elif [ -f /etc/apt/sources.list ]; then \
-        sed -i 's|deb.debian.org|debian.csie.ntu.edu.tw|g' /etc/apt/sources.list; \
-        sed -i 's|archive.ubuntu.com|tw.archive.ubuntu.com|g' /etc/apt/sources.list; \
-    fi
+# Use Taiwan apt mirror for faster downloads (Ubuntu Noble uses sources.list.d/ubuntu.sources)
+RUN sed -i 's|archive.ubuntu.com|tw.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || \
+    sed -i 's|archive.ubuntu.com|tw.archive.ubuntu.com|g' /etc/apt/sources.list 2>/dev/null || true && \
+    sed -i 's|security.ubuntu.com|tw.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || \
+    sed -i 's|security.ubuntu.com|tw.archive.ubuntu.com|g' /etc/apt/sources.list 2>/dev/null || true
 
 # Install Node.js
 RUN apt-get update && \
