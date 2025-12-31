@@ -30,7 +30,25 @@ public class BrandingService : IBrandingService
     public async Task<string> GetCopyrightAsync(CancellationToken ct = default)
     {
         var fromDb = await _settings.GetValueAsync(SettingKeys.Branding.Copyright, ct);
-        return string.IsNullOrWhiteSpace(fromDb) ? DefaultCopyright : fromDb;
+        if (string.IsNullOrWhiteSpace(fromDb))
+        {
+            return $"© {DateTime.Now.Year}";
+        }
+        
+        var val = fromDb.Trim();
+        
+        // Smart fix for common typing habits: "(c)" -> "©"
+        if (val.StartsWith("(c)", StringComparison.OrdinalIgnoreCase))
+        {
+            val = "©" + val.Substring(3);
+        }
+        // Smart fix for "c 2025" -> "© 2025"
+        else if (val.StartsWith("c ", StringComparison.OrdinalIgnoreCase) && val.Length > 2 && char.IsDigit(val[2]))
+        {
+             val = "©" + val.Substring(1);
+        }
+        
+        return val;
     }
 
     public async Task<string?> GetPoweredByAsync(CancellationToken ct = default)
