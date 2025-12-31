@@ -34,10 +34,11 @@ public static class DataSeeder
         if (seedTestUsers) 
         {
             await ResourceSeeder.SeedAsync(context, scopeManager);
-            
-            // Seed Localization (Consent Text)
-            await LocalizationSeeder.SeedAsync(context);
         }
+
+        // Seed Localization (Consent Text) - Essential for all environments
+        // This ensures Scope descriptions and Login Notices are present in DB
+        await LocalizationSeeder.SeedAsync(context);
 
         // 5. Seed Users (Admin + Test Users)
         await UserSeeder.SeedAsync(userManager, roleManager, context, seedTestUsers);
