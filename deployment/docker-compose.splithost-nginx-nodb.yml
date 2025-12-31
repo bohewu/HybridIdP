@@ -67,6 +67,7 @@ services:
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx
       - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
       # Fido2
+      - Fido2__ServerName=${Fido2__ServerName:-}
       - Fido2__ServerDomain=${Fido2__ServerDomain:-localhost}
       - Fido2__Origins=${Fido2__Origins:-https://localhost:7035}
       - Fido2__TimestampDriftTolerance=${Fido2__TimestampDriftTolerance:-300000}
