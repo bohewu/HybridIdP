@@ -63,7 +63,7 @@ namespace Tests.Infrastructure.UnitTests
         }
 
         [Fact]
-        public async Task AuthenticateAsync_ShouldAttachPersonToUser_WhenLinkedAndActive()
+        public async Task AuthenticateAsync_ShouldCopyPersonLocaleToUser_WhenLinkedAndActive()
         {
             // Arrange
             var personId = Guid.NewGuid();
@@ -71,7 +71,8 @@ namespace Tests.Infrastructure.UnitTests
             { 
                 UserName = "testuser", 
                 Email = "test@example.com",
-                PersonId = personId 
+                PersonId = personId,
+                Locale = null // User doesn't have Locale set
             };
             
             var person = new Person 
@@ -95,8 +96,8 @@ namespace Tests.Infrastructure.UnitTests
             // Assert
             Assert.True(result.IsSuccess);
             Assert.NotNull(result.User);
-            Assert.NotNull(result.User.Person); // Verification point: Person attached?
-            Assert.Equal("zh-TW", result.User.Person.Locale); // Verification point: Locale accessible
+            // New behavior: Locale is copied to User instead of attaching Person (avoids tracking conflicts)
+            Assert.Equal("zh-TW", result.User.Locale);
         }
 
         [Fact]
