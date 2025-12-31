@@ -67,13 +67,13 @@ namespace Tests.Infrastructure.UnitTests
         {
              // Arrange
             _settingsServiceMock.Setup(x => x.GetValueAsync(SettingKeys.Branding.Copyright, It.IsAny<CancellationToken>()))
-                .ReturnsAsync("c 2025 NCUT");
+                .ReturnsAsync("c 2025 HybridAuth");
 
             // Act
             var result = await _service.GetCopyrightAsync();
 
             // Assert
-            Assert.Equal("© 2025 NCUT", result);
+            Assert.Equal("© 2025 HybridAuth", result);
         }
 
         [Fact]
