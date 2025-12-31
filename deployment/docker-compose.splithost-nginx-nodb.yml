@@ -74,6 +74,10 @@ services:
       - Branding__AppName=${Branding__AppName:-HybridAuth}
       - Branding__ProductName=${Branding__ProductName:-HybridAuth IdP}
       - Branding__Copyright=${Branding__Copyright:-© 2025}
+      # Turnstile Bot Protection (optional) - set in .env if using
+      - Turnstile__Enabled=${Turnstile__Enabled:-false}
+      - Turnstile__SiteKey=${Turnstile__SiteKey:-}
+      - Turnstile__SecretKey=${Turnstile__SecretKey:-}
       # Observability - Internal Metrics Scraping
       - Observability__MetricsBaseUrl=http://localhost:80
       # Serilog - Default to Warning to reduce noise (this is the actual logging framework)
