@@ -77,10 +77,12 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
                 null,
                 null);
         }
-        // Phase 10.4: Load Person navigation property if not already loaded
+        // Phase 10.4: Load Person for claims (using AsNoTracking to avoid tracking conflicts with JIT)
         else if (user.Person == null)
         {
-            user.Person = await _context.Persons.FindAsync(user.PersonId.Value);
+            user.Person = await _context.Persons
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == user.PersonId.Value);
         }
 
         var identity = await base.GenerateClaimsAsync(user);
