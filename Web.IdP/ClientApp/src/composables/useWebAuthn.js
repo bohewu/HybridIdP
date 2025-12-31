@@ -170,6 +170,9 @@ export function useWebAuthn() {
         if (mediation === 'optional' && conditionalAbortController) {
             try {
                 conditionalAbortController.abort();
+                // Wait a tick for the browser to process the abort and clear the pending request state
+                // This is crucial for Safari and some mobile browsers to avoid "request is already pending"
+                await new Promise(resolve => setTimeout(resolve, 100));
             } catch (e) {
                 // Ignore abort errors
             }
