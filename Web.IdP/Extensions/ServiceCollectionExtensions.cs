@@ -33,6 +33,7 @@ using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Web.IdP;
 using Web.IdP.Services.Localization;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace Web.IdP.Extensions;
 
@@ -221,6 +222,16 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddCustomIdentityAndAccess(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment, string databaseProvider, string connectionString)
     {
+        // Configure Data Protection to persist keys to a specific directory (for Docker deployments)
+        var keysDirectory = configuration["DataProtection:KeysDirectory"] ?? "/app/keys";
+        var appName = configuration["Branding:AppName"] ?? "HybridIdP";
+        if (Directory.Exists(keysDirectory) || !environment.IsDevelopment())
+        {
+            services.AddDataProtection()
+                .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory))
+                .SetApplicationName(appName);
+        }
+
         // Add DbContext
         services.AddDbContext<ApplicationDbContext>(options =>
         {

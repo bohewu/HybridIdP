@@ -80,8 +80,12 @@ services:
       - "Serilog__MinimumLevel__Default=Warning"
       # Optional: Fixed issuer for production
       - OpenIddict__Issuer=${OpenIddict__Issuer:-}
+      # Legacy Auth (optional) - set in .env if using legacy authentication
+      - LegacyAuth__LoginUrl=${LegacyAuth__LoginUrl:-}
+      - LegacyAuth__Secret=${LegacyAuth__Secret:-}
     volumes:
       - ./certs:/app/certs:ro
+      - dataprotection-keys:/app/keys  # Persist Data Protection keys across restarts
     networks:
       - backend
     logging:
@@ -117,3 +121,4 @@ networks:
 
 volumes:
   redis-data:
+  dataprotection-keys:  # Persist ASP.NET Data Protection keys
