@@ -27,12 +27,8 @@ public static class WebApplicationExtensions
             app.UseHsts();
         }
 
-        app.UseHttpsRedirection();
-
-        // Add security headers middleware
-        app.UseSecurityHeaders();
-
         // Configure Forwarded Headers Middleware (Phase 17)
+        // Must be configured BEFORE UseHttpsRedirection so X-Forwarded-Proto is processed first
         var proxyOptions = new ProxyOptions();
         configuration.GetSection(ProxyOptions.Section).Bind(proxyOptions);
 
@@ -54,7 +50,18 @@ public static class WebApplicationExtensions
             options.RequireHeaderSymmetry = proxyOptions.RequireHeaderSymmetry;
 
             app.UseForwardedHeaders(options);
+            
+            // When behind a proxy, HTTPS redirect is handled by the proxy (e.g., BunkerWeb)
+            // The X-Forwarded-Proto header tells us the original scheme
         }
+        else
+        {
+            // Not behind a proxy, handle HTTPS redirect ourselves
+            app.UseHttpsRedirection();
+        }
+
+        // Add security headers middleware
+        app.UseSecurityHeaders();
 
         app.UseRouting();
 
