@@ -159,49 +159,65 @@ public class JitProvisioningService : IJitProvisioningService
         ExternalAuthResult externalAuth,
         CancellationToken cancellationToken)
     {
+        Guid? personId = null;
+        
         // Priority 1: Match by identity documents (ANY match) - using hashed values
         if (!string.IsNullOrWhiteSpace(externalAuth.NationalId))
         {
             var hashedNationalId = PidHasher.Hash(externalAuth.NationalId);
-            var personByNationalId = await _context.Persons
-                .FirstOrDefaultAsync(p => p.NationalId == hashedNationalId, cancellationToken);
-            if (personByNationalId != null)
-                return personByNationalId;
+            personId = await _context.Persons
+                .AsNoTracking()
+                .Where(p => p.NationalId == hashedNationalId)
+                .Select(p => (Guid?)p.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (personId.HasValue)
+                return await _context.Persons.FirstOrDefaultAsync(p => p.Id == personId.Value, cancellationToken);
         }
 
         if (!string.IsNullOrWhiteSpace(externalAuth.PassportNumber))
         {
             var hashedPassport = PidHasher.Hash(externalAuth.PassportNumber);
-            var personByPassport = await _context.Persons
-                .FirstOrDefaultAsync(p => p.PassportNumber == hashedPassport, cancellationToken);
-            if (personByPassport != null)
-                return personByPassport;
+            personId = await _context.Persons
+                .AsNoTracking()
+                .Where(p => p.PassportNumber == hashedPassport)
+                .Select(p => (Guid?)p.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (personId.HasValue)
+                return await _context.Persons.FirstOrDefaultAsync(p => p.Id == personId.Value, cancellationToken);
         }
 
         if (!string.IsNullOrWhiteSpace(externalAuth.ResidentCertificateNumber))
         {
             var hashedResident = PidHasher.Hash(externalAuth.ResidentCertificateNumber);
-            var personByResident = await _context.Persons
-                .FirstOrDefaultAsync(p => p.ResidentCertificateNumber == hashedResident, cancellationToken);
-            if (personByResident != null)
-                return personByResident;
+            personId = await _context.Persons
+                .AsNoTracking()
+                .Where(p => p.ResidentCertificateNumber == hashedResident)
+                .Select(p => (Guid?)p.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (personId.HasValue)
+                return await _context.Persons.FirstOrDefaultAsync(p => p.Id == personId.Value, cancellationToken);
         }
 
         // Priority 2: Fallback to Email matching (if no identity documents or no match)
         if (!string.IsNullOrWhiteSpace(externalAuth.Email))
         {
             // Check Person.Email first
-            var personByEmail = await _context.Persons
-                .FirstOrDefaultAsync(p => p.Email == externalAuth.Email, cancellationToken);
-            if (personByEmail != null)
-                return personByEmail;
+            personId = await _context.Persons
+                .AsNoTracking()
+                .Where(p => p.Email == externalAuth.Email)
+                .Select(p => (Guid?)p.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (personId.HasValue)
+                return await _context.Persons.FirstOrDefaultAsync(p => p.Id == personId.Value, cancellationToken);
 
             // Also check if any ApplicationUser with same PersonId has this email
-            var userWithEmail = await _context.Users
-                .Include(u => u.Person)
-                .FirstOrDefaultAsync(u => u.Email == externalAuth.Email && u.PersonId != null, cancellationToken);
-            if (userWithEmail?.Person != null)
-                return userWithEmail.Person;
+            personId = await _context.Users
+                .AsNoTracking()
+                .Where(u => u.Email == externalAuth.Email && u.PersonId != null)
+                .Select(u => u.PersonId)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (personId.HasValue)
+                return await _context.Persons.FirstOrDefaultAsync(p => p.Id == personId.Value, cancellationToken);
         }
 
         return null;
