@@ -58,7 +58,7 @@ public class JitProvisioningService : IJitProvisioningService
         // Step 2: Try to find existing Person by identity documents first, then by Email
         Person? person = await FindExistingPersonAsync(externalAuth, cancellationToken);
 
-        // Step 3: If no Person found, create new one; otherwise update existing
+         // Step 3: If no Person found, create new one; otherwise update existing
         if (person == null)
         {
             person = new Person
@@ -76,6 +76,9 @@ public class JitProvisioningService : IJitProvisioningService
                 NationalId = PidHasher.Hash(externalAuth.NationalId),
                 PassportNumber = PidHasher.Hash(externalAuth.PassportNumber),
                 ResidentCertificateNumber = PidHasher.Hash(externalAuth.ResidentCertificateNumber),
+                // Auto-verify Legacy users since they're trusted from the old system
+                IdentityVerifiedAt = externalAuth.Provider == "Legacy" ? DateTime.UtcNow : null,
+                IdentityDocumentType = !string.IsNullOrWhiteSpace(externalAuth.NationalId) ? "NationalId" : null,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = null // System provisioned
             };
@@ -105,6 +108,16 @@ public class JitProvisioningService : IJitProvisioningService
             if (!string.IsNullOrWhiteSpace(externalAuth.ResidentCertificateNumber) && string.IsNullOrWhiteSpace(person.ResidentCertificateNumber))
             {
                 person.ResidentCertificateNumber = PidHasher.Hash(externalAuth.ResidentCertificateNumber);
+            }
+            
+            // Auto-verify Legacy users if not already verified
+            if (externalAuth.Provider == "Legacy" && person.IdentityVerifiedAt == null)
+            {
+                person.IdentityVerifiedAt = DateTime.UtcNow;
+                if (string.IsNullOrWhiteSpace(person.IdentityDocumentType) && !string.IsNullOrWhiteSpace(person.NationalId))
+                {
+                    person.IdentityDocumentType = "NationalId";
+                }
             }
             
             person.ModifiedAt = DateTime.UtcNow;
