@@ -106,35 +106,51 @@ document.addEventListener('DOMContentLoaded', () => {
     initPasskeyLogin();
 });
 
-// Turnstile callback functions (must be global for Cloudflare Turnstile API)
+// Turnstile initialization with explicit rendering
 function initTurnstile() {
     const submitBtn = document.getElementById('loginSubmitBtn') || document.getElementById('registerSubmitBtn');
-    const turnstileWidget = document.querySelector('.cf-turnstile');
+    const turnstileContainer = document.querySelector('.cf-turnstile');
     
-    // Only disable if Turnstile is enabled on page
-    if (submitBtn && turnstileWidget) {
-        submitBtn.disabled = true;
-        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    }
+    // Only proceed if Turnstile is enabled on page
+    if (!submitBtn || !turnstileContainer) return;
+    
+    // Disable button initially
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    
+    // Get sitekey from data attribute
+    const sitekey = turnstileContainer.getAttribute('data-sitekey');
+    if (!sitekey) return;
+    
+    // Wait for Turnstile API to load, then render explicitly
+    const renderTurnstile = () => {
+        if (typeof turnstile !== 'undefined') {
+            turnstile.render(turnstileContainer, {
+                sitekey: sitekey,
+                callback: function(token) {
+                    console.log('Turnstile verified');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                },
+                'expired-callback': function() {
+                    console.log('Turnstile expired');
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    }
+                }
+            });
+        } else {
+            // Turnstile API not loaded yet, retry
+            setTimeout(renderTurnstile, 100);
+        }
+    };
+    
+    // Start rendering attempt
+    renderTurnstile();
 }
-
-// Global callback for Turnstile success
-window.onTurnstileSuccess = function(token) {
-    const submitBtn = document.getElementById('loginSubmitBtn') || document.getElementById('registerSubmitBtn');
-    if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-    }
-};
-
-// Global callback for Turnstile expiration
-window.onTurnstileExpired = function() {
-    const submitBtn = document.getElementById('loginSubmitBtn') || document.getElementById('registerSubmitBtn');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    }
-};
 
 async function initPasskeyLogin() {
     const passkeyBtn = document.getElementById('passkeyLoginBtn');
