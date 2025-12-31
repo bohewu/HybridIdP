@@ -1,6 +1,9 @@
 import { ref } from 'vue';
 
 export function useWebAuthn() {
+    // Keep track of the abort controller for conditional UI requests
+    let conditionalAbortController = null;
+
     const isSupported = () => {
         return window.PublicKeyCredential !== undefined &&
             navigator.credentials !== undefined;
@@ -162,11 +165,31 @@ export function useWebAuthn() {
             }));
         }
 
+        }
+
+        // If starting an explicit (modal) authentication, abort any pending conditional UI request first
+        // to prevent "request already pending" errors (especially on mobile/Safari).
+        if (mediation === 'optional' && conditionalAbortController) {
+            try {
+                conditionalAbortController.abort();
+            } catch (e) {
+                // Ignore abort errors
+            }
+            conditionalAbortController = null;
+        }
+
+        // Create a new controller for this request
+        const controller = new AbortController();
+        if (mediation === 'conditional') {
+            conditionalAbortController = controller;
+        }
+
         try {
             // 3. Call WebAuthn API
             const assertion = await navigator.credentials.get({
                 publicKey: options,
-                mediation: mediation // 'optional' (default) or 'conditional' (auto-fill)
+                mediation: mediation, // 'optional' (default) or 'conditional' (auto-fill)
+                signal: controller.signal
             });
 
             if (!assertion) {

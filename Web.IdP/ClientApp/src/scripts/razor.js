@@ -189,13 +189,17 @@ async function initPasskeyLogin() {
 
     passkeyBtn.addEventListener('click', async () => {
         try {
+            passkeyBtn.disabled = true; // Prevent double-click
             const username = usernameInput.value;
             const returnUrl = safeRedirect(passkeyBtn.getAttribute('data-return-url'));
             const result = await authenticateWithPasskey(username);
             if (result.success) {
                 window.location.href = returnUrl;
+            } else {
+                 passkeyBtn.disabled = false;
             }
         } catch (err) {
+            passkeyBtn.disabled = false;
             console.error('Passkey login failed:', err);
             // Only alert if it's not a user cancellation
             if (err.message !== 'mfa.errors.userCanceled') {
