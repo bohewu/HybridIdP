@@ -524,6 +524,18 @@ public static class ServiceCollectionExtensions
             services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+                // Default policy - per IP address, general purpose
+                options.AddPolicy("default", httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 60,
+                            Window = TimeSpan.FromSeconds(60),
+                            QueueLimit = rateLimitingOptions.QueueLimit,
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                        }));
                 
                 // Login endpoint policy - per IP address
                 options.AddPolicy("login", httpContext =>
