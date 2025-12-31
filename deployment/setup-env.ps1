@@ -247,15 +247,17 @@ if ($turnstileSiteKey) {
     $turnstileSecretKey = Read-PromptWithDefault -Prompt "Turnstile Secret Key" -Default ""
 }
 
-Write-Title "Fido2 / WebAuthn Configuration"
-Write-Info "Configuration for Passkey/WebAuthn support."
-$fido2Domain = Read-PromptWithDefault -Prompt "Server Domain (e.g. localhost, idp.example.com)" -Default "localhost"
-$fido2Origins = Read-PromptWithDefault -Prompt "Allowed Origins (comma-separated)" -Default "https://localhost:7035"
 
 Write-Title "Branding Configuration"
 $appName = Read-PromptWithDefault -Prompt "Application Name" -Default "HybridAuth"
 $productName = Read-PromptWithDefault -Prompt "Product Name" -Default "HybridAuth IdP"
 $copyright = Read-PromptWithDefault -Prompt "Copyright Text" -Default "© $(Get-Date -Format 'yyyy')"
+
+Write-Title "Fido2 / WebAuthn Configuration"
+Write-Info "Configuration for Passkey/WebAuthn support."
+$fido2ServerName = Read-PromptWithDefault -Prompt "Server Name (Passkey prompt title)" -Default $appName
+$fido2Domain = Read-PromptWithDefault -Prompt "Server Domain (e.g. localhost, idp.example.com)" -Default "localhost"
+$fido2Origins = Read-PromptWithDefault -Prompt "Allowed Origins (comma-separated)" -Default "https://localhost:7035"
 
 Write-Title "Advanced: OpenIddict Issuer"
 Write-Info "Optional: Set a fixed issuer URI. Recommended for production behind reverse proxy."
@@ -343,6 +345,7 @@ Turnstile__SecretKey=$turnstileSecretKey
 $envContent += @"
 
 # Fido2 / WebAuthn Configuration
+Fido2__ServerName='$fido2ServerName'
 Fido2__ServerDomain='$fido2Domain'
 Fido2__Origins='$fido2Origins'
 Fido2__TimestampDriftTolerance=300000
