@@ -177,5 +177,7 @@
   "EnterEmailCodeDescription": "We sent a verification code to your email",
   "InvalidMfaCode": "Invalid verification code",
   "LoginWithPasskey": "Sign in with a Passkey",
-  "ForgotPassword": "Forgot password?"
+  "ForgotPassword": "Forgot password?",
+  "mfa.errors.noPasskeysRegistered": "No verified passkey found on this device. Please register a passkey first.",
+  "mfa.errors.passkeyNotRegistered": "This passkey is not registered with your account. Please register it or use another method."
 }

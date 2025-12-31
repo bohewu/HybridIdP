@@ -177,5 +177,7 @@
   "EnterEmailCodeDescription": "我們已將驗證碼發送至您的電子郵件",
   "InvalidMfaCode": "驗證碼無效",
   "LoginWithPasskey": "使用 Passkey 登入",
-  "ForgotPassword": "忘記密碼？"
+  "ForgotPassword": "忘記密碼？",
+  "mfa.errors.noPasskeysRegistered": "我們未在此裝置偵測到您的 Passkey。請先註冊金鑰，或使用其他方式登入。",
+  "mfa.errors.passkeyNotRegistered": "此 Passkey 尚未註冊到您的帳戶。請先進行註冊，或換一個金鑰嘗試。"
 }

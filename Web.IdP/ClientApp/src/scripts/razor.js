@@ -201,9 +201,19 @@ async function initPasskeyLogin() {
         } catch (err) {
             passkeyBtn.disabled = false;
             console.error('Passkey login failed:', err);
+            
             // Only alert if it's not a user cancellation
             if (err.message !== 'mfa.errors.userCanceled') {
-                alert(err.message || 'Passkey authentication failed');
+                let message = err.message || 'Passkey authentication failed';
+                
+                // Translate known error keys using data attributes injected from server
+                if (err.message === 'mfa.errors.noPasskeysRegistered') {
+                    message = passkeyBtn.getAttribute('data-error-no-passkeys') || message;
+                } else if (err.message === 'mfa.errors.passkeyNotRegistered') {
+                    message = passkeyBtn.getAttribute('data-error-not-found') || message;
+                }
+                
+                alert(message);
             }
         }
     });
