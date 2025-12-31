@@ -11,24 +11,30 @@ public partial class TurnstileService : ITurnstileService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly TurnstileOptions _options;
-    private readonly ITurnstileStateService _stateService; // Added
+    private readonly ITurnstileStateService _stateService;
+    private readonly ISettingsService _settingsService; // Added
     private readonly ILogger<TurnstileService> _logger;
 
     public TurnstileService(
         IHttpClientFactory httpClientFactory,
         IOptions<TurnstileOptions> options,
-        ITurnstileStateService stateService, // Added
+        ITurnstileStateService stateService,
+        ISettingsService settingsService, // Added
         ILogger<TurnstileService> logger)
     {
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
-        _stateService = stateService; // Added
+        _stateService = stateService;
+        _settingsService = settingsService; // Added
         _logger = logger;
     }
 
     public async Task<bool> ValidateTokenAsync(string token, string? remoteIp = null)
     {
-        var enabled = _options.Enabled;
+        // Check DB setting first, fallback to Options
+        var dbEnabled = await _settingsService.GetValueAsync<bool?>(Core.Domain.Constants.SettingKeys.Turnstile.Enabled);
+        var enabled = dbEnabled ?? _options.Enabled;
+
         if (!enabled)
         {
             LogTurnstileDisabled(_logger);
