@@ -91,7 +91,7 @@
   "SwitchAccountFailed": "Failed to switch account",
   "SwitchAccountError": "An error occurred while switching accounts",
   "ViewDetails": "View Details",
-  "WelcomeMessage": "Welcome",
+  "WelcomeMessage": "Welcome to {0}",
   "ApplicationManager": "Application Manager",
   "ApplicationManagement": "Application Management",
   "ManageYourApplicationsAndScopes": "Manage your applications and scopes",
