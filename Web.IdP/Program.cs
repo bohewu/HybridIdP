@@ -95,7 +95,7 @@ builder.Services.Configure<Fido2NetLib.Fido2Configuration>(builder.Configuration
 builder.Services.AddFido2(options =>
 {
     var fido2Config = builder.Configuration.GetSection("Fido2").Get<Fido2NetLib.Fido2Configuration>();
-    options.ServerName = builder.Configuration["Branding:AppName"] ?? "HybridIdP";
+    options.ServerName = builder.Configuration["Fido2:ServerName"] ?? builder.Configuration["Branding:AppName"] ?? "HybridIdP";
     options.ServerDomain = fido2Config?.ServerDomain ?? "localhost";
     
     // Support comma-separated origins from environment variables (Fido2__Origins)
