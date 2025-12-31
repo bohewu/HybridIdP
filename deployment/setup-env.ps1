@@ -334,8 +334,8 @@ if ($turnstileSiteKey) {
     $envContent += @"
 
 # Cloudflare Turnstile (Bot Protection)
-Turnstile__SiteKey='$turnstileSiteKey'
-Turnstile__SecretKey='$turnstileSecretKey'
+Turnstile__SiteKey=$turnstileSiteKey
+Turnstile__SecretKey=$turnstileSecretKey
 "@
 }
 
