@@ -192,7 +192,7 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Permanently delete a user (soft delete - won't show in UI).
+    /// Permanently delete a user (soft delete + clear external logins for JIT re-provisioning).
     /// </summary>
     /// <param name="id">User ID</param>
     [HttpDelete("{id}")]
@@ -207,8 +207,9 @@ public class UsersController : ControllerBase
                 return NotFound(new { errors = new[] { "User not found" } });
             }
 
-            // Soft delete: mark as deleted in database
+            // Step 1: Soft delete - mark as deleted in database
             user.IsDeleted = true;
+            user.IsActive = false;
             user.DeletedAt = DateTime.UtcNow;
             
             var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -223,6 +224,16 @@ public class UsersController : ControllerBase
             {
                 return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
             }
+
+            // Step 2: Remove external logins (allows JIT to create new user on next login)
+            var logins = await _userManager.GetLoginsAsync(user);
+            foreach (var login in logins)
+            {
+                await _userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
+            }
+
+            // Step 3: Update security stamp to invalidate existing sessions
+            await _userManager.UpdateSecurityStampAsync(user);
 
             return NoContent();
         }
