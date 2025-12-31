@@ -99,20 +99,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // Vue Loading Bar - Auto-hide when Vue apps are mounted
     initVueLoadingBar();
 
-    // Turnstile Logic (replaces turnstile.js)
-    const loginText = document.getElementById('loginBtnText') || document.getElementById('registerBtnText');
-    const loginLoading = document.getElementById('loginBtnLoading') || document.getElementById('registerBtnLoading');
-
-    if (loginText && loginLoading) {
-        // Initial state is loading if turnstile is present but not yet verified
-        // But we want to ensure the loading spinner is visible initially IF configured
-        loginText.classList.add('hidden');
-        loginLoading.classList.remove('hidden');
-    }
+    // Turnstile Logic - Disable submit button until verification completes
+    initTurnstile();
 
     // Passkey Login Logic
     initPasskeyLogin();
 });
+
+// Turnstile callback functions (must be global for Cloudflare Turnstile API)
+function initTurnstile() {
+    const submitBtn = document.getElementById('loginSubmitBtn') || document.getElementById('registerSubmitBtn');
+    const turnstileWidget = document.querySelector('.cf-turnstile');
+    
+    // Only disable if Turnstile is enabled on page
+    if (submitBtn && turnstileWidget) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+// Global callback for Turnstile success
+window.onTurnstileSuccess = function(token) {
+    const submitBtn = document.getElementById('loginSubmitBtn') || document.getElementById('registerSubmitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+};
+
+// Global callback for Turnstile expiration
+window.onTurnstileExpired = function() {
+    const submitBtn = document.getElementById('loginSubmitBtn') || document.getElementById('registerSubmitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+};
 
 async function initPasskeyLogin() {
     const passkeyBtn = document.getElementById('passkeyLoginBtn');

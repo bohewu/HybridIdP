@@ -74,7 +74,7 @@
                     @if (Model.TurnstileEnabled)
                     {
                         <div class="my-6 flex justify-center">
-                            <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey"></div>
+                            <div class="cf-turnstile" data-sitekey="@Model.TurnstileSiteKey" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired"></div>
                         </div>
                     }
 
@@ -82,7 +82,7 @@
                          <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" class="link-google text-sm font-medium">
                             @Localizer["SignInInstead"]
                         </a>
-                        <button type="submit" class="btn-google-blue ml-4">
+                        <button type="submit" id="registerSubmitBtn" class="btn-google-blue ml-4">
                             @Localizer["Next"]
                         </button>
                     </div>
