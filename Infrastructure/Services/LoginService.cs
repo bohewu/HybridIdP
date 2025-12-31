@@ -178,9 +178,12 @@ public partial class LoginService : ILoginService
             return LoginResult.PersonInactive(reason);
         }
 
-        // Attach the validated Person to the User object so it's available downstream
-        // (e.g., for Login Page fallback locale logic)
-        user.Person = person;
+        // Copy Person's Locale to User if User doesn't have one
+        // (Don't attach Person to User navigation property as it causes tracking conflicts)
+        if (string.IsNullOrEmpty(user.Locale) && !string.IsNullOrEmpty(person.Locale))
+        {
+            user.Locale = person.Locale;
+        }
 
         return null; // Person is valid, continue with login
     }

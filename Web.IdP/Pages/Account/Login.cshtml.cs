@@ -334,14 +334,8 @@ public partial class LoginModel : PageModel
                 ));
                 
                 // Set localization cookie if user has a preferred locale
+                // (LoginService copies Person.Locale to User.Locale if needed)
                 var preferredLocale = result.User!.Locale;
-                
-                // Fallback to Person if user has no locale but is linked to a Person
-                // (Person is now loaded by LoginService)
-                if (string.IsNullOrEmpty(preferredLocale) && result.User.Person != null)
-                {
-                    preferredLocale = result.User.Person.Locale;
-                }
 
                 if (!string.IsNullOrEmpty(preferredLocale))
                 {
