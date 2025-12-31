@@ -58,7 +58,7 @@ public class JitProvisioningService : IJitProvisioningService
         // Step 2: Try to find existing Person by identity documents first, then by Email
         Person? person = await FindExistingPersonAsync(externalAuth, cancellationToken);
 
-        // Step 3: If no Person found, create new one
+        // Step 3: If no Person found, create new one; otherwise update existing
         if (person == null)
         {
             person = new Person
@@ -80,6 +80,34 @@ public class JitProvisioningService : IJitProvisioningService
                 CreatedBy = null // System provisioned
             };
             await _context.Persons.AddAsync(person, cancellationToken);
+        }
+        else
+        {
+            // Update existing Person with new data from auth provider (if provided)
+            person.Email = externalAuth.Email ?? person.Email;
+            person.PhoneNumber = externalAuth.PhoneNumber ?? person.PhoneNumber;
+            person.FirstName = externalAuth.FirstName ?? person.FirstName;
+            person.LastName = externalAuth.LastName ?? person.LastName;
+            person.MiddleName = externalAuth.MiddleName ?? person.MiddleName;
+            person.EmployeeId = externalAuth.EmployeeId ?? person.EmployeeId;
+            person.Department = externalAuth.Department ?? person.Department;
+            person.JobTitle = externalAuth.JobTitle ?? person.JobTitle;
+            
+            // Only update PID fields if newly provided and currently empty
+            if (!string.IsNullOrWhiteSpace(externalAuth.NationalId) && string.IsNullOrWhiteSpace(person.NationalId))
+            {
+                person.NationalId = PidHasher.Hash(externalAuth.NationalId);
+            }
+            if (!string.IsNullOrWhiteSpace(externalAuth.PassportNumber) && string.IsNullOrWhiteSpace(person.PassportNumber))
+            {
+                person.PassportNumber = PidHasher.Hash(externalAuth.PassportNumber);
+            }
+            if (!string.IsNullOrWhiteSpace(externalAuth.ResidentCertificateNumber) && string.IsNullOrWhiteSpace(person.ResidentCertificateNumber))
+            {
+                person.ResidentCertificateNumber = PidHasher.Hash(externalAuth.ResidentCertificateNumber);
+            }
+            
+            person.ModifiedAt = DateTime.UtcNow;
         }
 
         // Step 4: Create new ApplicationUser (linked to Person)
