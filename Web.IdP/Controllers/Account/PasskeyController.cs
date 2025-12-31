@@ -234,13 +234,21 @@ public partial class PasskeyController : ControllerBase
     [HttpPost("login-options")]
     public async Task<IActionResult> AssertionOptionsPost([FromBody] LoginOptionsRequest request, CancellationToken ct)
     {
-        var options = await _passkeyService.GetAssertionOptionsAsync(request.Username, ct);
-        
-        HttpContext.Session.SetString("fido2.assertionOptions", options.ToJson());
-        
-        LogAssertionOptionsGenerated(request.Username);
-        
-        return Ok(options);
+        try
+        {
+            var options = await _passkeyService.GetAssertionOptionsAsync(request.Username, ct);
+            
+            HttpContext.Session.SetString("fido2.assertionOptions", options.ToJson());
+            
+            LogAssertionOptionsGenerated(request.Username);
+            
+            return Ok(options);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Failed to generate assertion options: {Message}", ex.Message);
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpPost("login")]
