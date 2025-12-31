@@ -122,6 +122,7 @@ public partial class LoginService : ILoginService
              FirstName = legacyResult.FullName,
              Department = legacyResult.Department,
              JobTitle = legacyResult.JobTitle,
+             EmployeeId = legacyResult.EmployeeId,
              PhoneNumber = legacyResult.Phone,
              NationalId = legacyResult.NationalId,
              PassportNumber = legacyResult.PassportNumber,

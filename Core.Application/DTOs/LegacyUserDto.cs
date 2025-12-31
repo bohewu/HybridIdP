@@ -9,6 +9,7 @@ public class LegacyUserDto
     public string? Department { get; set; }
     public string? JobTitle { get; set; }
     public string? Phone { get; set; }
+    public string? EmployeeId { get; set; }
     
     // Identity Fields
     public string? NationalId { get; set; }

@@ -62,6 +62,7 @@ public partial class LegacyAuthService : ILegacyAuthService
                 FullName = apiResult.Username, // Mapping username to FullName as best effort
                 Department = null, 
                 Phone = null,
+                EmployeeId = apiResult.UserId,
                 NationalId = apiResult.NationalId,
                 PassportNumber = apiResult.PassportNumber,
                 ResidentCertificateNumber = apiResult.ResidentCertificateNumber
