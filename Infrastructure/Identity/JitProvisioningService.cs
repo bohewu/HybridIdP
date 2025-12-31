@@ -40,7 +40,7 @@ public class JitProvisioningService : IJitProvisioningService
 
         if (existingUser != null)
         {
-            // Already exists, update information
+            // Already exists, update ApplicationUser information
             existingUser.Email = externalAuth.Email ?? existingUser.Email;
             existingUser.FirstName = externalAuth.FirstName ?? existingUser.FirstName;
             existingUser.LastName = externalAuth.LastName ?? existingUser.LastName;
@@ -52,6 +52,44 @@ public class JitProvisioningService : IJitProvisioningService
             existingUser.ModifiedAt = DateTime.UtcNow;
             
             await _userManager.UpdateAsync(existingUser);
+            
+            // Also update linked Person if exists
+            if (existingUser.PersonId.HasValue)
+            {
+                var existingPerson = await _context.Persons.FindAsync([existingUser.PersonId.Value], cancellationToken);
+                if (existingPerson != null)
+                {
+                    // Update Person fields
+                    existingPerson.Email = externalAuth.Email ?? existingPerson.Email;
+                    existingPerson.PhoneNumber = externalAuth.PhoneNumber ?? existingPerson.PhoneNumber;
+                    existingPerson.FirstName = externalAuth.FirstName ?? existingPerson.FirstName;
+                    existingPerson.LastName = externalAuth.LastName ?? existingPerson.LastName;
+                    existingPerson.MiddleName = externalAuth.MiddleName ?? existingPerson.MiddleName;
+                    existingPerson.EmployeeId = externalAuth.EmployeeId ?? existingPerson.EmployeeId;
+                    existingPerson.Department = externalAuth.Department ?? existingPerson.Department;
+                    existingPerson.JobTitle = externalAuth.JobTitle ?? existingPerson.JobTitle;
+                    
+                    // Update PID fields only if newly provided and currently empty
+                    if (!string.IsNullOrWhiteSpace(externalAuth.NationalId) && string.IsNullOrWhiteSpace(existingPerson.NationalId))
+                    {
+                        existingPerson.NationalId = PidHasher.Hash(externalAuth.NationalId);
+                    }
+                    
+                    // Auto-verify Legacy users if not already verified
+                    if (externalAuth.Provider == "Legacy" && existingPerson.IdentityVerifiedAt == null)
+                    {
+                        existingPerson.IdentityVerifiedAt = DateTime.UtcNow;
+                        if (string.IsNullOrWhiteSpace(existingPerson.IdentityDocumentType) && !string.IsNullOrWhiteSpace(existingPerson.NationalId))
+                        {
+                            existingPerson.IdentityDocumentType = "NationalId";
+                        }
+                    }
+                    
+                    existingPerson.ModifiedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+            }
+            
             return existingUser;
         }
 
