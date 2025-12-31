@@ -62,6 +62,19 @@ export function useWebAuthn() {
         return 'Unknown';
     };
 
+    // Helper to safely parse JSON or return null
+    const safeJson = async (resp) => {
+        try {
+            const contentType = resp.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return await resp.json();
+            }
+        } catch (e) {
+            // Ignore parse errors
+        }
+        return null;
+    };
+
     const registerPasskey = async () => {
         if (!isSupported()) {
             throw new Error('mfa.errors.webAuthnNotSupported');
@@ -74,10 +87,12 @@ export function useWebAuthn() {
         });
 
         if (!optionsResp.ok) {
-            throw new Error('mfa.errors.registrationOptionsFailed');
+            const err = await safeJson(optionsResp);
+            throw new Error((err && err.error) ? err.error : 'mfa.errors.registrationOptionsFailed');
         }
 
-        const options = await optionsResp.json();
+        const options = await safeJson(optionsResp);
+        if (!options) throw new Error('Invalid server response (HTML)');
 
         // 2. Convert base64 to ArrayBuffer
         options.challenge = base64ToArrayBuffer(options.challenge);
@@ -121,8 +136,8 @@ export function useWebAuthn() {
             });
 
             if (!registerResp.ok) {
-                const error = await registerResp.json();
-                throw new Error(error.error || 'Registration failed');
+                const error = await safeJson(registerResp);
+                throw new Error((error && error.error) ? error.error : 'Registration failed');
             }
 
             return await registerResp.json();
@@ -150,10 +165,12 @@ export function useWebAuthn() {
         });
 
         if (!optionsResp.ok) {
-            throw new Error('mfa.errors.loginOptionsFailed');
+            const err = await safeJson(optionsResp);
+            throw new Error((err && err.error) ? err.error : 'mfa.errors.loginOptionsFailed');
         }
 
-        const options = await optionsResp.json();
+        const options = await safeJson(optionsResp);
+        if (!options) throw new Error('Invalid server response (HTML)');
 
         // 2. Convert base64 to ArrayBuffer
         options.challenge = base64ToArrayBuffer(options.challenge);
@@ -220,8 +237,8 @@ export function useWebAuthn() {
             });
 
             if (!loginResp.ok) {
-                const error = await loginResp.json();
-                throw new Error(error.error || 'Authentication failed');
+                const error = await safeJson(loginResp);
+                throw new Error((error && error.error) ? error.error : 'Authentication failed');
             }
 
             return await loginResp.json();
