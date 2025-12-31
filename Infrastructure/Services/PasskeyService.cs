@@ -163,6 +163,13 @@ public class PasskeyService : IPasskeyService
                     .Where(c => c.UserId == user.Id)
                     .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
                     .ToListAsync(ct);
+                
+                // UX Improvement: If user exists but has no passkeys, fail early
+                // This prevents the browser prompt from confusing the user
+                if (allowedCredentials.Count == 0)
+                {
+                    throw new Exception("mfa.errors.noPasskeysRegistered");
+                }
             }
         }
         
@@ -206,8 +213,9 @@ public class PasskeyService : IPasskeyService
             
             if (credential == null)
             {
-                _logger.LogWarning("Passkey credential not found: {CredentialId}", assertionResponse.Id);
-                return (false, null, "Invalid credential");
+                // Downgraded to Information as this is a common "user mismatch" scenario, not a system error
+                _logger.LogInformation("Passkey credential not found: {CredentialId}", assertionResponse.Id);
+                return (false, null, "mfa.errors.passkeyNotRegistered");
             }
             
             // 3. Verify the assertion using v4 API
