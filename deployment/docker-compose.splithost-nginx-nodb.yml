@@ -76,6 +76,10 @@ services:
       - Branding__Copyright=${Branding__Copyright:-© 2025}
       # Observability - Internal Metrics Scraping
       - Observability__MetricsBaseUrl=http://localhost:80
+      # Logging - Default to Warning to reduce noise
+      - Logging__LogLevel__Default=${Logging__LogLevel__Default:-Warning}
+      - Logging__LogLevel__Microsoft.AspNetCore=${Logging__LogLevel__Microsoft.AspNetCore:-Warning}
+      - Logging__LogLevel__Microsoft.EntityFrameworkCore=${Logging__LogLevel__Microsoft.EntityFrameworkCore:-Warning}
       # Optional: Fixed issuer for production
       - OpenIddict__Issuer=${OpenIddict__Issuer:-}
     volumes:
