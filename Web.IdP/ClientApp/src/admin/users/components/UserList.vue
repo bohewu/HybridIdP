@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
+import { Roles } from '@/utils/permissionService'
 import SearchInput from '@/components/common/SearchInput.vue'
 import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -219,7 +220,7 @@ const getSortIcon = (field) => {
                     {{ user.isActive ? $t('users.details.active') : $t('users.details.inactive') }}
                   </span>
                   <span
-                    v-if="user.twoFactorEnabled || user.emailMfaEnabled"
+                    v-if="user.twoFactorEnabled || user.emailMfaEnabled || user.hasPasskey"
                     class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700"
                     :title="$t('users.mfa.enabled')"
                   >
@@ -262,7 +263,7 @@ const getSortIcon = (field) => {
                       {{ t('users.manageSessions') }}
                     </button>
                     <button
-                      v-if="canImpersonate && user.isActive && !(user.roles && user.roles.includes('Admin'))"
+                      v-if="canImpersonate && user.isActive && !(user.roles && user.roles.includes(Roles.Admin))"
                       :disabled="user.id === currentUserId"
                       @click="emit('impersonate', user); close()"
                       class="text-left w-full block px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"

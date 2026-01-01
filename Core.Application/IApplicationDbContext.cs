@@ -21,6 +21,7 @@ public interface IApplicationDbContext
     DbSet<Person> Persons { get; }
     DbSet<ClientOwnership> ClientOwnerships { get; }
     DbSet<ScopeOwnership> ScopeOwnerships { get; }
+    DbSet<UserCredential> UserCredentials { get; }
     // Add other DbSet properties for your domain entities here
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

@@ -38,6 +38,12 @@ public class UserManagementService : IUserManagementService
     {
         var query = _userManager.Users.Include(u => u.Person).AsQueryable();
 
+        // Get all user IDs that have passkeys (for HasPasskey flag)
+        var usersWithPasskeys = await _context.UserCredentials
+            .Select(c => c.UserId)
+            .Distinct()
+            .ToListAsync();
+
         // Filter out soft-deleted users
         query = query.Where(u => !u.IsDeleted);
 
@@ -115,6 +121,7 @@ public class UserManagementService : IUserManagementService
                 CreatedAt = user.CreatedAt,
                 TwoFactorEnabled = user.TwoFactorEnabled,
                 EmailMfaEnabled = user.EmailMfaEnabled,
+                HasPasskey = usersWithPasskeys.Contains(user.Id),
                 Roles = roles.ToList()
             });
         }
