@@ -521,7 +521,10 @@ public class UsersController : ControllerBase
             if (!success)
             {
                 if (error == "User not found") return NotFound(new { error });
-                if (error == "Cannot impersonate another administrator") return Forbid();
+                if (error == "Cannot impersonate another administrator")
+                {
+                    return BadRequest(new { error = "系統管理員無法被模擬登入。" });
+                }
                 return BadRequest(new { error });
             }
 
