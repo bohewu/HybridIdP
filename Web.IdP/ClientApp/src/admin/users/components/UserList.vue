@@ -262,7 +262,7 @@ const getSortIcon = (field) => {
                       {{ t('users.manageSessions') }}
                     </button>
                     <button
-                      v-if="canImpersonate && user.isActive"
+                      v-if="canImpersonate && user.isActive && !(user.roles && user.roles.includes('Admin'))"
                       :disabled="user.id === currentUserId"
                       @click="emit('impersonate', user); close()"
                       class="text-left w-full block px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
