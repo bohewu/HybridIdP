@@ -1,40 +1,24 @@
 namespace Web.IdP.Options;
 
 /// <summary>
-/// A notice/alert message to display on the login page.
+/// Flat configuration for login page notices.
+/// Use env vars like: LoginNotices__TopMessage, LoginNotices__TopType, etc.
 /// </summary>
-public class LoginNotice
+public class LoginNoticesOptions
 {
-    /// <summary>
-    /// The message to display. Supports HTML.
-    /// </summary>
-    public string? Message { get; set; }
+    public const string Section = "LoginNotices";
     
-    /// <summary>
-    /// The type of notice: info, warning, success, error, muted
-    /// </summary>
-    public string Type { get; set; } = "info";
-}
-
-/// <summary>
-/// Login notices configuration for three positions on the login page.
-/// </summary>
-public class LoginNoticesConfig
-{
-    /// <summary>
-    /// Notice displayed above the login card.
-    /// </summary>
-    public LoginNotice Top { get; set; } = new();
+    // Top notice (above the login card)
+    public string? TopMessage { get; set; }
+    public string TopType { get; set; } = "info";
     
-    /// <summary>
-    /// Notice displayed inside the form, before the input fields.
-    /// </summary>
-    public LoginNotice Form { get; set; } = new();
+    // Form notice (inside the form, before inputs)
+    public string? FormMessage { get; set; }
+    public string FormType { get; set; } = "info";
     
-    /// <summary>
-    /// Notice displayed below the submit button.
-    /// </summary>
-    public LoginNotice Bottom { get; set; } = new();
+    // Bottom notice (after the submit button)
+    public string? BottomMessage { get; set; }
+    public string BottomType { get; set; } = "info";
 }
 
 public class BrandingOptions
@@ -52,10 +36,4 @@ public class BrandingOptions
     /// Footer "Powered by" text (leave empty to hide)
     /// </summary>
     public string? PoweredBy { get; set; }
-    
-    /// <summary>
-    /// Login page notices at three positions: Top, Form, Bottom.
-    /// Leave empty Message to hide a notice.
-    /// </summary>
-    public LoginNoticesConfig LoginNotices { get; set; } = new();
 }
