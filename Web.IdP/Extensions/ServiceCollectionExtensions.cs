@@ -87,6 +87,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMonitoringService, MonitoringService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IDynamicLoggingService, DynamicLoggingService>();
+        services.AddHostedService<LogSettingsSyncService>();
 
         // Domain Event Handlers
         services.AddScoped<IDomainEventHandler<UserCreatedEvent>, AuditService>();
