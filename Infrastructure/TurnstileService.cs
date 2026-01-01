@@ -81,7 +81,12 @@ public partial class TurnstileService : ITurnstileService
             response.EnsureSuccessStatusCode();
 
             var jsonResponse = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<TurnstileResponse>(jsonResponse);
+            _logger.LogDebug("Turnstile API response: {Response}", jsonResponse);
+            
+            var result = JsonSerializer.Deserialize<TurnstileResponse>(jsonResponse, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
 
             if (result?.Success == true)
             {
@@ -101,7 +106,10 @@ public partial class TurnstileService : ITurnstileService
 
     private class TurnstileResponse
     {
+        [System.Text.Json.Serialization.JsonPropertyName("success")]
         public bool Success { get; set; }
+        
+        [System.Text.Json.Serialization.JsonPropertyName("error-codes")]
         public string[]? ErrorCodes { get; set; }
     }
 
