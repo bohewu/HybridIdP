@@ -66,6 +66,13 @@ services:
       - Observability__MetricsBaseUrl=http://localhost:80
       # Optional OpenIddict Issuer
       - OpenIddict__Issuer=${OpenIddict__Issuer:-}
+      # Login Page Notices (optional)
+      - LoginNotices__TopMessage=${LoginNotices__TopMessage:-}
+      - LoginNotices__TopType=${LoginNotices__TopType:-info}
+      - LoginNotices__FormMessage=${LoginNotices__FormMessage:-}
+      - LoginNotices__FormType=${LoginNotices__FormType:-info}
+      - LoginNotices__BottomMessage=${LoginNotices__BottomMessage:-}
+      - LoginNotices__BottomType=${LoginNotices__BottomType:-info}
     volumes:
       - ./certs:/app/certs:ro
     networks:

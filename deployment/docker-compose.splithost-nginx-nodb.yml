@@ -96,6 +96,13 @@ services:
       - TokenOptions__AccessTokenLifetimeMinutes=${TokenOptions__AccessTokenLifetimeMinutes:-15}
       - TokenOptions__RefreshTokenLifetimeMinutes=${TokenOptions__RefreshTokenLifetimeMinutes:-20160}
       - TokenOptions__RefreshTokenReuseLeewaySeconds=${TokenOptions__RefreshTokenReuseLeewaySeconds:-60}
+      # Login Page Notices (optional)
+      - LoginNotices__TopMessage=${LoginNotices__TopMessage:-}
+      - LoginNotices__TopType=${LoginNotices__TopType:-info}
+      - LoginNotices__FormMessage=${LoginNotices__FormMessage:-}
+      - LoginNotices__FormType=${LoginNotices__FormType:-info}
+      - LoginNotices__BottomMessage=${LoginNotices__BottomMessage:-}
+      - LoginNotices__BottomType=${LoginNotices__BottomType:-info}
     volumes:
       - ./certs:/app/certs:ro
       - dataprotection-keys:/app/keys  # Persist Data Protection keys across restarts

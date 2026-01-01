@@ -23,6 +23,13 @@ services:
       - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx
       - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
+      # Login Page Notices (optional)
+      - LoginNotices__TopMessage=${LoginNotices__TopMessage:-}
+      - LoginNotices__TopType=${LoginNotices__TopType:-info}
+      - LoginNotices__FormMessage=${LoginNotices__FormMessage:-}
+      - LoginNotices__FormType=${LoginNotices__FormType:-info}
+      - LoginNotices__BottomMessage=${LoginNotices__BottomMessage:-}
+      - LoginNotices__BottomType=${LoginNotices__BottomType:-info}
     volumes:
       - ./certs:/app/certs:ro # Mount certs from deployment/certs
     logging:
