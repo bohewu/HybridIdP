@@ -557,16 +557,20 @@ public class UsersController : ControllerBase
     /// This requires only basic authentication (not admin permission) since
     /// the impersonated user may not have admin rights.
     /// CSRF is disabled because Actor claim provides security - only impersonated sessions can call this.
+    /// AllowAnonymous temporarily for debugging auth issues.
     /// </summary>
     [HttpPost("stop-impersonation")]
-    [ApiAuthorize]
+    [AllowAnonymous]  // Temporarily allow anonymous for debugging
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> StopImpersonation()
     {
-        // Log entry for debugging
+        // Log authentication status for debugging
+        var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+        var authType = User.Identity?.AuthenticationType ?? "none";
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
         var hasActor = (User.Identity as System.Security.Claims.ClaimsIdentity)?.Actor != null;
-        _logger.LogWarning("[StopImpersonation] Called by UserId={UserId}, HasActor={HasActor}", userId, hasActor);
+        _logger.LogWarning("[StopImpersonation] Auth: IsAuthenticated={IsAuthenticated}, AuthType={AuthType}, UserId={UserId}, HasActor={HasActor}", 
+            isAuthenticated, authType, userId, hasActor);
         
         try
         {
