@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleStopImpersonation() {
         try {
-            const response = await fetch('/api/admin/users/stop-impersonation', {
+            const response = await fetch('/api/impersonation/stop', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
