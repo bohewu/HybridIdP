@@ -24,17 +24,17 @@ public class LoginNoticesConfig
     /// <summary>
     /// Notice displayed above the login card.
     /// </summary>
-    public LoginNotice? Top { get; set; }
+    public LoginNotice Top { get; set; } = new();
     
     /// <summary>
     /// Notice displayed inside the form, before the input fields.
     /// </summary>
-    public LoginNotice? Form { get; set; }
+    public LoginNotice Form { get; set; } = new();
     
     /// <summary>
     /// Notice displayed below the submit button.
     /// </summary>
-    public LoginNotice? Bottom { get; set; }
+    public LoginNotice Bottom { get; set; } = new();
 }
 
 public class BrandingOptions
@@ -55,7 +55,7 @@ public class BrandingOptions
     
     /// <summary>
     /// Login page notices at three positions: Top, Form, Bottom.
-    /// Leave null or empty Message to hide a notice.
+    /// Leave empty Message to hide a notice.
     /// </summary>
-    public LoginNoticesConfig? LoginNotices { get; set; }
+    public LoginNoticesConfig LoginNotices { get; set; } = new();
 }
