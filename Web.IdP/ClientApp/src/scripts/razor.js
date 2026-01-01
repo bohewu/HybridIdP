@@ -37,23 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
     window.revertImpersonation = handleStopImpersonation;
 
     async function handleStopImpersonation() {
-        console.log('[StopImpersonation] Function called');
         try {
-            // Get CSRF token from hidden input
-            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
-            console.log('[StopImpersonation] CSRF Token:', csrfToken ? 'Found (' + csrfToken.substring(0, 20) + '...)' : 'NOT FOUND');
-            
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-            if (csrfToken) {
-                headers['RequestVerificationToken'] = csrfToken;
-            }
-            console.log('[StopImpersonation] Headers:', JSON.stringify(Object.keys(headers)));
-            
             const response = await fetch('/api/admin/users/stop-impersonation', {
                 method: 'POST',
-                headers: headers
+                headers: { 'Content-Type': 'application/json' }
             });
 
             if (response.ok) {
