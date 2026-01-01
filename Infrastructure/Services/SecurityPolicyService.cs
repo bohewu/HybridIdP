@@ -28,7 +28,7 @@ public partial class SecurityPolicyService : ISecurityPolicyService
             return policy!;
         }
 
-        policy = await _db.SecurityPolicies.FirstOrDefaultAsync();
+        policy = await _db.SecurityPolicies.OrderBy(p => p.Id).FirstOrDefaultAsync();
 
         if (policy == null)
         {
@@ -52,7 +52,7 @@ public partial class SecurityPolicyService : ISecurityPolicyService
                 "Cannot enable mandatory MFA enrollment without at least one MFA method (TOTP, Email, or Passkey) enabled.");
         }
 
-        var policy = await _db.SecurityPolicies.FirstOrDefaultAsync();
+        var policy = await _db.SecurityPolicies.OrderBy(p => p.Id).FirstOrDefaultAsync();
         if (policy == null)
         {
             // This should not happen in practice after the first Get call, but as a safeguard:
