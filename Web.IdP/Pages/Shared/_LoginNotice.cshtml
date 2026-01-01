@@ -1,10 +1,9 @@
-@using Web.IdP.Options
 @using Core.Application
 @using Microsoft.AspNetCore.Localization
-@model LoginNotice
+@model (string? Message, string Type)
 @inject ILocalizationService LocalizationService
 
-@if (Model != null && !string.IsNullOrWhiteSpace(Model.Message))
+@if (!string.IsNullOrWhiteSpace(Model.Message))
 {
     // Support i18n: if message starts with @, treat it as a localization key from DB
     var message = Model.Message;

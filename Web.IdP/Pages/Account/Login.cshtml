@@ -10,13 +10,13 @@
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 @inject IViteManifestService ViteService
 @inject IBrandingService BrandingService
-@inject IOptions<BrandingOptions> BrandingOptions
+@inject IOptions<LoginNoticesOptions> LoginNoticesOptions
 @{
     ViewData["Title"] = Localizer["Login"];
     Layout = null;
     var currentCulture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
     var productName = await BrandingService.GetProductNameAsync();
-    var loginNotices = BrandingOptions.Value.LoginNotices;
+    var notices = LoginNoticesOptions.Value;
 }
 
 <!DOCTYPE html>
@@ -42,10 +42,10 @@
 <body class="bg-gray-50 google-font min-h-screen flex flex-col">
     <div class="google-login-container">
         @* Top Notice - Above the card *@
-        @if (loginNotices?.Top != null && !string.IsNullOrWhiteSpace(loginNotices.Top.Message))
+        @if (!string.IsNullOrWhiteSpace(notices.TopMessage))
         {
             <div class="w-full max-w-md mx-auto mb-4">
-                <partial name="_LoginNotice" model="loginNotices.Top" />
+                <partial name="_LoginNotice" model="(notices.TopMessage, notices.TopType)" />
             </div>
         }
         
@@ -68,10 +68,10 @@
                     <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="login-error-summary"></div>
                     
                     @* Form Notice - Inside form, before inputs *@
-                    @if (loginNotices?.Form != null && !string.IsNullOrWhiteSpace(loginNotices.Form.Message))
+                    @if (!string.IsNullOrWhiteSpace(notices.FormMessage))
                     {
                         <div class="mb-4">
-                            <partial name="_LoginNotice" model="loginNotices.Form" />
+                            <partial name="_LoginNotice" model="(notices.FormMessage, notices.FormType)" />
                         </div>
                     }
                     
@@ -146,10 +146,10 @@
                     </div>
                     
                     @* Bottom Notice - After submit button *@
-                    @if (loginNotices?.Bottom != null && !string.IsNullOrWhiteSpace(loginNotices.Bottom.Message))
+                    @if (!string.IsNullOrWhiteSpace(notices.BottomMessage))
                     {
                         <div class="mt-6">
-                            <partial name="_LoginNotice" model="loginNotices.Bottom" />
+                            <partial name="_LoginNotice" model="(notices.BottomMessage, notices.BottomType)" />
                         </div>
                     }
                 </form>

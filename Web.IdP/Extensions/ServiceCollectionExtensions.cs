@@ -121,6 +121,7 @@ public static class ServiceCollectionExtensions
         services.Configure<RateLimitingOptions>(configuration.GetSection(RateLimitingOptions.Section));
         services.Configure<AuditOptions>(configuration.GetSection(AuditOptions.SectionName));
         services.Configure<BrandingOptions>(configuration.GetSection(BrandingOptions.Section));
+        services.Configure<LoginNoticesOptions>(configuration.GetSection(LoginNoticesOptions.Section));
         services.Configure<TurnstileOptions>(configuration.GetSection(TurnstileOptions.Section));
         services.Configure<ObservabilityOptions>(options =>
         {
