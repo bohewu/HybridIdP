@@ -7,4 +7,4 @@ import vLoading from '@/directives/v-loading'
 const app = createApp(UsersApp)
 app.use(i18n)
 app.directive('loading', vLoading)
-app.mount('#app')
+app.mount('#admin-users-app')
