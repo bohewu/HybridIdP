@@ -33,6 +33,7 @@ public class UsersController : ControllerBase
     private readonly ILoginHistoryService _loginHistoryService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IImpersonationService _impersonationService;
+    private readonly ILogger<UsersController> _logger;
 
     public UsersController(
         IUserManagementService userManagementService,
@@ -40,7 +41,8 @@ public class UsersController : ControllerBase
         ISessionService sessionService,
         ILoginHistoryService loginHistoryService,
         IStringLocalizer<SharedResource> localizer,
-        IImpersonationService impersonationService)
+        IImpersonationService impersonationService,
+        ILogger<UsersController> logger)
     {
         _userManagementService = userManagementService;
         _userManager = userManager;
@@ -48,6 +50,7 @@ public class UsersController : ControllerBase
         _loginHistoryService = loginHistoryService;
         _localizer = localizer;
         _impersonationService = impersonationService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -560,12 +563,19 @@ public class UsersController : ControllerBase
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> StopImpersonation()
     {
+        // Log entry for debugging
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+        var hasActor = (User.Identity as System.Security.Claims.ClaimsIdentity)?.Actor != null;
+        _logger.LogWarning("[StopImpersonation] Called by UserId={UserId}, HasActor={HasActor}", userId, hasActor);
+        
         try
         {
             var (success, principal, error) = await _impersonationService.RevertImpersonationAsync(User);
+            _logger.LogWarning("[StopImpersonation] Service result: Success={Success}, Error={Error}", success, error ?? "none");
 
             if (!success)
             {
+                _logger.LogWarning("[StopImpersonation] Failed: {Error}", error);
                 if (error == "Original user not found")
                 {
                     // Force logout
