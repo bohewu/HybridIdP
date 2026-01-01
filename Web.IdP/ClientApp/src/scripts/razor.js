@@ -128,14 +128,12 @@ function initTurnstile() {
             turnstile.render(turnstileContainer, {
                 sitekey: sitekey,
                 callback: function(token) {
-                    console.log('Turnstile verified');
                     if (submitBtn) {
                         submitBtn.disabled = false;
                         submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                     }
                 },
                 'expired-callback': function() {
-                    console.log('Turnstile expired');
                     if (submitBtn) {
                         submitBtn.disabled = true;
                         submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
