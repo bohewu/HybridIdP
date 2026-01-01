@@ -553,9 +553,11 @@ public class UsersController : ControllerBase
     /// Reverts impersonation and restores the original identity.
     /// This requires only basic authentication (not admin permission) since
     /// the impersonated user may not have admin rights.
+    /// CSRF is disabled because Actor claim provides security - only impersonated sessions can call this.
     /// </summary>
     [HttpPost("stop-impersonation")]
-    [ApiAuthorize]  // Just requires authentication, no specific permission needed
+    [ApiAuthorize]
+    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> StopImpersonation()
     {
         try
