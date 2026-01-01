@@ -26,6 +26,7 @@ public class LocalizationService : ILocalizationService
     {
         // Try exact culture match (only enabled resources)
         var resource = await _db.Resources
+            .OrderBy(r => r.Id)
             .FirstOrDefaultAsync(r => r.Key == key && r.Culture == culture && r.IsEnabled);
 
         if (resource != null)
@@ -37,6 +38,7 @@ public class LocalizationService : ILocalizationService
         if (culture != "en-US")
         {
             resource = await _db.Resources
+                .OrderBy(r => r.Id)
                 .FirstOrDefaultAsync(r => r.Key == key && r.Culture == "en-US" && r.IsEnabled);
 
             if (resource != null)
