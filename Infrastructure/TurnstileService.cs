@@ -48,7 +48,12 @@ public partial class TurnstileService : ITurnstileService
             return true; // Bypass validation
         }
 
-        var secretKey = _options.SecretKey;
+        var secretKey = await _settingsService.GetValueAsync<string?>(Core.Domain.Constants.SettingKeys.Turnstile.SecretKey);
+        if (string.IsNullOrEmpty(secretKey))
+        {
+            secretKey = _options.SecretKey;
+        }
+
         if (string.IsNullOrEmpty(secretKey))
         {
             LogTurnstileSecretKeyMissing(_logger);
