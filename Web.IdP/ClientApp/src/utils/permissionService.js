@@ -198,5 +198,15 @@ export const Permissions = {
   }
 };
 
+/**
+ * Role name constants (MUST match backend AuthConstants.Roles)
+ * Use these instead of hardcoding role strings
+ */
+export const Roles = {
+  Admin: 'Admin',
+  User: 'User',
+  ApplicationManager: 'ApplicationManager'
+};
+
 // Export as default
 export default permissionService;

@@ -18,5 +18,6 @@ public class UserSummaryDto
     public DateTime CreatedAt { get; set; }
     public bool TwoFactorEnabled { get; set; }
     public bool EmailMfaEnabled { get; set; }
+    public bool HasPasskey { get; set; }
     public List<string> Roles { get; set; } = new();
 }
