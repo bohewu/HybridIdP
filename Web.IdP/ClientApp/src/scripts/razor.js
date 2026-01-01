@@ -48,12 +48,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 window.location.reload();
             } else {
-                const data = await response.json();
-                alert(data.error || 'Failed to stop impersonation');
+                // Safely try to parse JSON, might be HTML redirect
+                let errorMessage = 'Failed to stop impersonation';
+                try {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const data = await response.json();
+                        errorMessage = data.error || errorMessage;
+                    } else {
+                        // Likely a redirect to login page - session expired
+                        errorMessage = 'Session expired. Please refresh and log in again.';
+                    }
+                } catch (e) {
+                    // JSON parse failed
+                    errorMessage = 'Session expired or authorization error. Please refresh the page.';
+                }
+                alert(errorMessage);
             }
         } catch (error) {
             console.error('Error stopping impersonation:', error);
-            alert('An error occurred');
+            alert('Network error. Please check your connection.');
         }
     }
 

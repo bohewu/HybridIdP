@@ -40,7 +40,8 @@ export default defineConfig(({ command }) => ({
         'admin-resources': './src/admin/resources/main.js',
         'admin-monitoring': './src/admin/monitoring/main.js',
         'profile': './src/profile/main.js',
-        'mfa-setup': './src/mfa-setup/main.js'
+        'mfa-setup': './src/mfa-setup/main.js',
+        'app-manager-dashboard': './src/app-manager/dashboard/main.js'
       }
     }
   },
