@@ -50,6 +50,7 @@
     @if (User.Identity is System.Security.Claims.ClaimsIdentity claimsIdentity && claimsIdentity.Actor != null)
     {
         <div class="impersonation-banner bg-yellow-400 text-gray-900 text-center py-2 font-bold sticky top-0 z-50 shadow-sm flex items-center justify-center">
+            @Html.AntiForgeryToken()
             <i class="bi bi-eye-fill me-2"></i>
             @string.Format(Localizer["ImpersonatingUser"], User.Identity.Name)
             <button onclick="revertImpersonation()" class="inline-flex items-center justify-center px-3 py-1 ml-3 border border-transparent text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
