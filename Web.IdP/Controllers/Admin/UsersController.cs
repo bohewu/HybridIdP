@@ -551,8 +551,11 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// Reverts impersonation and restores the original identity.
+    /// This requires only basic authentication (not admin permission) since
+    /// the impersonated user may not have admin rights.
     /// </summary>
     [HttpPost("stop-impersonation")]
+    [ApiAuthorize]  // Just requires authentication, no specific permission needed
     public async Task<IActionResult> StopImpersonation()
     {
         try
