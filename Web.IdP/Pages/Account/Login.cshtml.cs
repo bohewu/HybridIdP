@@ -74,7 +74,7 @@ public partial class LoginModel : PageModel
     public string? ReturnUrl { get; set; }
     
     public bool TurnstileEnabled { get; private set; }
-    public string TurnstileSiteKey => _turnstileOptions.SiteKey;
+    public string TurnstileSiteKey { get; private set; } = string.Empty;
     public bool RegistrationEnabled { get; private set; } = true;
     public bool PasskeyEnabled { get; private set; } = true;
     public string? CustomForgotPasswordUrl { get; private set; }
@@ -86,8 +86,15 @@ public partial class LoginModel : PageModel
     {
         var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled);
         var isEnabledFlag = dbTurnstileEnabled ?? _turnstileOptions.Enabled;
-        var hasSiteKey = !string.IsNullOrWhiteSpace(_turnstileOptions.SiteKey);
-        var hasSecretKey = !string.IsNullOrWhiteSpace(_turnstileOptions.SecretKey);
+        
+        var dbSiteKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SiteKey);
+        TurnstileSiteKey = !string.IsNullOrEmpty(dbSiteKey) ? dbSiteKey : _turnstileOptions.SiteKey;
+        
+        var dbSecretKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SecretKey);
+        var hasSecretKey = !string.IsNullOrEmpty(dbSecretKey) || !string.IsNullOrWhiteSpace(_turnstileOptions.SecretKey);
+        
+        var hasSiteKey = !string.IsNullOrWhiteSpace(TurnstileSiteKey);
+        
         TurnstileEnabled = isEnabledFlag && hasSiteKey && hasSecretKey && _turnstileStateService.IsAvailable;
     }
 

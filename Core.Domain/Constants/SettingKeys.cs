@@ -41,5 +41,7 @@ public static class SettingKeys
     public static class Turnstile
     {
         public const string Enabled = "Turnstile.Enabled";
+        public const string SiteKey = "Turnstile.SiteKey";
+        public const string SecretKey = "Turnstile.SecretKey";
     }
 }

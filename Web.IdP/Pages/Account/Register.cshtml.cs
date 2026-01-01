@@ -60,7 +60,7 @@ public class RegisterModel : PageModel
     public string? ReturnUrl { get; set; }
     
     public bool TurnstileEnabled { get; private set; }
-    public string TurnstileSiteKey => _turnstileOptions.SiteKey;
+    public string TurnstileSiteKey { get; private set; } = string.Empty;
     public bool RegistrationEnabled { get; private set; } = true;
     public SecurityPolicy? CurrentPolicy { get; private set; }
     
@@ -87,6 +87,22 @@ public class RegisterModel : PageModel
         public string ConfirmPassword { get; set; } = default!;
     }
 
+    private async Task LoadTurnstileStateAsync()
+    {
+        var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled);
+        var isEnabledFlag = dbTurnstileEnabled ?? _turnstileOptions.Enabled;
+        
+        var dbSiteKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SiteKey);
+        TurnstileSiteKey = !string.IsNullOrEmpty(dbSiteKey) ? dbSiteKey : _turnstileOptions.SiteKey;
+        
+        var dbSecretKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SecretKey);
+        var hasSecretKey = !string.IsNullOrEmpty(dbSecretKey) || !string.IsNullOrWhiteSpace(_turnstileOptions.SecretKey);
+        
+        var hasSiteKey = !string.IsNullOrWhiteSpace(TurnstileSiteKey);
+        
+        TurnstileEnabled = isEnabledFlag && hasSiteKey && hasSecretKey && _turnstileStateService.IsAvailable;
+    }
+
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
     {
         // Redirect if already logged in
@@ -107,9 +123,8 @@ public class RegisterModel : PageModel
             return RedirectToPage("./Login", new { returnUrl });
         }
 
-        // Load Turnstile enabled setting (DB overrides appsettings)
-        var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled);
-        TurnstileEnabled = (dbTurnstileEnabled ?? _turnstileOptions.Enabled) && _turnstileStateService.IsAvailable;
+        // Load Turnstile enabled setting
+        await LoadTurnstileStateAsync();
         
         ReturnUrl = returnUrl;
         return Page();
@@ -142,6 +157,9 @@ public class RegisterModel : PageModel
         
         if (ModelState.IsValid)
         {
+            // Load Turnstile state before validation
+            await LoadTurnstileStateAsync();
+
             // Validate Turnstile if enabled
             if (TurnstileEnabled)
             {
