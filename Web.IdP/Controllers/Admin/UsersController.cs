@@ -552,46 +552,6 @@ public class UsersController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Reverts impersonation and restores the original identity.
-    /// </summary>
-    [HttpPost("stop-impersonation")]
-    [ApiAuthorize]
-    [IgnoreAntiforgeryToken]
-    public async Task<IActionResult> StopImpersonation()
-    {
-        _logger.LogWarning("[StopImpersonation] Entering action");
-        
-        try
-        {
-            var (success, principal, error) = await _impersonationService.RevertImpersonationAsync(User);
-            _logger.LogWarning("[StopImpersonation] Service result: Success={Success}, Error={Error}", success, error ?? "none");
-
-            if (!success)
-            {
-                _logger.LogWarning("[StopImpersonation] Failed: {Error}", error);
-                if (error == "Original user not found")
-                {
-                    // Force logout
-                    await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-                    return Ok(new { message = "Original user not found, logged out." });
-                }
-                return BadRequest(new { error });
-            }
-
-            // Restore the cookie
-            await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal!, new AuthenticationProperties
-            {
-                IsPersistent = false
-            });
-
-            return Ok(new { message = "Impersonation stopped successfully" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = "An error occurred while stopping impersonation", details = ex.Message });
-        }
-    }
 
     /// <summary>
     /// Reset MFA for a user (admin action to force disable 2FA).
