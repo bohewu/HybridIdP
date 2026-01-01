@@ -6,5 +6,7 @@
     ViewData["Breadcrumb"] = Localizer["Users"].Value;
 }
 
-<div id="app" class="vue-app-container"></div>
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+
+<div id="admin-users-app" class="vue-app-container" data-csrf-token="@Antiforgery.GetAndStoreTokens(ViewContext.HttpContext).RequestToken"></div>
 <script type="module" vite-src="~/src/admin/users/main.js"></script>

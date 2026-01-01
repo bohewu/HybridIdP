@@ -9,8 +9,10 @@ import LoginHistoryDialog from './components/LoginHistoryDialog.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
+import { useCsrfToken } from '@/composables/useCsrfToken'
 
 const { t } = useI18n()
+const { fetchWithCsrf } = useCsrfToken('admin-users-app')
 
 const users = ref([])
 const loading = ref(true)
@@ -352,7 +354,7 @@ const handleImpersonate = async (user) => {
   }
 
   try {
-    const response = await fetch(`/api/admin/users/${user.id}/impersonate`, {
+    const response = await fetchWithCsrf(`/api/admin/users/${user.id}/impersonate`, {
       method: 'POST'
     })
 
