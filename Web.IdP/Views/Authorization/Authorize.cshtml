@@ -189,8 +189,23 @@
         </div>
         
         @* Footer - matching card width *@
-        <div class="!max-w-2xl w-full">
-            @await Html.PartialAsync("~/Pages/Shared/_GoogleFooter.cshtml")
+        <div class="max-w-2xl w-full mx-auto mt-4">
+            <div class="flex justify-between items-center text-xs text-gray-600 gap-4 px-10">
+                @{
+                    var requestCulture = Context.Features.Get<Microsoft.AspNetCore.Localization.IRequestCultureFeature>();
+                    var footerCulture = requestCulture?.RequestCulture.Culture.Name ?? "en-US";
+                    var footerCopyright = await BrandingService.GetCopyrightAsync();
+                }
+                <select class="language-select bg-transparent border-0 text-xs cursor-pointer focus:outline-none focus:ring-0 text-gray-600" aria-label="@Localizer["Language"]">
+                    <option value="en-US" selected="@(footerCulture == "en-US")">English (United States)</option>
+                    <option value="zh-TW" selected="@(footerCulture == "zh-TW")">繁體中文 (台灣)</option>
+                </select>
+                <div class="flex gap-4">
+                    <span class="text-gray-500">@footerCopyright</span>
+                    <a href="/Privacy" class="hover:text-gray-900">@Localizer["Privacy"]</a>
+                    <a href="/Docs" class="hover:text-gray-900">@Localizer["Help"]</a>
+                </div>
+            </div>
         </div>
     </div>
 </body>
