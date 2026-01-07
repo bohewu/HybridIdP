@@ -9,6 +9,7 @@ using Core.Domain.Constants;
 using Core.Domain.Events;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Pages.Account;
 
@@ -141,7 +142,7 @@ public partial class LoginTotpModel : PageModel
                     userAgent: Request.Headers["User-Agent"].ToString()
                 ));
                 
-                return Redirect(returnUrl);
+                return this.SafeRedirect(returnUrl);
             }
 
             await _userManager.AccessFailedAsync(user);
@@ -174,7 +175,7 @@ public partial class LoginTotpModel : PageModel
                     _logger.LogWarning("User {UserName} has only {Count} recovery codes left.", user.UserName, remainingCodes);
                 }
 
-                return Redirect(returnUrl);
+                return this.SafeRedirect(returnUrl);
             }
 
             await _userManager.AccessFailedAsync(user);

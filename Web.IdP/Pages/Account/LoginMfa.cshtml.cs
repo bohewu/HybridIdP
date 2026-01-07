@@ -7,6 +7,7 @@ using Core.Application;
 using Core.Domain;
 using Core.Domain.Events;
 using System.ComponentModel.DataAnnotations;
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Pages.Account;
 
@@ -143,7 +144,7 @@ public partial class LoginMfaModel : PageModel
                     userAgent: Request.Headers["User-Agent"].ToString()
                 ));
                 
-                return Redirect(returnUrl);
+                return this.SafeRedirect(returnUrl);
             }
 
             await _userManager.AccessFailedAsync(user);
@@ -185,7 +186,7 @@ public partial class LoginMfaModel : PageModel
                     LogLowRecoveryCodes(_logger, user.UserName ?? "Unknown", remainingCodes);
                 }
 
-                return Redirect(returnUrl);
+                return this.SafeRedirect(returnUrl);
             }
 
             await _userManager.AccessFailedAsync(user);
