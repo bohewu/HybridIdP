@@ -190,7 +190,7 @@
         
         @* Footer - matching card width *@
         <div class="max-w-2xl w-full mx-auto mt-4">
-            <div class="flex justify-between items-center text-xs text-gray-600 gap-4 px-10">
+            <div class="flex justify-between items-center text-xs text-gray-600 gap-4">
                 @{
                     var requestCulture = Context.Features.Get<Microsoft.AspNetCore.Localization.IRequestCultureFeature>();
                     var footerCulture = requestCulture?.RequestCulture.Culture.Name ?? "en-US";
