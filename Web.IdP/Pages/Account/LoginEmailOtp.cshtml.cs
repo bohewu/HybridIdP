@@ -168,7 +168,7 @@ public partial class LoginEmailOtpModel : PageModel
                 userAgent: Request.Headers["User-Agent"].ToString()
             ));
             
-            return LocalRedirect(returnUrl);
+            return Redirect(returnUrl);
         }
 
         await _userManager.AccessFailedAsync(user);
