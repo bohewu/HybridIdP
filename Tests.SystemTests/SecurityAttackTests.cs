@@ -18,8 +18,8 @@ public class SecurityAttackTests : IClassFixture<WebIdPServerFixture>, IAsyncLif
     private string? _userToken;
     private string? _refreshToken;
     
-    private const string TEST_USER_EMAIL = "admin@hybridauth.local";
-    private const string TEST_USER_PASSWORD = "Admin@123";
+    private const string TEST_USER_EMAIL = "secattack@hybridauth.local";
+    private const string TEST_USER_PASSWORD = "Attack@123";
 
     public SecurityAttackTests(WebIdPServerFixture serverFixture)
     {

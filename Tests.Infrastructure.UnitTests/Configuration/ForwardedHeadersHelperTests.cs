@@ -35,11 +35,11 @@ public class ForwardedHeadersHelperTests
         
         // 10.0.0.0/8
         var net1 = options.KnownIPNetworks.FirstOrDefault(n => n.BaseAddress.ToString() == "10.0.0.0" && n.PrefixLength == 8);
-        Assert.NotNull(net1);
+        Assert.True(net1 != null);
 
         // 172.16.0.0/12
         var net2 = options.KnownIPNetworks.FirstOrDefault(n => n.BaseAddress.ToString() == "172.16.0.0" && n.PrefixLength == 12);
-        Assert.NotNull(net2);
+        Assert.True(net2 != null);
     }
 
     [Fact]
