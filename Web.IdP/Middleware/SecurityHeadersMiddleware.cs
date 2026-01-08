@@ -60,7 +60,7 @@ public class SecurityHeadersMiddleware
             $"frame-src {frameSrc}",
             "frame-ancestors 'none'",
             "base-uri 'self'",
-            "form-action 'self'",
+            "form-action 'self' https:",
             "object-src 'none'"
         };
 
