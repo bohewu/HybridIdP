@@ -4,7 +4,7 @@ namespace Core.Domain.Entities;
 /// Represents a user claim definition that can be included in ID tokens and access tokens.
 /// Maps OIDC standard claims and custom enterprise claims to ApplicationUser properties.
 /// </summary>
-public class UserClaim
+public class ClaimDefinition
 {
     /// <summary>
     /// Unique identifier for the claim definition.

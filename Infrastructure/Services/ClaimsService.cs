@@ -30,7 +30,7 @@ public partial class ClaimsService : IClaimsService
         // 2. Separate query for ScopeCount using GroupBy aggregation
         // 3. Deferred loading with explicit Load() only when ScopeCount is needed
         // 4. Database-side computed column or indexed view for frequently accessed counts
-        var query = _db.UserClaims
+        var query = _db.ClaimDefinitions
             .Include(c => c.ScopeClaims)
             .AsQueryable();
 
@@ -91,7 +91,7 @@ public partial class ClaimsService : IClaimsService
 
     public async Task<ClaimDefinitionDto?> GetClaimByIdAsync(int id)
     {
-        var claim = await _db.UserClaims
+        var claim = await _db.ClaimDefinitions
             .Include(c => c.ScopeClaims)
             .Where(c => c.Id == id)
             .Select(c => new ClaimDefinitionDto
@@ -126,7 +126,7 @@ public partial class ClaimsService : IClaimsService
         }
 
         // Check for duplicate name
-        var existingClaim = await _db.UserClaims
+        var existingClaim = await _db.ClaimDefinitions
             .FirstOrDefaultAsync(c => c.Name == request.Name);
 
         if (existingClaim != null)
@@ -135,7 +135,7 @@ public partial class ClaimsService : IClaimsService
         }
 
         // Create new claim with defaults
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = request.Name,
             DisplayName = request.DisplayName ?? request.Name,
@@ -147,7 +147,7 @@ public partial class ClaimsService : IClaimsService
             IsRequired = request.IsRequired ?? false
         };
 
-        _db.UserClaims.Add(claim);
+        _db.ClaimDefinitions.Add(claim);
         await _db.SaveChangesAsync(CancellationToken.None);
 
         if (_logger != null)
@@ -172,7 +172,7 @@ public partial class ClaimsService : IClaimsService
 
     public async Task<ClaimDefinitionDto> UpdateClaimAsync(int id, UpdateClaimRequest request)
     {
-        var claim = await _db.UserClaims
+        var claim = await _db.ClaimDefinitions
             .Include(c => c.ScopeClaims)
             .FirstOrDefaultAsync(c => c.Id == id);
 
@@ -264,7 +264,7 @@ public partial class ClaimsService : IClaimsService
 
     public async Task DeleteClaimAsync(int id)
     {
-        var claim = await _db.UserClaims
+        var claim = await _db.ClaimDefinitions
             .Include(c => c.ScopeClaims)
             .FirstOrDefaultAsync(c => c.Id == id);
 
@@ -287,7 +287,7 @@ public partial class ClaimsService : IClaimsService
                 "Remove the claim from all scopes before deleting.");
         }
 
-        _db.UserClaims.Remove(claim);
+        _db.ClaimDefinitions.Remove(claim);
         await _db.SaveChangesAsync(CancellationToken.None);
 
         if (_logger != null)

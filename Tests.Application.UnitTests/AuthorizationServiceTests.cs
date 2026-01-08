@@ -1,4 +1,5 @@
 using Xunit;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using Core.Application;
 using OpenIddict.Abstractions;
@@ -191,7 +192,12 @@ namespace Tests.Application.UnitTests
         public async Task HandleAuthorizeRequestAsync_WithCodeResponseType_MissingPermission_ReturnsForbid()
         {
             // Arrange
-            var user = new ClaimsPrincipal(new ClaimsIdentity("Test"));
+            // Arrange
+            var userId = Guid.NewGuid();
+            var identity = new ClaimsIdentity("Test");
+            identity.AddClaim(new Claim(OpenIddictConstants.Claims.Subject, userId.ToString()));
+            var user = new ClaimsPrincipal(identity);
+
             var request = new OpenIddictRequest
             {
                 ClientId = "client",
@@ -214,7 +220,9 @@ namespace Tests.Application.UnitTests
                 .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.ResponseTypes.Token)); // Has Token but needs Code
 
             // Setup User
-            _mockUserManager.Setup(m => m.GetUserAsync(user)).ReturnsAsync(new ApplicationUser { Id = Guid.NewGuid() });
+            var appUser = new ApplicationUser { Id = userId };
+            _mockUserManager.Setup(m => m.GetUserAsync(user)).ReturnsAsync(appUser);
+            SetupMockUsers(appUser);
             _mockSecurityPolicyService.Setup(x => x.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy());
 
             // Act
@@ -228,7 +236,11 @@ namespace Tests.Application.UnitTests
         public async Task HandleAuthorizeRequestAsync_WithTokenResponseType_MissingPermission_ReturnsForbid()
         {
             // Arrange
-            var user = new ClaimsPrincipal(new ClaimsIdentity("Test"));
+            var userId = Guid.NewGuid();
+            var identity = new ClaimsIdentity("Test");
+            identity.AddClaim(new Claim(OpenIddictConstants.Claims.Subject, userId.ToString()));
+            var user = new ClaimsPrincipal(identity);
+
             var request = new OpenIddictRequest
             {
                 ClientId = "client",
@@ -251,7 +263,9 @@ namespace Tests.Application.UnitTests
                 .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.ResponseTypes.Code)); // Has Code but needs Token
 
             // Setup User
-            _mockUserManager.Setup(m => m.GetUserAsync(user)).ReturnsAsync(new ApplicationUser { Id = Guid.NewGuid() });
+            var appUser = new ApplicationUser { Id = userId };
+            _mockUserManager.Setup(m => m.GetUserAsync(user)).ReturnsAsync(appUser);
+            SetupMockUsers(appUser);
             _mockSecurityPolicyService.Setup(x => x.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy());
 
             // Act
@@ -260,5 +274,29 @@ namespace Tests.Application.UnitTests
             // Assert
             var forbidResult = Assert.IsType<ForbidResult>(result);
         }
+
+        private void SetupMockUsers(params ApplicationUser[] users)
+        {
+            var usersQueryable = users.AsQueryable();
+            var mockSet = new Mock<DbSet<ApplicationUser>>();
+            mockSet.As<IAsyncEnumerable<ApplicationUser>>()
+                .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
+                .Returns(new TestAsyncEnumerator<ApplicationUser>(usersQueryable.GetEnumerator()));
+            mockSet.As<IQueryable<ApplicationUser>>()
+                .Setup(m => m.Provider)
+                .Returns(new TestAsyncQueryProvider<ApplicationUser>(usersQueryable.Provider));
+            mockSet.As<IQueryable<ApplicationUser>>()
+                .Setup(m => m.Expression)
+                .Returns(usersQueryable.Expression);
+            mockSet.As<IQueryable<ApplicationUser>>()
+                .Setup(m => m.ElementType)
+                .Returns(usersQueryable.ElementType);
+            mockSet.As<IQueryable<ApplicationUser>>()
+                .Setup(m => m.GetEnumerator())
+                .Returns(usersQueryable.GetEnumerator());
+
+            _mockDb.Setup(c => c.Users).Returns(mockSet.Object);
+        }
     }
+
 }

@@ -314,9 +314,9 @@ public class UserInfoServiceTests
             Id = Random.Shared.Next(1, 1000),
             ScopeId = Guid.NewGuid().ToString(),
             ScopeName = scopeName,
-            UserClaimId = Random.Shared.Next(1, 1000),
+            ClaimDefinitionId = Random.Shared.Next(1, 1000),
             AlwaysInclude = claimName == "sub",
-            UserClaim = new UserClaim
+            ClaimDefinition = new ClaimDefinition
             {
                 Id = Random.Shared.Next(1, 1000),
                 Name = claimName,

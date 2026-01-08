@@ -73,7 +73,7 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
         _logger.LogInformation("Enriching claims for user {UserId} with scopes: {Scopes}", user.Id, string.Join(", ", scopeNames));
         
         var mappings = await _db.ScopeClaims
-            .Include(sc => sc.UserClaim)
+            .Include(sc => sc.ClaimDefinition)
             .Where(sc => scopeNames.Contains(sc.ScopeName))
             .ToListAsync();
 
@@ -81,7 +81,7 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
 
         foreach (var map in mappings)
         {
-            var def = map.UserClaim;
+            var def = map.ClaimDefinition;
             if (def == null) continue;
 
             var value = ResolveUserProperty(user, def.UserPropertyPath);

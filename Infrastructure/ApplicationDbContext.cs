@@ -20,7 +20,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public new DbSet<ApplicationUser> Users => Set<ApplicationUser>();
     
     // Custom claim definitions (different from IdentityUserClaim)
-    DbSet<UserClaim> IApplicationDbContext.UserClaims => Set<UserClaim>();
+    DbSet<ClaimDefinition> IApplicationDbContext.ClaimDefinitions => Set<ClaimDefinition>();
     public DbSet<ScopeClaim> ScopeClaims => Set<ScopeClaim>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<SecurityPolicy> SecurityPolicies => Set<SecurityPolicy>();
@@ -59,7 +59,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.UseOpenIddict<Guid>();
         
         // Configure UserClaim entity
-        builder.Entity<UserClaim>(entity =>
+        builder.Entity<ClaimDefinition>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Name).IsUnique();
@@ -76,15 +76,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.Entity<ScopeClaim>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => new { e.ScopeId, e.UserClaimId }).IsUnique();
+            entity.HasIndex(e => new { e.ScopeId, e.ClaimDefinitionId }).IsUnique();
             entity.Property(e => e.ScopeId).HasMaxLength(200).IsRequired();
             entity.Property(e => e.ScopeName).HasMaxLength(200).IsRequired();
             entity.Property(e => e.CustomMappingLogic).HasMaxLength(1000);
             
             // Configure relationship with UserClaim
-            entity.HasOne(e => e.UserClaim)
+            entity.HasOne(e => e.ClaimDefinition)
                 .WithMany(c => c.ScopeClaims)
-                .HasForeignKey(e => e.UserClaimId)
+                .HasForeignKey(e => e.ClaimDefinitionId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

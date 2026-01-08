@@ -381,10 +381,10 @@ public class ScopeService : IScopeService
                 Id = sc.Id,
                 ScopeId = sc.ScopeId,
                 ScopeName = sc.ScopeName,
-                ClaimId = sc.UserClaimId,
-                ClaimName = sc.UserClaim!.Name,
-                ClaimDisplayName = sc.UserClaim.DisplayName,
-                ClaimType = sc.UserClaim.ClaimType,
+                ClaimId = sc.ClaimDefinitionId,
+                ClaimName = sc.ClaimDefinition!.Name,
+                ClaimDisplayName = sc.ClaimDefinition.DisplayName,
+                ClaimType = sc.ClaimDefinition.ClaimType,
                 AlwaysInclude = sc.AlwaysInclude,
                 CustomMappingLogic = sc.CustomMappingLogic
             })
@@ -425,7 +425,7 @@ public class ScopeService : IScopeService
             foreach (var claimId in request.ClaimIds)
             {
                 // Verify claim exists
-                var claim = await _db.UserClaims
+                var claim = await _db.ClaimDefinitions
                     .FirstOrDefaultAsync(c => c.Id == claimId);
 
                 if (claim == null)
@@ -437,7 +437,7 @@ public class ScopeService : IScopeService
                 {
                     ScopeId = scopeId,
                     ScopeName = scopeName ?? "",
-                    UserClaimId = claimId,
+                    ClaimDefinitionId = claimId,
                     AlwaysInclude = claim.IsRequired // Always include required claims
                 };
 
@@ -455,10 +455,10 @@ public class ScopeService : IScopeService
                 Id = sc.Id,
                 ScopeId = sc.ScopeId,
                 ScopeName = sc.ScopeName,
-                ClaimId = sc.UserClaimId,
-                ClaimName = sc.UserClaim!.Name,
-                ClaimDisplayName = sc.UserClaim.DisplayName,
-                ClaimType = sc.UserClaim.ClaimType,
+                ClaimId = sc.ClaimDefinitionId,
+                ClaimName = sc.ClaimDefinition!.Name,
+                ClaimDisplayName = sc.ClaimDefinition.DisplayName,
+                ClaimType = sc.ClaimDefinition.ClaimType,
                 AlwaysInclude = sc.AlwaysInclude,
                 CustomMappingLogic = sc.CustomMappingLogic
             })

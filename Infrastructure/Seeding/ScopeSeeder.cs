@@ -82,13 +82,13 @@ public static class ScopeSeeder
     }
 
     /// <summary>
-    /// Seeds UserClaims and ScopeClaims mappings separately.
-    /// This fixes the bug where ScopeClaims wouldn't be created if UserClaims already existed.
+    /// Seeds ClaimDefinitions and ScopeClaims mappings separately.
+    /// This fixes the bug where ScopeClaims wouldn't be created if ClaimDefinitions already existed.
     /// </summary>
     private static async Task SeedUserClaimsAndMappingsAsync(ApplicationDbContext context, IOpenIddictScopeManager scopeManager)
     {
         // Define standard OIDC claims per specification
-        var standardClaims = new List<UserClaim>
+        var standardClaims = new List<ClaimDefinition>
         {
             // REQUIRED: Subject identifier (always included)
             new() { Name = "sub", DisplayName = "Subject Identifier", Description = "Unique identifier for the user", ClaimType = Claims.Subject, UserPropertyPath = "Id", DataType = "String", IsStandard = true, IsRequired = true },
@@ -112,11 +112,11 @@ public static class ScopeSeeder
             new() { Name = "test_person_name", DisplayName = "Test Person Name", Description = "Testing Person Loading", ClaimType = "test_person_name", UserPropertyPath = "Person.FirstName", DataType = "String", IsStandard = false, IsRequired = false },
         };
 
-        // Step 1: Seed UserClaims if not exist
-        var hasUserClaims = await context.Set<UserClaim>().AnyAsync();
-        if (!hasUserClaims)
+        // Step 1: Seed ClaimDefinitions if not exist
+        var hasClaimDefinitions = await context.Set<ClaimDefinition>().AnyAsync();
+        if (!hasClaimDefinitions)
         {
-            await context.Set<UserClaim>().AddRangeAsync(standardClaims);
+            await context.Set<ClaimDefinition>().AddRangeAsync(standardClaims);
             await context.SaveChangesAsync();
         }
 
@@ -125,7 +125,7 @@ public static class ScopeSeeder
         if (!hasScopeClaims)
         {
             // Re-fetch existing claims from DB (may have been just seeded or already existed)
-            var existingClaims = await context.Set<UserClaim>().ToListAsync();
+            var existingClaims = await context.Set<ClaimDefinition>().ToListAsync();
             var claimsByName = existingClaims.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
 
             // Define scope-to-claims mappings per OIDC specification
@@ -150,14 +150,14 @@ public static class ScopeSeeder
 
                 foreach (var claimName in claimNames)
                 {
-                    if (!claimsByName.TryGetValue(claimName, out var userClaim))
+                    if (!claimsByName.TryGetValue(claimName, out var claimDef))
                         continue;
 
                     var scopeClaim = new ScopeClaim
                     {
                         ScopeId = scopeId.ToString()!,
                         ScopeName = scopeName,
-                        UserClaimId = userClaim.Id,
+                        ClaimDefinitionId = claimDef.Id,
                         AlwaysInclude = claimName == "sub"
                     };
 

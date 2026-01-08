@@ -339,6 +339,59 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.ToTable("AuditEvents");
                 });
 
+            modelBuilder.Entity("Core.Domain.Entities.ClaimDefinition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("DataType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsStandard")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UserPropertyPath")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClaimType");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Core.Application.IApplicationDbContext.ClaimDefinitions");
+                });
+
             modelBuilder.Entity("Core.Domain.Entities.ClientOwnership", b =>
                 {
                     b.Property<Guid>("Id")
@@ -651,6 +704,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<bool>("AlwaysInclude")
                         .HasColumnType("bit");
 
+                    b.Property<int>("ClaimDefinitionId")
+                        .HasColumnType("int");
+
                     b.Property<string>("CustomMappingLogic")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -665,14 +721,11 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int>("UserClaimId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("UserClaimId");
+                    b.HasIndex("ClaimDefinitionId");
 
-                    b.HasIndex("ScopeId", "UserClaimId")
+                    b.HasIndex("ScopeId", "ClaimDefinitionId")
                         .IsUnique();
 
                     b.ToTable("ScopeClaims");
@@ -871,59 +924,6 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .IsUnique();
 
                     b.ToTable("Settings");
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.UserClaim", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClaimType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("DataType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<bool>("IsRequired")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsStandard")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("UserPropertyPath")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClaimType");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Core.Application.IApplicationDbContext.UserClaims");
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.UserCredential", b =>
@@ -1422,13 +1422,13 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
 
             modelBuilder.Entity("Core.Domain.Entities.ScopeClaim", b =>
                 {
-                    b.HasOne("Core.Domain.Entities.UserClaim", "UserClaim")
+                    b.HasOne("Core.Domain.Entities.ClaimDefinition", "ClaimDefinition")
                         .WithMany("ScopeClaims")
-                        .HasForeignKey("UserClaimId")
+                        .HasForeignKey("ClaimDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("UserClaim");
+                    b.Navigation("ClaimDefinition");
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.ScopeOwnership", b =>
@@ -1552,14 +1552,14 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Navigation("Scopes");
                 });
 
+            modelBuilder.Entity("Core.Domain.Entities.ClaimDefinition", b =>
+                {
+                    b.Navigation("ScopeClaims");
+                });
+
             modelBuilder.Entity("Core.Domain.Entities.Person", b =>
                 {
                     b.Navigation("Accounts");
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.UserClaim", b =>
-                {
-                    b.Navigation("ScopeClaims");
                 });
 
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication<System.Guid>", b =>

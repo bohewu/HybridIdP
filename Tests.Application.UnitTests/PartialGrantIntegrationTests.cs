@@ -54,7 +54,7 @@ public class PartialGrantIntegrationTests : IDisposable
         string[]? grantedScopes = null;
 
         // Seed claim definitions
-        var claimProfileGiven = new UserClaim
+        var claimProfileGiven = new ClaimDefinition
         {
             Name = "given_name",
             DisplayName = "Given Name",
@@ -64,7 +64,7 @@ public class PartialGrantIntegrationTests : IDisposable
             IsStandard = true,
             IsRequired = false
         };
-        var claimEmail = new UserClaim
+        var claimEmail = new ClaimDefinition
         {
             Name = "email",
             DisplayName = "Email",
@@ -74,13 +74,13 @@ public class PartialGrantIntegrationTests : IDisposable
             IsStandard = true,
             IsRequired = false
         };
-        ((IApplicationDbContext)_db).UserClaims.AddRange(claimProfileGiven, claimEmail);
+        ((IApplicationDbContext)_db).ClaimDefinitions.AddRange(claimProfileGiven, claimEmail);
         await _db.SaveChangesAsync();
 
         // Map scope->claim (these should only appear if their scope is allowed)
         _db.ScopeClaims.AddRange(
-            new ScopeClaim { ScopeId = "profile-id", ScopeName = "profile", UserClaimId = claimProfileGiven.Id, AlwaysInclude = true },
-            new ScopeClaim { ScopeId = "email-id", ScopeName = "email", UserClaimId = claimEmail.Id, AlwaysInclude = true }
+            new ScopeClaim { ScopeId = "profile-id", ScopeName = "profile", ClaimDefinitionId = claimProfileGiven.Id, AlwaysInclude = true },
+            new ScopeClaim { ScopeId = "email-id", ScopeName = "email", ClaimDefinitionId = claimEmail.Id, AlwaysInclude = true }
         );
         await _db.SaveChangesAsync();
 
@@ -93,7 +93,7 @@ public class PartialGrantIntegrationTests : IDisposable
         // Query mappings only for classification.Allowed scopes
         var allowedNames = classification.Allowed.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var mappings = await _db.ScopeClaims
-            .Include(sc => sc.UserClaim)
+            .Include(sc => sc.ClaimDefinition)
             .Where(sc => allowedNames.Contains(sc.ScopeName))
             .ToListAsync();
 
@@ -101,7 +101,7 @@ public class PartialGrantIntegrationTests : IDisposable
         var identity = new ClaimsIdentity();
         foreach (var map in mappings)
         {
-            var def = map.UserClaim!;
+            var def = map.ClaimDefinition!;
             var value = ResolveUserProperty(user, def.UserPropertyPath);
             if (identity.HasClaim(c => c.Type == def.ClaimType)) continue;
             if (string.IsNullOrEmpty(value) && !map.AlwaysInclude) continue;

@@ -843,7 +843,7 @@ public class ScopeServiceTests : IDisposable
         _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
             .ReturnsAsync("profile");
 
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Id = 1,
             Name = "name",
@@ -853,14 +853,14 @@ public class ScopeServiceTests : IDisposable
             DataType = "String",
             IsRequired = false
         };
-        _dbContext.Set<UserClaim>().Add(claim);
+        _dbContext.Set<ClaimDefinition>().Add(claim);
 
         var scopeClaim = new ScopeClaim
         {
             Id = 1,
             ScopeId = "scope1",
             ScopeName = "profile",
-            UserClaimId = 1,
+            ClaimDefinitionId = 1,
             AlwaysInclude = true,
             CustomMappingLogic = null
         };
@@ -931,7 +931,7 @@ public class ScopeServiceTests : IDisposable
             .ReturnsAsync("custom_scope");
 
         // Add existing claim
-        var oldClaim = new UserClaim
+        var oldClaim = new ClaimDefinition
         {
             Id = 1,
             Name = "old_claim",
@@ -941,19 +941,19 @@ public class ScopeServiceTests : IDisposable
             DataType = "String",
             IsRequired = false
         };
-        _dbContext.Set<UserClaim>().Add(oldClaim);
+        _dbContext.Set<ClaimDefinition>().Add(oldClaim);
 
         var oldScopeClaim = new ScopeClaim
         {
             ScopeId = "scope1",
             ScopeName = "custom_scope",
-            UserClaimId = 1,
+            ClaimDefinitionId = 1,
             AlwaysInclude = false
         };
         _dbContext.ScopeClaims.Add(oldScopeClaim);
 
         // Add new claim
-        var newClaim = new UserClaim
+        var newClaim = new ClaimDefinition
         {
             Id = 2,
             Name = "new_claim",
@@ -963,7 +963,7 @@ public class ScopeServiceTests : IDisposable
             DataType = "String",
             IsRequired = true
         };
-        _dbContext.Set<UserClaim>().Add(newClaim);
+        _dbContext.Set<ClaimDefinition>().Add(newClaim);
         await _dbContext.SaveChangesAsync();
 
         var request = new UpdateScopeClaimsRequest(new List<int> { 2 });
@@ -979,7 +979,7 @@ public class ScopeServiceTests : IDisposable
         // Verify old claim removed
         var remainingClaims = _dbContext.ScopeClaims.Where(sc => sc.ScopeId == "scope1").ToList();
         Assert.Single(remainingClaims);
-        Assert.Equal(2, remainingClaims.First().UserClaimId);
+        Assert.Equal(2, remainingClaims.First().ClaimDefinitionId);
         _mockEventPublisher.Verify(x => x.PublishAsync(It.Is<ScopeClaimChangedEvent>(e => e.ScopeName == "custom_scope")), Times.Once);
     }
 
@@ -993,7 +993,7 @@ public class ScopeServiceTests : IDisposable
         _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
             .ReturnsAsync("custom_scope");
 
-        var requiredClaim = new UserClaim
+        var requiredClaim = new ClaimDefinition
         {
             Id = 1,
             Name = "sub",
@@ -1003,7 +1003,7 @@ public class ScopeServiceTests : IDisposable
             DataType = "String",
             IsRequired = true  // Required claim
         };
-        _dbContext.Set<UserClaim>().Add(requiredClaim);
+        _dbContext.Set<ClaimDefinition>().Add(requiredClaim);
         await _dbContext.SaveChangesAsync();
 
         var request = new UpdateScopeClaimsRequest(new List<int> { 1 });
@@ -1027,7 +1027,7 @@ public class ScopeServiceTests : IDisposable
             .ReturnsAsync("custom_scope");
 
         // Add existing claim
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Id = 1,
             Name = "name",
@@ -1037,13 +1037,13 @@ public class ScopeServiceTests : IDisposable
             DataType = "String",
             IsRequired = false
         };
-        _dbContext.Set<UserClaim>().Add(claim);
+        _dbContext.Set<ClaimDefinition>().Add(claim);
 
         var scopeClaim = new ScopeClaim
         {
             ScopeId = "scope1",
             ScopeName = "custom_scope",
-            UserClaimId = 1,
+            ClaimDefinitionId = 1,
             AlwaysInclude = false
         };
         _dbContext.ScopeClaims.Add(scopeClaim);

@@ -46,14 +46,14 @@ public class UserInfoService : IUserInfoService
         // Query scope-to-claims mappings from database
         var scopeClaims = await _db.ScopeClaims
             .Where(sc => grantedScopes.Contains(sc.ScopeName))
-            .Include(sc => sc.UserClaim)
+            .Include(sc => sc.ClaimDefinition)
             .ToListAsync();
 
         foreach (var scopeClaim in scopeClaims)
         {
-            if (scopeClaim.UserClaim == null) continue;
+            if (scopeClaim.ClaimDefinition == null) continue;
 
-            var claimType = scopeClaim.UserClaim.ClaimType;
+            var claimType = scopeClaim.ClaimDefinition.ClaimType;
 
             // Skip if already added (e.g., "sub" is always included)
             if (userinfo.ContainsKey(claimType)) continue;
@@ -67,7 +67,7 @@ public class UserInfoService : IUserInfoService
             }
 
             // Handle different data types
-            if (scopeClaim.UserClaim.DataType == "Boolean")
+            if (scopeClaim.ClaimDefinition.DataType == "Boolean")
             {
                 userinfo[claimType] = value?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
             }

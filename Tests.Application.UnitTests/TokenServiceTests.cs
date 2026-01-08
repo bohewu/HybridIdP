@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Immutable;
 using System.Security.Claims;
 using System.Threading;
@@ -152,6 +153,8 @@ namespace Tests.Application.UnitTests
             _mockApplicationManager.Setup(m => m.GetPermissionsAsync(It.IsAny<object>(), default))
                 .ReturnsAsync(new List<string> { OpenIddictConstants.Permissions.GrantTypes.Password }.ToImmutableArray());
 
+            SetupMockUsers(user);
+
             // Act
             var result = await _service.HandleTokenRequestAsync(request, null);
 
@@ -173,6 +176,8 @@ namespace Tests.Application.UnitTests
                 .ReturnsAsync(new object()); // Return non-null client
             _mockApplicationManager.Setup(m => m.GetPermissionsAsync(It.IsAny<object>(), default))
                 .ReturnsAsync(new List<string> { OpenIddictConstants.Permissions.GrantTypes.Password }.ToImmutableArray());
+
+            SetupMockUsers();
 
             // Act
             var result = await _service.HandleTokenRequestAsync(request, null);
@@ -218,6 +223,28 @@ namespace Tests.Application.UnitTests
                  Username = username,
                  Password = password
              };
+        }
+        private void SetupMockUsers(params ApplicationUser[] users)
+        {
+            var usersQueryable = users.AsQueryable();
+            var mockSet = new Mock<DbSet<ApplicationUser>>();
+            mockSet.As<IAsyncEnumerable<ApplicationUser>>()
+                .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
+                .Returns(new TestAsyncEnumerator<ApplicationUser>(usersQueryable.GetEnumerator()));
+            mockSet.As<IQueryable<ApplicationUser>>()
+                .Setup(m => m.Provider)
+                .Returns(new TestAsyncQueryProvider<ApplicationUser>(usersQueryable.Provider));
+            mockSet.As<IQueryable<ApplicationUser>>()
+                .Setup(m => m.Expression)
+                .Returns(usersQueryable.Expression);
+            mockSet.As<IQueryable<ApplicationUser>>()
+                .Setup(m => m.ElementType)
+                .Returns(usersQueryable.ElementType);
+            mockSet.As<IQueryable<ApplicationUser>>()
+                .Setup(m => m.GetEnumerator())
+                .Returns(usersQueryable.GetEnumerator());
+
+            _mockDbContext.Setup(c => c.Users).Returns(mockSet.Object);
         }
     }
 }

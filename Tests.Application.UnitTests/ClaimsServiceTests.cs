@@ -42,7 +42,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task GetClaimsAsync_ShouldReturnAllClaims_WhenNoFiltersApplied()
     {
         // Arrange
-        _dbInterface.UserClaims.Add(new UserClaim
+        _dbInterface.ClaimDefinitions.Add(new ClaimDefinition
         {
             Name = "email",
             DisplayName = "Email Address",
@@ -70,8 +70,8 @@ public class ClaimsServiceTests : IDisposable
     public async Task GetClaimsAsync_ShouldFilterBySearch_WhenSearchProvided()
     {
         // Arrange
-        _dbInterface.UserClaims.AddRange(
-            new UserClaim
+        _dbInterface.ClaimDefinitions.AddRange(
+            new ClaimDefinition
             {
                 Name = "email",
                 DisplayName = "Email Address",
@@ -82,7 +82,7 @@ public class ClaimsServiceTests : IDisposable
                 IsStandard = true,
                 IsRequired = false
             },
-            new UserClaim
+            new ClaimDefinition
             {
                 Name = "department",
                 DisplayName = "Department",
@@ -108,8 +108,8 @@ public class ClaimsServiceTests : IDisposable
     public async Task GetClaimsAsync_ShouldSortByDisplayName_WhenSortByDisplayName()
     {
         // Arrange
-        _dbInterface.UserClaims.AddRange(
-            new UserClaim
+        _dbInterface.ClaimDefinitions.AddRange(
+            new ClaimDefinition
             {
                 Name = "email",
                 DisplayName = "Zebra Email",
@@ -119,7 +119,7 @@ public class ClaimsServiceTests : IDisposable
                 IsStandard = true,
                 IsRequired = false
             },
-            new UserClaim
+            new ClaimDefinition
             {
                 Name = "name",
                 DisplayName = "Alpha Name",
@@ -144,8 +144,8 @@ public class ClaimsServiceTests : IDisposable
     public async Task GetClaimsAsync_ShouldSortDescending_WhenSortDirectionDesc()
     {
         // Arrange
-        _dbInterface.UserClaims.AddRange(
-            new UserClaim
+        _dbInterface.ClaimDefinitions.AddRange(
+            new ClaimDefinition
             {
                 Name = "aaa",
                 DisplayName = "AAA",
@@ -155,7 +155,7 @@ public class ClaimsServiceTests : IDisposable
                 IsStandard = false,
                 IsRequired = false
             },
-            new UserClaim
+            new ClaimDefinition
             {
                 Name = "zzz",
                 DisplayName = "ZZZ",
@@ -182,7 +182,7 @@ public class ClaimsServiceTests : IDisposable
         // Arrange
         for (int i = 1; i <= 5; i++)
         {
-            _dbInterface.UserClaims.Add(new UserClaim
+            _dbInterface.ClaimDefinitions.Add(new ClaimDefinition
             {
                 Name = $"claim{i}",
                 DisplayName = $"Claim {i}",
@@ -208,7 +208,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task GetClaimsAsync_ShouldIncludeScopeCount_WhenClaimHasScopeClaims()
     {
         // Arrange
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = "email",
             DisplayName = "Email",
@@ -218,12 +218,12 @@ public class ClaimsServiceTests : IDisposable
             IsStandard = true,
             IsRequired = false
         };
-        _dbInterface.UserClaims.Add(claim);
+        _dbInterface.ClaimDefinitions.Add(claim);
         await _dbContext.SaveChangesAsync();
 
         _dbInterface.ScopeClaims.AddRange(
-            new ScopeClaim { ScopeId = "scope1", ScopeName = "Scope1", UserClaimId = claim.Id, AlwaysInclude = true },
-            new ScopeClaim { ScopeId = "scope2", ScopeName = "Scope2", UserClaimId = claim.Id, AlwaysInclude = false }
+            new ScopeClaim { ScopeId = "scope1", ScopeName = "Scope1", ClaimDefinitionId = claim.Id, AlwaysInclude = true },
+            new ScopeClaim { ScopeId = "scope2", ScopeName = "Scope2", ClaimDefinitionId = claim.Id, AlwaysInclude = false }
         );
         await _dbContext.SaveChangesAsync();
 
@@ -243,7 +243,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task GetClaimByIdAsync_ShouldReturnClaim_WhenClaimExists()
     {
         // Arrange
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = "email",
             DisplayName = "Email Address",
@@ -254,7 +254,7 @@ public class ClaimsServiceTests : IDisposable
             IsStandard = true,
             IsRequired = true
         };
-        _dbInterface.UserClaims.Add(claim);
+        _dbInterface.ClaimDefinitions.Add(claim);
         await _dbContext.SaveChangesAsync();
 
         // Act
@@ -282,7 +282,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task GetClaimByIdAsync_ShouldIncludeScopeCount_WhenClaimExists()
     {
         // Arrange
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = "profile",
             DisplayName = "Profile",
@@ -292,14 +292,14 @@ public class ClaimsServiceTests : IDisposable
             IsStandard = true,
             IsRequired = false
         };
-        _dbInterface.UserClaims.Add(claim);
+        _dbInterface.ClaimDefinitions.Add(claim);
         await _dbContext.SaveChangesAsync();
 
         _dbInterface.ScopeClaims.Add(new ScopeClaim
         {
             ScopeId = "scope1",
             ScopeName = "Scope1",
-            UserClaimId = claim.Id,
+            ClaimDefinitionId = claim.Id,
             AlwaysInclude = true
         });
         await _dbContext.SaveChangesAsync();
@@ -342,7 +342,7 @@ public class ClaimsServiceTests : IDisposable
         Assert.False(result.IsRequired);
         Assert.Equal(0, result.ScopeCount);
 
-        var savedClaim = await _dbInterface.UserClaims.FirstOrDefaultAsync(c => c.Name == "department");
+        var savedClaim = await _dbInterface.ClaimDefinitions.FirstOrDefaultAsync(c => c.Name == "department");
         Assert.NotNull(savedClaim);
     }
 
@@ -374,7 +374,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task CreateClaimAsync_ShouldThrowInvalidOperationException_WhenNameAlreadyExists()
     {
         // Arrange
-        _dbInterface.UserClaims.Add(new UserClaim
+        _dbInterface.ClaimDefinitions.Add(new ClaimDefinition
         {
             Name = "email",
             DisplayName = "Email",
@@ -445,7 +445,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task UpdateClaimAsync_ShouldUpdateClaim_WhenValidRequest()
     {
         // Arrange
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = "department",
             DisplayName = "Department",
@@ -455,7 +455,7 @@ public class ClaimsServiceTests : IDisposable
             IsStandard = false,
             IsRequired = false
         };
-        _dbInterface.UserClaims.Add(claim);
+        _dbInterface.ClaimDefinitions.Add(claim);
         await _dbContext.SaveChangesAsync();
 
         var request = new UpdateClaimRequest(
@@ -500,7 +500,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task UpdateClaimAsync_ShouldThrowInvalidOperationException_WhenUpdatingStandardClaimCoreProperties()
     {
         // Arrange
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = "email",
             DisplayName = "Email",
@@ -510,7 +510,7 @@ public class ClaimsServiceTests : IDisposable
             IsStandard = true,
             IsRequired = false
         };
-        _dbInterface.UserClaims.Add(claim);
+        _dbInterface.ClaimDefinitions.Add(claim);
         await _dbContext.SaveChangesAsync();
 
         var request = new UpdateClaimRequest(
@@ -531,7 +531,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task UpdateClaimAsync_ShouldAllowDisplayNameAndDescriptionUpdate_ForStandardClaims()
     {
         // Arrange
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = "email",
             DisplayName = "Email",
@@ -541,7 +541,7 @@ public class ClaimsServiceTests : IDisposable
             IsStandard = true,
             IsRequired = false
         };
-        _dbInterface.UserClaims.Add(claim);
+        _dbInterface.ClaimDefinitions.Add(claim);
         await _dbContext.SaveChangesAsync();
 
         var request = new UpdateClaimRequest(
@@ -568,7 +568,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task UpdateClaimAsync_ShouldOnlyUpdateProvidedFields_WhenPartialUpdate()
     {
         // Arrange
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = "department",
             DisplayName = "Department",
@@ -579,7 +579,7 @@ public class ClaimsServiceTests : IDisposable
             IsStandard = false,
             IsRequired = false
         };
-        _dbInterface.UserClaims.Add(claim);
+        _dbInterface.ClaimDefinitions.Add(claim);
         await _dbContext.SaveChangesAsync();
 
         var request = new UpdateClaimRequest(
@@ -607,7 +607,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task DeleteClaimAsync_ShouldDeleteClaim_WhenValidRequest()
     {
         // Arrange
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = "custom_claim",
             DisplayName = "Custom Claim",
@@ -617,14 +617,14 @@ public class ClaimsServiceTests : IDisposable
             IsStandard = false,
             IsRequired = false
         };
-        _dbInterface.UserClaims.Add(claim);
+        _dbInterface.ClaimDefinitions.Add(claim);
         await _dbContext.SaveChangesAsync();
 
         // Act
         await _claimsService.DeleteClaimAsync(claim.Id);
 
         // Assert
-        var deletedClaim = await _dbInterface.UserClaims.FindAsync(claim.Id);
+        var deletedClaim = await _dbInterface.ClaimDefinitions.FindAsync(claim.Id);
         Assert.Null(deletedClaim);
     }
 
@@ -639,7 +639,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task DeleteClaimAsync_ShouldThrowInvalidOperationException_WhenDeletingStandardClaim()
     {
         // Arrange
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = "email",
             DisplayName = "Email",
@@ -649,7 +649,7 @@ public class ClaimsServiceTests : IDisposable
             IsStandard = true,
             IsRequired = false
         };
-        _dbInterface.UserClaims.Add(claim);
+        _dbInterface.ClaimDefinitions.Add(claim);
         await _dbContext.SaveChangesAsync();
 
         // Act & Assert
@@ -661,7 +661,7 @@ public class ClaimsServiceTests : IDisposable
     public async Task DeleteClaimAsync_ShouldThrowInvalidOperationException_WhenClaimIsUsedByScopes()
     {
         // Arrange
-        var claim = new UserClaim
+        var claim = new ClaimDefinition
         {
             Name = "department",
             DisplayName = "Department",
@@ -671,14 +671,14 @@ public class ClaimsServiceTests : IDisposable
             IsStandard = false,
             IsRequired = false
         };
-        _dbInterface.UserClaims.Add(claim);
+        _dbInterface.ClaimDefinitions.Add(claim);
         await _dbContext.SaveChangesAsync();
 
         _dbInterface.ScopeClaims.Add(new ScopeClaim
         {
             ScopeId = "scope1",
             ScopeName = "Scope1",
-            UserClaimId = claim.Id,
+            ClaimDefinitionId = claim.Id,
             AlwaysInclude = true
         });
         await _dbContext.SaveChangesAsync();

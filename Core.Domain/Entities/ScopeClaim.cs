@@ -27,12 +27,12 @@ public class ScopeClaim
     /// <summary>
     /// Foreign key: ID of the user claim definition.
     /// </summary>
-    public int UserClaimId { get; set; }
+    public int ClaimDefinitionId { get; set; }
 
     /// <summary>
     /// Navigation property to the claim definition.
     /// </summary>
-    public UserClaim? UserClaim { get; set; }
+    public ClaimDefinition? ClaimDefinition { get; set; }
 
     /// <summary>
     /// Indicates if this claim should always be included when the scope is granted.
@@ -42,7 +42,7 @@ public class ScopeClaim
 
     /// <summary>
     /// Custom mapping logic override (optional).
-    /// If specified, this expression is used instead of UserClaim.UserPropertyPath.
+    /// If specified, this expression is used instead of ClaimDefinition.UserPropertyPath.
     /// Example: "string.Join(' ', FirstName, LastName)" for "name" claim.
     /// </summary>
     public string? CustomMappingLogic { get; set; }

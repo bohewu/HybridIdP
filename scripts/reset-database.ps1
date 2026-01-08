@@ -172,8 +172,8 @@ else {
             # API Resources
             "DELETE FROM ApiResources;",
             
-            # User Claims (custom, not Identity)
-            "DELETE FROM UserClaims;",
+            # Claim Definitions (custom, not Identity)
+            "DELETE FROM ClaimDefinitions;",
             
             # ASP.NET Identity tables (in correct order)
             "DELETE FROM AspNetUserTokens;",
@@ -226,7 +226,7 @@ else {
             'DELETE FROM "ClientRequiredScopes";',
             'DELETE FROM "ApiResourceScopes";',
             'DELETE FROM "ApiResources";',
-            'DELETE FROM "UserClaims";',
+            'DELETE FROM "ClaimDefinitions";',
             'DELETE FROM "AspNetUserTokens";',
             'DELETE FROM "AspNetUserLogins";',
             'DELETE FROM "AspNetUserClaims";',

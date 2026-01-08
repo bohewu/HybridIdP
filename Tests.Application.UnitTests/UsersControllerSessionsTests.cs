@@ -50,7 +50,8 @@ public class UsersControllerSessionsTests
             sessionServiceMock.Object, 
             loginHistoryMock.Object,
             localizerMock.Object,
-            impersonationMock.Object);
+            impersonationMock.Object,
+            new Mock<ILogger<UsersController>>().Object);
     }
 
     [Fact]

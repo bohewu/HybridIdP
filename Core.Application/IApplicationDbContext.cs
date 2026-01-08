@@ -7,7 +7,7 @@ namespace Core.Application;
 public interface IApplicationDbContext
 {
     DbSet<ApplicationUser> Users { get; }
-    DbSet<UserClaim> UserClaims { get; }
+    DbSet<ClaimDefinition> ClaimDefinitions { get; }
     DbSet<ScopeClaim> ScopeClaims { get; }
     DbSet<Setting> Settings { get; }
     DbSet<SecurityPolicy> SecurityPolicies { get; }
