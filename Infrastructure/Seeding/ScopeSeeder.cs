@@ -62,7 +62,8 @@ public static class ScopeSeeder
             new { Name = Scopes.Profile, DisplayName = "Profile", Description = "User profile information" },
             new { Name = Scopes.Phone, DisplayName = "Phone", Description = "Phone number and verification status" },
             new { Name = Scopes.Address, DisplayName = "Address", Description = "Mailing address" },
-            new { Name = AuthConstants.Scopes.Roles, DisplayName = "Roles", Description = "User roles" }
+            new { Name = AuthConstants.Scopes.Roles, DisplayName = "Roles", Description = "User roles" },
+            new { Name = "test_scope", DisplayName = "Test Scope", Description = "Scope for testing claim enrichment" }
         };
 
         foreach (var scope in scopes)
@@ -106,6 +107,9 @@ public static class ScopeSeeder
             
             // ADDRESS SCOPE claims (single formatted address claim)
             new() { Name = "address", DisplayName = "Address", Description = "User's mailing address as JSON", ClaimType = Claims.Address, UserPropertyPath = "Address", DataType = "Json", IsStandard = true, IsRequired = false },
+            
+            // TEST CLAIM for verifying Person.FirstName loading
+            new() { Name = "test_person_name", DisplayName = "Test Person Name", Description = "Testing Person Loading", ClaimType = "test_person_name", UserPropertyPath = "Person.FirstName", DataType = "String", IsStandard = false, IsRequired = false },
         };
 
         // Step 1: Seed UserClaims if not exist
@@ -131,7 +135,9 @@ public static class ScopeSeeder
                 [Scopes.Profile] = new[] { "name", "preferred_username" },
                 [Scopes.Email] = new[] { "email", "email_verified" },
                 [Scopes.Phone] = new[] { "phone_number", "phone_number_verified" },
-                [Scopes.Address] = new[] { "address" }
+                [Scopes.Address] = new[] { "address" },
+                // Test Scope for verifying Person table loading
+                ["test_scope"] = new[] { "test_person_name" }
             };
 
             foreach (var (scopeName, claimNames) in scopeMappings)
