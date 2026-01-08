@@ -167,11 +167,11 @@ public class ConsentPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsync
         var html = await response.Content.ReadAsStringAsync();
         var token = ExtractAntiForgeryToken(html);
 
-        // 2. Post Credentials
+        // 2. Post Credentials - Using amr-nomfa which has explicit TwoFactorEnabled=false in seeder
         var formData = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("Input.Login", "multitest@hybridauth.local"),
-            new KeyValuePair<string, string>("Input.Password", "MultiTest@123"),
+            new KeyValuePair<string, string>("Input.Login", "amr-nomfa@hybridauth.local"),
+            new KeyValuePair<string, string>("Input.Password", "Test@123"),
             new KeyValuePair<string, string>("__RequestVerificationToken", token)
         });
 
