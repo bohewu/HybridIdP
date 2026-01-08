@@ -20,5 +20,8 @@
   "Terms": "Terms",
   "Identity": "Identity",
   "Security": "Security",
-  "General": "General"
+  "General": "General",
+  "Profile": "Profile",
+  "API Access": "API Access",
+  "Custom": "Custom"
 }

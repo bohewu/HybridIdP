@@ -20,5 +20,8 @@
   "Terms": "條款",
   "Identity": "身分識別",
   "Security": "安全性",
-  "General": "一般"
+  "General": "一般",
+  "Profile": "個人檔案",
+  "API Access": "API 存取",
+  "Custom": "自訂"
 }

@@ -307,8 +307,8 @@ public class ScopeService : IScopeService
                 extension.IsRequired = request.IsRequired.Value;
             if (request.DisplayOrder.HasValue)
                 extension.DisplayOrder = request.DisplayOrder.Value;
-            if (request.Category != null)
-                extension.Category = request.Category;
+            // Category: allow setting to null/empty to clear it
+            extension.Category = request.Category;
             if (request.IsPublic.HasValue)
                 extension.IsPublic = request.IsPublic.Value;
         }
