@@ -116,10 +116,20 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             // Retrieve user object early for MFA checks and enrichment
             // Must include Person for claims enrichment
-            var userId = userPrincipal.GetClaim(Claims.Subject);
+            // Retrieve user object early for MFA checks and enrichment
+            // Must include Person for claims enrichment
+            var userIdString = userPrincipal.GetClaim(Claims.Subject) ?? 
+                               userPrincipal.GetClaim(ClaimTypes.NameIdentifier);
+                               
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                 // Should not happen if IsAuthenticated is true but handle gracefully
+                 throw new InvalidOperationException("User identifier missing or invalid.");
+            }
+
             var user = await _db.Users
                 .Include(u => u.Person)
-                .FirstOrDefaultAsync(u => u.Id == Guid.Parse(userId!));
+                .FirstOrDefaultAsync(u => u.Id == userId);
                 
             if (user == null)
             {
@@ -251,7 +261,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             var scopes = request.GetScopes();
             
             var authorizationsEnumerable = _authorizationManager.FindAsync(
-                subject: userId!,
+                subject: userId.ToString(),
                 client: applicationId,
                 status: Statuses.Valid,
                 type: AuthorizationTypes.Permanent,
@@ -371,10 +381,17 @@ namespace Web.IdP.Services // Keep consistent namespace case
             }
 
             // Retrieve user object from DB with Person included for Claims Enrichment
-            var userId = userPrincipal.GetClaim(Claims.Subject);
+            var userIdString = userPrincipal.GetClaim(Claims.Subject) ?? 
+                               userPrincipal.GetClaim(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                throw new InvalidOperationException("The user details cannot be retrieved.");
+            }
+
             var user = await _db.Users
                 .Include(u => u.Person)
-                .FirstOrDefaultAsync(u => u.Id == Guid.Parse(userId!)) 
+                .FirstOrDefaultAsync(u => u.Id == userId) 
                 ?? throw new InvalidOperationException("The user details cannot be retrieved.");
 
             // Create a clean ClaimsIdentity without copying ASP.NET Identity cookie claims to avoid duplicates
