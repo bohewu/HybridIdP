@@ -34,6 +34,7 @@ public static class UserSeeder
             await SeedAmrNoMfaTestUserAsync(userManager, context);
             await SeedAmrMfaTestUserAsync(userManager, context);
             await SeedPkceTestUserAsync(userManager, context);
+            await SeedConsentTestUserAsync(userManager, context);
         }
     }
 
@@ -1070,5 +1071,69 @@ public static class UserSeeder
         };
 
         await userManager.CreateAsync(user, password);
+    }
+
+    private static async Task SeedConsentTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "consent@hybridauth.local";
+        const string password = "Consent@123";
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null)
+        {
+            await ResetUserAsync(userManager, context, existingUser, password);
+             // Ensure User role
+            if (!await userManager.IsInRoleAsync(existingUser, AuthConstants.Roles.User))
+            {
+                await userManager.AddToRoleAsync(existingUser, AuthConstants.Roles.User);
+            }
+            return;
+        }
+
+        var nationalIdHash = PidHasher.Hash("C888888888");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Consent",
+                LastName = "Test",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Consent",
+            LastName = "Test",
+            IsActive = true
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(user, AuthConstants.Roles.User);
+        }
     }
 }

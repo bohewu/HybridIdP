@@ -13,7 +13,7 @@ public class ConsentPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsync
     private readonly CookieContainer _cookieContainer;
 
     private const string ClientId = "testclient-public";
-    private const string RedirectUri = "https://localhost:7001/signin-oidc";
+    private string RedirectUri => _serverFixture.BaseUrl + "/signin-oidc";
     private const string DefaultScopes = "openid profile email";
 
     public ConsentPageSystemTests(WebIdPServerFixture serverFixture)
@@ -167,11 +167,11 @@ public class ConsentPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsync
         var html = await response.Content.ReadAsStringAsync();
         var token = ExtractAntiForgeryToken(html);
 
-        // 2. Post Credentials - Using amr-nomfa which has explicit TwoFactorEnabled=false in seeder
+        // 2. Post Credentials - Using multitest@hybridauth.local which is now guaranteed clean in seeder
         var formData = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("Input.Login", "amr-nomfa@hybridauth.local"),
-            new KeyValuePair<string, string>("Input.Password", "Test@123"),
+            new KeyValuePair<string, string>("Input.Login", "consent@hybridauth.local"),
+            new KeyValuePair<string, string>("Input.Password", "Consent@123"),
             new KeyValuePair<string, string>("__RequestVerificationToken", token)
         });
 
