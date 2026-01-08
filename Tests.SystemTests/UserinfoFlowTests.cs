@@ -16,8 +16,8 @@ public class UserinfoFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     // Test user credentials (seeded by DataSeeder)
-    private const string TestUsername = "admin@hybridauth.local";
-    private const string TestPassword = "Admin@123";
+    private const string TestUsername = "userinfo@hybridauth.local";
+    private const string TestPassword = "Userinfo@123";
     
     // Test client that supports ROPC
     private const string ClientId = "testclient-public";

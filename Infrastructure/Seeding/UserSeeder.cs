@@ -35,6 +35,7 @@ public static class UserSeeder
             await SeedAmrMfaTestUserAsync(userManager, context);
             await SeedPkceTestUserAsync(userManager, context);
             await SeedConsentTestUserAsync(userManager, context);
+            await SeedUserinfoTestUserAsync(userManager, context);
         }
     }
 
@@ -1134,6 +1135,77 @@ public static class UserSeeder
         if (result.Succeeded)
         {
             await userManager.AddToRoleAsync(user, AuthConstants.Roles.User);
+        }
+    }
+
+    private static async Task SeedUserinfoTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "userinfo@hybridauth.local";
+        const string password = "Userinfo@123";
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null)
+        {
+            await ResetUserAsync(userManager, context, existingUser, password);
+             // Ensure Admin role
+            if (!await userManager.IsInRoleAsync(existingUser, AuthConstants.Roles.Admin))
+            {
+                await userManager.AddToRoleAsync(existingUser, AuthConstants.Roles.Admin);
+            }
+            return;
+        }
+
+        var nationalIdHash = PidHasher.Hash("U888888888");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Userinfo",
+                LastName = "Test",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow,
+                EmployeeId = "U1001" // For ncut_id claim test
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Userinfo",
+            LastName = "Test",
+            IsActive = true,
+            Locale = "zh-TW" // For locale claim test
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(user, AuthConstants.Roles.Admin);
+            
+             // Update Person.CreatedBy
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
         }
     }
 }
