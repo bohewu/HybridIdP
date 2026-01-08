@@ -76,10 +76,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 
                 if (response.ok) {
-                    // Remove the card with animation
+                    // Remove the card with smooth animation
                     const wrapper = this.closest('.app-card-wrapper');
+                    
+                    // First set explicit dimensions for animation
+                    const rect = wrapper.getBoundingClientRect();
+                    wrapper.style.height = rect.height + 'px';
+                    wrapper.style.overflow = 'hidden';
+                    wrapper.style.transition = 'all 0.3s ease-out';
+                    
+                    // Force reflow
+                    wrapper.offsetHeight;
+                    
+                    // Animate out
                     wrapper.style.opacity = '0';
                     wrapper.style.transform = 'scale(0.8)';
+                    wrapper.style.height = '0';
+                    wrapper.style.marginBottom = '0';
+                    wrapper.style.paddingTop = '0';
+                    wrapper.style.paddingBottom = '0';
                     
                     setTimeout(() => {
                         wrapper.remove();

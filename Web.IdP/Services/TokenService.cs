@@ -445,7 +445,9 @@ namespace Web.IdP.Services
                     yield break;
 
                 default:
+                    // Send custom claims to both tokens so clients can see them
                     yield return Destinations.AccessToken;
+                    yield return Destinations.IdentityToken;
                     yield break;
             }
         }
