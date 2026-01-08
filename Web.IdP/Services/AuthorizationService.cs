@@ -114,8 +114,13 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     });
             }
 
-            // Retrieve user object early for MFA checks
-            var user = await _userManager.GetUserAsync(userPrincipal);
+            // Retrieve user object early for MFA checks and enrichment
+            // Must include Person for claims enrichment
+            var userId = userPrincipal.GetClaim(Claims.Subject);
+            var user = await _db.Users
+                .Include(u => u.Person)
+                .FirstOrDefaultAsync(u => u.Id == Guid.Parse(userId!));
+                
             if (user == null)
             {
                  // Should not happen if IsAuthenticated is true
@@ -242,11 +247,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
             await LoadScopeInfosAsync(effectiveRequestedScopes, clientGuid);
 
             // Retrieve the permanent authorizations associated with the user and the calling client application
-            var userId = userPrincipal.GetClaim(Claims.Subject)!;
+            // userId variable is already defined above
             var scopes = request.GetScopes();
             
             var authorizationsEnumerable = _authorizationManager.FindAsync(
-                subject: userId,
+                subject: userId!,
                 client: applicationId,
                 status: Statuses.Valid,
                 type: AuthorizationTypes.Permanent,
@@ -365,8 +370,12 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     }));
             }
 
-            var user = await _userManager.GetUserAsync(userPrincipal) ??
-                throw new InvalidOperationException("The user details cannot be retrieved.");
+            // Retrieve user object from DB with Person included for Claims Enrichment
+            var userId = userPrincipal.GetClaim(Claims.Subject);
+            var user = await _db.Users
+                .Include(u => u.Person)
+                .FirstOrDefaultAsync(u => u.Id == Guid.Parse(userId!)) 
+                ?? throw new InvalidOperationException("The user details cannot be retrieved.");
 
             // Create a clean ClaimsIdentity without copying ASP.NET Identity cookie claims to avoid duplicates
             var identity = new ClaimsIdentity(
