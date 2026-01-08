@@ -129,8 +129,8 @@ const handleSubmit = async () => {
         .map(r => r.trim())
         .filter(r => r.length > 0),
       // Consent screen customization
-      consentDisplayName: formData.value.consentDisplayName || null,
-      consentDescription: formData.value.consentDescription || null,
+      consentDisplayNameKey: formData.value.consentDisplayNameKey || null,
+      consentDescriptionKey: formData.value.consentDescriptionKey || null,
       iconUrl: formData.value.iconUrl || null,
       isRequired: formData.value.isRequired,
       displayOrder: formData.value.displayOrder,
