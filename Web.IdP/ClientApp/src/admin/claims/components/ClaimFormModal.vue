@@ -1,9 +1,27 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseModal from '@/components/common/BaseModal.vue'
 
 const { t } = useI18n()
+
+// Common user property paths for claim mapping
+const propertyPathOptions = [
+  { value: 'Email', labelKey: 'claims.form.propertyPaths.email' },
+  { value: 'UserName', labelKey: 'claims.form.propertyPaths.userName' },
+  { value: 'FirstName', labelKey: 'claims.form.propertyPaths.firstName' },
+  { value: 'LastName', labelKey: 'claims.form.propertyPaths.lastName' },
+  { value: 'PhoneNumber', labelKey: 'claims.form.propertyPaths.phoneNumber' },
+  { value: 'Department', labelKey: 'claims.form.propertyPaths.department' },
+  { value: 'JobTitle', labelKey: 'claims.form.propertyPaths.jobTitle' },
+  { value: 'Locale', labelKey: 'claims.form.propertyPaths.locale' },
+  { value: 'Person.FirstName', labelKey: 'claims.form.propertyPaths.personFirstName' },
+  { value: 'Person.LastName', labelKey: 'claims.form.propertyPaths.personLastName' },
+  { value: 'Person.Department', labelKey: 'claims.form.propertyPaths.personDepartment' },
+  { value: 'Person.JobTitle', labelKey: 'claims.form.propertyPaths.personJobTitle' },
+  { value: 'Person.EmployeeId', labelKey: 'claims.form.propertyPaths.personEmployeeId' },
+  { value: 'Person.Email', labelKey: 'claims.form.propertyPaths.personEmail' }
+]
 
 const props = defineProps({
   show: {
@@ -32,6 +50,14 @@ const formData = ref({
   isRequired: false
 })
 
+const useCustomPath = ref(false)
+const customPathValue = ref('')
+
+// Check if current path is in the predefined options
+const isKnownPath = computed(() => {
+  return propertyPathOptions.some(opt => opt.value === formData.value.userPropertyPath)
+})
+
 const saving = ref(false)
 
 watch(() => props.claim, (newClaim) => {
@@ -45,6 +71,10 @@ watch(() => props.claim, (newClaim) => {
       dataType: newClaim.dataType,
       isRequired: newClaim.isRequired
     }
+    // If existing claim has a custom path, show custom input
+    const known = propertyPathOptions.some(opt => opt.value === newClaim.userPropertyPath)
+    useCustomPath.value = !known && !!newClaim.userPropertyPath
+    customPathValue.value = useCustomPath.value ? newClaim.userPropertyPath : ''
   } else {
     formData.value = {
       name: '',
@@ -55,8 +85,26 @@ watch(() => props.claim, (newClaim) => {
       dataType: 'String',
       isRequired: false
     }
+    useCustomPath.value = false
+    customPathValue.value = ''
   }
 }, { immediate: true })
+
+// Sync custom path value to formData
+watch(customPathValue, (val) => {
+  if (useCustomPath.value) {
+    formData.value.userPropertyPath = val
+  }
+})
+
+// When switching to custom, clear the select value
+watch(useCustomPath, (val) => {
+  if (val) {
+    formData.value.userPropertyPath = customPathValue.value
+  } else {
+    customPathValue.value = ''
+  }
+})
 
 const handleSubmit = async () => {
   saving.value = true
@@ -147,15 +195,45 @@ const handleClose = () => {
         <!-- User Property Path -->
         <div class="mb-5">
           <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ t('claims.form.userPropertyPath') }} *</label>
-          <input
+          
+          <!-- Select for common paths -->
+          <select
+            v-if="!useCustomPath"
             v-model="formData.userPropertyPath"
+            :disabled="claim?.isStandard"
+            required
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
+            data-test-id="claim-property-path-select"
+          >
+            <option value="" disabled>{{ t('claims.form.selectPropertyPath') }}</option>
+            <option v-for="opt in propertyPathOptions" :key="opt.value" :value="opt.value">
+              {{ t(opt.labelKey) }} ({{ opt.value }})
+            </option>
+          </select>
+          
+          <!-- Custom path input -->
+          <input
+            v-else
+            v-model="customPathValue"
             type="text"
             required
             :disabled="claim?.isStandard"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.userPropertyPathPlaceholder')"
-             data-test-id="claim-property-path-input"
+            data-test-id="claim-property-path-input"
           />
+          
+          <!-- Toggle for custom path -->
+          <label class="flex items-center mt-2" v-if="!claim?.isStandard">
+            <input
+              v-model="useCustomPath"
+              type="checkbox"
+              class="rounded border-gray-300 text-google-500 shadow-sm focus:border-google-500 focus:ring focus:ring-google-100 focus:ring-opacity-50 h-4 w-4"
+              data-test-id="claim-use-custom-path-checkbox"
+            />
+            <span class="ml-2 text-xs text-gray-500">{{ t('claims.form.useCustomPath') }}</span>
+          </label>
+          
           <p class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.userPropertyPathHelp') }}</p>
         </div>
 
