@@ -164,12 +164,8 @@ public class PasskeyService : IPasskeyService
                     .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
                     .ToListAsync(ct);
                 
-                // UX Improvement: If user exists but has no passkeys, fail early
-                // This prevents the browser prompt from confusing the user
-                if (allowedCredentials.Count == 0)
-                {
-                    throw new Exception("mfa.errors.noPasskeysRegistered");
-                }
+                // Removed early failure to follow WebAuthn standards and support system tests.
+                // UI will handle the case where no credentials are returned.
             }
         }
         
