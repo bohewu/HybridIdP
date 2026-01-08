@@ -479,9 +479,12 @@ public static class ServiceCollectionExtensions
         {
             var cookieOpts = new Options.CookieOptions();
             configuration.GetSection(Options.CookieOptions.Section).Bind(cookieOpts);
+            
+            options.IdleTimeout = TimeSpan.FromMinutes(5); // Short timeout for login sessions
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-            options.Cookie.SameSite = SameSiteMode.Lax;
+            options.Cookie.SameSite = SameSiteMode.Lax; // Consistent with Identity cookies
+            options.Cookie.IsEssential = true;
             options.Cookie.Name = cookieOpts.GetSessionCookieName();
         });
 
@@ -492,7 +495,7 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(Options.CookieOptions.Section).Bind(cookieOpts);
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-            options.Cookie.SameSite = SameSiteMode.Strict;
+            options.Cookie.SameSite = SameSiteMode.Lax; // Changed from Strict to Lax to avoid issues during redirects
             options.Cookie.Name = cookieOpts.GetAntiforgeryCookieName();
             // Use X-XSRF-TOKEN header (standard name for SPAs like Angular/Vue)
             options.HeaderName = "X-XSRF-TOKEN";

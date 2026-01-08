@@ -101,14 +101,7 @@ builder.Services.AddFido2(options => {})
 {
     config.AddFidoMetadataRepository();
 });
-builder.Services.AddSession(options =>
-{
-    // Short timeout for login sessions
-    options.IdleTimeout = TimeSpan.FromMinutes(5);
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SameSite = SameSiteMode.Strict;
-    options.Cookie.IsEssential = true;
-});
+
 
 // Configure Rate Limiting
 builder.Services.AddCustomRateLimiting(builder.Configuration);
