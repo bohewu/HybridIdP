@@ -41,12 +41,12 @@
                 @foreach (var app in Model.Applications)
                 {
                     <div class="app-card-wrapper relative group" data-app-name="@app.DisplayName.ToLower()">
-                        <a href="@app.LoginUrl" class="app-card flex flex-col items-center rounded-lg border border-gray-200 p-6 text-center hover:border-blue-300 bg-white hover:bg-blue-50 hover:shadow-md transition-all [&.list-view_&]:flex-row [&.list-view_&]:text-left [&.list-view_&]:p-4" title="@app.DisplayName">
+                        <div class="app-card flex flex-col items-center rounded-lg border border-gray-200 p-6 text-center bg-white [&.list-view_&]:flex-row [&.list-view_&]:text-left [&.list-view_&]:p-4" title="@app.DisplayName">
                             <div class="app-icon h-16 w-16 flex-shrink-0 flex items-center justify-center rounded-full text-white text-2xl font-bold shadow-sm mb-4 [.list-view_&]:mb-0 [.list-view_&]:mr-4 @GetAppIconClass(app)">
                                 @GetAppInitial(app)
                             </div>
                             <div class="app-name text-sm font-medium text-gray-900 w-full truncate">@app.DisplayName</div>
-                        </a>
+                        </div>
                         <button class="app-disconnect-btn absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-400 shadow-sm ring-1 ring-gray-200 hover:text-red-600 hover:bg-red-50 hover:ring-red-200 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100" 
                                 data-app-id="@app.ApplicationId" 
                                 data-app-name="@app.DisplayName"

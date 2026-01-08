@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             try {
-                const response = await fetch('/?handler=Disconnect', {
+                const response = await fetch('?handler=Revoke', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
