@@ -140,7 +140,11 @@ namespace Web.IdP.Services
                     }
 
                     // Retrieve the user profile corresponding to the device code.
-                    var user = await _userManager.FindByIdAsync(subject);
+                    // Must include Person for claims enrichment
+                    var user = await _db.Users
+                        .Include(u => u.Person)
+                        .FirstOrDefaultAsync(u => u.Id == Guid.Parse(subject));
+
                     if (user == null)
                     {
                          return new ForbidResult(
@@ -210,7 +214,18 @@ namespace Web.IdP.Services
             else if (request.IsPasswordGrantType())
             {
                 // Password grant type
-                var user = await _userManager.FindByNameAsync(request.Username!);
+                // Must include Person for claims enrichment
+                // Note: NormalizedUserName is usually uppercase, but we should match how FindByNameAsync works or query by NormalizedUserName directly if possible.
+                // However, standard ApplicationUser doesn't expose NormalizedUserName in public properties easily depending on configuration.
+                // But we can query by UserName usually. Identity default behaviour is case-insensitive for unique index?
+                // Actually FindByNameAsync normalizes the input. Let's do a simple lookup first.
+                // Or better, stick to FindByNameAsync THEN load Person? No, that's two queries.
+                // Let's use NormalizedUserName if we can, or just loop through Users if volume is low? No.
+                // Standard Identity stores NormalizedUserName. Let's trust the input or normalize it using UserManager.
+                var normalizedUsername = _userManager.NormalizeName(request.Username);
+                var user = await _db.Users
+                    .Include(u => u.Person)
+                    .FirstOrDefaultAsync(u => u.NormalizedUserName == normalizedUsername);
                 if (user == null)
                 {
                      return new ForbidResult(
