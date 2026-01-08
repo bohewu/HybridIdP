@@ -389,6 +389,7 @@ const saveScopeClaims = async (scopeId) => {
                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm h-10 px-3"
                         >
                           <option value="">{{ $t('scopes.form.categoryNone') }}</option>
+                          <option value="Identity">{{ $t('scopes.form.categoryIdentity') }}</option>
                           <option value="Profile">{{ $t('scopes.form.categoryProfile') }}</option>
                           <option value="API Access">{{ $t('scopes.form.categoryApiAccess') }}</option>
                           <option value="Custom">{{ $t('scopes.form.categoryCustom') }}</option>

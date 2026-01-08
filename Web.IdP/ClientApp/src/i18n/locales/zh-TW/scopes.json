@@ -87,6 +87,7 @@
     "category": "類別",
     "categoryPlaceholder": "例如：個人資料、身份",
     "categoryNone": "-- 無 --",
+    "categoryIdentity": "身分識別",
     "categoryProfile": "個人資料",
     "categoryApiAccess": "API 存取",
     "categoryCustom": "自訂",

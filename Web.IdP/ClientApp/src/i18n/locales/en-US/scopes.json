@@ -87,6 +87,7 @@
     "category": "Category",
     "categoryPlaceholder": "e.g., Profile, Identity",
     "categoryNone": "-- None --",
+    "categoryIdentity": "Identity",
     "categoryProfile": "Profile",
     "categoryApiAccess": "API Access",
     "categoryCustom": "Custom",
