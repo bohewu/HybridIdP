@@ -11,7 +11,8 @@ namespace Tests.SystemTests;
 /// These tests verify critical security properties of the authentication system.
 /// </summary>
 [Trait("Category", "Quick")]
-public class SecurityAttackTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class SecurityAttackTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

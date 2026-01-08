@@ -6,7 +6,8 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
-public class ConsentPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class ConsentPageSystemTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

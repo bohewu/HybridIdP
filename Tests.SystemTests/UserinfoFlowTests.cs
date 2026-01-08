@@ -9,7 +9,8 @@ namespace Tests.SystemTests;
 /// System tests for UserInfo endpoint using Resource Owner Password Credentials (ROPC) flow.
 /// ROPC allows programmatic login with username/password, enabling userinfo endpoint testing.
 /// </summary>
-public class UserinfoFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class UserinfoFlowTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

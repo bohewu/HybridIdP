@@ -13,8 +13,8 @@ namespace Tests.SystemTests;
 /// Uses seeded testuser@hybridauth.local with password flow (testclient-public).
 /// </summary>
 [Trait("Category", "Slow")]
-[Collection("MFA Tests")]
-public partial class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public partial class MfaApiTests : IAsyncLifetime
 {
     private record MfaVerifyResponse
     {
@@ -132,8 +132,8 @@ public partial class MfaApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLif
                 : new List<string?> { amrProperty.GetString() };
             
             Assert.Contains(AuthConstants.Amr.Password, amrs);
-            // TokenService also hardcoded "mfa" for now in password grant
-            Assert.Contains("mfa", amrs);
+            // TokenService NO LONGER hardcodes "mfa" for password grant (unless MFA was performed)
+            // Assert.Contains("mfa", amrs); 
         }
         else
         {

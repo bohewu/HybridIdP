@@ -12,7 +12,8 @@ namespace Tests.SystemTests;
 /// System tests for Login page functionality.
 /// Tests various login failure scenarios including inactive user and inactive person.
 /// </summary>
-public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class LoginPageSystemTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

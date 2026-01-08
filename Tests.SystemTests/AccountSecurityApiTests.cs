@@ -9,7 +9,8 @@ namespace Tests.SystemTests;
 /// <summary>
 /// System tests for AccountSecurityController (/api/account/security-policy).
 /// </summary>
-public class AccountSecurityApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class AccountSecurityApiTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

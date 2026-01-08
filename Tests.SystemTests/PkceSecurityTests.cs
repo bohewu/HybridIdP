@@ -10,7 +10,8 @@ namespace Tests.SystemTests;
 /// Covers edge cases where PKCE should fail to protect against authorization code interception.
 /// </summary>
 [Trait("Category", "Quick")]
-public class PkceSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class PkceSecurityTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

@@ -11,7 +11,8 @@ namespace Tests.SystemTests;
 /// Run with: dotnet test --filter "Category!=Slow" to skip.
 /// </summary>
 [Trait("Category", "Slow")]
-public class DeviceFlowSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class DeviceFlowSystemTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private const string Authority = "https://localhost:7035";

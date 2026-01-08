@@ -13,8 +13,8 @@ namespace Tests.SystemTests;
 /// Run with: dotnet test --filter "Category!=Slow" to skip.
 /// </summary>
 [Trait("Category", "Slow")]
-[Collection("MFA Tests")]
-public class EmailMfaFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class EmailMfaFlowTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;

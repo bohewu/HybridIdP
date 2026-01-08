@@ -8,9 +8,11 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
-[Collection("MFA Tests")]
-public class AmrSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class AmrSystemTests : IAsyncLifetime
 {
+    private const string RedirectUri = "https://localhost:7001/signin-oidc";
+    private const string DefaultScopes = "openid profile email";
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;
     private readonly CookieContainer _cookieContainer;

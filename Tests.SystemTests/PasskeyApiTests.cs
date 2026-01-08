@@ -12,7 +12,8 @@ namespace Tests.SystemTests;
 /// System tests for WebAuthn (Passkey) API endpoints.
 /// Phase 20.4: Test-First Implementation.
 /// </summary>
-public class PasskeyApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class PasskeyApiTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;
