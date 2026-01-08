@@ -13,7 +13,7 @@ namespace Tests.SystemTests;
 /// 2. IdP server running: dotnet run in Web.IdP
 /// </summary>
 [Trait("Category", "Security")]
-[Trait("Category", "Slow")]
+[Trait("Category", "SuperSlow")]
 public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
 {
     private readonly HttpClient _httpClient;
@@ -71,6 +71,7 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
                 FileName = zapPath,
                 Arguments = $"-daemon -host 127.0.0.1 -port {port} -config api.disablekey=true",
                 UseShellExecute = true,
+                WorkingDirectory = Path.GetDirectoryName(zapPath),
                 WindowStyle = ProcessWindowStyle.Hidden
             });
 
@@ -400,8 +401,8 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
             ["grant_type"] = "password",
             ["client_id"] = "testclient-public", // Seeded in ClientSeeder
             // Public clients don't use secrets for ROPC in our config
-            ["username"] = "admin@hybridauth.local", // Seeded in UserSeeder
-            ["password"] = "Admin@123",              // Seeded in UserSeeder
+            ["username"] = "admin@hybridauth.local",
+            ["password"] = "Admin@123",
             ["scope"] = "openid profile email"
         });
 
