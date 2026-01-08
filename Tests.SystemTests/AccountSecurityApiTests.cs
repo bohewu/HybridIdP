@@ -15,8 +15,8 @@ public class AccountSecurityApiTests : IClassFixture<WebIdPServerFixture>, IAsyn
     private readonly HttpClient _httpClient;
     private string? _userToken;
     
-    private const string TEST_USER_EMAIL = "admin@hybridauth.local";
-    private const string TEST_USER_PASSWORD = "Admin@123";
+    private const string TEST_USER_EMAIL = "accsec@hybridauth.local";
+    private const string TEST_USER_PASSWORD = "AccSec@123";
 
     public AccountSecurityApiTests(WebIdPServerFixture serverFixture)
     {

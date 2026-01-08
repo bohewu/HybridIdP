@@ -38,6 +38,7 @@ public static class UserSeeder
             await SeedUserinfoTestUserAsync(userManager, context);
             await SeedSecurityAttackTestUserAsync(userManager, context);
             await SeedPasskeyTestUserAsync(userManager, context);
+            await SeedAccountSecurityTestUserAsync(userManager, context);
         }
     }
 
@@ -1342,6 +1343,75 @@ public static class UserSeeder
         if (result.Succeeded)
         {
             await userManager.AddToRoleAsync(user, AuthConstants.Roles.User);
+            
+            // Update Person.CreatedBy
+            person.CreatedBy = user.Id;
+            person.IdentityVerifiedBy = user.Id;
+            await context.SaveChangesAsync();
+        }
+    }
+
+    private static async Task SeedAccountSecurityTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "accsec@hybridauth.local";
+        const string password = "AccSec@123";
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null)
+        {
+            await ResetUserAsync(userManager, context, existingUser, password);
+             // Ensure Admin role
+            if (!await userManager.IsInRoleAsync(existingUser, AuthConstants.Roles.Admin))
+            {
+                await userManager.AddToRoleAsync(existingUser, AuthConstants.Roles.Admin);
+            }
+            return;
+        }
+
+        var nationalIdHash = PidHasher.Hash("A777777777");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Account",
+                LastName = "Security",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Account",
+            LastName = "Security",
+            IsActive = true
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(user, AuthConstants.Roles.Admin);
             
             // Update Person.CreatedBy
             person.CreatedBy = user.Id;
