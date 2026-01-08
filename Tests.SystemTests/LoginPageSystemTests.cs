@@ -205,8 +205,8 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
     public async Task Login_WithMultipleFailedAttempts_ShouldLockout()
     {
         // This test uses a dedicated user to avoid affecting other tests
-        // Using testuser@hybridauth.local for lockout test
-        const string testEmail = "testuser@hybridauth.local";
+        // Using lockout@hybridauth.local for lockout test
+        const string testEmail = "lockout@hybridauth.local";
         const string wrongPassword = "WrongPassword!";
         
         // Arrange - Get initial token
@@ -317,9 +317,9 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
     [Fact]
     public async Task Login_AfterSessionRevoked_ShouldRequireReauth()
     {
-        // 1. Login as User (Use amr-nomfa to avoid stale MFA state issues)
+        // 1. Login as User (Use testuser@hybridauth.local which is now guaranteed to be clean in Seeder)
         var (token, _) = await GetLoginPageAsync();
-        var userFormData = CreateLoginForm("amr-nomfa@hybridauth.local", "Test@123", token);
+        var userFormData = CreateLoginForm("testuser@hybridauth.local", "Test@123", token);
         var loginResponse = await _httpClient.PostAsync("/Account/Login", userFormData);
         Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
         
@@ -343,7 +343,7 @@ public class LoginPageSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLi
         Assert.Equal(HttpStatusCode.Redirect, adminLoginResponse.StatusCode);
 
         // 3. Find User ID by email
-        var usersResponse = await adminClient.GetAsync("/api/admin/users?search=amr-nomfa@hybridauth.local");
+        var usersResponse = await adminClient.GetAsync("/api/admin/users?search=testuser@hybridauth.local");
         if (!usersResponse.IsSuccessStatusCode)
         {
             var body = await usersResponse.Content.ReadAsStringAsync();

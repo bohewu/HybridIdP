@@ -29,9 +29,11 @@ public static class UserSeeder
             await SeedInactiveUserAsync(userManager, context);
             await SeedInactivePersonUserAsync(userManager, context);
             await SeedAbnormalLoginTestUserAsync(userManager, context);
+            await SeedLockoutTestUserAsync(userManager, context);
             await SeedMfaEnforcementTestUserAsync(userManager, context);
             await SeedAmrNoMfaTestUserAsync(userManager, context);
             await SeedAmrMfaTestUserAsync(userManager, context);
+            await SeedPkceTestUserAsync(userManager, context);
         }
     }
 
@@ -146,6 +148,14 @@ public static class UserSeeder
                 await userManager.AddToRoleAsync(adminUser, AuthConstants.Roles.Admin);
             }
 
+            // Ensure MFA is disabled for testing (prevents stale state issues)
+            if (adminUser.TwoFactorEnabled || adminUser.EmailMfaEnabled)
+            {
+                adminUser.TwoFactorEnabled = false;
+                adminUser.EmailMfaEnabled = false;
+                await userManager.UpdateAsync(adminUser);
+            }
+
             // Ensure Locale is set for existing admin
             if (string.IsNullOrEmpty(adminUser.Locale))
             {
@@ -233,7 +243,17 @@ public static class UserSeeder
         var existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser != null)
         {
-            return; // User already exists
+            // Reset MFA and ensure roles even if exists
+            existingUser.TwoFactorEnabled = false;
+            existingUser.EmailMfaEnabled = false;
+            await userManager.UpdateAsync(existingUser);
+
+            if (!await userManager.IsInRoleAsync(existingUser, AuthConstants.Roles.Admin))
+                await userManager.AddToRoleAsync(existingUser, AuthConstants.Roles.Admin);
+            if (!await userManager.IsInRoleAsync(existingUser, AuthConstants.Roles.User))
+                await userManager.AddToRoleAsync(existingUser, AuthConstants.Roles.User);
+                
+            return;
         }
 
         // Check if Person already exists
@@ -291,6 +311,63 @@ public static class UserSeeder
         }
     }
 
+
+    private static async Task SeedLockoutTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "lockout@hybridauth.local";
+        const string password = "Lockout@123";
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null)
+        {
+            await ResetUserAsync(userManager, context, existingUser, password);
+            return;
+        }
+
+        var nationalIdHash = PidHasher.Hash("L999999999");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Lockout",
+                LastName = "Test",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Lockout",
+            LastName = "Test",
+            IsActive = true,
+            LockoutEnabled = true
+        };
+
+        await userManager.CreateAsync(user, password);
+    }
+
     private static async Task SeedStandardTestUserAsync(
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext context)
@@ -301,11 +378,7 @@ public static class UserSeeder
         var existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser != null)
         {
-            if (!existingUser.LockoutEnabled)
-            {
-                existingUser.LockoutEnabled = true;
-                await userManager.UpdateAsync(existingUser);
-            }
+            await ResetUserAsync(userManager, context, existingUser, password);
             return;
         }
 
@@ -777,7 +850,17 @@ public static class UserSeeder
         const string password = "Test@123";
 
         var existingUser = await userManager.FindByEmailAsync(email);
-        if (existingUser != null) return;
+        if (existingUser != null)
+        {
+            await ResetUserAsync(userManager, context, existingUser, password);
+            
+            // Ensure permissions
+            if (!await userManager.IsInRoleAsync(existingUser, AuthConstants.Roles.Admin))
+            {
+                await userManager.AddToRoleAsync(existingUser, AuthConstants.Roles.Admin);
+            }
+            return;
+        }
 
         var nationalIdHash = PidHasher.Hash("N000000001");
         var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
@@ -825,6 +908,7 @@ public static class UserSeeder
             person.CreatedBy = user.Id;
             person.IdentityVerifiedBy = user.Id;
             await context.SaveChangesAsync();
+            await userManager.AddToRoleAsync(user, AuthConstants.Roles.Admin);
         }
     }
 
@@ -893,5 +977,98 @@ public static class UserSeeder
             person.IdentityVerifiedBy = user.Id;
             await context.SaveChangesAsync();
         }
+    }
+
+    private static async Task ResetUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context,
+        ApplicationUser user,
+        string password,
+        bool mfaEnabled = false)
+    {
+        user.IsActive = true;
+        user.TwoFactorEnabled = mfaEnabled;
+        user.EmailMfaEnabled = false;
+        user.LockoutEnabled = true;
+
+        await userManager.UpdateAsync(user);
+        
+        // Reset Password
+        if (await userManager.HasPasswordAsync(user))
+        {
+            await userManager.RemovePasswordAsync(user);
+        }
+        await userManager.AddPasswordAsync(user, password);
+
+        // Reset Lockout
+        await userManager.SetLockoutEndDateAsync(user, null);
+        await userManager.ResetAccessFailedCountAsync(user);
+
+        // Reset Person Status
+        if (user.PersonId.HasValue)
+        {
+            var person = await context.Persons.FindAsync(user.PersonId.Value);
+            if (person != null)
+            {
+                person.Status = PersonStatus.Active;
+                if (!person.StartDate.HasValue) person.StartDate = DateTime.UtcNow;
+                await context.SaveChangesAsync();
+            }
+        }
+    }
+
+    private static async Task SeedPkceTestUserAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationDbContext context)
+    {
+        const string email = "pkce@hybridauth.local";
+        const string password = "Pkce@123";
+
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null)
+        {
+            await ResetUserAsync(userManager, context, existingUser, password);
+            return;
+        }
+
+        var nationalIdHash = PidHasher.Hash("P888888888");
+        var existingPerson = await context.Persons.FirstOrDefaultAsync(p => p.NationalId == nationalIdHash);
+        
+        Person person;
+        if (existingPerson != null)
+        {
+            person = existingPerson;
+        }
+        else
+        {
+            person = new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Pkce",
+                LastName = "Test",
+                Email = email,
+                NationalId = nationalIdHash,
+                IdentityDocumentType = IdentityDocumentTypes.NationalId,
+                IdentityVerifiedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                Status = PersonStatus.Active,
+                StartDate = DateTime.UtcNow
+            };
+            context.Persons.Add(person);
+            await context.SaveChangesAsync();
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            FirstName = "Pkce",
+            LastName = "Test",
+            IsActive = true
+        };
+
+        await userManager.CreateAsync(user, password);
     }
 }

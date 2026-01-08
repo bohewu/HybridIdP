@@ -17,7 +17,7 @@ public class PkceSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
     private readonly CookieContainer _cookieContainer;
 
     private const string ClientId = "testclient-public";
-    private const string RedirectUri = "https://localhost:7001/signin-oidc";
+    private string RedirectUri => _serverFixture.BaseUrl + "/signin-oidc";
     private const string DefaultScopes = "openid profile email";
 
     public PkceSecurityTests(WebIdPServerFixture serverFixture)
@@ -216,8 +216,8 @@ public class PkceSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
 
         var formData = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("Input.Login", "multitest@hybridauth.local"),
-            new KeyValuePair<string, string>("Input.Password", "MultiTest@123"),
+            new KeyValuePair<string, string>("Input.Login", "pkce@hybridauth.local"),
+            new KeyValuePair<string, string>("Input.Password", "Pkce@123"),
             new KeyValuePair<string, string>("__RequestVerificationToken", token)
         });
 
