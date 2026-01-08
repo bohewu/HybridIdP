@@ -19,8 +19,8 @@ public class PasskeyApiTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
     private string? _userToken;
     
     // Use seeded test user
-    private const string TEST_USER_EMAIL = "admin@hybridauth.local";
-    private const string TEST_USER_PASSWORD = "Admin@123";
+    private const string TEST_USER_EMAIL = "passkey@hybridauth.local";
+    private const string TEST_USER_PASSWORD = "Passkey@123";
 
     public PasskeyApiTests(WebIdPServerFixture serverFixture)
     {
