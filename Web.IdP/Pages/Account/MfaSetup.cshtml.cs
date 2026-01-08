@@ -7,6 +7,7 @@ using Core.Domain;
 using Core.Application;
 using Core.Application.Interfaces;
 using System.ComponentModel.DataAnnotations;
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Pages.Account;
 
@@ -105,7 +106,7 @@ public class MfaSetupModel : PageModel
 
         // Sign in user temporarily since they skipped MFA for now (within grace period)
         await _signInManager.SignInAsync(user, isPersistent: false);
-        return LocalRedirect(ReturnUrl ?? Url.Content("~/"));
+        return this.SafeRedirect(ReturnUrl, "~/");
     }
 
     private async Task<ApplicationUser?> GetTwoFactorUserAsync()

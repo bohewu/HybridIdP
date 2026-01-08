@@ -11,6 +11,7 @@ using Core.Application.Options; // Added
 using Core.Domain.Constants; // Added
 
 using Microsoft.Extensions.Localization; // Added
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Pages.Account;
 
@@ -108,7 +109,7 @@ public class RegisterModel : PageModel
         // Redirect if already logged in
         if (User.Identity?.IsAuthenticated == true)
         {
-            return LocalRedirect(returnUrl ?? Url.Content("~/"));
+            return this.SafeRedirect(returnUrl, "~/");
         }
         
         // Load Security Policy
@@ -227,7 +228,7 @@ public class RegisterModel : PageModel
                 // Automatically sign in the user after registration
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 
-                return LocalRedirect(returnUrl);
+                return this.SafeRedirect(returnUrl);
             }
 
             foreach (var error in result.Errors)

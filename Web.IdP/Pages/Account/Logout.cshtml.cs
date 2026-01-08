@@ -2,6 +2,7 @@ using Core.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Pages.Account;
 
@@ -41,7 +42,7 @@ public class LogoutModel : PageModel
 
         if (returnUrl != null)
         {
-            return LocalRedirect(returnUrl);
+            return this.SafeRedirect(returnUrl);
         }
         else
         {

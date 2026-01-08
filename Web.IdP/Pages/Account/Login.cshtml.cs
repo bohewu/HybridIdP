@@ -15,6 +15,7 @@ using Microsoft.Extensions.Options; // Added
 using Microsoft.AspNetCore.RateLimiting;
 using Core.Application.Interfaces;
 using System.Text.Json;
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Pages.Account;
 
@@ -120,7 +121,7 @@ public partial class LoginModel : PageModel
         // If user is already authenticated, redirect away from login page
         if (User.Identity?.IsAuthenticated == true)
         {
-            return LocalRedirect(returnUrl ?? Url.Content("~/"));
+            return this.SafeRedirect(returnUrl, "~/");
         }
         
         if (!string.IsNullOrEmpty(returnUrl))
@@ -314,7 +315,7 @@ public partial class LoginModel : PageModel
                             
                             // Note: SignInAsync below merges these claims into the principal
                             await _signInManager.SignInWithClaimsAsync(result.User, Input.RememberMe, claims);
-                            return LocalRedirect(returnUrl);
+                            return this.SafeRedirect(returnUrl);
                         }
                     }
                 }
@@ -355,7 +356,7 @@ public partial class LoginModel : PageModel
 
                 // Always redirect to returnUrl (default is ~/ index page)
                 // Users will navigate to Admin/ApplicationManager portals via menu
-                return LocalRedirect(returnUrl);
+                return this.SafeRedirect(returnUrl);
 
 
             case LoginStatus.LockedOut:
