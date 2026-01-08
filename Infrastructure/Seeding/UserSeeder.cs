@@ -55,7 +55,8 @@ public static class UserSeeder
                 IdentityVerifiedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
                 Status = PersonStatus.Active,
-                StartDate = DateTime.UtcNow
+                StartDate = DateTime.UtcNow,
+                EmployeeId = "A1001" // Assign EmployeeId for testing ncut_id claim
             };
             
             context.Persons.Add(adminPerson);

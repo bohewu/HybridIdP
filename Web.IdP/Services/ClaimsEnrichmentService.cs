@@ -85,7 +85,8 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
             if (def == null) continue;
 
             var value = ResolveUserProperty(user, def.UserPropertyPath);
-            _logger.LogDebug("Resolving claim {ClaimType} from path {Path}. Value: {Value}", def.ClaimType, def.UserPropertyPath, value);
+            // Log only which claim is being resolved, not the value
+            _logger.LogDebug("Resolving claim {ClaimType} from path {Path}.", def.ClaimType, def.UserPropertyPath);
 
             if (string.IsNullOrEmpty(value) && !map.AlwaysInclude)
             {

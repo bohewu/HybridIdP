@@ -284,8 +284,9 @@ namespace Web.IdP.Services
                 }
 
                 identity.AddClaim(new Claim(Claims.AuthenticationMethodReference, AuthConstants.Amr.Password));
-                identity.AddClaim(new Claim(Claims.AuthenticationMethodReference, "mfa"));
-                identity.AddClaim(new Claim("test_claim", "works"));
+                // MFA claim should only be added if MFA was actually performed. 
+                // For ROPC, it's usually just password unless we implement step-up.
+                
                 identity.SetDestinations(GetDestinations);
 
                 claimsPrincipal = new ClaimsPrincipal(identity);
