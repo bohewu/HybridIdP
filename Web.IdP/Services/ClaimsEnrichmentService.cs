@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Web.IdP.Services; // For IScopeService if needed, or simply the namespace
 using Core.Application; // For IApplicationDbContext
+using Microsoft.Extensions.Logging;
 
 namespace Web.IdP.Services;
 
@@ -14,15 +15,18 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly IApplicationDbContext _db;
+    private readonly ILogger<ClaimsEnrichmentService> _logger;
 
     public ClaimsEnrichmentService(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        IApplicationDbContext db)
+        IApplicationDbContext db,
+        ILogger<ClaimsEnrichmentService> logger)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _db = db;
+        _logger = logger;
     }
 
     public async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user)
@@ -65,12 +69,15 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
             return;
         }
 
-        var scopeNames = requestedScopes.ToArray().AsEnumerable();
+        var scopeNames = requestedScopes.ToArray(); // Materialize once
+        _logger.LogInformation("Enriching claims for user {UserId} with scopes: {Scopes}", user.Id, string.Join(", ", scopeNames));
         
         var mappings = await _db.ScopeClaims
             .Include(sc => sc.UserClaim)
             .Where(sc => scopeNames.Contains(sc.ScopeName))
             .ToListAsync();
+
+        _logger.LogDebug("Found {Count} scope mappings for requested scopes.", mappings.Count);
 
         foreach (var map in mappings)
         {
@@ -78,14 +85,17 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
             if (def == null) continue;
 
             var value = ResolveUserProperty(user, def.UserPropertyPath);
+            _logger.LogDebug("Resolving claim {ClaimType} from path {Path}. Value: {Value}", def.ClaimType, def.UserPropertyPath, value);
 
             if (string.IsNullOrEmpty(value) && !map.AlwaysInclude)
             {
+                _logger.LogDebug("Skipping empty claim {ClaimType} (AlwaysInclude=false)", def.ClaimType);
                 continue;
             }
 
             if (identity.HasClaim(c => c.Type == def.ClaimType))
             {
+                _logger.LogDebug("Claim {ClaimType} already exists in identity. Skipping.", def.ClaimType);
                 continue;
             }
 
