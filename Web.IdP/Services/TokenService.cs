@@ -445,7 +445,11 @@ namespace Web.IdP.Services
                     yield break;
 
                 default:
+                    // Include custom/dynamic claims in both tokens by default
+                    // This allows dynamically added claims (e.g., employeeId) to be
+                    // available to clients without hardcoding each claim type
                     yield return Destinations.AccessToken;
+                    yield return Destinations.IdentityToken;
                     yield break;
             }
         }
