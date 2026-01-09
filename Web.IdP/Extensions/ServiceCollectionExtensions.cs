@@ -274,23 +274,23 @@ public static class ServiceCollectionExtensions
                 options.SaveTokens = true;
 
                 // 2026-01-09: Force account selection & Hosted Domain support
-                var authEndpoint = options.AuthorizationEndpoint;
-                var queryParams = new List<string>();
-
-                if (externalLoginOptions.ForceAccountSelection)
+                options.Events.OnRedirectToAuthorizationEndpoint = context =>
                 {
-                    queryParams.Add("prompt=select_account");
-                }
+                    var uri = context.RedirectUri;
+                    
+                    if (externalLoginOptions.ForceAccountSelection)
+                    {
+                        uri = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(uri, "prompt", "select_account");
+                    }
 
-                if (!string.IsNullOrEmpty(externalLoginOptions.Google.HostedDomain))
-                {
-                    queryParams.Add("hd=" + externalLoginOptions.Google.HostedDomain);
-                }
+                    if (!string.IsNullOrEmpty(externalLoginOptions.Google.HostedDomain))
+                    {
+                        uri = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(uri, "hd", externalLoginOptions.Google.HostedDomain);
+                    }
 
-                if (queryParams.Any())
-                {
-                    options.AuthorizationEndpoint = authEndpoint + "?" + string.Join("&", queryParams);
-                }
+                    context.Response.Redirect(uri);
+                    return Task.CompletedTask;
+                };
             });
         }
 
@@ -303,10 +303,17 @@ public static class ServiceCollectionExtensions
                 options.SaveTokens = true;
 
                 // 2026-01-09: Force account selection for Microsoft
-                if (externalLoginOptions.ForceAccountSelection)
+                // 2026-01-09: Force account selection for Microsoft
+                options.Events.OnRedirectToAuthorizationEndpoint = context =>
                 {
-                    options.AuthorizationEndpoint += "?prompt=select_account";
-                }
+                    var uri = context.RedirectUri;
+                    if (externalLoginOptions.ForceAccountSelection)
+                    {
+                        uri = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(uri, "prompt", "select_account");
+                    }
+                    context.Response.Redirect(uri);
+                    return Task.CompletedTask;
+                };
             });
         }
 
