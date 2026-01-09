@@ -83,7 +83,9 @@ public class ProfileManagementController : ControllerBase
             TwoFactorEnabled = user.TwoFactorEnabled,
             EmailMfaEnabled = user.EmailMfaEnabled,
             PasskeyEnabled = (await _passkeyService.GetUserPasskeysAsync(user.Id)).Count > 0,
-            ExternalLogins = externalLogins.Select(l => new ExternalLoginDto
+            ExternalLogins = externalLogins
+                .Where(l => l.LoginProvider != "Legacy") // Hide legacy provider from UI
+                .Select(l => new ExternalLoginDto
             {
                 LoginProvider = l.LoginProvider,
                 ProviderKey = l.ProviderKey,

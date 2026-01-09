@@ -155,7 +155,7 @@ const canRemove = computed(() => {
 })
 
 const removeLogin = async (login) => {
-  if (!confirm(t('profile.removeLoginConfirm') || `Are you sure you want to remove ${login.providerDisplayName}?`)) {
+  if (!confirm(t('profile.common.removeLoginConfirm', { provider: login.providerDisplayName || login.loginProvider }) || `Are you sure you want to remove ${login.providerDisplayName}?`)) {
     return
   }
 

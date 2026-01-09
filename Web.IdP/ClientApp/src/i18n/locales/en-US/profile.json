@@ -70,7 +70,9 @@
     "errorOccurred": "An error occurred",
     "networkError": "Network error. Please try again.",
     "reloadForLocale": "Language settings changed. Reload the page to apply changes?",
-    "remove": "Remove"
+    "remove": "Remove",
+    "removeLoginConfirm": "Are you sure you want to remove {provider}?",
+    "removeLoginFailed": "Failed to remove login"
   },
   "security": {
     "title": "Security Status",
