@@ -272,6 +272,25 @@ public static class ServiceCollectionExtensions
                 options.ClientId = externalLoginOptions.Google.ClientId;
                 options.ClientSecret = externalLoginOptions.Google.ClientSecret;
                 options.SaveTokens = true;
+
+                // 2026-01-09: Force account selection & Hosted Domain support
+                var authEndpoint = options.AuthorizationEndpoint;
+                var queryParams = new List<string>();
+
+                if (externalLoginOptions.Google.ForceAccountSelection)
+                {
+                    queryParams.Add("prompt=select_account");
+                }
+
+                if (!string.IsNullOrEmpty(externalLoginOptions.Google.HostedDomain))
+                {
+                    queryParams.Add("hd=" + externalLoginOptions.Google.HostedDomain);
+                }
+
+                if (queryParams.Any())
+                {
+                    options.AuthorizationEndpoint = authEndpoint + "?" + string.Join("&", queryParams);
+                }
             });
         }
 
@@ -282,6 +301,12 @@ public static class ServiceCollectionExtensions
                 options.ClientId = externalLoginOptions.Microsoft.ClientId;
                 options.ClientSecret = externalLoginOptions.Microsoft.ClientSecret;
                 options.SaveTokens = true;
+
+                // 2026-01-09: Force account selection for Microsoft
+                if (externalLoginOptions.Microsoft.ForceAccountSelection)
+                {
+                    options.AuthorizationEndpoint += "?prompt=select_account";
+                }
             });
         }
 
