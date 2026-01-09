@@ -42,6 +42,8 @@ Powered by **OpenIddict**:
 - **Impersonation**: Secure "Login As" feature for administrative support.
 - **Observability**: Prometheus metrics and structured audit logging.
 - **Bot Protection**: Integrated Cloudflare Turnstile support.
+- **External Identity**: Seamless integration with Google & Microsoft accounts, including auto-linking and AMR support.
+- **Branding**: Customizable UI with configurable Privacy Policy and Help documentation links.
 
 ---
 
