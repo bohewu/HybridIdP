@@ -23,4 +23,17 @@ public class ProviderOptions
     public bool Enabled { get; set; } = false;
     public string ClientId { get; set; } = string.Empty;
     public string ClientSecret { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Google specific: Restrict sign-in to a specific Google Workspace domain (e.g. "company.com").
+    /// Adds 'hd' parameter to authorization request.
+    /// </summary>
+    public string? HostedDomain { get; set; }
+
+    /// <summary>
+    /// Force the account chooser to appear on every login.
+    /// Adds 'prompt=select_account' to authorization request.
+    /// Recommended to prevent users from getting stuck with a wrong default account.
+    /// </summary>
+    public bool ForceAccountSelection { get; set; } = true;
 }
