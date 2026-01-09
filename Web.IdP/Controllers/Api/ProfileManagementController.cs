@@ -13,6 +13,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Core.Application.Interfaces;
+using Web.IdP.Options; // Added
 
 namespace Web.IdP.Controllers.Api;
 
@@ -32,6 +33,7 @@ public class ProfileManagementController : ControllerBase
     private readonly IPasskeyService _passkeyService;
     private readonly IAuditService _auditService;
     private readonly ILogger<ProfileManagementController> _logger;
+    private readonly ExternalLoginOptions _externalLoginOptions; // Added
 
     public ProfileManagementController(
         UserManager<ApplicationUser> userManager,
@@ -40,7 +42,8 @@ public class ProfileManagementController : ControllerBase
         ISecurityPolicyService securityPolicyService,
         IPasskeyService passkeyService,
         IAuditService auditService,
-        ILogger<ProfileManagementController> logger)
+        ILogger<ProfileManagementController> logger,
+        IOptions<ExternalLoginOptions> externalLoginOptions) // Added
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -49,6 +52,7 @@ public class ProfileManagementController : ControllerBase
         _passkeyService = passkeyService;
         _auditService = auditService;
         _logger = logger;
+        _externalLoginOptions = externalLoginOptions.Value;
     }
 
     /// <summary>
@@ -72,9 +76,28 @@ public class ProfileManagementController : ControllerBase
         var allSchemes = await _signInManager.GetExternalAuthenticationSchemesAsync();
         var linkedProviders = externalLogins.Select(l => l.LoginProvider).ToHashSet();
         
+        // Count existing logins per provider
+        var loginCountPerProvider = externalLogins
+            .GroupBy(l => l.LoginProvider)
+            .ToDictionary(g => g.Key, g => g.Count());
+        
         var availableProviders = allSchemes
             .Where(s => s.Name != Core.Domain.Constants.AuthConstants.Providers.Legacy) // Exclude Legacy
-            .Where(s => !linkedProviders.Contains(s.Name)) // Exclude already linked
+            .Where(s => 
+            {
+                // If MaxLoginsPerProvider is 0, allow unlimited
+                if (_externalLoginOptions.MaxLoginsPerProvider == 0)
+                    return true;
+                
+                // Check if this provider has reached the limit
+                if (loginCountPerProvider.TryGetValue(s.Name, out var count))
+                {
+                    return count < _externalLoginOptions.MaxLoginsPerProvider;
+                }
+                
+                // Provider not yet linked, allow it
+                return true;
+            })
             .Select(s => new AvailableProviderDto 
             {
                 Scheme = s.Name,

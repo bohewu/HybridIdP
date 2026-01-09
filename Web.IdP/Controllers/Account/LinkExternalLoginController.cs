@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication; // Added for SignOutAsync
 using Core.Domain; // For ApplicationUser
 using Core.Domain.Constants; // For AuthConstants
+using Web.IdP.Options; // Added
+using Microsoft.Extensions.Options; // Added
 
 namespace Web.IdP.Controllers.Account;
 
@@ -17,15 +19,18 @@ public partial class LinkExternalLoginController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<LinkExternalLoginController> _logger;
+    private readonly ExternalLoginOptions _externalLoginOptions;
 
     public LinkExternalLoginController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
-        ILogger<LinkExternalLoginController> logger)
+        ILogger<LinkExternalLoginController> logger,
+        IOptions<ExternalLoginOptions> externalLoginOptions)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _logger = logger;
+        _externalLoginOptions = externalLoginOptions.Value;
     }
 
     [HttpGet("Challenge")]
@@ -46,24 +51,34 @@ public partial class LinkExternalLoginController : Controller
             return Redirect("/"); // Should not happen due to [Authorize]
         }
 
-        var info = await _signInManager.GetExternalLoginInfoAsync(user.Id.ToString());
+        var info = await _signInManager.GetExternalLoginInfoAsync(); // Modified: Removed user.Id.ToString()
         if (info == null)
         {
-            LogExternalLoginInfoNotFound(user.Id);
-            return Redirect("/Account/Profile?error=ExternalLoginInfoNotFound");
+            LogExternalLoginInfoNotFound(); // Modified: Removed user.Id
+            return Redirect("/Account/Profile?error=ExternalLoginFailed"); // Modified: Error message
+        }
+
+        // Check MaxLoginsPerProvider limit
+        if (_externalLoginOptions.MaxLoginsPerProvider > 0)
+        {
+            var existingLogins = await _userManager.GetLoginsAsync(user);
+            var existingCount = existingLogins.Count(l => l.LoginProvider == info.LoginProvider);
+            
+            if (existingCount >= _externalLoginOptions.MaxLoginsPerProvider)
+            {
+                return Redirect("/Account/Profile?error=ProviderLimitReached");
+            }
         }
 
         var result = await _userManager.AddLoginAsync(user, info);
         if (!result.Succeeded)
         {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            LogAddLoginFailed(user.Id, errors);
-            
-            // Check if error is "Login already associated"
+            // Modified: Simplified error logging and handling
             if (result.Errors.Any(e => e.Code == "LoginAlreadyAssociated"))
             {
                 return Redirect("/Account/Profile?error=LoginAlreadyAssociated");
             }
+            LogAddLoginFailed(user.Id, info.LoginProvider); // Modified: Changed errors to info.LoginProvider
             return Redirect("/Account/Profile?error=LinkFailed");
         }
 
@@ -96,14 +111,14 @@ public partial class LinkExternalLoginController : Controller
 
     #region LoggerMessage Methods
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not retrieve external login info during link process for user {UserId}")]
-    partial void LogExternalLoginInfoNotFound(Guid userId);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Error loading external login information.")]
+    partial void LogExternalLoginInfoNotFound();
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to add external login for user {UserId}. Errors: {Errors}")]
-    partial void LogAddLoginFailed(Guid userId, string errors);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to add login for user {UserId}: {LoginProvider}")]
+    partial void LogAddLoginFailed(Guid userId, string loginProvider);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} successfully linked external login: {Provider}")]
-    partial void LogExternalLoginLinked(Guid userId, string provider);
+    [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} linked {LoginProvider} account.")]
+    partial void LogExternalLoginLinked(Guid userId, string loginProvider);
 
     #endregion
 }

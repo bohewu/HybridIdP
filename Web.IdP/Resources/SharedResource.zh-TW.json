@@ -193,5 +193,6 @@
   "Login.ExternalProvider.Google": "使用 Google 登入",
   "Login.ExternalProvider.Microsoft": "使用 Microsoft 登入",
   "Login.ExternalProvider.GitHub": "使用 GitHub 登入",
-  "InvalidCredentials": "憑證無效."
+  "InvalidCredentials": "憑證無效.",
+  "ProviderLimitReached": "您已達到此提供者的帳戶數量上限。"
 }

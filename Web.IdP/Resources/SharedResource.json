@@ -193,5 +193,6 @@
   "Login.ExternalProvider.Google": "Sign in with Google",
   "Login.ExternalProvider.Microsoft": "Sign in with Microsoft",
   "Login.ExternalProvider.GitHub": "Sign in with GitHub",
-  "InvalidCredentials": "Invalid credentials."
+  "InvalidCredentials": "Invalid credentials.",
+  "ProviderLimitReached": "You have reached the maximum number of accounts for this provider."
 }
