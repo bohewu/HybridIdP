@@ -196,5 +196,7 @@
   "Login.ExternalProvider.Microsoft": "使用 Microsoft 登入",
   "Login.ExternalProvider.GitHub": "使用 GitHub 登入",
   "InvalidCredentials": "憑證無效.",
-  "ProviderLimitReached": "您已達到此提供者的帳戶數量上限。"
+  "ProviderLimitReached": "您已達到此提供者的帳戶數量上限。",
+  "ExternalLoginFailure": "外部登入失敗。",
+  "ExternalLoginFailure_CorrelationFailed": "外部登入驗證逾時或 Cookie 遺失，請重新嘗試。"
 }
