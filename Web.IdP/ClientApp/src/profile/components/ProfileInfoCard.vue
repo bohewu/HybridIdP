@@ -121,7 +121,7 @@
           <button 
             @click="removeLogin(login)" 
             :disabled="removingLogins[login.providerKey]"
-            class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 active:bg-red-200 border border-red-200 rounded-md transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 active:bg-red-200 border border-red-200 rounded-md transition-colors focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             :title="t('profile.common.remove')"
           >
             <svg v-if="!removingLogins[login.providerKey]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -138,7 +138,7 @@
           <button 
             @click="removeLogin(login)" 
             :disabled="removingLogins[login.providerKey]"
-            class="sm:hidden p-2 text-gray-400 hover:text-red-500 active:bg-red-100 transition-colors rounded-full hover:bg-red-50 focus:outline-none"
+            class="sm:hidden p-2 text-gray-400 hover:text-red-500 active:bg-red-100 transition-colors rounded-full hover:bg-red-50 focus:outline-none cursor-pointer"
             :title="t('profile.common.remove')"
           >
              <svg v-if="!removingLogins[login.providerKey]" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -150,6 +150,33 @@
             </svg>
           </button>
         </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Available Providers (Link new account) -->
+  <div v-if="profile.availableProviders && profile.availableProviders.length > 0" class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6" data-testid="available-providers">
+    <div class="px-4 py-5 sm:px-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">{{ t('profile.common.addAccount') }}</h3>
+    </div>
+    <div class="border-t border-gray-200">
+      <ul class="divide-y divide-gray-200">
+        <li v-for="provider in profile.availableProviders" :key="provider.scheme" class="px-4 py-4 sm:px-6 flex items-center justify-between">
+          <div class="flex items-center">
+             <svg class="w-5 h-5 text-gray-400 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span class="text-sm text-gray-900">{{ provider.displayName }}</span>
+          </div>
+          <a :href="`/Account/LinkExternalLogin/Challenge?provider=${provider.scheme}`"
+             class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border border-blue-200 rounded-md transition-colors focus:outline-none cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <span>{{ t('profile.common.linkAccount', { provider: provider.displayName }) }}</span>
+          </a>
         </li>
       </ul>
     </div>

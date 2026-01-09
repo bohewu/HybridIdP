@@ -73,6 +73,8 @@
     "remove": "移除",
     "removeLoginConfirm": "確定要移除 {provider} 嗎？",
     "removeLoginFailed": "移除登入失敗",
+    "linkAccount": "連結 {provider}",
+    "addAccount": "新增外部帳戶",
     "errors": {
       "loginAlreadyAssociated": "此外部登入已與其他帳戶關聯。",
       "linkFailed": "無法連結外部登入。",

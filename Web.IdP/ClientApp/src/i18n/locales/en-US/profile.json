@@ -71,8 +71,9 @@
     "networkError": "Network error. Please try again.",
     "reloadForLocale": "Language settings changed. Reload the page to apply changes?",
     "remove": "Remove",
-    "removeLoginConfirm": "Are you sure you want to remove {provider}?",
     "removeLoginFailed": "Failed to remove login",
+    "linkAccount": "Link {provider}",
+    "addAccount": "Add External Account",
     "errors": {
       "loginAlreadyAssociated": "The external login is already associated with an account.",
       "linkFailed": "Failed to link the external login.",

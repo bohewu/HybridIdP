@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options; // Added
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
@@ -67,6 +68,20 @@ public class ProfileManagementController : ControllerBase
         var hasLocalPassword = await _userManager.HasPasswordAsync(user);
         var externalLogins = await _userManager.GetLoginsAsync(user);
 
+        // Determine available providers for linking
+        var allSchemes = await _signInManager.GetExternalAuthenticationSchemesAsync();
+        var linkedProviders = externalLogins.Select(l => l.LoginProvider).ToHashSet();
+        
+        var availableProviders = allSchemes
+            .Where(s => s.Name != Core.Domain.Constants.AuthConstants.Providers.Legacy) // Exclude Legacy
+            .Where(s => !linkedProviders.Contains(s.Name)) // Exclude already linked
+            .Select(s => new AvailableProviderDto 
+            {
+                Scheme = s.Name,
+                DisplayName = s.DisplayName ?? s.Name
+            })
+            .ToList();
+
         var dto = new ProfileDto
         {
             UserId = user.Id,
@@ -86,11 +101,12 @@ public class ProfileManagementController : ControllerBase
             ExternalLogins = externalLogins
                 .Where(l => l.LoginProvider != Core.Domain.Constants.AuthConstants.Providers.Legacy) // Hide legacy provider from UI
                 .Select(l => new ExternalLoginDto
-            {
-                LoginProvider = l.LoginProvider,
-                ProviderKey = l.ProviderKey,
-                ProviderDisplayName = l.ProviderDisplayName
-            }).ToList()
+                {
+                    LoginProvider = l.LoginProvider,
+                    ProviderKey = l.ProviderKey,
+                    ProviderDisplayName = l.ProviderDisplayName
+                }).ToList(),
+            AvailableProviders = availableProviders
         };
 
         // Load linked Person if exists

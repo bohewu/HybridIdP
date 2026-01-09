@@ -53,11 +53,12 @@ import ProfileInfoCard from './components/ProfileInfoCard.vue'
 import EditProfileForm from './components/EditProfileForm.vue'
 import ChangePasswordForm from './components/ChangePasswordForm.vue'
 import MfaSettings from '../components/account/MfaSettings.vue'
+import i18n from '../i18n'
 
-const { t } = useI18n()
-const loading = ref(true)
 const profile = ref(null)
+const loading = ref(true)
 const csrfToken = ref('')
+const { t } = useI18n()
 
 onMounted(() => {
   // Read CSRF token from data attribute
@@ -72,16 +73,31 @@ onMounted(() => {
   const success = urlParams.get('success')
 
   if (error) {
+    console.log('[Profile] Error param:', error)
+    console.log('[Profile] i18n locale:', i18n.global.locale.value)
+    console.log('[Profile] Available messages:', Object.keys(i18n.global.messages.value[i18n.global.locale.value]))
+    console.log('[Profile] Profile module:', i18n.global.messages.value[i18n.global.locale.value].profile)
+    console.log('[Profile] Profile.common keys:', i18n.global.messages.value[i18n.global.locale.value].profile?.common ? Object.keys(i18n.global.messages.value[i18n.global.locale.value].profile.common) : 'N/A')
+    
     if (error === 'LoginAlreadyAssociated') {
-      alert(t('profile.errors.loginAlreadyAssociated') || 'This account is already linked to another user.')
+      const msg = t('profile.common.errors.loginAlreadyAssociated')
+      console.log('[Profile] Resolved message:', msg)
+      alert(msg || 'This account is already linked to another user.')
     } else if (error === 'LinkFailed') {
-      alert(t('profile.errors.linkFailed') || 'Failed to link account.')
+      const msg = t('profile.common.errors.linkFailed')
+      console.log('[Profile] Resolved message:', msg)
+      alert(msg || 'Failed to link account.')
     } else {
-      alert(t('profile.errors.unknown') || 'An error occurred.')
+      const msg = t('profile.common.errors.unknown')
+      console.log('[Profile] Resolved message:', msg)
+      alert(msg || 'An error occurred.')
     }
   } else if (success) {
+    console.log('[Profile] Success param:', success)
     if (success === 'LinkAdded') {
-      alert(t('profile.success.linkAdded') || 'Account linked successfully.')
+      const msg = t('profile.common.success.linkAdded')
+      console.log('[Profile] Resolved message:', msg)
+      alert(msg || 'Account linked successfully.')
     }
   }
 

@@ -24,6 +24,9 @@ public class ProfileDto
     // External logins (read-only)
     public List<ExternalLoginDto> ExternalLogins { get; set; } = new();
     
+    // Providers available for linking
+    public List<AvailableProviderDto> AvailableProviders { get; set; } = new();
+    
     // Password management flags
     public bool HasLocalPassword { get; set; }  // False for external login accounts
     public bool AllowPasswordChange { get; set; }  // Based on SecurityPolicy
@@ -61,4 +64,13 @@ public class ExternalLoginDto
     public string LoginProvider { get; set; } = string.Empty;
     public string ProviderKey { get; set; } = string.Empty;
     public string? ProviderDisplayName { get; set; }
+}
+
+/// <summary>
+/// DTO for available external providers that can be linked
+/// </summary>
+public class AvailableProviderDto
+{
+    public string Scheme { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
 }

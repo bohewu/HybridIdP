@@ -49,7 +49,7 @@ public class LinkExternalLoginController : Controller
         if (info == null)
         {
             _logger.LogWarning("Could not retrieve external login info during link process for user {UserId}", user.Id);
-            return Redirect("/profile?error=ExternalLoginInfoNotFound");
+            return Redirect("/Account/Profile?error=ExternalLoginInfoNotFound");
         }
 
         var result = await _userManager.AddLoginAsync(user, info);
@@ -59,14 +59,14 @@ public class LinkExternalLoginController : Controller
             // Check if error is "Login already associated"
             if (result.Errors.Any(e => e.Code == "LoginAlreadyAssociated"))
             {
-                return Redirect("/profile?error=LoginAlreadyAssociated");
+                return Redirect("/Account/Profile?error=LoginAlreadyAssociated");
             }
-            return Redirect("/profile?error=LinkFailed");
+            return Redirect("/Account/Profile?error=LinkFailed");
         }
 
         // Clear the external authentication cookie to ensure a clean state
         await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
-        return Redirect("/profile?success=LinkAdded");
+        return Redirect("/Account/Profile?success=LinkAdded");
     }
 }
