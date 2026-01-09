@@ -24,6 +24,7 @@ namespace Tests.Web.IdP.UnitTests.Controllers;
 public class ProfileManagementControllerTests : IDisposable
 {
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
+    private readonly Mock<SignInManager<ApplicationUser>> _mockSignInManager;
     private readonly ApplicationDbContext _dbContext;
     private readonly Mock<ISecurityPolicyService> _mockSecurityPolicyService;
     private readonly Mock<IPasskeyService> _mockPasskeyService;
@@ -45,6 +46,13 @@ public class ProfileManagementControllerTests : IDisposable
         _mockUserManager = new Mock<UserManager<ApplicationUser>>(
             userStoreMock.Object, null, null, null, null, null, null, null, null);
 
+        // Mock SignInManager
+        var contextAccessor = new Mock<IHttpContextAccessor>();
+        var claimsFactory = new Mock<IUserClaimsPrincipalFactory<ApplicationUser>>();
+        _mockSignInManager = new Mock<SignInManager<ApplicationUser>>(
+            _mockUserManager.Object, contextAccessor.Object, claimsFactory.Object,
+            null, null, null, null);
+
         // Mock other services
         _mockSecurityPolicyService = new Mock<ISecurityPolicyService>();
         _mockPasskeyService = new Mock<IPasskeyService>();
@@ -65,6 +73,7 @@ public class ProfileManagementControllerTests : IDisposable
         // Setup controller with mocked User context
         _controller = new ProfileManagementController(
             _mockUserManager.Object,
+            _mockSignInManager.Object,
             _dbContext,
             _mockSecurityPolicyService.Object,
             _mockPasskeyService.Object,
@@ -198,6 +207,49 @@ public class ProfileManagementControllerTests : IDisposable
         Assert.False(profile.HasLocalPassword);
         Assert.False(profile.AllowPasswordChange); // Even though policy allows, no local password
         Assert.Single(profile.ExternalLogins);
+    }
+
+    [Fact]
+    public async Task GetProfile_WithExternalLogin_ReturnsAvailableProviders()
+    {
+        // Arrange
+        _mockUserManager.Setup(m => m.GetUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(_testUser);
+        _mockUserManager.Setup(m => m.HasPasswordAsync(_testUser))
+            .ReturnsAsync(false);
+        _mockUserManager.Setup(m => m.GetLoginsAsync(_testUser))
+            .ReturnsAsync(new List<UserLoginInfo>
+            {
+                new UserLoginInfo("Google", "google-id", "Google")
+            });
+
+        // Mock available authentication schemes
+        var schemes = new List<Microsoft.AspNetCore.Authentication.AuthenticationScheme>
+        {
+            new Microsoft.AspNetCore.Authentication.AuthenticationScheme("Google", "Google", typeof(Microsoft.AspNetCore.Authentication.IAuthenticationHandler)),
+            new Microsoft.AspNetCore.Authentication.AuthenticationScheme("Microsoft", "Microsoft", typeof(Microsoft.AspNetCore.Authentication.IAuthenticationHandler)),
+            new Microsoft.AspNetCore.Authentication.AuthenticationScheme(Core.Domain.Constants.AuthConstants.Providers.Legacy, "Legacy", typeof(Microsoft.AspNetCore.Authentication.IAuthenticationHandler))
+        };
+        _mockSignInManager.Setup(s => s.GetExternalAuthenticationSchemesAsync())
+            .ReturnsAsync(schemes);
+
+        var policy = new SecurityPolicy { AllowSelfPasswordChange = true };
+        _mockSecurityPolicyService.Setup(s => s.GetCurrentPolicyAsync())
+            .ReturnsAsync(policy);
+
+        // Act
+        var result = await _controller.GetProfile();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var profile = Assert.IsType<ProfileDto>(okResult.Value);
+        
+        // Should have 1 available provider (Microsoft)
+        // Google is excluded because already linked
+        // Legacy is excluded because it's the Legacy provider
+        Assert.NotNull(profile.AvailableProviders);
+        Assert.Single(profile.AvailableProviders);
+        Assert.Equal("Microsoft", profile.AvailableProviders[0].Scheme);
     }
 
     #endregion
@@ -428,6 +480,87 @@ public class ProfileManagementControllerTests : IDisposable
             It.IsAny<string>(),
             null,
             null), Times.Once);
+    }
+
+    #endregion
+
+    #region RemoveLogin Tests
+
+    [Fact]
+    public async Task RemoveLogin_ValidRequest_RemovesLoginAndReturnsOk()
+    {
+        // Arrange
+        _mockUserManager.Setup(m => m.GetUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(_testUser);
+        _mockUserManager.Setup(m => m.RemoveLoginAsync(_testUser, "Google", "google-id"))
+            .ReturnsAsync(IdentityResult.Success);
+        _mockSignInManager.Setup(s => s.RefreshSignInAsync(_testUser))
+            .Returns(Task.CompletedTask);
+
+        _mockAuditService.Setup(a => a.LogEventAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+
+        var request = new RemoveLoginRequest
+        {
+            LoginProvider = "Google",
+            ProviderKey = "google-id"
+        };
+
+        // Act
+        var result = await _controller.RemoveLogin(request);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.Contains("successfully", okResult.Value.ToString().ToLower());
+
+        // Verify RemoveLoginAsync was called
+        _mockUserManager.Verify(m => m.RemoveLoginAsync(_testUser, "Google", "google-id"), Times.Once);
+        
+        // Verify RefreshSignInAsync was called
+        _mockSignInManager.Verify(s => s.RefreshSignInAsync(_testUser), Times.Once);
+
+        // Verify audit log was called
+        _mockAuditService.Verify(a => a.LogEventAsync(
+            "Profile.RemoveLogin",
+            _testUser.Id.ToString(),
+            It.IsAny<string>(),
+            null,
+            null), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveLogin_FailedToRemove_ReturnsBadRequest()
+    {
+        // Arrange
+        _mockUserManager.Setup(m => m.GetUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(_testUser);
+        _mockUserManager.Setup(m => m.RemoveLoginAsync(_testUser, "Google", "google-id"))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError
+            {
+                Code = "RemoveFailed",
+                Description = "Failed to remove login"
+            }));
+
+        var request = new RemoveLoginRequest
+        {
+            LoginProvider = "Google",
+            ProviderKey = "google-id"
+        };
+
+        // Act
+        var result = await _controller.RemoveLogin(request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("Failed to remove login", badRequestResult.Value.ToString());
+
+        // Verify RefreshSignInAsync was NOT called
+        _mockSignInManager.Verify(s => s.RefreshSignInAsync(It.IsAny<ApplicationUser>()), Times.Never);
     }
 
     #endregion
