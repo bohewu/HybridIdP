@@ -64,44 +64,43 @@
             </div>
             
             <div class="google-login-body">
+                @if (Model.ExternalLogins?.Count > 0)
+                {
+                    <div class="mb-6">
+                        <form id="external-account" asp-page-handler="ExternalLogin" method="post" class="space-y-3">
+                            <div class="grid grid-cols-1 gap-3">
+                                @foreach (var provider in Model.ExternalLogins)
+                                {
+                                    <button type="submit" class="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200" name="provider" value="@provider.Name" title="@Localizer["LogInWith", provider.DisplayName ?? provider.Name]">
+                                        @if (provider.Name == "Google")
+                                        {
+                                            <svg class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
+                                            </svg>
+                                        }
+                                        else if (provider.Name == "Microsoft")
+                                        {
+                                            <svg class="h-5 w-5 mr-2" viewBox="0 0 23 23" fill="currentColor">
+                                                <path fill="#f3f3f3" d="M0 0h23v23H0z"/><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/>
+                                            </svg>
+                                        }
+                                        <span>@Localizer["LogInWith", provider.DisplayName ?? provider.Name]</span>
+                                    </button>
+                                }
+                            </div>
+                        </form>
+                        
+                        <div class="relative flex py-2 items-center">
+                            <div class="flex-grow border-t border-gray-300"></div>
+                            <span class="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase">@Localizer["Or"]</span>
+                            <div class="flex-grow border-t border-gray-300"></div>
+                        </div>
+                    </div>
+                }
+
                 <form method="post">
                     <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="login-error-summary"></div>
                     
-                    @* Form Notice - Inside form, before inputs *@
-                    @if (Model.ExternalLogins?.Count > 0)
-                    {
-                        <div class="mb-6">
-                            <form id="external-account" asp-page-handler="ExternalLogin" method="post" class="space-y-3">
-                                <div class="grid grid-cols-1 gap-3">
-                                    @foreach (var provider in Model.ExternalLogins)
-                                    {
-                                        <button type="submit" class="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200" name="provider" value="@provider.Name" title="@Localizer["LogInWith", provider.DisplayName ?? provider.Name]">
-                                            @if (provider.Name == "Google")
-                                            {
-                                                <svg class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
-                                                </svg>
-                                            }
-                                            else if (provider.Name == "Microsoft")
-                                            {
-                                                <svg class="h-5 w-5 mr-2" viewBox="0 0 23 23" fill="currentColor">
-                                                    <path fill="#f3f3f3" d="M0 0h23v23H0z"/><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/>
-                                                </svg>
-                                            }
-                                            <span>@Localizer["LogInWith", provider.DisplayName ?? provider.Name]</span>
-                                        </button>
-                                    }
-                                </div>
-                            </form>
-                            
-                            <div class="relative flex py-2 items-center">
-                                <div class="flex-grow border-t border-gray-300"></div>
-                                <span class="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase">@Localizer["Or"]</span>
-                                <div class="flex-grow border-t border-gray-300"></div>
-                            </div>
-                        </div>
-                    }
-
                     @if (!string.IsNullOrWhiteSpace(notices.FormMessage))
                     {
                         <div class="mb-4">
