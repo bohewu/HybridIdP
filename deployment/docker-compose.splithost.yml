@@ -55,6 +55,7 @@ services:
       - ExternalLogin__Microsoft__Enabled=${ExternalLogin__Microsoft__Enabled:-false}
       - ExternalLogin__Microsoft__ClientId=${ExternalLogin__Microsoft__ClientId:-}
       - ExternalLogin__Microsoft__ClientSecret=${ExternalLogin__Microsoft__ClientSecret:-}
+      - ExternalLogin__Microsoft__ForceAccountSelection=${ExternalLogin__Microsoft__ForceAccountSelection:-true}
       - ExternalLogin__AutoLinkMatchingEmail=${ExternalLogin__AutoLinkMatchingEmail:-false}
     volumes:
       - ./certs:/app/certs:ro
