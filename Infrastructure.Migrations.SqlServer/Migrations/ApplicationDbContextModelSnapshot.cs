@@ -389,7 +389,7 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Core.Application.IApplicationDbContext.ClaimDefinitions");
+                    b.ToTable("ClaimDefinitions", (string)null);
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.ClientOwnership", b =>

@@ -62,6 +62,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.Entity<ClaimDefinition>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.ToTable("ClaimDefinitions");
+
             entity.HasIndex(e => e.Name).IsUnique();
             entity.HasIndex(e => e.ClaimType);
             entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
