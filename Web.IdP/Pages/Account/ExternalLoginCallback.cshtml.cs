@@ -14,7 +14,7 @@ using Core.Domain; // Explicitly include Core.Domain for ApplicationUser
 namespace Web.IdP.Pages.Account;
 
 [AllowAnonymous]
-public class ExternalLoginCallbackModel : PageModel
+public partial class ExternalLoginCallbackModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
@@ -38,14 +38,14 @@ public class ExternalLoginCallbackModel : PageModel
         returnUrl = returnUrl ?? Url.Content("~/");
         if (remoteError != null)
         {
-            _logger.LogWarning("Error from external provider: {RemoteError}", remoteError);
+            LogRemoteError(remoteError);
             return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
         }
         
         var info = await _signInManager.GetExternalLoginInfoAsync();
         if (info == null)
         {
-            _logger.LogWarning("Error loading external login information.");
+            LogExternalLoginInfoNotFound();
             return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
         }
 
@@ -91,8 +91,7 @@ public class ExternalLoginCallbackModel : PageModel
                 }
             }
             
-            _logger.LogInformation("{Name} logged in with {LoginProvider} provider. AMR: {Amr}", 
-                info.Principal.Identity?.Name, info.LoginProvider, string.Join(", ", externalAmrClaims));
+            LogExternalLoginSuccess(info.Principal.Identity?.Name ?? "Unknown", info.LoginProvider, string.Join(", ", externalAmrClaims));
             return LocalRedirect(returnUrl);
         }
         if (result.IsLockedOut)
@@ -126,8 +125,7 @@ public class ExternalLoginCallbackModel : PageModel
                                 JsonSerializer.Serialize(sessionAmr));
                         }
                         
-                        _logger.LogInformation("Auto-linked {Email} to external login {Provider}. AMR: {Amr}",
-                            email, info.LoginProvider, string.Join(", ", externalAmrClaims));
+                        LogAutoLinkSuccess(email, info.LoginProvider, string.Join(", ", externalAmrClaims));
                         return LocalRedirect(returnUrl);
                     }
                 }
@@ -140,4 +138,20 @@ public class ExternalLoginCallbackModel : PageModel
         
         return RedirectToPage("./ExternalLoginConfirmation", new { ReturnUrl = returnUrl });
     }
+
+    #region LoggerMessage Methods
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Error from external provider: {RemoteError}")]
+    partial void LogRemoteError(string remoteError);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Error loading external login information.")]
+    partial void LogExternalLoginInfoNotFound();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Name} logged in with {LoginProvider} provider. AMR: {Amr}")]
+    partial void LogExternalLoginSuccess(string name, string loginProvider, string amr);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Auto-linked {Email} to external login {Provider}. AMR: {Amr}")]
+    partial void LogAutoLinkSuccess(string email, string provider, string amr);
+
+    #endregion
 }
