@@ -121,11 +121,14 @@
                  src="https://www.microsoft.com/favicon.ico" 
                  class="h-5 w-5 mr-3" 
                  alt="Microsoft" />
-            <!-- Fallback Icon for other providers -->
-            <svg v-else class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+            <!-- Fallback Icon -->
+            <svg v-else class="h-5 w-5 mr-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd"/>
             </svg>
-            <span class="text-sm text-gray-900">{{ login.providerDisplayName || login.loginProvider }}</span>
+            <div class="flex flex-col">
+              <span class="text-sm font-medium text-gray-900">{{ login.loginProvider }}</span>
+              <span class="text-xs text-gray-500">ID: •••{{ getProviderKeySuffix(login.providerKey) }}</span>
+            </div>
           </div>
         <!-- Remove Button -->
         <div v-if="canRemove">
@@ -258,5 +261,11 @@ const removeLogin = async (login) => {
   } finally {
     removingLogins.value[login.providerKey] = false
   }
+}
+
+// Helper function to get last 6 characters of provider key
+const getProviderKeySuffix = (key: string): string => {
+  if (!key || key.length <= 6) return key
+  return key.slice(-6)
 }
 </script>
