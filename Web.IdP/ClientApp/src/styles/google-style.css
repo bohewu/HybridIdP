@@ -257,6 +257,14 @@
     width: 100%;
 }
 
+.google-login-card.wide-card {
+    max-width: 48rem; /* 3xl approx */
+}
+
+.google-footer-wrapper .google-footer {
+    max-width: 100%;
+}
+
 /* ========================================
    Additional Button Variants
    ======================================== */

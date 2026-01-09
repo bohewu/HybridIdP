@@ -36,15 +36,6 @@
             var widthClass = isWide ? "max-w-3xl" : "max-w-[450px]";
         }
 
-        @if (isWide)
-        {
-            <style>
-                /* Override default 450px limit for wide layout */
-                .google-login-card.wide-card { max-width: 48rem !important; }
-                .google-footer-wrapper .google-footer { max-width: 100% !important; }
-            </style>
-        }
-
         <div class="sm:mx-auto @widthClass w-full mt-12 mb-8 text-center">
              <div class="flex justify-center mb-4">
                 <div class="google-logo mx-auto">
