@@ -1,0 +1,99 @@
+@page
+@model Web.IdP.Pages.Account.ExternalLoginConfirmationModel
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["CompleteLogin"];
+    Layout = null;
+    var currentCulture = HttpContext.Features.Get<Microsoft.AspNetCore.Localization.IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
+}
+
+<!DOCTYPE html>
+<html lang="@currentCulture" class="h-full bg-gray-50">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    @* Reuse Login styles *@
+    <script type="module" vite-src="@@vite/client"></script>
+    <link href="~/src/styles/main.css" rel="stylesheet" /> <!-- Assuming fallback or proper Vite path injection -->
+    @* Using generic link for now, assuming ViteService is not injected here but usually Layout handles it. 
+       Since Layout=null, we should inject ViteService if we want perfect styling. 
+       But for simplicity, I'll use standard Tailwind classes. 
+    *@
+     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 google-font min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            @Localizer["CompleteLogin"]
+        </h2>
+        <p class="mt-2 text-center text-sm text-gray-600">
+            @Localizer["AuthenticateWith"] <strong>@Model.LoginProvider</strong>
+        </p>
+         <p class="text-center text-xs text-gray-500">
+            (@Model.Email)
+        </p>
+    </div>
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-2xl">
+        <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            
+            <div asp-validation-summary="All" class="text-red-500 text-sm mb-4"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 divide-y md:divide-y-0 md:divide-x divide-gray-200">
+                
+                @* LEFT: Link Existing *@
+                <div class="pr-0 md:pr-4">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">@Localizer["LinkExistingAccount"]</h3>
+                    <p class="text-sm text-gray-500 mb-4">@Localizer["LinkExistingAccountDesc"]</p>
+                    
+                    <form asp-page-handler="Link" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="space-y-4">
+                        <div>
+                            <label asp-for="Input.Login" class="block text-sm font-medium text-gray-700">@Localizer["EmailOrUsername"]</label>
+                            <input asp-for="Input.Login" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border" />
+                            <span asp-validation-for="Input.Login" class="text-red-600 text-xs"></span>
+                        </div>
+                         <div>
+                            <label asp-for="Input.Password" class="block text-sm font-medium text-gray-700">@Localizer["Password"]</label>
+                            <input asp-for="Input.Password" type="password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border" />
+                            <span asp-validation-for="Input.Password" class="text-red-600 text-xs"></span>
+                        </div>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            @Localizer["LinkAccount"]
+                        </button>
+                    </form>
+                </div>
+
+                @* RIGHT: Create New *@
+                <div class="pt-8 md:pt-0 pl-0 md:pl-4 flex flex-col justify-center">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">@Localizer["CreateNewAccount"]</h3>
+                    
+                    @if (Model.ShowRegistrationButton)
+                    {
+                         <p class="text-sm text-gray-500 mb-6">@Localizer["CreateNewAccountDesc", Model.LoginProvider]</p>
+                         <form asp-page-handler="Create" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                @Localizer["CreateAccount"]
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                            <div class="flex">
+                                <div class="ml-3">
+                                    <p class="text-sm text-yellow-700">
+                                        @Localizer["RegistrationDisabled"]
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+    </div>
+</body>
+</html>

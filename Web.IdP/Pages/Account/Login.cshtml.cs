@@ -116,8 +116,12 @@ public partial class LoginModel : PageModel
         public void SetRememberMe(bool value) => RememberMe = value;
     }
 
+    public IList<AuthenticationScheme> ExternalLogins { get; set; } = new List<AuthenticationScheme>();
+
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
     {
+        ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+
         // If user is already authenticated, redirect away from login page
         if (User.Identity?.IsAuthenticated == true)
         {
@@ -158,6 +162,10 @@ public partial class LoginModel : PageModel
         PasskeyEnabled = policy.EnablePasskey;
         CustomForgotPasswordUrl = policy.CustomForgotPasswordUrl;
         await LoadTurnstileStateAsync();
+
+        await LoadTurnstileStateAsync();
+
+        ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
         if (!ModelState.IsValid)
         {
@@ -206,6 +214,7 @@ public partial class LoginModel : PageModel
                     var currentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
                     if (currentPolicy.BlockAbnormalLogin)
                     {
+                        LogAbnormalLoginBlocked(result.User!.UserName, loginHistory.IpAddress);
                         LogAbnormalLoginBlocked(result.User!.UserName, loginHistory.IpAddress);
                         ModelState.AddModelError(string.Empty, _localizer["AbnormalLoginBlocked"]);
                         return Page();
@@ -372,6 +381,7 @@ public partial class LoginModel : PageModel
                     userAgent: Request.Headers["User-Agent"].ToString()
                 ));
                 
+                
                 ModelState.AddModelError(string.Empty, _localizer["UserAccountLockedOut"]);
                 return Page();
 
@@ -387,6 +397,7 @@ public partial class LoginModel : PageModel
                     userAgent: Request.Headers["User-Agent"].ToString()
                 ));
                 
+                
                 ModelState.AddModelError(string.Empty, _localizer["UserAccountDeactivated"]);
                 return Page();
 
@@ -401,6 +412,7 @@ public partial class LoginModel : PageModel
                     ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
                     userAgent: Request.Headers["User-Agent"].ToString()
                 ));
+                
                 
                 ModelState.AddModelError(string.Empty, _localizer["PersonNotActive"]);
                 return Page();
@@ -418,6 +430,7 @@ public partial class LoginModel : PageModel
                     ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
                     userAgent: Request.Headers["User-Agent"].ToString()
                 ));
+                
                 
                 ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
                 return Page();
@@ -450,12 +463,20 @@ public partial class LoginModel : PageModel
         var currentAmrJson = HttpContext.Session.GetString("AuthenticationMethods");
         List<string> amrList = string.IsNullOrEmpty(currentAmrJson) 
             ? new List<string>() 
-            : JsonSerializer.Deserialize<List<string>>(currentAmrJson) ?? new List<string>();
+            : JsonSerializer.Deserialize<List<string>>(currentAmrJson!) ?? new List<string>();
         
         if (!amrList.Contains(amr))
         {
             amrList.Add(amr);
             HttpContext.Session.SetString("AuthenticationMethods", JsonSerializer.Serialize(amrList));
         }
+    }
+
+    public IActionResult OnPostExternalLogin(string provider, string returnUrl = null)
+    {
+        // Request a redirect to the external login provider.
+        var redirectUrl = Url.Page("./ExternalLoginCallback", pageHandler: null, values: new { returnUrl });
+        var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+        return new ChallengeResult(provider, properties);
     }
 }

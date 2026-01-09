@@ -259,6 +259,32 @@ public static class ServiceCollectionExtensions
             .AddDefaultTokenProviders()
             .AddErrorDescriber<LocalizedIdentityErrorDescriber>();
 
+        // Configure External Logins
+        var externalLoginOptions = new Options.ExternalLoginOptions();
+        configuration.GetSection(Options.ExternalLoginOptions.Section).Bind(externalLoginOptions);
+        
+        var authBuilder = services.AddAuthentication();
+
+        if (externalLoginOptions.Google.Enabled)
+        {
+            authBuilder.AddGoogle(options =>
+            {
+                options.ClientId = externalLoginOptions.Google.ClientId;
+                options.ClientSecret = externalLoginOptions.Google.ClientSecret;
+                options.SaveTokens = true;
+            });
+        }
+
+        if (externalLoginOptions.Microsoft.Enabled)
+        {
+            authBuilder.AddMicrosoftAccount(options =>
+            {
+                options.ClientId = externalLoginOptions.Microsoft.ClientId;
+                options.ClientSecret = externalLoginOptions.Microsoft.ClientSecret;
+                options.SaveTokens = true;
+            });
+        }
+
         // Configure SecurityStampValidatorOptions from configuration (e.g. for testing)
         services.Configure<SecurityStampValidatorOptions>(options =>
         {
