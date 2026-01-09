@@ -25,6 +25,7 @@ namespace Web.IdP.Controllers.Api;
 public class ProfileManagementController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ApplicationDbContext _dbContext;
     private readonly ISecurityPolicyService _securityPolicyService;
     private readonly IPasskeyService _passkeyService;
@@ -33,6 +34,7 @@ public class ProfileManagementController : ControllerBase
 
     public ProfileManagementController(
         UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
         ApplicationDbContext dbContext,
         ISecurityPolicyService securityPolicyService,
         IPasskeyService passkeyService,
@@ -40,6 +42,7 @@ public class ProfileManagementController : ControllerBase
         ILogger<ProfileManagementController> logger)
     {
         _userManager = userManager;
+        _signInManager = signInManager;
         _dbContext = dbContext;
         _securityPolicyService = securityPolicyService;
         _passkeyService = passkeyService;
@@ -83,6 +86,7 @@ public class ProfileManagementController : ControllerBase
             ExternalLogins = externalLogins.Select(l => new ExternalLoginDto
             {
                 LoginProvider = l.LoginProvider,
+                ProviderKey = l.ProviderKey,
                 ProviderDisplayName = l.ProviderDisplayName
             }).ToList()
         };
@@ -265,4 +269,40 @@ public class ProfileManagementController : ControllerBase
 
         return Ok(new { message = "Password changed successfully" });
     }
+
+    /// <summary>
+    /// POST api/profile/remove-login - Remove an external login
+    /// </summary>
+    [HttpPost("remove-login")]
+    public async Task<IActionResult> RemoveLogin([FromBody] RemoveLoginRequest request)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound(new { error = "User not found" });
+        }
+
+        var result = await _userManager.RemoveLoginAsync(user, request.LoginProvider, request.ProviderKey);
+        if (!result.Succeeded)
+        {
+             _logger.LogWarning("RemoveLogin failed for user {UserId}: {Errors}",
+                user.Id, string.Join(", ", result.Errors.Select(e => e.Description)));
+            return BadRequest(new { error = "Failed to remove login" });
+        }
+
+        // Re-sign in the user to update the security stamp and cookies
+        await _signInManager.RefreshSignInAsync(user);
+        
+        // Audit log
+        await _auditService.LogEventAsync(
+            eventType: "Profile.RemoveLogin",
+            userId: user.Id.ToString(),
+            details: $"User removed external login: {request.LoginProvider}",
+            ipAddress: null,
+            userAgent: null
+        );
+
+        return Ok(new { message = "Login removed successfully" });
+    }
 }
+

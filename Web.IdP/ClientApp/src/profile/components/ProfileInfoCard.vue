@@ -109,11 +109,24 @@
     </div>
     <div class="border-t border-gray-200">
       <ul class="divide-y divide-gray-200">
-        <li v-for="login in profile.externalLogins" :key="login.loginProvider" class="px-4 py-4 sm:px-6 flex items-center">
-          <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-          </svg>
-          <span class="text-sm text-gray-900">{{ login.providerDisplayName || login.loginProvider }}</span>
+        <li v-for="login in profile.externalLogins" :key="login.loginProvider" class="px-4 py-4 sm:px-6 flex items-center justify-between">
+          <div class="flex items-center">
+            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+            </svg>
+            <span class="text-sm text-gray-900">{{ login.providerDisplayName || login.loginProvider }}</span>
+          </div>
+          <button 
+            v-if="canRemove" 
+            @click="removeLogin(login)"
+            class="text-red-600 hover:text-red-900 text-sm font-medium"
+            :disabled="loading === login.loginProvider"
+          >
+            <span v-if="loading === login.loginProvider" class="inline-block animate-spin mr-1">
+                <i class="bi bi-arrow-repeat"></i>
+            </span>
+            {{ t('profile.common.remove') || 'Remove' }}
+          </button>
         </li>
       </ul>
     </div>
@@ -121,15 +134,57 @@
 </template>
 
 <script setup>
-import { defineProps } from 'vue'
+import { ref, computed, defineProps, defineEmits } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-defineProps({
+const props = defineProps({
   profile: {
     type: Object,
     required: true
   }
 })
 
+const emit = defineEmits(['updated'])
+
 const { t } = useI18n()
+const loading = ref(null) // stores loginProvider being removed
+
+const canRemove = computed(() => {
+  const hasMultipleMethods = props.profile.externalLogins.length > 1
+  return props.profile.hasLocalPassword || hasMultipleMethods
+})
+
+const removeLogin = async (login) => {
+  if (!confirm(t('profile.removeLoginConfirm') || `Are you sure you want to remove ${login.providerDisplayName}?`)) {
+    return
+  }
+
+  loading.value = login.loginProvider
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.getElementById('profile-app')?.dataset?.csrfToken
+    
+    const res = await fetch('/api/profile/remove-login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-XSRF-TOKEN': csrfToken
+      },
+      body: JSON.stringify({
+        loginProvider: login.loginProvider,
+        providerKey: login.providerKey
+      })
+    })
+
+    if (res.ok) {
+      emit('updated')
+    } else {
+      console.error('Failed to remove login')
+      alert(t('profile.removeLoginFailed') || 'Failed to remove login')
+    }
+  } catch (e) {
+    console.error('Error removing login:', e)
+  } finally {
+    loading.value = null
+  }
+}
 </script>

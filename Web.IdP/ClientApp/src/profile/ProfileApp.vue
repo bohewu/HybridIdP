@@ -12,6 +12,7 @@
       <ProfileInfoCard 
         v-if="profile" 
         :profile="profile" 
+        @updated="loadProfile"
       />
 
       <!-- Edit Profile and Change Password - Side by side on larger screens -->

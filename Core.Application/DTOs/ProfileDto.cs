@@ -59,5 +59,6 @@ public class PersonProfileDto
 public class ExternalLoginDto
 {
     public string LoginProvider { get; set; } = string.Empty;
+    public string ProviderKey { get; set; } = string.Empty;
     public string? ProviderDisplayName { get; set; }
 }
