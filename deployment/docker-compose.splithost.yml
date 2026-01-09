@@ -43,6 +43,14 @@ services:
       - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx
       - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
+      # External Login (Google, Microsoft)
+      - ExternalLogin__Google__Enabled=${ExternalLogin__Google__Enabled:-false}
+      - ExternalLogin__Google__ClientId=${ExternalLogin__Google__ClientId:-}
+      - ExternalLogin__Google__ClientSecret=${ExternalLogin__Google__ClientSecret:-}
+      - ExternalLogin__Microsoft__Enabled=${ExternalLogin__Microsoft__Enabled:-false}
+      - ExternalLogin__Microsoft__ClientId=${ExternalLogin__Microsoft__ClientId:-}
+      - ExternalLogin__Microsoft__ClientSecret=${ExternalLogin__Microsoft__ClientSecret:-}
+      - ExternalLogin__AutoLinkMatchingEmail=${ExternalLogin__AutoLinkMatchingEmail:-false}
     volumes:
       - ./certs:/app/certs:ro
     logging:
