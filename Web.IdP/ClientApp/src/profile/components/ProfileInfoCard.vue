@@ -103,16 +103,25 @@
   </div>
 
   <!-- External Logins -->
-  <div v-if="profile.externalLogins && profile.externalLogins.length > 0" class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+  <div v-if="profile.externalLogins && profile.externalLogins.length > 0" class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6" data-testid="external-logins">
     <div class="px-4 py-5 sm:px-6">
       <h3 class="text-lg leading-6 font-medium text-gray-900">{{ t('profile.externalLogins') }}</h3>
     </div>
     <div class="border-t border-gray-200">
       <ul class="divide-y divide-gray-200">
-        <li v-for="login in profile.externalLogins" :key="login.loginProvider" class="px-4 py-4 sm:px-6 flex items-center justify-between">
+        <li v-for="login in profile.externalLogins" :key="login.providerKey" class="px-4 py-4 sm:px-6 flex items-center justify-between">
           <div class="flex items-center">
-            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+            <!-- Google Icon -->
+            <svg v-if="login.loginProvider === 'Google'" class="h-5 w-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
+            </svg>
+            <!-- Microsoft Icon -->
+            <svg v-else-if="login.loginProvider === 'Microsoft'" class="h-5 w-5 mr-3" viewBox="0 0 23 23" fill="currentColor">
+              <path fill="#f3f3f3" d="M0 0h23v23H0z"/><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/>
+            </svg>
+            <!-- Fallback Icon for other providers -->
+            <svg v-else class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
             </svg>
             <span class="text-sm text-gray-900">{{ login.providerDisplayName || login.loginProvider }}</span>
           </div>
@@ -120,12 +129,12 @@
         <div v-if="canRemove">
           <button 
             @click="removeLogin(login)" 
-            :disabled="removingLogins[login.providerKey]"
+            :disabled="removingLogin === login.providerKey"
             class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 active:bg-red-200 border border-red-200 rounded-md transition-colors focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             :title="t('profile.common.remove')"
           >
-            <svg v-if="!removingLogins[login.providerKey]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <svg v-if="removingLogin !== login.providerKey" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
             <svg v-else class="animate-spin h-4 w-4 text-red-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
