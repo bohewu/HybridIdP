@@ -189,5 +189,8 @@
   "CreateNewAccountDesc": "您可以使用您的 {0} 個人檔案建立新帳戶。",
   "RegistrationDisabled": "目前已停用新用戶註冊。",
   "LogInWith": "使用 {0} 登入",
+  "Login.ExternalProvider.Google": "使用 Google 登入",
+  "Login.ExternalProvider.Microsoft": "使用 Microsoft 登入",
+  "Login.ExternalProvider.GitHub": "使用 GitHub 登入",
   "InvalidCredentials": "憑證無效。"
 }
