@@ -102,5 +102,15 @@ public static class AuthConstants
         public const string HardwareKey = "hwk";
         public const string UserPresence = "user";
         public const string RecoveryCode = "mfa";
+        public const string External = "ext";
+    }
+
+    /// <summary>
+    /// Claim type constants for consistent claim type references.
+    /// </summary>
+    public static class ClaimTypes
+    {
+        public const string Amr = "amr";
+        public const string AuthenticationMethod = System.Security.Claims.ClaimTypes.AuthenticationMethod;
     }
 }

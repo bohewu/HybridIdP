@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Core.Domain.Entities;
+using Core.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -47,11 +49,50 @@ public class ExternalLoginCallbackModel : PageModel
             return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
         }
 
+        // Extract AMR claims from external provider
+        var externalAmrClaims = info.Principal.FindAll(AuthConstants.ClaimTypes.Amr)
+            .Select(c => c.Value)
+            .ToList();
+
+        // Check if external provider performed MFA
+        bool externalMfaPerformed = externalAmrClaims.Contains(AuthConstants.Amr.Mfa) || 
+                                    externalAmrClaims.Contains(AuthConstants.Amr.Otp) ||
+                                    externalAmrClaims.Contains(AuthConstants.Amr.HardwareKey);
+
+        // Build our AMR claim list
+        var amrClaims = new List<Claim>
+        {
+            new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.External)
+        };
+
+        // Add external provider's AMR claims
+        foreach (var amr in externalAmrClaims)
+        {
+            amrClaims.Add(new Claim(AuthConstants.ClaimTypes.Amr, amr));
+        }
+
         // Sign in the user with this external login provider if the user already has a login.
         var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
         if (result.Succeeded)
         {
-            _logger.LogInformation("{Name} logged in with {LoginProvider} provider.", info.Principal.Identity?.Name, info.LoginProvider);
+            // User already exists and is linked, update their authentication cookie with AMR
+            var user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+            if (user != null)
+            {
+                // Re-sign in with AMR claims
+                await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
+                
+                // Store AMR in session for MFA enforcement logic
+                if (externalMfaPerformed)
+                {
+                    var sessionAmr = new List<string> { AuthConstants.Amr.External, AuthConstants.Amr.Mfa };
+                    HttpContext.Session.SetString("AuthenticationMethods", 
+                        JsonSerializer.Serialize(sessionAmr));
+                }
+            }
+            
+            _logger.LogInformation("{Name} logged in with {LoginProvider} provider. AMR: {Amr}", 
+                info.Principal.Identity?.Name, info.LoginProvider, string.Join(", ", externalAmrClaims));
             return LocalRedirect(returnUrl);
         }
         if (result.IsLockedOut)
@@ -74,7 +115,19 @@ public class ExternalLoginCallbackModel : PageModel
                     var addLoginResult = await _userManager.AddLoginAsync(user, info);
                     if (addLoginResult.Succeeded)
                     {
-                        await _signInManager.SignInAsync(user, isPersistent: false, info.LoginProvider);
+                        // Sign in with AMR claims
+                        await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
+                        
+                        // Store AMR in session
+                        if (externalMfaPerformed)
+                        {
+                            var sessionAmr = new List<string> { AuthConstants.Amr.External, AuthConstants.Amr.Mfa };
+                            HttpContext.Session.SetString("AuthenticationMethods", 
+                                JsonSerializer.Serialize(sessionAmr));
+                        }
+                        
+                        _logger.LogInformation("Auto-linked {Email} to external login {Provider}. AMR: {Amr}",
+                            email, info.LoginProvider, string.Join(", ", externalAmrClaims));
                         return LocalRedirect(returnUrl);
                     }
                 }

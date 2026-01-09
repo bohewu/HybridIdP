@@ -6,6 +6,7 @@ using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication; // Added for SignOutAsync
 using Core.Domain; // For ApplicationUser
+using Core.Domain.Constants; // For AuthConstants
 
 namespace Web.IdP.Controllers.Account;
 
@@ -65,6 +66,26 @@ public partial class LinkExternalLoginController : Controller
             }
             return Redirect("/Account/Profile?error=LinkFailed");
         }
+
+        // Extract AMR from external provider
+        var externalAmrClaims = info.Principal.FindAll(AuthConstants.ClaimTypes.Amr)
+            .Select(c => c.Value)
+            .ToList();
+
+        // Update authentication cookie with AMR claims
+        var amrClaims = new List<Claim>
+        {
+            new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.External)
+        };
+
+        foreach (var amr in externalAmrClaims)
+        {
+            amrClaims.Add(new Claim(AuthConstants.ClaimTypes.Amr, amr));
+        }
+
+        // Refresh sign-in with new AMR claims
+        await _signInManager.RefreshSignInAsync(user);
+        await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
 
         // Clear the external authentication cookie to ensure a clean state
         await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);

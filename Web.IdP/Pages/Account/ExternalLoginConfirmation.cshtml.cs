@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Text.Json;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -131,8 +132,22 @@ public class ExternalLoginConfirmationModel : PageModel
         {
             _logger.LogInformation("User {UserId} linked {Provider} account.", user.Id, info.LoginProvider);
             
-            // 3. Sign in
-            await _signInManager.SignInAsync(user, isPersistent: false, info.LoginProvider);
+            // Extract AMR claims from external provider and sign in with them
+            var externalAmrClaims = info.Principal.FindAll(AuthConstants.ClaimTypes.Amr)
+                .Select(c => c.Value)
+                .ToList();
+            
+            var amrClaims = new List<Claim>
+            {
+                new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.External)
+            };
+            
+            foreach (var amr in externalAmrClaims)
+            {
+                amrClaims.Add(new Claim(AuthConstants.ClaimTypes.Amr, amr));
+            }
+            
+            await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
             return LocalRedirect(ReturnUrl);
         }
 
@@ -180,10 +195,24 @@ public class ExternalLoginConfirmationModel : PageModel
         {
              var user = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth);
              
-             // Sign in
-             await _signInManager.SignInAsync(user, isPersistent: false, info.LoginProvider);
+             // Extract AMR claims from external provider and sign in with them
+             var externalAmrClaims = info.Principal.FindAll(AuthConstants.ClaimTypes.Amr)
+                 .Select(c => c.Value)
+                 .ToList();
+             
+             var amrClaims = new List<Claim>
+             {
+                 new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.External)
+             };
+             
+             foreach (var amr in externalAmrClaims)
+             {
+                 amrClaims.Add(new Claim(AuthConstants.ClaimTypes.Amr, amr));
+             }
+             
+             await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
              return LocalRedirect(ReturnUrl);
-        }
+         }
         catch (Exception ex)
         {
              _logger.LogError(ex, "JIT Provisioning failed for {Provider}", info.LoginProvider);
