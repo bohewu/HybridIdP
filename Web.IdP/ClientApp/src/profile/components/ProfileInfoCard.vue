@@ -264,7 +264,7 @@ const removeLogin = async (login) => {
 }
 
 // Helper function to get last 6 characters of provider key
-const getProviderKeySuffix = (key: string): string => {
+const getProviderKeySuffix = (key) => {
   if (!key || key.length <= 6) return key
   return key.slice(-6)
 }
