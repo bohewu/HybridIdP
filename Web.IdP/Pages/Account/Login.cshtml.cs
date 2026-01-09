@@ -472,7 +472,7 @@ public partial class LoginModel : PageModel
         }
     }
 
-    public IActionResult OnPostExternalLogin(string provider, string returnUrl = null)
+    public IActionResult OnPostExternalLogin(string provider, string? returnUrl = null)
     {
         // Request a redirect to the external login provider.
         var redirectUrl = Url.Page("./ExternalLoginCallback", pageHandler: null, values: new { returnUrl });

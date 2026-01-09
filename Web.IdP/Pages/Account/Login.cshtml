@@ -75,7 +75,7 @@
                                 <div class="grid grid-cols-1 gap-3">
                                     @foreach (var provider in Model.ExternalLogins)
                                     {
-                                        <button type="submit" class="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200" name="provider" value="@provider.Name" title="@Localizer["LogInWith", provider.DisplayName]">
+                                        <button type="submit" class="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200" name="provider" value="@provider.Name" title="@Localizer["LogInWith", provider.DisplayName ?? provider.Name]">
                                             @if (provider.Name == "Google")
                                             {
                                                 <svg class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -88,7 +88,7 @@
                                                     <path fill="#f3f3f3" d="M0 0h23v23H0z"/><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/>
                                                 </svg>
                                             }
-                                            <span>@Localizer["LogInWith", provider.DisplayName]</span>
+                                            <span>@Localizer["LogInWith", provider.DisplayName ?? provider.Name]</span>
                                         </button>
                                     }
                                 </div>
