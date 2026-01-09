@@ -201,16 +201,18 @@
     width: 5rem;
     height: 5rem;
     border-radius: 9999px;
-    background: linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc04 100%);
+    background: white;
+    border: 1px solid var(--google-gray-200);
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 12px;
 }
 
 .google-logo svg {
     width: 2.5rem;
     height: 2.5rem;
-    color: white;
+    color: var(--google-gray-500);
 }
 
 /* ========================================
