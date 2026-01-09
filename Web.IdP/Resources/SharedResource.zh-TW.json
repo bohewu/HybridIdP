@@ -179,5 +179,14 @@
   "LoginWithPasskey": "使用 Passkey 登入",
   "ForgotPassword": "忘記密碼？",
   "mfa.errors.noPasskeysRegistered": "我們未在此裝置偵測到您的 Passkey。請先註冊金鑰，或使用其他方式登入。",
-  "mfa.errors.passkeyNotRegistered": "此 Passkey 尚未註冊到您的帳戶。請先進行註冊，或換一個金鑰嘗試。"
+  "mfa.errors.passkeyNotRegistered": "此 Passkey 尚未註冊到您的帳戶。請先進行註冊，或換一個金鑰嘗試。",
+  "CompleteLogin": "完成登入",
+  "AuthenticateWith": "您已成功驗證身分，來源：",
+  "LinkExistingAccount": "連結現有帳戶",
+  "LinkExistingAccountDesc": "如果您已有 HybridIdP 帳戶，請在下方登入以進行連結。",
+  "LinkAccount": "連結帳戶",
+  "CreateNewAccountDesc": "您可以使用您的 {0} 個人檔案建立新帳戶。",
+  "RegistrationDisabled": "目前已停用新用戶註冊。",
+  "LogInWith": "使用 {0} 登入",
+  "InvalidCredentials": "憑證無效。"
 }
