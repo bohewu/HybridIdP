@@ -164,7 +164,16 @@
       <ul class="divide-y divide-gray-200">
         <li v-for="provider in profile.availableProviders" :key="provider.scheme" class="px-4 py-4 sm:px-6 flex items-center justify-between">
           <div class="flex items-center">
-             <svg class="w-5 h-5 text-gray-400 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <!-- Google Icon -->
+            <svg v-if="provider.scheme === 'Google'" class="h-5 w-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
+            </svg>
+            <!-- Microsoft Icon -->
+            <svg v-else-if="provider.scheme === 'Microsoft'" class="h-5 w-5 mr-3" viewBox="0 0 23 23" fill="currentColor">
+              <path fill="#f3f3f3" d="M0 0h23v23H0z"/><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/>
+            </svg>
+            <!-- Fallback Icon for other providers -->
+            <svg v-else class="w-5 h-5 text-gray-400 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             <span class="text-sm text-gray-900">{{ provider.displayName }}</span>
