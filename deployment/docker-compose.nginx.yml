@@ -46,6 +46,8 @@ services:
       - ExternalLogin__Microsoft__ClientSecret=${ExternalLogin__Microsoft__ClientSecret:-}
       - ExternalLogin__AutoLinkMatchingEmail=${ExternalLogin__AutoLinkMatchingEmail:-false}
       - ExternalLogin__MaxLoginsPerProvider=${ExternalLogin__MaxLoginsPerProvider:-2}
+      - Branding__PrivacyPolicyUrl=${Branding__PrivacyPolicyUrl}
+      - Branding__HelpUrl=${Branding__HelpUrl}
     volumes:
       - ./certs:/app/certs:ro # Mount certs from deployment/certs
     logging:

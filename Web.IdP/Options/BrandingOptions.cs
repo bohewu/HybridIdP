@@ -36,4 +36,18 @@ public class BrandingOptions
     /// Footer "Powered by" text (leave empty to hide)
     /// </summary>
     public string? PoweredBy { get; set; }
+    
+    /// <summary>
+    /// External Privacy Policy URL. 
+    /// If set, the /Privacy page will redirect to this URL.
+    /// If empty, it will serve the local /docs/privacy.html.
+    /// </summary>
+    public string? PrivacyPolicyUrl { get; set; }
+    
+    /// <summary>
+    /// External Help/Documentation URL.
+    /// If set, the /Docs page will redirect to this URL.
+    /// If empty, it will serve the local /Docs/Index page.
+    /// </summary>
+    public string? HelpUrl { get; set; }
 }
