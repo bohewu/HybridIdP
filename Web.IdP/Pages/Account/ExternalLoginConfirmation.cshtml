@@ -2,6 +2,7 @@
 @model Web.IdP.Pages.Account.ExternalLoginConfirmationModel
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
+@inject Web.IdP.Services.IViteManifestService ViteService
 @{
     ViewData["Title"] = Localizer["CompleteLogin"];
     Layout = null;
@@ -14,14 +15,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
-    @* Reuse Login styles *@
-    <script type="module" vite-src="@@vite/client"></script>
-    <link href="~/src/styles/main.css" rel="stylesheet" /> <!-- Assuming fallback or proper Vite path injection -->
-    @* Using generic link for now, assuming ViteService is not injected here but usually Layout handles it. 
-       Since Layout=null, we should inject ViteService if we want perfect styling. 
-       But for simplicity, I'll use standard Tailwind classes. 
-    *@
-     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    
+    @* Tailwind CSS *@
+    @if (ViteService.IsDevelopment)
+    {
+        <script type="module" vite-src="@@vite/client"></script>
+    }
+    <link href="@ViteService.GetScriptPath("src/styles/main.css")" rel="stylesheet" />
+    <script type="module" vite-src="src/scripts/razor.js"></script>
+    
+    @* Google Fonts - Roboto for body, will fallback gracefully *@
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-50 google-font min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-md">
