@@ -277,7 +277,7 @@ public static class ServiceCollectionExtensions
                 var authEndpoint = options.AuthorizationEndpoint;
                 var queryParams = new List<string>();
 
-                if (externalLoginOptions.Google.ForceAccountSelection)
+                if (externalLoginOptions.ForceAccountSelection)
                 {
                     queryParams.Add("prompt=select_account");
                 }
@@ -303,7 +303,7 @@ public static class ServiceCollectionExtensions
                 options.SaveTokens = true;
 
                 // 2026-01-09: Force account selection for Microsoft
-                if (externalLoginOptions.Microsoft.ForceAccountSelection)
+                if (externalLoginOptions.ForceAccountSelection)
                 {
                     options.AuthorizationEndpoint += "?prompt=select_account";
                 }

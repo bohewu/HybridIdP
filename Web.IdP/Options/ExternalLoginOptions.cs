@@ -14,6 +14,14 @@ public class ExternalLoginOptions
     /// Set to 0 for unlimited. Default is 2.
     /// </summary>
     public int MaxLoginsPerProvider { get; set; } = 2;
+
+    /// <summary>
+    /// Force the account chooser to appear on every login.
+    /// Adds 'prompt=select_account' to authorization request for supported providers (Google, Microsoft).
+    /// Recommended to prevent users from getting stuck with a wrong default account.
+    /// </summary>
+    public bool ForceAccountSelection { get; set; } = true;
+
     public ProviderOptions Google { get; set; } = new();
     public ProviderOptions Microsoft { get; set; } = new();
 }
@@ -29,11 +37,4 @@ public class ProviderOptions
     /// Adds 'hd' parameter to authorization request.
     /// </summary>
     public string? HostedDomain { get; set; }
-
-    /// <summary>
-    /// Force the account chooser to appear on every login.
-    /// Adds 'prompt=select_account' to authorization request.
-    /// Recommended to prevent users from getting stuck with a wrong default account.
-    /// </summary>
-    public bool ForceAccountSelection { get; set; } = true;
 }
