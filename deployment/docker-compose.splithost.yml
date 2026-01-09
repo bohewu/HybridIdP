@@ -44,6 +44,7 @@ services:
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx
       - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
       # External Login (Google, Microsoft)
+      - ExternalLogin__MaxLoginsPerProvider=${ExternalLogin__MaxLoginsPerProvider:-2}
       - ExternalLogin__Google__Enabled=${ExternalLogin__Google__Enabled:-false}
       - ExternalLogin__Google__ClientId=${ExternalLogin__Google__ClientId:-}
       - ExternalLogin__Google__ClientSecret=${ExternalLogin__Google__ClientSecret:-}
