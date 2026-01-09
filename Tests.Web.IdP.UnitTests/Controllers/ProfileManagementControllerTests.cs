@@ -252,12 +252,13 @@ public class ProfileManagementControllerTests : IDisposable
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var profile = Assert.IsType<ProfileDto>(okResult.Value);
         
-        // Should have 1 available provider (Microsoft)
-        // Google is excluded because already linked
+        // Should have 2 available providers (Google and Microsoft)
+        // Google is INCLUDED because limit is 2 and user has 1
         // Legacy is excluded because it's the Legacy provider
         Assert.NotNull(profile.AvailableProviders);
-        Assert.Single(profile.AvailableProviders);
-        Assert.Equal("Microsoft", profile.AvailableProviders[0].Scheme);
+        Assert.Equal(2, profile.AvailableProviders.Count);
+        Assert.Contains(profile.AvailableProviders, p => p.Scheme == "Microsoft");
+        Assert.Contains(profile.AvailableProviders, p => p.Scheme == "Google");
     }
 
     #endregion
