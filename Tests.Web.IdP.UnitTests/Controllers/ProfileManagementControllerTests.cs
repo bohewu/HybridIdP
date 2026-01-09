@@ -18,6 +18,9 @@ using Moq;
 using Web.IdP.Controllers;
 using Web.IdP.Controllers.Api;
 using Xunit;
+using Microsoft.Extensions.Options;
+using Web.IdP.Options;
+using Microsoft.AspNetCore.Authentication;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
 
@@ -71,6 +74,11 @@ public class ProfileManagementControllerTests : IDisposable
         };
 
         // Setup controller with mocked User context
+        var externalLoginOptions = Options.Create(new ExternalLoginOptions
+        {
+            MaxLoginsPerProvider = 2 // Default for tests
+        });
+
         _controller = new ProfileManagementController(
             _mockUserManager.Object,
             _mockSignInManager.Object,
@@ -78,8 +86,8 @@ public class ProfileManagementControllerTests : IDisposable
             _mockSecurityPolicyService.Object,
             _mockPasskeyService.Object,
             _mockAuditService.Object,
-            _mockLogger.Object
-        );
+            _mockLogger.Object,
+            externalLoginOptions);
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
@@ -561,6 +569,109 @@ public class ProfileManagementControllerTests : IDisposable
 
         // Verify RefreshSignInAsync was NOT called
         _mockSignInManager.Verify(s => s.RefreshSignInAsync(It.IsAny<ApplicationUser>()), Times.Never);
+    }
+
+    #endregion
+
+    #region MaxLoginsPerProvider Tests
+
+    [Fact]
+    public async Task GetProfile_WhenProviderReachedLimit_ShouldNotIncludeInAvailableProviders()
+    {
+        // Arrange: User has 2 Google accounts (reached limit)
+        var existingLogins = new List<UserLoginInfo>
+        {
+            new UserLoginInfo("Google", "key1", "Google"),
+            new UserLoginInfo("Google", "key2", "Google")
+        };
+
+        var availableSchemes = new List<AuthenticationScheme>
+        {
+            new AuthenticationScheme("Google", "Google", typeof(IAuthenticationHandler)),
+            new AuthenticationScheme("Microsoft", "Microsoft", typeof(IAuthenticationHandler))
+        };
+
+        _mockUserManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(_testUser);
+        _mockUserManager.Setup(x => x.HasPasswordAsync(_testUser))
+            .ReturnsAsync(true);
+        _mockUserManager.Setup(x => x.GetLoginsAsync(_testUser))
+            .ReturnsAsync(existingLogins);
+        _mockSignInManager.Setup(x => x.GetExternalAuthenticationSchemesAsync())
+            .ReturnsAsync(availableSchemes);
+        _mockSecurityPolicyService.Setup(x => x.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicyDto { AllowSelfPasswordChange = true });
+
+        // Act
+        var result = await _controller.GetProfile();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var profile = Assert.IsType<ProfileDto>(okResult.Value);
+
+        // Google should NOT be in available providers (reached limit of 2)
+        Assert.DoesNotContain(profile.AvailableProviders, p => p.Scheme == "Google");
+
+        // Microsoft should be in available providers (0 < 2)
+        Assert.Contains(profile.AvailableProviders, p => p.Scheme == "Microsoft");
+    }
+
+    [Fact]
+    public async Task GetProfile_WhenMaxLoginsPerProviderIsZero_ShouldAllowUnlimited()
+    {
+        // Arrange: Create controller with unlimited setting
+        var unlimitedOptions = Options.Create(new ExternalLoginOptions
+        {
+            MaxLoginsPerProvider = 0 // Unlimited
+        });
+
+        var controller = new ProfileManagementController(
+            _mockUserManager.Object,
+            _mockSignInManager.Object,
+            _dbContext,
+            _mockSecurityPolicyService.Object,
+            _mockPasskeyService.Object,
+            _mockAuditService.Object,
+            _mockLogger.Object,
+            unlimitedOptions);
+
+        controller.ControllerContext = _controller.ControllerContext;
+
+        // User has 5 Google accounts
+        var existingLogins = new List<UserLoginInfo>
+        {
+            new UserLoginInfo("Google", "key1", "Google"),
+            new UserLoginInfo("Google", "key2", "Google"),
+            new UserLoginInfo("Google", "key3", "Google"),
+            new UserLoginInfo("Google", "key4", "Google"),
+            new UserLoginInfo("Google", "key5", "Google")
+        };
+
+        var availableSchemes = new List<AuthenticationScheme>
+        {
+            new AuthenticationScheme("Google", "Google", typeof(IAuthenticationHandler))
+        };
+
+        _mockUserManager.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(_testUser);
+        _mockUserManager.Setup(x => x.HasPasswordAsync(_testUser))
+            .ReturnsAsync(true);
+        _mockUserManager.Setup(x => x.GetLoginsAsync(_testUser))
+            .ReturnsAsync(existingLogins);
+        _mockSignInManager.Setup(x => x.GetExternalAuthenticationSchemesAsync())
+            .ReturnsAsync(availableSchemes);
+        _mockSecurityPolicyService.Setup(x => x.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicyDto { AllowSelfPasswordChange = true });
+
+        // Act
+        var result = await controller.GetProfile();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var profile = Assert.IsType<ProfileDto>(okResult.Value);
+
+        // Google should still be available (unlimited)
+        Assert.Contains(profile.AvailableProviders, p => p.Scheme == "Google");
     }
 
     #endregion
