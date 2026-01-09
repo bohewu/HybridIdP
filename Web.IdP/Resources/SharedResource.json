@@ -185,6 +185,7 @@
   "LinkExistingAccount": "Link to existing account",
   "LinkExistingAccountDesc": "If you already have a HybridIdP account, sign in below to link it.",
   "LinkAccount": "Link Account",
+  "CreateNewAccount": "Create New Account",
   "CreateNewAccountDesc": "You can create a new account using your {0} profile.",
   "RegistrationDisabled": "New user registration is currently disabled.",
   "LogInWith": "Log in with {0}",
