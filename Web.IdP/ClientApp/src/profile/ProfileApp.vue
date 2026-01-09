@@ -53,7 +53,6 @@ import ProfileInfoCard from './components/ProfileInfoCard.vue'
 import EditProfileForm from './components/EditProfileForm.vue'
 import ChangePasswordForm from './components/ChangePasswordForm.vue'
 import MfaSettings from '../components/account/MfaSettings.vue'
-import i18n from '../i18n'
 
 const profile = ref(null)
 const loading = ref(true)
@@ -73,31 +72,16 @@ onMounted(() => {
   const success = urlParams.get('success')
 
   if (error) {
-    console.log('[Profile] Error param:', error)
-    console.log('[Profile] i18n locale:', i18n.global.locale.value)
-    console.log('[Profile] Available messages:', Object.keys(i18n.global.messages.value[i18n.global.locale.value]))
-    console.log('[Profile] Profile module:', i18n.global.messages.value[i18n.global.locale.value].profile)
-    console.log('[Profile] Profile.common keys:', i18n.global.messages.value[i18n.global.locale.value].profile?.common ? Object.keys(i18n.global.messages.value[i18n.global.locale.value].profile.common) : 'N/A')
-    
     if (error === 'LoginAlreadyAssociated') {
-      const msg = t('profile.common.errors.loginAlreadyAssociated')
-      console.log('[Profile] Resolved message:', msg)
-      alert(msg || 'This account is already linked to another user.')
+      alert(t('profile.common.errors.loginAlreadyAssociated'))
     } else if (error === 'LinkFailed') {
-      const msg = t('profile.common.errors.linkFailed')
-      console.log('[Profile] Resolved message:', msg)
-      alert(msg || 'Failed to link account.')
+      alert(t('profile.common.errors.linkFailed'))
     } else {
-      const msg = t('profile.common.errors.unknown')
-      console.log('[Profile] Resolved message:', msg)
-      alert(msg || 'An error occurred.')
+      alert(t('profile.common.errors.unknown'))
     }
   } else if (success) {
-    console.log('[Profile] Success param:', success)
     if (success === 'LinkAdded') {
-      const msg = t('profile.common.success.linkAdded')
-      console.log('[Profile] Resolved message:', msg)
-      alert(msg || 'Account linked successfully.')
+      alert(t('profile.common.success.linkAdded'))
     }
   }
 
