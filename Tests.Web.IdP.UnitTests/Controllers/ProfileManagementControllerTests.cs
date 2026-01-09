@@ -74,7 +74,7 @@ public class ProfileManagementControllerTests : IDisposable
         };
 
         // Setup controller with mocked User context
-        var externalLoginOptions = Options.Create(new ExternalLoginOptions
+        var externalLoginOptions = Microsoft.Extensions.Options.Options.Create(new ExternalLoginOptions
         {
             MaxLoginsPerProvider = 2 // Default for tests
         });
@@ -600,13 +600,19 @@ public class ProfileManagementControllerTests : IDisposable
         _mockSignInManager.Setup(x => x.GetExternalAuthenticationSchemesAsync())
             .ReturnsAsync(availableSchemes);
         _mockSecurityPolicyService.Setup(x => x.GetCurrentPolicyAsync())
-            .ReturnsAsync(new SecurityPolicyDto { AllowSelfPasswordChange = true });
+            .ReturnsAsync(new SecurityPolicy { AllowSelfPasswordChange = true });
 
         // Act
         var result = await _controller.GetProfile();
 
         // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
+        if (result.Result is not OkObjectResult)
+        {
+             var error = result.Result as ObjectResult;
+             throw new Exception($"Expected OkObjectResult but got {result.Result?.GetType().Name}. Status: {error?.StatusCode}, Value: {error?.Value}");
+        }
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var profile = Assert.IsType<ProfileDto>(okResult.Value);
 
         // Google should NOT be in available providers (reached limit of 2)
@@ -620,11 +626,13 @@ public class ProfileManagementControllerTests : IDisposable
     public async Task GetProfile_WhenMaxLoginsPerProviderIsZero_ShouldAllowUnlimited()
     {
         // Arrange: Create controller with unlimited setting
-        var unlimitedOptions = Options.Create(new ExternalLoginOptions
+        var unlimitedOptions = Microsoft.Extensions.Options.Options.Create(new ExternalLoginOptions
         {
             MaxLoginsPerProvider = 0 // Unlimited
         });
 
+        // Re-create dependencies locally to ensure clean state if needed, but reusing mocks is fine mostly
+        // Just recreate controller
         var controller = new ProfileManagementController(
             _mockUserManager.Object,
             _mockSignInManager.Object,
@@ -635,7 +643,17 @@ public class ProfileManagementControllerTests : IDisposable
             _mockLogger.Object,
             unlimitedOptions);
 
-        controller.ControllerContext = _controller.ControllerContext;
+        // Explicitly set context
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, _testUser.Id.ToString()),
+            new Claim(ClaimTypes.Name, _testUser.UserName)
+        };
+        var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "mock"));
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = user }
+        };
 
         // User has 5 Google accounts
         var existingLogins = new List<UserLoginInfo>
@@ -661,13 +679,19 @@ public class ProfileManagementControllerTests : IDisposable
         _mockSignInManager.Setup(x => x.GetExternalAuthenticationSchemesAsync())
             .ReturnsAsync(availableSchemes);
         _mockSecurityPolicyService.Setup(x => x.GetCurrentPolicyAsync())
-            .ReturnsAsync(new SecurityPolicyDto { AllowSelfPasswordChange = true });
+            .ReturnsAsync(new SecurityPolicy { AllowSelfPasswordChange = true });
 
         // Act
         var result = await controller.GetProfile();
 
         // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
+        if (result.Result is not OkObjectResult)
+        {
+             var error = result.Result as ObjectResult;
+             throw new Exception($"Expected OkObjectResult but got {result.Result?.GetType().Name}. Status: {error?.StatusCode}, Value: {error?.Value}");
+        }
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var profile = Assert.IsType<ProfileDto>(okResult.Value);
 
         // Google should still be available (unlimited)
