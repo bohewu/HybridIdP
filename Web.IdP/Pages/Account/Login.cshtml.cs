@@ -118,7 +118,7 @@ public partial class LoginModel : PageModel
 
     public IList<AuthenticationScheme> ExternalLogins { get; set; } = new List<AuthenticationScheme>();
 
-    public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null)
     {
         ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
@@ -132,6 +132,11 @@ public partial class LoginModel : PageModel
         {
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+
+        if (!string.IsNullOrEmpty(remoteError))
+        {
+            ModelState.AddModelError(string.Empty, _localizer[$"ExternalLoginFailure_{remoteError}"] ?? _localizer["ExternalLoginFailure"] ?? "External login failed.");
         }
 
         // Load registration setting
