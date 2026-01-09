@@ -10,6 +10,7 @@ using Web.IdP.Infrastructure.Identity;
 using Web.IdP.Services;
 using Web.IdP.Options;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 using Infrastructure.Services;
 using Core.Domain.Constants;
 using Core.Application.Interfaces;
@@ -28,6 +29,7 @@ public class ExternalLoginConfirmationModel : PageModel
     private readonly ISettingsService _settingsService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ExternalLoginConfirmationModel> _logger;
+    private readonly LoginNoticesOptions _loginNoticesOptions; // Added field
 
     public ExternalLoginConfirmationModel(
         UserManager<ApplicationUser> userManager,
@@ -36,7 +38,8 @@ public class ExternalLoginConfirmationModel : PageModel
         ILoginService loginService,
         ISettingsService settingsService,
         IStringLocalizer<SharedResource> localizer,
-        ILogger<ExternalLoginConfirmationModel> logger)
+        ILogger<ExternalLoginConfirmationModel> logger,
+        IOptions<LoginNoticesOptions> loginNoticesOptions) // Added IOptions parameter
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -45,10 +48,13 @@ public class ExternalLoginConfirmationModel : PageModel
         _settingsService = settingsService;
         _localizer = localizer;
         _logger = logger;
+        _loginNoticesOptions = loginNoticesOptions.Value; // Initialized field
     }
 
+    public LoginNoticesOptions LoginNotices => _loginNoticesOptions;
+
     [BindProperty]
-    public InputModel Input { get; set; } = new();
+    public InputModel Input { get; set; } = default!;
 
     public string ReturnUrl { get; set; } = string.Empty;
     public string LoginProvider { get; set; } = string.Empty;

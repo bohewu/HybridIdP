@@ -34,6 +34,15 @@
         @{
             var isWide = Model.ShowRegistrationButton;
             var widthClass = isWide ? "max-w-3xl" : "max-w-[450px]";
+            var notices = Model.LoginNotices;
+        }
+
+        @* Top Notice - Above the card *@
+        @if (!string.IsNullOrWhiteSpace(notices.TopMessage))
+        {
+            <div class="w-full max-w-md mx-auto mb-4">
+                <partial name="_LoginNotice" model="(notices.TopMessage, notices.TopType)" />
+            </div>
         }
 
         <div class="sm:mx-auto @widthClass w-full mt-12 mb-8 text-center">
@@ -57,6 +66,13 @@
 
         <div class="google-login-card @(isWide ? "wide-card" : "") w-full mx-auto">
             <div asp-validation-summary="All" class="text-red-500 text-sm mb-4"></div>
+
+            @if (!string.IsNullOrWhiteSpace(notices.FormMessage))
+            {
+                <div class="mb-4">
+                     <partial name="_LoginNotice" model="(notices.FormMessage, notices.FormType)" />
+                </div>
+            }
 
             <div class="grid grid-cols-1 @(isWide ? "md:grid-cols-2 divide-y md:divide-y-0 md:divide-x" : "") gap-8 divide-gray-100">
                 
@@ -97,6 +113,14 @@
                 }
 
             </div>
+            
+            @* Bottom Notice - After content *@
+            @if (!string.IsNullOrWhiteSpace(notices.BottomMessage))
+            {
+                <div class="mt-6">
+                    <partial name="_LoginNotice" model="(notices.BottomMessage, notices.BottomType)" />
+                </div>
+            }
         </div>
 
         <div class="@widthClass w-full mx-auto google-footer-wrapper">
