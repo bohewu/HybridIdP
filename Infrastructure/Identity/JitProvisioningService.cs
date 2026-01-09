@@ -76,7 +76,7 @@ public class JitProvisioningService : IJitProvisioningService
                     }
                     
                     // Auto-verify Legacy users if not already verified
-                    if (externalAuth.Provider == "Legacy" && existingPerson.IdentityVerifiedAt == null)
+                    if (externalAuth.Provider == Core.Domain.Constants.AuthConstants.Providers.Legacy && existingPerson.IdentityVerifiedAt == null)
                     {
                         existingPerson.IdentityVerifiedAt = DateTime.UtcNow;
                         if (string.IsNullOrWhiteSpace(existingPerson.IdentityDocumentType) && !string.IsNullOrWhiteSpace(existingPerson.NationalId))
@@ -115,7 +115,7 @@ public class JitProvisioningService : IJitProvisioningService
                 PassportNumber = PidHasher.Hash(externalAuth.PassportNumber),
                 ResidentCertificateNumber = PidHasher.Hash(externalAuth.ResidentCertificateNumber),
                 // Auto-verify Legacy users since they're trusted from the old system
-                IdentityVerifiedAt = externalAuth.Provider == "Legacy" ? DateTime.UtcNow : null,
+                IdentityVerifiedAt = externalAuth.Provider == Core.Domain.Constants.AuthConstants.Providers.Legacy ? DateTime.UtcNow : null,
                 IdentityDocumentType = !string.IsNullOrWhiteSpace(externalAuth.NationalId) ? "NationalId" : null,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = null // System provisioned
@@ -149,7 +149,7 @@ public class JitProvisioningService : IJitProvisioningService
             }
             
             // Auto-verify Legacy users if not already verified
-            if (externalAuth.Provider == "Legacy" && person.IdentityVerifiedAt == null)
+            if (externalAuth.Provider == Core.Domain.Constants.AuthConstants.Providers.Legacy && person.IdentityVerifiedAt == null)
             {
                 person.IdentityVerifiedAt = DateTime.UtcNow;
                 if (string.IsNullOrWhiteSpace(person.IdentityDocumentType) && !string.IsNullOrWhiteSpace(person.NationalId))
@@ -310,7 +310,7 @@ public class JitProvisioningService : IJitProvisioningService
         // Convert to ExternalAuthResult format
         var externalAuth = new ExternalAuthResult
         {
-            Provider = "Legacy",
+            Provider = Core.Domain.Constants.AuthConstants.Providers.Legacy,
             ProviderKey = dto.ExternalId ?? dto.Email ?? dto.NationalId ?? Guid.NewGuid().ToString(),
             Email = dto.Email,
             FirstName = dto.FullName, // Legacy only has FullName

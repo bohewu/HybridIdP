@@ -44,7 +44,7 @@ public class JitProvisioningService_LegacyTests : IDisposable
         // Arrange
         var externalAuth = new ExternalAuthResult
         {
-            Provider = "Legacy",
+            Provider = Core.Domain.Constants.AuthConstants.Providers.Legacy,
             ProviderKey = "legacy_user",
             Email = "legacy@example.com",
             FirstName = "Legacy User",
@@ -52,7 +52,7 @@ public class JitProvisioningService_LegacyTests : IDisposable
             NationalId = "A123456789"
         };
 
-        _userManagerMock.Setup(um => um.FindByLoginAsync("Legacy", "legacy_user"))
+        _userManagerMock.Setup(um => um.FindByLoginAsync(Core.Domain.Constants.AuthConstants.Providers.Legacy, "legacy_user"))
             .ReturnsAsync((ApplicationUser?)null); // New user
 
         _userManagerMock.Setup(um => um.FindByNameAsync(It.IsAny<string>()))
@@ -99,14 +99,14 @@ public class JitProvisioningService_LegacyTests : IDisposable
 
         var externalAuth = new ExternalAuthResult
         {
-            Provider = "Legacy",
+            Provider = Core.Domain.Constants.AuthConstants.Providers.Legacy,
             ProviderKey = "user_123",
             Email = "user@example.com",
             FirstName = "NewName", // Name changed
             NationalId = "A123456789"
         };
 
-        _userManagerMock.Setup(um => um.FindByLoginAsync("Legacy", "user_123"))
+        _userManagerMock.Setup(um => um.FindByLoginAsync(Core.Domain.Constants.AuthConstants.Providers.Legacy, "user_123"))
             .ReturnsAsync(existingUser); // Existing user found by login
 
         _userManagerMock.Setup(um => um.UpdateAsync(It.IsAny<ApplicationUser>()))

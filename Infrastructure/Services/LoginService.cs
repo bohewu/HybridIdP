@@ -114,7 +114,7 @@ public partial class LoginService : ILoginService
         // Map LegacyUserDto to ExternalAuthResult
         var externalAuth = new Core.Application.DTOs.ExternalAuthResult
         {
-             Provider = "Legacy",
+             Provider = Core.Domain.Constants.AuthConstants.Providers.Legacy,
              ProviderKey = legacyResult.ExternalId ?? login,
              Email = legacyResult.Email,
              DisplayName = legacyResult.FullName,

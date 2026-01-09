@@ -116,17 +116,23 @@
             </svg>
             <span class="text-sm text-gray-900">{{ login.providerDisplayName || login.loginProvider }}</span>
           </div>
+        <!-- Remove Button -->
+        <div v-if="canRemove">
           <button 
-            v-if="canRemove" 
-            @click="removeLogin(login)"
-            class="text-red-600 hover:text-red-900 text-sm font-medium"
-            :disabled="loading === login.loginProvider"
+            @click="removeLogin(login)" 
+            :disabled="removingLogins[login.providerKey]"
+            class="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            :title="t('profile.common.remove')"
           >
-            <span v-if="loading === login.loginProvider" class="inline-block animate-spin mr-1">
-                <i class="bi bi-arrow-repeat"></i>
-            </span>
-            {{ t('profile.common.remove') || 'Remove' }}
+            <svg v-if="!removingLogins[login.providerKey]" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <svg v-else class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
           </button>
+        </div>
         </li>
       </ul>
     </div>
@@ -147,7 +153,7 @@ const props = defineProps({
 const emit = defineEmits(['updated'])
 
 const { t } = useI18n()
-const loading = ref(null) // stores loginProvider being removed
+const removingLogins = ref({}) // track removal status by providerKey
 
 const canRemove = computed(() => {
   // Always allow removal attempt; backend will prevent removing the last login method
@@ -159,7 +165,7 @@ const removeLogin = async (login) => {
     return
   }
 
-  loading.value = login.loginProvider
+  removingLogins.value[login.providerKey] = true
   try {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.getElementById('profile-app')?.dataset?.csrfToken
     
@@ -184,7 +190,7 @@ const removeLogin = async (login) => {
   } catch (e) {
     console.error('Error removing login:', e)
   } finally {
-    loading.value = null
+    removingLogins.value[login.providerKey] = false
   }
 }
 </script>

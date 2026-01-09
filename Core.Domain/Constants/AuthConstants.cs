@@ -84,6 +84,14 @@ public static class AuthConstants
     }
 
     /// <summary>
+    /// Authentication provider names.
+    /// </summary>
+    public static class Providers
+    {
+        public const string Legacy = "Legacy";
+    }
+
+    /// <summary>
     /// Authentication Methods References values.
     /// </summary>
     public static class Amr
