@@ -121,7 +121,7 @@
           <button 
             @click="removeLogin(login)" 
             :disabled="removingLogins[login.providerKey]"
-            class="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            class="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50 focus:outline-none"
             :title="t('profile.common.remove')"
           >
             <svg v-if="!removingLogins[login.providerKey]" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
