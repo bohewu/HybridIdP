@@ -58,6 +58,8 @@
   "DisconnectAppConfirm": "確定要中斷與此應用程式的連接嗎？下次登入時需要重新授權。",
   "AppDisconnected": "應用程式已成功中斷連接",
   "DisconnectFailed": "中斷連接失敗",
+  "ExternalLoginConfirmationTitle": "需要後續動作",
+  "ExternalLoginConfirmationDesc": "您已通過 {0} 驗證。請選擇連結至現有帳戶或建立新帳戶以繼續。",
   "DisconnectError": "發生錯誤",
   "SearchApps": "搜尋應用程式...",
   "GridView": "網格檢視",

@@ -4,7 +4,7 @@
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 @inject Web.IdP.Services.IViteManifestService ViteService
 @{
-    ViewData["Title"] = Localizer["CompleteLogin"];
+    ViewData["Title"] = Localizer["ExternalLoginConfirmationTitle"];
     Layout = null;
     var currentCulture = HttpContext.Features.Get<Microsoft.AspNetCore.Localization.IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
 }
@@ -37,27 +37,30 @@
             var notices = Model.LoginNotices;
         }
 
-        @* Top Notice - Above the card *@
-        @if (!string.IsNullOrWhiteSpace(notices.TopMessage))
-        {
-            <div class="w-full max-w-md mx-auto mb-4">
-                <partial name="_LoginNotice" model="(notices.TopMessage, notices.TopType)" />
-            </div>
-        }
-
         <div class="sm:mx-auto @widthClass w-full mt-12 mb-8 text-center">
              <div class="flex justify-center mb-4">
                 <div class="google-logo mx-auto">
-                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
+                    @if (Model.LoginProvider == "Google")
+                    {
+                        <img src="https://www.gstatic.com/images/branding/product/1x/googleg_48dp.png" class="w-full h-full p-2" alt="Google" />
+                    }
+                    else if (Model.LoginProvider == "Microsoft")
+                    {
+                        <img src="https://www.microsoft.com/favicon.ico" class="w-full h-full p-3" alt="Microsoft" />
+                    }
+                    else
+                    {
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                    }
                 </div>
             </div>
              <h2 class="text-2xl font-normal text-gray-900 mb-2">
-                @Localizer["CompleteLogin"]
+                @Localizer["ExternalLoginConfirmationTitle"]
             </h2>
             <p class="mt-1 text-sm text-gray-500">
-                @Localizer["AuthenticateWith"] <strong class="font-medium text-gray-700">@Model.LoginProvider</strong>
+                @Localizer["ExternalLoginConfirmationDesc", Model.LoginProvider]
             </p>
              <p class="text-xs text-gray-400 mt-1">
                 (@Model.Email)

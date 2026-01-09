@@ -58,6 +58,8 @@
   "DisconnectAppConfirm": "Are you sure you want to disconnect this application? You will need to authorize it again on next login.",
   "AppDisconnected": "Application disconnected successfully",
   "DisconnectFailed": "Failed to disconnect application",
+  "ExternalLoginConfirmationTitle": "Action Required",
+  "ExternalLoginConfirmationDesc": "You have successfully authenticated with {0}. Please choose to link to an existing account or create a new one.",
   "DisconnectError": "An error occurred",
   "SearchApps": "Search applications...",
   "GridView": "Grid View",
