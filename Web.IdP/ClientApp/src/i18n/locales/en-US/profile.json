@@ -72,7 +72,15 @@
     "reloadForLocale": "Language settings changed. Reload the page to apply changes?",
     "remove": "Remove",
     "removeLoginConfirm": "Are you sure you want to remove {provider}?",
-    "removeLoginFailed": "Failed to remove login"
+    "removeLoginFailed": "Failed to remove login",
+    "errors": {
+      "loginAlreadyAssociated": "The external login is already associated with an account.",
+      "linkFailed": "Failed to link the external login.",
+      "unknown": "An unknown error occurred."
+    },
+    "success": {
+      "linkAdded": "The external login was added."
+    }
   },
   "security": {
     "title": "Security Status",

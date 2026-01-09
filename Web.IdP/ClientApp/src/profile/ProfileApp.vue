@@ -65,6 +65,32 @@ onMounted(() => {
   if (mountEl?.dataset?.csrfToken) {
     csrfToken.value = mountEl.dataset.csrfToken
   }
+
+  // Check URL query params for status messages (e.g. from External Account linking)
+  const urlParams = new URLSearchParams(window.location.search)
+  const error = urlParams.get('error')
+  const success = urlParams.get('success')
+
+  if (error) {
+    if (error === 'LoginAlreadyAssociated') {
+      alert(t('profile.errors.loginAlreadyAssociated') || 'This account is already linked to another user.')
+    } else if (error === 'LinkFailed') {
+      alert(t('profile.errors.linkFailed') || 'Failed to link account.')
+    } else {
+      alert(t('profile.errors.unknown') || 'An error occurred.')
+    }
+  } else if (success) {
+    if (success === 'LinkAdded') {
+      alert(t('profile.success.linkAdded') || 'Account linked successfully.')
+    }
+  }
+
+  // Clean up URL
+  if (error || success) {
+    const newUrl = window.location.pathname
+    window.history.replaceState({}, '', newUrl)
+  }
+
   loadProfile()
 })
 
