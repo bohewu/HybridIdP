@@ -189,6 +189,7 @@
   "CreateNewAccountDesc": "You can create a new account using your {0} profile.",
   "RegistrationDisabled": "New user registration is currently disabled.",
   "LogInWith": "Log in with {0}",
+  "Or": "OR",
   "Login.ExternalProvider.Google": "Sign in with Google",
   "Login.ExternalProvider.Microsoft": "Sign in with Microsoft",
   "Login.ExternalProvider.GitHub": "Sign in with GitHub",
