@@ -121,7 +121,7 @@
           <button 
             @click="removeLogin(login)" 
             :disabled="removingLogins[login.providerKey]"
-            class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 active:bg-red-200 border border-red-200 rounded-md transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             :title="t('profile.common.remove')"
           >
             <svg v-if="!removingLogins[login.providerKey]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -138,7 +138,7 @@
           <button 
             @click="removeLogin(login)" 
             :disabled="removingLogins[login.providerKey]"
-            class="sm:hidden p-2 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50 focus:outline-none"
+            class="sm:hidden p-2 text-gray-400 hover:text-red-500 active:bg-red-100 transition-colors rounded-full hover:bg-red-50 focus:outline-none"
             :title="t('profile.common.remove')"
           >
              <svg v-if="!removingLogins[login.providerKey]" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
