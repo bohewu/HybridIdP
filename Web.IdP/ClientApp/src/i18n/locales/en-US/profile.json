@@ -69,7 +69,8 @@
     "cancel": "Cancel",
     "errorOccurred": "An error occurred",
     "networkError": "Network error. Please try again.",
-    "reloadForLocale": "Language settings changed. Reload the page to apply changes?"
+    "reloadForLocale": "Language settings changed. Reload the page to apply changes?",
+    "remove": "Remove"
   },
   "security": {
     "title": "Security Status",

@@ -150,8 +150,8 @@ const { t } = useI18n()
 const loading = ref(null) // stores loginProvider being removed
 
 const canRemove = computed(() => {
-  const hasMultipleMethods = props.profile.externalLogins.length > 1
-  return props.profile.hasLocalPassword || hasMultipleMethods
+  // Always allow removal attempt; backend will prevent removing the last login method
+  return true
 })
 
 const removeLogin = async (login) => {
