@@ -38,18 +38,18 @@ services:
       - LoginNotices__BottomMessage=${LoginNotices__BottomMessage:-}
       - LoginNotices__BottomType=${LoginNotices__BottomType:-info}
       # External Login (Google, Microsoft)
+      - ExternalLogin__MaxLoginsPerProvider=${ExternalLogin__MaxLoginsPerProvider:-2}
+      - ExternalLogin__ForceAccountSelection=${ExternalLogin__ForceAccountSelection:-true}
+      - Branding__PrivacyPolicyUrl=${Branding__PrivacyPolicyUrl}
+      - Branding__HelpUrl=${Branding__HelpUrl}
       - ExternalLogin__Google__Enabled=${ExternalLogin__Google__Enabled:-false}
       - ExternalLogin__Google__ClientId=${ExternalLogin__Google__ClientId:-}
       - ExternalLogin__Google__ClientSecret=${ExternalLogin__Google__ClientSecret:-}
-      - ExternalLogin__Google__ForceAccountSelection=${ExternalLogin__Google__ForceAccountSelection:-true}
       - ExternalLogin__Google__HostedDomain=${ExternalLogin__Google__HostedDomain:-}
       - ExternalLogin__Microsoft__Enabled=${ExternalLogin__Microsoft__Enabled:-false}
       - ExternalLogin__Microsoft__ClientId=${ExternalLogin__Microsoft__ClientId:-}
       - ExternalLogin__Microsoft__ClientSecret=${ExternalLogin__Microsoft__ClientSecret:-}
-      - ExternalLogin__Microsoft__ForceAccountSelection=${ExternalLogin__Microsoft__ForceAccountSelection:-true}
       - ExternalLogin__AutoLinkMatchingEmail=${ExternalLogin__AutoLinkMatchingEmail:-false}
-      - ExternalLogin__MaxLoginsPerProvider=${ExternalLogin__MaxLoginsPerProvider:-2}
-      - Branding__PrivacyPolicyUrl=${Branding__PrivacyPolicyUrl}
       - Branding__HelpUrl=${Branding__HelpUrl}
     volumes:
       - ./certs:/app/certs:ro # Mount certs from deployment/certs
