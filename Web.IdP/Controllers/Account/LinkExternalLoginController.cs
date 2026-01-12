@@ -62,7 +62,6 @@ public partial class LinkExternalLoginController : Controller
         }
 
         // Check MaxLoginsPerProvider limit
-        // Check MaxLoginsPerProvider limit
         var linkCheck = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider);
         if (!linkCheck.Succeeded)
         {

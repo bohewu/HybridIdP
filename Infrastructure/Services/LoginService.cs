@@ -69,16 +69,6 @@ public partial class LoginService : ILoginService
 
         if (existingCount >= _externalLoginOptions.MaxLoginsPerProvider)
         {
-             // Note: We return a generic error key or message. 
-             // Ideally we should return a structured error code, but for now string is fine.
-             // Localizer is not available here, so we return the default English message or a key.
-             // Let's return the simplified message/key that can be handled by caller if needed, 
-             // OR return a formatted string if we accept English in Service layer.
-             // Given the context, we'll return a formatted string for logs/debugging, 
-             // but the caller (Controller/Page) might want to override with Localizer.
-             // However, to keep it simple and consistent with AuthenticateAsync which returns LoginResult,
-             // we return the error string. 
-             
              return (false, $"You have reached the maximum number of linked accounts ({_externalLoginOptions.MaxLoginsPerProvider}) for {provider}.");
         }
 
