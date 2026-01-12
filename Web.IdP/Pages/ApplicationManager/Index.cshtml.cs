@@ -15,17 +15,20 @@ public class IndexModel : PageModel
 {
     private readonly IClientService _clientService;
     private readonly IScopeService _scopeService;
+    private readonly IApiResourceService _apiResourceService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
         IClientService clientService,
         IScopeService scopeService,
+        IApiResourceService apiResourceService,
         UserManager<ApplicationUser> userManager,
         ILogger<IndexModel> logger)
     {
         _clientService = clientService;
         _scopeService = scopeService;
+        _apiResourceService = apiResourceService;
         _userManager = userManager;
         _logger = logger;
     }
@@ -33,6 +36,7 @@ public class IndexModel : PageModel
     public string UserName { get; set; } = string.Empty;
     public int ClientCount { get; set; }
     public int ScopeCount { get; set; }
+    public int ResourceCount { get; set; }
 
     public async Task OnGetAsync()
     {
@@ -64,12 +68,18 @@ public class IndexModel : PageModel
                 // Count scopes - admin sees all, others see only their own
                 var scopesResult = await _scopeService.GetScopesAsync(0, int.MaxValue, null, null, ownerFilter);
                 ScopeCount = scopesResult.totalCount;
+
+                // Count resources - currently no owner filter, so all are visible
+                // Note: If resource filtering is added later, update this call.
+                var resourcesResult = await _apiResourceService.GetResourcesAsync(0, int.MaxValue, null, null);
+                ResourceCount = resourcesResult.totalCount;
             }
             else
             {
                 _logger.LogWarning("PersonId claim not found for user {UserName}", user.UserName);
                 ClientCount = 0;
                 ScopeCount = 0;
+                ResourceCount = 0;
             }
         }
         catch (Exception ex)
@@ -77,6 +87,7 @@ public class IndexModel : PageModel
             _logger.LogError(ex, "Error loading ApplicationManager dashboard data");
             ClientCount = 0;
             ScopeCount = 0;
+            ResourceCount = 0;
         }
     }
 }

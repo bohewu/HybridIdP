@@ -7,7 +7,7 @@
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       <!-- Clients Card -->
       <a href="/Admin/Clients" class="block p-6 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors group">
         <div class="flex items-center gap-4">
@@ -37,6 +37,22 @@
         </div>
         <div class="mt-4 text-sm text-green-600 group-hover:underline">
           {{ $t('app-manager.ManageScopes') }} →
+        </div>
+      </a>
+
+      <!-- Resources Card -->
+      <a href="/Admin/Resources" class="block p-6 bg-white border border-gray-200 rounded-lg hover:border-purple-300 transition-colors group">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center">
+            <i class="bi bi-hdd-network text-purple-600 text-xl"></i>
+          </div>
+          <div>
+            <div class="text-sm text-gray-500">{{ $t('app-manager.MyResources') }}</div>
+            <div class="text-2xl font-medium text-gray-900">{{ resourceCount }}</div>
+          </div>
+        </div>
+        <div class="mt-4 text-sm text-purple-600 group-hover:underline">
+          {{ $t('app-manager.ManageResources') }} →
         </div>
       </a>
     </div>
@@ -98,6 +114,7 @@ import { ref, onMounted } from 'vue'
 const userName = ref('')
 const clientCount = ref(0)
 const scopeCount = ref(0)
+const resourceCount = ref(0)
 
 onMounted(async () => {
   // Get data from the page's data attributes
@@ -106,6 +123,7 @@ onMounted(async () => {
     userName.value = appEl.dataset.userName || ''
     clientCount.value = parseInt(appEl.dataset.clientCount || '0', 10)
     scopeCount.value = parseInt(appEl.dataset.scopeCount || '0', 10)
+    resourceCount.value = parseInt(appEl.dataset.resourceCount || '0', 10)
   }
 })
 </script>

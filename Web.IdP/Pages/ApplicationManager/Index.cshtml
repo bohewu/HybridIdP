@@ -7,8 +7,12 @@
     Layout = "~/Pages/Shared/_ApplicationManagerLayout.cshtml";
 }
 
-<div id="app" class="vue-app-container" data-user-name="@Model.UserName" data-client-count="@Model.ClientCount" data-scope-count="@Model.ScopeCount"></div>
+<div id="app" class="vue-app-container" 
+     data-user-name="@Model.UserName" 
+     data-client-count="@Model.ClientCount" 
+     data-scope-count="@Model.ScopeCount"
+     data-resource-count="@Model.ResourceCount"></div>
 
 @section Scripts {
-    <script type="module" vite-src="~/src/app-manager/dashboard/main.js"></script>></script>
+    <script type="module" vite-src="~/src/app-manager/dashboard/main.js"></script>
 }

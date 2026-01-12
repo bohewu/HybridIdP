@@ -86,6 +86,11 @@
                         <i class="bi bi-shield-lock text-lg"></i>
                         <span>@Localizer["Scopes"]</span>
                     </a>
+                    
+                     <a href="/Admin/Resources" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Resources" ? "active bg-google-100 text-google-500 border-google-500" : "")">
+                        <i class="bi bi-hdd-network text-lg"></i>
+                        <span>@Localizer["Resources"]</span>
+                    </a>
                 }
             </nav>
             
