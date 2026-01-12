@@ -51,8 +51,9 @@ public class ImpersonationService : IImpersonationService
         var identity = (ClaimsIdentity)principal.Identity!;
 
         // 6. Create Actor identity (The Admin)
-        var actorIdentity = new ClaimsIdentity();
-        actorIdentity.AddClaim(new Claim(ClaimTypes.NameIdentifier, adminUser.Id.ToString()));
+        // Set an authentication type to ensure the identity is considered "Authenticated"
+        var actorIdentity = new ClaimsIdentity("Impersonation");
+        actorIdentity.AddClaim(new Claim(AuthConstants.Claims.ImpersonatorId, adminUser.Id.ToString()));
         actorIdentity.AddClaim(new Claim("sub", adminUser.Id.ToString()));
         if (!string.IsNullOrEmpty(adminUser.UserName))
         {
@@ -62,6 +63,9 @@ public class ImpersonationService : IImpersonationService
 
         // Attach actor
         identity.Actor = actorIdentity;
+
+        // Also add a claim to the main identity to make it easier to detect impersonation and preserve it
+        identity.AddClaim(new Claim(AuthConstants.Claims.ImpersonatorId, adminUser.Id.ToString()));
 
         return (true, principal, null);
     }
@@ -81,7 +85,8 @@ public class ImpersonationService : IImpersonationService
         }
 
         var actor = currentIdentity.Actor;
-        var originalUserSub = actor.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var originalUserSub = actor.FindFirst(AuthConstants.Claims.ImpersonatorId)?.Value 
+                              ?? actor.FindFirst(ClaimTypes.NameIdentifier)?.Value 
                               ?? actor.FindFirst("sub")?.Value;
 
         if (string.IsNullOrEmpty(originalUserSub))

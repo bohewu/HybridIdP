@@ -73,6 +73,12 @@ public static class AuthConstants
         /// Person ID claim linking user to their Person record.
         /// </summary>
         public const string PersonId = "person_id";
+
+        /// <summary>
+        /// Impersonator ID claim for identifying the admin who is impersonating a user.
+        /// Used for persistence across security stamp refreshes.
+        /// </summary>
+        public const string ImpersonatorId = "impersonator_id";
     }
 
     /// <summary>

@@ -8,6 +8,7 @@ using Core.Domain.Events;
 using Web.IdP.Infrastructure.Identity;
 using HybridIdP.Infrastructure.Identity;
 using global::Infrastructure.Identity;
+using Core.Domain.Constants;
 using global::Infrastructure.Services;
 using global::Infrastructure.Options;
 using Core.Application;
@@ -348,13 +349,9 @@ public static class ServiceCollectionExtensions
                 // Note: When SecurityStamp is validated, Identity triggers a refresh by signing in the user again.
                 // This would normally lose the 'Actor' property used for impersonation.
                 // We preserve it here by copying it from the current user to the new principal.
-                if (context.HttpContext.User.Identity is ClaimsIdentity { Actor: not null } currentIdentity &&
+                if (context.HttpContext.User.Identity is ClaimsIdentity currentIdentity &&
                     context.Principal?.Identity is ClaimsIdentity newIdentity)
                 {
-                    // Only preserve the Actor if this is a session refresh (User IDs match).
-                    // If the User IDs don't match, it's a "Start" or "Stop" impersonation action,
-                    // in which case we either manually set the Actor or want to clear it.
-                    // We check both NameIdentifier (Identity default) and 'sub' (OIDC/OpenIddict standard).
                     var currentUserId = currentIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value 
                                         ?? currentIdentity.FindFirst("sub")?.Value;
                     var newUserId = newIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value 
@@ -362,7 +359,18 @@ public static class ServiceCollectionExtensions
 
                     if (currentUserId != null && currentUserId == newUserId)
                     {
-                        newIdentity.Actor = currentIdentity.Actor;
+                        // Preserve the Actor property
+                        if (currentIdentity.Actor != null)
+                        {
+                            newIdentity.Actor = currentIdentity.Actor;
+                        }
+
+                        // Preserve the ImpersonatorId claim (crucial for persistence after refresh)
+                        var impersonatorIdClaim = currentIdentity.FindFirst(AuthConstants.Claims.ImpersonatorId);
+                        if (impersonatorIdClaim != null && !newIdentity.HasClaim(c => c.Type == AuthConstants.Claims.ImpersonatorId))
+                        {
+                            newIdentity.AddClaim(impersonatorIdClaim);
+                        }
                     }
                 }
 
