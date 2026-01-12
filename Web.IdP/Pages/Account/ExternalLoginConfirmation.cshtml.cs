@@ -30,7 +30,8 @@ public class ExternalLoginConfirmationModel : PageModel
     private readonly ISettingsService _settingsService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ExternalLoginConfirmationModel> _logger;
-    private readonly LoginNoticesOptions _loginNoticesOptions; // Added field
+    private readonly LoginNoticesOptions _loginNoticesOptions; 
+    private readonly ExternalLoginOptions _externalLoginOptions; // Added field
 
     public ExternalLoginConfirmationModel(
         UserManager<ApplicationUser> userManager,
@@ -40,7 +41,8 @@ public class ExternalLoginConfirmationModel : PageModel
         ISettingsService settingsService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<ExternalLoginConfirmationModel> logger,
-        IOptions<LoginNoticesOptions> loginNoticesOptions) // Added IOptions parameter
+        IOptions<LoginNoticesOptions> loginNoticesOptions,
+        IOptions<ExternalLoginOptions> externalLoginOptions) // Added parameter
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -49,7 +51,8 @@ public class ExternalLoginConfirmationModel : PageModel
         _settingsService = settingsService;
         _localizer = localizer;
         _logger = logger;
-        _loginNoticesOptions = loginNoticesOptions.Value; // Initialized field
+        _loginNoticesOptions = loginNoticesOptions.Value;
+        _externalLoginOptions = externalLoginOptions.Value; // Initialize
     }
 
     public LoginNoticesOptions LoginNotices => _loginNoticesOptions;
@@ -126,7 +129,21 @@ public class ExternalLoginConfirmationModel : PageModel
         }
 
         var user = result.User!;
-        // 2. Link the external login
+
+        // 2. Check MaxLoginsPerProvider limit
+        if (_externalLoginOptions.MaxLoginsPerProvider > 0)
+        {
+            var existingLogins = await _userManager.GetLoginsAsync(user);
+            var existingCount = existingLogins.Count(l => l.LoginProvider == info.LoginProvider);
+            
+            if (existingCount >= _externalLoginOptions.MaxLoginsPerProvider)
+            {
+                ModelState.AddModelError(string.Empty, string.Format(_localizer["ProviderLimitReached"] ?? "You have reached the maximum number of linked accounts ({0}) for {1}.", _externalLoginOptions.MaxLoginsPerProvider, info.LoginProvider));
+                return Page();
+            }
+        }
+
+        // 3. Link the external login
         var addResult = await _userManager.AddLoginAsync(user, info);
         if (addResult.Succeeded)
         {
