@@ -14,4 +14,12 @@ public interface ILoginService
     /// <param name="password">The user's password.</param>
     /// <returns>A <see cref="LoginResult"/> indicating the outcome of the authentication attempt.</returns>
     Task<LoginResult> AuthenticateAsync(string login, string password);
+
+    /// <summary>
+    /// Checks if a user can link a specific external login provider (e.g., enforces limits).
+    /// </summary>
+    /// <param name="user">The application user.</param>
+    /// <param name="provider">The provider name (e.g. Google).</param>
+    /// <returns>A tuple indicating success and an error message if failed.</returns>
+    Task<(bool Succeeded, string? Error)> CanLinkExternalLoginAsync(Core.Domain.ApplicationUser user, string provider);
 }

@@ -1,4 +1,4 @@
-namespace Web.IdP.Options;
+namespace Core.Application.Options;
 
 public class ExternalLoginOptions
 {

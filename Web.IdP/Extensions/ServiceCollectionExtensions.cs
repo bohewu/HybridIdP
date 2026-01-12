@@ -260,8 +260,8 @@ public static class ServiceCollectionExtensions
             .AddErrorDescriber<LocalizedIdentityErrorDescriber>();
 
         // Configure External Logins
-        var externalLoginOptions = new Options.ExternalLoginOptions();
-        configuration.GetSection(Options.ExternalLoginOptions.Section).Bind(externalLoginOptions);
+        var externalLoginOptions = new Core.Application.Options.ExternalLoginOptions();
+        configuration.GetSection(Core.Application.Options.ExternalLoginOptions.Section).Bind(externalLoginOptions);
         
         var authBuilder = services.AddAuthentication();
 

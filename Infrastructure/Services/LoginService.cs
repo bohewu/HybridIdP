@@ -21,6 +21,7 @@ public partial class LoginService : ILoginService
     private readonly IApplicationDbContext _dbContext;
     private readonly ILogger<LoginService> _logger;
     private readonly TimeProvider _timeProvider;
+    private readonly Core.Application.Options.ExternalLoginOptions _externalLoginOptions;
 
     public LoginService(
         UserManager<ApplicationUser> userManager,
@@ -29,6 +30,7 @@ public partial class LoginService : ILoginService
         IJitProvisioningService jitProvisioningService,
         IApplicationDbContext dbContext,
         ILogger<LoginService> logger,
+        Microsoft.Extensions.Options.IOptions<Core.Application.Options.ExternalLoginOptions> externalLoginOptions,
         TimeProvider? timeProvider = null)
     {
         _userManager = userManager;
@@ -37,6 +39,7 @@ public partial class LoginService : ILoginService
         _jitProvisioningService = jitProvisioningService;
         _dbContext = dbContext;
         _logger = logger;
+        _externalLoginOptions = externalLoginOptions.Value;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -51,6 +54,35 @@ public partial class LoginService : ILoginService
         }
 
         return await AuthenticateLegacyUserAsync(login, password);
+    }
+
+    /// <inheritdoc />
+    public async Task<(bool Succeeded, string? Error)> CanLinkExternalLoginAsync(ApplicationUser user, string provider)
+    {
+        if (_externalLoginOptions.MaxLoginsPerProvider <= 0)
+        {
+            return (true, null);
+        }
+
+        var existingLogins = await _userManager.GetLoginsAsync(user);
+        var existingCount = existingLogins.Count(l => l.LoginProvider == provider);
+
+        if (existingCount >= _externalLoginOptions.MaxLoginsPerProvider)
+        {
+             // Note: We return a generic error key or message. 
+             // Ideally we should return a structured error code, but for now string is fine.
+             // Localizer is not available here, so we return the default English message or a key.
+             // Let's return the simplified message/key that can be handled by caller if needed, 
+             // OR return a formatted string if we accept English in Service layer.
+             // Given the context, we'll return a formatted string for logs/debugging, 
+             // but the caller (Controller/Page) might want to override with Localizer.
+             // However, to keep it simple and consistent with AuthenticateAsync which returns LoginResult,
+             // we return the error string. 
+             
+             return (false, $"You have reached the maximum number of linked accounts ({_externalLoginOptions.MaxLoginsPerProvider}) for {provider}.");
+        }
+
+        return (true, null);
     }
 
     private async Task<LoginResult> AuthenticateLocalUserAsync(ApplicationUser user, string password)

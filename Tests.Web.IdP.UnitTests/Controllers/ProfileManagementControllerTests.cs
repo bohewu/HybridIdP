@@ -19,7 +19,7 @@ using Web.IdP.Controllers;
 using Web.IdP.Controllers.Api;
 using Xunit;
 using Microsoft.Extensions.Options;
-using Web.IdP.Options;
+using Core.Application.Options; // Fixed namespace
 using Microsoft.AspNetCore.Authentication;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;

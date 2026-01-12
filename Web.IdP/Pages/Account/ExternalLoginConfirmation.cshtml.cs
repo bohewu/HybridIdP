@@ -9,7 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Web.IdP.Infrastructure.Identity;
 using Web.IdP.Services;
-using Web.IdP.Options;
+using Web.IdP.Options; // RESTORED
+using Core.Application.Options;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using Infrastructure.Services;
@@ -131,16 +132,11 @@ public class ExternalLoginConfirmationModel : PageModel
         var user = result.User!;
 
         // 2. Check MaxLoginsPerProvider limit
-        if (_externalLoginOptions.MaxLoginsPerProvider > 0)
+        var canLink = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider);
+        if (!canLink.Succeeded)
         {
-            var existingLogins = await _userManager.GetLoginsAsync(user);
-            var existingCount = existingLogins.Count(l => l.LoginProvider == info.LoginProvider);
-            
-            if (existingCount >= _externalLoginOptions.MaxLoginsPerProvider)
-            {
-                ModelState.AddModelError(string.Empty, string.Format(_localizer["ProviderLimitReached"] ?? "You have reached the maximum number of linked accounts ({0}) for {1}.", _externalLoginOptions.MaxLoginsPerProvider, info.LoginProvider));
-                return Page();
-            }
+             ModelState.AddModelError(string.Empty, _localizer["ProviderLimitReached"] ?? "You have reached the maximum number of linked accounts.");
+             return Page();
         }
 
         // 3. Link the external login

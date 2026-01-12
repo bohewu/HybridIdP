@@ -7,8 +7,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication; // Added for SignOutAsync
 using Core.Domain; // For ApplicationUser
 using Core.Domain.Constants; // For AuthConstants
-using Web.IdP.Options; // Added
 using Microsoft.Extensions.Options; // Added
+using Core.Application.Options; // Added
 
 namespace Web.IdP.Controllers.Account;
 
@@ -20,17 +20,20 @@ public partial class LinkExternalLoginController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<LinkExternalLoginController> _logger;
     private readonly ExternalLoginOptions _externalLoginOptions;
+    private readonly Core.Application.ILoginService _loginService;
 
     public LinkExternalLoginController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         ILogger<LinkExternalLoginController> logger,
-        IOptions<ExternalLoginOptions> externalLoginOptions)
+        IOptions<ExternalLoginOptions> externalLoginOptions,
+        Core.Application.ILoginService loginService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _logger = logger;
         _externalLoginOptions = externalLoginOptions.Value;
+        _loginService = loginService;
     }
 
     [HttpGet("Challenge")]
@@ -59,15 +62,11 @@ public partial class LinkExternalLoginController : Controller
         }
 
         // Check MaxLoginsPerProvider limit
-        if (_externalLoginOptions.MaxLoginsPerProvider > 0)
+        // Check MaxLoginsPerProvider limit
+        var linkCheck = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider);
+        if (!linkCheck.Succeeded)
         {
-            var existingLogins = await _userManager.GetLoginsAsync(user);
-            var existingCount = existingLogins.Count(l => l.LoginProvider == info.LoginProvider);
-            
-            if (existingCount >= _externalLoginOptions.MaxLoginsPerProvider)
-            {
-                return Redirect("/Account/Profile?error=ProviderLimitReached");
-            }
+             return Redirect("/Account/Profile?error=ProviderLimitReached");
         }
 
         var result = await _userManager.AddLoginAsync(user, info);

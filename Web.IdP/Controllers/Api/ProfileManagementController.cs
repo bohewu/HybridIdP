@@ -13,7 +13,8 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Core.Application.Interfaces;
-using Web.IdP.Options; // Added
+using Web.IdP.Options;
+using Core.Application.Options; // Added
 
 namespace Web.IdP.Controllers.Api;
 

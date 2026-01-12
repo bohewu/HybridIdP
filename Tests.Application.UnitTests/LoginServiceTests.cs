@@ -27,6 +27,7 @@ public class LoginServiceTests
     private readonly Mock<IJitProvisioningService> _mockJitProvisioningService;
     private readonly Mock<IApplicationDbContext> _mockDbContext;
     private readonly Mock<ILogger<LoginService>> _mockLogger;
+    private readonly Mock<IOptions<Core.Application.Options.ExternalLoginOptions>> _mockExternalLoginOptions;
     private readonly LoginService _loginService;
     private readonly List<Person> _persons;
 
@@ -49,6 +50,8 @@ public class LoginServiceTests
         _mockLegacyAuthService = new Mock<ILegacyAuthService>();
         _mockJitProvisioningService = new Mock<IJitProvisioningService>();
         _mockLogger = new Mock<ILogger<LoginService>>();
+        _mockExternalLoginOptions = new Mock<IOptions<Core.Application.Options.ExternalLoginOptions>>();
+        _mockExternalLoginOptions.Setup(x => x.Value).Returns(new Core.Application.Options.ExternalLoginOptions());
 
         // Setup mock DbContext with Persons DbSet
         _mockDbContext = new Mock<IApplicationDbContext>();
@@ -62,7 +65,8 @@ public class LoginServiceTests
             _mockLegacyAuthService.Object,
             _mockJitProvisioningService.Object,
             _mockDbContext.Object,
-            _mockLogger.Object
+            _mockLogger.Object,
+            _mockExternalLoginOptions.Object
         );
     }
 

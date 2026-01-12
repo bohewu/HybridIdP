@@ -24,8 +24,9 @@ namespace Tests.Infrastructure.UnitTests
         private readonly Mock<ILegacyAuthService> _legacyAuthServiceMock;
         private readonly Mock<IJitProvisioningService> _jitProvisioningServiceMock;
         private readonly Mock<ILogger<LoginService>> _loggerMock;
+        private readonly Mock<IOptions<Core.Application.Options.ExternalLoginOptions>> _externalLoginOptionsMock;
         private readonly ApplicationDbContext _dbContext;
-        private readonly LoginService _service;
+        private LoginService _service;
 
         public LoginServiceTests()
         {
@@ -41,6 +42,10 @@ namespace Tests.Infrastructure.UnitTests
             _legacyAuthServiceMock = new Mock<ILegacyAuthService>();
             _jitProvisioningServiceMock = new Mock<IJitProvisioningService>();
             _loggerMock = new Mock<ILogger<LoginService>>();
+            _externalLoginOptionsMock = new Mock<IOptions<Core.Application.Options.ExternalLoginOptions>>();
+
+            // Default Options
+            _externalLoginOptionsMock.Setup(x => x.Value).Returns(new Core.Application.Options.ExternalLoginOptions());
 
             // Default Policy
             _securityPolicyServiceMock.Setup(x => x.GetCurrentPolicyAsync())
@@ -52,7 +57,8 @@ namespace Tests.Infrastructure.UnitTests
                 _legacyAuthServiceMock.Object,
                 _jitProvisioningServiceMock.Object,
                 _dbContext,
-                _loggerMock.Object
+                _loggerMock.Object,
+                _externalLoginOptionsMock.Object
             );
         }
 
@@ -149,6 +155,97 @@ namespace Tests.Infrastructure.UnitTests
             // Assert
             Assert.True(result.IsSuccess);
             Assert.NotNull(result.User);
+        }
+
+        [Fact]
+        public async Task CanLinkExternalLoginAsync_ShouldReturnTrue_WhenLimitDisabled()
+        {
+            // Arrange
+            var user = new ApplicationUser();
+            _externalLoginOptionsMock.Setup(x => x.Value).Returns(new Core.Application.Options.ExternalLoginOptions { MaxLoginsPerProvider = 0 });
+            
+            // Recreate service to pick up new options
+            _service = new LoginService(
+                _userManagerMock.Object,
+                _securityPolicyServiceMock.Object,
+                _legacyAuthServiceMock.Object,
+                _jitProvisioningServiceMock.Object,
+                _dbContext,
+                _loggerMock.Object,
+                _externalLoginOptionsMock.Object
+            );
+
+            // Act
+            var result = await _service.CanLinkExternalLoginAsync(user, "Google");
+
+            // Assert
+            Assert.True(result.Succeeded);
+            Assert.Null(result.Error);
+        }
+
+        [Fact]
+        public async Task CanLinkExternalLoginAsync_ShouldReturnTrue_WhenLimitNotReached()
+        {
+            // Arrange
+            var user = new ApplicationUser();
+            _externalLoginOptionsMock.Setup(x => x.Value).Returns(new Core.Application.Options.ExternalLoginOptions { MaxLoginsPerProvider = 2 });
+
+            // Recreate service to pick up new options
+            _service = new LoginService(
+                _userManagerMock.Object,
+                _securityPolicyServiceMock.Object,
+                _legacyAuthServiceMock.Object,
+                _jitProvisioningServiceMock.Object,
+                _dbContext,
+                _loggerMock.Object,
+                _externalLoginOptionsMock.Object
+            );
+
+            var existingLogins = new List<UserLoginInfo>
+            {
+                new UserLoginInfo("Google", "key1", "Google")
+            };
+            _userManagerMock.Setup(x => x.GetLoginsAsync(user)).ReturnsAsync(existingLogins);
+
+            // Act
+            var result = await _service.CanLinkExternalLoginAsync(user, "Google");
+
+            // Assert
+            Assert.True(result.Succeeded);
+            Assert.Null(result.Error);
+        }
+
+        [Fact]
+        public async Task CanLinkExternalLoginAsync_ShouldReturnFalse_WhenLimitReached()
+        {
+            // Arrange
+            var user = new ApplicationUser();
+            _externalLoginOptionsMock.Setup(x => x.Value).Returns(new Core.Application.Options.ExternalLoginOptions { MaxLoginsPerProvider = 2 });
+
+            // Recreate service to pick up new options
+            _service = new LoginService(
+                _userManagerMock.Object,
+                _securityPolicyServiceMock.Object,
+                _legacyAuthServiceMock.Object,
+                _jitProvisioningServiceMock.Object,
+                _dbContext,
+                _loggerMock.Object,
+                _externalLoginOptionsMock.Object
+            );
+
+            var existingLogins = new List<UserLoginInfo>
+            {
+                new UserLoginInfo("Google", "key1", "Google"),
+                new UserLoginInfo("Google", "key2", "Google")
+            };
+            _userManagerMock.Setup(x => x.GetLoginsAsync(user)).ReturnsAsync(existingLogins);
+
+            // Act
+            var result = await _service.CanLinkExternalLoginAsync(user, "Google");
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Contains("maximum number of linked accounts", result.Error);
         }
     }
 }

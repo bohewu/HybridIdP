@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Web.IdP.Infrastructure.Identity;
-using Web.IdP.Options;
+using Core.Application.Options;
 using Microsoft.Extensions.Options;
 using Core.Domain; // Explicitly include Core.Domain for ApplicationUser
 
@@ -20,17 +20,20 @@ public partial class ExternalLoginCallbackModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<ExternalLoginCallbackModel> _logger;
     private readonly ExternalLoginOptions _externalLoginOptions;
+    private readonly Core.Application.ILoginService _loginService;
 
     public ExternalLoginCallbackModel(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         ILogger<ExternalLoginCallbackModel> logger,
-        IOptions<ExternalLoginOptions> externalLoginOptions)
+        IOptions<ExternalLoginOptions> externalLoginOptions,
+        Core.Application.ILoginService loginService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _logger = logger;
         _externalLoginOptions = externalLoginOptions.Value;
+        _loginService = loginService;
     }
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null)
@@ -109,24 +112,36 @@ public partial class ExternalLoginCallbackModel : PageModel
                 var user = await _userManager.FindByEmailAsync(email);
                 if (user != null)
                 {
-                    // Confirm email is confirmed? (Optional security check, usually external email is trusted if email_verified claim is true)
-                    // For now, if config allows, we link.
-                    var addLoginResult = await _userManager.AddLoginAsync(user, info);
-                    if (addLoginResult.Succeeded)
+                    // Security Check: Enforce MaxLoginsPerProvider
+                    var checkResult = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider);
+                    bool canLink = checkResult.Succeeded;
+                    
+                    if (!canLink)
                     {
-                        // Sign in with AMR claims
-                        await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
-                        
-                        // Store AMR in session
-                        if (externalMfaPerformed)
+                        _logger.LogWarning("Auto-link skipped for user {UserId} and provider {Provider} due to limit check: {Error}", user.Id, info.LoginProvider, checkResult.Error);
+                    }
+
+                    if (canLink)
+                    {
+                        // Confirm email is confirmed? (Optional security check, usually external email is trusted if email_verified claim is true)
+                        // For now, if config allows, we link.
+                        var addLoginResult = await _userManager.AddLoginAsync(user, info);
+                        if (addLoginResult.Succeeded)
                         {
-                            var sessionAmr = new List<string> { AuthConstants.Amr.External, AuthConstants.Amr.Mfa };
-                            HttpContext.Session.SetString("AuthenticationMethods", 
-                                JsonSerializer.Serialize(sessionAmr));
+                            // Sign in with AMR claims
+                            await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
+                            
+                            // Store AMR in session
+                            if (externalMfaPerformed)
+                            {
+                                var sessionAmr = new List<string> { AuthConstants.Amr.External, AuthConstants.Amr.Mfa };
+                                HttpContext.Session.SetString("AuthenticationMethods", 
+                                    JsonSerializer.Serialize(sessionAmr));
+                            }
+                            
+                            LogAutoLinkSuccess(email, info.LoginProvider, string.Join(", ", externalAmrClaims));
+                            return LocalRedirect(returnUrl);
                         }
-                        
-                        LogAutoLinkSuccess(email, info.LoginProvider, string.Join(", ", externalAmrClaims));
-                        return LocalRedirect(returnUrl);
                     }
                 }
             }
