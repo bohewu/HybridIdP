@@ -1,3 +1,11 @@
+@using Core.Domain.Constants
 @{
+    // Default to AdminLayout
     Layout = "_AdminLayout";
+
+    // Allow ApplicationManager to access Admin pages with their own layout
+    if (User.IsInRole(AuthConstants.Roles.ApplicationManager))
+    {
+        Layout = "~/Pages/Shared/_ApplicationManagerLayout.cshtml";
+    }
 }
