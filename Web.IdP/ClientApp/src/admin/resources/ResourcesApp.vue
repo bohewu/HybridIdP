@@ -66,7 +66,7 @@ const fetchResources = async () => {
 const handleCreate = () => {
   if (!canCreate.value) {
     deniedMessage.value = t('resources.accessDenied.create')
-    deniedPermission.value = Permissions.Scopes.Create
+    deniedPermission.value = Permissions.ApiResources.Create
     showAccessDenied.value = true
     return
   }
@@ -77,7 +77,14 @@ const handleCreate = () => {
 const handleEdit = (resource) => {
   if (!canUpdate.value) {
     deniedMessage.value = t('resources.accessDenied.update')
-    deniedPermission.value = Permissions.Scopes.Update
+    deniedPermission.value = Permissions.ApiResources.Update
+    showAccessDenied.value = true
+    return
+  }
+  
+  if (resource.isReadOnly) {
+    deniedMessage.value = t('resources.accessDenied.notOwner')
+    deniedPermission.value = '' // No specific permission, just ownership
     showAccessDenied.value = true
     return
   }
@@ -88,7 +95,15 @@ const handleEdit = (resource) => {
 const handleDelete = async (resourceId) => {
   if (!canDelete.value) {
     deniedMessage.value = t('resources.accessDenied.delete')
-    deniedPermission.value = Permissions.Scopes.Delete
+    deniedPermission.value = Permissions.ApiResources.Delete
+    showAccessDenied.value = true
+    return
+  }
+  
+  const resource = resources.value.find(r => r.id === resourceId)
+  if (resource && resource.isReadOnly) {
+    deniedMessage.value = t('resources.accessDenied.notOwner')
+    deniedPermission.value = ''
     showAccessDenied.value = true
     return
   }
@@ -136,14 +151,14 @@ onMounted(async () => {
   // Load permissions (reusing Scopes permissions for now)
   await permissionService.loadPermissions()
   
-  canRead.value = permissionService.hasPermission(Permissions.Scopes.Read)
-  canCreate.value = permissionService.hasPermission(Permissions.Scopes.Create)
-  canUpdate.value = permissionService.hasPermission(Permissions.Scopes.Update)
-  canDelete.value = permissionService.hasPermission(Permissions.Scopes.Delete)
+  canRead.value = permissionService.hasPermission(Permissions.ApiResources.Read)
+  canCreate.value = permissionService.hasPermission(Permissions.ApiResources.Create)
+  canUpdate.value = permissionService.hasPermission(Permissions.ApiResources.Update)
+  canDelete.value = permissionService.hasPermission(Permissions.ApiResources.Delete)
   
   if (!canRead.value) {
     deniedMessage.value = t('resources.accessDenied.read')
-    deniedPermission.value = Permissions.Scopes.Read
+    deniedPermission.value = Permissions.ApiResources.Read
     showAccessDenied.value = true
     return
   }

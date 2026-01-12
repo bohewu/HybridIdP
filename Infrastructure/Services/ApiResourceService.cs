@@ -24,7 +24,7 @@ public partial class ApiResourceService : IApiResourceService
     }
 
     public async Task<(IEnumerable<ApiResourceSummary> items, int totalCount)> GetResourcesAsync(
-        int skip, int take, string? search, string? sort)
+        int skip, int take, string? search, string? sort, Guid? viewerPersonId = null)
     {
         var query = _context.ApiResources
             .Include(r => r.Scopes)
@@ -65,14 +65,16 @@ public partial class ApiResourceService : IApiResourceService
                 BaseUrl = r.BaseUrl,
                 ScopeCount = r.Scopes.Count,
                 CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
+                UpdatedAt = r.UpdatedAt,
+                IsOwner = viewerPersonId == null || (r.OwnerPersonId.HasValue && r.OwnerPersonId == viewerPersonId),
+                IsReadOnly = viewerPersonId != null && (!r.OwnerPersonId.HasValue || r.OwnerPersonId != viewerPersonId)
             })
             .ToListAsync();
 
         return (items, totalCount);
     }
 
-    public async Task<ApiResourceDetail?> GetResourceByIdAsync(int id)
+    public async Task<ApiResourceDetail?> GetResourceByIdAsync(int id, Guid? viewerPersonId = null)
     {
         var resource = await _context.ApiResources
             .Include(r => r.Scopes)
@@ -109,11 +111,13 @@ public partial class ApiResourceService : IApiResourceService
             BaseUrl = resource.BaseUrl,
             CreatedAt = resource.CreatedAt,
             UpdatedAt = resource.UpdatedAt,
-            Scopes = scopeInfos
+            Scopes = scopeInfos,
+            IsOwner = viewerPersonId == null || (resource.OwnerPersonId.HasValue && resource.OwnerPersonId == viewerPersonId),
+            IsReadOnly = viewerPersonId != null && (!resource.OwnerPersonId.HasValue || resource.OwnerPersonId != viewerPersonId)
         };
     }
 
-    public async Task<ApiResourceSummary> CreateResourceAsync(CreateApiResourceRequest request)
+    public async Task<ApiResourceSummary> CreateResourceAsync(CreateApiResourceRequest request, Guid? ownerPersonId = null)
     {
         // Check for duplicate name
         var exists = await _context.ApiResources
@@ -130,7 +134,8 @@ public partial class ApiResourceService : IApiResourceService
             DisplayName = request.DisplayName,
             Description = request.Description,
             BaseUrl = request.BaseUrl,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            OwnerPersonId = ownerPersonId
         };
 
         _context.ApiResources.Add(resource);
@@ -166,11 +171,13 @@ public partial class ApiResourceService : IApiResourceService
             BaseUrl = resource.BaseUrl,
             ScopeCount = request.ScopeIds?.Count ?? 0,
             CreatedAt = resource.CreatedAt,
-            UpdatedAt = resource.UpdatedAt
+            UpdatedAt = resource.UpdatedAt,
+            IsOwner = true,
+            IsReadOnly = false
         };
     }
 
-    public async Task<bool> UpdateResourceAsync(int id, UpdateApiResourceRequest request)
+    public async Task<bool> UpdateResourceAsync(int id, UpdateApiResourceRequest request, Guid? viewerPersonId = null)
     {
         var resource = await _context.ApiResources
             .Include(r => r.Scopes)
@@ -179,6 +186,17 @@ public partial class ApiResourceService : IApiResourceService
         if (resource == null)
         {
             return false;
+        }
+
+        // Check ownership if viewer is restricted (viewerPersonId is not null)
+        // Admin (viewerPersonId == null) bypasses this check.
+        if (viewerPersonId != null && (!resource.OwnerPersonId.HasValue || resource.OwnerPersonId != viewerPersonId))
+        {
+            // Unauthorized access (should be caught by Controller or handled here)
+            // For now, returning false as if resource doesn't exist/can't be modified is safe, 
+            // OR throw ForbiddenException. Let's return false to indicate failure to update.
+            // Better yet, throw exception for clearer feedback to caller.
+             throw new UnauthorizedAccessException("You do not have permission to modify this resource.");
         }
 
         // Check for duplicate name (excluding current resource)
@@ -226,7 +244,7 @@ public partial class ApiResourceService : IApiResourceService
         return true;
     }
 
-    public async Task<bool> DeleteResourceAsync(int id)
+    public async Task<bool> DeleteResourceAsync(int id, Guid? viewerPersonId = null)
     {
         var resource = await _context.ApiResources
             .Include(r => r.Scopes)
@@ -235,6 +253,12 @@ public partial class ApiResourceService : IApiResourceService
         if (resource == null)
         {
             return false;
+        }
+
+        // Check ownership
+        if (viewerPersonId != null && (!resource.OwnerPersonId.HasValue || resource.OwnerPersonId != viewerPersonId))
+        {
+             throw new UnauthorizedAccessException("You do not have permission to delete this resource.");
         }
 
         // Scopes will be automatically removed due to cascade delete

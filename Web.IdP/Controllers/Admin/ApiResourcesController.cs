@@ -4,7 +4,9 @@ using Core.Domain.Constants;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Web.IdP.Attributes;
+using Web.IdP.Extensions;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -27,16 +29,19 @@ public class ApiResourcesController : ControllerBase
 
     /// <summary>
     /// Get all API resources with pagination, search, and sorting.
+    /// Admin sees all resources with full edit rights.
+    /// Application Manager sees all resources, but IsReadOnly is set for resources they don't own.
     /// </summary>
     [HttpGet]
-    [HasPermission(Permissions.Scopes.Read)] // Using Scopes.Read permission as resources are scope-related
+    [HasPermission(Permissions.ApiResources.Read)]
     public async Task<ActionResult> GetResources(
         [FromQuery] int skip = 0,
         [FromQuery] int take = 25,
         [FromQuery] string? search = null,
         [FromQuery] string? sort = null)
     {
-        var (items, totalCount) = await _apiResourceService.GetResourcesAsync(skip, take, search, sort);
+        Guid? viewerPersonId = User.IsAdmin() ? null : User.GetCurrentPersonId();
+        var (items, totalCount) = await _apiResourceService.GetResourcesAsync(skip, take, search, sort, viewerPersonId);
         return Ok(new { items, totalCount });
     }
 
@@ -44,10 +49,11 @@ public class ApiResourcesController : ControllerBase
     /// Get a specific API resource by ID with full details including associated scopes.
     /// </summary>
     [HttpGet("{id}")]
-    [HasPermission(Permissions.Scopes.Read)]
+    [HasPermission(Permissions.ApiResources.Read)]
     public async Task<ActionResult> GetResource(int id)
     {
-        var resource = await _apiResourceService.GetResourceByIdAsync(id);
+        Guid? viewerPersonId = User.IsAdmin() ? null : User.GetCurrentPersonId();
+        var resource = await _apiResourceService.GetResourceByIdAsync(id, viewerPersonId);
         if (resource == null)
         {
             return NotFound(new { message = $"API resource with ID '{id}' not found." });
@@ -59,7 +65,7 @@ public class ApiResourcesController : ControllerBase
     /// Create a new API resource.
     /// </summary>
     [HttpPost]
-    [HasPermission(Permissions.Scopes.Create)]
+    [HasPermission(Permissions.ApiResources.Create)]
     public async Task<ActionResult> CreateResource([FromBody] CreateApiResourceRequest request)
     {
         if (!ModelState.IsValid)
@@ -69,7 +75,8 @@ public class ApiResourcesController : ControllerBase
 
         try
         {
-            var result = await _apiResourceService.CreateResourceAsync(request);
+            var personId = User.GetCurrentPersonId();
+            var result = await _apiResourceService.CreateResourceAsync(request, personId);
             return CreatedAtAction(nameof(GetResource), new { id = result.Id }, new
             {
                 id = result.Id,
@@ -88,7 +95,7 @@ public class ApiResourcesController : ControllerBase
     /// Update an existing API resource.
     /// </summary>
     [HttpPut("{id}")]
-    [HasPermission(Permissions.Scopes.Update)]
+    [HasPermission(Permissions.ApiResources.Update)]
     public async Task<ActionResult> UpdateResource(int id, [FromBody] UpdateApiResourceRequest request)
     {
         if (!ModelState.IsValid)
@@ -98,7 +105,8 @@ public class ApiResourcesController : ControllerBase
 
         try
         {
-            var updated = await _apiResourceService.UpdateResourceAsync(id, request);
+            Guid? viewerPersonId = User.IsAdmin() ? null : User.GetCurrentPersonId();
+            var updated = await _apiResourceService.UpdateResourceAsync(id, request, viewerPersonId);
             if (!updated)
             {
                 return NotFound(new { message = $"API resource with ID '{id}' not found or update failed." });
@@ -113,31 +121,45 @@ public class ApiResourcesController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
     }
 
     /// <summary>
     /// Delete an API resource.
     /// </summary>
     [HttpDelete("{id}")]
-    [HasPermission(Permissions.Scopes.Delete)]
+    [HasPermission(Permissions.ApiResources.Delete)]
     public async Task<ActionResult> DeleteResource(int id)
     {
-        var deleted = await _apiResourceService.DeleteResourceAsync(id);
-        if (!deleted)
+        try
         {
-            return NotFound(new { message = $"API resource with ID '{id}' not found." });
+            Guid? viewerPersonId = User.IsAdmin() ? null : User.GetCurrentPersonId();
+            var deleted = await _apiResourceService.DeleteResourceAsync(id, viewerPersonId);
+            if (!deleted)
+            {
+                return NotFound(new { message = $"API resource with ID '{id}' not found." });
+            }
+            return Ok(new { message = "API resource deleted successfully." });
         }
-        return Ok(new { message = "API resource deleted successfully." });
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
     }
 
     /// <summary>
     /// Get all scopes associated with a specific API resource.
     /// </summary>
     [HttpGet("{id}/scopes")]
-    [HasPermission(Permissions.Scopes.Read)]
+    [HasPermission(Permissions.ApiResources.Read)]
     public async Task<ActionResult> GetResourceScopes(int id)
     {
         var scopes = await _apiResourceService.GetResourceScopesAsync(id);
         return Ok(new { scopes });
     }
+
+
 }

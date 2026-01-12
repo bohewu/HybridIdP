@@ -4,11 +4,11 @@ namespace Core.Application;
 
 public interface IApiResourceService
 {
-    Task<(IEnumerable<ApiResourceSummary> items, int totalCount)> GetResourcesAsync(int skip, int take, string? search, string? sort);
-    Task<ApiResourceDetail?> GetResourceByIdAsync(int id);
-    Task<ApiResourceSummary> CreateResourceAsync(CreateApiResourceRequest request);
-    Task<bool> UpdateResourceAsync(int id, UpdateApiResourceRequest request);
-    Task<bool> DeleteResourceAsync(int id);
+    Task<(IEnumerable<ApiResourceSummary> items, int totalCount)> GetResourcesAsync(int skip, int take, string? search, string? sort, Guid? viewerPersonId = null);
+    Task<ApiResourceDetail?> GetResourceByIdAsync(int id, Guid? viewerPersonId = null);
+    Task<ApiResourceSummary> CreateResourceAsync(CreateApiResourceRequest request, Guid? ownerPersonId = null);
+    Task<bool> UpdateResourceAsync(int id, UpdateApiResourceRequest request, Guid? viewerPersonId = null);
+    Task<bool> DeleteResourceAsync(int id, Guid? viewerPersonId = null);
     Task<IEnumerable<ResourceScopeInfo>> GetResourceScopesAsync(int id);
     
     /// <summary>

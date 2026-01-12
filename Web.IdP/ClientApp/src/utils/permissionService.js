@@ -195,6 +195,12 @@ export const Permissions = {
     Create: 'localization.create',
     Update: 'localization.update',
     Delete: 'localization.delete'
+  },
+  ApiResources: {
+    Read: 'apiresources.read',
+    Create: 'apiresources.create',
+    Update: 'apiresources.update',
+    Delete: 'apiresources.delete',
   }
 };
 

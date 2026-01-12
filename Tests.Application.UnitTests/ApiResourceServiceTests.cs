@@ -70,7 +70,7 @@ public class ApiResourceServiceTests : IDisposable
         await _dbContext.SaveChangesAsync(default);
 
         // Act
-        var (items, totalCount) = await _apiResourceService.GetResourcesAsync(0, 25, null, null);
+        var (items, totalCount) = await _apiResourceService.GetResourcesAsync(0, 25, null, null, null);
 
         // Assert
         Assert.Equal(2, totalCount);
@@ -102,7 +102,7 @@ public class ApiResourceServiceTests : IDisposable
         await _dbContext.SaveChangesAsync(default);
 
         // Act
-        var (items, totalCount) = await _apiResourceService.GetResourcesAsync(0, 25, "company", null);
+        var (items, totalCount) = await _apiResourceService.GetResourcesAsync(0, 25, "company", null, null);
 
         // Assert
         Assert.Equal(1, totalCount);
@@ -131,7 +131,7 @@ public class ApiResourceServiceTests : IDisposable
         await _dbContext.SaveChangesAsync(default);
 
         // Act
-        var (items, totalCount) = await _apiResourceService.GetResourcesAsync(0, 25, null, "name");
+        var (items, totalCount) = await _apiResourceService.GetResourcesAsync(0, 25, null, "name", null);
 
         // Assert
         Assert.Equal(2, totalCount);
@@ -155,7 +155,7 @@ public class ApiResourceServiceTests : IDisposable
         await _dbContext.SaveChangesAsync(default);
 
         // Act
-        var (items, totalCount) = await _apiResourceService.GetResourcesAsync(2, 2, null, null);
+        var (items, totalCount) = await _apiResourceService.GetResourcesAsync(2, 2, null, null, null);
 
         // Assert
         Assert.Equal(5, totalCount);
@@ -194,7 +194,7 @@ public class ApiResourceServiceTests : IDisposable
     public async Task GetResourceByIdAsync_ShouldReturnNull_WhenIdDoesNotExist()
     {
         // Act
-        var result = await _apiResourceService.GetResourceByIdAsync(999);
+        var result = await _apiResourceService.GetResourceByIdAsync(999, null);
 
         // Assert
         Assert.Null(result);
@@ -292,7 +292,7 @@ public class ApiResourceServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => 
-            _apiResourceService.CreateResourceAsync(request));
+            _apiResourceService.CreateResourceAsync(request, null));
     }
 
     [Fact]
@@ -375,7 +375,7 @@ public class ApiResourceServiceTests : IDisposable
         );
 
         // Act
-        var result = await _apiResourceService.UpdateResourceAsync(999, request);
+        var result = await _apiResourceService.UpdateResourceAsync(999, request, null);
 
         // Assert
         Assert.False(result);
@@ -410,7 +410,7 @@ public class ApiResourceServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => 
-            _apiResourceService.UpdateResourceAsync(resource2.Id, request));
+            _apiResourceService.UpdateResourceAsync(resource2.Id, request, null));
     }
 
     [Fact]
@@ -492,7 +492,7 @@ public class ApiResourceServiceTests : IDisposable
     public async Task DeleteResourceAsync_ShouldReturnFalse_WhenIdDoesNotExist()
     {
         // Act
-        var result = await _apiResourceService.DeleteResourceAsync(999);
+        var result = await _apiResourceService.DeleteResourceAsync(999, null);
 
         // Assert
         Assert.False(result);
@@ -732,4 +732,182 @@ public class ApiResourceServiceTests : IDisposable
     }
 
     #endregion
+
+    #region Ownership Tests
+
+    [Fact]
+    public async Task CreateResourceAsync_ShouldSetOwnerPerson_WhenOwnerPersonIdProvided()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var request = new CreateApiResourceRequest(
+            Name: "owned_api",
+            DisplayName: "Owned API",
+            Description: null,
+            BaseUrl: null,
+            ScopeIds: null
+        );
+
+        // Act
+        var result = await _apiResourceService.CreateResourceAsync(request, ownerId);
+
+        // Assert
+        var created = await _dbContext.ApiResources.FindAsync(result.Id);
+        Assert.NotNull(created);
+        Assert.Equal(ownerId, created.OwnerPersonId);
+        Assert.True(result.IsOwner);
+        Assert.False(result.IsReadOnly);
+    }
+
+    [Fact]
+    public async Task GetResourcesAsync_ShouldMarkOwnershipCorrectly()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var otherId = Guid.NewGuid();
+
+        var myResource = new ApiResource
+        {
+            Name = "my_api",
+            DisplayName = "My API",
+            OwnerPersonId = ownerId,
+            CreatedAt = DateTime.UtcNow
+        };
+        var otherResource = new ApiResource
+        {
+            Name = "other_api",
+            DisplayName = "Other API",
+            OwnerPersonId = otherId,
+            CreatedAt = DateTime.UtcNow
+        };
+        
+        _dbContext.ApiResources.AddRange(myResource, otherResource);
+        await _dbContext.SaveChangesAsync(default);
+
+        // Act
+        var (items, _) = await _apiResourceService.GetResourcesAsync(0, 10, null, null, ownerId);
+
+        // Assert
+        var myItem = items.First(r => r.Name == "my_api");
+        var otherItem = items.First(r => r.Name == "other_api");
+
+        Assert.True(myItem.IsOwner);
+        Assert.False(myItem.IsReadOnly);
+
+        Assert.False(otherItem.IsOwner);
+        Assert.True(otherItem.IsReadOnly);
+    }
+
+    [Fact]
+    public async Task UpdateResourceAsync_ShouldThrowUnauthorized_WhenUserIsNotOwner()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var nonOwnerId = Guid.NewGuid();
+
+        var resource = new ApiResource
+        {
+            Name = "protected_api",
+            DisplayName = "Protected API",
+            OwnerPersonId = ownerId,
+            CreatedAt = DateTime.UtcNow
+        };
+        _dbContext.ApiResources.Add(resource);
+        await _dbContext.SaveChangesAsync(default);
+
+        var request = new UpdateApiResourceRequest(
+            Name: "protected_api",
+            DisplayName: "Hacked API",
+            Description: null,
+            BaseUrl: null,
+            ScopeIds: null
+        );
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => 
+            _apiResourceService.UpdateResourceAsync(resource.Id, request, nonOwnerId));
+    }
+
+    [Fact]
+    public async Task UpdateResourceAsync_ShouldSucceed_WhenUserIsOwner()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+
+        var resource = new ApiResource
+        {
+            Name = "my_api",
+            DisplayName = "My API",
+            OwnerPersonId = ownerId,
+            CreatedAt = DateTime.UtcNow
+        };
+        _dbContext.ApiResources.Add(resource);
+        await _dbContext.SaveChangesAsync(default);
+
+        var request = new UpdateApiResourceRequest(
+            Name: "my_api",
+            DisplayName: "Updated API",
+            Description: null,
+            BaseUrl: null,
+            ScopeIds: null
+        );
+
+        // Act
+        var result = await _apiResourceService.UpdateResourceAsync(resource.Id, request, ownerId);
+
+        // Assert
+        Assert.True(result);
+        var updated = await _dbContext.ApiResources.FindAsync(resource.Id);
+        Assert.Equal("Updated API", updated!.DisplayName);
+    }
+    
+    [Fact]
+    public async Task DeleteResourceAsync_ShouldThrowUnauthorized_WhenUserIsNotOwner()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var nonOwnerId = Guid.NewGuid();
+
+        var resource = new ApiResource
+        {
+            Name = "protected_api",
+            DisplayName = "Protected API",
+            OwnerPersonId = ownerId,
+            CreatedAt = DateTime.UtcNow
+        };
+        _dbContext.ApiResources.Add(resource);
+        await _dbContext.SaveChangesAsync(default);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => 
+            _apiResourceService.DeleteResourceAsync(resource.Id, nonOwnerId));
+    }
+
+    [Fact]
+    public async Task DeleteResourceAsync_ShouldSucceed_WhenUserIsOwner()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+
+        var resource = new ApiResource
+        {
+            Name = "my_api",
+            DisplayName = "My API",
+            OwnerPersonId = ownerId,
+            CreatedAt = DateTime.UtcNow
+        };
+        _dbContext.ApiResources.Add(resource);
+        await _dbContext.SaveChangesAsync(default);
+
+        // Act
+        var result = await _apiResourceService.DeleteResourceAsync(resource.Id, ownerId);
+
+        // Assert
+        Assert.True(result);
+        var deleted = await _dbContext.ApiResources.FindAsync(resource.Id);
+        Assert.Null(deleted);
+    }
+
+    #endregion
 }
+

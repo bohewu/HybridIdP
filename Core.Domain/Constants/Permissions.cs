@@ -28,6 +28,17 @@ public static class Permissions
     }
 
     /// <summary>
+    /// API Resource permissions
+    /// </summary>
+    public static class ApiResources
+    {
+        public const string Read = "apiresources.read";
+        public const string Create = "apiresources.create";
+        public const string Update = "apiresources.update";
+        public const string Delete = "apiresources.delete";
+    }
+
+    /// <summary>
     /// User management permissions
     /// </summary>
     public static class Users
@@ -106,6 +117,7 @@ public static class Permissions
         {
             Clients.Read, Clients.Create, Clients.Update, Clients.Delete,
             Scopes.Read, Scopes.Create, Scopes.Update, Scopes.Delete,
+            ApiResources.Read, ApiResources.Create, ApiResources.Update, ApiResources.Delete,
             Users.Read, Users.Create, Users.Update, Users.Delete, Users.Impersonate,
             Roles.Read, Roles.Create, Roles.Update, Roles.Delete,
             Claims.Read, Claims.Create, Claims.Update, Claims.Delete,

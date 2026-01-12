@@ -47,4 +47,15 @@ public class ApiResource
     /// Navigation property to scopes associated with this API resource
     /// </summary>
     public virtual ICollection<ApiResourceScope> Scopes { get; set; } = new List<ApiResourceScope>();
+
+    /// <summary>
+    /// ID of the Person who owns this resource (for non-admin users).
+    /// Used for Application Manager role enforcement.
+    /// </summary>
+    public Guid? OwnerPersonId { get; set; }
+
+    /// <summary>
+    /// Navigation property to the Person owner
+    /// </summary>
+    public virtual Person? OwnerPerson { get; set; }
 }

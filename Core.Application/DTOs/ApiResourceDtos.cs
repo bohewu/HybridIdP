@@ -15,6 +15,8 @@ public sealed class ApiResourceSummary
     public int ScopeCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public bool IsOwner { get; set; }
+    public bool IsReadOnly { get; set; }
 }
 
 /// <summary>
@@ -30,6 +32,8 @@ public sealed class ApiResourceDetail
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public List<ResourceScopeInfo> Scopes { get; set; } = new();
+    public bool IsOwner { get; set; }
+    public bool IsReadOnly { get; set; }
 }
 
 /// <summary>
