@@ -136,5 +136,16 @@
   "confirmations": {
     "delete": "Are you sure you want to delete {name}? This will unlink all associated accounts but will not delete the accounts themselves.",
     "verifyIdentity": "Are you sure you want to verify the identity of {name}? This action will mark the identity document as verified."
+  },
+  "transferAssets": {
+    "title": "Transfer Assets",
+    "description": "Select a person to transfer all owned resources to.",
+    "warning": "Warning: This will transfer ownership of all Scopes, API Resources, and Clients created by the current person.",
+    "confirmMessage": "Are you sure you want to transfer ALL assets (APIs, Scopes, Clients) to this person? This action cannot be undone.",
+    "success": "Assets transferred successfully.",
+    "verify": "Transfer Assets",
+    "search": "Search Person",
+    "searchPlaceholder": "Name or Employee ID",
+    "noPersons": "No persons found."
   }
 }

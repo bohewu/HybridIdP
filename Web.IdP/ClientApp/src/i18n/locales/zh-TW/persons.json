@@ -136,5 +136,16 @@
   "confirmations": {
     "delete": "您確定要刪除 {name} 嗎？這將取消所有關聯帳號的連結，但不會刪除帳號本身。",
     "verifyIdentity": "您確定要驗證 {name} 的身分嗎？此操作會將身分證件標記為已驗證。"
+  },
+  "transferAssets": {
+    "title": "轉移資產",
+    "description": "選擇一位人員以轉移所有擁有的資源。",
+    "warning": "警告：這將會把目前人員建立的所有範圍 (Scopes)、API 資源 (API Resources) 和客戶端 (Clients) 的擁有權轉移給選定的人員。",
+    "confirmMessage": "您確定要將所有資產（API、範圍、客戶端）轉移給此人嗎？此動作無法復原。",
+    "success": "資產轉移成功。",
+    "verify": "轉移資產",
+    "search": "搜尋人員",
+    "searchPlaceholder": "姓名或員工編號",
+    "noPersons": "找不到人員。"
   }
 }

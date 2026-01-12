@@ -24,6 +24,7 @@ const searchTerm = ref('')
 const targetPersons = ref([])
 const selectedTargetId = ref(null)
 const searching = ref(false)
+const confirmed = ref(false)
 
 const handleSearch = async () => {
   if (!searchTerm.value || searchTerm.value.length < 1) return
@@ -110,21 +111,38 @@ watch(() => props.show, (newVal) => {
             <div class="flex">
                 <div class="ml-3">
                     <p class="text-sm text-yellow-700">
-                        {{ t('persons.transferAssets.warning', 'Warning: This will transfer ownership of all Scopes, API Resources, and Clients created by the current person.') }}
+                        {{ t('persons.transferAssets.warning') }}
                     </p>
                 </div>
             </div>
         </div>
 
+        <!-- Confirmation Checkbox -->
+        <div class="flex items-start">
+            <div class="flex h-5 items-center">
+                <input 
+                    id="confirm-transfer" 
+                    v-model="confirmed" 
+                    type="checkbox" 
+                    class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                />
+            </div>
+            <div class="ml-3 text-sm">
+                <label for="confirm-transfer" class="font-medium text-gray-700 select-none">
+                    {{ t('persons.transferAssets.confirmMessage') }}
+                </label>
+            </div>
+        </div>
+
         <!-- Search -->
         <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t('persons.search', 'Search Person') }}</label>
+            <label class="block text-sm font-medium text-gray-700">{{ t('persons.transferAssets.search') }}</label>
             <div class="mt-1 flex rounded-md shadow-sm">
                 <input 
                     v-model="searchTerm" 
                     type="text" 
                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm px-3 py-2 border"
-                    :placeholder="t('persons.searchPlaceholder', 'Name or Employee ID')"
+                    :placeholder="t('persons.transferAssets.searchPlaceholder')"
                     @keyup.enter="handleSearch"
                 >
             </div>
@@ -134,7 +152,7 @@ watch(() => props.show, (newVal) => {
                 class="mt-2 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-google-500 focus:ring-offset-2"
                 :disabled="searching"
             >
-                {{ searching ? 'Searching...' : t('common.search', 'Search') }}
+                {{ searching ? t('admin.common.loading') : t('admin.common.search') }}
             </button>
         </div>
 
@@ -162,26 +180,29 @@ watch(() => props.show, (newVal) => {
             </ul>
         </div>
         <div v-else-if="!searching && searchTerm && targetPersons.length === 0" class="text-sm text-gray-500 mt-2">
-            {{ t('persons.noPersons', 'No persons found.') }}
+            {{ t('persons.transferAssets.noPersons') }}
         </div>
         
         <div v-if="error" class="text-red-600 text-sm mt-2">{{ error }}</div>
       </div>
     </template>
     <template #footer>
-        <button @click="$emit('close')" class="mr-3 inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-google-500 focus:ring-offset-2">
-            {{ t('common.cancel', 'Cancel') }}
-        </button>
         <button 
             @click="handleTransfer" 
-            :disabled="!selectedTargetId || loading"
-            class="inline-flex justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="!selectedTargetId || !confirmed || loading"
+            class="inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
             <svg v-if="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
-            {{ t('persons.transferAssets.verify', 'Transfer Assets') }}
+            {{ t('persons.transferAssets.verify') }}
+        </button>
+        <button 
+            @click="$emit('close')" 
+            class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-google-500 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
+        >
+            {{ t('admin.common.cancel') }}
         </button>
     </template>
   </BaseModal>
