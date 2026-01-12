@@ -354,10 +354,13 @@ public static class ServiceCollectionExtensions
                     // Only preserve the Actor if this is a session refresh (User IDs match).
                     // If the User IDs don't match, it's a "Start" or "Stop" impersonation action,
                     // in which case we either manually set the Actor or want to clear it.
-                    var currentUserId = currentIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    var newUserId = newIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    // We check both NameIdentifier (Identity default) and 'sub' (OIDC/OpenIddict standard).
+                    var currentUserId = currentIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                                        ?? currentIdentity.FindFirst("sub")?.Value;
+                    var newUserId = newIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                                    ?? newIdentity.FindFirst("sub")?.Value;
 
-                    if (currentUserId == newUserId)
+                    if (currentUserId != null && currentUserId == newUserId)
                     {
                         newIdentity.Actor = currentIdentity.Actor;
                     }
