@@ -34,6 +34,12 @@
     "ok": "確定"
   },
   "searchPlaceholder": "搜尋...",
+  "noItems": "無可用項目",
+  "noMatches": "找不到符合的結果",
+  "selectedCount": "已選取 {count} 項",
+  "itemCount": "顯示 {filtered} / {total} 項",
+  "selectAllVisible": "全選顯示項目",
+  "deselectVisible": "取消全選顯示項目",
   "filterOptions": {
     "all": "所有狀態",
     "activeOnly": "僅啟用",

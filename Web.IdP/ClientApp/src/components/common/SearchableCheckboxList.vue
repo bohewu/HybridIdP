@@ -33,7 +33,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Search...'
+    default: 'common.searchPlaceholder'
   },
   heightClass: {
     type: String,
@@ -113,7 +113,7 @@ const allVisibleSelected = computed(() => {
         <input 
           v-model="searchQuery"
           type="text"
-          :placeholder="placeholder"
+          :placeholder="t(placeholder)"
           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 text-sm pl-8 py-1.5"
           :disabled="disabled"
         />
@@ -128,7 +128,7 @@ const allVisibleSelected = computed(() => {
         @click="toggleAllVisible"
         :disabled="disabled"
         class="px-2 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-google-500 disabled:opacity-50"
-        :title="allVisibleSelected ? 'Deselect visible' : 'Select all visible'"
+        :title="allVisibleSelected ? t('common.deselectVisible') : t('common.selectAllVisible')"
       >
         <i class="bi" :class="allVisibleSelected ? 'bi-check-square-fill text-google-500' : 'bi-square'"></i>
       </button>
@@ -144,15 +144,15 @@ const allVisibleSelected = computed(() => {
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        Loading...
+        {{ t('common.loading') }}
       </div>
 
       <div v-else-if="items.length === 0" class="text-center py-4 text-sm text-gray-500">
-        No items available
+        {{ t('common.noItems') }}
       </div>
 
       <div v-else-if="filteredItems.length === 0" class="text-center py-4 text-sm text-gray-500">
-        No matching results
+        {{ t('common.noMatches') }}
       </div>
 
       <div v-else class="space-y-0.5">
@@ -192,8 +192,8 @@ const allVisibleSelected = computed(() => {
     
     <!-- Footer (Status) -->
     <div class="bg-gray-50 px-3 py-1.5 border-t border-gray-200 text-xs text-gray-500 flex justify-between">
-       <span>{{ modelValue.length }} selected</span>
-       <span>{{ filteredItems.length }} / {{ items.length }} items</span>
+       <span>{{ t('common.selectedCount', { count: modelValue.length }) }}</span>
+       <span>{{ t('common.itemCount', { filtered: filteredItems.length, total: items.length }) }}</span>
     </div>
   </div>
 </template>
