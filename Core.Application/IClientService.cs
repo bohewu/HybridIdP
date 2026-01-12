@@ -36,7 +36,7 @@ public interface IClientService
     /// <param name="creatorUserId">The ApplicationUser ID creating this client</param>
     /// <param name="creatorPersonId">The Person ID owning this client (for ownership tracking)</param>
     /// <returns>Created client details including generated secret if confidential.</returns>
-    Task<CreateClientResponse> CreateClientAsync(CreateClientRequest request, Guid? creatorUserId = null, Guid? creatorPersonId = null);
+    Task<CreateClientResponse> CreateClientAsync(CreateClientRequest request, Guid? creatorPersonId = null);
 
     /// <summary>
     /// Update an existing OIDC client.

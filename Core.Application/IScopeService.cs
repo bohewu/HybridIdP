@@ -25,7 +25,7 @@ namespace Core.Application
         /// <param name="request">Scope creation request</param>
         /// <param name="creatorUserId">The ApplicationUser ID creating this scope</param>
         /// <param name="creatorPersonId">The Person ID owning this scope (for ownership tracking)</param>
-        Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request, Guid? creatorUserId = null, Guid? creatorPersonId = null);
+        Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request, Guid? creatorPersonId = null);
         
         Task<bool> UpdateScopeAsync(string id, UpdateScopeRequest request);
         Task<bool> DeleteScopeAsync(string id);

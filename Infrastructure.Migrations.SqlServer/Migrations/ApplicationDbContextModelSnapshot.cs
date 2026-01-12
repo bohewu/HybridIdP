@@ -414,17 +414,12 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<Guid>("CreatedByPersonId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId")
                         .IsUnique();
 
                     b.HasIndex("CreatedByPersonId");
-
-                    b.HasIndex("CreatedByUserId");
 
                     b.ToTable("ClientOwnerships");
                 });
@@ -794,9 +789,6 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<Guid>("CreatedByPersonId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("ScopeId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -805,8 +797,6 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByPersonId");
-
-                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("ScopeId")
                         .IsUnique();
@@ -1412,15 +1402,7 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Core.Domain.ApplicationUser", "CreatedByUser")
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.Navigation("CreatedByPerson");
-
-                    b.Navigation("CreatedByUser");
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.LoginHistory", b =>
@@ -1453,15 +1435,7 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Core.Domain.ApplicationUser", "CreatedByUser")
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.Navigation("CreatedByPerson");
-
-                    b.Navigation("CreatedByUser");
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.UserCredential", b =>

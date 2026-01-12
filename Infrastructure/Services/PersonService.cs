@@ -673,6 +673,79 @@ public partial class PersonService : IPersonService
     [LoggerMessage(Level = LogLevel.Information, Message = "Verified identity for person {PersonId} by user {VerifiedBy}")]
     partial void LogPersonIdentityVerified(Guid personId, Guid verifiedBy);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Transferred assets from {FromPersonId} to {ToPersonId}. ApiResources: {ApiCount}, Scopes: {ScopeCount}, Clients: {ClientCount}")]
+    partial void LogAssetsTransferred(Guid fromPersonId, Guid toPersonId, int apiCount, int scopeCount, int clientCount);
+
+    /// <inheritdoc />
+    public async Task TransferAssetsAsync(Guid fromPersonId, Guid toPersonId)
+    {
+        var fromPerson = await GetPersonByIdAsync(fromPersonId);
+        if (fromPerson == null)
+            throw new KeyNotFoundException($"Source person {fromPersonId} not found");
+
+        var toPerson = await GetPersonByIdAsync(toPersonId);
+        if (toPerson == null)
+            throw new KeyNotFoundException($"Target person {toPersonId} not found");
+
+        // Note: We use fetch-and-update instead of ExecuteUpdateAsync to ensure compatibility 
+        // with the InMemory database provider used in unit tests.
+        // Given the low volume of resources per person, this is acceptable.
+
+        // 1. ApiResources
+        var apiResources = await _context.ApiResources
+            .Where(r => r.OwnerPersonId == fromPersonId)
+            .ToListAsync();
+        foreach (var r in apiResources)
+        {
+            r.OwnerPersonId = toPersonId;
+        }
+        var apiResourcesCount = apiResources.Count;
+
+        // 2. ScopeOwnerships
+        var scopes = await _context.ScopeOwnerships
+            .Where(o => o.CreatedByPersonId == fromPersonId)
+            .ToListAsync();
+        foreach (var s in scopes)
+        {
+            s.CreatedByPersonId = toPersonId;
+        }
+        var scopesCount = scopes.Count;
+
+        // 3. ClientOwnerships
+        var clients = await _context.ClientOwnerships
+            .Where(o => o.CreatedByPersonId == fromPersonId)
+            .ToListAsync();
+        foreach (var c in clients)
+        {
+            c.CreatedByPersonId = toPersonId;
+        }
+        var clientsCount = clients.Count;
+
+        await _context.SaveChangesAsync(CancellationToken.None);
+
+        LogAssetsTransferred(fromPersonId, toPersonId, apiResourcesCount, scopesCount, clientsCount);
+
+        // Audit the transfer
+        var auditDetails = JsonSerializer.Serialize(new
+        {
+            FromPersonId = fromPersonId,
+            ToPersonId = toPersonId,
+            TransferredCounts = new
+            {
+                ApiResources = apiResourcesCount,
+                Scopes = scopesCount,
+                Clients = clientsCount
+            }
+        });
+
+        await _auditService.LogEventAsync(
+            "ResourceOwnershipTransferred",
+            null, // Triggered by admin usually
+            auditDetails,
+            null,
+            null);
+    }
+
     /// <summary>
     /// Infers the IdentityDocumentType based on which identity fields are populated.
     /// Priority: NationalId > PassportNumber > ResidentCertificateNumber > None

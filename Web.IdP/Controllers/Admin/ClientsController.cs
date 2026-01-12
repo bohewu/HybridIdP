@@ -90,10 +90,9 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            var userId = GetCurrentUserId();
             var personId = GetCurrentPersonId();
             
-            var response = await _clientService.CreateClientAsync(request, userId, personId);
+            var response = await _clientService.CreateClientAsync(request, personId);
             return CreatedAtAction(nameof(GetClient), new { id = response.Id }, new
             {
                 id = response.Id,

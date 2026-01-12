@@ -162,7 +162,7 @@ public class ClientService : IClientService
         };
     }
 
-    public async Task<CreateClientResponse> CreateClientAsync(CreateClientRequest request, Guid? creatorUserId = null, Guid? creatorPersonId = null)
+    public async Task<CreateClientResponse> CreateClientAsync(CreateClientRequest request, Guid? creatorPersonId = null)
     {
         if (string.IsNullOrWhiteSpace(request.ClientId))
         {
@@ -327,12 +327,11 @@ public class ClientService : IClientService
         var id = await _applicationManager.GetIdAsync(application);
 
         // Create ownership record if creator info provided
-        if (creatorUserId.HasValue && creatorPersonId.HasValue)
+        if (creatorPersonId.HasValue)
         {
             var ownership = new ClientOwnership
             {
                 ClientId = request.ClientId,
-                CreatedByUserId = creatorUserId.Value,
                 CreatedByPersonId = creatorPersonId.Value,
                 CreatedAt = DateTime.UtcNow
             };

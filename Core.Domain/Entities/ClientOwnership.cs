@@ -31,13 +31,5 @@ public class ClientOwnership
     /// </summary>
     public DateTime CreatedAt { get; set; }
     
-    /// <summary>
-    /// ApplicationUser who created the client
-    /// </summary>
-    public Guid CreatedByUserId { get; set; }
-    
-    /// <summary>
-    /// Navigation property to ApplicationUser
-    /// </summary>
-    public ApplicationUser? CreatedByUser { get; set; }
+
 }

@@ -1181,4 +1181,57 @@ public class PersonServiceTests : IDisposable
     }
 
     #endregion
+
+    [Fact]
+    public async Task TransferAssetsAsync_ShouldTransferAllResources()
+    {
+        // Arrange
+        using var context = new ApplicationDbContext(_options);
+        await context.Database.EnsureCreatedAsync();
+        var service = CreateService(context);
+
+        var fromPerson = new Person { FirstName = "From", LastName = "User" };
+        var toPerson = new Person { FirstName = "To", LastName = "User" };
+        context.Persons.AddRange(fromPerson, toPerson);
+        await context.SaveChangesAsync();
+
+        // Setup owned resources
+        var apiResource = new ApiResource { Name = "api1", DisplayName = "API 1", OwnerPersonId = fromPerson.Id };
+        context.ApiResources.Add(apiResource);
+
+        var scopeOwnership = new ScopeOwnership { 
+            ScopeId = "scope1", 
+            CreatedByPersonId = fromPerson.Id,
+            CreatedAt = DateTime.UtcNow 
+        };
+        context.ScopeOwnerships.Add(scopeOwnership);
+
+        var clientOwnership = new ClientOwnership { 
+            ClientId = "client1", 
+            CreatedByPersonId = fromPerson.Id,
+            CreatedAt = DateTime.UtcNow 
+        };
+        context.ClientOwnerships.Add(clientOwnership);
+
+        await context.SaveChangesAsync();
+
+        // Act
+        await service.TransferAssetsAsync(fromPerson.Id, toPerson.Id);
+
+        // Assert
+        // Verify ApiResource transferred
+        var updatedApi = await context.ApiResources.FirstAsync(r => r.Name == "api1");
+        Assert.Equal(toPerson.Id, updatedApi.OwnerPersonId);
+
+        // Verify ScopeOwnership transferred
+        var updatedScope = await context.ScopeOwnerships.FirstAsync(s => s.ScopeId == "scope1");
+        Assert.Equal(toPerson.Id, updatedScope.CreatedByPersonId);
+
+        // Verify ClientOwnership transferred
+        var updatedClient = await context.ClientOwnerships.FirstAsync(c => c.ClientId == "client1");
+        Assert.Equal(toPerson.Id, updatedClient.CreatedByPersonId);
+
+        // Verify Audit Log
+        _auditServiceMock.Verify(s => s.LogEventAsync("ResourceOwnershipTransferred", It.IsAny<string>(), It.IsAny<string>(), null, null), Times.Once);
+    }
 }

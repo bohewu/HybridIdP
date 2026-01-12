@@ -301,7 +301,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.HasIndex(e => e.ClientId).IsUnique(); // One client can only have one owner
             entity.Property(e => e.ClientId).HasMaxLength(200).IsRequired();
             entity.Property(e => e.CreatedByPersonId).IsRequired();
-            entity.Property(e => e.CreatedByUserId).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
             
             // Configure relationship with Person
@@ -309,12 +308,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .WithMany()
                 .HasForeignKey(e => e.CreatedByPersonId)
                 .OnDelete(DeleteBehavior.Cascade); // When person is deleted, remove ownership records
-            
-            // Configure relationship with ApplicationUser
-            entity.HasOne(e => e.CreatedByUser)
-                .WithMany()
-                .HasForeignKey(e => e.CreatedByUserId)
-                .OnDelete(DeleteBehavior.Restrict); // Don't allow user deletion if they created clients
         });
 
         // Configure ScopeOwnership entity (Phase 13)
@@ -324,7 +317,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.HasIndex(e => e.ScopeId).IsUnique(); // One scope can only have one owner
             entity.Property(e => e.ScopeId).HasMaxLength(200).IsRequired();
             entity.Property(e => e.CreatedByPersonId).IsRequired();
-            entity.Property(e => e.CreatedByUserId).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
             
             // Configure relationship with Person
@@ -332,12 +324,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .WithMany()
                 .HasForeignKey(e => e.CreatedByPersonId)
                 .OnDelete(DeleteBehavior.Cascade); // When person is deleted, remove ownership records
-            
-            // Configure relationship with ApplicationUser
-            entity.HasOne(e => e.CreatedByUser)
-                .WithMany()
-                .HasForeignKey(e => e.CreatedByUserId)
-                .OnDelete(DeleteBehavior.Restrict); // Don't allow user deletion if they created scopes
         });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.

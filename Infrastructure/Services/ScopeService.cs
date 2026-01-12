@@ -178,7 +178,7 @@ public class ScopeService : IScopeService
         };
     }
 
-    public async Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request, Guid? creatorUserId = null, Guid? creatorPersonId = null)
+    public async Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request, Guid? creatorPersonId = null)
     {
         // Check if scope already exists
         var existing = await _scopeManager.FindByNameAsync(request.Name);
@@ -234,14 +234,13 @@ public class ScopeService : IScopeService
         }
         
         // Create ownership record if creator info is provided
-        if (creatorPersonId.HasValue && creatorUserId.HasValue)
+        if (creatorPersonId.HasValue)
         {
             var ownership = new ScopeOwnership
             {
                 Id = Guid.NewGuid(),
                 ScopeId = id!,
                 CreatedByPersonId = creatorPersonId.Value,
-                CreatedByUserId = creatorUserId.Value,
                 CreatedAt = DateTime.UtcNow
             };
             _db.ScopeOwnerships.Add(ownership);

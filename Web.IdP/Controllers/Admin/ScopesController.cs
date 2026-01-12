@@ -78,10 +78,9 @@ public class ScopesController : ControllerBase
 
         try
         {
-            var userId = GetCurrentUserId();
             var personId = GetCurrentPersonId();
             
-            var result = await _scopeService.CreateScopeAsync(request, userId, personId);
+            var result = await _scopeService.CreateScopeAsync(request, personId);
             return CreatedAtAction(nameof(Get), new { id = result.Id }, new
             {
                 id = result.Id,

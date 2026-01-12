@@ -32,13 +32,5 @@ public class ScopeOwnership
     /// </summary>
     public DateTime CreatedAt { get; set; }
     
-    /// <summary>
-    /// ApplicationUser who created the scope
-    /// </summary>
-    public Guid CreatedByUserId { get; set; }
-    
-    /// <summary>
-    /// Navigation property to ApplicationUser
-    /// </summary>
-    public ApplicationUser? CreatedByUser { get; set; }
+
 }

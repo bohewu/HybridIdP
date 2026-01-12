@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PersonForm from './components/PersonForm.vue'
 import LinkedAccountsDialog from './components/LinkedAccountsDialog.vue'
+import TransferAssetsDialog from './components/TransferAssetsDialog.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
@@ -15,6 +16,7 @@ const error = ref(null)
 const selectedPerson = ref(null)
 const showForm = ref(false)
 const showLinkedAccountsDialog = ref(false)
+const showTransferDialog = ref(false)
 const showAccessDenied = ref(false)
 const deniedMessage = ref('')
 const deniedPermission = ref('')
@@ -200,6 +202,22 @@ const handleAccountsClose = () => {
   showLinkedAccountsDialog.value = false
   selectedPerson.value = null
 }
+
+const handleTransferAssets = (person) => {
+    selectedPerson.value = person
+    showTransferDialog.value = true
+}
+
+const handleTransferClose = () => {
+    showTransferDialog.value = false
+    selectedPerson.value = null
+}
+
+const handleAssetsTransferred = () => {
+    // Optionally refresh usage counts if displayed
+    fetchPersons()
+}
+
 
 const handleAccountsUpdated = async () => {
   await fetchPersons()
@@ -433,6 +451,16 @@ watch([page, pageSize, search], () => {
                     </button>
                     <button
                       v-if="canUpdate"
+                      @click="handleTransferAssets(person)"
+                      class="text-orange-600 hover:text-orange-900"
+                      :title="t('persons.transferAssets.title', 'Transfer Assets')"
+                    >
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                    </button>
+                    <button
+                      v-if="canUpdate"
                       @click="handleEdit(person)"
                       class="text-gray-600 hover:text-gray-900"
                       :title="t('persons.edit')"
@@ -541,6 +569,14 @@ watch([page, pageSize, search], () => {
         :can-update="canUpdate"
         @close="handleAccountsClose"
         @updated="handleAccountsUpdated"
+      />
+      
+      <TransferAssetsDialog
+        v-if="showTransferDialog"
+        :person="selectedPerson"
+        :show="showTransferDialog"
+        @close="handleTransferClose"
+        @transferred="handleAssetsTransferred"
       />
     </div>
   </div>

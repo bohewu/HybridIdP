@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Web.IdP.Attributes;
+using Web.IdP.ViewModels;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -387,6 +388,39 @@ public partial class PersonsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Transfer all resources from this person to another person (for offboarding)
+    /// </summary>
+    [HttpPost("{id}/transfer-assets")]
+    [HasPermission(Permissions.Persons.Update)]
+    public async Task<IActionResult> TransferAssets(Guid id, [FromBody] TransferAssetsViewModel model)
+    {
+        try
+        {
+            var currentUserId = GetCurrentUserId();
+            
+            await _personService.TransferAssetsAsync(id, model.TargetPersonId);
+
+            await _auditService.LogEventAsync(
+                "ResourceOwnershipTransferInitiated",
+                currentUserId?.ToString(),
+                $"Initiated transfer from person {id} to {model.TargetPersonId}",
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                HttpContext.Request.Headers["User-Agent"].ToString());
+
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            LogErrorTransferringAssets(ex, id, model.TargetPersonId);
+            return StatusCode(500, "An error occurred while transferring assets");
+        }
+    }
+
     #region Helper Methods
 
     private Guid? GetCurrentUserId()
@@ -529,6 +563,9 @@ public partial class PersonsController : ControllerBase
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Error verifying identity for person {PersonId}")]
     partial void LogErrorVerifyingIdentity(Exception ex, Guid personId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error transferring assets from {FromPersonId} to {ToPersonId}")]
+    partial void LogErrorTransferringAssets(Exception ex, Guid fromPersonId, Guid toPersonId);
 
     #endregion
 }

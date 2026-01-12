@@ -24,6 +24,12 @@ public interface IPersonService
     Task<Person?> GetPersonByEmployeeIdAsync(string employeeId);
 
     /// <summary>
+    /// Transfers all resources (Scopes, Clients, API Resources) owned by one person to another.
+    /// Used when offboarding users to prevent orphaned resources.
+    /// </summary>
+    Task TransferAssetsAsync(Guid fromPersonId, Guid toPersonId);
+
+    /// <summary>
     /// Get all persons with optional pagination
     /// </summary>
     /// <param name="skip">Number of records to skip</param>
