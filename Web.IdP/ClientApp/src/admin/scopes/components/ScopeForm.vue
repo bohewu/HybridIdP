@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseModal from '@/components/common/BaseModal.vue'
+import SearchableCheckboxList from '@/components/common/SearchableCheckboxList.vue'
 
 const { t } = useI18n()
 
@@ -299,32 +300,17 @@ const saveScopeClaims = async (scopeId) => {
               {{ $t('scopes.form.resources') }}
             </label>
             
-            <div v-if="loadingResources" class="text-sm text-gray-500">
-              Loading resources...
-            </div>
-            <div v-else class="border border-gray-300 rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
-              <div v-if="availableResources.length === 0" class="text-sm text-gray-500 p-2">
-                No API Resources available.
-              </div>
-              <label
-                v-for="resource in availableResources"
-                :key="resource.id"
-                class="flex items-start p-2 hover:bg-gray-50 rounded cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  :value="resource.name"
-                  v-model="selectedResourceNames"
-                  class="mt-0.5 h-4 w-4 text-google-500 border-gray-300 rounded focus:ring-google-500"
-                />
-                <div class="ml-3 flex-1">
-                  <div class="text-sm font-medium text-gray-900">
-                    {{ resource.name }}
-                  </div>
-                  <div class="text-xs text-gray-500">{{ resource.displayName || resource.name }}</div>
-                </div>
-              </label>
-            </div>
+            <SearchableCheckboxList
+              v-model="selectedResourceNames"
+              :items="availableResources"
+              label-key="name"
+              sub-label-key="displayName"
+              value-key="name"
+              :loading="loadingResources"
+              :placeholder="$t('scopes.form.resourcesPlaceholder') || 'Search resources...'"
+              height-class="max-h-48"
+            />
+            
             <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.resourcesHelp') }}</p>
           </div>
 
@@ -496,37 +482,24 @@ const saveScopeClaims = async (scopeId) => {
               </div>
             </div>
             
-            <div v-if="loadingClaims" class="text-sm text-gray-500">
-              {{ $t('scopes.form.userClaimsLoading') }}
-            </div>
-            <div v-else class="border border-gray-300 rounded-md max-h-48 overflow-y-auto p-2 space-y-1" :class="{ 'opacity-60 pointer-events-none': isStandardScope }">
-              <div v-if="availableClaims.length === 0" class="text-sm text-gray-500 p-2">
-                {{ $t('scopes.form.userClaimsNone') }}
-              </div>
-              <label
-                v-for="claim in availableClaims"
-                :key="claim.id"
-                class="flex items-start p-2 hover:bg-gray-50 rounded" 
-                :class="isStandardScope ? 'cursor-not-allowed' : 'cursor-pointer'"
-              >
-                <input
-                  type="checkbox"
-                  :value="claim.id"
-                  v-model="selectedClaimIds"
-                  :disabled="isStandardScope"
-                  class="mt-0.5 h-4 w-4 text-google-500 border-gray-300 rounded focus:ring-google-500 disabled:opacity-50"
-                />
-                <div class="ml-3 flex-1">
-                  <div class="text-sm font-medium text-gray-900">
-                    {{ claim.name }}
-                    <span v-if="claim.isStandard" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                      {{ $t('scopes.form.userClaimsStandardLabel') }}
-                    </span>
-                  </div>
-                  <div class="text-xs text-gray-500">{{ claim.displayName }}</div>
-                </div>
-              </label>
-            </div>
+            <SearchableCheckboxList
+              v-model="selectedClaimIds"
+              :items="availableClaims"
+              label-key="name"
+              sub-label-key="displayName"
+              value-key="id"
+              :loading="loadingClaims"
+              :disabled="isStandardScope"
+              :placeholder="$t('scopes.form.userClaimsLoading') || 'Search claims...'"
+              height-class="max-h-48"
+            >
+              <template #label-suffix="{ item }">
+                 <span v-if="item.isStandard" class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+                    {{ $t('scopes.form.userClaimsStandardLabel') }}
+                 </span>
+              </template>
+            </SearchableCheckboxList>
+            
             <p class="mt-1 text-xs text-gray-500">
               {{ $t('scopes.form.userClaimsHelp') }}
             </p>
