@@ -1,3 +1,7 @@
+@page
+@model Web.IdP.Pages.Admin.ResourcesModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
     ViewData["Title"] = Localizer["Resources"].Value;
     ViewData["Breadcrumb"] = Localizer["Resources"].Value;
 }
