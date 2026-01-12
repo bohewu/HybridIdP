@@ -326,6 +326,7 @@ public class AdminApiMiscTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
         // Request all needed scopes
         var scopes = new[] { 
             "scopes.read", "scopes.create", "scopes.update", "scopes.delete",
+            "apiresources.read", "apiresources.create", "apiresources.update", "apiresources.delete",
             "audit.read",
             "localization.read", "localization.create", "localization.update", "localization.delete",
             "monitoring.read", "settings.read", "settings.update"

@@ -1294,9 +1294,9 @@ public static class UserSeeder
         {
             await ResetUserAsync(userManager, context, existingUser, password);
              // Ensure User role
-            if (!await userManager.IsInRoleAsync(existingUser, AuthConstants.Roles.User))
+            if (!await userManager.IsInRoleAsync(existingUser, AuthConstants.Roles.Admin))
             {
-                await userManager.AddToRoleAsync(existingUser, AuthConstants.Roles.User);
+                await userManager.AddToRoleAsync(existingUser, AuthConstants.Roles.Admin);
             }
             return;
         }
@@ -1342,7 +1342,7 @@ public static class UserSeeder
         var result = await userManager.CreateAsync(user, password);
         if (result.Succeeded)
         {
-            await userManager.AddToRoleAsync(user, AuthConstants.Roles.User);
+            await userManager.AddToRoleAsync(user, AuthConstants.Roles.Admin);
             
             // Update Person.CreatedBy
             person.CreatedBy = user.Id;
