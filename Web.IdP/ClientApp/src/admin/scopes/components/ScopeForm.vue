@@ -26,7 +26,7 @@ const formData = ref({
   name: '',
   displayName: '',
   description: '',
-  resources: '',
+  resources: '', // Legacy string field, kept for compatibility if needed, but UI uses selectedResourceNames
   // Consent screen customization
   consentDisplayNameKey: '',
   consentDescriptionKey: '',
@@ -40,6 +40,11 @@ const formData = ref({
 const availableClaims = ref([])
 const selectedClaimIds = ref([])
 const loadingClaims = ref(false)
+
+// Resources management
+const availableResources = ref([])
+const selectedResourceNames = ref([])
+const loadingResources = ref(false)
 
 const submitting = ref(false)
 const error = ref(null)
@@ -58,6 +63,7 @@ const resetForm = () => {
     category: ''
   }
   selectedClaimIds.value = []
+  selectedResourceNames.value = []
   error.value = null
 }
 
@@ -73,6 +79,21 @@ const fetchClaims = async () => {
     console.error('Error fetching claims:', e)
   } finally {
     loadingClaims.value = false
+  }
+}
+
+// Fetch available resources
+const fetchResources = async () => {
+  loadingResources.value = true
+  try {
+    const response = await fetch('/api/admin/resources?take=100') // Fetch plenty
+    if (!response.ok) throw new Error('Failed to fetch resources')
+    const data = await response.json()
+    availableResources.value = data.items || []
+  } catch (e) {
+    console.error('Error fetching resources:', e)
+  } finally {
+    loadingResources.value = false
   }
 }
 
@@ -102,6 +123,10 @@ watch(() => props.scope, async (newScope) => {
       displayOrder: newScope.displayOrder || 0,
       category: newScope.category || ''
     }
+    
+    // Populate selected resources
+    selectedResourceNames.value = newScope.resources || []
+    
     // Load claims for this scope
     if (newScope.id) {
       await fetchScopeClaims(newScope.id)
@@ -113,6 +138,7 @@ watch(() => props.scope, async (newScope) => {
 
 onMounted(() => {
   fetchClaims()
+  fetchResources()
 })
 
 const handleSubmit = async () => {
@@ -124,10 +150,7 @@ const handleSubmit = async () => {
       name: formData.value.name,
       displayName: formData.value.displayName || null,
       description: formData.value.description || null,
-      resources: formData.value.resources
-        .split('\n')
-        .map(r => r.trim())
-        .filter(r => r.length > 0),
+      resources: selectedResourceNames.value,
       // Consent screen customization
       consentDisplayNameKey: formData.value.consentDisplayNameKey || null,
       consentDescriptionKey: formData.value.consentDescriptionKey || null,
@@ -267,18 +290,38 @@ const saveScopeClaims = async (scopeId) => {
             ></textarea>
           </div>
 
-          <!-- Resources -->
+          <!-- Resources (Multi-select) -->
           <div class="mb-5">
-                      <label for="resources" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('scopes.form.resources') }}
-                      </label>
-                      <textarea
-                        id="resources"
-                        v-model="formData.resources"
-                        rows="2"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm px-3 py-2"
-              :placeholder="$t('scopes.form.resourcesPlaceholder')"
-            ></textarea>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+              {{ $t('scopes.form.resources') }}
+            </label>
+            
+            <div v-if="loadingResources" class="text-sm text-gray-500">
+              Loading resources...
+            </div>
+            <div v-else class="border border-gray-300 rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
+              <div v-if="availableResources.length === 0" class="text-sm text-gray-500 p-2">
+                No API Resources available.
+              </div>
+              <label
+                v-for="resource in availableResources"
+                :key="resource.id"
+                class="flex items-start p-2 hover:bg-gray-50 rounded cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  :value="resource.name"
+                  v-model="selectedResourceNames"
+                  class="mt-0.5 h-4 w-4 text-google-500 border-gray-300 rounded focus:ring-google-500"
+                />
+                <div class="ml-3 flex-1">
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ resource.name }}
+                  </div>
+                  <div class="text-xs text-gray-500">{{ resource.displayName || resource.name }}</div>
+                </div>
+              </label>
+            </div>
             <p class="mt-1 text-xs text-gray-500">{{ $t('scopes.form.resourcesHelp') }}</p>
           </div>
 

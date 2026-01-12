@@ -320,8 +320,9 @@ public static class ServiceCollectionExtensions
         // Configure SecurityStampValidatorOptions from configuration (e.g. for testing)
         services.Configure<SecurityStampValidatorOptions>(options =>
         {
-            // Validate security stamp every request to ensure role/permission changes take effect immediately
-            options.ValidationInterval = TimeSpan.Zero;
+            // Validate security stamp every 1 minute to ensure role/permission changes take effect quickly
+            // but avoiding issues with Impersonation/Simulated Login where strict per-request validation can fail.
+            options.ValidationInterval = TimeSpan.FromMinutes(1);
             
             var interval = configuration.GetValue<int?>("Security:ValidationIntervalSeconds");
             if (interval.HasValue)
