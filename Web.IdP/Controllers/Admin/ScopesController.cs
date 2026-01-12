@@ -39,10 +39,13 @@ public class ScopesController : ControllerBase
         [FromQuery] string? search = null,
         [FromQuery] string? sort = null)
     {
-        // Admin sees all scopes, non-Admin sees only their own
-        Guid? ownerPersonId = IsAdmin() ? null : GetCurrentPersonId();
+        // Admin sees all scopes with full edit rights.
+        // ApplicationManager sees all scopes, but IsReadOnly is set for scopes they don't own.
+        // We no longer strictly filter effectively hiding other scopes, we just mark them read-only.
+        Guid? ownerFilterId = null; // Do not filter out scopes
+        Guid? viewerPersonId = IsAdmin() ? null : GetCurrentPersonId();
         
-        var (items, totalCount) = await _scopeService.GetScopesAsync(skip, take, search, sort, ownerPersonId);
+        var (items, totalCount) = await _scopeService.GetScopesAsync(skip, take, search, sort, ownerFilterId, viewerPersonId);
         return Ok(new { items, totalCount });
     }
 

@@ -31,7 +31,8 @@ const fetchRoles = async () => {
     availableRoles.value = data.items || []
     
     // Pre-select user's current roles
-    selectedRoles.value = props.user.roles || []
+    // Clone the roles array to avoid modifying the prop by reference
+    selectedRoles.value = [...(props.user.roles || [])]
   } catch (e) {
     error.value = t('roles.assignment.errors.loadFailed')
     console.error('Error fetching roles:', e)

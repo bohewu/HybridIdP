@@ -19,6 +19,7 @@ public sealed class ScopeSummary
     public int DisplayOrder { get; set; }
     public string? Category { get; set; }
     public bool IsPublic { get; set; }
+    public bool IsReadOnly { get; set; }
 }
 
 /// <summary>

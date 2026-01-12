@@ -13,8 +13,9 @@ namespace Core.Application
         /// <param name="take">Number of records to take</param>
         /// <param name="search">Search term</param>
         /// <param name="sort">Sort field and direction</param>
-        /// <param name="ownerPersonId">Optional: Filter by owner PersonId (for ApplicationManager role)</param>
-        Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerPersonId = null);
+        /// <param name="ownerFilterId">Optional: Filter by owner PersonId (for strict filtering)</param>
+        /// <param name="viewerPersonId">Optional: The PersonId of the viewer (to calculate IsReadOnly)</param>
+        Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerFilterId = null, Guid? viewerPersonId = null);
         
         Task<ScopeSummary?> GetScopeByIdAsync(string id);
         

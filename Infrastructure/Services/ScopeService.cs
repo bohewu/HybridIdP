@@ -41,27 +41,38 @@ public class ScopeService : IScopeService
         _eventPublisher = eventPublisher;
     }
 
-    public async Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerPersonId = null)
+    public async Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerFilterId = null, Guid? viewerPersonId = null)
     {
         var scopes = new List<ScopeSummary>();
         var scopeExtensions = await _db.ScopeExtensions.ToDictionaryAsync(se => se.ScopeId);
         
         // Get owned scope IDs if filtering by owner
         HashSet<string>? ownedScopeIds = null;
-        if (ownerPersonId.HasValue)
+        if (ownerFilterId.HasValue)
         {
             ownedScopeIds = (await _db.ScopeOwnerships
-                .Where(so => so.CreatedByPersonId == ownerPersonId.Value)
+                .Where(so => so.CreatedByPersonId == ownerFilterId.Value)
                 .Select(so => so.ScopeId)
                 .ToListAsync())
                 .ToHashSet();
         }
         
+        // Get IDs of scopes owned by the viewer (if applicable) for IsReadOnly calculation
+        HashSet<string> viewerOwnedScopeIds = new();
+        if (viewerPersonId.HasValue)
+        {
+            viewerOwnedScopeIds = (await _db.ScopeOwnerships
+                .Where(so => so.CreatedByPersonId == viewerPersonId.Value)
+                .Select(so => so.ScopeId)
+                .ToListAsync())
+                .ToHashSet();
+        }
+
         await foreach (var scope in _scopeManager.ListAsync())
         {
             var id = await _scopeManager.GetIdAsync(scope);
             
-            // Skip if filtering by owner and this scope is not owned by them
+            // Skip if filtering by owner and this scope is not owned by the filter target
             if (ownedScopeIds != null && !ownedScopeIds.Contains(id!))
             {
                 continue;
@@ -73,6 +84,17 @@ public class ScopeService : IScopeService
             var resources = await _scopeManager.GetResourcesAsync(scope);
             scopeExtensions.TryGetValue(id!, out var extension);
             
+            // Calculate ReadOnly status
+            // If viewer is provided: ReadOnly if NOT owned by viewer
+            // (Note: StandardOidcScopes checks are handled in Update/Delete actions, but UI can also use IsReadOnly)
+            // If viewerPersonId is null (e.g. Admin or System), we assume full access (IsReadOnly=false) relative to ownership.
+            bool isReadOnly = false;
+            if (viewerPersonId.HasValue)
+            {
+                 // If viewer is specified, they can only edit what they own.
+                 isReadOnly = !viewerOwnedScopeIds.Contains(id!);
+            }
+
             scopes.Add(new ScopeSummary
             {
                 Id = id!,
@@ -86,7 +108,8 @@ public class ScopeService : IScopeService
                 IsRequired = extension?.IsRequired ?? false,
                 DisplayOrder = extension?.DisplayOrder ?? 0,
                 Category = extension?.Category,
-                IsPublic = extension?.IsPublic ?? false
+                IsPublic = extension?.IsPublic ?? false,
+                IsReadOnly = isReadOnly
             });
         }
         

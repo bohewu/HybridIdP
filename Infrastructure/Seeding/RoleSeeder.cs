@@ -16,7 +16,7 @@ public static class RoleSeeder
         {
             new { Name = AuthConstants.Roles.Admin, Description = "Administrator with full system access", Permissions = allPermissions },
             new { Name = AuthConstants.Roles.User, Description = "Standard user role", Permissions = string.Empty },
-            new { Name = AuthConstants.Roles.ApplicationManager, Description = "Application Manager - can manage OAuth clients and scopes they own", Permissions = "clients.read,clients.create,clients.update,clients.delete,scopes.read,scopes.create,scopes.update,scopes.delete" }
+            new { Name = AuthConstants.Roles.ApplicationManager, Description = "Application Manager - can manage OAuth clients and scopes they own", Permissions = "clients.read,clients.create,clients.update,clients.delete,scopes.read,scopes.create,scopes.update,scopes.delete,claims.read" }
         };
 
         foreach (var role in roles)
