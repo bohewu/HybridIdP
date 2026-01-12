@@ -66,7 +66,7 @@ const fetchResources = async () => {
 const handleCreate = () => {
   if (!canCreate.value) {
     deniedMessage.value = t('resources.accessDenied.create')
-    deniedPermission.value = Permissions.Scopes.CREATE
+    deniedPermission.value = Permissions.Scopes.Create
     showAccessDenied.value = true
     return
   }
@@ -77,7 +77,7 @@ const handleCreate = () => {
 const handleEdit = (resource) => {
   if (!canUpdate.value) {
     deniedMessage.value = t('resources.accessDenied.update')
-    deniedPermission.value = Permissions.Scopes.UPDATE
+    deniedPermission.value = Permissions.Scopes.Update
     showAccessDenied.value = true
     return
   }
@@ -88,7 +88,7 @@ const handleEdit = (resource) => {
 const handleDelete = async (resourceId) => {
   if (!canDelete.value) {
     deniedMessage.value = t('resources.accessDenied.delete')
-    deniedPermission.value = Permissions.Scopes.DELETE
+    deniedPermission.value = Permissions.Scopes.Delete
     showAccessDenied.value = true
     return
   }
@@ -136,14 +136,14 @@ onMounted(async () => {
   // Load permissions (reusing Scopes permissions for now)
   await permissionService.loadPermissions()
   
-  canRead.value = permissionService.hasPermission(Permissions.Scopes.READ)
-  canCreate.value = permissionService.hasPermission(Permissions.Scopes.CREATE)
-  canUpdate.value = permissionService.hasPermission(Permissions.Scopes.UPDATE)
-  canDelete.value = permissionService.hasPermission(Permissions.Scopes.DELETE)
+  canRead.value = permissionService.hasPermission(Permissions.Scopes.Read)
+  canCreate.value = permissionService.hasPermission(Permissions.Scopes.Create)
+  canUpdate.value = permissionService.hasPermission(Permissions.Scopes.Update)
+  canDelete.value = permissionService.hasPermission(Permissions.Scopes.Delete)
   
   if (!canRead.value) {
     deniedMessage.value = t('resources.accessDenied.read')
-    deniedPermission.value = Permissions.Scopes.READ
+    deniedPermission.value = Permissions.Scopes.Read
     showAccessDenied.value = true
     return
   }
