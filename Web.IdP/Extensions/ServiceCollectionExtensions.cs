@@ -351,7 +351,16 @@ public static class ServiceCollectionExtensions
                 if (context.HttpContext.User.Identity is ClaimsIdentity { Actor: not null } currentIdentity &&
                     context.Principal?.Identity is ClaimsIdentity newIdentity)
                 {
-                    newIdentity.Actor = currentIdentity.Actor;
+                    // Only preserve the Actor if this is a session refresh (User IDs match).
+                    // If the User IDs don't match, it's a "Start" or "Stop" impersonation action,
+                    // in which case we either manually set the Actor or want to clear it.
+                    var currentUserId = currentIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    var newUserId = newIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                    if (currentUserId == newUserId)
+                    {
+                        newIdentity.Actor = currentIdentity.Actor;
+                    }
                 }
 
                 return Task.CompletedTask;

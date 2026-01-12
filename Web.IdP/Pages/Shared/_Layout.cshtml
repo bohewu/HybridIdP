@@ -26,10 +26,12 @@
     <meta name="locale" content="@currentCulture" />
     <meta name="csrf-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
     <title>@ViewData["Title"] - @productName</title>
-    @if (User.Identity?.IsAuthenticated == true)
+    @if (User?.Identity?.IsAuthenticated == true)
     {
-        var activeRole = User.Claims.FirstOrDefault(c => c.Type == "active_role")?.Value 
-                         ?? User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+        <meta name="user-id" content="@User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value" />
+        <meta name="user-role" content="@(User?.IsInRole(AuthConstants.Roles.Admin) == true ? "Admin" : User?.IsInRole(AuthConstants.Roles.ApplicationManager) == true ? "ApplicationManager" : "User")" />
+        var activeRole = User?.Claims?.FirstOrDefault(c => c.Type == "active_role")?.Value 
+                         ?? User?.Claims?.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
         if (!string.IsNullOrEmpty(activeRole))
         {
             <meta name="active-role" content="@activeRole" />
@@ -53,7 +55,7 @@
     <link rel="stylesheet" href="~/Web.IdP.styles.css" asp-append-version="true" />
 </head>
 @{
-    var isImpersonating = User.Identity is System.Security.Claims.ClaimsIdentity claimsId && claimsId.Actor != null;
+    var isImpersonating = User?.Identity is System.Security.Claims.ClaimsIdentity claimsId && claimsId.Actor != null;
 }
 <body class="h-full flex flex-col google-font @(isImpersonating ? "is-impersonating" : "")">
     @if (isImpersonating)
