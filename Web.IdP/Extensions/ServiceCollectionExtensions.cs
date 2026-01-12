@@ -202,7 +202,7 @@ public static class ServiceCollectionExtensions
                 {
                     return HealthCheckResult.Unhealthy(exception: ex);
                 }
-            }, tags: new[] { "db", "postgresql" });
+            }, tags: ["db", "postgresql"]);
         }
         else
         {
@@ -337,10 +337,8 @@ public static class ServiceCollectionExtensions
             // which contains the impersonation state, unlike HttpContext.User which might be stale/admin.
             options.OnRefreshingPrincipal = context =>
             {
-                var currentIdentity = context.CurrentPrincipal?.Identity as ClaimsIdentity;
-                var newIdentity = context.NewPrincipal?.Identity as ClaimsIdentity;
-
-                if (currentIdentity != null && newIdentity != null)
+                if (context.CurrentPrincipal?.Identity is ClaimsIdentity currentIdentity &&
+                    context.NewPrincipal?.Identity is ClaimsIdentity newIdentity)
                 {
                     // 1. Restore Actor Identity
                     if (currentIdentity.Actor != null && newIdentity.Actor == null)
@@ -610,7 +608,7 @@ public static class ServiceCollectionExtensions
         services.AddJsonLocalization(options =>
         {
             options.ResourcesPath = "Resources";
-            options.AdditionalAssemblyPrefixes = new List<string> { "Infrastructure" };
+            options.AdditionalAssemblyPrefixes = [ "Infrastructure" ];
         });
 
         services.AddMvc()
