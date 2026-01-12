@@ -17,6 +17,22 @@
     var currentCulture = System.Globalization.CultureInfo.CurrentUICulture.Name;
     var brandingService = Context.RequestServices.GetRequiredService<Core.Application.IBrandingService>();
     var productName = await brandingService.GetProductNameAsync();
+
+    // Permission check logic
+    var isAuthenticated = User?.Identity?.IsAuthenticated == true;
+    HashSet<string> userPermissions = new();
+    bool hasAdminPermissions = false;
+    bool hasClientScopePermissions = false;
+
+    if (isAuthenticated)
+    {
+        userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User!);
+        hasAdminPermissions = User?.IsInRole(Roles.Admin) == true;
+        hasClientScopePermissions =
+            User?.IsInRole(Roles.ApplicationManager) == true ||
+            userPermissions.Contains(Permissions.Clients.Read) ||
+            userPermissions.Contains(Permissions.Scopes.Read);
+    }
 }
 <!DOCTYPE html>
 <html lang="@currentCulture" class="h-full bg-gray-50">
@@ -26,10 +42,10 @@
     <meta name="locale" content="@currentCulture" />
     <meta name="csrf-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
     <title>@ViewData["Title"] - @productName</title>
-    @if (User?.Identity?.IsAuthenticated == true)
+    @if (isAuthenticated)
     {
         <meta name="user-id" content="@User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value" />
-        <meta name="user-role" content="@(User?.IsInRole(AuthConstants.Roles.Admin) == true ? "Admin" : User?.IsInRole(AuthConstants.Roles.ApplicationManager) == true ? "ApplicationManager" : "User")" />
+        <meta name="user-role" content="@(hasAdminPermissions ? "Admin" : User?.IsInRole(AuthConstants.Roles.ApplicationManager) == true ? "ApplicationManager" : "User")" />
         var activeRole = User?.Claims?.FirstOrDefault(c => c.Type == "active_role")?.Value 
                          ?? User?.Claims?.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
         if (!string.IsNullOrEmpty(activeRole))
@@ -62,7 +78,7 @@
     {
         <div class="impersonation-banner bg-yellow-50 text-yellow-800 text-center p-2 border-b border-yellow-200 sticky top-0 z-50 shadow-sm flex items-center justify-center font-medium" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            @string.Format(Localizer["ImpersonatingUser"], User.Identity.Name)
+            @string.Format(Localizer["ImpersonatingUser"], User?.Identity?.Name ?? "User")
             <button id="stopImpersonationBtn" class="ml-3 px-2 py-1 text-xs font-bold text-yellow-900 border border-yellow-900 rounded hover:bg-yellow-100 flex items-center">
                 <i class="bi bi-arrow-return-left me-1"></i> @Localizer["StopImpersonation"]
             </button>
@@ -82,15 +98,8 @@
                 
                 @* Desktop Menu *@
                 <div class="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
-                    @if (User.Identity?.IsAuthenticated == true)
+                    @if (isAuthenticated)
                     {
-                        // Get user permissions for menu visibility
-                        var userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User);
-                        var hasAdminPermissions = User.IsInRole(Roles.Admin);
-                        var hasClientScopePermissions = 
-                        User.IsInRole(Roles.ApplicationManager) ||
-                        userPermissions.Contains(Permissions.Clients.Read) ||
-                        userPermissions.Contains(Permissions.Scopes.Read);
                         
                         <!-- User Dropdown -->
                         <div class="ml-3 relative group">
@@ -99,14 +108,14 @@
                                     <span class="sr-only">Open user menu</span>
                                     <div class="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium shadow-sm">
                                         @{  
-                                            var userName = User.Identity.Name ?? "?";
+                                            var userName = User?.Identity?.Name ?? "?";
                                             var userInitials = string.IsNullOrEmpty(userName) ? "?" : 
-                                                (userName.Contains("@@") ? userName.Substring(0, Math.Min(2, userName.IndexOf('@'))).ToUpper() : userName.Substring(0, Math.Min(2, userName.Length)).ToUpper());
+                                                (userName.Contains("@") ? userName.Substring(0, Math.Min(2, userName.IndexOf('@'))).ToUpper() : userName.Substring(0, Math.Min(2, userName.Length)).ToUpper());
                                         }
                                         @userInitials
                                     </div>
                                     <div class="text-left">
-                                        <div class="text-sm font-medium text-gray-900">@User.Identity.Name</div>
+                                        <div class="text-sm font-medium text-gray-900">@(User?.Identity?.Name ?? "User")</div>
                                         <div class="text-xs text-gray-500">@Localizer["MyAccount"]</div>
                                     </div>
                                     <i class="bi bi-chevron-down text-gray-400 text-xs ml-1"></i>
@@ -115,7 +124,7 @@
                             <!-- Dropdown menu - Use pt-2 as a bridge to prevent hover loss -->
                             <div class="origin-top-right absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50">
                                 <div class="rounded-lg border border-gray-200 py-1 bg-white shadow-lg focus:outline-none">
-                                    @if (User.IsInRole(Roles.Admin) && hasAdminPermissions)
+                                    @if (User?.IsInRole(Roles.Admin) == true && hasAdminPermissions)
                                     {
                                         <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Admin/Index">
                                             <i class="bi bi-speedometer2 mr-2"></i> @Localizer["AdminConsole"]
@@ -140,21 +149,19 @@
                                         <i class="bi bi-person-circle mr-2"></i> @Localizer["Profile"]
                                     </a>
                                     <div class="border-t border-gray-100 my-1"></div>
-                                    <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" asp-page="/Account/Logout">
-                                        <i class="bi bi-box-arrow-right mr-2"></i> @Localizer["Logout"]
-                                    </a>
+                                    <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post">
+                                        <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                            <i class="bi bi-box-arrow-right mr-2"></i> @Localizer["Logout"]
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
                     }
                     else
                     {
-                        <a class="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm" asp-page="/Account/Register">
-                            @Localizer["Register"]
-                        </a>
-                        <a class="btn-google-blue px-4 py-2 rounded text-sm" asp-page="/Account/Login">
-                            @Localizer["Login"]
-                        </a>
+                        <a class="text-sm font-medium text-gray-700 hover:text-blue-600 px-3 py-2 no-underline" asp-area="Identity" asp-page="/Account/Login">@Localizer["Login"]</a>
+                        <a class="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 no-underline" asp-area="Identity" asp-page="/Account/Register">@Localizer["Register"]</a>
                     }
                     
                     <div class="ml-4">
@@ -175,33 +182,26 @@
         @* Mobile Menu *@
         <div class="hidden sm:hidden bg-white border-t border-gray-200" id="mobile-menu">
             <div class="pt-2 pb-3 space-y-1">
-                @if (User.Identity?.IsAuthenticated == true)
+                @if (isAuthenticated)
                 {
                     <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
                         <div class="flex items-center">
                              <div class="flex-shrink-0">
                                 <div class="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg">
                                     @{
-                                        var userName = User.Identity.Name ?? "?";
+                                        var userName = User?.Identity?.Name ?? "?";
                                         var initial = string.IsNullOrEmpty(userName) ? "?" : userName.Substring(0, 1).ToUpper();
                                     }
                                     @initial
                                 </div>
                             </div>
                             <div class="ml-3">
-                                <div class="text-base font-medium text-gray-800">@User.Identity.Name</div>
+                                <div class="text-base font-medium text-gray-800">@(User?.Identity?.Name ?? "User")</div>
                             </div>
                         </div>
                     </div>
                     
-                    var userPermissions = await PermissionHelper.GetUserPermissionsAsync(UserManager, RoleManager, User);
-                    var hasAdminPermissions = User.IsInRole(Roles.Admin);
-                    var hasClientScopePermissions = 
-                    User.IsInRole(Roles.ApplicationManager) ||
-                    userPermissions.Contains(Permissions.Clients.Read) ||
-                    userPermissions.Contains(Permissions.Scopes.Read);
-                    
-                    if (User.IsInRole(Roles.Admin) && hasAdminPermissions)
+                    @if (User?.IsInRole(Roles.Admin) == true && hasAdminPermissions)
                     {
                          <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Admin/Index">
                             <i class="bi bi-speedometer2 mr-2"></i> @Localizer["AdminConsole"]
@@ -223,9 +223,11 @@
                     <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/Profile">
                         <i class="bi bi-person-circle mr-2"></i> @Localizer["Profile"]
                     </a>
-                    <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/Logout">
-                        <i class="bi bi-box-arrow-right mr-2"></i> @Localizer["Logout"]
-                    </a>
+                    <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post">
+                        <button type="submit" class="block w-full text-left px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100">
+                            <i class="bi bi-box-arrow-right mr-2"></i> @Localizer["Logout"]
+                        </button>
+                    </form>
                 }
                 else
                 {

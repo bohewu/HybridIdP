@@ -53,7 +53,7 @@
     {
         <div class="impersonation-banner bg-yellow-50 text-yellow-800 text-center p-2 border-b border-yellow-200 sticky top-0 z-50 shadow-sm flex items-center justify-center font-medium" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            @string.Format(Localizer["ImpersonatingUser"], User.Identity.Name)
+            @string.Format(Localizer["ImpersonatingUser"], User?.Identity?.Name ?? "User")
             <button id="stopImpersonationBtn" class="ml-3 px-2 py-1 text-xs font-bold text-yellow-900 border border-yellow-900 rounded hover:bg-yellow-100 flex items-center">
                 <i class="bi bi-arrow-return-left me-1"></i> @Localizer["StopImpersonation"]
             </button>
