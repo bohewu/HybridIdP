@@ -102,9 +102,15 @@ const formatDate = (dateString) => {
             <div class="inline-flex gap-1">
               <button
                 v-if="canUpdate"
-                @click="$emit('edit', resource)"
-                class="inline-flex items-center px-3 py-1.5 border border-google-500 text-google-600 text-sm font-medium rounded-md hover:bg-google-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-google-500"
-                :title="$t('resources.actions.edit')"
+                @click="!resource.isReadOnly && $emit('edit', resource)"
+                :disabled="resource.isReadOnly"
+                :class="[
+                  'inline-flex items-center px-3 py-1.5 border text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2',
+                  resource.isReadOnly
+                    ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                    : 'border-google-500 text-google-600 hover:bg-google-100 focus:ring-google-500'
+                ]"
+                :title="resource.isReadOnly ? $t('resources.accessDenied.notOwner') : $t('resources.actions.edit')"
                 data-test-id="resources-edit-btn"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,9 +119,15 @@ const formatDate = (dateString) => {
               </button>
               <button
                 v-if="canDelete"
-                @click="$emit('delete', resource.id)"
-                class="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-700 text-sm font-medium rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                :title="$t('resources.actions.delete')"
+                @click="!resource.isReadOnly && $emit('delete', resource.id)"
+                :disabled="resource.isReadOnly"
+                :class="[
+                  'inline-flex items-center px-3 py-1.5 border text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2',
+                  resource.isReadOnly
+                    ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                    : 'border-red-300 text-red-700 hover:bg-red-50 focus:ring-red-500'
+                ]"
+                :title="resource.isReadOnly ? $t('resources.accessDenied.notOwner') : $t('resources.actions.delete')"
                 data-test-id="resources-delete-btn"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

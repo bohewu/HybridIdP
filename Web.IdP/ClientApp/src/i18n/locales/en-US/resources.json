@@ -58,6 +58,7 @@
     "read": "You do not have permission to view API resources.",
     "create": "You do not have permission to create API resources.",
     "update": "You do not have permission to update API resources.",
-    "delete": "You do not have permission to delete API resources."
+    "delete": "You do not have permission to delete API resources.",
+    "notOwner": "You are not the owner of this resource."
   }
 }
