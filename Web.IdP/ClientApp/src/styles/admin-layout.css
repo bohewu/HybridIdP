@@ -14,12 +14,17 @@ html {
 }
 
 body.admin-layout {
+    --impersonation-bar-height: 0px;
     min-height: 100vh;
     margin: 0;
     padding: 0;
     background-color: #f8f9fa;
     overflow-x: hidden;
     /* Prevent horizontal scroll */
+}
+
+body.admin-layout.is-impersonating {
+    --impersonation-bar-height: 42px; /* Standard height for the banner */
 }
 
 /* Hide sidebar toggle on desktop - prevent FOUC */
@@ -32,7 +37,7 @@ body.admin-layout {
 /* Sidebar */
 .sidebar {
     position: fixed;
-    top: 0;
+    top: var(--impersonation-bar-height);
     bottom: 0;
     left: 0;
     z-index: 40;
@@ -46,8 +51,8 @@ body.admin-layout {
 
 .sidebar-sticky {
     position: sticky;
-    top: 0;
-    height: 100vh;
+    top: var(--impersonation-bar-height);
+    height: calc(100vh - var(--impersonation-bar-height));
     overflow-x: hidden;
     overflow-y: auto;
 }
@@ -182,10 +187,10 @@ body.admin-layout {
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    margin-top: 65px;
-    /* Push down by header height */
-    height: calc(100vh - 65px);
-    /* Full viewport height minus header height */
+    margin-top: calc(65px + var(--impersonation-bar-height));
+    /* Push down by header height + bar height */
+    height: calc(100vh - 65px - var(--impersonation-bar-height));
+    /* Full viewport height minus header and bar height */
 }
 
 /* Main content inner wrapper for max-width control */
@@ -211,7 +216,8 @@ main {
     border-bottom: 1px solid #dee2e6;
     padding: 1rem 1.5rem;
     position: fixed;
-    top: 0;
+    top: var(--impersonation-bar-height);
+    /* Position after sidebar or impersonation bar */
     left: 260px;
     /* Position after sidebar */
     right: 0;
@@ -268,9 +274,9 @@ main {
     }
 
     .content-scroll-wrapper {
-        margin-top: 60px;
+        margin-top: calc(60px + var(--impersonation-bar-height));
         /* Match mobile header height */
-        height: calc(100vh - 60px);
+        height: calc(100vh - 60px - var(--impersonation-bar-height));
         /* Slightly smaller header on mobile */
     }
 
