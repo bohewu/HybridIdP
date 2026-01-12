@@ -331,6 +331,46 @@ public static class ServiceCollectionExtensions
             {
                 options.ValidationInterval = TimeSpan.FromSeconds(interval.Value);
             }
+
+            // CRITICAL: Handle impersonation persistence during security stamp refresh.
+            // OnRefreshingPrincipal gives access to the *cookie* principal (CurrentPrincipal) 
+            // which contains the impersonation state, unlike HttpContext.User which might be stale/admin.
+            options.OnRefreshingPrincipal = context =>
+            {
+                var currentIdentity = context.CurrentPrincipal?.Identity as ClaimsIdentity;
+                var newIdentity = context.NewPrincipal?.Identity as ClaimsIdentity;
+
+                if (currentIdentity != null && newIdentity != null)
+                {
+                    // 1. Restore Actor Identity
+                    if (currentIdentity.Actor != null && newIdentity.Actor == null)
+                    {
+                        newIdentity.Actor = currentIdentity.Actor;
+                    }
+                    else if (newIdentity.Actor == null) 
+                    {
+                        // 1.1 Robustness: Reconstruct Actor if missing object but claim exists
+                        var impersonatorIdClaim = currentIdentity.FindFirst(AuthConstants.Claims.ImpersonatorId);
+                        if (impersonatorIdClaim != null)
+                        {
+                            var reconstructedActor = new ClaimsIdentity("Impersonation");
+                            reconstructedActor.AddClaim(impersonatorIdClaim);
+                            reconstructedActor.AddClaim(new Claim(ClaimTypes.Name, "Administrator"));
+                            reconstructedActor.AddClaim(new Claim(ClaimTypes.NameIdentifier, impersonatorIdClaim.Value));
+                            newIdentity.Actor = reconstructedActor;
+                        }
+                    }
+
+                    // 2. Restore ImpersonatorId Claim
+                    var impersonatorClaim = currentIdentity.FindFirst(AuthConstants.Claims.ImpersonatorId);
+                    if (impersonatorClaim != null && !newIdentity.HasClaim(c => c.Type == AuthConstants.Claims.ImpersonatorId))
+                    {
+                        newIdentity.AddClaim(impersonatorClaim);
+                    }
+                }
+
+                return Task.CompletedTask;
+            };
         });
 
         // Configure Application Cookie
@@ -344,38 +384,6 @@ public static class ServiceCollectionExtensions
             options.Cookie.SameSite = SameSiteMode.Lax;
             options.Cookie.Name = cookieOptions.GetIdentityCookieName();
 
-            options.Events.OnSigningIn = context =>
-            {
-                // Note: When SecurityStamp is validated, Identity triggers a refresh by signing in the user again.
-                // This would normally lose the 'Actor' property used for impersonation.
-                // We preserve it here by copying it from the current user to the new principal.
-                if (context.HttpContext.User.Identity is ClaimsIdentity currentIdentity &&
-                    context.Principal?.Identity is ClaimsIdentity newIdentity)
-                {
-                    var currentUserId = currentIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                                        ?? currentIdentity.FindFirst("sub")?.Value;
-                    var newUserId = newIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                                    ?? newIdentity.FindFirst("sub")?.Value;
-
-                    if (currentUserId != null && currentUserId == newUserId)
-                    {
-                        // Preserve the Actor property
-                        if (currentIdentity.Actor != null)
-                        {
-                            newIdentity.Actor = currentIdentity.Actor;
-                        }
-
-                        // Preserve the ImpersonatorId claim (crucial for persistence after refresh)
-                        var impersonatorIdClaim = currentIdentity.FindFirst(AuthConstants.Claims.ImpersonatorId);
-                        if (impersonatorIdClaim != null && !newIdentity.HasClaim(c => c.Type == AuthConstants.Claims.ImpersonatorId))
-                        {
-                            newIdentity.AddClaim(impersonatorIdClaim);
-                        }
-                    }
-                }
-
-                return Task.CompletedTask;
-            };
 
             options.Events.OnRedirectToLogin = context =>
             {

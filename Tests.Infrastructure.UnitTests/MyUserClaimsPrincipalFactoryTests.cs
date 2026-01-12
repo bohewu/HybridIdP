@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using Core.Domain.Constants;
 
 namespace Tests.Infrastructure.UnitTests;
 
@@ -272,4 +273,5 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
         // Verify no audit was logged
         _auditServiceMock.Verify(a => a.LogEventAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
+
 }

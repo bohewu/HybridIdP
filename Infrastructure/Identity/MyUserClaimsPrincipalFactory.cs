@@ -39,38 +39,10 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
 
     public override async Task<ClaimsPrincipal> CreateAsync(ApplicationUser user)
     {
-        var principal = await base.CreateAsync(user);
-        var newIdentity = principal.Identity as ClaimsIdentity;
-
-        // Detect if the current HTTP context user is already impersonating this user.
-        // During a security stamp refresh, the factory is called to regenerate the principal.
-        // We need to re-attach the impersonation state here.
-        var currentUser = _httpContextAccessor.HttpContext?.User;
-        if (currentUser?.Identity is ClaimsIdentity currentIdentity && newIdentity != null)
-        {
-            var currentUserId = currentIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                                ?? currentIdentity.FindFirst("sub")?.Value;
-            var targetUserId = user.Id.ToString();
-
-            // Only persist if the main user ID matches (session refresh of the same impersonated user)
-            if (currentUserId == targetUserId)
-            {
-                // 1. Restore Actor Identity
-                if (currentIdentity.Actor != null && newIdentity.Actor == null)
-                {
-                    newIdentity.Actor = currentIdentity.Actor;
-                }
-
-                // 2. Restore ImpersonatorId Claim
-                var impersonatorClaim = currentIdentity.FindFirst(AuthConstants.Claims.ImpersonatorId);
-                if (impersonatorClaim != null && !newIdentity.HasClaim(c => c.Type == AuthConstants.Claims.ImpersonatorId))
-                {
-                    newIdentity.AddClaim(impersonatorClaim);
-                }
-            }
-        }
-
-        return principal;
+        // Note: Impersonation persistence during security stamp refresh is handled by 
+        // SecurityStampValidatorOptions.OnRefreshingPrincipal in ServiceCollectionExtensions.cs
+        // because HttpContext.User is not reliable during the validation event.
+        return await base.CreateAsync(user);
     }
 
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
