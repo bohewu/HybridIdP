@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using global::Infrastructure;
@@ -341,6 +342,20 @@ public static class ServiceCollectionExtensions
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax;
             options.Cookie.Name = cookieOptions.GetIdentityCookieName();
+
+            options.Events.OnSigningIn = context =>
+            {
+                // Note: When SecurityStamp is validated, Identity triggers a refresh by signing in the user again.
+                // This would normally lose the 'Actor' property used for impersonation.
+                // We preserve it here by copying it from the current user to the new principal.
+                if (context.HttpContext.User.Identity is ClaimsIdentity { Actor: not null } currentIdentity &&
+                    context.Principal?.Identity is ClaimsIdentity newIdentity)
+                {
+                    newIdentity.Actor = currentIdentity.Actor;
+                }
+
+                return Task.CompletedTask;
+            };
 
             options.Events.OnRedirectToLogin = context =>
             {
