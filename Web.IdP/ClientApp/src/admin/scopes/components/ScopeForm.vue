@@ -86,7 +86,10 @@ const fetchClaims = async () => {
 const fetchResources = async () => {
   loadingResources.value = true
   try {
-    const response = await fetch('/api/admin/resources?take=100') // Fetch plenty
+    // Current UI doesn't support server-side search/pagination for resources
+    // So we fetch a large number to likely cover all of them.
+    // If you have > 1000 API resources, this UI needs a redesign anyway.
+    const response = await fetch('/api/admin/resources?take=1000') 
     if (!response.ok) throw new Error('Failed to fetch resources')
     const data = await response.json()
     availableResources.value = data.items || []
