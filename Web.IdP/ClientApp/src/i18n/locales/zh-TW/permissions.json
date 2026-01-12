@@ -2,6 +2,7 @@
   "groups": {
     "clients": "客戶端",
     "scopes": "範圍",
+    "apiresources": "API 資源",
     "users": "使用者",
     "roles": "角色",
     "claims": "聲明",
@@ -23,6 +24,12 @@
       "create": "建立範圍",
       "update": "更新範圍",
       "delete": "刪除範圍"
+    },
+    "apiresources": {
+      "read": "讀取 API 資源",
+      "create": "建立 API 資源",
+      "update": "更新 API 資源",
+      "delete": "刪除 API 資源"
     },
     "users": {
       "read": "讀取使用者",

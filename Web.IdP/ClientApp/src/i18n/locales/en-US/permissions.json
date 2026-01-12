@@ -2,6 +2,7 @@
   "groups": {
     "clients": "Clients",
     "scopes": "Scopes",
+    "apiresources": "API Resources",
     "users": "Users",
     "roles": "Roles",
     "claims": "Claims",
@@ -23,6 +24,12 @@
       "create": "Create Scopes",
       "update": "Update Scopes",
       "delete": "Delete Scopes"
+    },
+    "apiresources": {
+      "read": "Read API Resources",
+      "create": "Create API Resources",
+      "update": "Update API Resources",
+      "delete": "Delete API Resources"
     },
     "users": {
       "read": "Read Users",

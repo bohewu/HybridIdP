@@ -27,6 +27,7 @@ const loadingPermissions = ref(false)
 const permissionGroups = ref({
   clients: { labelKey: 'clients', permissions: [] },
   scopes: { labelKey: 'scopes', permissions: [] },
+  apiresources: { labelKey: 'apiresources', permissions: [] },
   users: { labelKey: 'users', permissions: [] },
   roles: { labelKey: 'roles', permissions: [] },
   claims: { labelKey: 'claims', permissions: [] },
