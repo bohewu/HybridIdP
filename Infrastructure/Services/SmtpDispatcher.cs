@@ -8,25 +8,27 @@ using Core.Domain.Constants;
 using MailKit.Net.Smtp;
 using MimeKit;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Core.Application.Options;
 
 namespace Infrastructure.Services;
 
 public partial class SmtpDispatcher : IEmailDispatcher
 {
-    private readonly ISettingsService _settings;
+    private readonly IOptionsSnapshot<EmailOptions> _options;
     private readonly ILogger<SmtpDispatcher> _logger;
 
-    public SmtpDispatcher(ISettingsService settings, ILogger<SmtpDispatcher> logger)
+    public SmtpDispatcher(IOptionsSnapshot<EmailOptions> options, ILogger<SmtpDispatcher> logger)
     {
-        _settings = settings;
+        _options = options;
         _logger = logger;
     }
 
     public async Task SendAsync(EmailMessage message, CancellationToken ct = default)
     {
-        var mailSettings = await GetMailSettingsAsync(ct);
+        var mailSettings = _options.Value;
         
-        if (string.IsNullOrWhiteSpace(mailSettings.Host))
+        if (string.IsNullOrWhiteSpace(mailSettings.SmtpHost))
         {
             LogSmtpNotConfigured(_logger, message.To);
             return;
@@ -52,16 +54,16 @@ public partial class SmtpDispatcher : IEmailDispatcher
         try 
         {
             // For Mailpit or Dev, we might accept all certs
-            if (mailSettings.Host == "localhost" || !mailSettings.EnableSsl) 
+            if (mailSettings.SmtpHost == "localhost" || !mailSettings.SmtpEnableSsl) 
             {
                 client.ServerCertificateValidationCallback = (s, c, h, e) => true;
             }
 
-            await client.ConnectAsync(mailSettings.Host, mailSettings.Port, mailSettings.EnableSsl, ct);
+            await client.ConnectAsync(mailSettings.SmtpHost, mailSettings.SmtpPort, mailSettings.SmtpEnableSsl, ct);
             
-            if (!string.IsNullOrEmpty(mailSettings.Username))
+            if (!string.IsNullOrEmpty(mailSettings.SmtpUsername))
             {
-                await client.AuthenticateAsync(mailSettings.Username, mailSettings.Password, ct);
+                await client.AuthenticateAsync(mailSettings.SmtpUsername, mailSettings.SmtpPassword, ct);
             }
 
             await client.SendAsync(mimeMessage, ct);
@@ -69,26 +71,12 @@ public partial class SmtpDispatcher : IEmailDispatcher
         }
         catch (Exception ex)
         {
-            LogEmailSendFailed(_logger, ex, message.To, mailSettings.Host, mailSettings.Port);
+            LogEmailSendFailed(_logger, ex, message.To, mailSettings.SmtpHost, mailSettings.SmtpPort);
             throw; // Job/Queue will handle retry
         }
     }
 
-    private async Task<MailSettingsDto> GetMailSettingsAsync(CancellationToken ct)
-    {
-        var settings = new MailSettingsDto();
-        settings.Host = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpHost, ct) ?? "";
-        var portStr = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpPort, ct);
-        settings.Port = int.TryParse(portStr, out var port) ? port : 587;
-        settings.Username = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpUsername, ct) ?? "";
-        settings.Password = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpPassword, ct) ?? "";
-        var sslStr = await _settings.GetValueAsync<string>(SettingKeys.Email.SmtpEnableSsl, ct);
-        settings.EnableSsl = bool.TryParse(sslStr, out var ssl) ? ssl : false;
-        settings.FromAddress = await _settings.GetValueAsync<string>(SettingKeys.Email.FromAddress, ct) ?? "";
-        settings.FromName = await _settings.GetValueAsync<string>(SettingKeys.Email.FromName, ct) ?? "";
-        
-        return settings;
-    }
+    // Removed GetMailSettingsAsync as we now use IOptionsSnapshot
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "SMTP Host not configured. Email to {To} dropped.")]
     static partial void LogSmtpNotConfigured(ILogger logger, string to);

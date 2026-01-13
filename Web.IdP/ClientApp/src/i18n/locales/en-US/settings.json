@@ -19,6 +19,11 @@
   "poweredBy": "Powered By",
   "poweredByPlaceholder": "e.g., Powered by MyProduct",
   "poweredByHelp": "Optional footer branding (leave empty to hide)",
+  "source": "Source",
+  "sourceConfig": "Configuration",
+  "sourceDb": "Database (Overridden)",
+  "confirmOverride": "This setting is currently provided via a configuration file. Are you sure you want to override it and save to the database?",
+  "maskedPasswordHint": "(Already Set)",
   "system": {
     "title": "System Monitoring",
     "description": "Configure background monitoring services."

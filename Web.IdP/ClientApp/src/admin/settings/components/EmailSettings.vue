@@ -39,13 +39,31 @@ const testSuccess = ref(false)
 const originals = ref({})
 
 const hasChanges = computed(() => {
-  return host.value !== originals.value.host ||
-         port.value !== originals.value.port ||
-         username.value !== originals.value.username ||
-         password.value !== originals.value.password ||
-         enableSsl.value !== originals.value.enableSsl ||
-         fromAddress.value !== originals.value.fromAddress ||
-         fromName.value !== originals.value.fromName
+  return host.value !== (originals.value.host?.value || '') ||
+         port.value !== parseInt(originals.value.port?.value || '587') ||
+         username.value !== (originals.value.username?.value || '') ||
+         password.value !== (originals.value.password?.value || '') ||
+         enableSsl.value !== ((originals.value.enableSsl?.value || 'true') === 'true') ||
+         fromAddress.value !== (originals.value.fromAddress?.value || '') ||
+         fromName.value !== (originals.value.fromName?.value || '')
+})
+
+const getSourceDisplay = (key) => {
+  const metadata = originals.value[key]
+  if (!metadata) return ''
+  return metadata.isOverridden ? t('settings.sourceDb') : t('settings.sourceConfig')
+}
+
+const isOverriding = computed(() => {
+  // Check if any field that was originally NOT overridden is now changed
+  const fields = ['host', 'port', 'username', 'password', 'enableSsl', 'fromAddress', 'fromName']
+  return fields.some(f => {
+    const meta = originals.value[f]
+    const currentVal = f === 'port' ? port.value.toString() : 
+                      f === 'enableSsl' ? enableSsl.value.toString() : 
+                      eval(`${f}.value`) // lazy ref access
+    return !meta?.isOverridden && currentVal !== meta?.value
+  })
 })
 
 const loadSettings = async () => {
@@ -62,24 +80,32 @@ const loadSettings = async () => {
 
     const settings = await response.json()
     
-    const getVal = (key, def) => settings.find(s => s.key === key)?.value || def
+    const getMeta = (key, defValue) => settings.find(s => s.key === key) || { value: defValue, isOverridden: false, source: 'Configuration' }
 
-    host.value = getVal(SettingKeys.Email.SmtpHost, '')
-    port.value = parseInt(getVal(SettingKeys.Email.SmtpPort, '587'))
-    username.value = getVal(SettingKeys.Email.SmtpUsername, '')
-    password.value = getVal(SettingKeys.Email.SmtpPassword, '')
-    enableSsl.value = getVal(SettingKeys.Email.SmtpEnableSsl, 'true') === 'true'
-    fromAddress.value = getVal(SettingKeys.Email.FromAddress, '')
-    fromName.value = getVal(SettingKeys.Email.FromName, '')
+    const hostMeta = getMeta(SettingKeys.Email.SmtpHost, '')
+    const portMeta = getMeta(SettingKeys.Email.SmtpPort, '587')
+    const usernameMeta = getMeta(SettingKeys.Email.SmtpUsername, '')
+    const passwordMeta = getMeta(SettingKeys.Email.SmtpPassword, '')
+    const enableSslMeta = getMeta(SettingKeys.Email.SmtpEnableSsl, 'true')
+    const fromAddressMeta = getMeta(SettingKeys.Email.FromAddress, '')
+    const fromNameMeta = getMeta(SettingKeys.Email.FromName, '')
+
+    host.value = hostMeta.value
+    port.value = parseInt(portMeta.value)
+    username.value = usernameMeta.value
+    password.value = passwordMeta.value
+    enableSsl.value = enableSslMeta.value === 'true'
+    fromAddress.value = fromAddressMeta.value
+    fromName.value = fromNameMeta.value
 
     originals.value = {
-      host: host.value,
-      port: port.value,
-      username: username.value,
-      password: password.value,
-      enableSsl: enableSsl.value,
-      fromAddress: fromAddress.value,
-      fromName: fromName.value
+      host: hostMeta,
+      port: portMeta,
+      username: usernameMeta,
+      password: passwordMeta,
+      enableSsl: enableSslMeta,
+      fromAddress: fromAddressMeta,
+      fromName: fromNameMeta
     }
   } catch (err) {
     console.error('Failed to load email settings:', err)
@@ -110,6 +136,8 @@ const isValid = computed(() => Object.keys(errors.value).length === 0)
 
 const saveSettings = async () => {
   if (!hasChanges.value || !props.canUpdate || !isValid.value) return
+
+  if (isOverriding.value && !confirm(t('settings.confirmOverride'))) return
 
   saving.value = true
   error.value = null
@@ -146,13 +174,13 @@ const saveSettings = async () => {
     })
 
     originals.value = {
-      host: host.value,
-      port: port.value,
-      username: username.value,
-      password: password.value,
-      enableSsl: enableSsl.value,
-      fromAddress: fromAddress.value,
-      fromName: fromName.value
+      host: { ...originals.value.host, value: host.value, isOverridden: true },
+      port: { ...originals.value.port, value: port.value.toString(), isOverridden: true },
+      username: { ...originals.value.username, value: username.value, isOverridden: true },
+      password: { ...originals.value.password, value: password.value, isOverridden: true },
+      enableSsl: { ...originals.value.enableSsl, value: enableSsl.value.toString(), isOverridden: true },
+      fromAddress: { ...originals.value.fromAddress, value: fromAddress.value, isOverridden: true },
+      fromName: { ...originals.value.fromName, value: fromName.value, isOverridden: true }
     }
 
     showSuccess.value = true
@@ -168,13 +196,13 @@ const saveSettings = async () => {
 const cancelChanges = () => {
   if (hasChanges.value && !confirm(t('settings.confirmCancel'))) return
   
-  host.value = originals.value.host
-  port.value = originals.value.port
-  username.value = originals.value.username
-  password.value = originals.value.password
-  enableSsl.value = originals.value.enableSsl
-  fromAddress.value = originals.value.fromAddress
-  fromName.value = originals.value.fromName
+  host.value = originals.value.host?.value || ''
+  port.value = parseInt(originals.value.port?.value || '587')
+  username.value = originals.value.username?.value || ''
+  password.value = originals.value.password?.value || ''
+  enableSsl.value = (originals.value.enableSsl?.value || 'true') === 'true'
+  fromAddress.value = originals.value.fromAddress?.value || ''
+  fromName.value = originals.value.fromName?.value || ''
 }
 
 const sendTestEmail = async () => {
@@ -258,39 +286,74 @@ onMounted(loadSettings)
       <!-- Form -->
       <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
         <div class="sm:col-span-4">
-          <label class="block text-sm font-medium text-gray-700">{{ t('settings.host') }}</label>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-sm font-medium text-gray-700">{{ t('settings.host') }}</label>
+            <span :class="originals.host?.isOverridden ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'" class="text-[10px] uppercase font-bold px-1.5 rounded border border-current opacity-70">
+              {{ getSourceDisplay('host') }}
+            </span>
+          </div>
           <input v-model="host" :disabled="!canUpdate" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="smtp.example.com" />
         </div>
 
         <div class="sm:col-span-2">
-          <label class="block text-sm font-medium text-gray-700">{{ t('settings.port') }}</label>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-sm font-medium text-gray-700">{{ t('settings.port') }}</label>
+            <span :class="originals.port?.isOverridden ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'" class="text-[10px] uppercase font-bold px-1.5 rounded border border-current opacity-70">
+              {{ getSourceDisplay('port') }}
+            </span>
+          </div>
           <input v-model.number="port" :disabled="!canUpdate" type="number" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="587" />
         </div>
 
         <div class="sm:col-span-3">
-          <label class="block text-sm font-medium text-gray-700">{{ t('settings.username') }}</label>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-sm font-medium text-gray-700">{{ t('settings.username') }}</label>
+            <span :class="originals.username?.isOverridden ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'" class="text-[10px] uppercase font-bold px-1.5 rounded border border-current opacity-70">
+              {{ getSourceDisplay('username') }}
+            </span>
+          </div>
           <input v-model="username" :disabled="!canUpdate" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="user@example.com" />
         </div>
 
         <div class="sm:col-span-3">
-          <label class="block text-sm font-medium text-gray-700">{{ t('settings.password') }}</label>
-          <input v-model="password" :disabled="!canUpdate" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="••••••••" />
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-sm font-medium text-gray-700">{{ t('settings.password') }}</label>
+            <span :class="originals.password?.isOverridden ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'" class="text-[10px] uppercase font-bold px-1.5 rounded border border-current opacity-70">
+              {{ getSourceDisplay('password') }}
+            </span>
+          </div>
+          <input v-model="password" :disabled="!canUpdate" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" :placeholder="password === '(set)' ? t('settings.maskedPasswordHint') : '••••••••'" />
         </div>
 
         <div class="sm:col-span-6">
-            <div class="flex items-center">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
                 <input id="enableSsl" v-model="enableSsl" :disabled="!canUpdate" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
                 <label for="enableSsl" class="ml-2 block text-sm text-gray-900">{{ t('settings.enableSsl') }}</label>
+              </div>
+              <span :class="originals.enableSsl?.isOverridden ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'" class="text-[10px] uppercase font-bold px-1.5 rounded border border-current opacity-70">
+                {{ getSourceDisplay('enableSsl') }}
+              </span>
             </div>
         </div>
 
         <div class="sm:col-span-3">
-          <label class="block text-sm font-medium text-gray-700">{{ t('settings.fromAddress') }}</label>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-sm font-medium text-gray-700">{{ t('settings.fromAddress') }}</label>
+            <span :class="originals.fromAddress?.isOverridden ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'" class="text-[10px] uppercase font-bold px-1.5 rounded border border-current opacity-70">
+              {{ getSourceDisplay('fromAddress') }}
+            </span>
+          </div>
           <input v-model="fromAddress" :disabled="!canUpdate" type="email" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="no-reply@example.com" />
         </div>
 
         <div class="sm:col-span-3">
-          <label class="block text-sm font-medium text-gray-700">{{ t('settings.fromName') }}</label>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-sm font-medium text-gray-700">{{ t('settings.fromName') }}</label>
+            <span :class="originals.fromName?.isOverridden ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'" class="text-[10px] uppercase font-bold px-1.5 rounded border border-current opacity-70">
+              {{ getSourceDisplay('fromName') }}
+            </span>
+          </div>
           <input v-model="fromName" :disabled="!canUpdate" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="HybridAuth IdP" />
         </div>
       </div>

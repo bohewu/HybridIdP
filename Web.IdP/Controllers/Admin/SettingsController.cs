@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Core.Application;
 using Core.Domain.Constants;
+using Core.Application.Options;
+using Microsoft.Extensions.Options;
 using Web.IdP.Attributes;
 
 namespace Web.IdP.Controllers.Admin;
@@ -14,11 +16,19 @@ public class SettingsController : ControllerBase
 {
     private readonly ISettingsService _settings;
     private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
+    private readonly IOptionsSnapshot<EmailOptions> _emailOptions;
 
-    public SettingsController(ISettingsService settings, IEmailService emailService)
+    public SettingsController(
+        ISettingsService settings, 
+        IEmailService emailService, 
+        IConfiguration configuration,
+        IOptionsSnapshot<EmailOptions> emailOptions)
     {
         _settings = settings;
         _emailService = emailService;
+        _configuration = configuration;
+        _emailOptions = emailOptions;
     }
 
     /// <summary>
@@ -36,12 +46,65 @@ public class SettingsController : ControllerBase
 
         var settingsDict = await _settings.GetByPrefixAsync(prefix);
         
-        // Convert dictionary to array of objects with key, value, dataType
-        var settingsArray = settingsDict.Select(kvp => new
+        // If it's email settings, we can use the Options pattern for better metadata
+        if (prefix == "Mail.")
         {
-            key = kvp.Key,
-            value = kvp.Value,
-            dataType = "String" // For now, all settings are strings in the dict
+            var effectiveOptions = _emailOptions.Value;
+            var baseOptions = _configuration.GetSection(EmailOptions.SectionName).Get<EmailOptions>() ?? new EmailOptions();
+            
+            var emailSettings = new[]
+            {
+                new { Key = SettingKeys.Email.SmtpHost, Value = kvpVal(SettingKeys.Email.SmtpHost), Default = baseOptions.SmtpHost },
+                new { Key = SettingKeys.Email.SmtpPort, Value = kvpVal(SettingKeys.Email.SmtpPort), Default = baseOptions.SmtpPort.ToString() },
+                new { Key = SettingKeys.Email.SmtpUsername, Value = kvpVal(SettingKeys.Email.SmtpUsername), Default = baseOptions.SmtpUsername },
+                new { Key = SettingKeys.Email.SmtpPassword, Value = kvpVal(SettingKeys.Email.SmtpPassword), Default = baseOptions.SmtpPassword },
+                new { Key = SettingKeys.Email.SmtpEnableSsl, Value = kvpVal(SettingKeys.Email.SmtpEnableSsl), Default = baseOptions.SmtpEnableSsl.ToString().ToLower() },
+                new { Key = SettingKeys.Email.FromAddress, Value = kvpVal(SettingKeys.Email.FromAddress), Default = baseOptions.FromAddress },
+                new { Key = SettingKeys.Email.FromName, Value = kvpVal(SettingKeys.Email.FromName), Default = baseOptions.FromName }
+            };
+
+            string kvpVal(string key) => settingsDict.TryGetValue(key, out var v) ? v : string.Empty;
+
+            return Ok(emailSettings.Select(s => {
+                var isOverridden = !string.IsNullOrEmpty(s.Value);
+                var displayValue = isOverridden ? s.Value : s.Default;
+                
+                if (IsSensitive(s.Key) && !string.IsNullOrEmpty(displayValue))
+                {
+                    displayValue = "(set)";
+                }
+
+                return new
+                {
+                    key = s.Key,
+                    value = displayValue,
+                    isOverridden = isOverridden,
+                    source = isOverridden ? "Database" : "Configuration",
+                    defaultValue = s.Default,
+                    dataType = "String"
+                };
+            }).ToArray());
+        }
+
+        var settingsArray = settingsDict.Select(kvp => 
+        {
+            var isOverridden = !string.IsNullOrEmpty(kvp.Value);
+            var displayValue = kvp.Value;
+            
+            if (IsSensitive(kvp.Key) && !string.IsNullOrEmpty(displayValue))
+            {
+                displayValue = "(set)";
+            }
+
+            return new
+            {
+                key = kvp.Key,
+                value = displayValue,
+                isOverridden = isOverridden,
+                source = isOverridden ? "Database" : "Configuration",
+                defaultValue = (string?)null,
+                dataType = "String"
+            };
         }).ToArray();
         
         return Ok(settingsArray);
@@ -74,11 +137,22 @@ public class SettingsController : ControllerBase
     {
         var updatedBy = User.Identity?.Name ?? User.FindFirst("sub")?.Value ?? "unknown";
         
+        if (IsSensitive(key) && request.Value == "(set)")
+        {
+            return Ok(new { key, message = "Setting preserved (masked value ignored)" });
+        }
+
         // Allow empty value to clear the setting (will use default from code)
         var valueToSave = request.Value ?? string.Empty;
         await _settings.SetValueAsync(key, valueToSave, updatedBy);
 
-        return Ok(new { key, value = valueToSave, message = "Setting updated successfully" });
+        return Ok(new { key, value = IsSensitive(key) ? "(set)" : valueToSave, message = "Setting updated successfully" });
+    }
+
+    private static bool IsSensitive(string key)
+    {
+        return key.Contains("Password", StringComparison.OrdinalIgnoreCase) || 
+               key.Contains("Secret", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

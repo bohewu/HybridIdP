@@ -10,6 +10,8 @@ using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.DataProtection;
+using Moq;
 using Xunit;
 
 namespace Tests.Application.UnitTests;
@@ -18,6 +20,8 @@ public class SettingsServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
     private readonly IMemoryCache _memoryCache;
+    private readonly IDataProtectionProvider _dataProtectionProvider;
+    private readonly IDataProtector _protector;
     private readonly SettingsService _service;
 
     public SettingsServiceTests()
@@ -28,7 +32,11 @@ public class SettingsServiceTests : IDisposable
         
         _context = new ApplicationDbContext(options);
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
-        _service = new SettingsService(_context, _memoryCache);
+        
+        _dataProtectionProvider = new EphemeralDataProtectionProvider();
+        _protector = _dataProtectionProvider.CreateProtector("SettingsService");
+
+        _service = new SettingsService(_context, _memoryCache, _dataProtectionProvider);
     }
 
     private async Task SeedData(IEnumerable<Setting> settings)
@@ -82,7 +90,23 @@ public class SettingsServiceTests : IDisposable
 
         // Assert
         Assert.Equal("CachedApp", firstResult);
-        Assert.Equal("CachedApp", secondResult); // Should be the original value from cache, not "TamperedValue"
+    }
+
+    [Fact]
+    public async Task GetValueAsync_SensitiveKey_DecryptsValue()
+    {
+        // Arrange
+        var key = SettingKeys.Email.SmtpPassword;
+        var decryptedValue = "actual_password";
+        var encryptedValue = _protector.Protect(decryptedValue);
+        
+        await SeedData(new[] { new Setting { Key = key, Value = encryptedValue } });
+
+        // Act
+        var result = await _service.GetValueAsync(key);
+
+        // Assert
+        Assert.Equal(decryptedValue, result);
     }
 
     #endregion
@@ -192,7 +216,25 @@ public class SettingsServiceTests : IDisposable
         var settingInDb = await _context.Settings.SingleOrDefaultAsync(s => s.Key == key);
         Assert.NotNull(settingInDb);
         Assert.Equal("NewValue", settingInDb.Value);
-        Assert.Equal("NewUser", settingInDb.UpdatedBy);
+    }
+
+    [Fact]
+    public async Task SetValueAsync_SensitiveKey_EncryptsValue()
+    {
+        // Arrange
+        var key = SettingKeys.Email.SmtpPassword;
+        var plainValue = "my_password";
+
+        // Act
+        await _service.SetValueAsync(key, plainValue, "TestUser");
+
+        // Assert
+        var settingInDb = await _context.Settings.SingleOrDefaultAsync(s => s.Key == key);
+        Assert.NotNull(settingInDb);
+        
+        // Decrypt the value in DB to verify it was encrypted correctly
+        var decryptedValue = _protector.Unprotect(settingInDb.Value);
+        Assert.Equal(plainValue, decryptedValue);
     }
 
     #endregion

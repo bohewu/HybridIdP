@@ -4,6 +4,7 @@ using Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Primitives;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace Infrastructure.Services;
 
@@ -14,16 +15,18 @@ public class SettingsService : ISettingsService
 {
     private readonly IApplicationDbContext _db;
     private readonly IMemoryCache _cache;
+    private readonly IDataProtector _protector;
     private static readonly string CachePrefix = "settings:";
     private static readonly TimeSpan DefaultCacheDuration = TimeSpan.FromMinutes(5);
     
     // Use a concurrent dictionary to manage cancellation tokens for prefix-based invalidation.
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _prefixCts = new();
 
-    public SettingsService(IApplicationDbContext db, IMemoryCache cache)
+    public SettingsService(IApplicationDbContext db, IMemoryCache cache, IDataProtectionProvider dataProtectionProvider)
     {
         _db = db;
         _cache = cache;
+        _protector = dataProtectionProvider.CreateProtector("SettingsService");
     }
 
     public async Task<string?> GetValueAsync(string key, CancellationToken ct = default)
@@ -37,6 +40,21 @@ public class SettingsService : ISettingsService
         var setting = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Key == key, ct);
         if (setting == null) return null;
 
+        var settingValue = setting.Value;
+        if (IsSensitive(key) && !string.IsNullOrEmpty(settingValue))
+        {
+            try
+            {
+                settingValue = _protector.Unprotect(settingValue);
+            }
+            catch
+            {
+                // If decryption fails, it might be because it was stored plain text before this change.
+                // Or keys were lost. Return null or original value? 
+                // Let's keep original value for migration or null if it looks like noise.
+            }
+        }
+
         var options = new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = DefaultCacheDuration };
         
         // Link entry to a prefix-based cancellation token if applicable
@@ -47,8 +65,8 @@ public class SettingsService : ISettingsService
             options.AddExpirationToken(new CancellationChangeToken(cts.Token));
         }
 
-        _cache.Set(cacheKey, setting.Value, options);
-        return setting.Value;
+        _cache.Set(cacheKey, settingValue, options);
+        return settingValue;
     }
 
     public async Task<T?> GetValueAsync<T>(string key, CancellationToken ct = default)
@@ -76,6 +94,11 @@ public class SettingsService : ISettingsService
     {
         var existing = await _db.Settings.FirstOrDefaultAsync(s => s.Key == key, ct);
         var valueStr = value is string s ? s : System.Text.Json.JsonSerializer.Serialize(value);
+
+        if (IsSensitive(key) && !string.IsNullOrEmpty(valueStr))
+        {
+            valueStr = _protector.Protect(valueStr);
+        }
 
         if (existing == null)
         {
@@ -121,8 +144,15 @@ public class SettingsService : ISettingsService
 
         foreach (var s in results)
         {
+            var value = s.Value;
+            if (IsSensitive(s.Key) && !string.IsNullOrEmpty(value))
+            {
+                try { value = _protector.Unprotect(value); } catch { }
+            }
+            dict[s.Key] = value ?? string.Empty;
+
             var cacheKey = CachePrefix + s.Key;
-            _cache.Set(cacheKey, s.Value, options);
+            _cache.Set(cacheKey, value, options);
         }
         return dict;
     }
@@ -162,5 +192,11 @@ public class SettingsService : ISettingsService
     {
         var parts = key.Split('.');
         return parts.Length > 1 ? $"{parts[0]}." : null;
+    }
+
+    private static bool IsSensitive(string key)
+    {
+        return key.Contains("Password", StringComparison.OrdinalIgnoreCase) || 
+               key.Contains("Secret", StringComparison.OrdinalIgnoreCase);
     }
 }

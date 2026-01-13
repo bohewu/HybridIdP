@@ -36,6 +36,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Web.IdP;
 using Web.IdP.Services.Localization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
 
 namespace Web.IdP.Extensions;
 
@@ -133,6 +134,9 @@ public static class ServiceCollectionExtensions
         });
         services.Configure<ProxyOptions>(configuration.GetSection(ProxyOptions.Section));
         
+        // Dynamic Settings Overrides
+        services.AddSingleton<IPostConfigureOptions<EmailOptions>, ConfigureEmailOptions>();
+
         return services;
     }
 

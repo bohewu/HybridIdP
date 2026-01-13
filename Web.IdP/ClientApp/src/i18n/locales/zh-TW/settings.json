@@ -19,6 +19,11 @@
   "poweredBy": "技術提供",
   "poweredByPlaceholder": "例如：Powered by MyProduct",
   "poweredByHelp": "頁尾可選品牌標示（留空則隱藏）",
+  "source": "來源",
+  "sourceConfig": "配置檔案",
+  "sourceDb": "資料庫 (已覆寫)",
+  "confirmOverride": "此設定目前是由配置檔案提供的。確定要將其覆寫並儲存到資料庫嗎？",
+  "maskedPasswordHint": "(已設定)",
   "system": {
     "title": "系統監控",
     "description": "設定背景監控服務。"
