@@ -72,6 +72,8 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
         // Setup successful sign-in by default
         _mockSignInManager.Setup(x => x.CheckPasswordSignInAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<bool>()))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
+        _mockSignInManager.Setup(x => x.CanSignInAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(true);
         
         // 4. Setup other mocks
         _mockApiResourceService = new Mock<IApiResourceService>();
@@ -143,10 +145,11 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
         // Link navigation from Person side if needed or just add both
         user.Person = person;
 
-        _db.Users.Add(user);
+        await _userManager.CreateAsync(user, "P@ssword1");
+        // _db.Users.Add(user);
         // _db.Persons.Add(person); // Cascade or manual add. Add manually to be safe.
         // Wait, if I add user and user.Person is set, EF Core adds person too.
-        await _db.SaveChangesAsync();
+        // await _db.SaveChangesAsync();
 
         // 2. Seed Claims Configuration (replicating ScopeSeeder)
         // Create "test_person_name" user claim definition
@@ -179,7 +182,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
         {
             GrantType = OpenIddictConstants.GrantTypes.Password,
             Username = "testuser", // Matches user.UserName
-            Password = "password", // Ignored by mock
+            Password = "P@ssword1", // Ignored by mock
             Scope = "openid test_scope" // Request the test scope
         };
 

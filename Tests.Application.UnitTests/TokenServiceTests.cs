@@ -86,8 +86,16 @@ namespace Tests.Application.UnitTests
         {
             var request = new OpenIddictRequest
             {
-                GrantType = "unsupported_grant_type"
+                GrantType = "unsupported_grant_type",
+                ClientId = "test-client"
             };
+
+            // Setup valid client to pass permission check
+            var clientApp = new object();
+            _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", default))
+                .ReturnsAsync(clientApp);
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(clientApp, default))
+                .ReturnsAsync(ImmutableArray.Create<string>()); // No specific permissions needed to fail grant type check later
 
             var result = await _service.HandleTokenRequestAsync(request, null);
 
