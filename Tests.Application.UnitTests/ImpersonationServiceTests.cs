@@ -81,7 +81,7 @@ public class ImpersonationServiceTests
         Assert.Null(result.Error);
         Assert.NotNull(result.Principal);
         Assert.NotNull(((ClaimsIdentity)result.Principal!.Identity!).Actor);
-        Assert.Equal(adminId.ToString(), ((ClaimsIdentity)result.Principal.Identity).Actor.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        Assert.Equal(adminId.ToString(), ((ClaimsIdentity)result.Principal.Identity).Actor.FindFirst("sub")?.Value);
     }
 
     [Fact]

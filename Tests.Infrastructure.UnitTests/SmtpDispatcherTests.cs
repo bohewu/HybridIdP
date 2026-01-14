@@ -7,47 +7,51 @@ using Core.Domain.Models;
 using Infrastructure.Services;
 using Core.Application;
 using Core.Domain.Constants;
+using Microsoft.Extensions.Options;
+using Core.Application.Options;
 using FluentAssertions;
 
 namespace Tests.Infrastructure.UnitTests;
 
 public class SmtpDispatcherTests
 {
-    private readonly Mock<ISettingsService> _mockSettings;
+    private readonly Mock<IOptionsSnapshot<EmailOptions>> _mockOptions;
     private readonly Mock<ILogger<SmtpDispatcher>> _mockLogger;
 
     public SmtpDispatcherTests()
     {
-        _mockSettings = new Mock<ISettingsService>();
+        _mockOptions = new Mock<IOptionsSnapshot<EmailOptions>>();
         _mockLogger = new Mock<ILogger<SmtpDispatcher>>();
     }
 
     [Fact]
     public async Task SendAsync_ShouldRetrieveSettings_AndAttemptSend()
     {
-        // THIS IS AN INTEGRATION/INTERACTION TEST MOCKING SETTINGS SERVICE
+        // THIS IS AN INTEGRATION/INTERACTION TEST MOCKING OPTIONS
         // We cannot easily mock SmtpClient extension methods without a wrapper, 
         // so here we focus on verifying it retrieves settings correctly.
         
         // Arrange
-        _mockSettings.Setup(s => s.GetValueAsync<string>(SettingKeys.Email.SmtpHost, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("localhost");
-        _mockSettings.Setup(s => s.GetValueAsync<string>(SettingKeys.Email.SmtpPort, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("1025");
-        _mockSettings.Setup(s => s.GetValueAsync<string>(SettingKeys.Email.FromAddress, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("test@test.com");
+        var emailOptions = new EmailOptions
+        {
+            SmtpHost = "localhost",
+            SmtpPort = 1025,
+            FromAddress = "test@test.com",
+            FromName = "Test Sender"
+        };
+        _mockOptions.Setup(o => o.Value).Returns(emailOptions);
 
-        var dispatcher = new SmtpDispatcher(_mockSettings.Object, _mockLogger.Object);
+        var dispatcher = new SmtpDispatcher(_mockOptions.Object, _mockLogger.Object);
         var message = new EmailMessage("to@test.com", "Subject", "Body");
 
         // Act & Assert
         // We expect an exception or success depending on if localhost:1025 is actually running.
-        // For a unit test, we might just assert it calls GetValueAsync.
-        // If we want to test actual sending, we need Mailpit running (Integration Test).
+        // For a unit test, we might just assert it retrieves Options.Value.
         
-        // For this TDD step, let's verify logic flows:
-        await dispatcher.SendAsync(message);
+        // Act & Assert
+        // Expect exception because we don't have a real SMTP server running
+        await Assert.ThrowsAnyAsync<Exception>(() => dispatcher.SendAsync(message));
         
-        _mockSettings.Verify(s => s.GetValueAsync<string>(SettingKeys.Email.SmtpHost, It.IsAny<CancellationToken>()), Times.Once);
+        _mockOptions.Verify(o => o.Value, Times.Once);
     }
 }
