@@ -95,7 +95,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
         public List<ScopeInfo> ScopeInfos { get; private set; } = new();
 
 
-        public async Task<IActionResult> HandleAuthorizeRequestAsync(ClaimsPrincipal? userPrincipal, OpenIddictRequest request, string? prompt)
+        public async Task<IActionResult> HandleAuthorizeRequestAsync(ClaimsPrincipal? userPrincipal, OpenIddictRequest request, string? prompt, CancellationToken cancellationToken = default)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
 
@@ -129,7 +129,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             var user = await _db.Users
                 .Include(u => u.Person)
-                .FirstOrDefaultAsync(u => u.Id == userId);
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
                 
             if (user == null)
             {
@@ -166,7 +166,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
                 if (!hasMfaClaim)
                 {
-                    _logger.LogInformation("MFA required (acr_values=mfa or mandatory policy) but not present in principal. Evaluating next step.");
+                    LogMfaRequiredButNotPresent();
 
                     var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id);
                     var hasPasskeys = passkeys.Count > 0;
@@ -200,21 +200,21 @@ namespace Web.IdP.Services // Keep consistent namespace case
             }
 
             // Retrieve the application details from the database
-            var application = await _applicationManager.FindByClientIdAsync(request.ClientId!) ??
+            var application = await _applicationManager.FindByClientIdAsync(request.ClientId!, cancellationToken) ??
                 throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
-            var applicationId = await _applicationManager.GetIdAsync(application)
+            var applicationId = await _applicationManager.GetIdAsync(application, cancellationToken)
                 ?? throw new InvalidOperationException("The application identifier cannot be resolved.");
 
-            ApplicationName = await _applicationManager.GetDisplayNameAsync(application);
+            ApplicationName = await _applicationManager.GetDisplayNameAsync(application, cancellationToken);
             Scope = request.Scope;
 
             // Validate Response Type Permissions
             // In Passthrough mode, we must manually enforce that the client is allowed to use the requested response types.
-            var permissions = await _applicationManager.GetPermissionsAsync(application);
+            var permissions = await _applicationManager.GetPermissionsAsync(application, cancellationToken);
             
             if (request.HasResponseType(ResponseTypes.Code) && !permissions.Contains(OpenIddictConstants.Permissions.ResponseTypes.Code))
             {
-                _logger.LogWarning("Client {ClientId} requested response_type=code without permission.", request.ClientId);
+                LogClientRequestedResponseTypeWithoutPermission(request.ClientId, "code");
                 return new ForbidResult(
                     authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
                     properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -226,7 +226,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             if (request.HasResponseType(ResponseTypes.Token) && !permissions.Contains(OpenIddictConstants.Permissions.ResponseTypes.Token))
             {
-                _logger.LogWarning("Client {ClientId} requested response_type=token without permission.", request.ClientId);
+                LogClientRequestedResponseTypeWithoutPermission(request.ClientId, "token");
                  return new ForbidResult(
                     authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
                     properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -254,7 +254,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             var effectiveRequestedScopes = eval.AllowedScopes.ToImmutableArray();
 
             // Fetch scope information only for allowed scopes
-            await LoadScopeInfosAsync(effectiveRequestedScopes, clientGuid);
+            await LoadScopeInfosAsync(effectiveRequestedScopes, clientGuid, cancellationToken);
 
             // Retrieve the permanent authorizations associated with the user and the calling client application
             // userId variable is already defined above
@@ -265,7 +265,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 client: applicationId,
                 status: Statuses.Valid,
                 type: AuthorizationTypes.Permanent,
-                scopes: scopes);
+                scopes: scopes,
+                cancellationToken: cancellationToken);
 
             var authorizations = new List<object>();
             await foreach (var authorization in authorizationsEnumerable)
@@ -293,8 +294,9 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     identity.SetClaims(Claims.Role, [..roles]);
 
                     // Enrichment
-                    await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId);
-                    await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes);
+                    await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId, cancellationToken);
+                    await _claimsEnricher.AddAppSpecificRolesAsync(identity, user, request.ClientId ?? string.Empty, cancellationToken);
+                    await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes, cancellationToken);
 
                     // Copy AMR claims from userPrincipal (robustly checking multiple types)
                     var amrValues = userPrincipal.Claims
@@ -336,14 +338,14 @@ namespace Web.IdP.Services // Keep consistent namespace case
             return new OkResult(); // Signal to controller to show View
         }
 
-        public async Task<IActionResult> HandleAuthorizeSubmitAsync(ClaimsPrincipal? userPrincipal, OpenIddictRequest request, string? submit, string[]? granted_scopes)
+        public async Task<IActionResult> HandleAuthorizeSubmitAsync(ClaimsPrincipal? userPrincipal, OpenIddictRequest request, string? submit, string[]? granted_scopes, CancellationToken cancellationToken = default)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
 
             // Resolve the calling application and its identifier (GUID key)
-            var application = await _applicationManager.FindByClientIdAsync(request.ClientId!) ??
+            var application = await _applicationManager.FindByClientIdAsync(request.ClientId!, cancellationToken) ??
                 throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
-            var applicationId = await _applicationManager.GetIdAsync(application)
+            var applicationId = await _applicationManager.GetIdAsync(application, cancellationToken)
                 ?? throw new InvalidOperationException("The application identifier cannot be resolved.");
 
             if (userPrincipal?.Identity?.IsAuthenticated != true)
@@ -391,7 +393,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             var user = await _db.Users
                 .Include(u => u.Person)
-                .FirstOrDefaultAsync(u => u.Id == userId) 
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken) 
                 ?? throw new InvalidOperationException("The user details cannot be retrieved.");
 
             // Create a clean ClaimsIdentity without copying ASP.NET Identity cookie claims to avoid duplicates
@@ -407,7 +409,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
             identity.SetClaims(Claims.Role, roles.ToImmutableArray());
 
             // Add permission claims from user's roles
-            await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId);
+            await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId, cancellationToken);
+            await _claimsEnricher.AddAppSpecificRolesAsync(identity, user, request.ClientId ?? string.Empty, cancellationToken);
 
             // Requested scopes
             // Enforce client scope policy again to guard against tampering
@@ -417,7 +420,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             var requestedScopes = eval.AllowedScopes.ToImmutableArray();
 
             // Reload scope information for POST request (ScopeInfos is only populated in GET)
-            await LoadScopeInfosAsync(requestedScopes, clientGuid);
+            await LoadScopeInfosAsync(requestedScopes, clientGuid, cancellationToken);
 
             // Server-side validation: Ensure all required scopes are present in granted_scopes (prevent tampering)
             // This must be done BEFORE ClassifyScopes, because ClassifyScopes auto-adds required scopes
@@ -463,7 +466,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             var effectiveScopes = classification.Allowed.ToImmutableArray();
 
             // Add claims mapped by effective (allowed) scopes
-            await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, effectiveScopes);
+            await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, effectiveScopes, cancellationToken);
 
             // Copy AMR claims from userPrincipal (robustly checking multiple types)
             var amrValuesSubmit = userPrincipal.Claims
@@ -501,7 +504,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             // Determine authorization type based on client's consent type
             // If ConsentType is Explicit, create AdHoc (temporary) authorization that requires consent each time
             // Otherwise, create Permanent authorization that persists across sessions
-            var consentType = await _applicationManager.GetConsentTypeAsync(application);
+            var consentType = await _applicationManager.GetConsentTypeAsync(application, cancellationToken);
             var authorizationType = consentType == ConsentTypes.Explicit 
                 ? AuthorizationTypes.AdHoc 
                 : AuthorizationTypes.Permanent;
@@ -511,9 +514,10 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 subject: await _userManager.GetUserIdAsync(user),
                 client: applicationId,
                 type: authorizationType,
-                scopes: effectiveScopes);
+                scopes: effectiveScopes,
+                cancellationToken: cancellationToken);
 
-            identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
+            identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization, cancellationToken));
 
             // Structured audit log for full/partial grant
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -560,6 +564,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     yield return Destinations.IdentityToken;
                     yield break;
 
+                case "app_role":
+                    yield return Destinations.AccessToken;
+                    yield return Destinations.IdentityToken;
+                    yield break;
+
                 // Permission claims for authorization
                 case "permission":
                     yield return Destinations.AccessToken;
@@ -601,7 +610,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
 
 
-        private async Task LoadScopeInfosAsync(ImmutableArray<string> scopeNames, Guid clientId)
+        private async Task LoadScopeInfosAsync(ImmutableArray<string> scopeNames, Guid clientId, CancellationToken cancellationToken = default)
         {
             ScopeInfos.Clear();
             
@@ -612,7 +621,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             var culture = CultureInfo.CurrentCulture.Name;
 
             // Load all scope extensions for efficient lookup
-            var scopeExtensions = await _db.ScopeExtensions.ToDictionaryAsync(se => se.ScopeId);
+            var scopeExtensions = await _db.ScopeExtensions.ToDictionaryAsync(se => se.ScopeId, cancellationToken);
 
             // Load client-specific required scopes
             var clientRequiredScopes = await _clientAllowedScopesService.GetRequiredScopesAsync(clientId);
@@ -620,11 +629,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             foreach (var scopeName in scopeNames)
             {
-                var scope = await _scopeManager.FindByNameAsync(scopeName);
+                var scope = await _scopeManager.FindByNameAsync(scopeName, cancellationToken);
                 if (scope == null) continue;
 
-                var scopeId = await _scopeManager.GetIdAsync(scope);
-                var displayName = await _scopeManager.GetDisplayNameAsync(scope);
+                var scopeId = await _scopeManager.GetIdAsync(scope, cancellationToken);
+                var displayName = await _scopeManager.GetDisplayNameAsync(scope, cancellationToken);
 
                 // Get scope extension if exists
                 scopeExtensions.TryGetValue(scopeId!, out var extension);
@@ -665,8 +674,6 @@ namespace Web.IdP.Services // Keep consistent namespace case
             ScopeInfos = ScopeInfos.OrderBy(s => s.DisplayOrder).ThenBy(s => s.Name).ToList();
         }
 
-
-
         [LoggerMessage(Level = LogLevel.Information, Message = "Setting audiences for existing authorization: {Audiences}")]
         partial void LogSettingAudiencesForExistingAuth(string audiences);
 
@@ -687,5 +694,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
         [LoggerMessage(Level = LogLevel.Warning, Message = "Client {ClientId} requested response_type=id_token without permission.")]
         partial void LogUnauthorizedIdTokenRequest(string? clientId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "MFA required (acr_values=mfa or mandatory policy) but not present in principal. Evaluating next step.")]
+        partial void LogMfaRequiredButNotPresent();
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Client {ClientId} requested response_type={ResponseType} without permission.")]
+        partial void LogClientRequestedResponseTypeWithoutPermission(string? clientId, string responseType);
     }
 }

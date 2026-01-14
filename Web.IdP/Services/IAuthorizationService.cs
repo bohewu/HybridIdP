@@ -13,7 +13,7 @@ namespace Web.IdP.Services
         string? ApplicationName { get; }
         List<ScopeInfo> ScopeInfos { get; }
 
-        Task<IActionResult> HandleAuthorizeRequestAsync(ClaimsPrincipal? user, OpenIddictRequest request, string? prompt);
-        Task<IActionResult> HandleAuthorizeSubmitAsync(ClaimsPrincipal? user, OpenIddictRequest request, string? submit, string[]? grantedScopes);
+        Task<IActionResult> HandleAuthorizeRequestAsync(ClaimsPrincipal? user, OpenIddictRequest request, string? prompt, CancellationToken cancellationToken = default);
+        Task<IActionResult> HandleAuthorizeSubmitAsync(ClaimsPrincipal? user, OpenIddictRequest request, string? submit, string[]? grantedScopes, CancellationToken cancellationToken = default);
     }
 }

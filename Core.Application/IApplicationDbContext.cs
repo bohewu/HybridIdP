@@ -22,7 +22,7 @@ public interface IApplicationDbContext
     DbSet<ClientOwnership> ClientOwnerships { get; }
     DbSet<ScopeOwnership> ScopeOwnerships { get; }
     DbSet<UserCredential> UserCredentials { get; }
-    // Add other DbSet properties for your domain entities here
+    DbSet<UserAppRole> UserAppRoles { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

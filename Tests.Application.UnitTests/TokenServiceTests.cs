@@ -56,9 +56,11 @@ namespace Tests.Application.UnitTests
             _mockClaimsEnricher = new Mock<IClaimsEnrichmentService>();
             
             // Default setup for claims enricher to avoid null task exceptions
-            _mockClaimsEnricher.Setup(x => x.AddScopeMappedClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
+            _mockClaimsEnricher.Setup(x => x.AddScopeMappedClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            _mockClaimsEnricher.Setup(x => x.AddPermissionClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>()))
+            _mockClaimsEnricher.Setup(x => x.AddPermissionClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _mockClaimsEnricher.Setup(x => x.AddAppSpecificRolesAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             _service = new TokenService(
@@ -80,14 +82,17 @@ namespace Tests.Application.UnitTests
         }
 
         [Fact]
-        public async Task HandleTokenRequestAsync_UnsupportedGrantType_ThrowsInvalidOperationException()
+        public async Task HandleTokenRequestAsync_UnsupportedGrantType_ReturnsForbidResult()
         {
             var request = new OpenIddictRequest
             {
                 GrantType = "unsupported_grant_type"
             };
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.HandleTokenRequestAsync(request, null));
+            var result = await _service.HandleTokenRequestAsync(request, null);
+
+            var forbidResult = Assert.IsType<ForbidResult>(result);
+            Assert.Equal(Errors.UnsupportedGrantType, forbidResult.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
         }
 
         [Fact]
@@ -99,10 +104,14 @@ namespace Tests.Application.UnitTests
                 .ReturnsAsync(new List<string> { "api1" });
 
             // Setup ApplicationManager for grant permission validation
+            var clientApp = new object();
             _mockApplicationManager.Setup(m => m.FindByClientIdAsync("service-client", default))
-                .ReturnsAsync(new object()); // Return non-null client
-            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(It.IsAny<object>(), default))
+                .ReturnsAsync(clientApp); // Return non-null client
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(clientApp, default))
                 .ReturnsAsync(new List<string> { OpenIddictConstants.Permissions.GrantTypes.ClientCredentials }.ToImmutableArray());
+            
+            _mockApplicationManager.Setup(m => m.GetClientIdAsync(clientApp, default)).ReturnsAsync("service-client");
+            _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(clientApp, default)).ReturnsAsync("Service Client");
 
             // Act
             var result = await _service.HandleTokenRequestAsync(request, null);
@@ -127,9 +136,10 @@ namespace Tests.Application.UnitTests
             _mockUserManager.Setup(m => m.GetEmailAsync(user)).ReturnsAsync(user.Email);
             _mockUserManager.Setup(m => m.GetUserNameAsync(user)).ReturnsAsync(user.UserName);
             _mockUserManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(new List<string>());
-
-            _mockSignInManager.Setup(m => m.CheckPasswordSignInAsync(user, "password", true))
-                .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
+            
+            // Correctly mock CheckPasswordAsync instead of SignInManager
+            _mockUserManager.Setup(m => m.CheckPasswordAsync(user, "password")).ReturnsAsync(true);
+            _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
 
             _mockApiResourceService.Setup(s => s.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>()))
                 .ReturnsAsync(new List<string>());

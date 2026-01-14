@@ -6,6 +6,6 @@ namespace Web.IdP.Services
 {
     public interface ITokenService
     {
-        Task<IActionResult> HandleTokenRequestAsync(OpenIddictRequest request, ClaimsPrincipal? schemePrincipal);
+        Task<IActionResult> HandleTokenRequestAsync(OpenIddictRequest request, ClaimsPrincipal? schemePrincipal, CancellationToken cancellationToken = default);
     }
 }

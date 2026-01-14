@@ -7,6 +7,10 @@ using Moq;
 using Web.IdP.Services;
 using Xunit;
 using Core.Application;
+using Infrastructure;
+using Microsoft.EntityFrameworkCore;
+
+using UserAppRoleEntity = Core.Domain.Entities.UserAppRole;
 
 namespace Tests.Web.IdP.UnitTests.Services;
 
@@ -104,5 +108,86 @@ public class ClaimsEnrichmentServiceTests
 
         // Assert
         Assert.True(identity.HasClaim(c => c.Type == "permission" && c.Value == "users.read"));
+    }
+
+    [Fact]
+    public async Task AddAppSpecificRolesAsync_AddsAppRoleClaims_WhenRoleExists()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new ApplicationDbContext(options);
+        
+        // Seed data
+        var userId = Guid.NewGuid();
+        var clientAppId = "client-app";
+        var user = new ApplicationUser { Id = userId, UserName = "user" };
+        var role = new UserAppRoleEntity 
+        { 
+            UserId = userId, 
+            ClientId = clientAppId, 
+            RoleName = "AppAdmin", 
+            CreatedAt = DateTime.UtcNow
+        };
+        context.UserAppRoles.Add(role);
+        await context.SaveChangesAsync();
+
+        // Create service with real context
+        var service = new ClaimsEnrichmentService(
+            _mockUserManager.Object,
+            _mockRoleManager.Object,
+            context, // Real context
+            _mockLogger.Object);
+
+        var identity = new ClaimsIdentity();
+
+        // Act
+        await service.AddAppSpecificRolesAsync(identity, user, clientAppId);
+
+        // Assert
+        Assert.True(identity.HasClaim(c => c.Type == "app_role" && c.Value == "AppAdmin"));
+    }
+
+    [Fact]
+    public async Task AddAppSpecificRolesAsync_DoesNotAddClaims_ForDifferentClient()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new ApplicationDbContext(options);
+        
+        // Seed data
+        var userId = Guid.NewGuid();
+        var clientAppId = "client-app";
+        var otherClientId = "other-client";
+        var user = new ApplicationUser { Id = userId, UserName = "user" };
+        var role = new UserAppRoleEntity 
+        { 
+            UserId = userId, 
+            ClientId = otherClientId, // Role for different client
+            RoleName = "AppAdmin", 
+            CreatedAt = DateTime.UtcNow
+        };
+        context.UserAppRoles.Add(role);
+        await context.SaveChangesAsync();
+
+        // Create service with real context
+        var service = new ClaimsEnrichmentService(
+            _mockUserManager.Object,
+            _mockRoleManager.Object,
+            context, // Real context
+            _mockLogger.Object);
+
+        var identity = new ClaimsIdentity();
+
+        // Act
+        await service.AddAppSpecificRolesAsync(identity, user, clientAppId);
+
+        // Assert
+        Assert.False(identity.HasClaim(c => c.Type == "app_role"));
     }
 }

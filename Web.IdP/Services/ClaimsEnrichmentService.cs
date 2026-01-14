@@ -8,9 +8,11 @@ using Web.IdP.Services; // For IScopeService if needed, or simply the namespace
 using Core.Application; // For IApplicationDbContext
 using Microsoft.Extensions.Logging;
 
+using UserAppRoleEntity = Core.Domain.Entities.UserAppRole;
+
 namespace Web.IdP.Services;
 
-public class ClaimsEnrichmentService : IClaimsEnrichmentService
+public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
@@ -29,7 +31,26 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
         _logger = logger;
     }
 
-    public async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user, string? clientId = null)
+    // ... (other methods)
+
+    private string? GetProperty(object? obj, string propertyName)
+    {
+         // (Implementation of GetProperty)
+         if (obj == null) return null;
+         var segments = propertyName.Split('.');
+         var current = obj;
+         foreach (var seg in segments)
+         {
+             if (current == null) return null;
+             var type = current.GetType();
+             var prop = type.GetProperty(seg);
+             if (prop == null) return null;
+             current = prop.GetValue(current);
+         }
+         return current?.ToString();
+    }
+
+    public async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user, string? clientId = null, CancellationToken cancellationToken = default)
     {
         // Define privileged clients that are allowed to receive IdP-internal permissions from Roles.
         var privilegedClients = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
@@ -42,7 +63,7 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
         // If clientId is provided and NOT in the privileged list, skip adding these permissions.
         if (!string.IsNullOrEmpty(clientId) && !privilegedClients.Contains(clientId))
         {
-            _logger.LogDebug("Client {ClientId} is not privileged. Skipping IdP permission claims.", clientId);
+            LogClientNotPrivileged(clientId);
             return;
         }
 
@@ -76,7 +97,7 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
         }
     }
 
-    public async Task AddScopeMappedClaimsAsync(ClaimsIdentity identity, ApplicationUser user, IEnumerable<string> grantedScopes)
+    public async Task AddScopeMappedClaimsAsync(ClaimsIdentity identity, ApplicationUser user, IEnumerable<string> grantedScopes, CancellationToken cancellationToken = default)
     {
         var requestedScopes = grantedScopes.ToImmutableArray();
         if (requestedScopes.IsDefaultOrEmpty)
@@ -85,14 +106,14 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
         }
 
         var scopeNames = requestedScopes.ToArray(); // Materialize once
-        _logger.LogInformation("Enriching claims for user {UserId} with scopes: {Scopes}", user.Id, string.Join(", ", scopeNames));
+        LogEnrichingClaims(user.Id, string.Join(", ", scopeNames));
         
         var mappings = await _db.ScopeClaims
             .Include(sc => sc.ClaimDefinition)
             .Where(sc => scopeNames.Contains(sc.ScopeName))
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
-        _logger.LogDebug("Found {Count} scope mappings for requested scopes.", mappings.Count);
+        LogFoundScopeMappings(mappings.Count);
 
         foreach (var map in mappings)
         {
@@ -101,17 +122,17 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
 
             var value = ResolveUserProperty(user, def.UserPropertyPath);
             // Log only which claim is being resolved, not the value
-            _logger.LogDebug("Resolving claim {ClaimType} from path {Path}.", def.ClaimType, def.UserPropertyPath);
+            LogResolvingClaim(def.ClaimType, def.UserPropertyPath);
 
             if (string.IsNullOrEmpty(value) && !map.AlwaysInclude)
             {
-                _logger.LogDebug("Skipping empty claim {ClaimType} (AlwaysInclude=false)", def.ClaimType);
+                LogSkippingEmptyClaim(def.ClaimType);
                 continue;
             }
 
             if (identity.HasClaim(c => c.Type == def.ClaimType))
             {
-                _logger.LogDebug("Claim {ClaimType} already exists in identity. Skipping.", def.ClaimType);
+                LogClaimExists(def.ClaimType);
                 continue;
             }
 
@@ -145,4 +166,49 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
 
         return current?.ToString();
     }
+
+    public async Task AddAppSpecificRolesAsync(ClaimsIdentity identity, ApplicationUser user, string clientId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(clientId)) return;
+
+        // Query App-Specific Roles for this user and client
+        var appRoles = await _db.UserAppRoles
+            .Where((UserAppRoleEntity r) => r.UserId == user.Id && r.ClientId == clientId)
+            .ToListAsync(cancellationToken);
+
+        if (appRoles.Count > 0)
+        {
+            LogFoundAppSpecificRoles(appRoles.Count, user.Id, clientId);
+            
+            foreach (var role in appRoles)
+            {
+                if (!string.IsNullOrWhiteSpace(role.RoleName))
+                {
+                    // Use "app_role" claim type to distinguish from global roles
+                    identity.AddClaim(new Claim("app_role", role.RoleName));
+                }
+            }
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Client {ClientId} is not privileged. Skipping IdP permission claims.")]
+    private partial void LogClientNotPrivileged(string? clientId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Enriching claims for user {UserId} with scopes: {Scopes}")]
+    private partial void LogEnrichingClaims(Guid userId, string scopes);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Found {Count} scope mappings for requested scopes.")]
+    private partial void LogFoundScopeMappings(int count);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Resolving claim {ClaimType} from path {Path}.")]
+    private partial void LogResolvingClaim(string claimType, string path);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Skipping empty claim {ClaimType} (AlwaysInclude=false)")]
+    private partial void LogSkippingEmptyClaim(string claimType);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Claim {ClaimType} already exists in identity. Skipping.")]
+    private partial void LogClaimExists(string claimType);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Found {Count} app-specific roles for user {UserId} and client {ClientId}.")]
+    private partial void LogFoundAppSpecificRoles(int count, Guid userId, string clientId);
 }
