@@ -293,7 +293,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     identity.SetClaims(Claims.Role, [..roles]);
 
                     // Enrichment
-                    await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
+                    await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId);
                     await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes);
 
                     // Copy AMR claims from userPrincipal (robustly checking multiple types)
@@ -407,7 +407,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             identity.SetClaims(Claims.Role, roles.ToImmutableArray());
 
             // Add permission claims from user's roles
-            await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
+            await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId);
 
             // Requested scopes
             // Enforce client scope policy again to guard against tampering

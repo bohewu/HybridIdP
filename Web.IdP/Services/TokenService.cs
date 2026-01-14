@@ -185,7 +185,7 @@ namespace Web.IdP.Services
                     identity.SetScopes(requestedScopes);
 
                     // Add permission claims
-                    await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
+                    await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId);
 
                     // Add audience claims from API resources
                     var audiences = await _apiResourceService.GetAudiencesByScopesAsync(requestedScopes);
@@ -264,7 +264,7 @@ namespace Web.IdP.Services
                 await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, requestedScopes);
 
                 // Add permission claims from user's roles
-                await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
+                await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId);
 
                 // Add role claims explicitly
                 var roles = await _userManager.GetRolesAsync(user);

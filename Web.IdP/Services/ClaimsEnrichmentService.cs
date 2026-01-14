@@ -29,8 +29,23 @@ public class ClaimsEnrichmentService : IClaimsEnrichmentService
         _logger = logger;
     }
 
-    public async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user)
+    public async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user, string? clientId = null)
     {
+        // Define privileged clients that are allowed to receive IdP-internal permissions from Roles.
+        var privilegedClients = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+        { 
+            "testclient-admin", 
+            "hybrid-idp-admin", 
+            "admin-portal"
+        };
+
+        // If clientId is provided and NOT in the privileged list, skip adding these permissions.
+        if (!string.IsNullOrEmpty(clientId) && !privilegedClients.Contains(clientId))
+        {
+            _logger.LogDebug("Client {ClientId} is not privileged. Skipping IdP permission claims.", clientId);
+            return;
+        }
+
         var userRoles = await _userManager.GetRolesAsync(user);
         var permissions = new HashSet<string>();
 

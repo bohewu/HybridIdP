@@ -98,7 +98,7 @@ public partial class DeviceFlowService : IDeviceFlowService
             // Enrich with scope-mapped claims and permissions using shared service
             var scopes = authenticateResult.Principal.GetScopes();
             await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes);
-            await _claimsEnricher.AddPermissionClaimsAsync(identity, user);
+            await _claimsEnricher.AddPermissionClaimsAsync(identity, user, authenticateResult.Principal.GetClaim(Claims.ClientId));
 
             identity.SetScopes(scopes);
             identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
