@@ -15,7 +15,7 @@ This file contains the roadmap for upcoming features and technical improvements.
   - [x] Add EF Core Migrations (PostgreSQL & SQL Server)
 - [ ] **Token Enrichment Logic**
   - [x] Refactor `ClaimsEnrichmentService` for conditional permission filtering
-  - [ ] Implement `AddAppSpecificRolesAsync` with `client_id` context
+  - [x] Implement `AddAppSpecificRolesAsync` with `client_id` context
   - [ ] Support Role Mapping/Transformation
 - [ ] **Client Manifest**
   - [ ] Extend Client Registration (OpenIddict Application Properties) to define `SupportedRoles`
