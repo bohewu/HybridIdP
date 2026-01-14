@@ -37,6 +37,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<ScopeOwnership> ScopeOwnerships => Set<ScopeOwnership>();
     // Phase 20.4
     public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
+    // Phase 22.1
+    public DbSet<UserAppRole> UserAppRoles => Set<UserAppRole>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -324,6 +326,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .WithMany()
                 .HasForeignKey(e => e.CreatedByPersonId)
                 .OnDelete(DeleteBehavior.Cascade); // When person is deleted, remove ownership records
+        });
+
+        // Configure UserAppRole entity (Phase 22.1)
+        builder.Entity<UserAppRole>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.ClientId, e.RoleName }).IsUnique();
+            entity.Property(e => e.ClientId).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.RoleName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+
+            entity.HasOne(e => e.User) // No navigation property on User side, so WithMany() is empty
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
         
         // Customize the ASP.NET Identity model and override the defaults if needed.

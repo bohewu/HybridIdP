@@ -11,8 +11,8 @@ This file contains the roadmap for upcoming features and technical improvements.
 ## 🔄 Active: Phase 22 - App-Specific Roles & Permission Isolation
 
 - [ ] **Data Model & Schema**
-  - [ ] Create `UserAppRole` entity (UserId, ClientId, RoleName)
-  - [ ] Add EF Core Migrations (PostgreSQL & SQL Server)
+  - [x] Create `UserAppRole` entity (UserId, ClientId, RoleName)
+  - [x] Add EF Core Migrations (PostgreSQL & SQL Server)
 - [ ] **Token Enrichment Logic**
   - [ ] Refactor `ClaimsEnrichmentService` for conditional permission filtering
   - [ ] Implement `AddAppSpecificRolesAsync` with `client_id` context

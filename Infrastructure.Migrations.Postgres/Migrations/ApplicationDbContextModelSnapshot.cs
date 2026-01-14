@@ -919,6 +919,38 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.ToTable("Settings");
                 });
 
+            modelBuilder.Entity("Core.Domain.Entities.UserAppRole", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RoleName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ClientId", "RoleName")
+                        .IsUnique();
+
+                    b.ToTable("UserAppRoles");
+                });
+
             modelBuilder.Entity("Core.Domain.Entities.UserCredential", b =>
                 {
                     b.Property<int>("Id")
@@ -1431,6 +1463,17 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .IsRequired();
 
                     b.Navigation("CreatedByPerson");
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.UserAppRole", b =>
+                {
+                    b.HasOne("Core.Domain.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.UserCredential", b =>
