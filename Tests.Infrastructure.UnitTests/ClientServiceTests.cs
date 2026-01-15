@@ -10,6 +10,8 @@ using Moq;
 using OpenIddict.Abstractions;
 using Xunit;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using System.Text.Json;
+using AuthConstants = Core.Domain.Constants.AuthConstants;
 
 namespace Tests.Infrastructure.UnitTests;
 
@@ -50,7 +52,8 @@ public class ClientServiceTests
 
             RedirectUris: new List<string> { "http://dummy" },
             PostLogoutRedirectUris: null,
-            Permissions: null
+            Permissions: null,
+            SupportedRoles: null
         );
 
         // Mock FindByClientIdAsync to return null (client doesn't exist)
@@ -89,7 +92,8 @@ public class ClientServiceTests
             ConsentType: null,
             RedirectUris: new List<string> { "http://dummy" },
             PostLogoutRedirectUris: null,
-            Permissions: null
+            Permissions: null,
+            SupportedRoles: null
         );
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
@@ -112,7 +116,8 @@ public class ClientServiceTests
             ConsentType: null,
             RedirectUris: new List<string> { "http://dummy" },
             PostLogoutRedirectUris: null,
-            Permissions: null
+            Permissions: null,
+            SupportedRoles: null
         );
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
@@ -151,7 +156,8 @@ public class ClientServiceTests
             ConsentType: null,
             RedirectUris: null,
             PostLogoutRedirectUris: null,
-            Permissions: null
+            Permissions: null,
+            SupportedRoles: null
         );
 
         // Act & Assert
@@ -172,7 +178,8 @@ public class ClientServiceTests
             ConsentType: null,
             RedirectUris: null, // Missing!
             PostLogoutRedirectUris: null,
-            Permissions: null // Defaults to Auth Code
+            Permissions: null, // Defaults to Auth Code
+            SupportedRoles: null
         );
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
@@ -180,5 +187,44 @@ public class ClientServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateClientAsync(request));
+    }
+
+    [Fact]
+    public async Task CreateClient_WithSupportedRoles_ShouldPersistProperty()
+    {
+        // Arrange
+        var roles = new List<string> { "Admin", "User" };
+        var request = new CreateClientRequest(
+            ClientId: "test-roles",
+            ClientSecret: "secret",
+            DisplayName: "Test Roles",
+            ApplicationType: ApplicationTypes.Web,
+            Type: ClientTypes.Confidential,
+            ConsentType: ConsentTypes.Explicit,
+            RedirectUris: new List<string> { "https://localhost" },
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: roles
+        );
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object)null);
+        
+        var dummyApp = new object();
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(dummyApp);
+        _mockApplicationManager.Setup(m => m.GetIdAsync(dummyApp, It.IsAny<CancellationToken>()))
+             .ReturnsAsync("new-id");
+
+        // Act
+        await _service.CreateClientAsync(request);
+
+        // Assert
+        _mockApplicationManager.Verify(m => m.CreateAsync(
+            It.Is<OpenIddictApplicationDescriptor>(d => 
+                d.Properties.ContainsKey(AuthConstants.Properties.SupportedRoles) &&
+                d.Properties[AuthConstants.Properties.SupportedRoles].ToString().Contains("Admin")
+            ), 
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

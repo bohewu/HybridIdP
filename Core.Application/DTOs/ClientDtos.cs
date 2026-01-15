@@ -12,6 +12,7 @@ public sealed class ClientSummary
     public string ApplicationType { get; set; } = string.Empty; // web | native
     public string ConsentType { get; set; } = string.Empty;
     public int RedirectUrisCount { get; set; }
+    public List<string> SupportedRoles { get; set; } = new();
 }
 
 /// <summary>
@@ -26,7 +27,8 @@ public record CreateClientRequest(
     string? ConsentType,
     List<string>? RedirectUris,
     List<string>? PostLogoutRedirectUris,
-    List<string>? Permissions
+    List<string>? Permissions,
+    List<string>? SupportedRoles
 );
 
 /// <summary>
@@ -40,7 +42,8 @@ public record UpdateClientRequest(
     string? ConsentType,
     List<string>? RedirectUris,
     List<string>? PostLogoutRedirectUris,
-    List<string>? Permissions
+    List<string>? Permissions,
+    List<string>? SupportedRoles
 );
 
 /// <summary>
@@ -57,6 +60,7 @@ public sealed class ClientDetail
     public List<string> RedirectUris { get; set; } = new();
     public List<string> PostLogoutRedirectUris { get; set; } = new();
     public List<string> Permissions { get; set; } = new();
+    public List<string> SupportedRoles { get; set; } = new();
 }
 
 /// <summary>

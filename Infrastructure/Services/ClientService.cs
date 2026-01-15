@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using System.Security.Cryptography;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using System.Text.Json;
 using AuthConstants = Core.Domain.Constants.AuthConstants;
 
 namespace Infrastructure.Services;
@@ -67,6 +68,7 @@ public class ClientService : IClientService
             var consentType = await _applicationManager.GetConsentTypeAsync(application);
             var applicationType = await _applicationManager.GetApplicationTypeAsync(application);
             var redirectUris = await _applicationManager.GetRedirectUrisAsync(application);
+            var properties = await _applicationManager.GetPropertiesAsync(application);
 
             summaries.Add(new ClientSummary
             {
@@ -76,7 +78,8 @@ public class ClientService : IClientService
                 Type = clientType!,
                 ApplicationType = applicationType!,
                 ConsentType = consentType!,
-                RedirectUrisCount = redirectUris.Length
+                RedirectUrisCount = redirectUris.Length,
+                SupportedRoles = GetSupportedRoles(properties)
             });
         }
 
@@ -158,7 +161,8 @@ public class ClientService : IClientService
             ApplicationType = await _applicationManager.GetApplicationTypeAsync(application) ?? string.Empty,
             RedirectUris = redirectUris.Select(u => u.ToString()).ToList(),
             PostLogoutRedirectUris = postLogoutUris.Select(u => u.ToString()).ToList(),
-            Permissions = permissions.ToList()
+            Permissions = permissions.ToList(),
+            SupportedRoles = GetSupportedRoles(await _applicationManager.GetPropertiesAsync(application))
         };
     }
 
@@ -219,6 +223,13 @@ public class ClientService : IClientService
             ApplicationType = request.ApplicationType ?? ApplicationTypes.Web,  // Default to web if not specified
             ClientType = clientType
         };
+
+        // Add Support Roles
+        if (request.SupportedRoles != null && request.SupportedRoles.Any())
+        {
+             descriptor.Properties[AuthConstants.Properties.SupportedRoles] = 
+                 JsonSerializer.SerializeToElement(request.SupportedRoles);
+        }
 
         // Validate Native app constraints
         if (descriptor.ApplicationType == ApplicationTypes.Native && descriptor.ClientType != ClientTypes.Public)
@@ -482,10 +493,25 @@ public class ClientService : IClientService
             }
 
             // Publish scope change event if permissions include scopes
+            // Publish scope change event if permissions include scopes
             var scopeChanges = string.Join(", ", request.Permissions.Where(p => p.StartsWith(Permissions.Prefixes.Scope)));
             if (!string.IsNullOrEmpty(scopeChanges))
             {
                 await _eventPublisher.PublishAsync(new ClientScopeChangedEvent(id.ToString(), descriptor.ClientId!, scopeChanges));
+            }
+        }
+
+        // Handle SupportedRoles
+        if (request.SupportedRoles != null)
+        {
+            if (request.SupportedRoles.Any())
+            {
+                descriptor.Properties[AuthConstants.Properties.SupportedRoles] = 
+                    JsonSerializer.SerializeToElement(request.SupportedRoles);
+            }
+            else
+            {
+                descriptor.Properties.Remove(AuthConstants.Properties.SupportedRoles);
             }
         }
 
@@ -575,5 +601,15 @@ public class ClientService : IClientService
 
         return await _context.ClientOwnerships
             .AnyAsync(co => co.ClientId == clientIdStr && co.CreatedByPersonId == personId);
+    }
+
+    private static List<string> GetSupportedRoles(System.Collections.Immutable.ImmutableDictionary<string, JsonElement> properties)
+    {
+        if (properties.TryGetValue(AuthConstants.Properties.SupportedRoles, out var element) &&
+            element.ValueKind == JsonValueKind.Array)
+        {
+            return element.Deserialize<List<string>>() ?? new();
+        }
+        return new();
     }
 }

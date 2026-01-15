@@ -119,4 +119,16 @@ public static class AuthConstants
         public const string Amr = "amr";
         public const string AuthenticationMethod = System.Security.Claims.ClaimTypes.AuthenticationMethod;
     }
+
+    /// <summary>
+    /// OpenIddict Application Property keys.
+    /// </summary>
+    public static class Properties
+    {
+        /// <summary>
+        /// JSON array of roles supported by this client application.
+        /// Stored in OpenIddict Application Properties.
+        /// </summary>
+        public const string SupportedRoles = "iodc:client:supported_roles";
+    }
 }

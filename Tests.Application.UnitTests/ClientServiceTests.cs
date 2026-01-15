@@ -759,7 +759,7 @@ public class ClientServiceTests
     {
         // Arrange
         // CreateClientRequest(ClientId, ClientSecret, DisplayName, ApplicationType, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
-        var request = new CreateClientRequest("", null, "Display Name", null, null, null, null, null, null);
+        var request = new CreateClientRequest("", null, "Display Name", null, null, null, null, null, null, null);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _clientService.CreateClientAsync(request));
@@ -770,7 +770,7 @@ public class ClientServiceTests
     {
         // Arrange
         // CreateClientRequest(ClientId, ClientSecret, DisplayName, ApplicationType, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
-        var request = new CreateClientRequest("existing-client", null, "Display", null, null, null, null, null, null);
+        var request = new CreateClientRequest("existing-client", null, "Display", null, null, null, null, null, null, null);
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("existing-client", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new { Id = Guid.NewGuid() });
 
@@ -784,7 +784,7 @@ public class ClientServiceTests
         // Arrange
         // CreateClientRequest(ClientId, ClientSecret, DisplayName, ApplicationType, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
         // Use client_credentials grant (M2M) to avoid Interactive flow validation requiring RedirectUris
-        var request = new CreateClientRequest("test-client", null, "Test Client", null, ClientTypes.Confidential, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials });
+        var request = new CreateClientRequest("test-client", null, "Test Client", null, ClientTypes.Confidential, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials }, null);
         var createdClient = new { Id = Guid.NewGuid() };
         
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
@@ -816,7 +816,7 @@ public class ClientServiceTests
     {
         // Arrange
         // CreateClientRequest(ClientId, ClientSecret, DisplayName, ApplicationType, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
-        var request = new CreateClientRequest("test-client", "some-secret", "Test Client", null, ClientTypes.Public, null, null, null, null);
+        var request = new CreateClientRequest("test-client", "some-secret", "Test Client", null, ClientTypes.Public, null, null, null, null, null);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => _clientService.CreateClientAsync(request));
@@ -829,7 +829,7 @@ public class ClientServiceTests
         // Arrange
         // CreateClientRequest(ClientId, ClientSecret, DisplayName, ApplicationType, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
         // RedirectUris required because default permissions include AuthorizationCode (interactive)
-        var request = new CreateClientRequest("test-client", null, "Test Client", ApplicationTypes.Web, ClientTypes.Public, ConsentTypes.Explicit, new List<string> { "https://localhost/callback" }, null, null);
+        var request = new CreateClientRequest("test-client", null, "Test Client", ApplicationTypes.Web, ClientTypes.Public, ConsentTypes.Explicit, new List<string> { "https://localhost/callback" }, null, null, null);
         var createdClient = new { Id = Guid.NewGuid() };
         
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
@@ -871,7 +871,8 @@ public class ClientServiceTests
             ConsentTypes.Explicit,
             null,
             null,
-            new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials }  // M2M to avoid redirect requirement
+            new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials }, // M2M to avoid redirect requirement
+            null
         );
 
         var createdClient = new { Id = Guid.NewGuid() };
@@ -908,7 +909,7 @@ public class ClientServiceTests
     {
         // Arrange 1: Type null + has secret => Confidential
         // Use M2M client_credentials grant to avoid interactive flow requiring RedirectUris
-        var req1 = new CreateClientRequest("c1", "s1", null, null, null, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials });
+        var req1 = new CreateClientRequest("c1", "s1", null, null, null, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials }, null);
         var created1 = new { Id = Guid.NewGuid() };
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("c1", It.IsAny<CancellationToken>()))
@@ -939,7 +940,7 @@ public class ClientServiceTests
         // Act 1
         var r1 = await _clientService.CreateClientAsync(req1);
         // Act 2 - Also use M2M grant
-        var r2 = await _clientService.CreateClientAsync(new CreateClientRequest("c2", null, null, null, null, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials }));
+        var r2 = await _clientService.CreateClientAsync(new CreateClientRequest("c2", null, null, null, null, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials }, null));
 
         // Assert
         Assert.Null(r1.ClientSecret); // provided secret should not be echoed
@@ -950,7 +951,7 @@ public class ClientServiceTests
     public async Task CreateClientAsync_ShouldFallbackDisplayNameToClientId_WhenNull()
     {
         // Arrange - Use M2M client_credentials to avoid interactive flow requiring RedirectUris
-        var req = new CreateClientRequest("cid-fallback", null, null, null, ClientTypes.Public, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials });
+        var req = new CreateClientRequest("cid-fallback", null, null, null, ClientTypes.Public, null, null, null, new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials }, null);
         var created = new { Id = Guid.NewGuid() };
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("cid-fallback", It.IsAny<CancellationToken>()))
@@ -989,7 +990,8 @@ public class ClientServiceTests
             null,
             new List<string> { "https://valid", "not a url" },
             new List<string> { "http://valid-pl", "not a url" },
-            new List<string> { Permissions.Endpoints.Authorization, Permissions.Endpoints.Token, Permissions.GrantTypes.AuthorizationCode }  // Explicit interactive with RedirectUris
+            new List<string> { Permissions.Endpoints.Authorization, Permissions.Endpoints.Token, Permissions.GrantTypes.AuthorizationCode }, // Explicit interactive with RedirectUris
+            null
         );
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("cid-urls", It.IsAny<CancellationToken>()))
@@ -1030,7 +1032,8 @@ public class ClientServiceTests
             null,
             null,
             null,
-            new List<string> { "p1", "p2" }
+            new List<string> { "p1", "p2" },
+            null
         );
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("cid-perm", It.IsAny<CancellationToken>()))
@@ -1075,7 +1078,8 @@ public class ClientServiceTests
                 Permissions.Endpoints.Authorization,
                 Permissions.Endpoints.Token,
                 Permissions.GrantTypes.AuthorizationCode
-            }
+            },
+            null
         );
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
@@ -1115,7 +1119,8 @@ public class ClientServiceTests
             { 
                 Permissions.Endpoints.Authorization,
                 Permissions.GrantTypes.Implicit
-            }
+            },
+            null
         );
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("implicit-client", It.IsAny<CancellationToken>()))
@@ -1157,7 +1162,8 @@ public class ClientServiceTests
                 Permissions.Endpoints.Authorization,
                 Permissions.GrantTypes.AuthorizationCode,
                 Permissions.ResponseTypes.Code  // Already provided
-            }
+            },
+            null
         );
 
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
@@ -1190,7 +1196,7 @@ public class ClientServiceTests
         // Arrange
         var clientId = Guid.NewGuid();
         // UpdateClientRequest(ClientId, ClientSecret, DisplayName, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
-        var request = new UpdateClientRequest(null, null, "Updated", null, null, null, null, null);
+        var request = new UpdateClientRequest(null, null, "Updated", null, null, null, null, null, null);
         _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((object?)null);
 
@@ -1205,7 +1211,7 @@ public class ClientServiceTests
         var clientId = Guid.NewGuid();
         var client = new { Id = clientId };
         // UpdateClientRequest(ClientId, ClientSecret, DisplayName, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
-        var request = new UpdateClientRequest(null, null, "Updated Display", null, null, null, null, null);
+        var request = new UpdateClientRequest(null, null, "Updated Display", null, null, null, null, null, null);
         
         _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(client);
@@ -1230,7 +1236,7 @@ public class ClientServiceTests
         var clientId = Guid.NewGuid();
         var client = new { Id = clientId };
         // UpdateClientRequest(ClientId, ClientSecret, DisplayName, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
-        var request = new UpdateClientRequest(null, "new-secret", null, null, null, null, null, null);
+        var request = new UpdateClientRequest(null, "new-secret", null, null, null, null, null, null, null);
         
         _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(client);
@@ -1262,7 +1268,8 @@ public class ClientServiceTests
         var req = new UpdateClientRequest(null, null, null, null, null,
             new List<string> { "https://a", "https://b" },
             new List<string> { "https://c" },
-            new List<string> { "perm1", "perm2" });
+            new List<string> { "perm1", "perm2" },
+            null);
 
         _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(client);
@@ -1300,7 +1307,7 @@ public class ClientServiceTests
         // Arrange
         var clientId = Guid.NewGuid();
         var client = new { Id = clientId };
-        var req = new UpdateClientRequest(null, null, null, null, null, null, null, null);
+        var req = new UpdateClientRequest(null, null, null, null, null, null, null, null, null);
 
         _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(client);
@@ -1336,7 +1343,7 @@ public class ClientServiceTests
         // Arrange
         var clientId = Guid.NewGuid();
         var client = new { Id = clientId };
-        var req = new UpdateClientRequest("new-id", null, "new-name", null, ConsentTypes.Implicit, null, null, null);
+        var req = new UpdateClientRequest("new-id", null, "new-name", null, ConsentTypes.Implicit, null, null, null, null);
 
         _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(client);
@@ -1384,7 +1391,8 @@ public class ClientServiceTests
                 Permissions.Endpoints.Authorization,
                 Permissions.Endpoints.Token,
                 Permissions.GrantTypes.AuthorizationCode
-            }
+            },
+            null
         );
         
         _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
@@ -1426,7 +1434,8 @@ public class ClientServiceTests
             { 
                 Permissions.Endpoints.Authorization,
                 Permissions.GrantTypes.Implicit
-            }
+            },
+            null
         );
         
         _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))

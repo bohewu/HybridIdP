@@ -77,7 +77,8 @@ public class ClientsController : ControllerBase
             consentType = client.ConsentType,
             redirectUris = client.RedirectUris,
             postLogoutRedirectUris = client.PostLogoutRedirectUris,
-            permissions = client.Permissions
+            permissions = client.Permissions,
+            supportedRoles = client.SupportedRoles
         });
     }
 
