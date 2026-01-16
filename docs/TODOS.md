@@ -33,6 +33,16 @@ This file contains the roadmap for upcoming features and technical improvements.
   - [ ] Password History (IdP-side enforcement)
   - [ ] Force Password Change on First Login logic
 
+## 📋 Planned: Phase 24 - Enterprise Observability & Self-Service
+- See `docs/design_specs/phase-24-observability.md`
+- [ ] **User Self-Service**: "My Sessions" UI in Profile App
+  - [ ] `GET /api/profile/sessions` endpoint
+  - [ ] `DELETE /api/profile/sessions/{id}` (Revocation logic)
+  - [ ] `SessionList.vue` component
+- [ ] **Admin Observability**: Audit Logs UI in Admin App
+  - [ ] `GET /api/admin/audit-logs` endpoint with filtering
+  - [ ] `AuditLogList.vue` component
+
 - [x] **Data Model & Schema**
   - [x] Create `UserAppRole` entity (UserId, ClientId, RoleName)
   - [x] Add EF Core Migrations (PostgreSQL & SQL Server)
