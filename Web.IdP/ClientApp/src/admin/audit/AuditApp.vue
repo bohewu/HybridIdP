@@ -101,6 +101,11 @@ const handleRefresh = () => {
   fetchAuditEvents()
 }
 
+const handleSortChange = (newSort) => {
+  sort.value = newSort
+  fetchAuditEvents()
+}
+
 const formatDate = (dateString) => {
   if (!dateString) return t('audit.never')
   return new Date(dateString).toLocaleString()

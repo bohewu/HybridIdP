@@ -139,6 +139,9 @@
       "email": "Email",
       "roles": "Roles"
     },
+    "supportedRoles": "Supported Roles",
+    "supportedRolesHelp": "Define roles that this client can support. These roles can be assigned to users for this specific client.",
+    "supportedRolesPlaceholder": "Enter role name and press Enter",
     "saving": "Saving...",
     "createButton": "Create Client",
     "updateButton": "Update Client",

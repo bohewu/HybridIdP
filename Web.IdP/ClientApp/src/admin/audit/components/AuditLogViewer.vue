@@ -128,7 +128,7 @@ const getSortIcon = (field) => {
               >
                 <div class="flex items-center space-x-1">
                   <span>{{ t('audit.tableHeaders.timestamp') }}</span>
-                  <span>^</span>
+                  <span v-html="getSortIcon('timestamp')"></span>
                 </div>
               </th>
               <th
@@ -137,7 +137,7 @@ const getSortIcon = (field) => {
               >
                 <div class="flex items-center space-x-1">
                   <span>{{ t('audit.tableHeaders.eventType') }}</span>
-                  <span>^</span>
+                  <span v-html="getSortIcon('eventType')"></span>
                 </div>
               </th>
               <th
@@ -146,7 +146,7 @@ const getSortIcon = (field) => {
               >
                 <div class="flex items-center space-x-1">
                   <span>{{ t('audit.tableHeaders.user') }}</span>
-                  <span>^</span>
+                  <span v-html="getSortIcon('user')"></span>
                 </div>
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

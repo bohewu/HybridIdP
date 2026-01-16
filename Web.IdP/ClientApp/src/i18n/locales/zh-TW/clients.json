@@ -140,6 +140,9 @@
       "email": "電子郵件 (Email)",
       "roles": "角色 (Roles)"
     },
+    "supportedRoles": "支援的角色",
+    "supportedRolesHelp": "定義此用戶端支援的角色。這些角色可以分配給此特定用戶端的使用者。",
+    "supportedRolesPlaceholder": "輸入角色名稱並按下 Enter",
     "saving": "儲存中...",
     "createButton": "新增用戶端",
     "updateButton": "更新用戶端",
