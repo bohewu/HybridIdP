@@ -5,6 +5,8 @@ using Core.Domain.Entities;
 using Core.Domain.Events;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using OpenIddict.Abstractions;
+using System.Text.Json;
 
 namespace Infrastructure.Services;
 
@@ -14,17 +16,20 @@ public class UserManagementService : IUserManagementService
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly IApplicationDbContext _context;
+    private readonly IOpenIddictApplicationManager _applicationManager;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         IDomainEventPublisher eventPublisher,
-        IApplicationDbContext context)
+        IApplicationDbContext context,
+        IOpenIddictApplicationManager applicationManager)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _eventPublisher = eventPublisher;
         _context = context;
+        _applicationManager = applicationManager;
     }
 
     public async Task<PagedUsersDto> GetUsersAsync(
@@ -519,5 +524,76 @@ public class UserManagementService : IUserManagementService
 
         // Delegate to existing AssignRolesAsync method
         return await AssignRolesAsync(userId, roleNames);
+    }
+    public async Task<List<string>> GetUserAppRolesAsync(Guid userId, string clientId)
+    {
+        return await _context.UserAppRoles
+            .Where(uar => uar.UserId == userId && uar.ClientId == clientId)
+            .Select(uar => uar.RoleName)
+            .ToListAsync();
+    }
+
+    public async Task<(bool Success, IEnumerable<string> Errors)> AssignUserAppRolesAsync(
+        Guid userId,
+        string clientId,
+        IEnumerable<string> roleNames)
+    {
+        // 1. Validate User exists
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+        {
+            return (false, new[] { "User not found" });
+        }
+
+        // 2. Validate Client exists
+        var application = await _applicationManager.FindByClientIdAsync(clientId);
+        if (application == null)
+        {
+            return (false, new[] { "Client not found" });
+        }
+
+        // 3. Get SupportedRoles from Client Properties
+        var properties = await _applicationManager.GetPropertiesAsync(application);
+        var supportedRoles = new List<string>();
+        
+        if (properties.TryGetValue(Core.Domain.Constants.AuthConstants.Properties.SupportedRoles, out var element) &&
+            element.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            supportedRoles = element.Deserialize<List<string>>() ?? new();
+        }
+
+        // 4. Validate requested roles are supported
+        var requestedRoles = roleNames.Distinct().ToList();
+        var unsupportedRoles = requestedRoles.Except(supportedRoles).ToList();
+        if (unsupportedRoles.Any())
+        {
+            return (false, new[] { $"Roles not supported by this client: {string.Join(", ", unsupportedRoles)}" });
+        }
+
+        // 5. Update UserAppRole table (Transaction would be ideal strictly speaking, but EF ApplyChanges is atomic per SaveChanges)
+        
+        // Fetch existing roles
+        var existingRoles = await _context.UserAppRoles
+            .Where(uar => uar.UserId == userId && uar.ClientId == clientId)
+            .ToListAsync();
+
+        _context.UserAppRoles.RemoveRange(existingRoles);
+
+        var newRoles = requestedRoles.Select(role => new UserAppRole
+        {
+            UserId = userId,
+            ClientId = clientId,
+            RoleName = role,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        _context.UserAppRoles.AddRange(newRoles);
+
+        await _context.SaveChangesAsync(CancellationToken.None);
+
+        // Publish event for audit/sync if needed (Optional for now)
+        // await _eventPublisher.PublishAsync(new UserAppRolesUpdatedEvent(...));
+
+        return (true, Array.Empty<string>());
     }
 }

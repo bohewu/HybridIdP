@@ -125,7 +125,16 @@
     "deletedSuccess": "User deleted successfully.",
     "reactivatedSuccess": "User reactivated successfully."
   },
+  "manageAppRoles": "Manage App Roles",
+  "selectClient": "Select Client",
+  "selectClientPlaceholder": "Select a client...",
+  "availableRoles": "Available Roles",
+  "noSupportedRoles": "No supported roles found for this client.",
+  "saveRoles": "Save Roles",
+  "rolesSaved": "Roles saved successfully.",
+  "close": "Close",
   "errors": {
+    "loadRolesFailed": "Failed to load roles.",
     "loadFailed": "Failed to load users: {message}",
     "deactivateFailed": "Failed to deactivate: {message}",
     "deleteFailed": "Failed to delete: {message}",

@@ -12,7 +12,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using OpenIddict.Abstractions;
 using System;
+using System.Collections.Immutable;
+using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,6 +31,7 @@ public class UserManagementServiceTests : IDisposable
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;  // Keep for simple tests
     private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;  // Keep for simple tests
     private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
+    private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
     private readonly UserManagementService _service;
 
     public UserManagementServiceTests()
@@ -74,12 +78,14 @@ public class UserManagementServiceTests : IDisposable
             mockRoleStore.Object, null!, null!, null!, null!);
 
         _mockEventPublisher = new Mock<IDomainEventPublisher>();
+        _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
 
         _service = new UserManagementService(
             _userManager,
             _roleManager,
             _mockEventPublisher.Object,
-            _context);
+            _context,
+            _mockApplicationManager.Object);
     }
 
     public void Dispose()
@@ -1049,6 +1055,108 @@ public class UserManagementServiceTests : IDisposable
         Assert.Contains(Core.Domain.Constants.AuthConstants.Roles.ApplicationManager, user1Roles);
         Assert.Contains(Core.Domain.Constants.AuthConstants.Roles.ApplicationManager, user2Roles);
         Assert.Contains(Core.Domain.Constants.AuthConstants.Roles.ApplicationManager, user3Roles);
+    }
+
+    #endregion
+
+    #region App Role Tests
+
+    [Fact]
+    public async Task AssignUserAppRolesAsync_ShouldAssignRoles_WhenValid()
+    {
+        // Arrange
+        var user = new ApplicationUser { Email = "test@test.com", UserName = "testuser" };
+        await _userManager.CreateAsync(user);
+
+        var clientId = "client1";
+        var app = new object(); // Placeholder for OpenIddict application
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(clientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var supportedRoles = new List<string> { "Admin", "User" };
+        var properties = ImmutableDictionary.CreateBuilder<string, JsonElement>();
+        properties.Add(AuthConstants.Properties.SupportedRoles, JsonSerializer.SerializeToElement(supportedRoles));
+        
+        _mockApplicationManager.Setup(m => m.GetPropertiesAsync(app, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(properties.ToImmutable());
+
+        // Act
+        var result = await _service.AssignUserAppRolesAsync(user.Id, clientId, new[] { "Admin" });
+
+        // Assert
+        Assert.True(result.Success);
+        
+        var assigned = await _context.UserAppRoles.ToListAsync();
+        Assert.Single(assigned);
+        Assert.Equal("Admin", assigned.First().RoleName);
+        Assert.Equal(user.Id, assigned.First().UserId);
+        Assert.Equal(clientId, assigned.First().ClientId);
+    }
+
+    [Fact]
+    public async Task AssignUserAppRolesAsync_ShouldFail_WhenClientNotFound()
+    {
+        // Arrange
+        var user = new ApplicationUser { Email = "test@test.com", UserName = "testuser" };
+        await _userManager.CreateAsync(user);
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+
+        // Act
+        var result = await _service.AssignUserAppRolesAsync(user.Id, "unknown", new[] { "Admin" });
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Contains("Client not found", result.Errors);
+    }
+
+    [Fact]
+    public async Task AssignUserAppRolesAsync_ShouldFail_WhenRoleNotSupported()
+    {
+        // Arrange
+        var user = new ApplicationUser { Email = "test@test.com", UserName = "testuser" };
+        await _userManager.CreateAsync(user);
+
+        var clientId = "client1";
+        var app = new object();
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(clientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        // No supported roles configured
+        _mockApplicationManager.Setup(m => m.GetPropertiesAsync(app, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(System.Collections.Immutable.ImmutableDictionary<string, JsonElement>.Empty);
+
+        // Act
+        var result = await _service.AssignUserAppRolesAsync(user.Id, clientId, new[] { "SuperAdmin" });
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Roles not supported"));
+    }
+
+    [Fact]
+    public async Task GetUserAppRolesAsync_ShouldReturnRoles()
+    {
+        // Arrange
+        var user = new ApplicationUser { Email = "test@test.com", UserName = "testuser" };
+        await _userManager.CreateAsync(user);
+        var clientId = "client1";
+
+        _context.UserAppRoles.Add(new UserAppRole 
+        { 
+            UserId = user.Id, 
+            ClientId = clientId, 
+            RoleName = "Admin" 
+        });
+        await _context.SaveChangesAsync();
+
+        // Act
+        var roles = await _service.GetUserAppRolesAsync(user.Id, clientId);
+
+        // Assert
+        Assert.Single(roles);
+        Assert.Equal("Admin", roles.First());
     }
 
     #endregion

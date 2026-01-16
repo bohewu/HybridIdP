@@ -71,4 +71,14 @@ public interface IUserManagementService
     Task<(bool Success, IEnumerable<string> Errors)> AssignRolesByIdAsync(
         Guid userId,
         IEnumerable<Guid> roleIds);
+
+    /// <summary>
+    /// Gets the list of app-specific roles assigned to a user for a specific client.
+    /// </summary>
+    Task<List<string>> GetUserAppRolesAsync(Guid userId, string clientId);
+
+    /// <summary>
+    /// Assigns app-specific roles to a user for a specific client.
+    /// </summary>
+    Task<(bool Success, IEnumerable<string> Errors)> AssignUserAppRolesAsync(Guid userId, string clientId, IEnumerable<string> roleNames);
 }

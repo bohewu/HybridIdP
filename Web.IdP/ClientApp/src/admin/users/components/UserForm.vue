@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseModal from '../../../components/common/BaseModal.vue'
 import PasswordPolicyInput from './PasswordPolicyInput.vue'
+import ClientRoleAssignment from './ClientRoleAssignment.vue'
 
 const { t } = useI18n()
 
@@ -32,6 +33,7 @@ const errors = ref({})
 const saving = ref(false)
 const error = ref('')
 const passwordInputRef = ref(null)
+const showRoleModal = ref(false)
 
 const initForm = () => {
   error.value = ''
@@ -349,6 +351,7 @@ onMounted(() => {
           saving ? $t('users.saving') : (isEdit ? $t('users.updateUser') : $t('users.createUser'))
         }}
       </button>
+
       <button
         type="button"
         @click="handleClose"
@@ -357,6 +360,22 @@ onMounted(() => {
       >
         {{ $t('users.cancel') }}
       </button>
+
+      <button
+        type="button"
+        v-if="isEdit"
+        @click="showRoleModal = true"
+        class="mt-2.5 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mr-auto sm:mt-0 sm:w-auto"
+      >
+        {{ $t('users.manageAppRoles') }}
+      </button>
     </template>
   </BaseModal>
+
+  <ClientRoleAssignment
+    v-if="user"
+    :user-id="user.id"
+    :show="showRoleModal"
+    @close="showRoleModal = false"
+  />
 </template>

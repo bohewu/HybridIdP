@@ -346,6 +346,55 @@ public class UsersController : ControllerBase
     public record AssignRolesByIdRequest(List<Guid> RoleIds);
 
     /// <summary>
+    /// Get assigned app roles for a user and client.
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="clientId">Client ID</param>
+    [HttpGet("{id}/app-roles/{clientId}")]
+    [HasPermission(Permissions.Users.Read)]
+    public async Task<IActionResult> GetUserAppRoles(Guid id, string clientId)
+    {
+        try
+        {
+            var roles = await _userManagementService.GetUserAppRolesAsync(id, clientId);
+            return Ok(roles);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while retrieving app roles", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Assign app roles to a user for a specific client.
+    /// </summary>
+    /// <param name="id">User ID</param>
+    /// <param name="clientId">Client ID</param>
+    /// <param name="request">List of role names</param>
+    [HttpPut("{id}/app-roles/{clientId}")]
+    [HasPermission(Permissions.Users.Update)]
+    public async Task<IActionResult> AssignUserAppRoles(Guid id, string clientId, [FromBody] List<string> request)
+    {
+        try
+        {
+            var (success, errors) = await _userManagementService.AssignUserAppRolesAsync(id, clientId, request);
+
+            if (!success)
+            {
+                if (errors.Any(e => e.Contains("not found")))
+                    return NotFound(new { errors });
+                return BadRequest(new { errors });
+            }
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while assigning app roles", details = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// List sessions (authorizations) for a user with optional paging.
     /// </summary>
     /// <param name="id">User ID</param>

@@ -125,7 +125,16 @@
     "deletedSuccess": "使用者已成功刪除。",
     "reactivatedSuccess": "使用者已成功重新啟用。"
   },
+  "manageAppRoles": "管理應用程式角色",
+  "selectClient": "選擇客戶端",
+  "selectClientPlaceholder": "選擇客戶端...",
+  "availableRoles": "可用角色",
+  "noSupportedRoles": "此客戶端無支援的角色。",
+  "saveRoles": "儲存角色",
+  "rolesSaved": "角色儲存成功。",
+  "close": "關閉",
   "errors": {
+    "loadRolesFailed": "載入角色失敗。",
     "loadFailed": "載入使用者失敗: {message}",
     "deactivateFailed": "停用失敗: {message}",
     "deleteFailed": "刪除失敗: {message}",
