@@ -10,7 +10,7 @@ This document tracks the evolution of the HybridAuthIdP project across different
 
 ## 🚀 Active Phase
 
-- **Phase 22**: App-Specific Roles & Permission Isolation (🔄 In Progress) — `phase-22-app-roles.md`
+- **Phase 22**: App-Specific Roles & Permission Isolation (✅ Completed) — `phase-22-app-roles.md`
   - **Goal**: Decouple IdP-internal permissions from external apps and implement client-specific roles.
 
 ## 📊 Phase Summary
@@ -19,7 +19,7 @@ This document tracks the evolution of the HybridAuthIdP project across different
 - [ ] **Phase 12**: Admin API & HR Integration (📋 Planned)
 - [x] **Phase 13-20**: OAuth Enhancements, Impersonation, Personnel Lifecycle, MFA & WebAuthn
 - [x] **Phase 21**: External Identity Providers ✅
-- [🔄] **Phase 22**: App-Specific Roles & Permission Isolation (In Progress)
+- [x] **Phase 22**: App-Specific Roles & Permission Isolation ✅
 
 ---
 
@@ -37,7 +37,7 @@ Phase 21 integrated external OIDC providers with the HybridIdP ecosystem, suppor
 
 ---
 
-### [2026-01-14] Phase 22: App-Specific Roles & Permission Isolation (Initiated) 🔄
+### [2026-01-16] Phase 22: App-Specific Roles & Permission Isolation (Completed) ✅
 
 Phase 22 addresses token bloat and security concerns by isolating internal permissions and introducing application-specific roles.
 
@@ -46,12 +46,15 @@ Phase 22 addresses token bloat and security concerns by isolating internal permi
 - 🎯 **App-Specific Roles**: Introduced `UserAppRole` for fine-grained, client-scoped role assignments.
 - 🎯 **Contextual Issuance**: token roles are now filtered by the requesting `client_id`.
 - 🎯 **Role Mapping**: Translation of `App:Role` to standard OIDC `role` claims.
+- 🎯 **Client Manifest**: UI for managing `SupportedRoles` per client.
 
 **Status:**
 - Planning & Architecture: ✅ Complete
-- Implementation Plan: ✅ Approved
+- Implementation Plan: ✅ Complete
 - Data Model: ✅ Complete
 - Token Logic & Claims Enrichment: ✅ Complete
+- UI Integration: ✅ Complete
+- Verification: ✅ Complete
 
 ---
 

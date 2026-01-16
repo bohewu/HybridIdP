@@ -10,20 +10,20 @@ This file contains the roadmap for upcoming features and technical improvements.
 
 ## 🔄 Active: Phase 22 - App-Specific Roles & Permission Isolation
 
-- [ ] **Data Model & Schema**
+- [x] **Data Model & Schema**
   - [x] Create `UserAppRole` entity (UserId, ClientId, RoleName)
   - [x] Add EF Core Migrations (PostgreSQL & SQL Server)
-- [ ] **Token Enrichment Logic**
+- [x] **Token Enrichment Logic**
   - [x] Refactor `ClaimsEnrichmentService` for conditional permission filtering
   - [x] Implement `AddAppSpecificRolesAsync` with `client_id` context
-  - [ ] Support Role Mapping/Transformation
-- [ ] **Client Manifest**
-  - [ ] Extend Client Registration (OpenIddict Application Properties) to define `SupportedRoles`
-- [ ] **UI Integration** (Next Session)
-  - [ ] User/Person Management: App-specific role assignment UI
-- [ ] **Testing & Verification**
-  - [ ] Update `ClientSeeder` for system test compatibility
-  - [ ] Verify permission isolation via JWT inspections
+  - [x] Support Role Mapping/Transformation
+- [x] **Client Manifest**
+  - [x] Extend Client Registration (OpenIddict Application Properties) to define `SupportedRoles`
+- [x] **UI Integration** (Next Session)
+  - [x] User/Person Management: App-specific role assignment UI
+- [x] **Testing & Verification**
+  - [x] Update `ClientSeeder` for system test compatibility
+  - [x] Verify permission isolation via JWT inspections
 
 ---
 
