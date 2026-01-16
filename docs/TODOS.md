@@ -8,7 +8,30 @@ last-updated: 2026-01-14
 
 This file contains the roadmap for upcoming features and technical improvements.
 
-## 🔄 Active: Phase 22 - App-Specific Roles & Permission Isolation
+## 🔄 Active: Phase 22 - App-Specific Roles & Permission Isolation (Completed)
+- [x] **Data Model & Schema**
+  - [x] Create `UserAppRole` entity (UserId, ClientId, RoleName)
+  - [x] Add EF Core Migrations (PostgreSQL & SQL Server)
+- [x] **Token Enrichment Logic**
+  - [x] Refactor `ClaimsEnrichmentService` for conditional permission filtering
+  - [x] Implement `AddAppSpecificRolesAsync` with `client_id` context
+  - [x] Support Role Mapping/Transformation
+- [x] **Client Manifest**
+  - [x] Extend Client Registration (OpenIddict Application Properties) to define `SupportedRoles`
+- [x] **UI Integration** (Next Session)
+  - [x] User/Person Management: App-specific role assignment UI
+- [x] **Testing & Verification**
+  - [x] Update `ClientSeeder` for system test compatibility
+  - [x] Verify permission isolation via JWT inspections
+
+## 📋 Planned: Phase 23 - AD Integration & Policy Enforcement
+- See `docs/design_specs/phase-23-ad-integration-plan.md`
+- [ ] **Infrastructure**: LDAP Library, `AdOptions`
+- [ ] **Authentication**: `AdAuthenticationService`, Shadow Accounts
+- [ ] **Policy**:
+  - [ ] Password Expiration (via `pwdLastSet`)
+  - [ ] Password History (IdP-side enforcement)
+  - [ ] Force Password Change on First Login logic
 
 - [x] **Data Model & Schema**
   - [x] Create `UserAppRole` entity (UserId, ClientId, RoleName)
