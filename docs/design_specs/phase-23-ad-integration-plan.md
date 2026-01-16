@@ -73,6 +73,15 @@ We will implement a "Shadow Account" model where AD is the source of truth for c
         - If valid, call AD change.
         - If AD success, save hash to `PasswordHistory`.
 
+### 7. Security Policy Updates (`SecurityPolicy` Entity)
+- [ ] Add property `bool ForcePasswordChangeOnFirstLogin { get; set; }` to `SecurityPolicy`.
+- [ ] Update `ApplicationUser`:
+    - Add `bool MustChangePassword { get; set; }`.
+- [ ] Logic Update:
+    - **Provisioning**: When a new user (Local or AD-Shadow) is created, set `MustChangePassword = SecurityPolicy.ForcePasswordChangeOnFirstLogin`.
+    - **Login**: In `LoginService`, check `user.MustChangePassword`. If true, block login and return `LoginResult.PasswordChangeRequired()`.
+    - **Password Change**: After successful password change, set `user.MustChangePassword = false`.
+
 ## Verification Plan
 1.  **Mock AD**: potentially tricky to mock. Will rely on mocked `IAdAuthenticationService` for unit tests.
 2.  **Manual Test**: Connect to a real (test) AD environment if available, or simulate with a local LDAP server (e.g., OpenLDAP or AD LDS) if possible.
