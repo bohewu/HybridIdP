@@ -1,0 +1,87 @@
+@page
+@model Web.IdP.Pages.DocsModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["Documentation"];
+}
+
+<div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-extrabold text-gray-900 sm:text-5xl">@ViewData["Title"]</h1>
+        <p class="mt-4 text-xl text-gray-600">@Localizer["Docs.Subtitle"]</p>
+    </div>
+
+    <div class="prose prose-lg max-w-4xl mx-auto">
+        <!-- What is this project -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">@Localizer["Docs.WhatIs.Title"]</h2>
+            <p class="text-gray-700 mb-4">@Localizer["Docs.WhatIs.Description"]</p>
+            <ul class="list-disc list-inside text-gray-700 space-y-2">
+                <li>@Localizer["Docs.WhatIs.Feature1"]</li>
+                <li>@Localizer["Docs.WhatIs.Feature2"]</li>
+                <li>@Localizer["Docs.WhatIs.Feature3"]</li>
+                <li>@Localizer["Docs.WhatIs.Feature4"]</li>
+            </ul>
+        </section>
+
+        <!-- How to use -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">@Localizer["Docs.HowToUse.Title"]</h2>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">@Localizer["Docs.HowToUse.Step1.Title"]</h3>
+                    <p class="text-gray-700">@Localizer["Docs.HowToUse.Step1.Description"]</p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">@Localizer["Docs.HowToUse.Step2.Title"]</h3>
+                    <p class="text-gray-700">@Localizer["Docs.HowToUse.Step2.Description"]</p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">@Localizer["Docs.HowToUse.Step3.Title"]</h3>
+                    <p class="text-gray-700">@Localizer["Docs.HowToUse.Step3.Description"]</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Supported Protocols -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">@Localizer["Docs.Protocols.Title"]</h2>
+            <p class="text-gray-700 mb-4">@Localizer["Docs.Protocols.Description"]</p>
+            <ul class="list-disc list-inside text-gray-700 space-y-2">
+                <li><strong>OAuth 2.0</strong> - @Localizer["Docs.Protocols.OAuth2"]</li>
+                <li><strong>OpenID Connect (OIDC)</strong> - @Localizer["Docs.Protocols.OIDC"]</li>
+                <li><strong>SAML 2.0</strong> - @Localizer["Docs.Protocols.SAML"]</li>
+            </ul>
+        </section>
+
+        <!-- Security Features -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">@Localizer["Docs.Security.Title"]</h2>
+            <p class="text-gray-700 mb-4">@Localizer["Docs.Security.Description"]</p>
+            <ul class="list-disc list-inside text-gray-700 space-y-2">
+                <li>@Localizer["Docs.Security.Feature1"]</li>
+                <li>@Localizer["Docs.Security.Feature2"]</li>
+                <li>@Localizer["Docs.Security.Feature3"]</li>
+                <li>@Localizer["Docs.Security.Feature4"]</li>
+                <li>@Localizer["Docs.Security.Feature5"]</li>
+            </ul>
+        </section>
+
+        <!-- Contact & Support -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">@Localizer["Docs.Contact.Title"]</h2>
+            <p class="text-gray-700 mb-4">@Localizer["Docs.Contact.Description"]</p>
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                <p class="text-gray-700"><strong>@Localizer["Docs.Contact.Email"]</strong></p>
+                <p class="text-gray-700"><strong>@Localizer["Docs.Contact.AdminPortal"]</strong> <a href="/Account/Login" class="text-blue-600 hover:underline">@Localizer["SignIn"]</a></p>
+            </div>
+        </section>
+
+        <!-- Back to Home -->
+        <div class="text-center mt-12">
+            <a href="/" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                @Localizer["BackToHome"]
+            </a>
+        </div>
+    </div>
+</div>
