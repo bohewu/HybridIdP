@@ -1,24 +1,20 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Web.IdP.Pages;
 
-[Authorize]
+[AllowAnonymous]
 public class IndexModel : PageModel
 {
-    private readonly ILogger<IndexModel> _logger;
-    private readonly Core.Application.IBrandingService _brandingService;
-
-    public IndexModel(ILogger<IndexModel> logger, Core.Application.IBrandingService brandingService)
+    public IActionResult OnGet()
     {
-        _logger = logger;
-        _brandingService = brandingService;
-    }
-
-    public string ProductName { get; private set; } = string.Empty;
-
-    public async Task OnGet()
-    {
-        ProductName = await _brandingService.GetProductNameAsync();
+        // Redirect to Dashboard if authenticated, Welcome if not
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToPage("/Dashboard");
+        }
+        
+        return RedirectToPage("/Welcome");
     }
 }

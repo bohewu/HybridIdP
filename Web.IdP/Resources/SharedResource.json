@@ -196,5 +196,20 @@
   "Login.ExternalProvider.Microsoft": "Sign in with Microsoft",
   "Login.ExternalProvider.GitHub": "Sign in with GitHub",
   "InvalidCredentials": "Invalid credentials.",
-  "ProviderLimitReached": "You have reached the maximum number of accounts for this provider."
+  "ProviderLimitReached": "You have reached the maximum number of accounts for this provider.",
+  "WelcomeTo": "Welcome to",
+  "SignIn": "Sign In",
+  "WelcomePageTitle": "Secure Identity & Access Management",
+  "WelcomePageDescription": "Centralized authentication platform supporting single sign-on, multi-factor authentication, and seamless integration with your applications.",
+  "WelcomePageFeaturesTitle": "Key Features",
+  "WelcomePageFeaturesSubtitle": "Everything you need for modern identity management",
+  "FeatureSSOTitle": "Single Sign-On",
+  "FeatureSSODescription": "Access all your applications with one secure login.",
+  "FeatureMultiAuthTitle": "Multiple Authentication Methods",
+  "FeatureMultiAuthDescription": "Support for passwords, external providers, and passkeys.",
+  "FeatureSecureTitle": "Secure & Compliant",
+  "FeatureSecureDescription": "Built with enterprise-grade security and compliance standards.",
+  "SupportedAuthMethods": "Supported Authentication Methods",
+  "LocalAccount": "Local Account",
+  "Passkey": "Passkey"
 }

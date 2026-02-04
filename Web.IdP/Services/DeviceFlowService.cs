@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Core.Domain;
+using Core.Domain.Constants;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -145,6 +146,11 @@ public partial class DeviceFlowService : IDeviceFlowService
             
             // Fix: Add Subject claim to IdentityToken
             case Claims.Subject:
+                yield return Destinations.AccessToken;
+                yield return Destinations.IdentityToken;
+                yield break;
+
+            case AuthConstants.Claims.PersonId:
                 yield return Destinations.AccessToken;
                 yield return Destinations.IdentityToken;
                 yield break;

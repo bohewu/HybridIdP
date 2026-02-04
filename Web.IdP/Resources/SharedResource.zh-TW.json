@@ -198,5 +198,20 @@
   "InvalidCredentials": "憑證無效.",
   "ProviderLimitReached": "您已達到此提供者的帳戶數量上限。",
   "ExternalLoginFailure": "外部登入失敗。",
-  "ExternalLoginFailure_CorrelationFailed": "外部登入驗證逾時或 Cookie 遺失，請重新嘗試。"
+  "ExternalLoginFailure_CorrelationFailed": "外部登入驗證逾時或 Cookie 遺失，請重新嘗試。",
+  "WelcomeTo": "歡迎使用",
+  "SignIn": "登入",
+  "WelcomePageTitle": "安全的身分與存取管理",
+  "WelcomePageDescription": "集中式身分驗證平台，支援單一登入、多因素驗證，與您的應用程式無縫整合。",
+  "WelcomePageFeaturesTitle": "主要功能",
+  "WelcomePageFeaturesSubtitle": "現代化身分管理所需的一切功能",
+  "FeatureSSOTitle": "單一登入 (SSO)",
+  "FeatureSSODescription": "使用一組安全的登入憑證存取所有應用程式。",
+  "FeatureMultiAuthTitle": "多種驗證方式",
+  "FeatureMultiAuthDescription": "支援密碼、外部提供者和 Passkey 等多種驗證方式。",
+  "FeatureSecureTitle": "安全且合規",
+  "FeatureSecureDescription": "採用企業級安全標準和合規性要求建置。",
+  "SupportedAuthMethods": "支援的驗證方式",
+  "LocalAccount": "本地帳號",
+  "Passkey": "金鑰"
 }

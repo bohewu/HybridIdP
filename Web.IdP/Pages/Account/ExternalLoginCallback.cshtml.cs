@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Core.Domain.Entities;
 using Core.Domain.Constants;
+using Core.Application.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -82,6 +83,14 @@ public partial class ExternalLoginCallbackModel : PageModel
             var user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
             if (user != null)
             {
+                // Phase 18: Check Person status before allowing external login
+                var personCheckResult = await _loginService.AuthenticateAsync(user.Email ?? user.UserName!, "dummy");
+                if (!personCheckResult.IsSuccess && personCheckResult.Status == LoginStatus.PersonInactive)
+                {
+                    LogPersonInactive(user.Email ?? user.UserName!, personCheckResult.Message ?? "Person is inactive");
+                    return RedirectToPage("./Login", new { error = "PersonInactive", message = personCheckResult.Message });
+                }
+                
                 // Re-sign in with AMR claims
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
                 
@@ -128,6 +137,16 @@ public partial class ExternalLoginCallbackModel : PageModel
                         var addLoginResult = await _userManager.AddLoginAsync(user, info);
                         if (addLoginResult.Succeeded)
                         {
+                            // Phase 18: Check Person status before allowing auto-link login
+                            var personCheckResult = await _loginService.AuthenticateAsync(user.Email ?? user.UserName!, "dummy");
+                            if (!personCheckResult.IsSuccess && personCheckResult.Status == LoginStatus.PersonInactive)
+                            {
+                                // Remove the login we just added since person is inactive
+                                await _userManager.RemoveLoginAsync(user, info.LoginProvider, info.ProviderKey);
+                                LogPersonInactive(user.Email ?? user.UserName!, personCheckResult.Message ?? "Person is inactive");
+                                return RedirectToPage("./Login", new { error = "PersonInactive", message = personCheckResult.Message });
+                            }
+                            
                             // Sign in with AMR claims
                             await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
                             
@@ -167,6 +186,9 @@ public partial class ExternalLoginCallbackModel : PageModel
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Auto-linked {Email} to external login {Provider}. AMR: {Amr}")]
     partial void LogAutoLinkSuccess(string email, string provider, string amr);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "External login blocked for {Email} due to Person status: {Reason}")]
+    partial void LogPersonInactive(string email, string reason);
 
     #endregion
 }

@@ -586,6 +586,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     yield return Destinations.IdentityToken;
                     yield break;
 
+                case AuthConstants.Claims.PersonId:
+                    yield return Destinations.AccessToken;
+                    yield return Destinations.IdentityToken;
+                    yield break;
+
                 case "amr":
                     yield return Destinations.AccessToken;
                     yield return Destinations.IdentityToken;

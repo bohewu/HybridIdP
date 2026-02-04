@@ -424,6 +424,7 @@ namespace Web.IdP.Services
                 case "permission":
                 case AuthConstants.Claims.PreferredUsername:
                 case AuthConstants.Claims.Department:
+                case AuthConstants.Claims.PersonId:
                 case Claims.AuthenticationMethodReference:
                 case Claims.AuthenticationContextReference:
                     yield return Destinations.AccessToken;
