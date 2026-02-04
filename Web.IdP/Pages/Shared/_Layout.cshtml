@@ -13,10 +13,12 @@
 @inject IOptions<BrandingOptions> BrandingOptions
 @inject IViteManifestService ViteService
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@inject Core.Application.ISettingsService SettingsService
 @{
     var currentCulture = System.Globalization.CultureInfo.CurrentUICulture.Name;
     var brandingService = Context.RequestServices.GetRequiredService<Core.Application.IBrandingService>();
     var productName = await brandingService.GetProductNameAsync();
+    var registrationEnabled = await SettingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
 
     // Permission check logic
     var isAuthenticated = User?.Identity?.IsAuthenticated == true;
@@ -162,7 +164,10 @@
                     else
                     {
                         <a class="text-sm font-medium text-gray-700 hover:text-blue-600 px-3 py-2 no-underline" asp-area="Identity" asp-page="/Account/Login">@Localizer["Login"]</a>
-                        <a class="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 no-underline" asp-area="Identity" asp-page="/Account/Register">@Localizer["Register"]</a>
+                        @if (registrationEnabled)
+                        {
+                            <a class="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 no-underline" asp-area="Identity" asp-page="/Account/Register">@Localizer["Register"]</a>
+                        }
                     }
                     
                     <div class="ml-4">
@@ -235,9 +240,12 @@
                     <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/Login">
                         <i class="bi bi-box-arrow-in-right mr-1"></i> @Localizer["Login"]
                     </a>
-                    <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/Register">
-                        <i class="bi bi-person-plus mr-1"></i> @Localizer["Register"]
-                    </a>
+                    @if (registrationEnabled)
+                    {
+                        <a class="block px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100" asp-page="/Account/Register">
+                            <i class="bi bi-person-plus mr-1"></i> @Localizer["Register"]
+                        </a>
+                    }
                 }
                  <div class="px-4 py-2">
                     <partial name="_LanguageSelector" />
@@ -268,7 +276,7 @@
                     <a asp-area="" asp-page="/Privacy" class="hover:text-gray-700">
                         @Localizer["Privacy"]
                     </a>
-                    <a href="/Docs/Index" class="hover:text-gray-700">
+                    <a asp-area="" asp-page="/Docs" class="hover:text-gray-700">
                         @Localizer["Documentation"]
                     </a>
                 </div>
