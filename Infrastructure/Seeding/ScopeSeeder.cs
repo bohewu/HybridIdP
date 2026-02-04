@@ -96,6 +96,7 @@ public static class ScopeSeeder
             // PROFILE SCOPE claims
             new() { Name = "name", DisplayName = "Full Name", Description = "Full name of the user", ClaimType = Claims.Name, UserPropertyPath = "UserName", DataType = "String", IsStandard = true, IsRequired = false },
             new() { Name = "preferred_username", DisplayName = "Preferred Username", Description = "Shorthand name the user prefers to be called", ClaimType = Claims.PreferredUsername, UserPropertyPath = "UserName", DataType = "String", IsStandard = true, IsRequired = false },
+            new() { Name = "person_id", DisplayName = "Person ID", Description = "Unique identifier linking user to Person entity", ClaimType = AuthConstants.Claims.PersonId, UserPropertyPath = "PersonId", DataType = "String", IsStandard = false, IsRequired = false },
             
             // EMAIL SCOPE claims
             new() { Name = "email", DisplayName = "Email Address", Description = "Email address of the user", ClaimType = Claims.Email, UserPropertyPath = "Email", DataType = "String", IsStandard = true, IsRequired = false },
@@ -132,7 +133,7 @@ public static class ScopeSeeder
             var scopeMappings = new Dictionary<string, string[]>
             {
                 [Scopes.OpenId] = new[] { "sub" },
-                [Scopes.Profile] = new[] { "name", "preferred_username" },
+                [Scopes.Profile] = new[] { "name", "preferred_username", "person_id" },
                 [Scopes.Email] = new[] { "email", "email_verified" },
                 [Scopes.Phone] = new[] { "phone_number", "phone_number_verified" },
                 [Scopes.Address] = new[] { "address" },
