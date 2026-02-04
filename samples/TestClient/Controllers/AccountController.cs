@@ -19,9 +19,12 @@ public class AccountController : Controller
     [Authorize]
     public async Task<IActionResult> Profile()
     {
-        // Get the access token
+        // Get the access token and id_token
         var accessToken = await HttpContext.GetTokenAsync("access_token");
+        var idToken = await HttpContext.GetTokenAsync("id_token");
+        
         ViewData["AccessToken"] = accessToken;
+        ViewData["IdToken"] = idToken;
         
         return View();
     }

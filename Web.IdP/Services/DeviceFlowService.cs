@@ -151,8 +151,11 @@ public partial class DeviceFlowService : IDeviceFlowService
                 yield break;
 
             case AuthConstants.Claims.PersonId:
-                yield return Destinations.AccessToken;
-                yield return Destinations.IdentityToken;
+                if (claim.Subject!.HasScope(Scopes.OpenId))
+                {
+                    yield return Destinations.AccessToken;
+                    yield return Destinations.IdentityToken;
+                }
                 yield break;
 
             case "AspNet.Identity.SecurityStamp": yield break;

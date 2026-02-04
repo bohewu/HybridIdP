@@ -74,14 +74,18 @@
       "department": "Department",
       "jobTitle": "Job Title",
       "locale": "Locale",
+      "personId": "Person ID (Hashed)",
       "personFirstName": "Person First Name",
       "personLastName": "Person Last Name",
       "personDepartment": "Person Department",
       "personJobTitle": "Person Job Title",
       "personEmployeeId": "Person Employee ID",
-      "personEmail": "Person Email"
+      "personEmail": "Person Email",
+      "personNationalId": "National ID (SHA256)",
+      "personNationalIdHash": "National ID Hash (SHA256)"
     },
     "standardNote": "Standard OIDC claims have limited editing. Only display name and description can be modified.",
+    "protectedNote": "Protected sensitive claims cannot be edited or deleted. PersonId and NationalId fields are hashed for privacy.",
     "saving": "Saving...",
     "save": "Save",
     "cancel": "Cancel"

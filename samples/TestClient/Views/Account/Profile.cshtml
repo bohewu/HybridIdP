@@ -38,6 +38,20 @@
             </div>
             <div class="card-body">
                 <textarea class="form-control" rows="5" readonly>@ViewData["AccessToken"]</textarea>
+                <button class="btn btn-sm btn-secondary mt-2" onclick="copyToClipboard('accessToken')">Copy</button>
+            </div>
+        </div>
+    }
+
+    @if (ViewData["IdToken"] != null)
+    {
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5>ID Token</h5>
+            </div>
+            <div class="card-body">
+                <textarea id="idToken" class="form-control" rows="5" readonly>@ViewData["IdToken"]</textarea>
+                <button class="btn btn-sm btn-secondary mt-2" onclick="copyToClipboard('idToken')">Copy</button>
             </div>
         </div>
     }
@@ -47,3 +61,12 @@
         <a href="/Account/Logout" class="btn btn-danger">Logout</a>
     </div>
 </div>
+
+<script>
+function copyToClipboard(elementId) {
+    const textarea = document.getElementById(elementId) || document.querySelector('textarea');
+    textarea.select();
+    document.execCommand('copy');
+    alert('Token copied to clipboard!');
+}
+</script>

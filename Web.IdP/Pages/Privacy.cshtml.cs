@@ -24,8 +24,7 @@ public class PrivacyModel : PageModel
             return Redirect(_brandingOptions.PrivacyPolicyUrl);
         }
         
-        // Redirect to the public privacy page under /docs
-        return Redirect("/docs/privacy.html");
+        return Page();
     }
 }
 

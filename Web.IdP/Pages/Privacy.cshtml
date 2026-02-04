@@ -2,12 +2,88 @@
 @model Web.IdP.Pages.PrivacyModel
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
 @{
-    ViewData["Title"] = Localizer["Privacy Policy"];
+    ViewData["Title"] = Localizer["PrivacyPolicy.Title"];
 }
 
-<div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-    <div class="text-center">
-        <h1 class="text-3xl font-extrabold text-gray-900 sm:text-4xl">@ViewData["Title"]</h1>
-        <p class="mt-4 text-lg text-gray-500">@Localizer["Use this page to detail your site's privacy policy."]</p>
+<div class="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <div class="bg-white shadow-sm rounded-lg p-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-4">@Localizer["PrivacyPolicy.Title"]</h1>
+        <p class="text-sm text-gray-500 mb-8">@Localizer["PrivacyPolicy.LastUpdated"]: @DateTime.UtcNow.ToString("MMMM yyyy")</p>
+
+        <div class="prose prose-blue max-w-none">
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">@Localizer["PrivacyPolicy.Introduction.Title"]</h2>
+                <p class="text-gray-700 leading-relaxed">@Localizer["PrivacyPolicy.Introduction.Content"]</p>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">@Localizer["PrivacyPolicy.DataCollection.Title"]</h2>
+                <p class="text-gray-700 leading-relaxed mb-3">@Localizer["PrivacyPolicy.DataCollection.Description"]</p>
+                <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                    <li>@Localizer["PrivacyPolicy.DataCollection.Authentication"]</li>
+                    <li>@Localizer["PrivacyPolicy.DataCollection.Profile"]</li>
+                    <li>@Localizer["PrivacyPolicy.DataCollection.LoginHistory"]</li>
+                    <li>@Localizer["PrivacyPolicy.DataCollection.Technical"]</li>
+                </ul>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">@Localizer["PrivacyPolicy.DataUsage.Title"]</h2>
+                <p class="text-gray-700 leading-relaxed mb-3">@Localizer["PrivacyPolicy.DataUsage.Description"]</p>
+                <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                    <li>@Localizer["PrivacyPolicy.DataUsage.Authentication"]</li>
+                    <li>@Localizer["PrivacyPolicy.DataUsage.Authorization"]</li>
+                    <li>@Localizer["PrivacyPolicy.DataUsage.Security"]</li>
+                    <li>@Localizer["PrivacyPolicy.DataUsage.Audit"]</li>
+                    <li>@Localizer["PrivacyPolicy.DataUsage.Communication"]</li>
+                </ul>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">@Localizer["PrivacyPolicy.DataSharing.Title"]</h2>
+                <p class="text-gray-700 leading-relaxed">@Localizer["PrivacyPolicy.DataSharing.Content"]</p>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">@Localizer["PrivacyPolicy.DataRetention.Title"]</h2>
+                <p class="text-gray-700 leading-relaxed">@Localizer["PrivacyPolicy.DataRetention.Content"]</p>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">@Localizer["PrivacyPolicy.DataSecurity.Title"]</h2>
+                <p class="text-gray-700 leading-relaxed">@Localizer["PrivacyPolicy.DataSecurity.Content"]</p>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">@Localizer["PrivacyPolicy.UserRights.Title"]</h2>
+                <p class="text-gray-700 leading-relaxed mb-3">@Localizer["PrivacyPolicy.UserRights.Description"]</p>
+                <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                    <li>@Localizer["PrivacyPolicy.UserRights.Access"]</li>
+                    <li>@Localizer["PrivacyPolicy.UserRights.Correction"]</li>
+                    <li>@Localizer["PrivacyPolicy.UserRights.Deletion"]</li>
+                    <li>@Localizer["PrivacyPolicy.UserRights.Export"]</li>
+                    <li>@Localizer["PrivacyPolicy.UserRights.Objection"]</li>
+                </ul>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">@Localizer["PrivacyPolicy.Cookies.Title"]</h2>
+                <p class="text-gray-700 leading-relaxed">@Localizer["PrivacyPolicy.Cookies.Content"]</p>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">@Localizer["PrivacyPolicy.Changes.Title"]</h2>
+                <p class="text-gray-700 leading-relaxed">@Localizer["PrivacyPolicy.Changes.Content"]</p>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">@Localizer["PrivacyPolicy.Contact.Title"]</h2>
+                <p class="text-gray-700 leading-relaxed">@Localizer["PrivacyPolicy.Contact.Content"]</p>
+            </section>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-gray-200">
+            <a href="/" class="text-blue-600 hover:text-blue-800 font-medium">← @Localizer["BackToHome"]</a>
+        </div>
     </div>
 </div>

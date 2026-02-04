@@ -424,11 +424,18 @@ namespace Web.IdP.Services
                 case "permission":
                 case AuthConstants.Claims.PreferredUsername:
                 case AuthConstants.Claims.Department:
-                case AuthConstants.Claims.PersonId:
                 case Claims.AuthenticationMethodReference:
                 case Claims.AuthenticationContextReference:
                     yield return Destinations.AccessToken;
                     yield return Destinations.IdentityToken;
+                    yield break;
+
+                case AuthConstants.Claims.PersonId:
+                    if (claim.Subject.HasScope(Scopes.OpenId))
+                    {
+                        yield return Destinations.AccessToken;
+                        yield return Destinations.IdentityToken;
+                    }
                     yield break;
 
                 case "AspNet.Identity.SecurityStamp":

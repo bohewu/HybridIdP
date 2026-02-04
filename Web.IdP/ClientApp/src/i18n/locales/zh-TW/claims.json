@@ -74,14 +74,18 @@
       "department": "部門",
       "jobTitle": "職稱",
       "locale": "語言設定",
+      "personId": "人員 ID（雜湊值）",
       "personFirstName": "人員名字",
       "personLastName": "人員姓氏",
       "personDepartment": "人員部門",
       "personJobTitle": "人員職稱",
       "personEmployeeId": "人員員工編號",
-      "personEmail": "人員電子郵件"
+      "personEmail": "人員電子郵件",
+      "personNationalId": "國民身分證號（SHA256）",
+      "personNationalIdHash": "國民身分證號雜湊值（SHA256）"
     },
     "standardNote": "標準 OIDC claims 的編輯功能有限。只能修改顯示名稱和描述。",
+    "protectedNote": "受保護的敏感 claims 無法編輯或刪除。PersonId 和 NationalId 欄位已經過雜湊處理以保護隱私。",
     "saving": "儲存中...",
     "save": "儲存",
     "cancel": "取消"

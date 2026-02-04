@@ -15,12 +15,15 @@ const propertyPathOptions = [
   { value: 'Department', labelKey: 'claims.form.propertyPaths.department' },
   { value: 'JobTitle', labelKey: 'claims.form.propertyPaths.jobTitle' },
   { value: 'Locale', labelKey: 'claims.form.propertyPaths.locale' },
+  { value: 'PersonId', labelKey: 'claims.form.propertyPaths.personId' },
   { value: 'Person.FirstName', labelKey: 'claims.form.propertyPaths.personFirstName' },
   { value: 'Person.LastName', labelKey: 'claims.form.propertyPaths.personLastName' },
   { value: 'Person.Department', labelKey: 'claims.form.propertyPaths.personDepartment' },
   { value: 'Person.JobTitle', labelKey: 'claims.form.propertyPaths.personJobTitle' },
   { value: 'Person.EmployeeId', labelKey: 'claims.form.propertyPaths.personEmployeeId' },
-  { value: 'Person.Email', labelKey: 'claims.form.propertyPaths.personEmail' }
+  { value: 'Person.Email', labelKey: 'claims.form.propertyPaths.personEmail' },
+  { value: 'Person.NationalId', labelKey: 'claims.form.propertyPaths.personNationalId' },
+  { value: 'Person.NationalIdHash', labelKey: 'claims.form.propertyPaths.personNationalIdHash' }
 ]
 
 const props = defineProps({
@@ -56,6 +59,12 @@ const customPathValue = ref('')
 // Check if current path is in the predefined options
 const isKnownPath = computed(() => {
   return propertyPathOptions.some(opt => opt.value === formData.value.userPropertyPath)
+})
+
+// Check if claim is protected (PersonId-related fields)
+const isProtected = computed(() => {
+  const protectedPaths = ['PersonId', 'Person.NationalId', 'Person.NationalIdHash']
+  return protectedPaths.includes(formData.value.userPropertyPath)
 })
 
 const saving = ref(false)
@@ -145,7 +154,7 @@ const handleClose = () => {
             v-model="formData.name"
             type="text"
             required
-            :disabled="claim?.isStandard"
+            :disabled="claim?.isStandard || isProtected"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.namePlaceholder')"
             data-test-id="claim-name-input"
@@ -184,7 +193,7 @@ const handleClose = () => {
             v-model="formData.claimType"
             type="text"
             required
-            :disabled="claim?.isStandard"
+            :disabled="claim?.isStandard || isProtected"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.claimTypePlaceholder')"
              data-test-id="claim-type-input"
@@ -200,7 +209,7 @@ const handleClose = () => {
           <select
             v-if="!useCustomPath"
             v-model="formData.userPropertyPath"
-            :disabled="claim?.isStandard"
+            :disabled="claim?.isStandard || isProtected"
             required
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             data-test-id="claim-property-path-select"
@@ -217,14 +226,14 @@ const handleClose = () => {
             v-model="customPathValue"
             type="text"
             required
-            :disabled="claim?.isStandard"
+            :disabled="claim?.isStandard || isProtected"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.userPropertyPathPlaceholder')"
             data-test-id="claim-property-path-input"
           />
           
           <!-- Toggle for custom path -->
-          <label class="flex items-center mt-2" v-if="!claim?.isStandard">
+          <label class="flex items-center mt-2" v-if="!claim?.isStandard && !isProtected">
             <input
               v-model="useCustomPath"
               type="checkbox"
@@ -242,7 +251,7 @@ const handleClose = () => {
           <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ t('claims.form.dataType') }} *</label>
           <select
             v-model="formData.dataType"
-            :disabled="claim?.isStandard"
+            :disabled="claim?.isStandard || isProtected"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
              data-test-id="claim-data-type-select"
           >
@@ -260,7 +269,7 @@ const handleClose = () => {
             <input
               v-model="formData.isRequired"
               type="checkbox"
-              :disabled="claim?.isStandard"
+              :disabled="claim?.isStandard || isProtected"
               class="rounded border-gray-300 text-google-500 shadow-sm focus:border-google-500 focus:ring focus:ring-google-100 focus:ring-opacity-50 disabled:bg-gray-100 h-4 w-4"
               data-test-id="claim-required-checkbox"
             />
@@ -271,6 +280,12 @@ const handleClose = () => {
         <div v-if="claim?.isStandard" class="mt-4 p-3 bg-blue-50 rounded-md">
           <p class="text-sm text-blue-800">
             {{ t('claims.form.standardNote') }}
+          </p>
+        </div>
+
+        <div v-if="isProtected" class="mt-4 p-3 bg-amber-50 rounded-md">
+          <p class="text-sm text-amber-800">
+            {{ t('claims.form.protectedNote') }}
           </p>
         </div>
       </form>
