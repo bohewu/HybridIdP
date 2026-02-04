@@ -1,11 +1,26 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Options;
+using Web.IdP.Options;
 
 namespace Web.IdP.Pages;
 
 public class DocsModel : PageModel
 {
-    public void OnGet()
+    private readonly BrandingOptions _brandingOptions;
+
+    public DocsModel(IOptions<BrandingOptions> brandingOptions)
     {
-        // Public documentation page - no authentication required
+        _brandingOptions = brandingOptions.Value;
+    }
+
+    public IActionResult OnGet()
+    {
+        if (!string.IsNullOrEmpty(_brandingOptions.HelpUrl))
+        {
+            return Redirect(_brandingOptions.HelpUrl);
+        }
+        
+        return Page();
     }
 }

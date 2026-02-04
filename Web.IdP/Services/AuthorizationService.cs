@@ -587,7 +587,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     yield break;
 
                 case AuthConstants.Claims.PersonId:
-                    if (claim.Subject.HasScope(Scopes.OpenId))
+                    if (claim.Subject is ClaimsIdentity identity && identity.HasScope(Scopes.OpenId))
                     {
                         yield return Destinations.AccessToken;
                         yield return Destinations.IdentityToken;

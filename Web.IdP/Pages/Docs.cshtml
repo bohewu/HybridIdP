@@ -1,8 +1,11 @@
 @page
 @model Web.IdP.Pages.DocsModel
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@inject Core.Application.IBrandingService BrandingService
 @{
     ViewData["Title"] = Localizer["Documentation"];
+    var productName = await BrandingService.GetProductNameAsync();
+    var appName = await BrandingService.GetAppNameAsync();
 }
 
 <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -14,8 +17,8 @@
     <div class="prose prose-lg max-w-4xl mx-auto">
         <!-- What is this project -->
         <section class="mb-12">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4">@Localizer["Docs.WhatIs.Title"]</h2>
-            <p class="text-gray-700 mb-4">@Localizer["Docs.WhatIs.Description"]</p>
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">@string.Format(Localizer["Docs.WhatIs.Title"], productName)</h2>
+            <p class="text-gray-700 mb-4">@string.Format(Localizer["Docs.WhatIs.Description"], appName)</p>
             <ul class="list-disc list-inside text-gray-700 space-y-2">
                 <li>@Localizer["Docs.WhatIs.Feature1"]</li>
                 <li>@Localizer["Docs.WhatIs.Feature2"]</li>
