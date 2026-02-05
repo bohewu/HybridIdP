@@ -10,6 +10,7 @@ public class ProfileDto
 {
     // ApplicationUser data (read-only)
     public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
     public string UserName { get; set; } = string.Empty;
     public string? Email { get; set; }
     public bool EmailConfirmed { get; set; }

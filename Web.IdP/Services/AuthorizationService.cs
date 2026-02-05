@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Interfaces;
+using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Constants;
 using Infrastructure;
@@ -286,9 +287,12 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 // Add custom claims (email, roles, etc.)
                 if (user != null)
                 {
+                    var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+                        ?? await _userManager.GetUserNameAsync(user);
+
                     identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
                         .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                        .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user));
+                        .SetClaim(Claims.Name, displayName);
 
                     var roles = await _userManager.GetRolesAsync(user);
                     identity.SetClaims(Claims.Role, [..roles]);
@@ -401,9 +405,12 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
             // Add custom claims
+            var displayNameSubmit = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+                ?? await _userManager.GetUserNameAsync(user);
+
             identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
                 .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user));
+                .SetClaim(Claims.Name, displayNameSubmit);
 
             var roles = await _userManager.GetRolesAsync(user);
             identity.SetClaims(Claims.Role, roles.ToImmutableArray());

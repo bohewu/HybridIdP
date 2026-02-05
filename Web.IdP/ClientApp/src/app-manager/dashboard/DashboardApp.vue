@@ -2,7 +2,7 @@
   <div class="max-w-5xl mx-auto py-8">
     <!-- Welcome Header -->
     <div class="mb-10 text-center">
-      <h1 class="text-3xl font-normal text-gray-900 mb-2">{{ $t('app-manager.Welcome') }}, {{ userName }}</h1>
+      <h1 class="text-3xl font-normal text-gray-900 mb-2">{{ $t('app-manager.Welcome') }}, {{ displayName }}</h1>
       <p class="text-base text-gray-600">{{ $t('app-manager.ManageYourApplicationsAndScopes') }}</p>
     </div>
 
@@ -111,7 +111,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 
-const userName = ref('')
+const displayName = ref('')
 const clientCount = ref(0)
 const scopeCount = ref(0)
 const resourceCount = ref(0)
@@ -120,7 +120,7 @@ onMounted(async () => {
   // Get data from the page's data attributes
   const appEl = document.getElementById('app')
   if (appEl) {
-    userName.value = appEl.dataset.userName || ''
+    displayName.value = appEl.dataset.displayName || ''
     clientCount.value = parseInt(appEl.dataset.clientCount || '0', 10)
     scopeCount.value = parseInt(appEl.dataset.scopeCount || '0', 10)
     resourceCount.value = parseInt(appEl.dataset.resourceCount || '0', 10)

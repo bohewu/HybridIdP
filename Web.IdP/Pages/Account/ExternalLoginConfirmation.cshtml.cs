@@ -29,6 +29,7 @@ public class ExternalLoginConfirmationModel : PageModel
     private readonly IJitProvisioningService _jitProvisioningService;
     private readonly ILoginService _loginService;
     private readonly ISettingsService _settingsService;
+    private readonly IBrandingService _brandingService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ExternalLoginConfirmationModel> _logger;
     private readonly LoginNoticesOptions _loginNoticesOptions; 
@@ -40,6 +41,7 @@ public class ExternalLoginConfirmationModel : PageModel
         IJitProvisioningService jitProvisioningService,
         ILoginService loginService,
         ISettingsService settingsService,
+        IBrandingService brandingService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<ExternalLoginConfirmationModel> logger,
         IOptions<LoginNoticesOptions> loginNoticesOptions,
@@ -50,6 +52,7 @@ public class ExternalLoginConfirmationModel : PageModel
         _jitProvisioningService = jitProvisioningService;
         _loginService = loginService;
         _settingsService = settingsService;
+        _brandingService = brandingService;
         _localizer = localizer;
         _logger = logger;
         _loginNoticesOptions = loginNoticesOptions.Value;
@@ -65,6 +68,7 @@ public class ExternalLoginConfirmationModel : PageModel
     public string LoginProvider { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public string AppName { get; set; } = string.Empty;
     
     public bool ShowRegistrationButton { get; set; }
 
@@ -94,6 +98,7 @@ public class ExternalLoginConfirmationModel : PageModel
         LoginProvider = info.LoginProvider;
         DisplayName = info.Principal.Identity?.Name ?? "Unknown";
         Email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? "Unknown";
+        AppName = await _brandingService.GetAppNameAsync();
 
         ShowRegistrationButton = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
 
@@ -113,6 +118,7 @@ public class ExternalLoginConfirmationModel : PageModel
         LoginProvider = info.LoginProvider; // Restore for view
         DisplayName = info.Principal.Identity?.Name ?? "Unknown";
         Email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? "Unknown";
+        AppName = await _brandingService.GetAppNameAsync();
         ShowRegistrationButton = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
 
         if (!ModelState.IsValid)

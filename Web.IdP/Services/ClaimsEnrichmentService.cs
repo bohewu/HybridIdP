@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Web.IdP.Services; // For IScopeService if needed, or simply the namespace
 using Core.Application; // For IApplicationDbContext
+using Core.Application.Utilities;
 using Microsoft.Extensions.Logging;
 using IdentityModel;
 
@@ -121,7 +122,9 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
             var def = map.ClaimDefinition;
             if (def == null) continue;
 
-            var value = ResolveUserProperty(user, def.UserPropertyPath);
+            var value = def.ClaimType == OpenIddict.Abstractions.OpenIddictConstants.Claims.Name
+                ? NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName) ?? user.UserName
+                : ResolveUserProperty(user, def.UserPropertyPath);
             // Log only which claim is being resolved, not the value
             LogResolvingClaim(def.ClaimType, def.UserPropertyPath);
 

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Security.Claims;
 using Core.Application;
+using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
@@ -172,9 +173,12 @@ namespace Web.IdP.Services
                 nameType: Claims.Name,
                 roleType: Claims.Role);
 
+            var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+                ?? await _userManager.GetUserNameAsync(user);
+
             identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
                 .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
+                .SetClaim(Claims.Name, displayName)
                 .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
                 .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
 
@@ -278,9 +282,12 @@ namespace Web.IdP.Services
                 nameType: Claims.Name,
                 roleType: Claims.Role);
 
+            var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+                ?? await _userManager.GetUserNameAsync(user);
+
             identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
                 .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
+                .SetClaim(Claims.Name, displayName)
                 .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
                 .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
 

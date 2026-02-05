@@ -1,6 +1,7 @@
 @page
 @model WelcomeModel
 @using Microsoft.Extensions.Localization
+@using Core.Domain.Constants
 @using Microsoft.AspNetCore.Localization
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 @inject Web.IdP.Services.IViteManifestService ViteService
@@ -10,6 +11,8 @@
     Layout = null;
     var currentCulture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "zh-TW";
     var csrfToken = Antiforgery.GetAndStoreTokens(HttpContext).RequestToken;
+    var preferredUsername = User?.FindFirst(AuthConstants.Claims.PreferredUsername)?.Value;
+    var displayName = User?.Identity?.Name ?? preferredUsername ?? "User";
 }
 
 <!DOCTYPE html>
@@ -51,8 +54,9 @@
                             <option value="zh-TW" selected="@(currentCulture == "zh-TW")">繁體中文</option>
                             <option value="en-US" selected="@(currentCulture == "en-US")">English</option>
                         </select>
-                        @if (User.Identity?.IsAuthenticated == true)
+                        @if (User?.Identity?.IsAuthenticated == true)
                         {
+                            <span class="text-sm text-gray-700 hidden sm:inline">@Localizer["Welcome"], @displayName</span>
                             <a href="/Dashboard" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 @Localizer["Dashboard"]
                             </a>
@@ -80,7 +84,7 @@
                         <p class="text-xl text-gray-700 mb-8 max-w-3xl mx-auto">
                             @Localizer["WelcomePageDescription"]
                         </p>
-                        @if (User.Identity?.IsAuthenticated != true)
+                        @if (User?.Identity?.IsAuthenticated != true)
                         {
                             <div class="flex justify-center gap-4">
                                 <a href="/Account/Login" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">

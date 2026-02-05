@@ -185,7 +185,7 @@
   "CompleteLogin": "完成登入",
   "AuthenticateWith": "您已成功驗證身分，來源：",
   "LinkExistingAccount": "連結現有帳戶",
-  "LinkExistingAccountDesc": "如果您已有 HybridIdP 帳戶，請在下方登入以進行連結。",
+  "LinkExistingAccountDesc": "如果您已有 {0} 帳戶，請在下方登入以進行連結。",
   "LinkAccount": "連結帳戶",
   "CreateNewAccount": "建立新帳戶",
   "CreateNewAccountDesc": "您可以使用您的 {0} 個人檔案建立新帳戶。",

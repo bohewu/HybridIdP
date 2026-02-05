@@ -47,9 +47,14 @@ describe('useWebAuthn', () => {
             const { registerPasskey } = useWebAuthn();
             vi.stubGlobal('window', { ...window, PublicKeyCredential: {} });
 
+            const jsonHeaders = {
+                get: () => 'application/json'
+            };
+
             // Mock options response
             fetch.mockResolvedValueOnce({
                 ok: true,
+                headers: jsonHeaders,
                 json: () => Promise.resolve({
                     challenge: 'Y2hhbGxlbmdl', // "challenge"
                     user: { id: 'dXNlcmlk' },   // "userid"
@@ -84,8 +89,13 @@ describe('useWebAuthn', () => {
             const { registerPasskey } = useWebAuthn();
             vi.stubGlobal('window', { ...window, PublicKeyCredential: {} });
 
+            const jsonHeaders = {
+                get: () => 'application/json'
+            };
+
             fetch.mockResolvedValueOnce({
                 ok: true,
+                headers: jsonHeaders,
                 json: () => Promise.resolve({ challenge: 'Y2hhbGxlbmdl', user: { id: 'dXNlcmlk' } })
             });
 

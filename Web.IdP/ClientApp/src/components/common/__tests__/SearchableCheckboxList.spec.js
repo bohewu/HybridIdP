@@ -9,7 +9,16 @@ const i18n = createI18n({
   legacy: false,
   locale: 'en',
   messages: {
-    en: {}
+    en: {
+      common: {
+        searchPlaceholder: 'Search...',
+        selectAllVisible: 'Select all visible',
+        deselectVisible: 'Deselect all visible',
+        selectedCount: 'Selected: {count}',
+        itemCount: '{filtered}/{total}',
+        loading: 'Loading...'
+      }
+    }
   }
 })
 

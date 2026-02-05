@@ -13,6 +13,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Core.Application.Interfaces;
+using Core.Application.Utilities;
 using Web.IdP.Options;
 using Core.Application.Options; // Added
 
@@ -109,6 +110,8 @@ public class ProfileManagementController : ControllerBase
         var dto = new ProfileDto
         {
             UserId = user.Id,
+            DisplayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+                ?? user.UserName ?? string.Empty,
             UserName = user.UserName ?? string.Empty,
             Email = user.Email,
             EmailConfirmed = user.EmailConfirmed,
@@ -144,7 +147,8 @@ public class ProfileManagementController : ControllerBase
                 dto.Person = new PersonProfileDto
                 {
                     PersonId = person.Id,
-                    FullName = $"{person.FirstName} {person.LastName}".Trim(),
+                    FullName = NameFormatter.BuildDisplayName(person.FirstName, person.MiddleName, person.LastName)
+                        ?? string.Empty,
                     EmployeeId = person.EmployeeId,
                     Department = person.Department,
                     JobTitle = person.JobTitle,

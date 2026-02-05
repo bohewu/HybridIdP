@@ -54,6 +54,8 @@ const formData = ref({
 
 const useCustomPath = ref(false)
 const customPathValue = ref('')
+const claimTypeManuallyEdited = ref(false)
+const autoClaimTypeSource = ref(null)
 
 // Check if current path is in the predefined options
 const isKnownPath = computed(() => {
@@ -62,11 +64,36 @@ const isKnownPath = computed(() => {
 
 // Check if claim is protected (PersonId-related fields)
 const isProtected = computed(() => {
+  if (!props.claim) {
+    return false
+  }
+
   const protectedPaths = ['PersonId', 'Person.NationalId', 'Person.NationalIdHash']
-  return protectedPaths.includes(formData.value.userPropertyPath)
+  return protectedPaths.includes(props.claim.userPropertyPath)
 })
 
 const saving = ref(false)
+
+const resetForm = () => {
+  formData.value = {
+    name: '',
+    displayName: '',
+    description: '',
+    claimType: '',
+    userPropertyPath: '',
+    dataType: 'String',
+    isRequired: false
+  }
+  useCustomPath.value = false
+  customPathValue.value = ''
+  claimTypeManuallyEdited.value = false
+  autoClaimTypeSource.value = null
+}
+
+const setClaimType = (value, source) => {
+  formData.value.claimType = value
+  autoClaimTypeSource.value = source
+}
 
 watch(() => props.claim, (newClaim) => {
   if (newClaim) {
@@ -79,24 +106,29 @@ watch(() => props.claim, (newClaim) => {
       dataType: newClaim.dataType,
       isRequired: newClaim.isRequired
     }
+    claimTypeManuallyEdited.value = true
+    autoClaimTypeSource.value = null
     // If existing claim has a custom path, show custom input
     const known = propertyPathOptions.some(opt => opt.value === newClaim.userPropertyPath)
     useCustomPath.value = !known && !!newClaim.userPropertyPath
     customPathValue.value = useCustomPath.value ? newClaim.userPropertyPath : ''
   } else {
-    formData.value = {
-      name: '',
-      displayName: '',
-      description: '',
-      claimType: '',
-      userPropertyPath: '',
-      dataType: 'String',
-      isRequired: false
-    }
-    useCustomPath.value = false
-    customPathValue.value = ''
+    resetForm()
   }
 }, { immediate: true })
+
+watch(() => props.show, (isOpen) => {
+  if (!isOpen)
+  {
+    resetForm()
+    return
+  }
+
+  if (!props.claim)
+  {
+    resetForm()
+  }
+})
 
 // Sync custom path value to formData
 watch(customPathValue, (val) => {
@@ -111,6 +143,27 @@ watch(useCustomPath, (val) => {
     formData.value.userPropertyPath = customPathValue.value
   } else {
     customPathValue.value = ''
+  }
+})
+
+watch(() => formData.value.name, (val) => {
+  if (!val || claimTypeManuallyEdited.value) {
+    return
+  }
+
+  if (!formData.value.claimType || autoClaimTypeSource.value === 'name') {
+    setClaimType(val, 'name')
+  }
+})
+
+watch(() => formData.value.userPropertyPath, (val) => {
+  if (!val || claimTypeManuallyEdited.value) {
+    return
+  }
+
+  if (!formData.value.claimType || autoClaimTypeSource.value === 'userPropertyPath') {
+    const normalized = val.replace(/\./g, '_')
+    setClaimType(normalized, 'userPropertyPath')
   }
 })
 
@@ -153,7 +206,7 @@ const handleClose = () => {
             v-model="formData.name"
             type="text"
             required
-            :disabled="claim?.isStandard || isProtected"
+            :disabled="claim?.isStandard"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.namePlaceholder')"
             data-test-id="claim-name-input"
@@ -195,6 +248,7 @@ const handleClose = () => {
             :disabled="claim?.isStandard || isProtected"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
             :placeholder="t('claims.form.claimTypePlaceholder')"
+              @input="claimTypeManuallyEdited = true"
              data-test-id="claim-type-input"
           />
           <p class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.claimTypeHelp') }}</p>

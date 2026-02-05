@@ -33,7 +33,7 @@ public class IndexModel : PageModel
         _logger = logger;
     }
 
-    public string UserName { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
     public int ClientCount { get; set; }
     public int ScopeCount { get; set; }
     public int ResourceCount { get; set; }
@@ -43,14 +43,15 @@ public class IndexModel : PageModel
         try
         {
             var user = await _userManager.GetUserAsync(User);
+            var preferredUsername = User.FindFirst(Claims.PreferredUsername)?.Value;
             if (user == null)
             {
                 _logger.LogWarning("User not found for ApplicationManager dashboard");
-                UserName = User.Identity?.Name ?? "User";
+                DisplayName = User.Identity?.Name ?? preferredUsername ?? "User";
                 return;
             }
 
-            UserName = user.UserName ?? User.Identity?.Name ?? "User";
+            DisplayName = User.Identity?.Name ?? preferredUsername ?? "User";
 
             // Get PersonId from claims
             var personIdClaim = User.FindFirst("person_id");

@@ -82,7 +82,7 @@
                 @* LEFT: Link Existing *@
                 <div class="@(isWide ? "pr-0 md:pr-4" : "")">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">@Localizer["LinkExistingAccount"]</h3>
-                    <p class="text-sm text-gray-500 mb-6">@Localizer["LinkExistingAccountDesc"]</p>
+                    <p class="text-sm text-gray-500 mb-6">@Localizer["LinkExistingAccountDesc", Model.AppName]</p>
                     
                     <form asp-page-handler="Link" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="space-y-4">
                         <div class="form-group">

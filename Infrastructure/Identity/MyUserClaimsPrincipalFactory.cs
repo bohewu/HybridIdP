@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Linq;
 using Core.Application;
 using Core.Domain;
 using Core.Domain.Constants;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Core.Application.Utilities;
 
 namespace Infrastructure.Identity;
 
@@ -94,6 +96,22 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
         }
 
         var identity = await base.GenerateClaimsAsync(user);
+
+        var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+            ?? user.UserName
+            ?? user.Email
+            ?? string.Empty;
+
+        if (!string.IsNullOrEmpty(displayName))
+        {
+            var nameClaimType = identity.NameClaimType;
+            var existingNameClaims = identity.FindAll(nameClaimType).ToList();
+            foreach (var claim in existingNameClaims)
+            {
+                identity.RemoveClaim(claim);
+            }
+            identity.AddClaim(new Claim(nameClaimType, displayName));
+        }
 
         // Add PersonId claim if user has an associated Person
         if (user.PersonId.HasValue)

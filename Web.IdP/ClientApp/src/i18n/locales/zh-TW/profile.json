@@ -1,6 +1,7 @@
 {
   "title": "我的個人檔案",
   "loading": "載入個人檔案中...",
+  "displayName": "顯示名稱",
   "username": "使用者名稱",
   "email": "電子郵件",
   "accountInfo": "帳號資訊",

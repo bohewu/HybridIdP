@@ -35,6 +35,9 @@
             userPermissions.Contains(Permissions.Clients.Read) ||
             userPermissions.Contains(Permissions.Scopes.Read);
     }
+
+    var preferredUsername = User?.FindFirst(Claims.PreferredUsername)?.Value;
+    var displayName = User?.Identity?.Name ?? preferredUsername ?? "User";
 }
 <!DOCTYPE html>
 <html lang="@currentCulture" class="h-full bg-gray-50">
@@ -81,7 +84,7 @@
     {
         <div class="impersonation-banner bg-yellow-50 text-yellow-800 text-center p-2 border-b border-yellow-200 sticky top-0 z-50 shadow-sm flex items-center justify-center font-medium" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            @string.Format(Localizer["ImpersonatingUser"], User?.Identity?.Name ?? "User")
+            @string.Format(Localizer["ImpersonatingUser"], displayName)
             <button id="stopImpersonationBtn" class="ml-3 px-2 py-1 text-xs font-bold text-yellow-900 border border-yellow-900 rounded hover:bg-yellow-100 flex items-center">
                 <i class="bi bi-arrow-return-left me-1"></i> @Localizer["StopImpersonation"]
             </button>
@@ -111,14 +114,14 @@
                                     <span class="sr-only">Open user menu</span>
                                     <div class="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium shadow-sm">
                                         @{  
-                                            var userName = User?.Identity?.Name ?? "?";
-                                            var userInitials = string.IsNullOrEmpty(userName) ? "?" : 
+                                            var userName = string.IsNullOrWhiteSpace(displayName) ? "?" : displayName;
+                                            var userInitials = string.IsNullOrEmpty(userName) ? "?" :
                                                 (userName.Contains("@") ? userName.Substring(0, Math.Min(2, userName.IndexOf('@'))).ToUpper() : userName.Substring(0, Math.Min(2, userName.Length)).ToUpper());
                                         }
                                         @userInitials
                                     </div>
                                     <div class="text-left">
-                                        <div class="text-sm font-medium text-gray-900">@(User?.Identity?.Name ?? "User")</div>
+                                        <div class="text-sm font-medium text-gray-900">@displayName</div>
                                         <div class="text-xs text-gray-500">@Localizer["MyAccount"]</div>
                                     </div>
                                     <i class="bi bi-chevron-down text-gray-400 text-xs ml-1"></i>
@@ -195,14 +198,14 @@
                              <div class="flex-shrink-0">
                                 <div class="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg">
                                     @{
-                                        var userName = User?.Identity?.Name ?? "?";
+                                        var userName = string.IsNullOrWhiteSpace(displayName) ? "?" : displayName;
                                         var initial = string.IsNullOrEmpty(userName) ? "?" : userName.Substring(0, 1).ToUpper();
                                     }
                                     @initial
                                 </div>
                             </div>
                             <div class="ml-3">
-                                <div class="text-base font-medium text-gray-800">@(User?.Identity?.Name ?? "User")</div>
+                                <div class="text-base font-medium text-gray-800">@displayName</div>
                             </div>
                         </div>
                     </div>

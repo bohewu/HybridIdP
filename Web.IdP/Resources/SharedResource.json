@@ -185,7 +185,7 @@
   "CompleteLogin": "Complete Login",
   "AuthenticateWith": "You've successfully authenticated with",
   "LinkExistingAccount": "Link to existing account",
-  "LinkExistingAccountDesc": "If you already have a HybridIdP account, sign in below to link it.",
+  "LinkExistingAccountDesc": "If you already have a {0} account, sign in below to link it.",
   "LinkAccount": "Link Account",
   "CreateNewAccount": "Create New Account",
   "CreateNewAccountDesc": "You can create a new account using your {0} profile.",
