@@ -261,37 +261,55 @@ public class ProfileManagementControllerTests : IDisposable
         Assert.Contains(profile.AvailableProviders, p => p.Scheme == "Google");
     }
 
-    #endregion
-
-    #region UpdateProfile Tests
-
     [Fact]
-    public async Task UpdateProfile_UserNotLinkedToPerson_ReturnsOk()
+    public async Task GetProfile_UserWithoutName_WithPerson_UsesPersonNameForDisplayName()
     {
         // Arrange
-        _mockUserManager.Setup(m => m.GetUserAsync(It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync(_testUser); // PersonId is null
-
-        var request = new UpdateProfileRequest
+        var person = new Person
         {
-            PhoneNumber = "+886-987-654-321"
+            Id = Guid.NewGuid(),
+            FirstName = "PersonFirst",
+            LastName = "PersonLast",
+            PhoneNumber = "+1234567890",
+            Locale = "en-US",
+            TimeZone = "UTC"
+        };
+        _dbContext.Persons.Add(person);
+        await _dbContext.SaveChangesAsync();
+
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "testuser",
+            Email = "test@example.com",
+            PersonId = person.Id,
+            FirstName = null,
+            LastName = null,
+            EmailConfirmed = true
         };
 
-        _mockAuditService.Setup(a => a.LogEventAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<string>()))
-            .Returns(Task.CompletedTask);
+        _mockUserManager.Setup(m => m.GetUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(user);
+        _mockUserManager.Setup(m => m.HasPasswordAsync(user))
+            .ReturnsAsync(true);
+        _mockUserManager.Setup(m => m.GetLoginsAsync(user))
+            .ReturnsAsync(new List<UserLoginInfo>());
+
+        var policy = new SecurityPolicy { AllowSelfPasswordChange = true };
+        _mockSecurityPolicyService.Setup(s => s.GetCurrentPolicyAsync())
+            .ReturnsAsync(policy);
 
         // Act
-        var result = await _controller.UpdateProfile(request);
+        var result = await _controller.GetProfile();
 
         // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        Assert.Contains("updated successfully", okResult.Value.ToString());
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var profile = Assert.IsType<ProfileDto>(okResult.Value);
+        
+        Assert.Equal("PersonFirst PersonLast", profile.DisplayName);
+        Assert.Equal("testuser", profile.UserName);
     }
+
 
     [Fact]
     public async Task UpdateProfile_ValidRequest_UpdatesPersonAndReturnsOk()

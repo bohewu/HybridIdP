@@ -320,6 +320,10 @@ import { useWebAuthn } from '../../composables/useWebAuthn';
 
 const { t } = useI18n();
 
+const props = defineProps<{
+  profile?: any
+}>();
+
 const emit = defineEmits<{
   (e: 'status-changed'): void
 }>();
@@ -497,11 +501,16 @@ async function loadMfaStatus() {
       mfaStatus.value = await response.json();
     }
     // Also fetch user email for Email MFA display
-    const profileResponse = await fetch('/api/profile', { credentials: 'include' });
-    if (profileResponse.ok) {
-      const profile = await profileResponse.json();
-      userEmail.value = profile.email || '';
-      userTimeZone.value = profile.timeZone || '';
+    if (props.profile) {
+      userEmail.value = props.profile.email || '';
+      userTimeZone.value = props.profile.timeZone || '';
+    } else {
+      const profileResponse = await fetch('/api/profile', { credentials: 'include' });
+      if (profileResponse.ok) {
+        const profile = await profileResponse.json();
+        userEmail.value = profile.email || '';
+        userTimeZone.value = profile.timeZone || '';
+      }
     }
   } catch (err) {
     console.error('Failed to load MFA status:', err);

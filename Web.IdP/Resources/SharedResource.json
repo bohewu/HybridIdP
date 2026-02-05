@@ -124,6 +124,7 @@
   "PasswordRequiresLower": "Passwords must have at least one lowercase ('a'-'z').",
   "PasswordRequiresUpper": "Passwords must have at least one uppercase ('A'-'Z').",
   "UserAccountLockedOut": "This account has been locked out, please try again later.",
+  "LockoutTitle": "Locked Out",
   "PasswordExpired": "Your password has expired. It must be changed every {0} days.",
   "PasswordChangeTooSoon": "You cannot change your password again so soon. Please wait at least {0} days.",
   "InvalidLoginAttempt": "Invalid login attempt.",

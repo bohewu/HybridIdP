@@ -138,11 +138,11 @@
         <div v-if="canRemove">
           <button 
             @click="removeLogin(login)" 
-            :disabled="removingLogin === login.providerKey"
+            :disabled="removingLogins[login.providerKey]"
             class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 active:bg-red-200 border border-red-200 rounded-md transition-colors focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             :title="t('profile.common.remove')"
           >
-            <svg v-if="removingLogin !== login.providerKey" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg v-if="!removingLogins[login.providerKey]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
             <svg v-else class="animate-spin h-4 w-4 text-red-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

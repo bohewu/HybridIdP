@@ -40,7 +40,7 @@
         <div class="px-6 py-4 border-b border-gray-200">
           <h2 class="text-lg font-medium text-gray-900">{{ t('mfa.securityTitle') || 'Security' }}</h2>
         </div>
-        <MfaSettings @status-changed="loadProfile" />
+        <MfaSettings :profile="profile" @status-changed="loadProfile" />
       </div>
     </div>
   </div>

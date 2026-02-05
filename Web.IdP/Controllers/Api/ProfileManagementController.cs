@@ -2,19 +2,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options; // Added
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
 using Core.Domain.Entities;
 using Infrastructure;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using Core.Application.Interfaces;
 using Core.Application.Utilities;
-using Web.IdP.Options;
 using Core.Application.Options; // Added
 
 namespace Web.IdP.Controllers.Api;
@@ -76,8 +71,6 @@ public class ProfileManagementController : ControllerBase
 
         // Determine available providers for linking
         var allSchemes = await _signInManager.GetExternalAuthenticationSchemesAsync();
-        var linkedProviders = externalLogins.Select(l => l.LoginProvider).ToHashSet();
-        
         // Count existing logins per provider
         var loginCountPerProvider = externalLogins
             .GroupBy(l => l.LoginProvider)
@@ -107,10 +100,18 @@ public class ProfileManagementController : ControllerBase
             })
             .ToList();
 
+        Person? person = null;
+        if (user.PersonId.HasValue)
+        {
+            person = await _dbContext.Persons
+                .FirstOrDefaultAsync(p => p.Id == user.PersonId.Value);
+        }
+
         var dto = new ProfileDto
         {
             UserId = user.Id,
             DisplayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+                ?? (person != null ? NameFormatter.BuildDisplayName(person.FirstName, person.MiddleName, person.LastName) : null)
                 ?? user.UserName ?? string.Empty,
             UserName = user.UserName ?? string.Empty,
             Email = user.Email,
@@ -136,33 +137,26 @@ public class ProfileManagementController : ControllerBase
             AvailableProviders = availableProviders
         };
 
-        // Load linked Person if exists
-        if (user.PersonId.HasValue)
+        if (person != null)
         {
-            var person = await _dbContext.Persons
-                .FirstOrDefaultAsync(p => p.Id == user.PersonId.Value);
-
-            if (person != null)
+            dto.Person = new PersonProfileDto
             {
-                dto.Person = new PersonProfileDto
-                {
-                    PersonId = person.Id,
-                    FullName = NameFormatter.BuildDisplayName(person.FirstName, person.MiddleName, person.LastName)
-                        ?? string.Empty,
-                    EmployeeId = person.EmployeeId,
-                    Department = person.Department,
-                    JobTitle = person.JobTitle,
-                    PhoneNumber = person.PhoneNumber,
-                    Locale = person.Locale,
-                    TimeZone = person.TimeZone
-                };
+                PersonId = person.Id,
+                FullName = NameFormatter.BuildDisplayName(person.FirstName, person.MiddleName, person.LastName)
+                    ?? string.Empty,
+                EmployeeId = person.EmployeeId,
+                Department = person.Department,
+                JobTitle = person.JobTitle,
+                PhoneNumber = person.PhoneNumber,
+                Locale = person.Locale,
+                TimeZone = person.TimeZone
+            };
 
-                // Fallback logic: If User definition is missing, use Person's
-                if (string.IsNullOrEmpty(dto.Locale)) dto.Locale = person.Locale;
-                if (string.IsNullOrEmpty(dto.TimeZone)) dto.TimeZone = person.TimeZone;
-                
-                // Note: PhoneNumber is not yet on Root DTO, so we rely on Person.PhoneNumber
-            }
+            // Fallback logic: If User definition is missing, use Person's
+            if (string.IsNullOrEmpty(dto.Locale)) dto.Locale = person.Locale;
+            if (string.IsNullOrEmpty(dto.TimeZone)) dto.TimeZone = person.TimeZone;
+            
+            // Note: PhoneNumber is not yet on Root DTO, so we rely on Person.PhoneNumber
         }
 
         _logger.LogInformation("Profile retrieved for user {UserId}", user.Id);
@@ -246,7 +240,7 @@ public class ProfileManagementController : ControllerBase
             Response.Cookies.Append(
                 Microsoft.AspNetCore.Localization.CookieRequestCultureProvider.DefaultCookieName,
                 Microsoft.AspNetCore.Localization.CookieRequestCultureProvider.MakeCookieValue(new Microsoft.AspNetCore.Localization.RequestCulture(culture)),
-                new Microsoft.AspNetCore.Http.CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), Secure = true, SameSite = SameSiteMode.Lax }
+                new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), Secure = true, SameSite = SameSiteMode.Lax }
             );
         }
 

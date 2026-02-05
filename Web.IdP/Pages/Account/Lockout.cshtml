@@ -1,0 +1,25 @@
+@page
+@model Web.IdP.Pages.Account.LockoutModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["LockoutTitle"];
+    Layout = "_SimpleLayout";
+}
+
+<div class="google-login-card">
+    <div class="google-login-header mb-6 text-center">
+         <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+            <i class="bi bi-lock text-2xl text-red-600"></i>
+        </div>
+        <h1 class="text-2xl font-normal text-gray-900 mb-2">@ViewData["Title"]</h1>
+        <p class="text-base text-gray-600">@Localizer["UserAccountLockedOut"]</p>
+    </div>
+    
+    <div class="google-login-body">
+        <div class="flex flex-col gap-3">
+            <a href="/" class="btn-google-blue w-full justify-center text-center no-underline">
+                @Localizer["ReturnHome"]
+            </a>
+        </div>
+    </div>
+</div>
