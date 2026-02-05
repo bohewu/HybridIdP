@@ -22,8 +22,7 @@ const propertyPathOptions = [
   { value: 'Person.JobTitle', labelKey: 'claims.form.propertyPaths.personJobTitle' },
   { value: 'Person.EmployeeId', labelKey: 'claims.form.propertyPaths.personEmployeeId' },
   { value: 'Person.Email', labelKey: 'claims.form.propertyPaths.personEmail' },
-  { value: 'Person.NationalId', labelKey: 'claims.form.propertyPaths.personNationalId' },
-  { value: 'Person.NationalIdHash', labelKey: 'claims.form.propertyPaths.personNationalIdHash' }
+  { value: 'Person.NationalId', labelKey: 'claims.form.propertyPaths.personNationalIdHash' }
 ]
 
 const props = defineProps({

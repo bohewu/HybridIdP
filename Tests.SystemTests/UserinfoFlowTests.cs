@@ -133,6 +133,41 @@ public class UserinfoFlowTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// Task 4b: Verify that person_id claim is returned when profile scope is granted.
+    /// PersonId is mapped to profile scope and should appear in UserInfo endpoint.
+    /// </summary>
+    [Fact]
+    public async Task Userinfo_WithProfileScope_ReturnsPersonIdClaim()
+    {
+        // Arrange - request openid + profile scope
+        var token = await TryGetUserTokenAsync("openid profile");
+        if (token == null)
+        {
+            return;
+        }
+
+        _httpClient.DefaultRequestHeaders.Authorization = 
+            new AuthenticationHeaderValue("Bearer", token);
+
+        // Act
+        var response = await _httpClient.GetAsync("/connect/userinfo");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
+        
+        Assert.True(result.TryGetProperty("sub", out _), "Subject claim should be present");
+        Assert.True(result.TryGetProperty("person_id", out var personIdValue), 
+            "person_id claim should be returned when profile scope is granted");
+        
+        // PersonId should be a non-empty GUID string
+        var personId = personIdValue.GetString();
+        Assert.False(string.IsNullOrEmpty(personId), "person_id should not be empty");
+        Assert.True(Guid.TryParse(personId, out _), "person_id should be a valid GUID");
+    }
+
+    /// <summary>
     /// Verify that email claim is NOT returned when only openid scope is granted.
     /// This tests OIDC compliance - claims should only be returned for granted scopes.
     /// </summary>

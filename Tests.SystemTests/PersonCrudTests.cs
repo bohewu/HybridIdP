@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Linq;
 using System.Text.Json;
 using Xunit;
 
@@ -269,6 +270,201 @@ public class PersonCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
         Assert.Contains("●", passportNumber); // Still masked = still exists
     }
 
+    /// <summary>
+    /// Task 4d: Verify that NationalId is returned as a masked value (not plaintext).
+    /// </summary>
+    [Fact]
+    public async Task GetPerson_WithNationalId_ReturnsMaskedValue()
+    {
+        // Arrange - create person with NationalId
+        var nationalId = GenerateValidTaiwanNationalId();
+        var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+        var request = new
+        {
+            employeeId = $"{TEST_PREFIX}n_{shortId}",
+            firstName = "NatId",
+            lastName = "Test",
+            nationalId = nationalId
+        };
+        var createRes = await _httpClient.PostAsJsonAsync("/api/admin/people", request);
+        createRes.EnsureSuccessStatusCode();
+        var created = await createRes.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+        var personId = created.GetProperty("id").GetString()!;
+        _createdPersonIds.Add(personId);
+
+        // Act
+        var response = await _httpClient.GetAsync($"/api/admin/people/{personId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        var person = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
+        
+        // NationalId should be masked, not plaintext and not empty
+        var returnedNationalId = person.GetProperty("nationalId").GetString();
+        Assert.NotNull(returnedNationalId);
+        Assert.NotEmpty(returnedNationalId);
+        Assert.NotEqual(nationalId, returnedNationalId); // Should NOT be plaintext
+        Assert.Contains("●", returnedNationalId); // Should be masked with bullets
+    }
+
+    /// <summary>
+    /// Task 4d: Verify that empty NationalId in update preserves existing value (immutability).
+    /// </summary>
+    [Fact]
+    public async Task UpdatePerson_WithEmptyNationalId_PreservesExistingValue()
+    {
+        // Arrange - create person with NationalId
+        var nationalId = GenerateValidTaiwanNationalId();
+        var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+        var request = new
+        {
+            employeeId = $"{TEST_PREFIX}ni_{shortId}",
+            firstName = "PreserveNat",
+            lastName = "Test",
+            nationalId = nationalId
+        };
+        var createRes = await _httpClient.PostAsJsonAsync("/api/admin/people", request);
+        createRes.EnsureSuccessStatusCode();
+        var created = await createRes.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+        var personId = created.GetProperty("id").GetString()!;
+        _createdPersonIds.Add(personId);
+
+        // Act - update with empty nationalId (should preserve existing)
+        var updateRequest = new
+        {
+            firstName = "StillPreserveNat",
+            lastName = "Test",
+            nationalId = "" // Empty - should NOT overwrite
+        };
+        var updateRes = await _httpClient.PutAsJsonAsync($"/api/admin/people/{personId}", updateRequest);
+        Assert.Equal(HttpStatusCode.OK, updateRes.StatusCode);
+
+        // Assert - NationalId should still be masked (not empty)
+        var getRes = await _httpClient.GetAsync($"/api/admin/people/{personId}");
+        var person = await getRes.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+        var returnedNationalId = person.GetProperty("nationalId").GetString();
+        Assert.NotNull(returnedNationalId);
+        Assert.NotEmpty(returnedNationalId);
+        Assert.Contains("●", returnedNationalId); // Still masked = still exists
+    }
+
+    /// <summary>
+    /// Verify that ResidentCertificateNumber is returned as a masked value (not plaintext).
+    /// </summary>
+    [Fact]
+    public async Task GetPerson_WithResidentCertificateNumber_ReturnsMaskedValue()
+    {
+        var residentCert = GenerateResidentCertificateNumber();
+        var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+        var request = new
+        {
+            employeeId = $"{TEST_PREFIX}rc_{shortId}",
+            firstName = "ResCert",
+            lastName = "Test",
+            residentCertificateNumber = residentCert
+        };
+        var createRes = await _httpClient.PostAsJsonAsync("/api/admin/people", request);
+        createRes.EnsureSuccessStatusCode();
+        var created = await createRes.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+        var personId = created.GetProperty("id").GetString()!;
+        _createdPersonIds.Add(personId);
+
+        var response = await _httpClient.GetAsync($"/api/admin/people/{personId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        var person = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
+
+        var returnedResidentCert = person.GetProperty("residentCertificateNumber").GetString();
+        Assert.NotNull(returnedResidentCert);
+        Assert.NotEmpty(returnedResidentCert);
+        Assert.NotEqual(residentCert, returnedResidentCert);
+        Assert.Contains("●", returnedResidentCert);
+    }
+
+    /// <summary>
+    /// Verify that empty ResidentCertificateNumber in update preserves existing value.
+    /// </summary>
+    [Fact]
+    public async Task UpdatePerson_WithEmptyResidentCertificateNumber_PreservesExistingValue()
+    {
+        var residentCert = GenerateResidentCertificateNumber();
+        var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+        var request = new
+        {
+            employeeId = $"{TEST_PREFIX}rcp_{shortId}",
+            firstName = "PreserveRes",
+            lastName = "Test",
+            residentCertificateNumber = residentCert
+        };
+        var createRes = await _httpClient.PostAsJsonAsync("/api/admin/people", request);
+        createRes.EnsureSuccessStatusCode();
+        var created = await createRes.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+        var personId = created.GetProperty("id").GetString()!;
+        _createdPersonIds.Add(personId);
+
+        var updateRequest = new
+        {
+            firstName = "StillPreserveRes",
+            lastName = "Test",
+            residentCertificateNumber = ""
+        };
+        var updateRes = await _httpClient.PutAsJsonAsync($"/api/admin/people/{personId}", updateRequest);
+        Assert.Equal(HttpStatusCode.OK, updateRes.StatusCode);
+
+        var getRes = await _httpClient.GetAsync($"/api/admin/people/{personId}");
+        var person = await getRes.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+        var returnedResidentCert = person.GetProperty("residentCertificateNumber").GetString();
+        Assert.NotNull(returnedResidentCert);
+        Assert.NotEmpty(returnedResidentCert);
+        Assert.Contains("●", returnedResidentCert);
+    }
+
+    /// <summary>
+    /// Verify that updating ResidentCertificateNumber when already set is allowed.
+    /// </summary>
+    [Fact]
+    public async Task UpdatePerson_WithNewResidentCertificateNumber_WhenAlreadySet_AllowsUpdate()
+    {
+        var residentCert = GenerateResidentCertificateNumber();
+        var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+        var request = new
+        {
+            employeeId = $"{TEST_PREFIX}rcu_{shortId}",
+            firstName = "UpdateRes",
+            lastName = "Test",
+            residentCertificateNumber = residentCert
+        };
+        var createRes = await _httpClient.PostAsJsonAsync("/api/admin/people", request);
+        createRes.EnsureSuccessStatusCode();
+        var created = await createRes.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+        var personId = created.GetProperty("id").GetString()!;
+        _createdPersonIds.Add(personId);
+
+        var newResidentCert = GenerateResidentCertificateNumber();
+        while (newResidentCert == residentCert)
+        {
+            newResidentCert = GenerateResidentCertificateNumber();
+        }
+        var updateRequest = new
+        {
+            firstName = "UpdateRes",
+            lastName = "Test",
+            residentCertificateNumber = newResidentCert
+        };
+        var updateRes = await _httpClient.PutAsJsonAsync($"/api/admin/people/{personId}", updateRequest);
+
+        Assert.Equal(HttpStatusCode.OK, updateRes.StatusCode);
+
+        var getRes = await _httpClient.GetAsync($"/api/admin/people/{personId}");
+        var person = await getRes.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions);
+        var returnedResidentCert = person.GetProperty("residentCertificateNumber").GetString();
+        Assert.NotNull(returnedResidentCert);
+        Assert.NotEmpty(returnedResidentCert);
+        Assert.Contains("●", returnedResidentCert);
+    }
+
     // ===== Failure Path Tests =====
 
     [Fact]
@@ -322,6 +518,53 @@ public class PersonCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
         var id = created.GetProperty("id").GetString()!;
         _createdPersonIds.Add(id);
         return id;
+    }
+
+    private static string GenerateResidentCertificateNumber()
+    {
+        const string letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        var first = letters[Random.Shared.Next(letters.Length)];
+        var second = letters[Random.Shared.Next(letters.Length)];
+        var digits = Random.Shared.Next(0, 100000000).ToString("D8");
+        return $"{first}{second}{digits}";
+    }
+
+    private static string GenerateValidTaiwanNationalId()
+    {
+        var letterValues = new Dictionary<char, int>
+        {
+            {'A', 10}, {'B', 11}, {'C', 12}, {'D', 13}, {'E', 14}, {'F', 15},
+            {'G', 16}, {'H', 17}, {'I', 34}, {'J', 18}, {'K', 19}, {'L', 20},
+            {'M', 21}, {'N', 22}, {'O', 35}, {'P', 23}, {'Q', 24}, {'R', 25},
+            {'S', 26}, {'T', 27}, {'U', 28}, {'V', 29}, {'W', 32}, {'X', 30},
+            {'Y', 31}, {'Z', 33}
+        };
+
+        var letters = letterValues.Keys.ToArray();
+        var letter = letters[Random.Shared.Next(letters.Length)];
+        var digits = new int[9];
+
+        for (int i = 0; i < 8; i++)
+        {
+            digits[i] = Random.Shared.Next(0, 10);
+        }
+
+        var letterValue = letterValues[letter];
+        int[] weights = { 1, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+        int firstDigit = letterValue / 10;
+        int secondDigit = letterValue % 10;
+
+        int sum = firstDigit * weights[0] + secondDigit * weights[1];
+        for (int i = 1; i < 9; i++)
+        {
+            sum += digits[i - 1] * weights[i + 1];
+        }
+
+        int checksum = (10 - (sum % 10)) % 10;
+        digits[8] = checksum;
+
+        var middleDigits = string.Concat(digits.Take(9));
+        return $"{letter}{middleDigits}";
     }
 
     private async Task<string> GetAdminTokenAsync()
