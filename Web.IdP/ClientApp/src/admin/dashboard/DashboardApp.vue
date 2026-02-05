@@ -185,9 +185,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { HubConnectionBuilder } from '@microsoft/signalr'
+
 import ActivityDashboard from '../monitoring/components/ActivityDashboard.vue'
 import SecurityMetrics from '../monitoring/components/SecurityMetrics.vue'
 import RealTimeAlerts from '../monitoring/components/RealTimeAlerts.vue'
@@ -207,7 +207,7 @@ const healthData = ref(null)
 const healthLoading = ref(false)
 const healthError = ref(null)
 
-const hubConnection = ref(null)
+
 
 const fetchStats = async () => {
   try {
@@ -251,42 +251,12 @@ const fetchHealth = async () => {
     }
 }
 
-const setupSignalR = async () => {
-  try {
-    hubConnection.value = new HubConnectionBuilder()
-      .withUrl('/monitoringHub')
-      .build()
 
-    await hubConnection.value.start()
-
-    // Listen for updates
-    hubConnection.value.on('ActivityStatsUpdated', () => {
-      // Could refresh data here
-    })
-
-    hubConnection.value.on('SecurityAlertsUpdated', () => {
-    })
-
-    hubConnection.value.on('SystemMetricsUpdated', () => {
-    })
-  } catch (err) {
-    console.error('SignalR connection failed:', err)
-  }
-}
-
-const cleanupSignalR = () => {
-  if (hubConnection.value) {
-    hubConnection.value.stop()
-  }
-}
 
 onMounted(async () => {
   await fetchStats()
   fetchHealth() // Don't await, let it load in background
-  await setupSignalR()
 })
 
-onUnmounted(() => {
-  cleanupSignalR()
-})
+
 </script>

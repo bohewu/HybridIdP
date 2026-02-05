@@ -64,23 +64,30 @@ const totalCount = ref(0)
 const search = ref('')
 const isActiveFilter = ref('') // '', 'true', 'false'
 const sort = ref('email:asc')
+const inFlightParams = ref(null)
 
 const fetchUsers = async () => {
+  const params = new URLSearchParams({
+    skip: String((page.value - 1) * pageSize.value),
+    take: String(pageSize.value),
+    search: search.value || '',
+    sort: sort.value || ''
+  })
+  
+  if (isActiveFilter.value !== '') {
+    params.append('isActive', isActiveFilter.value)
+  }
+
+  const queryString = params.toString()
+  if (inFlightParams.value === queryString) {
+    return
+  }
+  inFlightParams.value = queryString
+
   loading.value = true
   error.value = null
   try {
-    const params = new URLSearchParams({
-      skip: String((page.value - 1) * pageSize.value),
-      take: String(pageSize.value),
-      search: search.value || '',
-      sort: sort.value || ''
-    })
-    
-    if (isActiveFilter.value !== '') {
-      params.append('isActive', isActiveFilter.value)
-    }
-    
-    const response = await fetch(`/api/admin/users?${params.toString()}`)
+    const response = await fetch(`/api/admin/users?${queryString}`)
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
@@ -92,7 +99,10 @@ const fetchUsers = async () => {
     error.value = t('users.errors.loadFailed', { message: e.message })
     console.error('Error fetching users:', e)
   } finally {
-    loading.value = false
+    if (inFlightParams.value === queryString) {
+      inFlightParams.value = null
+      loading.value = false
+    }
   }
 }
 
