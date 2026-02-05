@@ -71,6 +71,13 @@ public static class WebApplicationExtensions
             .AddSupportedCultures(supportedCultures)
             .AddSupportedUICultures(supportedCultures);
 
+        localizationOptions.RequestCultureProviders = new IRequestCultureProvider[]
+        {
+            new QueryStringRequestCultureProvider(),
+            new CookieRequestCultureProvider(),
+            new AcceptLanguageHeaderRequestCultureProvider()
+        };
+
         app.UseRequestLocalization(localizationOptions);
 
         // Use rate limiting middleware if enabled

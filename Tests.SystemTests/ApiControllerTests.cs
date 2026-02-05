@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Linq;
+using Microsoft.AspNetCore.Localization;
 using Xunit;
 
 namespace Tests.SystemTests;
@@ -53,6 +55,25 @@ public class ApiControllerTests : IClassFixture<WebIdPServerFixture>, IAsyncLife
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Language_SetValidCulture_SetsCultureCookie_WithRootPath()
+    {
+        // Arrange
+        var request = new { culture = "en-US" };
+
+        // Act
+        var response = await _httpClient.PostAsJsonAsync("/api/language/set", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.TryGetValues("Set-Cookie", out var setCookies));
+        var cultureCookie = setCookies.FirstOrDefault(c => c.Contains(CookieRequestCultureProvider.DefaultCookieName));
+        Assert.False(string.IsNullOrEmpty(cultureCookie));
+        Assert.Contains("c=en-US", cultureCookie);
+        Assert.Contains("uic=en-US", cultureCookie);
+        Assert.Contains("Path=/", cultureCookie);
     }
 
     [Fact]

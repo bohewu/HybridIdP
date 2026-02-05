@@ -19,10 +19,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Language Selector
     const languageSelects = document.querySelectorAll('.language-select');
     languageSelects.forEach(select => {
-        select.addEventListener('change', (e) => {
+        select.addEventListener('change', async (e) => {
             const culture = e.target.value;
             const url = new URL(window.location.href);
-            url.searchParams.set('culture', culture);
+            url.searchParams.delete('culture');
+            url.searchParams.delete('ui-culture');
+
+            try {
+                const response = await fetch('/api/language/set', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ culture })
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to set language');
+                }
+            } catch (error) {
+                console.error('Error setting language:', error);
+            }
+
             window.location.href = url.toString();
         });
     });
