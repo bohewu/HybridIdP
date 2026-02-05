@@ -56,6 +56,7 @@ onMounted(async () => {
       v-model="showAccessDenied"
       :message="deniedMessage"
       :permission="deniedPermission"
+      :show="showAccessDenied"
     />
   </div>
 </template>

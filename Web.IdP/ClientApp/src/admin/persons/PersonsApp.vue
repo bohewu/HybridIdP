@@ -43,7 +43,7 @@ onMounted(async () => {
     return
   }
   
-  fetchPersons()
+  await fetchPersons()
 })
 
 // Paging / filtering / sorting state

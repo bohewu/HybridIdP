@@ -58,7 +58,7 @@ public class UsersController : ControllerBase
     /// </summary>
     /// <param name="role">Optional role filter</param>
     /// <param name="isActive">Optional active status filter</param>
-    /// <param name="sortBy">Optional sort field: email, username, firstname, lastname, createdat (default: email)</param>
+    /// <param name="sortBy">Optional sort field: email, username, firstname, lastname, department, createdat (default: email)</param>
     /// <param name="sortDirection">Sort direction: asc or desc (default: asc)</param>
     [HttpGet]
     [HasPermission(Permissions.Users.Read)]

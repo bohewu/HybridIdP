@@ -54,7 +54,7 @@ onMounted(async () => {
     return
   }
   
-  fetchUsers()
+  await fetchUsers()
 })
 
 // Paging / filtering / sorting state
@@ -70,9 +70,14 @@ const fetchUsers = async () => {
   const params = new URLSearchParams({
     skip: String((page.value - 1) * pageSize.value),
     take: String(pageSize.value),
-    search: search.value || '',
-    sort: sort.value || ''
+    search: search.value || ''
   })
+
+  if (sort.value) {
+    const [field, direction] = sort.value.split(':')
+    if (field) params.append('sortBy', field)
+    if (direction) params.append('sortDirection', direction)
+  }
   
   if (isActiveFilter.value !== '') {
     params.append('isActive', isActiveFilter.value)

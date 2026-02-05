@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import {onMounted, onUnmounted, ref} from 'vue'
 import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
-import { useI18n } from 'vue-i18n'
+import {useI18n} from 'vue-i18n'
 import * as signalR from '@microsoft/signalr'
 
 const { t } = useI18n()
@@ -32,8 +32,7 @@ const fetchStats = async () => {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    const data = await response.json()
-    stats.value = data
+    stats.value = await response.json()
   } catch (err) {
     console.error('Failed to fetch activity stats:', err)
     error.value = err.message || 'Failed to load activity statistics'

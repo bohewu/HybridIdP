@@ -129,7 +129,7 @@ onMounted(() => {
 <template>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <!-- Left Column: Available Scopes -->
-    <div class="bg-white border border-gray-200 rounded-lg flex flex-col h-[600px] shadow-sm">
+    <div class="bg-white border border-gray-200 rounded-lg flex flex-col h-150 shadow-sm">
       <div class="p-4 border-b border-gray-100 bg-white rounded-t-lg z-10">
         <div class="flex items-center justify-between mb-3">
           <h4 class="font-normal text-lg text-gray-800" data-test="csm-available-header">{{ t('clients.form.scopeManager.availableScopes') }}</h4>
@@ -221,7 +221,7 @@ onMounted(() => {
     </div>
 
     <!-- Right Column: Selected Scopes -->
-    <div class="bg-white border border-gray-200 rounded-lg flex flex-col h-[600px] shadow-sm" data-test="csm-selected">
+    <div class="bg-white border border-gray-200 rounded-lg flex flex-col h-150 shadow-sm" data-test="csm-selected">
       <div class="p-4 border-b border-gray-100 bg-white rounded-t-lg z-10">
         <div class="flex items-center justify-between mb-3">
           <h4 class="font-normal text-lg text-gray-800">{{ t('clients.form.scopeManager.clientScopes') }}</h4>
@@ -264,7 +264,7 @@ onMounted(() => {
                  <p class="text-sm font-medium text-gray-900 truncate">
                   {{ scope.displayName || scope.name }}
                 </p>
-                <div v-if="isRequired(scope.name)" class="flex-shrink-0">
+                <div v-if="isRequired(scope.name)" class="shrink-0">
                     <i class="bi bi-asterisk text-[8px] text-red-500 align-top" title="Required"></i>
                 </div>
             </div>

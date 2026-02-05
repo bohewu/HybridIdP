@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import {onMounted, onUnmounted, ref} from 'vue'
 import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
-import { useI18n } from 'vue-i18n'
+import {useI18n} from 'vue-i18n'
 import * as signalR from '@microsoft/signalr'
 
 const { t } = useI18n()
@@ -27,8 +27,7 @@ const fetchAlerts = async () => {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    const data = await response.json()
-    alerts.value = data
+    alerts.value = await response.json()
   } catch (err) {
     console.error('Failed to fetch real-time alerts:', err)
     error.value = err.message || 'Failed to load alerts'

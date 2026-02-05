@@ -82,6 +82,9 @@ public class UserManagementService : IUserManagementService
             "lastname" => isDesc
                 ? query.OrderByDescending(u => u.LastName)
                 : query.OrderBy(u => u.LastName),
+            "department" => isDesc
+                ? query.OrderByDescending(u => u.Person.Department ?? u.Department)
+                : query.OrderBy(u => u.Person.Department ?? u.Department),
             "createdat" => isDesc
                 ? query.OrderByDescending(u => u.CreatedAt)
                 : query.OrderBy(u => u.CreatedAt),

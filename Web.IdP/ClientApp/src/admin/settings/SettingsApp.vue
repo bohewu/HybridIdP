@@ -57,7 +57,7 @@ onMounted(async () => {
       </div>
 
       <!-- Access Denied -->
-      <AccessDeniedDialog v-if="!loading && !hasReadPermission" />
+      <AccessDeniedDialog v-if="!loading && !hasReadPermission" :show="!loading && !hasReadPermission" />
 
       <!-- Settings Sections -->
       <div v-if="!loading && !error && hasReadPermission" class="space-y-6">

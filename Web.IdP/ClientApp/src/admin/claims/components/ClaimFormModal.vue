@@ -170,7 +170,7 @@ watch(() => formData.value.userPropertyPath, (val) => {
 const handleSubmit = async () => {
   saving.value = true
   try {
-    await emit('save', formData.value)
+    emit('save', formData.value)
   } finally {
     saving.value = false
   }
