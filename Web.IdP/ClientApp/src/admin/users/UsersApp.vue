@@ -373,9 +373,7 @@ const handleImpersonate = async (user) => {
   }
 }
 
-onMounted(() => {
-  fetchUsers()
-})
+
 
 </script>
 
