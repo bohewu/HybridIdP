@@ -1,5 +1,8 @@
 import { computed, watch } from 'vue'
 
+export const clientCredentialsPermission = 'gt:client_credentials'
+export const publicIdentityScopes = ['openid', 'profile', 'email', 'roles']
+
 /**
  * All available permissions from OpenIddict
  * @returns {Array} Permission definitions with value, labelKey, and category
@@ -135,6 +138,24 @@ export function validateUriList(text, ctx, path, messageTemplate) {
                 path: [path]
             })
         }
+    })
+}
+
+/**
+ * Detects invalid combinations of Client Credentials + public identity scopes.
+ *
+ * @param {string[]} permissions - Permission/scope values from the form
+ * @returns {boolean} True when the combination violates backend rules
+ */
+export function hasClientCredentialsPublicScopeConflict(permissions = []) {
+    const hasClientCredentials = permissions.includes(clientCredentialsPermission)
+    if (!hasClientCredentials) {
+        return false
+    }
+
+    return permissions.some(permission => {
+        const scope = permission.startsWith('scp:') ? permission.substring(4) : permission
+        return publicIdentityScopes.includes(scope)
     })
 }
 

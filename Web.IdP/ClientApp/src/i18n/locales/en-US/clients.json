@@ -97,6 +97,7 @@
     "allowedScopes": "Allowed Scopes",
     "allowedScopesHelp": "Select which scopes this client is allowed to request. This acts as a whitelist. Include 'openid' for ID Tokens/Userinfo (OIDC); not required for pure OAuth2 API access.",
     "allowedScopesRequired": "At least one scope must be selected",
+    "allowedScopesClientCredentialsConflict": "Client Credentials clients cannot use public identity scopes (openid, profile, email, roles). Remove these scopes or disable the Client Credentials grant.",
     "allowedScopesOpenidRequired": "Tip: Include 'openid' scope if you need ID Tokens or Userinfo",
     "allowedScopesLoading": "Loading available scopes...",
     "allowedScopesNone": "No scopes available. Please create scopes first.",

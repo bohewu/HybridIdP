@@ -97,6 +97,7 @@
     "allowedScopes": "允許的範圍",
     "allowedScopesHelp": "選擇此用戶端允許請求的範圍。這是一個白名單 - 用戶端只能獲得包含這些範圍的權杖。若需使用 ID Token 或 Userinfo 端點 (OIDC)，請加入 'openid' 範圍；純 OAuth2 API 存取則可不需要。",
     "allowedScopesRequired": "至少需要選擇一個範圍",
+    "allowedScopesClientCredentialsConflict": "使用 Client Credentials 授予的用戶端不可使用公開身分範圍（openid、profile、email、roles）。請移除這些範圍，或停用 Client Credentials 授予。",
     "allowedScopesOpenidRequired": "提示：若需 ID Token 或 Userinfo，請加入 'openid' 範圍",
     "allowedScopesCount": "已選擇：{count} 個範圍",
     "allowedScopesLoading": "載入可用範圍中...",

@@ -9,7 +9,8 @@ import AuthUrlGenerator from './AuthUrlGenerator.vue'
 import { 
   useClientFormLogic, 
   validateUriList,
-  availablePermissions 
+  availablePermissions,
+  hasClientCredentialsPublicScopeConflict
 } from '../composables/useClientFormLogic'
 
 const { t } = useI18n()
@@ -86,6 +87,14 @@ const schema = computed(() => {
     }
     if (data.postLogoutRedirectUris) {
       validateUriList(data.postLogoutRedirectUris, ctx, 'postLogoutRedirectUris', t('clients.form.postLogoutRedirectUrisInvalid'))
+    }
+
+    if (hasClientCredentialsPublicScopeConflict(data.permissions)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: t('clients.form.allowedScopesClientCredentialsConflict'),
+        path: ['allowedScopes']
+      })
     }
     
   })

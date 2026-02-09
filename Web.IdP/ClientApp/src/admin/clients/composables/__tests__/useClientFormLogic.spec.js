@@ -5,6 +5,7 @@ import {
     usePermissionsByCategory,
     useLocalAllowedScopes,
     validateUriList,
+    hasClientCredentialsPublicScopeConflict,
     availablePermissions,
     useClientFormLogic
 } from '../useClientFormLogic'
@@ -170,6 +171,24 @@ describe('useClientFormLogic', () => {
             validateUriList('https://example.com\n\n\nhttps://localhost', ctx, 'redirectUris', 'Invalid URI on line {line}')
 
             expect(ctx.addIssue).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('hasClientCredentialsPublicScopeConflict', () => {
+        it('returns false when client_credentials is not selected', () => {
+            expect(hasClientCredentialsPublicScopeConflict(['scp:openid', 'gt:authorization_code'])).toBe(false)
+        })
+
+        it('returns false when selected scopes do not include public identity scopes', () => {
+            expect(hasClientCredentialsPublicScopeConflict(['gt:client_credentials', 'scp:api'])).toBe(false)
+        })
+
+        it('returns true when client_credentials includes public identity scope permissions', () => {
+            expect(hasClientCredentialsPublicScopeConflict(['gt:client_credentials', 'scp:openid'])).toBe(true)
+        })
+
+        it('returns true when scopes are provided without scp prefix', () => {
+            expect(hasClientCredentialsPublicScopeConflict(['gt:client_credentials', 'email'])).toBe(true)
         })
     })
 
