@@ -11,6 +11,7 @@ export const availablePermissions = [
     // Endpoints
     { value: 'ept:authorization', labelKey: 'authorizationEndpoint', category: 'endpoints' },
     { value: 'ept:token', labelKey: 'tokenEndpoint', category: 'endpoints' },
+    { value: 'ept:userinfo', labelKey: 'userInfoEndpoint', category: 'endpoints' },
     { value: 'ept:end_session', labelKey: 'endSessionEndpoint', category: 'endpoints' },
     { value: 'ept:introspection', labelKey: 'introspectionEndpoint', category: 'endpoints' },
     { value: 'ept:revocation', labelKey: 'revocationEndpoint', category: 'endpoints' },

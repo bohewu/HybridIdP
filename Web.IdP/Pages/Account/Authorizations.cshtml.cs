@@ -36,16 +36,17 @@ public class AuthorizationsModel : PageModel
         
         await foreach (var app in _applicationManager.ListAsync())
         {
-            var clientType = await _applicationManager.GetClientTypeAsync(app);
             var displayName = await _applicationManager.GetDisplayNameAsync(app);
             var redirectUris = await _applicationManager.GetRedirectUrisAsync(app);
+            var permissions = await _applicationManager.GetPermissionsAsync(app);
             
-            // Filter: Only public clients with display name and redirect URIs
-            bool isPublicClient = clientType == OpenIddictConstants.ClientTypes.Public;
+            // Filter: only interactive clients with display name and redirect URIs.
+            // Interactive clients can be public or confidential and must be allowed to use authorization endpoint.
+            bool isInteractiveClient = permissions.Contains(OpenIddictConstants.Permissions.Endpoints.Authorization, StringComparer.Ordinal);
             bool hasDisplayName = !string.IsNullOrEmpty(displayName);
             bool hasRedirectUri = redirectUris.Any();
             
-            if (!isPublicClient || !hasDisplayName || !hasRedirectUri)
+            if (!isInteractiveClient || !hasDisplayName || !hasRedirectUri)
             {
                 continue;
             }

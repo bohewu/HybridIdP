@@ -127,6 +127,7 @@
     "permissionLabels": {
       "authorizationEndpoint": "授權端點 (Authorization)",
       "tokenEndpoint": "權杖端點 (Token)",
+      "userInfoEndpoint": "使用者資訊端點 (UserInfo)",
       "endSessionEndpoint": "結束工作階段端點 (End Session)",
       "introspectionEndpoint": "內省端點 (Introspection)",
       "revocationEndpoint": "撤銷端點 (Revocation)",

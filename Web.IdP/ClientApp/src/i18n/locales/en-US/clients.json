@@ -126,6 +126,7 @@
     "permissionLabels": {
       "authorizationEndpoint": "Authorization Endpoint",
       "tokenEndpoint": "Token Endpoint",
+      "userInfoEndpoint": "UserInfo Endpoint",
       "endSessionEndpoint": "End Session Endpoint",
       "introspectionEndpoint": "Introspection Endpoint",
       "revocationEndpoint": "Revocation Endpoint",
