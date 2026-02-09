@@ -549,6 +549,15 @@ public class ClientService : IClientService
 
         await _applicationManager.DeleteAsync(application);
 
+        if (!string.IsNullOrWhiteSpace(clientId))
+        {
+            var ownerships = _context.ClientOwnerships
+                .Where(co => co.ClientId == clientId);
+
+            _context.ClientOwnerships.RemoveRange(ownerships);
+            await _context.SaveChangesAsync(CancellationToken.None);
+        }
+
         // Publish domain event
         await _eventPublisher.PublishAsync(new ClientDeletedEvent(id.ToString(), clientId!));
     }

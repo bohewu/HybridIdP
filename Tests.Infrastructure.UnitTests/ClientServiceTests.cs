@@ -227,4 +227,67 @@ public class ClientServiceTests
             ), 
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task DeleteClient_ShouldRemoveMatchingOwnershipRows()
+    {
+        // Arrange
+        var clientKey = Guid.NewGuid();
+        var clientId = "deleted-client";
+        var application = new object();
+
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientKey.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(application);
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(application, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(clientId);
+
+        var ownerships = new List<ClientOwnership>
+        {
+            new() { ClientId = clientId, CreatedByPersonId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow },
+            new() { ClientId = "other-client", CreatedByPersonId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow }
+        };
+
+        var ownershipSet = CreateMockDbSet(ownerships);
+        _mockContext.Setup(c => c.ClientOwnerships).Returns(ownershipSet.Object);
+        _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        // Act
+        await _service.DeleteClientAsync(clientKey);
+
+        // Assert
+        ownershipSet.Verify(s => s.RemoveRange(It.Is<IEnumerable<ClientOwnership>>(items =>
+            items.Any(co => co.ClientId == clientId) &&
+            items.All(co => co.ClientId == clientId))), Times.Once);
+        _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.DeleteAsync(application, It.IsAny<CancellationToken>()), Times.Once);
+        _mockEventPublisher.Verify(e => e.PublishAsync(It.IsAny<ClientDeletedEvent>()), Times.Once);
+    }
+
+    private static Mock<DbSet<T>> CreateMockDbSet<T>(List<T> sourceList) where T : class
+    {
+        var queryable = sourceList.AsQueryable();
+        var mockDbSet = new Mock<DbSet<T>>();
+
+        mockDbSet.As<IEnumerable<T>>()
+            .Setup(m => m.GetEnumerator())
+            .Returns(() => sourceList.GetEnumerator());
+
+        mockDbSet.As<IQueryable<T>>()
+            .Setup(m => m.Provider)
+            .Returns(queryable.Provider);
+
+        mockDbSet.As<IQueryable<T>>()
+            .Setup(m => m.Expression)
+            .Returns(queryable.Expression);
+
+        mockDbSet.As<IQueryable<T>>()
+            .Setup(m => m.ElementType)
+            .Returns(queryable.ElementType);
+
+        mockDbSet.As<IQueryable<T>>()
+            .Setup(m => m.GetEnumerator())
+            .Returns(() => queryable.GetEnumerator());
+
+        return mockDbSet;
+    }
 }
