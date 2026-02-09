@@ -109,6 +109,24 @@ For Split-Host deployments, you need to configure the Nginx IP allowlist:
 
 ---
 
+## Reverse Proxy & SignalR Support
+
+If you are running HybridIdP behind an additional reverse proxy (e.g., BunkerWeb, Traefik, or another Nginx instance), ensure your proxy is configured to forward WebSocket upgrade headers correctly.
+
+### WebSocket Configuration
+The Nginx configuration included in this repository handles WebSocket upgrades via the `Connection` and `Upgrade` headers. Your external proxy must also forward these headers:
+
+- `Upgrade`: `$http_upgrade`
+- `Connection`: `Upgrade` (or derived from `$http_upgrade`)
+
+### Sticky Sessions (Scaling)
+SignalR requires sticky sessions (session affinity) when scaling the IdP service to multiple instances. Ensure your load balancer or reverse proxy routes requests from the same client to the same backend instance based on a cookie or IP hash.
+
+> [!NOTE]
+> Single-instance deployments (default) do not require sticky sessions.
+
+---
+
 ## Advanced / Manual Configuration
 
 If you prefer not to use the wizard, follow these steps.
