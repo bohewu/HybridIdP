@@ -479,6 +479,10 @@ public partial class LoginModel : PageModel
 
     public IActionResult OnPostExternalLogin(string provider, string? returnUrl = null)
     {
+        returnUrl ??= Request.Form["returnUrl"].FirstOrDefault();
+        returnUrl ??= Request.Query["returnUrl"].FirstOrDefault();
+        returnUrl ??= Request.Query["ReturnUrl"].FirstOrDefault();
+
         // Request a redirect to the external login provider.
         var redirectUrl = Url.Page("./ExternalLoginCallback", pageHandler: null, values: new { returnUrl });
         var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);

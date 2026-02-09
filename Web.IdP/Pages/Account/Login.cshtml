@@ -68,6 +68,7 @@
                 {
                     <div class="mb-6">
                         <form id="external-account" asp-page-handler="ExternalLogin" method="post" class="space-y-3">
+                            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
                             <div class="grid grid-cols-1 gap-3">
                                 @foreach (var provider in Model.ExternalLogins)
                                 {

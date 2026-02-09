@@ -153,6 +153,24 @@ public class LoginPageSystemTests : IAsyncLifetime
         Assert.Contains("type=\"submit\"", content);
     }
 
+    [Fact]
+    public async Task LoginPage_WithReturnUrl_ShouldIncludeExternalLoginReturnUrlHiddenField()
+    {
+        // Arrange
+        const string returnUrl = "/connect/authorize?client_id=testclient-public&response_type=code";
+
+        // Act
+        var response = await _httpClient.GetAsync($"/Account/Login?returnUrl={Uri.EscapeDataString(returnUrl)}");
+        var content = await response.Content.ReadAsStringAsync();
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("id=\"external-account\"", content);
+        Assert.Contains("name=\"returnUrl\"", content);
+        Assert.Contains("value=\"/connect/authorize?client_id=testclient-public", content);
+        Assert.Contains("response_type=code\"", content);
+    }
+
     #region Inactive User/Person Tests
 
     [Fact]
