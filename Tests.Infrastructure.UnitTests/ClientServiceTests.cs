@@ -229,6 +229,126 @@ public class ClientServiceTests
     }
 
     [Fact]
+    public async Task CreateClient_PublicClient_ShouldAlwaysRequirePkce()
+    {
+        var request = new CreateClientRequest(
+            ClientId: "pkce-public",
+            ClientSecret: null,
+            DisplayName: "Public PKCE",
+            ApplicationType: ApplicationTypes.Web,
+            Type: ClientTypes.Public,
+            ConsentType: ConsentTypes.Explicit,
+            RedirectUris: new List<string> { "https://localhost/callback" },
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: null)
+        {
+            RequirePkce = false
+        };
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object)null);
+
+        var dummyApp = new object();
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(dummyApp);
+        _mockApplicationManager.Setup(m => m.GetIdAsync(dummyApp, It.IsAny<CancellationToken>()))
+             .ReturnsAsync("new-id");
+
+        await _service.CreateClientAsync(request);
+
+        _mockApplicationManager.Verify(m => m.CreateAsync(
+            It.Is<OpenIddictApplicationDescriptor>(d =>
+                d.Requirements.Contains(Requirements.Features.ProofKeyForCodeExchange)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateClient_ConfidentialClient_ShouldAllowDisablingPkce()
+    {
+        var request = new CreateClientRequest(
+            ClientId: "pkce-confidential",
+            ClientSecret: "secret",
+            DisplayName: "Conf PKCE",
+            ApplicationType: ApplicationTypes.Web,
+            Type: ClientTypes.Confidential,
+            ConsentType: ConsentTypes.Explicit,
+            RedirectUris: null,
+            PostLogoutRedirectUris: null,
+            Permissions: new List<string> { Permissions.Endpoints.Token, Permissions.GrantTypes.ClientCredentials },
+            SupportedRoles: null)
+        {
+            RequirePkce = false
+        };
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object)null);
+
+        var dummyApp = new object();
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(dummyApp);
+        _mockApplicationManager.Setup(m => m.GetIdAsync(dummyApp, It.IsAny<CancellationToken>()))
+             .ReturnsAsync("new-id");
+
+        await _service.CreateClientAsync(request);
+
+        _mockApplicationManager.Verify(m => m.CreateAsync(
+            It.Is<OpenIddictApplicationDescriptor>(d =>
+                !d.Requirements.Contains(Requirements.Features.ProofKeyForCodeExchange)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateClient_ConfidentialClient_ShouldRemovePkceRequirement_WhenDisabled()
+    {
+        var clientId = Guid.NewGuid();
+        var existingApp = new object();
+
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingApp);
+
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), existingApp, It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((d, _, _) =>
+            {
+                d.ClientId = "existing-client";
+                d.ClientType = ClientTypes.Confidential;
+                d.ApplicationType = ApplicationTypes.Web;
+                d.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange);
+                d.Permissions.Add(Permissions.Endpoints.Token);
+                d.Permissions.Add(Permissions.GrantTypes.ClientCredentials);
+            })
+            .Returns(default(ValueTask));
+
+        _mockApplicationManager.Setup(m => m.PopulateAsync(existingApp, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, _) =>
+            {
+                Assert.DoesNotContain(Requirements.Features.ProofKeyForCodeExchange, d.Requirements);
+            })
+            .Returns(default(ValueTask));
+
+        _mockApplicationManager.Setup(m => m.UpdateAsync(existingApp, It.IsAny<CancellationToken>()))
+            .Returns(default(ValueTask));
+
+        var request = new UpdateClientRequest(
+            ClientId: null,
+            ClientSecret: null,
+            DisplayName: null,
+            Type: null,
+            ConsentType: null,
+            RedirectUris: null,
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: null)
+        {
+            RequirePkce = false
+        };
+
+        await _service.UpdateClientAsync(clientId, request);
+
+        _mockApplicationManager.Verify(m => m.UpdateAsync(existingApp, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task DeleteClient_ShouldRemoveMatchingOwnershipRows()
     {
         // Arrange

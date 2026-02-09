@@ -29,7 +29,10 @@ public record CreateClientRequest(
     List<string>? PostLogoutRedirectUris,
     List<string>? Permissions,
     List<string>? SupportedRoles
-);
+)
+{
+    public bool? RequirePkce { get; init; }
+}
 
 /// <summary>
 /// Request model for updating an existing OIDC client.
@@ -44,7 +47,10 @@ public record UpdateClientRequest(
     List<string>? PostLogoutRedirectUris,
     List<string>? Permissions,
     List<string>? SupportedRoles
-);
+)
+{
+    public bool? RequirePkce { get; init; }
+}
 
 /// <summary>
 /// Detailed information about an OIDC client.
@@ -61,6 +67,7 @@ public sealed class ClientDetail
     public List<string> PostLogoutRedirectUris { get; set; } = new();
     public List<string> Permissions { get; set; } = new();
     public List<string> SupportedRoles { get; set; } = new();
+    public bool RequirePkce { get; set; }
 }
 
 /// <summary>

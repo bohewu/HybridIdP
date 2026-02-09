@@ -445,8 +445,7 @@ public static class ServiceCollectionExtensions
                 var tokenOptions = new Web.IdP.Options.TokenOptions();
                 configuration.GetSection(Web.IdP.Options.TokenOptions.SectionName).Bind(tokenOptions);
 
-                options.AllowAuthorizationCodeFlow()
-                       .RequireProofKeyForCodeExchange();
+                options.AllowAuthorizationCodeFlow();
 
                 options.AllowRefreshTokenFlow()
                        .SetRefreshTokenLifetime(TimeSpan.FromMinutes(tokenOptions.RefreshTokenLifetimeMinutes))

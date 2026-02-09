@@ -159,6 +159,14 @@ export function hasClientCredentialsPublicScopeConflict(permissions = []) {
     })
 }
 
+export function resolveRequirePkce(clientType, requirePkce) {
+    if (clientType === 'public') {
+        return true
+    }
+
+    return requirePkce ?? true
+}
+
 /**
  * Main composable that combines all client form logic.
  * 

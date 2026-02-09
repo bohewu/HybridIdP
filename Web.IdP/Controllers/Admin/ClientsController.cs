@@ -74,11 +74,13 @@ public class ClientsController : ControllerBase
             clientId = client.ClientId,
             displayName = client.DisplayName,
             type = client.Type,
+            applicationType = client.ApplicationType,
             consentType = client.ConsentType,
             redirectUris = client.RedirectUris,
             postLogoutRedirectUris = client.PostLogoutRedirectUris,
             permissions = client.Permissions,
-            supportedRoles = client.SupportedRoles
+            supportedRoles = client.SupportedRoles,
+            requirePkce = client.RequirePkce
         });
     }
 

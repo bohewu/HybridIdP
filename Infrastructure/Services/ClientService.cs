@@ -150,19 +150,23 @@ public class ClientService : IClientService
         var redirectUris = await _applicationManager.GetRedirectUrisAsync(application);
         var postLogoutUris = await _applicationManager.GetPostLogoutRedirectUrisAsync(application);
         var permissions = await _applicationManager.GetPermissionsAsync(application);
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await _applicationManager.PopulateAsync(descriptor, application);
+        var clientType = await _applicationManager.GetClientTypeAsync(application) ?? string.Empty;
 
         return new ClientDetail
         {
             Id = await _applicationManager.GetIdAsync(application) ?? string.Empty,
             ClientId = await _applicationManager.GetClientIdAsync(application) ?? string.Empty,
             DisplayName = await _applicationManager.GetDisplayNameAsync(application),
-            Type = await _applicationManager.GetClientTypeAsync(application) ?? string.Empty,
+            Type = clientType,
             ConsentType = await _applicationManager.GetConsentTypeAsync(application) ?? string.Empty,
             ApplicationType = await _applicationManager.GetApplicationTypeAsync(application) ?? string.Empty,
             RedirectUris = redirectUris.Select(u => u.ToString()).ToList(),
             PostLogoutRedirectUris = postLogoutUris.Select(u => u.ToString()).ToList(),
             Permissions = permissions.ToList(),
-            SupportedRoles = GetSupportedRoles(await _applicationManager.GetPropertiesAsync(application))
+            SupportedRoles = GetSupportedRoles(await _applicationManager.GetPropertiesAsync(application)),
+            RequirePkce = clientType == ClientTypes.Public || descriptor.Requirements.Contains(Requirements.Features.ProofKeyForCodeExchange)
         };
     }
 
@@ -223,6 +227,8 @@ public class ClientService : IClientService
             ApplicationType = request.ApplicationType ?? ApplicationTypes.Web,  // Default to web if not specified
             ClientType = clientType
         };
+
+        ApplyPkceRequirement(descriptor, clientType, request.RequirePkce, defaultConfidentialRequirePkce: true);
 
         // Add Support Roles
         if (request.SupportedRoles != null && request.SupportedRoles.Any())
@@ -387,6 +393,10 @@ public class ClientService : IClientService
             descriptor.ClientType = hasSecret ? ClientTypes.Confidential : ClientTypes.Public;
         }
 
+        var effectiveRequirePkce = descriptor.ClientType == ClientTypes.Public
+            ? true
+            : request.RequirePkce ?? descriptor.Requirements.Contains(Requirements.Features.ProofKeyForCodeExchange);
+
         // Update only the fields provided in the request
         if (!string.IsNullOrWhiteSpace(request.ClientId))
         {
@@ -410,7 +420,10 @@ public class ClientService : IClientService
         {
             descriptor.ClientSecret = request.ClientSecret;
             descriptor.ClientType = ClientTypes.Confidential;  // Update type if adding/changing secret
+            effectiveRequirePkce = request.RequirePkce ?? descriptor.Requirements.Contains(Requirements.Features.ProofKeyForCodeExchange);
         }
+
+        ApplyPkceRequirement(descriptor, descriptor.ClientType, effectiveRequirePkce, defaultConfidentialRequirePkce: true);
 
         // Validate Native app constraints
         if (descriptor.ApplicationType == ApplicationTypes.Native && descriptor.ClientType != ClientTypes.Public)
@@ -620,5 +633,22 @@ public class ClientService : IClientService
             return element.Deserialize<List<string>>() ?? new();
         }
         return new();
+    }
+
+    private static void ApplyPkceRequirement(
+        OpenIddictApplicationDescriptor descriptor,
+        string? clientType,
+        bool? requirePkce,
+        bool defaultConfidentialRequirePkce)
+    {
+        var shouldRequirePkce = string.Equals(clientType, ClientTypes.Public, StringComparison.Ordinal)
+            ? true
+            : requirePkce ?? defaultConfidentialRequirePkce;
+
+        descriptor.Requirements.Remove(Requirements.Features.ProofKeyForCodeExchange);
+        if (shouldRequirePkce)
+        {
+            descriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange);
+        }
     }
 }

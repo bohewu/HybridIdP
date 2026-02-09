@@ -10,7 +10,8 @@ import {
   useClientFormLogic, 
   validateUriList,
   availablePermissions,
-  hasClientCredentialsPublicScopeConflict
+  hasClientCredentialsPublicScopeConflict,
+  resolveRequirePkce
 } from '../composables/useClientFormLogic'
 
 const { t } = useI18n()
@@ -35,7 +36,8 @@ const formData = ref({
   postLogoutRedirectUris: '',
   permissions: [],
   requiredScopes: [],
-  supportedRoles: []
+  supportedRoles: [],
+  requirePkce: true
 })
 
 const generatedClientSecret = ref(null)
@@ -113,7 +115,8 @@ const resetForm = () => {
     postLogoutRedirectUris: '',
     permissions: [],
     requiredScopes: [],
-    supportedRoles: []
+    supportedRoles: [],
+    requirePkce: true
   }
   error.value = null
   fieldErrors.value = {}
@@ -133,7 +136,8 @@ watch(() => props.client, async (newClient) => {
       postLogoutRedirectUris: newClient.postLogoutRedirectUris?.join('\n') || '',
       permissions: newClient.permissions || [],
       requiredScopes: [],
-      supportedRoles: newClient.supportedRoles || []
+      supportedRoles: newClient.supportedRoles || [],
+      requirePkce: resolveRequirePkce(newClient.type === 'confidential' ? 'confidential' : 'public', newClient.requirePkce)
     }
     
     // Fetch required scopes (still separate table)
@@ -190,7 +194,8 @@ const handleSubmit = async () => {
         .map(uri => uri.trim())
         .filter(uri => uri.length > 0),
       permissions: formData.value.permissions,
-      supportedRoles: formData.value.supportedRoles
+      supportedRoles: formData.value.supportedRoles,
+      requirePkce: resolveRequirePkce(formData.value.clientType, formData.value.requirePkce)
     }
 
     const url = isEdit.value
@@ -275,6 +280,12 @@ const addSupportedRole = () => {
 const removeSupportedRole = (role) => {
   formData.value.supportedRoles = formData.value.supportedRoles.filter(r => r !== role)
 }
+
+watch(() => formData.value.clientType, (newType) => {
+  if (newType === 'public') {
+    formData.value.requirePkce = true
+  }
+})
 
 // -----------------------------
 // -----------------------------
@@ -441,6 +452,21 @@ const closeSecretModal = () => {
                             :value="$t('clients.form.clientSecretAutoGenPlaceholder')"
                         />
                       </div>
+                    </div>
+
+                    <div v-if="formData.clientType === 'confidential'" class="mb-5">
+                      <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        {{ $t('clients.form.requirePkce') }}
+                      </label>
+                      <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          v-model="formData.requirePkce"
+                          type="checkbox"
+                          class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500"
+                        />
+                        <span>{{ $t('clients.form.requirePkceToggle') }}</span>
+                      </label>
+                      <p class="mt-1 text-xs text-gray-500">{{ $t('clients.form.requirePkceHelp') }}</p>
                     </div>
 
                     <!-- Consent Type -->

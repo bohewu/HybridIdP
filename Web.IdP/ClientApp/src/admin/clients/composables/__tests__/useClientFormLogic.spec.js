@@ -6,6 +6,7 @@ import {
     useLocalAllowedScopes,
     validateUriList,
     hasClientCredentialsPublicScopeConflict,
+    resolveRequirePkce,
     availablePermissions,
     useClientFormLogic
 } from '../useClientFormLogic'
@@ -189,6 +190,22 @@ describe('useClientFormLogic', () => {
 
         it('returns true when scopes are provided without scp prefix', () => {
             expect(hasClientCredentialsPublicScopeConflict(['gt:client_credentials', 'email'])).toBe(true)
+        })
+    })
+
+    describe('resolveRequirePkce', () => {
+        it('always returns true for public clients', () => {
+            expect(resolveRequirePkce('public', false)).toBe(true)
+            expect(resolveRequirePkce('public', true)).toBe(true)
+        })
+
+        it('defaults to true for confidential clients when unset', () => {
+            expect(resolveRequirePkce('confidential', undefined)).toBe(true)
+        })
+
+        it('returns explicit value for confidential clients', () => {
+            expect(resolveRequirePkce('confidential', false)).toBe(false)
+            expect(resolveRequirePkce('confidential', true)).toBe(true)
         })
     })
 
