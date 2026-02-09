@@ -18,6 +18,7 @@ namespace Web.IdP.Controllers.Account;
 [ApiController]
 [Route("api/account/mfa")]
 [ApiAuthorize]
+[ValidateCsrfForCookies]
 public partial class MfaController : ControllerBase
 {
     private readonly IMfaService _mfaService;

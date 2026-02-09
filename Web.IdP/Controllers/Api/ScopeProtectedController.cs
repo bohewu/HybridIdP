@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Web.IdP.Controllers.Api;
@@ -11,12 +12,35 @@ namespace Web.IdP.Controllers.Api;
 [Route("api/test/[controller]")]
 public class ScopeProtectedController : ControllerBase
 {
+    private readonly IWebHostEnvironment _environment;
+
+    public ScopeProtectedController(IWebHostEnvironment environment)
+    {
+        _environment = environment;
+    }
+
+    private bool IsEnabledInCurrentEnvironment()
+    {
+        return _environment.IsDevelopment() || _environment.IsEnvironment("Test");
+    }
+
+    private IActionResult? ReturnNotFoundIfDisabled()
+    {
+        return IsEnabledInCurrentEnvironment() ? null : NotFound();
+    }
+
     /// <summary>
     /// Public endpoint - no authorization required
     /// </summary>
     [HttpGet("public")]
     public IActionResult GetPublic()
     {
+        var disabledResult = ReturnNotFoundIfDisabled();
+        if (disabledResult != null)
+        {
+            return disabledResult;
+        }
+
         return Ok(new { message = "This is a public endpoint", timestamp = DateTime.UtcNow });
     }
 
@@ -27,6 +51,12 @@ public class ScopeProtectedController : ControllerBase
     [HttpGet("authenticated")]
     public IActionResult GetAuthenticated()
     {
+        var disabledResult = ReturnNotFoundIfDisabled();
+        if (disabledResult != null)
+        {
+            return disabledResult;
+        }
+
         return Ok(new 
         { 
             message = "This endpoint requires authentication only",
@@ -42,6 +72,12 @@ public class ScopeProtectedController : ControllerBase
     [HttpGet("company")]
     public IActionResult GetCompanyData()
     {
+        var disabledResult = ReturnNotFoundIfDisabled();
+        if (disabledResult != null)
+        {
+            return disabledResult;
+        }
+
         return Ok(new 
         { 
             message = "Company data access granted",
@@ -58,6 +94,12 @@ public class ScopeProtectedController : ControllerBase
     [HttpPost("company")]
     public IActionResult UpdateCompanyData([FromBody] object data)
     {
+        var disabledResult = ReturnNotFoundIfDisabled();
+        if (disabledResult != null)
+        {
+            return disabledResult;
+        }
+
         return Ok(new 
         { 
             message = "Company data updated successfully",
@@ -73,6 +115,12 @@ public class ScopeProtectedController : ControllerBase
     [HttpGet("admin")]
     public IActionResult GetAdminData()
     {
+        var disabledResult = ReturnNotFoundIfDisabled();
+        if (disabledResult != null)
+        {
+            return disabledResult;
+        }
+
         return Ok(new 
         { 
             message = "Admin access granted",
@@ -88,6 +136,12 @@ public class ScopeProtectedController : ControllerBase
     [HttpGet("openid")]
     public IActionResult GetOpenIdData()
     {
+        var disabledResult = ReturnNotFoundIfDisabled();
+        if (disabledResult != null)
+        {
+            return disabledResult;
+        }
+
         return Ok(new 
         { 
             message = "OpenID access granted",

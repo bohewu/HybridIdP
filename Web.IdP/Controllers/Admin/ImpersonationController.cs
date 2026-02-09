@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Web.IdP.Attributes;
 using Web.IdP.Services;
 
 namespace Web.IdP.Controllers.Admin;
@@ -13,6 +14,7 @@ namespace Web.IdP.Controllers.Admin;
 /// </summary>
 [ApiController]
 [Route("api/impersonation")]
+[ValidateCsrfForCookies]
 public class ImpersonationController : ControllerBase
 {
     private readonly IImpersonationService _impersonationService;
