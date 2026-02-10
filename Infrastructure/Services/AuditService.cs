@@ -132,7 +132,7 @@ public class AuditService : IAuditService,
                 Id = e.Id,
                 EventType = e.EventType,
                 UserId = e.UserId,
-                Timestamp = e.Timestamp,
+                Timestamp = NormalizeUtcTimestamp(e.Timestamp),
                 Details = e.Details,
                 IPAddress = e.IPAddress,
                 UserAgent = e.UserAgent
@@ -153,7 +153,7 @@ public class AuditService : IAuditService,
                                Id = e.Id,
                                EventType = e.EventType,
                                UserId = e.UserId,
-                               Timestamp = e.Timestamp,
+                               Timestamp = NormalizeUtcTimestamp(e.Timestamp),
                                Details = e.Details,
                                IPAddress = e.IPAddress,
                                UserAgent = e.UserAgent,
@@ -161,6 +161,16 @@ public class AuditService : IAuditService,
                            }).FirstOrDefaultAsync();
 
         return result;
+    }
+
+    private static DateTime NormalizeUtcTimestamp(DateTime timestamp)
+    {
+        return timestamp.Kind switch
+        {
+            DateTimeKind.Utc => timestamp,
+            DateTimeKind.Local => timestamp.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(timestamp, DateTimeKind.Utc)
+        };
     }
 
     // Domain Event Handlers

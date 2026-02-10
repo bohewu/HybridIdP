@@ -60,6 +60,7 @@
   },
   "tableHeaders": {
     "timestamp": "時間戳記",
+    "timestampLocal": "時間戳記（本地時間）",
     "eventType": "事件類型",
     "user": "使用者",
     "details": "詳細資訊",

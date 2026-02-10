@@ -108,7 +108,16 @@ const handleSortChange = (newSort) => {
 
 const formatDate = (dateString) => {
   if (!dateString) return t('audit.never')
-  return new Date(dateString).toLocaleString()
+
+  const hasTimeZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(dateString)
+  const normalized = hasTimeZone ? dateString : `${dateString}Z`
+  const parsed = new Date(normalized)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return dateString
+  }
+
+  return parsed.toLocaleString()
 }
 
 const handleExport = (format) => {
@@ -126,7 +135,7 @@ const handleExport = (format) => {
 
 const exportToCsv = () => {
   const headers = [
-    t('audit.tableHeaders.timestamp'),
+    t('audit.tableHeaders.timestampLocal'),
     t('audit.tableHeaders.eventType'),
     t('audit.tableHeaders.user'),
     t('audit.tableHeaders.details'),
@@ -147,7 +156,7 @@ const exportToCsv = () => {
 
 const exportToExcel = async () => {
   const headers = [
-    t('audit.tableHeaders.timestamp'),
+    t('audit.tableHeaders.timestampLocal'),
     t('audit.tableHeaders.eventType'),
     t('audit.tableHeaders.user'),
     t('audit.tableHeaders.details'),

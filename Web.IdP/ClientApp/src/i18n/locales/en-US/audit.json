@@ -60,6 +60,7 @@
   },
   "tableHeaders": {
     "timestamp": "Timestamp",
+    "timestampLocal": "Timestamp (Local)",
     "eventType": "Event Type",
     "user": "User",
     "details": "Details",

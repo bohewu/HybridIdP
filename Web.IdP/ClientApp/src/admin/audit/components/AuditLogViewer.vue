@@ -28,7 +28,16 @@ const totalPages = computed(() => {
 
 const formatDate = (dateString) => {
   if (!dateString) return t('audit.never')
-  return new Date(dateString).toLocaleString()
+
+  const hasTimeZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(dateString)
+  const normalized = hasTimeZone ? dateString : `${dateString}Z`
+  const parsed = new Date(normalized)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return dateString
+  }
+
+  return parsed.toLocaleString()
 }
 
 const getEventTypeBadgeClass = (eventType) => {
@@ -127,7 +136,7 @@ const getSortIcon = (field) => {
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>{{ t('audit.tableHeaders.timestamp') }}</span>
+                  <span>{{ t('audit.tableHeaders.timestampLocal') }}</span>
                   <span v-html="getSortIcon('timestamp')"></span>
                 </div>
               </th>
