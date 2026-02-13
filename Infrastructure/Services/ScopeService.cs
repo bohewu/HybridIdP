@@ -273,10 +273,12 @@ public class ScopeService : IScopeService
     {
         var scope = await _scopeManager.FindByIdAsync(id);
         if (scope == null) return false;
+
+        var scopeName = await _scopeManager.GetNameAsync(scope);
         
         var descriptor = new OpenIddictScopeDescriptor
         {
-            Name = request.Name ?? await _scopeManager.GetNameAsync(scope),
+            Name = request.Name ?? scopeName,
             DisplayName = request.DisplayName ?? await _scopeManager.GetDisplayNameAsync(scope),
             Description = request.Description ?? await _scopeManager.GetDescriptionAsync(scope)
         };

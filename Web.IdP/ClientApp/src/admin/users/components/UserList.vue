@@ -297,7 +297,7 @@ const getSortIcon = (field) => {
                       @click="emit('unlock', user); close()"
                       class="text-left w-full block px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
                     >
-                      Unlock account
+                      {{ t('users.actions.unlock') }}
                     </button>
                     <div class="border-t border-gray-100 my-1"></div>
                     <button

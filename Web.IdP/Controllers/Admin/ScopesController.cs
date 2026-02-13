@@ -4,6 +4,7 @@ using Core.Domain.Constants;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OpenIddict.Abstractions;
 using System.Security.Claims;
 using Web.IdP.Attributes;
 
@@ -20,6 +21,16 @@ namespace Web.IdP.Controllers.Admin;
 [ValidateCsrfForCookies]
 public class ScopesController : ControllerBase
 {
+    private static readonly HashSet<string> StandardOidcScopes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        OpenIddictConstants.Scopes.OpenId,
+        OpenIddictConstants.Scopes.Profile,
+        OpenIddictConstants.Scopes.Email,
+        OpenIddictConstants.Scopes.Phone,
+        OpenIddictConstants.Scopes.Address,
+        OpenIddictConstants.Scopes.OfflineAccess
+    };
+
     private readonly IScopeService _scopeService;
 
     public ScopesController(IScopeService scopeService)
@@ -102,16 +113,37 @@ public class ScopesController : ControllerBase
     [HasPermission(Permissions.Scopes.Update)]
     public async Task<ActionResult> Update(string id, [FromBody] UpdateScopeRequest request)
     {
-        var updated = await _scopeService.UpdateScopeAsync(id, request);
-        if (!updated)
+        try
         {
-            return NotFound(new { message = $"Scope with ID '{id}' not found or update failed." });
+            if (!IsAdmin())
+            {
+                var existingScope = await _scopeService.GetScopeByIdAsync(id);
+                if (existingScope == null)
+                {
+                    return NotFound(new { message = $"Scope with ID '{id}' not found or update failed." });
+                }
+
+                if (IsStandardOidcScope(existingScope.Name))
+                {
+                    return StatusCode(403, new { message = "Standard scopes can only be updated by administrators." });
+                }
+            }
+
+            var updated = await _scopeService.UpdateScopeAsync(id, request);
+            if (!updated)
+            {
+                return NotFound(new { message = $"Scope with ID '{id}' not found or update failed." });
+            }
+            return Ok(new
+            {
+                id,
+                message = "Scope updated successfully."
+            });
         }
-        return Ok(new
+        catch (InvalidOperationException ex)
         {
-            id,
-            message = "Scope updated successfully."
-        });
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -161,6 +193,20 @@ public class ScopesController : ControllerBase
     {
         try
         {
+            if (!IsAdmin())
+            {
+                var existingScope = await _scopeService.GetScopeByIdAsync(scopeId);
+                if (existingScope == null)
+                {
+                    return NotFound(new { message = $"Scope with ID '{scopeId}' not found." });
+                }
+
+                if (IsStandardOidcScope(existingScope.Name))
+                {
+                    return StatusCode(403, new { message = "Standard scopes can only be updated by administrators." });
+                }
+            }
+
             var result = await _scopeService.UpdateScopeClaimsAsync(scopeId, request);
             return Ok(new
             {
@@ -201,6 +247,11 @@ public class ScopesController : ControllerBase
     private bool IsAdmin()
     {
         return User.IsInRole(AuthConstants.Roles.Admin);
+    }
+
+    private static bool IsStandardOidcScope(string? scopeName)
+    {
+        return !string.IsNullOrWhiteSpace(scopeName) && StandardOidcScopes.Contains(scopeName);
     }
 
     #endregion

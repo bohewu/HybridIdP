@@ -59,6 +59,7 @@
     "userClaimsStandardLabel": "Standard",
     "userClaimsHelp": "Select which claims should be included when this scope is requested",
     "standardScopeClaimsWarning": "This is a standard OIDC scope. Standard claims are locked, but you can add custom claims.",
+    "standardScopeReadOnlyWarning": "This is a standard OIDC scope and cannot be edited.",
     "consentSectionTitle": "Consent Screen Customization",
     "consentSectionHelp": "Customize how this scope appears on the user consent screen",
     "consentDisplayName": "Consent Display Name",

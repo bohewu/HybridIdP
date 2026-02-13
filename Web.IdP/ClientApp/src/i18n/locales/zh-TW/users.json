@@ -33,7 +33,8 @@
     "reactivate": "重新啟用",
     "manageRoles": "管理角色",
     "manageSessions": "工作階段",
-    "viewLoginHistory": "登入紀錄"
+    "viewLoginHistory": "登入紀錄",
+    "unlock": "解除鎖定帳號"
   },
   "loginHistory": {
     "title": "登入紀錄",
@@ -118,12 +119,14 @@
     "deleteWarning": "警告：刪除 {email} 將無法復原。",
     "deleteFinal": "您確定要執行此操作嗎？",
     "reactivate": "確定要重新啟用 {email} 嗎？",
-    "impersonate": "確定要模擬使用者 {user} 嗎？"
+    "impersonate": "確定要模擬使用者 {user} 嗎？",
+    "unlock": "確定要解除鎖定 {email} 的帳號嗎？"
   },
   "alerts": {
     "deactivatedSuccess": "使用者已成功停用。",
     "deletedSuccess": "使用者已成功刪除。",
-    "reactivatedSuccess": "使用者已成功重新啟用。"
+    "reactivatedSuccess": "使用者已成功重新啟用。",
+    "unlockSuccess": "使用者已成功解除鎖定。"
   },
   "manageAppRoles": "管理應用程式角色",
   "selectClient": "選擇客戶端",
@@ -140,6 +143,7 @@
     "deleteFailed": "刪除失敗: {message}",
     "reactivateFailed": "重新啟用失敗: {message}",
     "impersonateFailed": "模擬失敗: {message}",
+    "unlockFailed": "解除鎖定使用者失敗: {message}",
     "saveFailed": "儲存使用者失敗。",
     "unknownSaveFailed": "儲存使用者時發生未知錯誤。"
   },

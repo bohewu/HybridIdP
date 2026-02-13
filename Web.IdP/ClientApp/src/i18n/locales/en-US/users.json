@@ -33,7 +33,8 @@
     "reactivate": "Reactivate",
     "manageRoles": "Manage Roles",
     "manageSessions": "Sessions",
-    "viewLoginHistory": "Login History"
+    "viewLoginHistory": "Login History",
+    "unlock": "Unlock account"
   },
   "loginHistory": {
     "title": "Login History",
@@ -118,12 +119,14 @@
     "deleteWarning": "Warning: Deleting {email} is permanent.",
     "deleteFinal": "Are you absolutely sure?",
     "reactivate": "Reactivate {email}?",
-    "impersonate": "Are you sure you want to impersonate {user}?"
+    "impersonate": "Are you sure you want to impersonate {user}?",
+    "unlock": "Unlock account {email}?"
   },
   "alerts": {
     "deactivatedSuccess": "User deactivated successfully.",
     "deletedSuccess": "User deleted successfully.",
-    "reactivatedSuccess": "User reactivated successfully."
+    "reactivatedSuccess": "User reactivated successfully.",
+    "unlockSuccess": "User unlocked successfully."
   },
   "manageAppRoles": "Manage App Roles",
   "selectClient": "Select Client",
@@ -140,6 +143,7 @@
     "deleteFailed": "Failed to delete: {message}",
     "reactivateFailed": "Failed to reactivate: {message}",
     "impersonateFailed": "Failed to impersonate: {message}",
+    "unlockFailed": "Failed to unlock user: {message}",
     "saveFailed": "Failed to save user.",
     "unknownSaveFailed": "An unknown error occurred while saving the user."
   },

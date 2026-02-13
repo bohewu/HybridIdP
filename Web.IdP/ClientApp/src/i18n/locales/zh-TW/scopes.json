@@ -59,6 +59,7 @@
     "userClaimsStandardLabel": "標準",
     "userClaimsHelp": "選擇當請求此範圍時應包含哪些聲明",
     "standardScopeClaimsWarning": "這是標準 OIDC 範圍。標準聲明會被鎖定，但可新增自訂聲明。",
+    "standardScopeReadOnlyWarning": "這是標準 OIDC 範圍，無法編輯。",
     "consentSectionTitle": "同意畫面客製化",
     "consentSectionHelp": "自訂此範圍在使用者同意畫面上的顯示方式",
     "consentDisplayName": "同意顯示名稱",

@@ -313,7 +313,7 @@ const handleUnlock = async (user) => {
     return
   }
 
-  if (!confirm(`Unlock account ${user.email}?`)) {
+  if (!confirm(t('users.confirmations.unlock', { email: user.email }))) {
     return
   }
 
@@ -328,9 +328,9 @@ const handleUnlock = async (user) => {
     }
 
     await fetchUsers()
-    alert('User unlocked successfully.')
+    alert(t('users.alerts.unlockSuccess'))
   } catch (e) {
-    alert(`Failed to unlock user: ${e.message}`)
+    alert(t('users.errors.unlockFailed', { message: e.message }))
     console.error('Error unlocking user:', e)
   }
 }
