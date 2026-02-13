@@ -44,21 +44,7 @@ public class PermissionsController : ControllerBase
                 return Unauthorized(new { message = "User not authenticated" });
             }
 
-            // Check if user is admin
-            var isAdmin = User.IsInRole(AuthConstants.Roles.Admin);
-            
-            if (isAdmin)
-            {
-                // Admin has all permissions
-                return Ok(new
-                {
-                    isAdmin = true,
-                    permissions = Permissions.GetAll(),
-                    userId = userId
-                });
-            }
-
-            // Get user's roles and their permissions
+            // Resolve user roles from store to align UI authorization with backend handlers.
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
