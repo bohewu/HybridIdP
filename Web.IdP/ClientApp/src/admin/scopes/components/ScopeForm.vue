@@ -354,7 +354,7 @@ const saveScopeClaims = async (scopeId) => {
               sub-label-key="displayName"
               value-key="name"
               :loading="loadingResources"
-              :placeholder="$t('scopes.form.resourcesPlaceholder') || 'Search resources...'"
+              placeholder="scopes.form.resourcesPlaceholder"
               height-class="max-h-48"
             />
             
@@ -540,7 +540,7 @@ const saveScopeClaims = async (scopeId) => {
               value-key="id"
               item-disabled-key="isLockedInStandardScope"
               :loading="loadingClaims"
-              :placeholder="$t('scopes.form.userClaimsLoading') || 'Search claims...'"
+              placeholder="scopes.form.userClaimsLoading"
               height-class="max-h-48"
             >
               <template #label-suffix="{ item }">
