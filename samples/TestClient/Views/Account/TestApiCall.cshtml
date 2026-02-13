@@ -12,6 +12,10 @@
             <div class="alert alert-success" role="alert">
                 <h4 class="alert-heading">✅ API Call Successful!</h4>
                 <p>Your session is valid. The access token successfully authenticated with the IdP.</p>
+                @if (ViewData["RefreshTokenFlow"] as bool? == true)
+                {
+                    <p class="mb-0">Refresh token flow: access token refreshed without specifying scope.</p>
+                }
             </div>
             
             <div class="card mb-4">
@@ -53,6 +57,7 @@
     
     <div class="mt-4">
         <a href="/Account/TestApiCall" class="btn btn-primary">Test API Call</a>
+        <a href="/Account/RefreshUserInfo" class="btn btn-outline-primary">Refresh Token + UserInfo</a>
         <a href="/Account/Profile" class="btn btn-secondary">Back to Profile</a>
     </div>
 </div>

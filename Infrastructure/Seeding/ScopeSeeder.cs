@@ -24,7 +24,8 @@ public static class ScopeSeeder
             new { Name = Scopes.Email, DisplayNameKey = "scope.email.display", DescriptionKey = "scope.email.description", Icon = "bi bi-envelope", IsRequired = false, Order = 3, Category = "Identity" },
             new { Name = Scopes.Phone, DisplayNameKey = "scope.phone.display", DescriptionKey = "scope.phone.description", Icon = "bi bi-phone", IsRequired = false, Order = 4, Category = "Identity" },
             new { Name = Scopes.Address, DisplayNameKey = "scope.address.display", DescriptionKey = "scope.address.description", Icon = "bi bi-geo-alt", IsRequired = false, Order = 5, Category = "Identity" },
-            new { Name = AuthConstants.Scopes.Roles, DisplayNameKey = "scope.roles.display", DescriptionKey = "scope.roles.description", Icon = "bi bi-shield-check", IsRequired = false, Order = 6, Category = "Identity" }
+            new { Name = AuthConstants.Scopes.Roles, DisplayNameKey = "scope.roles.display", DescriptionKey = "scope.roles.description", Icon = "bi bi-shield-check", IsRequired = false, Order = 6, Category = "Identity" },
+            new { Name = Scopes.OfflineAccess, DisplayNameKey = "scope.offline_access.display", DescriptionKey = "scope.offline_access.description", Icon = "bi bi-arrow-repeat", IsRequired = false, Order = 7, Category = "Security" }
         };
 
         foreach (var ext in extensions)
@@ -62,6 +63,7 @@ public static class ScopeSeeder
             new { Name = Scopes.Profile, DisplayName = "Profile", Description = "User profile information" },
             new { Name = Scopes.Phone, DisplayName = "Phone", Description = "Phone number and verification status" },
             new { Name = Scopes.Address, DisplayName = "Address", Description = "Mailing address" },
+            new { Name = Scopes.OfflineAccess, DisplayName = "Offline Access", Description = "Allow access when the user is offline" },
             new { Name = AuthConstants.Scopes.Roles, DisplayName = "Roles", Description = "User roles" },
             new { Name = "test_scope", DisplayName = "Test Scope", Description = "Scope for testing claim enrichment" }
         };

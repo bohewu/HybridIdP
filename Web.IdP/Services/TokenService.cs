@@ -277,6 +277,11 @@ namespace Web.IdP.Services
                     }));
             }
 
+            var requestScopes = request.GetScopes().ToImmutableArray();
+            var effectiveScopes = requestScopes.IsDefaultOrEmpty
+                ? principal.GetScopes().ToImmutableArray()
+                : requestScopes;
+
             var identity = new ClaimsIdentity(
                 authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
                 nameType: Claims.Name,
@@ -299,9 +304,9 @@ namespace Web.IdP.Services
 
             await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId, cancellationToken);
             await _claimsEnricher.AddAppSpecificRolesAsync(identity, user, request.ClientId ?? string.Empty, cancellationToken);
-            await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, request.GetScopes(), cancellationToken);
+            await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, effectiveScopes, cancellationToken);
 
-            identity.SetScopes(request.GetScopes());
+            identity.SetScopes(effectiveScopes);
             identity.SetDestinations(GetDestinations);
 
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));

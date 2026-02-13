@@ -168,6 +168,41 @@ public class UserinfoFlowTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// Verify refresh token flow preserves profile scope when scope is omitted.
+    /// </summary>
+    [Fact]
+    public async Task Userinfo_RefreshToken_PreservesProfileScope_WhenScopeNotProvided()
+    {
+        // Arrange - request openid + profile + offline_access for refresh token
+        var (accessToken, refreshToken) = await TryGetUserTokenWithRefreshAsync("openid profile offline_access");
+        if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(refreshToken))
+        {
+            return;
+        }
+
+        var refreshedAccessToken = await TryRefreshAccessTokenAsync(refreshToken);
+        if (string.IsNullOrEmpty(refreshedAccessToken))
+        {
+            return;
+        }
+
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", refreshedAccessToken);
+
+        // Act
+        var response = await _httpClient.GetAsync("/connect/userinfo");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
+
+        Assert.True(result.TryGetProperty("sub", out _), "Subject claim should be present");
+        Assert.True(result.TryGetProperty("person_id", out _),
+            "person_id claim should be returned when profile scope is preserved after refresh");
+    }
+
+    /// <summary>
     /// Verify that email claim is NOT returned when only openid scope is granted.
     /// This tests OIDC compliance - claims should only be returned for granted scopes.
     /// </summary>
@@ -224,6 +259,76 @@ public class UserinfoFlowTests : IAsyncLifetime
         var content = await response.Content.ReadAsStringAsync();
         var result = JsonSerializer.Deserialize<JsonElement>(content);
         
+        if (result.TryGetProperty("access_token", out var tokenElement))
+        {
+            return tokenElement.GetString();
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Try to get a user access token with refresh token using ROPC flow.
+    /// Returns null tokens if ROPC is not enabled or credentials are invalid.
+    /// </summary>
+    private async Task<(string? AccessToken, string? RefreshToken)> TryGetUserTokenWithRefreshAsync(string scopes)
+    {
+        var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "password",
+            ["client_id"] = ClientId,
+            ["username"] = TestUsername,
+            ["password"] = TestPassword,
+            ["scope"] = scopes
+        });
+
+        var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
+        if (!response.IsSuccessStatusCode)
+        {
+            return (null, null);
+        }
+
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JsonElement>(content);
+
+        string? accessToken = null;
+        string? refreshToken = null;
+
+        if (result.TryGetProperty("access_token", out var tokenElement))
+        {
+            accessToken = tokenElement.GetString();
+        }
+
+        if (result.TryGetProperty("refresh_token", out var refreshElement))
+        {
+            refreshToken = refreshElement.GetString();
+        }
+
+        return (accessToken, refreshToken);
+    }
+
+    /// <summary>
+    /// Try to refresh access token without specifying scope.
+    /// Returns null if refresh token flow is not enabled or fails.
+    /// </summary>
+    private async Task<string?> TryRefreshAccessTokenAsync(string refreshToken)
+    {
+        var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["client_id"] = ClientId,
+            ["refresh_token"] = refreshToken
+        });
+
+        var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JsonElement>(content);
+
         if (result.TryGetProperty("access_token", out var tokenElement))
         {
             return tokenElement.GetString();

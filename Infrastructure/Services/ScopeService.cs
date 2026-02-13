@@ -25,7 +25,8 @@ public class ScopeService : IScopeService
         OpenIddictConstants.Scopes.Profile,
         OpenIddictConstants.Scopes.Email,
         OpenIddictConstants.Scopes.Phone,
-        OpenIddictConstants.Scopes.Address
+        OpenIddictConstants.Scopes.Address,
+        OpenIddictConstants.Scopes.OfflineAccess
     };
 
     private readonly IOpenIddictScopeManager _scopeManager;

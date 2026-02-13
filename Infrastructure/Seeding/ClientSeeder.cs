@@ -234,6 +234,7 @@ public static class ClientSeeder
                 Permissions.Scopes.Profile,
                 Permissions.Scopes.Roles,
                 $"{Permissions.Prefixes.Scope}openid",
+                $"{Permissions.Prefixes.Scope}offline_access",
                 $"{Permissions.Prefixes.Scope}api:company:read",
                 $"{Permissions.Prefixes.Scope}api:company:write",
                 $"{Permissions.Prefixes.Scope}api:inventory:read"

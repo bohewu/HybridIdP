@@ -20,6 +20,8 @@ public static class LocalizationSeeder
             new { Key = "scope.openid.description", Culture = "en-US", Value = "This scope allows the application to verify who you are and link your sign-in to your account.", Category = "Consent" },
             new { Key = "scope.roles.display", Culture = "en-US", Value = "Access your roles", Category = "Consent" },
             new { Key = "scope.roles.description", Culture = "en-US", Value = "This scope allows the application to see which groups or roles you belong to.", Category = "Consent" },
+            new { Key = "scope.offline_access.display", Culture = "en-US", Value = "Maintain access while offline", Category = "Consent" },
+            new { Key = "scope.offline_access.description", Culture = "en-US", Value = "This scope allows the application to refresh your session without asking you to sign in again.", Category = "Consent" },
             
             // Traditional Chinese (zh-TW)
             new { Key = "scope.profile.display", Culture = "zh-TW", Value = "存取您的個人資料", Category = "Consent" },
@@ -32,6 +34,8 @@ public static class LocalizationSeeder
             new { Key = "scope.openid.description", Culture = "zh-TW", Value = "此範圍允許應用程式驗證您的身分，並將您的登入與帳號連結。", Category = "Consent" },
             new { Key = "scope.roles.display", Culture = "zh-TW", Value = "存取您的角色", Category = "Consent" },
             new { Key = "scope.roles.description", Culture = "zh-TW", Value = "此範圍允許應用程式查看您所屬的群組或角色。", Category = "Consent" },
+            new { Key = "scope.offline_access.display", Culture = "zh-TW", Value = "離線時仍可維持存取", Category = "Consent" },
+            new { Key = "scope.offline_access.description", Culture = "zh-TW", Value = "此範圍允許應用程式在您未再次登入時更新工作階段。", Category = "Consent" },
             
             // Login Notice Examples (en-US)
             new { Key = "LoginNotice.DevEnvironment", Culture = "en-US", Value = "🔧 This is a development environment", Category = "LoginNotice" },

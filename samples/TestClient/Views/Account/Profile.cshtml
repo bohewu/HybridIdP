@@ -37,8 +37,21 @@
                 <h5>Access Token</h5>
             </div>
             <div class="card-body">
-                <textarea class="form-control" rows="5" readonly>@ViewData["AccessToken"]</textarea>
+                <textarea id="accessToken" class="form-control" rows="5" readonly>@ViewData["AccessToken"]</textarea>
                 <button class="btn btn-sm btn-secondary mt-2" onclick="copyToClipboard('accessToken')">Copy</button>
+            </div>
+        </div>
+    }
+
+    @if (ViewData["RefreshToken"] != null)
+    {
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5>Refresh Token</h5>
+            </div>
+            <div class="card-body">
+                <textarea id="refreshToken" class="form-control" rows="3" readonly>@ViewData["RefreshToken"]</textarea>
+                <button class="btn btn-sm btn-secondary mt-2" onclick="copyToClipboard('refreshToken')">Copy</button>
             </div>
         </div>
     }
@@ -58,6 +71,7 @@
 
     <div class="mt-4">
         <a href="/Account/TestApiCall" class="btn btn-primary">Test API Call (Verify Session)</a>
+        <a href="/Account/RefreshUserInfo" class="btn btn-outline-primary">Refresh Token + UserInfo</a>
         <a href="/Account/Logout" class="btn btn-danger">Logout</a>
     </div>
 </div>
