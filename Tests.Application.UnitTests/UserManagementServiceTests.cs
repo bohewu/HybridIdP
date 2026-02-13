@@ -267,6 +267,30 @@ public class UserManagementServiceTests : IDisposable
         Assert.False(userNo2FADto.TwoFactorEnabled);
     }
 
+    [Fact]
+    public async Task GetUsersAsync_ShouldMapLockoutState_WhenUserIsLockedOut()
+    {
+        // Arrange
+        var lockedUser = new ApplicationUser
+        {
+            Email = "locked@test.com",
+            UserName = "locked",
+            IsDeleted = false,
+            LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(10),
+            AccessFailedCount = 3
+        };
+        await _userManager.CreateAsync(lockedUser);
+
+        // Act
+        var result = await _service.GetUsersAsync(skip: 0, take: 25);
+
+        // Assert
+        var lockedUserDto = result.Items.Single(u => u.Email == "locked@test.com");
+        Assert.True(lockedUserDto.IsLockedOut);
+        Assert.True(lockedUserDto.LockoutEnd.HasValue);
+        Assert.Equal(3, lockedUserDto.AccessFailedCount);
+    }
+
     #endregion
 
     #region GetUserByIdAsync Tests
@@ -298,6 +322,29 @@ public class UserManagementServiceTests : IDisposable
         Assert.Equal(user.Id, result.Id);
         Assert.Equal("test@test.com", result.Email);
         Assert.Contains("Admin", result.Roles);
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_ShouldMapLockoutFields_WhenLockedOut()
+    {
+        // Arrange
+        var user = new ApplicationUser
+        {
+            Email = "locked-detail@test.com",
+            UserName = "locked-detail",
+            LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(5),
+            AccessFailedCount = 2
+        };
+        await _userManager.CreateAsync(user);
+
+        // Act
+        var result = await _service.GetUserByIdAsync(user.Id);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.IsLockedOut);
+        Assert.True(result.LockoutEnd.HasValue);
+        Assert.Equal(2, result.AccessFailedCount);
     }
 
     [Fact]

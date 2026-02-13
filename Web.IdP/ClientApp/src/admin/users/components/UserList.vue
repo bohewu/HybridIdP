@@ -32,6 +32,7 @@ const emit = defineEmits([
   'impersonate',
   'view-login-history',
   'reset-mfa',
+  'unlock',
   'deactivate',
   'delete',
   'reactivate',
@@ -220,6 +221,13 @@ const getSortIcon = (field) => {
                     {{ user.isActive ? $t('users.details.active') : $t('users.details.inactive') }}
                   </span>
                   <span
+                    v-if="user.isLockedOut"
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700"
+                    :title="user.lockoutEnd ? `Lockout until ${formatDate(user.lockoutEnd)}` : 'Locked out'"
+                  >
+                    Locked
+                  </span>
+                  <span
                     v-if="user.twoFactorEnabled || user.emailMfaEnabled || user.hasPasskey"
                     class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700"
                     :title="$t('users.mfa.enabled')"
@@ -283,6 +291,13 @@ const getSortIcon = (field) => {
                       class="text-left w-full block px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
                     >
                       {{ t('users.mfa.reset') }}
+                    </button>
+                    <button
+                      v-if="canUpdate && user.isLockedOut"
+                      @click="emit('unlock', user); close()"
+                      class="text-left w-full block px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
+                    >
+                      Unlock account
                     </button>
                     <div class="border-t border-gray-100 my-1"></div>
                     <button

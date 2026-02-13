@@ -19,5 +19,8 @@ public class UserSummaryDto
     public bool TwoFactorEnabled { get; set; }
     public bool EmailMfaEnabled { get; set; }
     public bool HasPasskey { get; set; }
+    public bool IsLockedOut { get; set; }
+    public DateTimeOffset? LockoutEnd { get; set; }
+    public int AccessFailedCount { get; set; }
     public List<string> Roles { get; set; } = new();
 }

@@ -130,6 +130,9 @@ public class UserManagementService : IUserManagementService
                 TwoFactorEnabled = user.TwoFactorEnabled,
                 EmailMfaEnabled = user.EmailMfaEnabled,
                 HasPasskey = usersWithPasskeys.Contains(user.Id),
+                IsLockedOut = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow,
+                LockoutEnd = user.LockoutEnd,
+                AccessFailedCount = user.AccessFailedCount,
                 Roles = roles.ToList()
             });
         }
@@ -180,6 +183,9 @@ public class UserManagementService : IUserManagementService
             PhoneNumberConfirmed = user.PhoneNumberConfirmed,
             TwoFactorEnabled = user.TwoFactorEnabled,
             LastLoginDate = user.LastLoginDate,
+            IsLockedOut = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow,
+            LockoutEnd = user.LockoutEnd,
+            AccessFailedCount = user.AccessFailedCount,
             CreatedAt = user.CreatedAt,
             ModifiedAt = user.ModifiedAt,
             Roles = roles.ToList()

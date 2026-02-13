@@ -305,6 +305,36 @@ const handleResetMfa = async (user) => {
   }
 }
 
+const handleUnlock = async (user) => {
+  if (!canUpdate.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = t('deniedMessages.update')
+    deniedPermission.value = Permissions.Users.Update
+    return
+  }
+
+  if (!confirm(`Unlock account ${user.email}?`)) {
+    return
+  }
+
+  try {
+    const response = await fetch(`/api/admin/users/${user.id}/unlock`, {
+      method: 'POST'
+    })
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}))
+      throw new Error(errData.error || errData.message || `HTTP error! status: ${response.status}`)
+    }
+
+    await fetchUsers()
+    alert('User unlocked successfully.')
+  } catch (e) {
+    alert(`Failed to unlock user: ${e.message}`)
+    console.error('Error unlocking user:', e)
+  }
+}
+
 const handleFormClose = () => {
   showForm.value = false
   selectedUser.value = null
@@ -467,6 +497,7 @@ const handleImpersonate = async (user) => {
         @impersonate="handleImpersonate"
         @view-login-history="handleViewLoginHistory"
         @reset-mfa="handleResetMfa"
+        @unlock="handleUnlock"
         @deactivate="handleDeactivate"
         @delete="handleDelete"
         @reactivate="handleReactivate"

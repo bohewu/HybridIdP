@@ -42,6 +42,9 @@ public class UserDetailDto
     public bool PhoneNumberConfirmed { get; set; }
     public bool TwoFactorEnabled { get; set; }
     public DateTime? LastLoginDate { get; set; }
+    public bool IsLockedOut { get; set; }
+    public DateTimeOffset? LockoutEnd { get; set; }
+    public int AccessFailedCount { get; set; }
     
     // Audit
     public DateTime CreatedAt { get; set; }

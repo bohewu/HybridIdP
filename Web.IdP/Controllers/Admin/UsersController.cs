@@ -278,6 +278,37 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// Unlock a locked-out user account and reset failed access count.
+    /// </summary>
+    /// <param name="id">User ID</param>
+    [HttpPost("{id}/unlock")]
+    [HasPermission(Permissions.Users.Update)]
+    public async Task<IActionResult> UnlockUser(Guid id)
+    {
+        try
+        {
+            var user = await _userManager.FindByIdAsync(id.ToString());
+            if (user == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            await _userManager.SetLockoutEndDateAsync(user, null);
+            await _userManager.ResetAccessFailedCountAsync(user);
+
+            return Ok(new
+            {
+                message = "User unlocked successfully.",
+                userId = id
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An error occurred while unlocking the user", details = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Assign roles to a user (replaces existing roles).
     /// </summary>
     /// <param name="id">User ID</param>
@@ -637,4 +668,3 @@ public class UsersController : ControllerBase
         }
     }
     }
-
