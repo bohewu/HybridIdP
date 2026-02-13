@@ -1,10 +1,3 @@
-FROM node:22-bookworm-slim AS frontend-build
-WORKDIR /app
-COPY Web.IdP/ClientApp/package.json Web.IdP/ClientApp/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
-COPY Web.IdP/ClientApp/ ./
-RUN npm run build -- --outDir /frontend-dist
-
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /source
 
@@ -19,10 +12,10 @@ COPY Web.IdP/Web.IdP.csproj Web.IdP/
 
 RUN dotnet restore Web.IdP/Web.IdP.csproj
 
-# Copy source and frontend build output
+# Copy source (frontend assets should already exist under wwwroot/dist)
 COPY . .
 
-COPY --from=frontend-build /frontend-dist ./Web.IdP/wwwroot/dist
+RUN test -f ./Web.IdP/wwwroot/dist/.vite/manifest.json || (echo "Missing frontend build output. Run deployment/deploy-idp.sh first." && exit 1)
 
 RUN dotnet publish Web.IdP/Web.IdP.csproj -c Release -o /app/publish --no-restore
 
