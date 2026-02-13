@@ -27,6 +27,10 @@ const props = defineProps({
     type: String,
     required: true
   },
+  itemDisabledKey: {
+    type: String,
+    default: null
+  },
   disabled: {
     type: Boolean,
     default: false
@@ -62,8 +66,16 @@ const isSelected = (value) => {
   return props.modelValue.includes(value)
 }
 
-const toggleSelection = (value) => {
-  if (props.disabled) return
+const isItemDisabled = (item) => {
+  if (props.disabled) return true
+  if (!props.itemDisabledKey) return false
+  return Boolean(item[props.itemDisabledKey])
+}
+
+const toggleSelection = (item) => {
+  if (isItemDisabled(item)) return
+
+  const value = item[props.valueKey]
   
   const newValue = [...props.modelValue]
   const index = newValue.indexOf(value)
@@ -81,7 +93,14 @@ const toggleAllVisible = () => {
     if (props.disabled || filteredItems.value.length === 0) return
 
     // specific logic: if all visible are selected, deselect them. Otherwise select all visible.
-    const visibleValues = filteredItems.value.map(i => i[props.valueKey])
+    const visibleValues = filteredItems.value
+      .filter(item => !isItemDisabled(item))
+      .map(i => i[props.valueKey])
+
+    if (visibleValues.length === 0) {
+      return
+    }
+
     const allVisibleSelected = visibleValues.every(v => props.modelValue.includes(v))
 
     let newValue = [...props.modelValue]
@@ -99,7 +118,12 @@ const toggleAllVisible = () => {
 
 const allVisibleSelected = computed(() => {
     if (filteredItems.value.length === 0) return false
-    const visibleValues = filteredItems.value.map(i => i[props.valueKey])
+    const visibleValues = filteredItems.value
+      .filter(item => !isItemDisabled(item))
+      .map(i => i[props.valueKey])
+
+    if (visibleValues.length === 0) return false
+
     return visibleValues.every(v => props.modelValue.includes(v))
 })
 
@@ -162,6 +186,7 @@ const allVisibleSelected = computed(() => {
           class="flex items-start p-2 hover:bg-google-50 rounded cursor-pointer transition-colors"
           :class="[
             disabled ? 'opacity-50 cursor-not-allowed' : '',
+            isItemDisabled(item) ? 'opacity-60 cursor-not-allowed bg-gray-50' : '',
             isSelected(item[valueKey]) ? 'bg-blue-50/50' : ''
           ]"
         >
@@ -169,8 +194,8 @@ const allVisibleSelected = computed(() => {
             <input
               type="checkbox"
               :checked="isSelected(item[valueKey])"
-              @change="toggleSelection(item[valueKey])"
-              :disabled="disabled"
+              @change="toggleSelection(item)"
+              :disabled="isItemDisabled(item)"
               class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500 mt-0.5"
             />
           </div>

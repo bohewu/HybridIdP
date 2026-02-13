@@ -16,8 +16,8 @@ namespace Infrastructure.Services;
 public class ScopeService : IScopeService
 {
     /// <summary>
-    /// Standard OIDC scopes whose claim mappings cannot be modified.
-    /// Per OIDC specification, these scopes have fixed claim mappings.
+    /// Standard OIDC scopes with locked standard claims.
+    /// Custom claims may be added, but standard claim mappings remain fixed.
     /// </summary>
     private static readonly HashSet<string> StandardOidcScopes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -426,34 +426,72 @@ public class ScopeService : IScopeService
 
         var scopeName = await _scopeManager.GetNameAsync(scope);
 
-        // Protect standard OIDC scopes from having their claims modified
-        if (StandardOidcScopes.Contains(scopeName!))
-        {
-            throw new InvalidOperationException(
-                $"Cannot modify claims for standard OIDC scope '{scopeName}'. " +
-                "Standard scopes have fixed claim mappings per OIDC specification.");
-        }
+        var requestedClaimIds = (request.ClaimIds ?? new List<int>())
+            .Distinct()
+            .ToList();
 
         // Remove existing scope claims
         var existingScopeClaims = await _db.ScopeClaims
             .Where(sc => sc.ScopeId == scopeId)
+            .Include(sc => sc.ClaimDefinition)
             .ToListAsync();
+
+        var claimsById = requestedClaimIds.Count == 0
+            ? new Dictionary<int, ClaimDefinition>()
+            : await _db.ClaimDefinitions
+                .Where(c => requestedClaimIds.Contains(c.Id))
+                .ToDictionaryAsync(c => c.Id);
+
+        // Verify all requested claims exist
+        var missingClaimId = requestedClaimIds.FirstOrDefault(id => !claimsById.ContainsKey(id));
+        if (missingClaimId != 0)
+        {
+            throw new ArgumentException($"Claim with ID {missingClaimId} not found.");
+        }
+
+        // Standard OIDC scopes keep their current standard claims locked, but allow custom claims.
+        if (StandardOidcScopes.Contains(scopeName!))
+        {
+            var lockedStandardClaimIds = existingScopeClaims
+                .Where(sc => sc.ClaimDefinition?.IsStandard == true)
+                .Select(sc => sc.ClaimDefinitionId)
+                .Distinct()
+                .ToHashSet();
+
+            var removedLockedClaimIds = lockedStandardClaimIds
+                .Except(requestedClaimIds)
+                .ToList();
+
+            if (removedLockedClaimIds.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot remove standard OIDC claims from scope '{scopeName}'. " +
+                    "Only custom claims can be added or removed.");
+            }
+
+            var disallowedStandardClaimAdds = claimsById.Values
+                .Where(c => c.IsStandard && !lockedStandardClaimIds.Contains(c.Id))
+                .Select(c => c.Name)
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (disallowedStandardClaimAdds.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot add standard OIDC claims to scope '{scopeName}'. " +
+                    "Only the existing standard claims are allowed. " +
+                    $"Disallowed claims: {string.Join(", ", disallowedStandardClaimAdds)}.");
+            }
+        }
 
         _db.ScopeClaims.RemoveRange(existingScopeClaims);
 
         // Add new scope claims
-        if (request.ClaimIds != null && request.ClaimIds.Count > 0)
+        if (requestedClaimIds.Count > 0)
         {
-            foreach (var claimId in request.ClaimIds)
+            foreach (var claimId in requestedClaimIds)
             {
-                // Verify claim exists
-                var claim = await _db.ClaimDefinitions
-                    .FirstOrDefaultAsync(c => c.Id == claimId);
-
-                if (claim == null)
-                {
-                    throw new ArgumentException($"Claim with ID {claimId} not found.");
-                }
+                var claim = claimsById[claimId];
 
                 var scopeClaim = new ScopeClaim
                 {

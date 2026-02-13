@@ -1062,6 +1062,165 @@ public class ScopeServiceTests : IDisposable
         Assert.Empty(remainingClaims);
     }
 
+    [Fact]
+    public async Task UpdateScopeClaimsAsync_ForStandardScope_ShouldAllowAddingCustomClaims()
+    {
+        // Arrange
+        var scopeObj = new { Id = "scope1", Name = "profile" };
+        _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeObj);
+        _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("profile");
+
+        var standardClaim = new ClaimDefinition
+        {
+            Id = 1,
+            Name = "name",
+            DisplayName = "Full Name",
+            ClaimType = "name",
+            UserPropertyPath = "UserName",
+            DataType = "String",
+            IsStandard = true,
+            IsRequired = false
+        };
+
+        var customClaim = new ClaimDefinition
+        {
+            Id = 2,
+            Name = "ncut_id",
+            DisplayName = "NCUT ID",
+            ClaimType = "ncut_id",
+            UserPropertyPath = "Person.EmployeeId",
+            DataType = "String",
+            IsStandard = false,
+            IsRequired = false
+        };
+
+        _dbContext.Set<ClaimDefinition>().AddRange(standardClaim, customClaim);
+        _dbContext.ScopeClaims.Add(new ScopeClaim
+        {
+            ScopeId = "scope1",
+            ScopeName = "profile",
+            ClaimDefinitionId = 1,
+            AlwaysInclude = false
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var request = new UpdateScopeClaimsRequest(new List<int> { 1, 2 });
+
+        // Act
+        var result = await _scopeService.UpdateScopeClaimsAsync("scope1", request);
+
+        // Assert
+        Assert.Equal(2, result.claims.Count());
+        Assert.Contains(result.claims, c => c.ClaimId == 1);
+        Assert.Contains(result.claims, c => c.ClaimId == 2);
+    }
+
+    [Fact]
+    public async Task UpdateScopeClaimsAsync_ForStandardScope_ShouldThrow_WhenRemovingLockedStandardClaim()
+    {
+        // Arrange
+        var scopeObj = new { Id = "scope1", Name = "profile" };
+        _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeObj);
+        _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("profile");
+
+        var standardClaim = new ClaimDefinition
+        {
+            Id = 1,
+            Name = "name",
+            DisplayName = "Full Name",
+            ClaimType = "name",
+            UserPropertyPath = "UserName",
+            DataType = "String",
+            IsStandard = true,
+            IsRequired = false
+        };
+
+        var customClaim = new ClaimDefinition
+        {
+            Id = 2,
+            Name = "ncut_id",
+            DisplayName = "NCUT ID",
+            ClaimType = "ncut_id",
+            UserPropertyPath = "Person.EmployeeId",
+            DataType = "String",
+            IsStandard = false,
+            IsRequired = false
+        };
+
+        _dbContext.Set<ClaimDefinition>().AddRange(standardClaim, customClaim);
+        _dbContext.ScopeClaims.Add(new ScopeClaim
+        {
+            ScopeId = "scope1",
+            ScopeName = "profile",
+            ClaimDefinitionId = 1,
+            AlwaysInclude = false
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var request = new UpdateScopeClaimsRequest(new List<int> { 2 });
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _scopeService.UpdateScopeClaimsAsync("scope1", request));
+        Assert.Contains("Cannot remove standard OIDC claims", ex.Message);
+    }
+
+    [Fact]
+    public async Task UpdateScopeClaimsAsync_ForStandardScope_ShouldThrow_WhenAddingOtherStandardClaim()
+    {
+        // Arrange
+        var scopeObj = new { Id = "scope1", Name = "profile" };
+        _mockScopeManager.Setup(m => m.FindByIdAsync("scope1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scopeObj);
+        _mockScopeManager.Setup(m => m.GetNameAsync(scopeObj, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("profile");
+
+        var nameClaim = new ClaimDefinition
+        {
+            Id = 1,
+            Name = "name",
+            DisplayName = "Full Name",
+            ClaimType = "name",
+            UserPropertyPath = "UserName",
+            DataType = "String",
+            IsStandard = true,
+            IsRequired = false
+        };
+
+        var emailClaim = new ClaimDefinition
+        {
+            Id = 3,
+            Name = "email",
+            DisplayName = "Email",
+            ClaimType = "email",
+            UserPropertyPath = "Email",
+            DataType = "String",
+            IsStandard = true,
+            IsRequired = false
+        };
+
+        _dbContext.Set<ClaimDefinition>().AddRange(nameClaim, emailClaim);
+        _dbContext.ScopeClaims.Add(new ScopeClaim
+        {
+            ScopeId = "scope1",
+            ScopeName = "profile",
+            ClaimDefinitionId = 1,
+            AlwaysInclude = false
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var request = new UpdateScopeClaimsRequest(new List<int> { 1, 3 });
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _scopeService.UpdateScopeClaimsAsync("scope1", request));
+        Assert.Contains("Cannot add standard OIDC claims", ex.Message);
+    }
+
     #endregion
 
     // Helper method to create async enumerable for mocking

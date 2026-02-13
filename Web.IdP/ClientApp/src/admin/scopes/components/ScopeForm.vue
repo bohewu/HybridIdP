@@ -6,7 +6,7 @@ import SearchableCheckboxList from '@/components/common/SearchableCheckboxList.v
 
 const { t } = useI18n()
 
-// Standard OIDC scopes that cannot have claims modified
+// Standard OIDC scopes with fixed standard claims
 const STANDARD_OIDC_SCOPES = ['openid', 'profile', 'email', 'phone', 'address']
 
 const props = defineProps({
@@ -41,6 +41,39 @@ const formData = ref({
 const availableClaims = ref([])
 const selectedClaimIds = ref([])
 const loadingClaims = ref(false)
+
+const claimsWithLockState = computed(() => {
+  if (!isStandardScope.value) {
+    return availableClaims.value
+  }
+
+  return availableClaims.value.map(claim => ({
+    ...claim,
+    isLockedInStandardScope: claim.isStandard === true
+  }))
+})
+
+const lockedClaimIds = computed(() => {
+  if (!isStandardScope.value) {
+    return []
+  }
+
+  const selected = new Set(selectedClaimIds.value)
+  return claimsWithLockState.value
+    .filter(claim => claim.isLockedInStandardScope && selected.has(claim.id))
+    .map(claim => claim.id)
+})
+
+const selectedLockedClaimNames = computed(() => {
+  if (!isStandardScope.value) {
+    return []
+  }
+
+  const locked = new Set(lockedClaimIds.value)
+  return claimsWithLockState.value
+    .filter(claim => locked.has(claim.id))
+    .map(claim => claim.name)
+})
 
 // Resources management
 const availableResources = ref([])
@@ -195,8 +228,8 @@ const handleSubmit = async () => {
 
     const savedScope = await response.json()
 
-    // Save claims mapping (skip for standard OIDC scopes which have fixed claims)
-    if (savedScope.id && !isStandardScope.value) {
+    // Save claims mapping
+    if (savedScope.id) {
       await saveScopeClaims(savedScope.id)
     }
 
@@ -212,13 +245,17 @@ const handleSubmit = async () => {
 // Save scope claims
 const saveScopeClaims = async (scopeId) => {
   try {
+    const claimIds = isStandardScope.value
+      ? Array.from(new Set([...selectedClaimIds.value, ...lockedClaimIds.value]))
+      : selectedClaimIds.value
+
     const response = await fetch(`/api/admin/scopes/${scopeId}/claims`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        claimIds: selectedClaimIds.value
+        claimIds
       })
     })
 
@@ -480,16 +517,19 @@ const saveScopeClaims = async (scopeId) => {
                   {{ $t('scopes.form.standardScopeClaimsWarning') }}
                 </p>
               </div>
+              <p v-if="selectedLockedClaimNames.length > 0" class="mt-2 text-xs text-amber-700">
+                {{ selectedLockedClaimNames.join(', ') }}
+              </p>
             </div>
             
             <SearchableCheckboxList
               v-model="selectedClaimIds"
-              :items="availableClaims"
+              :items="claimsWithLockState"
               label-key="name"
               sub-label-key="displayName"
               value-key="id"
+              item-disabled-key="isLockedInStandardScope"
               :loading="loadingClaims"
-              :disabled="isStandardScope"
               :placeholder="$t('scopes.form.userClaimsLoading') || 'Search claims...'"
               height-class="max-h-48"
             >
