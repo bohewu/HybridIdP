@@ -1,30 +1,28 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM node:22-bookworm-slim AS frontend-build
 
-# Use Taiwan apt mirror for faster downloads (Ubuntu Noble uses sources.list.d/ubuntu.sources)
-RUN sed -i 's|archive.ubuntu.com|tw.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || \
-    sed -i 's|archive.ubuntu.com|tw.archive.ubuntu.com|g' /etc/apt/sources.list 2>/dev/null || true && \
-    sed -i 's|security.ubuntu.com|tw.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || \
-    sed -i 's|security.ubuntu.com|tw.archive.ubuntu.com|g' /etc/apt/sources.list 2>/dev/null || true
+WORKDIR /src/Web.IdP/ClientApp
+COPY Web.IdP/ClientApp/package.json Web.IdP/ClientApp/package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
-# Install Node.js
-RUN apt-get update && \
-    apt-get install -y curl && \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs
-
-WORKDIR /source
-COPY . .
-WORKDIR /source/Web.IdP/ClientApp
-RUN npm install
+COPY Web.IdP/ClientApp/ ./
 RUN npm run build
+RUN test -f /src/Web.IdP/wwwroot/dist/.vite/manifest.json
 
-WORKDIR /source
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-publish
+
+WORKDIR /src
+COPY . .
+COPY --from=frontend-build /src/Web.IdP/wwwroot/dist /src/Web.IdP/wwwroot/dist
+RUN test -f /src/Web.IdP/wwwroot/dist/.vite/manifest.json
+
 RUN dotnet restore Web.IdP/Web.IdP.csproj
 RUN dotnet publish Web.IdP/Web.IdP.csproj -c Release -o /app/publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+
 WORKDIR /app
-COPY --from=build /app/publish .
-# Explicitly copy the frontend build artifacts in case dotnet publish missed them
-COPY --from=build /source/Web.IdP/wwwroot/dist ./wwwroot/dist
+COPY --from=backend-publish /app/publish ./
+COPY --from=frontend-build /src/Web.IdP/wwwroot/dist /app/wwwroot/dist
+RUN test -f /app/wwwroot/dist/.vite/manifest.json
+
 ENTRYPOINT ["dotnet", "Web.IdP.dll"]

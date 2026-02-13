@@ -1,0 +1,5 @@
+services:
+  idp-service:
+    image: ${IDP_IMAGE:?IDP_IMAGE is required for ghcr source}
+    build: !reset null
+    pull_policy: always

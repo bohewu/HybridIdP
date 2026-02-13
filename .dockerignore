@@ -9,6 +9,7 @@
 
 **/node_modules
 Web.IdP/ClientApp/dist
+Web.IdP/wwwroot/dist
 
 *.user
 *.suo

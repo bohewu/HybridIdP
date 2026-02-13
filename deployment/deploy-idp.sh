@@ -3,12 +3,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 COMPOSE_MAIN="docker-compose.splithost-nginx-nodb.yml"
 COMPOSE_OVERRIDE="docker-compose.override.yml"
+COMPOSE_GHCR_OVERRIDE="docker-compose.ghcr-image.yml"
+ENV_FILE=".env"
 SERVICE="idp-service"
-SKIP_FRONTEND=false
+SOURCE="local"
+IMAGE_REF=""
 NO_CACHE=false
 
 GREEN='\033[0;32m'
@@ -21,26 +23,63 @@ info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+resolve_path() {
+    local path="$1"
+    if [[ "$path" = /* ]]; then
+        echo "$path"
+    else
+        echo "$SCRIPT_DIR/$path"
+    fi
+}
+
+extract_idp_image_from_env_file() {
+    local env_path="$1"
+    if [[ ! -f "$env_path" ]]; then
+        return
+    fi
+
+    local raw
+    raw="$(grep -E '^[[:space:]]*IDP_IMAGE=' "$env_path" | tail -n 1 | cut -d '=' -f 2- || true)"
+    raw="${raw%%#*}"
+    raw="$(echo "$raw" | xargs)"
+    raw="${raw%\"}"
+    raw="${raw#\"}"
+    raw="${raw%\'}"
+    raw="${raw#\'}"
+    echo "$raw"
+}
+
 usage() {
     cat <<EOF
 Usage: $0 [options]
 
 Options:
-  --compose <file>     Main compose file under deployment/ (default: $COMPOSE_MAIN)
-  --override <file>    Override compose file under deployment/ (default: $COMPOSE_OVERRIDE)
-  --service <name>     Service name to build/up (default: $SERVICE)
-  --skip-frontend      Skip frontend build step
-  --no-cache           Build docker image without cache
-  -h, --help           Show this help
+  --source <local|ghcr>  Deployment source (default: $SOURCE)
+  --image <ref>          Image reference for ghcr source (e.g. ghcr.io/org/hybrididp-idp-service:main)
+  --compose <file>       Main compose file under deployment/ (default: $COMPOSE_MAIN)
+  --override <file>      Override compose file under deployment/ (default: $COMPOSE_OVERRIDE)
+  --env-file <file>      Env file under deployment/ or absolute path (default: $ENV_FILE)
+  --service <name>       Service name to deploy (default: $SERVICE)
+  --no-cache             Build docker image without cache (local source only)
+  --skip-frontend        Deprecated (frontend is built in Dockerfile)
+  -h, --help             Show this help
 
-Example:
-  $0
-  $0 --compose docker-compose.nginx.yml --service idp-service
+Examples:
+  $0 --source local
+  $0 --source ghcr --image ghcr.io/my-org/hybrididp-idp-service:main
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --source)
+            SOURCE="$2"
+            shift 2
+            ;;
+        --image)
+            IMAGE_REF="$2"
+            shift 2
+            ;;
         --compose)
             COMPOSE_MAIN="$2"
             shift 2
@@ -49,16 +88,20 @@ while [[ $# -gt 0 ]]; do
             COMPOSE_OVERRIDE="$2"
             shift 2
             ;;
+        --env-file)
+            ENV_FILE="$2"
+            shift 2
+            ;;
         --service)
             SERVICE="$2"
             shift 2
             ;;
-        --skip-frontend)
-            SKIP_FRONTEND=true
-            shift
-            ;;
         --no-cache)
             NO_CACHE=true
+            shift
+            ;;
+        --skip-frontend)
+            warn "'--skip-frontend' is deprecated. Frontend is built in Web.IdP/Dockerfile."
             shift
             ;;
         -h|--help)
@@ -73,31 +116,35 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-MAIN_PATH="$SCRIPT_DIR/$COMPOSE_MAIN"
-OVERRIDE_PATH="$SCRIPT_DIR/$COMPOSE_OVERRIDE"
-ENV_PATH="$SCRIPT_DIR/.env"
+if [[ "$SOURCE" != "local" && "$SOURCE" != "ghcr" ]]; then
+    error "Invalid --source value: $SOURCE (expected local or ghcr)"
+    exit 1
+fi
+
+if [[ "$SOURCE" == "ghcr" && "$NO_CACHE" == true ]]; then
+    warn "'--no-cache' only applies to local source and will be ignored."
+fi
+
+MAIN_PATH="$(resolve_path "$COMPOSE_MAIN")"
+OVERRIDE_PATH="$(resolve_path "$COMPOSE_OVERRIDE")"
+GHCR_OVERRIDE_PATH="$(resolve_path "$COMPOSE_GHCR_OVERRIDE")"
+ENV_PATH="$(resolve_path "$ENV_FILE")"
 
 if [[ ! -f "$MAIN_PATH" ]]; then
     error "Compose file not found: $MAIN_PATH"
     exit 1
 fi
 
-if [[ "$SKIP_FRONTEND" != true ]]; then
-    info "Building frontend assets in container..."
-    docker run --rm \
-      --user "$(id -u):$(id -g)" \
-      -v "$REPO_ROOT:/workspace" \
-      -w /workspace/Web.IdP/ClientApp \
-      node:22-bookworm-slim \
-      sh -lc "npm ci --no-audit --no-fund && npm run build"
+COMPOSE_ARGS=( -f "$MAIN_PATH" )
 
-    if [[ ! -f "$REPO_ROOT/Web.IdP/wwwroot/dist/.vite/manifest.json" ]]; then
-        error "Frontend build did not produce manifest file."
+if [[ "$SOURCE" == "ghcr" ]]; then
+    if [[ ! -f "$GHCR_OVERRIDE_PATH" ]]; then
+        error "GHCR compose override not found: $GHCR_OVERRIDE_PATH"
         exit 1
     fi
+    COMPOSE_ARGS+=( -f "$GHCR_OVERRIDE_PATH" )
 fi
 
-COMPOSE_ARGS=( -f "$MAIN_PATH" )
 if [[ -f "$OVERRIDE_PATH" ]]; then
     COMPOSE_ARGS+=( -f "$OVERRIDE_PATH" )
 else
@@ -106,20 +153,50 @@ fi
 
 if [[ -f "$ENV_PATH" ]]; then
     COMPOSE_ARGS+=( --env-file "$ENV_PATH" )
+else
+    warn "Env file not found, continuing without it: $ENV_PATH"
 fi
 
-UP_ARGS=(up -d --build)
-if [[ "$NO_CACHE" == true ]]; then
-    UP_ARGS+=(--no-deps)
-    info "Running explicit build with --no-cache..."
-    docker compose "${COMPOSE_ARGS[@]}" build --no-cache "$SERVICE"
-    UP_ARGS=(up -d)
+if [[ -n "$IMAGE_REF" ]]; then
+    export IDP_IMAGE="$IMAGE_REF"
 fi
 
-info "Starting service '$SERVICE'..."
-docker compose "${COMPOSE_ARGS[@]}" "${UP_ARGS[@]}" "$SERVICE"
+if [[ "$SOURCE" == "ghcr" && -z "${IDP_IMAGE:-}" ]]; then
+    IDP_IMAGE="$(extract_idp_image_from_env_file "$ENV_PATH")"
+    if [[ -n "$IDP_IMAGE" ]]; then
+        export IDP_IMAGE
+    fi
+fi
+
+if [[ "$SOURCE" == "ghcr" ]]; then
+    if [[ -z "${IDP_IMAGE:-}" ]]; then
+        error "IDP image is not set. Use --image or define IDP_IMAGE in $ENV_PATH."
+        exit 1
+    fi
+
+    info "Using ghcr image: $IDP_IMAGE"
+    info "Pulling service '$SERVICE' image..."
+    docker compose "${COMPOSE_ARGS[@]}" pull "$SERVICE"
+
+    info "Starting service '$SERVICE' without build..."
+    docker compose "${COMPOSE_ARGS[@]}" up -d --no-build "$SERVICE"
+else
+    if [[ "$NO_CACHE" == true ]]; then
+        info "Building service '$SERVICE' with --no-cache..."
+        docker compose "${COMPOSE_ARGS[@]}" build --no-cache "$SERVICE"
+        info "Starting service '$SERVICE'..."
+        docker compose "${COMPOSE_ARGS[@]}" up -d "$SERVICE"
+    else
+        info "Building and starting service '$SERVICE'..."
+        docker compose "${COMPOSE_ARGS[@]}" up -d --build "$SERVICE"
+    fi
+fi
 
 info "Done. Current status:"
 docker compose "${COMPOSE_ARGS[@]}" ps "$SERVICE"
 
-echo -e "${CYAN}Tip:${NC} use '--skip-frontend' when only backend code changed."
+if [[ "$SOURCE" == "ghcr" ]]; then
+    echo -e "${CYAN}Tip:${NC} use '--image' to pin an exact release tag."
+else
+    echo -e "${CYAN}Tip:${NC} use '--source ghcr --image <tag>' to avoid remote host build time."
+fi
