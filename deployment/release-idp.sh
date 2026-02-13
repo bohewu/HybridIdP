@@ -191,18 +191,19 @@ if [[ "$SKIP_WAIT" != true ]]; then
     STATUS=""
     CONCLUSION=""
 
-    info "Waiting for workflow '$WORKFLOW_FILE' on commit $TAG_SHA..."
+    info "Waiting for workflow '$WORKFLOW_FILE' for tag $TAG (commit $TAG_SHA)..."
     while (( SECONDS < DEADLINE )); do
         RUN_LINE="$(gh run list \
             --repo "$OWNER/$REPO" \
             --workflow "$WORKFLOW_FILE" \
-            --commit "$TAG_SHA" \
+            --branch "$TAG" \
+            --event push \
             --limit 1 \
-            --json databaseId,status,conclusion \
-            --jq '.[0] | [.databaseId, .status, (.conclusion // "")] | @tsv' 2>/dev/null || true)"
+            --json databaseId,status,conclusion,headBranch,event \
+            --jq '.[0] | [.databaseId, .status, (.conclusion // ""), (.headBranch // ""), (.event // "")] | @tsv' 2>/dev/null || true)"
 
         if [[ -z "$RUN_LINE" ]]; then
-            info "Workflow run not visible yet, waiting..."
+            info "Tag workflow run not visible yet, waiting..."
             sleep "$POLL_INTERVAL_SECONDS"
             continue
         fi
@@ -210,8 +211,16 @@ if [[ "$SKIP_WAIT" != true ]]; then
         RUN_ID="$(echo "$RUN_LINE" | cut -f1)"
         STATUS="$(echo "$RUN_LINE" | cut -f2)"
         CONCLUSION="$(echo "$RUN_LINE" | cut -f3)"
+        RUN_BRANCH="$(echo "$RUN_LINE" | cut -f4)"
+        RUN_EVENT="$(echo "$RUN_LINE" | cut -f5)"
 
-        info "Workflow run id=$RUN_ID status=$STATUS conclusion=${CONCLUSION:-n/a}"
+        if [[ "$RUN_BRANCH" != "$TAG" || "$RUN_EVENT" != "push" ]]; then
+            info "Found run id=$RUN_ID branch=$RUN_BRANCH event=$RUN_EVENT (not tag push), waiting..."
+            sleep "$POLL_INTERVAL_SECONDS"
+            continue
+        fi
+
+        info "Workflow run id=$RUN_ID branch=$RUN_BRANCH event=$RUN_EVENT status=$STATUS conclusion=${CONCLUSION:-n/a}"
         if [[ "$STATUS" == "completed" ]]; then
             break
         fi
@@ -221,7 +230,7 @@ if [[ "$SKIP_WAIT" != true ]]; then
 
     if [[ "$STATUS" != "completed" ]]; then
         error "Timed out waiting for workflow completion after ${TIMEOUT_SECONDS}s."
-        error "Check run status: gh run list --repo $OWNER/$REPO --workflow $WORKFLOW_FILE"
+        error "Check run status: gh run list --repo $OWNER/$REPO --workflow $WORKFLOW_FILE --branch $TAG --event push"
         exit 1
     fi
 
