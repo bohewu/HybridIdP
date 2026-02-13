@@ -282,16 +282,14 @@ namespace Web.IdP.Services // Keep consistent namespace case
             // Fetch scope information only for allowed scopes
             await LoadScopeInfosAsync(effectiveRequestedScopes, clientGuid, cancellationToken);
 
-            // Retrieve the permanent authorizations associated with the user and the calling client application
-            // userId variable is already defined above
-            var scopes = request.GetScopes();
-            
+            // Retrieve the permanent authorizations associated with the user and the calling client application.
+            // Use effective requested scopes (after client policy filtering) to avoid mismatches.
             var authorizationsEnumerable = _authorizationManager.FindAsync(
                 subject: userId.ToString(),
                 client: applicationId,
                 status: Statuses.Valid,
                 type: AuthorizationTypes.Permanent,
-                scopes: scopes,
+                scopes: effectiveRequestedScopes,
                 cancellationToken: cancellationToken);
 
             var authorizations = new List<object>();
@@ -304,6 +302,16 @@ namespace Web.IdP.Services // Keep consistent namespace case
             // In production, you may skip consent if authorization already exists
             if (authorizations.Count > 0 && prompt != "consent")
             {
+                var existingAuthorization = authorizations[0];
+                var existingAuthorizationScopes = (await _authorizationManager.GetScopesAsync(existingAuthorization, cancellationToken))
+                    .ToImmutableArray();
+
+                // Fallback to effective requested scopes if authorization scopes cannot be resolved.
+                if (existingAuthorizationScopes.IsDefaultOrEmpty)
+                {
+                    existingAuthorizationScopes = effectiveRequestedScopes;
+                }
+
                  // If a permanent authorization was found, return immediately
                 // Create a clean identity without ASP.NET Identity cookie claims to avoid duplicates
                 var identity = new ClaimsIdentity(
@@ -325,7 +333,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     // Enrichment
                     await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId, cancellationToken);
                     await _claimsEnricher.AddAppSpecificRolesAsync(identity, user, request.ClientId ?? string.Empty, cancellationToken);
-                    await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes, cancellationToken);
+                    await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, existingAuthorizationScopes, cancellationToken);
 
                     // Copy AMR claims from userPrincipal (robustly checking multiple types)
                     var amrValues = userPrincipal.Claims
@@ -345,8 +353,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     }
                 }
 
-                // Add audience (aud) claims from API Resources associated with requested scopes
-                var audiences = await _apiResourceService.GetAudiencesByScopesAsync(scopes);
+                // Add audience (aud) claims from API resources associated with granted scopes.
+                var audiences = await _apiResourceService.GetAudiencesByScopesAsync(existingAuthorizationScopes);
                 if (audiences.Count > 0)
                 {
                     identity.SetAudiences([..audiences]);
@@ -354,9 +362,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 }
                 else
                 {
-                    LogNoAudiencesForExistingAuth(string.Join(", ", scopes));
+                    LogNoAudiencesForExistingAuth(string.Join(", ", existingAuthorizationScopes));
                 }
 
+                identity.SetScopes(existingAuthorizationScopes);
+                identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(existingAuthorization, cancellationToken));
                 identity.SetDestinations(GetDestinations);
 
                 return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
