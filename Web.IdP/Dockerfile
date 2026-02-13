@@ -1,9 +1,9 @@
 FROM node:22-bookworm-slim AS frontend-build
 WORKDIR /app
 COPY Web.IdP/ClientApp/package.json Web.IdP/ClientApp/package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 COPY Web.IdP/ClientApp/ ./
-RUN npm run build
+RUN npm run build -- --outDir /frontend-dist
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /source
@@ -21,7 +21,8 @@ RUN dotnet restore Web.IdP/Web.IdP.csproj
 
 # Copy source and frontend build output
 COPY . .
-COPY --from=frontend-build /app/dist ./Web.IdP/wwwroot/dist
+
+COPY --from=frontend-build /frontend-dist ./Web.IdP/wwwroot/dist
 
 RUN dotnet publish Web.IdP/Web.IdP.csproj -c Release -o /app/publish --no-restore
 
