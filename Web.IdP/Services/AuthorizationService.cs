@@ -100,6 +100,19 @@ namespace Web.IdP.Services // Keep consistent namespace case
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
 
+            var promptValues = ParsePromptValues(prompt);
+            if (promptValues.Length > 1 && promptValues.Contains("none", StringComparer.OrdinalIgnoreCase))
+            {
+                LogInvalidPromptCombination(request.ClientId, prompt ?? string.Empty);
+                return new ForbidResult(
+                    authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidRequest,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The 'prompt=none' parameter cannot be used with other prompt values."
+                    }));
+            }
+
             // Retrieve the user principal stored in the authentication cookie
             // Using the passed principal if available (from Controller which might have already authenticated)
             // But logic in PageModel was calling AuthenticateAsync again.
@@ -107,11 +120,23 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             if (userPrincipal?.Identity?.IsAuthenticated != true)
             {
-                 return new ChallengeResult(
+                if (promptValues.Contains("none", StringComparer.OrdinalIgnoreCase))
+                {
+                    LogPromptNoneWithoutAuthenticatedUser(request.ClientId);
+                    return new ForbidResult(
+                        authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.LoginRequired,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The user is not logged in and cannot be silently authenticated."
+                        }));
+                }
+
+                return new ChallengeResult(
                     authenticationSchemes: new[] { IdentityConstants.ApplicationScheme },
                     properties: new AuthenticationProperties
                     {
-                        RedirectUri = Request.PathBase + Request.Path + Request.QueryString + (Request.QueryString.HasValue ? "&" : "?") + "prompt=login"
+                        RedirectUri = Request.PathBase + Request.Path + Request.QueryString
                     });
             }
 
@@ -551,7 +576,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
         }
 
         // Helper methods copied and adapted from PageModel
-         private static IEnumerable<string> GetDestinations(Claim claim)
+        private static IEnumerable<string> GetDestinations(Claim claim)
         {
             // Note: by default, claims are NOT automatically included in the access and identity tokens.
             // To allow OpenIddict to serialize them, you must attach them a destination, that specifies
@@ -621,6 +646,17 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     yield return Destinations.IdentityToken;
                     yield break;
             }
+        }
+
+        private static string[] ParsePromptValues(string? prompt)
+        {
+            if (string.IsNullOrWhiteSpace(prompt))
+            {
+                return Array.Empty<string>();
+            }
+
+            return prompt
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
 
 
@@ -706,6 +742,12 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
         [LoggerMessage(Level = LogLevel.Information, Message = "HandleAuthorizeRequestAsync: Request Details - AcrValues: {AcrValues}, Prompt: {Prompt}, MaxAge: {MaxAge}")]
         partial void LogAuthorizeRequestDetails(string acrValues, string? prompt, long? maxAge);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid prompt combination for client {ClientId}: {Prompt}")]
+        partial void LogInvalidPromptCombination(string? clientId, string prompt);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "prompt=none requested by client {ClientId} without authenticated user. Returning login_required.")]
+        partial void LogPromptNoneWithoutAuthenticatedUser(string? clientId);
 
         [LoggerMessage(Level = LogLevel.Warning, Message = "Client {ClientId} requested response_type=id_token without permission.")]
         partial void LogUnauthorizedIdTokenRequest(string? clientId);

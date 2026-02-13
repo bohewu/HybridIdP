@@ -2,6 +2,8 @@ using System.Security.Claims;
 using Core.Application;
 using Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -16,10 +18,12 @@ namespace Web.IdP.Services;
 public class UserInfoService : IUserInfoService
 {
     private readonly IApplicationDbContext _db;
+    private readonly ILogger<UserInfoService> _logger;
 
-    public UserInfoService(IApplicationDbContext db)
+    public UserInfoService(IApplicationDbContext db, ILogger<UserInfoService>? logger = null)
     {
         _db = db;
+        _logger = logger ?? NullLogger<UserInfoService>.Instance;
     }
 
     public async Task<Dictionary<string, object>> GetUserInfoAsync(ClaimsPrincipal principal)
@@ -40,6 +44,7 @@ public class UserInfoService : IUserInfoService
 
         if (grantedScopes.Count == 0)
         {
+            LogUserInfoClaimTypes(principal.GetClaim(Claims.Subject), grantedScopes, userinfo.Keys);
             return userinfo;
         }
 
@@ -94,7 +99,20 @@ public class UserInfoService : IUserInfoService
             userinfo["amr"] = amrClaims.Count == 1 ? amrClaims[0] : amrClaims;
         }
 
+        LogUserInfoClaimTypes(principal.GetClaim(Claims.Subject), grantedScopes, userinfo.Keys);
         return userinfo;
+    }
+
+    private void LogUserInfoClaimTypes(string? subject, IEnumerable<string> scopes, IEnumerable<string> claimTypes)
+    {
+        var scopeList = string.Join(" ", scopes.OrderBy(s => s, StringComparer.OrdinalIgnoreCase));
+        var claimTypeList = string.Join(", ", claimTypes.OrderBy(c => c, StringComparer.OrdinalIgnoreCase));
+
+        _logger.LogInformation(
+            "UserInfo response built for subject {Subject}. Granted scopes: {Scopes}. Returned claim types: {ClaimTypes}",
+            subject ?? string.Empty,
+            scopeList,
+            claimTypeList);
     }
 
     /// <summary>

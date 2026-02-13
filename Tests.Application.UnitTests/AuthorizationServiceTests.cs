@@ -154,6 +154,100 @@ namespace Tests.Application.UnitTests
         }
 
         [Fact]
+        public async Task HandleAuthorizeRequestAsync_WithPromptNoneAndUnauthenticatedUser_ReturnsLoginRequired()
+        {
+            // Arrange
+            var user = new ClaimsPrincipal(new ClaimsIdentity()); // Unauthenticated
+            var request = new OpenIddictRequest
+            {
+                ClientId = "client",
+                Prompt = "none"
+            };
+
+            var context = new DefaultHttpContext();
+
+            var httpContextAccessor = new Mock<IHttpContextAccessor>();
+            httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            var authService = new AuthorizationService(
+                _mockApplicationManager.Object,
+                _mockAuthorizationManager.Object,
+                _mockScopeManager.Object,
+                _mockUserManager.Object,
+                _mockRoleManager.Object,
+                _mockDb.Object,
+                _mockApiResourceService.Object,
+                _mockLocalizationService.Object,
+                _mockScopeService.Object,
+                _mockAuditService.Object,
+                _mockClientAllowedScopesService.Object,
+                _mockClientScopeProcessor.Object,
+                _mockLogger.Object,
+                httpContextAccessor.Object,
+                _mockClaimsEnricher.Object,
+                _mockSecurityPolicyService.Object,
+                _mockPasskeyService.Object
+            );
+
+            // Act
+            var result = await authService.HandleAuthorizeRequestAsync(user, request, request.Prompt);
+
+            // Assert
+            var forbidResult = Assert.IsType<ForbidResult>(result);
+            Assert.NotNull(forbidResult.Properties);
+            Assert.Equal(
+                OpenIddictConstants.Errors.LoginRequired,
+                forbidResult.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+        }
+
+        [Fact]
+        public async Task HandleAuthorizeRequestAsync_WithInvalidPromptCombination_ReturnsInvalidRequest()
+        {
+            // Arrange
+            var user = new ClaimsPrincipal(new ClaimsIdentity()); // Unauthenticated
+            var request = new OpenIddictRequest
+            {
+                ClientId = "client",
+                Prompt = "none login"
+            };
+
+            var context = new DefaultHttpContext();
+
+            var httpContextAccessor = new Mock<IHttpContextAccessor>();
+            httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            var authService = new AuthorizationService(
+                _mockApplicationManager.Object,
+                _mockAuthorizationManager.Object,
+                _mockScopeManager.Object,
+                _mockUserManager.Object,
+                _mockRoleManager.Object,
+                _mockDb.Object,
+                _mockApiResourceService.Object,
+                _mockLocalizationService.Object,
+                _mockScopeService.Object,
+                _mockAuditService.Object,
+                _mockClientAllowedScopesService.Object,
+                _mockClientScopeProcessor.Object,
+                _mockLogger.Object,
+                httpContextAccessor.Object,
+                _mockClaimsEnricher.Object,
+                _mockSecurityPolicyService.Object,
+                _mockPasskeyService.Object
+            );
+
+            // Act
+            var result = await authService.HandleAuthorizeRequestAsync(user, request, request.Prompt);
+
+            // Assert
+            var forbidResult = Assert.IsType<ForbidResult>(result);
+            Assert.NotNull(forbidResult.Properties);
+            Assert.Equal(
+                OpenIddictConstants.Errors.InvalidRequest,
+                forbidResult.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+        }
+
+        [Fact]
         public async Task HandleAuthorizeRequestAsync_ShouldThrow_WhenRequestIsNull()
         {
              // Arrange
