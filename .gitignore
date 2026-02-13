@@ -65,3 +65,6 @@ deployment/docker-compose.override.yml
 # Logs
 *.log
 *_fail.txt
+
+# Pipeline output
+.pipeline-output/

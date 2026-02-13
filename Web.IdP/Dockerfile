@@ -5,6 +5,8 @@ COPY Web.IdP/ClientApp/package.json Web.IdP/ClientApp/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
 COPY Web.IdP/ClientApp/ ./
+COPY Web.IdP/Pages/ /src/Web.IdP/Pages/
+COPY Web.IdP/Views/ /src/Web.IdP/Views/
 RUN npm run build
 RUN test -f /src/Web.IdP/wwwroot/dist/.vite/manifest.json
 
