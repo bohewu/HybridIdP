@@ -7,7 +7,7 @@ import SearchableCheckboxList from '@/components/common/SearchableCheckboxList.v
 const { t } = useI18n()
 
 // Standard OIDC scopes with fixed standard claims
-const STANDARD_OIDC_SCOPES = ['openid', 'profile', 'email', 'phone', 'address']
+const STANDARD_OIDC_SCOPES = ['openid', 'profile', 'email', 'phone', 'address', 'offline_access']
 
 const props = defineProps({
   scope: {
@@ -260,7 +260,17 @@ const saveScopeClaims = async (scopeId) => {
     })
 
     if (!response.ok) {
-      throw new Error('Failed to save scope claims')
+      const errorText = await response.text()
+      let errorMessage = `Failed to save scope claims (HTTP ${response.status})`
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorMessage = errorJson.message || errorJson.title || errorMessage
+      } catch {
+        if (errorText && errorText.length < 500) {
+          errorMessage = errorText
+        }
+      }
+      throw new Error(errorMessage)
     }
   } catch (e) {
     console.error('Error saving scope claims:', e)
