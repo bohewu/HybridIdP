@@ -8,6 +8,7 @@ using Core.Domain.Events;
 using Core.Application.Options; // Added
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
@@ -40,6 +41,8 @@ public partial class LoginModel : PageModel
     private readonly IPasskeyService _passkeyService;
     private readonly IUserManagementService _userManagementService;
     private readonly IOpenIddictApplicationManager _applicationManager;
+    private readonly ILocalizationService _localizationService;
+    private readonly Web.IdP.Options.LoginNoticesOptions _loginNoticesOptions;
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
@@ -53,6 +56,8 @@ public partial class LoginModel : PageModel
         IOptions<TurnstileOptions> turnstileOptions,
         ILogger<LoginModel> logger,
         IStringLocalizer<SharedResource> localizer,
+        ILocalizationService localizationService,
+        IOptions<Web.IdP.Options.LoginNoticesOptions> loginNoticesOptions,
         ITurnstileStateService turnstileStateService,
         ISettingsService settingsService,
         IPasskeyService passkeyService,
@@ -70,6 +75,8 @@ public partial class LoginModel : PageModel
         _turnstileOptions = turnstileOptions.Value;
         _logger = logger;
         _localizer = localizer;
+        _localizationService = localizationService;
+        _loginNoticesOptions = loginNoticesOptions.Value;
         _turnstileStateService = turnstileStateService; // Added
         _settingsService = settingsService; // Added
         _passkeyService = passkeyService;
@@ -179,6 +186,8 @@ public partial class LoginModel : PageModel
         await LoadTurnstileStateAsync();
 
         ExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl);
+
+        await ApplyDynamicLoginRequiredMessageAsync();
 
         if (!ModelState.IsValid)
         {
@@ -506,6 +515,59 @@ public partial class LoginModel : PageModel
         var redirectUrl = Url.Page("./ExternalLoginCallback", pageHandler: null, values: new { returnUrl });
         var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
         return new ChallengeResult(provider, properties);
+    }
+
+    private async Task ApplyDynamicLoginRequiredMessageAsync()
+    {
+        const string loginFieldKey = $"{nameof(Input)}.{nameof(InputModel.Login)}";
+
+        if (!ModelState.TryGetValue(loginFieldKey, out var loginFieldState) ||
+            loginFieldState.Errors.Count == 0 ||
+            !string.IsNullOrWhiteSpace(Input?.Login))
+        {
+            return;
+        }
+
+        var displayName = await ResolveLoginDisplayNameAsync();
+        var requiredFieldTemplate = _localizer["RequiredField"].Value;
+
+        loginFieldState.Errors.Clear();
+        ModelState.AddModelError(loginFieldKey, FormatRequiredFieldMessage(requiredFieldTemplate, displayName));
+    }
+
+    private async Task<string> ResolveLoginDisplayNameAsync()
+    {
+        var culture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
+
+        var configuredOverride = await DynamicLocalizedTextResolver.ResolveAsync(
+            _loginNoticesOptions.EmailOrUsername,
+            culture,
+            _localizationService);
+
+        if (!string.IsNullOrWhiteSpace(configuredOverride))
+        {
+            return configuredOverride;
+        }
+
+        return _localizer["EmailOrUsername"].Value;
+    }
+
+    private static string FormatRequiredFieldMessage(string requiredFieldTemplate, string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(requiredFieldTemplate) ||
+            string.Equals(requiredFieldTemplate, "RequiredField", StringComparison.Ordinal))
+        {
+            return $"{displayName} is required.";
+        }
+
+        try
+        {
+            return string.Format(requiredFieldTemplate, displayName);
+        }
+        catch (FormatException)
+        {
+            return requiredFieldTemplate;
+        }
     }
 
     private async Task<IList<AuthenticationScheme>> GetAvailableExternalLoginsAsync(string? returnUrl)

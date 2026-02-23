@@ -14,6 +14,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using OpenIddict.Abstractions;
 using Web.IdP;
+using Web.IdP.Options;
 using Web.IdP.Pages.Account;
 
 namespace Tests.Web.IdP.UnitTests.Pages.Account;
@@ -106,6 +107,8 @@ public class LoginModelClientIdParsingTests
             Microsoft.Extensions.Options.Options.Create(new TurnstileOptions()),
             Mock.Of<ILogger<LoginModel>>(),
             Mock.Of<IStringLocalizer<SharedResource>>(),
+            Mock.Of<ILocalizationService>(),
+            Microsoft.Extensions.Options.Options.Create(new LoginNoticesOptions()),
             Mock.Of<ITurnstileStateService>(),
             Mock.Of<ISettingsService>(),
             Mock.Of<IPasskeyService>(),

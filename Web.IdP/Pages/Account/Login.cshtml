@@ -29,18 +29,6 @@
 
     if (string.IsNullOrWhiteSpace(emailOrUsernameText))
     {
-        emailOrUsernameText = await DynamicLocalizedTextResolver.ResolveAsync(
-            "@LoginNotice.EmailOrUsername",
-            currentCulture,
-            LocalizationService)
-            ?? await DynamicLocalizedTextResolver.ResolveAsync(
-                "@EmailOrUsername",
-                currentCulture,
-                LocalizationService);
-    }
-
-    if (string.IsNullOrWhiteSpace(emailOrUsernameText))
-    {
         emailOrUsernameText = Localizer["EmailOrUsername"].Value;
     }
 
@@ -48,18 +36,6 @@
         notices.PasswordPlaceholder,
         currentCulture,
         LocalizationService);
-
-    if (string.IsNullOrWhiteSpace(passwordPlaceholderText))
-    {
-        passwordPlaceholderText = await DynamicLocalizedTextResolver.ResolveAsync(
-            "@LoginNotice.PasswordPlaceholder",
-            currentCulture,
-            LocalizationService)
-            ?? await DynamicLocalizedTextResolver.ResolveAsync(
-                "@Password",
-                currentCulture,
-                LocalizationService);
-    }
 
     if (string.IsNullOrWhiteSpace(passwordPlaceholderText))
     {
