@@ -73,6 +73,8 @@ services:
       - LoginNotices__FormType=${LoginNotices__FormType:-info}
       - LoginNotices__BottomMessage=${LoginNotices__BottomMessage:-}
       - LoginNotices__BottomType=${LoginNotices__BottomType:-info}
+      - LoginNotices__EmailOrUsername=${LoginNotices__EmailOrUsername:-}
+      - LoginNotices__PasswordPlaceholder=${LoginNotices__PasswordPlaceholder:-}
       # External Login (Google, Microsoft)
       - ExternalLogin__MaxLoginsPerProvider=${ExternalLogin__MaxLoginsPerProvider}
       - ExternalLogin__ForceAccountSelection=${ExternalLogin__ForceAccountSelection:-true}

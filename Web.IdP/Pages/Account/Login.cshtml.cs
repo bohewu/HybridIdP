@@ -10,9 +10,11 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options; // Added
 using Microsoft.AspNetCore.RateLimiting;
+using OpenIddict.Abstractions;
 using Core.Application.Interfaces;
 using System.Text.Json;
 using Web.IdP.Helpers;
@@ -36,6 +38,8 @@ public partial class LoginModel : PageModel
     private readonly ITurnstileStateService _turnstileStateService; // Added
     private readonly ISettingsService _settingsService; // Added
     private readonly IPasskeyService _passkeyService;
+    private readonly IUserManagementService _userManagementService;
+    private readonly IOpenIddictApplicationManager _applicationManager;
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
@@ -51,7 +55,9 @@ public partial class LoginModel : PageModel
         IStringLocalizer<SharedResource> localizer,
         ITurnstileStateService turnstileStateService,
         ISettingsService settingsService,
-        IPasskeyService passkeyService) // Added
+        IPasskeyService passkeyService,
+        IUserManagementService userManagementService,
+        IOpenIddictApplicationManager applicationManager) // Added
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -67,6 +73,8 @@ public partial class LoginModel : PageModel
         _turnstileStateService = turnstileStateService; // Added
         _settingsService = settingsService; // Added
         _passkeyService = passkeyService;
+        _userManagementService = userManagementService;
+        _applicationManager = applicationManager;
     }
 
     [BindProperty]
@@ -120,7 +128,7 @@ public partial class LoginModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null)
     {
-        ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+        ExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl);
 
         // If user is already authenticated, redirect away from login page
         if (User.Identity?.IsAuthenticated == true)
@@ -170,7 +178,7 @@ public partial class LoginModel : PageModel
 
         await LoadTurnstileStateAsync();
 
-        ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+        ExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl);
 
         if (!ModelState.IsValid)
         {
@@ -329,6 +337,7 @@ public partial class LoginModel : PageModel
                             
                             // Note: SignInAsync below merges these claims into the principal
                             await _signInManager.SignInWithClaimsAsync(result.User, Input.RememberMe, claims);
+                            await _userManagementService.UpdateLastLoginAsync(result.User.Id);
                             return this.SafeRedirect(returnUrl);
                         }
                     }
@@ -343,6 +352,7 @@ public partial class LoginModel : PageModel
 
                 // Sign in user (role claims are automatically added by Identity)
                 await _signInManager.SignInWithClaimsAsync(result.User!, isPersistent: Input.RememberMe, amrClaimsList);
+                await _userManagementService.UpdateLastLoginAsync(result.User!.Id);
                 LogUserSignedIn(result.User!.UserName);
                 
                 // Publish audit event for successful login
@@ -477,15 +487,86 @@ public partial class LoginModel : PageModel
         }
     }
 
-    public IActionResult OnPostExternalLogin(string provider, string? returnUrl = null)
+    public async Task<IActionResult> OnPostExternalLogin(string provider, string? returnUrl = null)
     {
         returnUrl ??= Request.Form["returnUrl"].FirstOrDefault();
         returnUrl ??= Request.Query["returnUrl"].FirstOrDefault();
         returnUrl ??= Request.Query["ReturnUrl"].FirstOrDefault();
 
+        var availableExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl);
+        var providerAvailable = availableExternalLogins.Any(scheme =>
+            string.Equals(scheme.Name, provider, StringComparison.Ordinal));
+
+        if (!providerAvailable)
+        {
+            return RedirectToPage("./Login", new { returnUrl, remoteError = "ProviderNotAvailable" });
+        }
+
         // Request a redirect to the external login provider.
         var redirectUrl = Url.Page("./ExternalLoginCallback", pageHandler: null, values: new { returnUrl });
         var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
         return new ChallengeResult(provider, properties);
+    }
+
+    private async Task<IList<AuthenticationScheme>> GetAvailableExternalLoginsAsync(string? returnUrl)
+    {
+        if (await IsExternalProvidersDisabledAsync(returnUrl))
+        {
+            return new List<AuthenticationScheme>();
+        }
+
+        return (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+    }
+
+    private async Task<bool> IsExternalProvidersDisabledAsync(string? returnUrl)
+    {
+        var clientId = TryGetClientIdFromReturnUrl(returnUrl);
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            return false;
+        }
+
+        var application = await _applicationManager.FindByClientIdAsync(clientId);
+        if (application is null)
+        {
+            return false;
+        }
+
+        var properties = await _applicationManager.GetPropertiesAsync(application);
+        if (!properties.TryGetValue(AuthConstants.Properties.DisableExternalProviders, out var element))
+        {
+            return false;
+        }
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(element.GetString(), out var parsed) => parsed,
+            _ => false
+        };
+    }
+
+    private string? TryGetClientIdFromReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl) || !Url.IsLocalUrl(returnUrl))
+        {
+            return null;
+        }
+
+        var queryStartIndex = returnUrl.IndexOf('?');
+        if (queryStartIndex < 0 || queryStartIndex == returnUrl.Length - 1)
+        {
+            return null;
+        }
+
+        var query = QueryHelpers.ParseQuery(returnUrl[queryStartIndex..]);
+        if (!query.TryGetValue("client_id", out var clientIds))
+        {
+            return null;
+        }
+
+        var clientId = clientIds.FirstOrDefault();
+        return string.IsNullOrWhiteSpace(clientId) ? null : clientId;
     }
 }

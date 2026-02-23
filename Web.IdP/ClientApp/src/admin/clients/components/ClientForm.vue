@@ -37,7 +37,8 @@ const formData = ref({
   permissions: [],
   requiredScopes: [],
   supportedRoles: [],
-  requirePkce: true
+  requirePkce: true,
+  disableExternalProviders: false
 })
 
 const generatedClientSecret = ref(null)
@@ -116,7 +117,8 @@ const resetForm = () => {
     permissions: [],
     requiredScopes: [],
     supportedRoles: [],
-    requirePkce: true
+    requirePkce: true,
+    disableExternalProviders: false
   }
   error.value = null
   fieldErrors.value = {}
@@ -137,7 +139,8 @@ watch(() => props.client, async (newClient) => {
       permissions: newClient.permissions || [],
       requiredScopes: [],
       supportedRoles: newClient.supportedRoles || [],
-      requirePkce: resolveRequirePkce(newClient.type === 'confidential' ? 'confidential' : 'public', newClient.requirePkce)
+      requirePkce: resolveRequirePkce(newClient.type === 'confidential' ? 'confidential' : 'public', newClient.requirePkce),
+      disableExternalProviders: newClient.disableExternalProviders === true
     }
     
     // Fetch required scopes (still separate table)
@@ -195,7 +198,8 @@ const handleSubmit = async () => {
         .filter(uri => uri.length > 0),
       permissions: formData.value.permissions,
       supportedRoles: formData.value.supportedRoles,
-      requirePkce: resolveRequirePkce(formData.value.clientType, formData.value.requirePkce)
+      requirePkce: resolveRequirePkce(formData.value.clientType, formData.value.requirePkce),
+      disableExternalProviders: formData.value.disableExternalProviders
     }
 
     const url = isEdit.value
@@ -467,6 +471,21 @@ const closeSecretModal = () => {
                         <span>{{ $t('clients.form.requirePkceToggle') }}</span>
                       </label>
                       <p class="mt-1 text-xs text-gray-500">{{ $t('clients.form.requirePkceHelp') }}</p>
+                    </div>
+
+                    <div class="mb-5">
+                      <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        {{ $t('clients.form.externalProviders') }}
+                      </label>
+                      <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          v-model="formData.disableExternalProviders"
+                          type="checkbox"
+                          class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500"
+                        />
+                        <span>{{ $t('clients.form.disableExternalProvidersToggle') }}</span>
+                      </label>
+                      <p class="mt-1 text-xs text-gray-500">{{ $t('clients.form.disableExternalProvidersHelp') }}</p>
                     </div>
 
                     <!-- Consent Type -->

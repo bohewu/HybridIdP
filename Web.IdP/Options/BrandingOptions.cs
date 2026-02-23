@@ -19,6 +19,12 @@ public class LoginNoticesOptions
     // Bottom notice (after the submit button)
     public string? BottomMessage { get; set; }
     public string BottomType { get; set; } = "info";
+
+    // Login identifier label/placeholder override (supports plain text or @ResourceKey)
+    public string? EmailOrUsername { get; set; }
+
+    // Password label/placeholder override (supports plain text or @ResourceKey)
+    public string? PasswordPlaceholder { get; set; }
 }
 
 public class BrandingOptions

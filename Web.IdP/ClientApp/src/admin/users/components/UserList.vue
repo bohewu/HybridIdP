@@ -49,7 +49,21 @@ const totalPages = computed(() => {
 
 const formatDate = (dateString) => {
   if (!dateString) return t('users.details.never')
-  return new Date(dateString).toLocaleString()
+
+  let normalizedDateString = dateString
+  const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(dateString)
+
+  if (!hasTimezone) {
+    normalizedDateString = dateString.replace(' ', 'T')
+    if (normalizedDateString.includes('T')) {
+      normalizedDateString = `${normalizedDateString}Z`
+    }
+  }
+
+  const parsed = new Date(normalizedDateString)
+  if (Number.isNaN(parsed.getTime())) return t('users.details.never')
+
+  return parsed.toLocaleString()
 }
 
 const getBadgeClass = (isActive) => {

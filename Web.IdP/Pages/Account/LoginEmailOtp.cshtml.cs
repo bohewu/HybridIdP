@@ -18,6 +18,7 @@ public partial class LoginEmailOtpModel : PageModel
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMfaService _mfaService;
+    private readonly IUserManagementService _userManagementService;
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly ILogger<LoginEmailOtpModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -26,6 +27,7 @@ public partial class LoginEmailOtpModel : PageModel
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IMfaService mfaService,
+        IUserManagementService userManagementService,
         IDomainEventPublisher eventPublisher,
         ILogger<LoginEmailOtpModel> logger,
         IStringLocalizer<SharedResource> localizer)
@@ -33,6 +35,7 @@ public partial class LoginEmailOtpModel : PageModel
         _signInManager = signInManager;
         _userManager = userManager;
         _mfaService = mfaService;
+        _userManagementService = userManagementService;
         _eventPublisher = eventPublisher;
         _logger = logger;
         _localizer = localizer;
@@ -158,6 +161,7 @@ public partial class LoginEmailOtpModel : PageModel
             };
 
             await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
+            await _userManagementService.UpdateLastLoginAsync(user.Id);
             _logger.LogInformation("User logged in with Email MFA.");
             
             await _eventPublisher.PublishAsync(new LoginAttemptEvent(

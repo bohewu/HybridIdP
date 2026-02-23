@@ -22,19 +22,22 @@ public partial class ExternalLoginCallbackModel : PageModel
     private readonly ILogger<ExternalLoginCallbackModel> _logger;
     private readonly ExternalLoginOptions _externalLoginOptions;
     private readonly Core.Application.ILoginService _loginService;
+    private readonly Core.Application.IUserManagementService _userManagementService;
 
     public ExternalLoginCallbackModel(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         ILogger<ExternalLoginCallbackModel> logger,
         IOptions<ExternalLoginOptions> externalLoginOptions,
-        Core.Application.ILoginService loginService)
+        Core.Application.ILoginService loginService,
+        Core.Application.IUserManagementService userManagementService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _logger = logger;
         _externalLoginOptions = externalLoginOptions.Value;
         _loginService = loginService;
+        _userManagementService = userManagementService;
     }
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null)
@@ -93,6 +96,7 @@ public partial class ExternalLoginCallbackModel : PageModel
                 
                 // Re-sign in with AMR claims
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
+                await _userManagementService.UpdateLastLoginAsync(user.Id);
                 
                 // Store AMR in session for MFA enforcement logic
                 if (externalMfaPerformed)
@@ -149,6 +153,7 @@ public partial class ExternalLoginCallbackModel : PageModel
                             
                             // Sign in with AMR claims
                             await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
+                            await _userManagementService.UpdateLastLoginAsync(user.Id);
                             
                             // Store AMR in session
                             if (externalMfaPerformed)

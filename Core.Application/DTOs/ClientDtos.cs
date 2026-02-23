@@ -32,6 +32,7 @@ public record CreateClientRequest(
 )
 {
     public bool? RequirePkce { get; init; }
+    public bool? DisableExternalProviders { get; init; }
 }
 
 /// <summary>
@@ -50,6 +51,7 @@ public record UpdateClientRequest(
 )
 {
     public bool? RequirePkce { get; init; }
+    public bool? DisableExternalProviders { get; init; }
 }
 
 /// <summary>
@@ -68,6 +70,7 @@ public sealed class ClientDetail
     public List<string> Permissions { get; set; } = new();
     public List<string> SupportedRoles { get; set; } = new();
     public bool RequirePkce { get; set; }
+    public bool DisableExternalProviders { get; set; }
 }
 
 /// <summary>

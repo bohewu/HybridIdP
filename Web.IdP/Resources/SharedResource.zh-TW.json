@@ -199,6 +199,7 @@
   "ProviderLimitReached": "您已達到此提供者的帳戶數量上限。",
   "ExternalLoginFailure": "外部登入失敗。",
   "ExternalLoginFailure_CorrelationFailed": "外部登入驗證逾時或 Cookie 遺失，請重新嘗試。",
+  "ExternalLoginFailure_ProviderNotAvailable": "此登入請求無法使用所選的外部登入提供者。",
   "WelcomeTo": "歡迎使用",
   "SignIn": "登入",
   "WelcomePageTitle": "安全的身分與存取管理",

@@ -16,6 +16,7 @@ public partial class LoginMfaModel : PageModel
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMfaService _mfaService;
+    private readonly IUserManagementService _userManagementService;
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly ILogger<LoginMfaModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -24,6 +25,7 @@ public partial class LoginMfaModel : PageModel
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IMfaService mfaService,
+        IUserManagementService userManagementService,
         IDomainEventPublisher eventPublisher,
         ILogger<LoginMfaModel> logger,
         IStringLocalizer<SharedResource> localizer)
@@ -31,6 +33,7 @@ public partial class LoginMfaModel : PageModel
         _signInManager = signInManager;
         _userManager = userManager;
         _mfaService = mfaService;
+        _userManagementService = userManagementService;
         _eventPublisher = eventPublisher;
         _logger = logger;
         _localizer = localizer;
@@ -133,6 +136,7 @@ public partial class LoginMfaModel : PageModel
                 };
 
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
+                await _userManagementService.UpdateLastLoginAsync(user.Id);
                 LogLoginWithTotp(_logger);
                 
                 await _eventPublisher.PublishAsync(new LoginAttemptEvent(
@@ -178,6 +182,7 @@ public partial class LoginMfaModel : PageModel
                 };
 
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
+                await _userManagementService.UpdateLastLoginAsync(user.Id);
                 LogLoginWithRecovery(_logger);
                 
                 var remainingCodes = await _mfaService.CountRecoveryCodesAsync(user);

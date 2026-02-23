@@ -3,6 +3,7 @@
 @using Web.IdP.TagHelpers
 @using Web.IdP.Services
 @using Web.IdP.Options
+@using Web.IdP.Helpers
 @using Core.Application
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Options
@@ -10,6 +11,7 @@
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 @inject IViteManifestService ViteService
 @inject IBrandingService BrandingService
+@inject ILocalizationService LocalizationService
 @inject IOptions<LoginNoticesOptions> LoginNoticesOptions
 @{
     ViewData["Title"] = Localizer["Login"];
@@ -17,6 +19,52 @@
     var currentCulture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
     var productName = await BrandingService.GetProductNameAsync();
     var notices = LoginNoticesOptions.Value;
+    string? emailOrUsernameText = null;
+    string? passwordPlaceholderText = null;
+
+    emailOrUsernameText = await DynamicLocalizedTextResolver.ResolveAsync(
+        notices.EmailOrUsername,
+        currentCulture,
+        LocalizationService);
+
+    if (string.IsNullOrWhiteSpace(emailOrUsernameText))
+    {
+        emailOrUsernameText = await DynamicLocalizedTextResolver.ResolveAsync(
+            "@LoginNotice.EmailOrUsername",
+            currentCulture,
+            LocalizationService)
+            ?? await DynamicLocalizedTextResolver.ResolveAsync(
+                "@EmailOrUsername",
+                currentCulture,
+                LocalizationService);
+    }
+
+    if (string.IsNullOrWhiteSpace(emailOrUsernameText))
+    {
+        emailOrUsernameText = Localizer["EmailOrUsername"].Value;
+    }
+
+    passwordPlaceholderText = await DynamicLocalizedTextResolver.ResolveAsync(
+        notices.PasswordPlaceholder,
+        currentCulture,
+        LocalizationService);
+
+    if (string.IsNullOrWhiteSpace(passwordPlaceholderText))
+    {
+        passwordPlaceholderText = await DynamicLocalizedTextResolver.ResolveAsync(
+            "@LoginNotice.PasswordPlaceholder",
+            currentCulture,
+            LocalizationService)
+            ?? await DynamicLocalizedTextResolver.ResolveAsync(
+                "@Password",
+                currentCulture,
+                LocalizationService);
+    }
+
+    if (string.IsNullOrWhiteSpace(passwordPlaceholderText))
+    {
+        passwordPlaceholderText = Localizer["Password"].Value;
+    }
 }
 
 <!DOCTYPE html>
@@ -126,14 +174,14 @@
                     
                     <div class="space-y-4">
                         <div class="form-group">
-                            <label asp-for="Input.Login" class="sr-only">@Localizer["EmailOrUsername"]</label>
-                            <input asp-for="Input.Login" class="input-google" placeholder="@Localizer["EmailOrUsername"]" autocomplete="username webauthn" autofocus data-test-id="login-username" />
+                            <label asp-for="Input.Login" class="sr-only">@emailOrUsernameText</label>
+                            <input asp-for="Input.Login" class="input-google" placeholder="@emailOrUsernameText" autocomplete="username webauthn" autofocus data-test-id="login-username" />
                             <span asp-validation-for="Input.Login" class="text-red-600 text-xs mt-1 block" data-test-id="login-username-error"></span>
                         </div>
                         
                         <div class="form-group">
-                            <label asp-for="Input.Password" class="sr-only">@Localizer["Password"]</label>
-                            <input asp-for="Input.Password" type="password" class="input-google" placeholder="@Localizer["Password"]" autocomplete="current-password" data-test-id="login-password" />
+                            <label asp-for="Input.Password" class="sr-only">@passwordPlaceholderText</label>
+                            <input asp-for="Input.Password" type="password" class="input-google" placeholder="@passwordPlaceholderText" autocomplete="current-password" data-test-id="login-password" />
                             <span asp-validation-for="Input.Password" class="text-red-600 text-xs mt-1 block" data-test-id="login-password-error"></span>
                         </div>
                         

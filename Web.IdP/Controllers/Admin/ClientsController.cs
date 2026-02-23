@@ -80,7 +80,8 @@ public class ClientsController : ControllerBase
             postLogoutRedirectUris = client.PostLogoutRedirectUris,
             permissions = client.Permissions,
             supportedRoles = client.SupportedRoles,
-            requirePkce = client.RequirePkce
+            requirePkce = client.RequirePkce,
+            disableExternalProviders = client.DisableExternalProviders
         });
     }
 

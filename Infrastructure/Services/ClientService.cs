@@ -153,6 +153,7 @@ public class ClientService : IClientService
         var descriptor = new OpenIddictApplicationDescriptor();
         await _applicationManager.PopulateAsync(descriptor, application);
         var clientType = await _applicationManager.GetClientTypeAsync(application) ?? string.Empty;
+        var properties = await _applicationManager.GetPropertiesAsync(application);
 
         return new ClientDetail
         {
@@ -165,8 +166,9 @@ public class ClientService : IClientService
             RedirectUris = redirectUris.Select(u => u.ToString()).ToList(),
             PostLogoutRedirectUris = postLogoutUris.Select(u => u.ToString()).ToList(),
             Permissions = permissions.ToList(),
-            SupportedRoles = GetSupportedRoles(await _applicationManager.GetPropertiesAsync(application)),
-            RequirePkce = clientType == ClientTypes.Public || descriptor.Requirements.Contains(Requirements.Features.ProofKeyForCodeExchange)
+            SupportedRoles = GetSupportedRoles(properties),
+            RequirePkce = clientType == ClientTypes.Public || descriptor.Requirements.Contains(Requirements.Features.ProofKeyForCodeExchange),
+            DisableExternalProviders = GetDisableExternalProviders(properties)
         };
     }
 
@@ -235,6 +237,11 @@ public class ClientService : IClientService
         {
              descriptor.Properties[AuthConstants.Properties.SupportedRoles] = 
                  JsonSerializer.SerializeToElement(request.SupportedRoles);
+        }
+
+        if (request.DisableExternalProviders == true)
+        {
+            descriptor.Properties[AuthConstants.Properties.DisableExternalProviders] = JsonSerializer.SerializeToElement(true);
         }
 
         // Validate Native app constraints
@@ -528,6 +535,18 @@ public class ClientService : IClientService
             }
         }
 
+        if (request.DisableExternalProviders != null)
+        {
+            if (request.DisableExternalProviders == true)
+            {
+                descriptor.Properties[AuthConstants.Properties.DisableExternalProviders] = JsonSerializer.SerializeToElement(true);
+            }
+            else
+            {
+                descriptor.Properties.Remove(AuthConstants.Properties.DisableExternalProviders);
+            }
+        }
+
         // Validate Redirect URIs for interactive clients
         if ((descriptor.Permissions.Contains(Permissions.GrantTypes.AuthorizationCode) ||
              descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit)) &&
@@ -633,6 +652,22 @@ public class ClientService : IClientService
             return element.Deserialize<List<string>>() ?? new();
         }
         return new();
+    }
+
+    private static bool GetDisableExternalProviders(System.Collections.Immutable.ImmutableDictionary<string, JsonElement> properties)
+    {
+        if (!properties.TryGetValue(AuthConstants.Properties.DisableExternalProviders, out var element))
+        {
+            return false;
+        }
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(element.GetString(), out var parsed) => parsed,
+            _ => false
+        };
     }
 
     private static void ApplyPkceRequirement(

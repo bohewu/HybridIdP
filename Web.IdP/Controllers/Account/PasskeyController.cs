@@ -31,6 +31,7 @@ public partial class PasskeyController : ControllerBase
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ISecurityPolicyService _securityPolicyService;
+    private readonly IUserManagementService _userManagementService;
     private readonly ApplicationDbContext _dbContext;
     private readonly IAuditService _auditService;
     private readonly ILogger<PasskeyController> _logger;
@@ -40,6 +41,7 @@ public partial class PasskeyController : ControllerBase
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         ISecurityPolicyService securityPolicyService,
+        IUserManagementService userManagementService,
         ApplicationDbContext dbContext,
         IAuditService auditService,
         ILogger<PasskeyController> logger)
@@ -48,6 +50,7 @@ public partial class PasskeyController : ControllerBase
         _signInManager = signInManager;
         _userManager = userManager;
         _securityPolicyService = securityPolicyService;
+        _userManagementService = userManagementService;
         _dbContext = dbContext;
         _auditService = auditService;
         _logger = logger;
@@ -293,6 +296,7 @@ public partial class PasskeyController : ControllerBase
             };
 
             await _signInManager.SignInWithClaimsAsync(result.User, isPersistent: false, claims);
+            await _userManagementService.UpdateLastLoginAsync(result.User.Id);
             LogPasskeyLogin(result.User.UserName);
             return Ok(new { success = true, username = result.User.UserName });
         }

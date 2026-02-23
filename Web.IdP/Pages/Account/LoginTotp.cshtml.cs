@@ -18,6 +18,7 @@ public partial class LoginTotpModel : PageModel
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMfaService _mfaService;
+    private readonly IUserManagementService _userManagementService;
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly ILogger<LoginTotpModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -26,6 +27,7 @@ public partial class LoginTotpModel : PageModel
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IMfaService mfaService,
+        IUserManagementService userManagementService,
         IDomainEventPublisher eventPublisher,
         ILogger<LoginTotpModel> logger,
         IStringLocalizer<SharedResource> localizer)
@@ -33,6 +35,7 @@ public partial class LoginTotpModel : PageModel
         _signInManager = signInManager;
         _userManager = userManager;
         _mfaService = mfaService;
+        _userManagementService = userManagementService;
         _eventPublisher = eventPublisher;
         _logger = logger;
         _localizer = localizer;
@@ -130,6 +133,7 @@ public partial class LoginTotpModel : PageModel
                 };
 
                 await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
+                await _userManagementService.UpdateLastLoginAsync(user.Id);
                 
                 _logger.LogInformation("User logged in with TOTP 2FA.");
                 
@@ -167,6 +171,7 @@ public partial class LoginTotpModel : PageModel
                 AddAmrToSession(AuthConstants.Amr.Mfa); // Recovery code is still mfa, but not otp? Actually design says "mfa" for recovery.
 
                 await _signInManager.SignInAsync(user, isPersistent: RememberMe);
+                await _userManagementService.UpdateLastLoginAsync(user.Id);
                 _logger.LogInformation("User logged in with recovery code.");
                 
                 var remainingCodes = await _userManager.CountRecoveryCodesAsync(user);

@@ -130,5 +130,11 @@ public static class AuthConstants
         /// Stored in OpenIddict Application Properties.
         /// </summary>
         public const string SupportedRoles = "iodc:client:supported_roles";
+
+        /// <summary>
+        /// When true, external login providers are hidden for this client.
+        /// When absent, client follows global external provider configuration.
+        /// </summary>
+        public const string DisableExternalProviders = "iodc:client:disable_external_providers";
     }
 }

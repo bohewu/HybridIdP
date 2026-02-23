@@ -1,25 +1,16 @@
 @using Core.Application
+@using Web.IdP.Helpers
 @using Microsoft.AspNetCore.Localization
 @model (string? Message, string Type)
 @inject ILocalizationService LocalizationService
 
-@if (!string.IsNullOrWhiteSpace(Model.Message))
+@{
+    var culture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
+    var message = await DynamicLocalizedTextResolver.ResolveAsync(Model.Message, culture, LocalizationService);
+}
+
+@if (!string.IsNullOrWhiteSpace(message))
 {
-    // Support i18n: if message starts with @, treat it as a localization key from DB
-    var message = Model.Message;
-    if (message.StartsWith("@"))
-    {
-        var key = message.Substring(1);
-        var culture = Context.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
-        var localized = await LocalizationService.GetLocalizedStringAsync(key, culture);
-        // If resource is disabled or not found, don't show the notice
-        if (string.IsNullOrEmpty(localized))
-        {
-            return;
-        }
-        message = localized;
-    }
-    
     var cssClass = Model.Type?.ToLower() switch
     {
         "info" => "bg-blue-50 border-blue-400 text-blue-700",

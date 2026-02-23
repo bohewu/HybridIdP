@@ -28,6 +28,7 @@ public class PasskeyControllerTests
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly Mock<SignInManager<ApplicationUser>> _signInManagerMock;
     private readonly Mock<ISecurityPolicyService> _securityPolicyServiceMock;
+    private readonly Mock<IUserManagementService> _userManagementServiceMock;
     private readonly ApplicationDbContext _dbContext;
     private readonly Mock<IAuditService> _auditServiceMock;
     private readonly Mock<ILogger<PasskeyController>> _loggerMock;
@@ -48,6 +49,7 @@ public class PasskeyControllerTests
             _userManagerMock.Object, contextAccessorMock.Object, claimsFactoryMock.Object, null, null, null, null);
 
         _securityPolicyServiceMock = new Mock<ISecurityPolicyService>();
+        _userManagementServiceMock = new Mock<IUserManagementService>();
         
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -67,6 +69,7 @@ public class PasskeyControllerTests
             _signInManagerMock.Object,
             _userManagerMock.Object,
             _securityPolicyServiceMock.Object,
+            _userManagementServiceMock.Object,
             _dbContext,
             _auditServiceMock.Object,
             _loggerMock.Object

@@ -198,6 +198,8 @@
   "Login.ExternalProvider.GitHub": "Sign in with GitHub",
   "InvalidCredentials": "Invalid credentials.",
   "ProviderLimitReached": "You have reached the maximum number of accounts for this provider.",
+  "ExternalLoginFailure": "External login failed.",
+  "ExternalLoginFailure_ProviderNotAvailable": "The selected external login provider is not available for this sign-in request.",
   "WelcomeTo": "Welcome to",
   "SignIn": "Sign In",
   "WelcomePageTitle": "Secure Identity & Access Management",
