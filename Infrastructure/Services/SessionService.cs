@@ -146,7 +146,9 @@ public class SessionService : ISessionService
                 Status: status));
         }
 
-        return items;
+        return items
+            .OrderByDescending(s => s.CreatedAt ?? DateTime.MinValue)
+            .ToList();
     }
 
     public async Task<bool> RevokeSessionAsync(Guid userId, string authorizationId)

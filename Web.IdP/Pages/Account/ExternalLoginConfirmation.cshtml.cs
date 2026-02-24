@@ -30,6 +30,8 @@ public class ExternalLoginConfirmationModel : PageModel
     private readonly ILoginService _loginService;
     private readonly ISettingsService _settingsService;
     private readonly IBrandingService _brandingService;
+    private readonly IUserManagementService _userManagementService;
+    private readonly ILoginHistoryService _loginHistoryService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ExternalLoginConfirmationModel> _logger;
     private readonly LoginNoticesOptions _loginNoticesOptions; 
@@ -42,6 +44,8 @@ public class ExternalLoginConfirmationModel : PageModel
         ILoginService loginService,
         ISettingsService settingsService,
         IBrandingService brandingService,
+        IUserManagementService userManagementService,
+        ILoginHistoryService loginHistoryService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<ExternalLoginConfirmationModel> logger,
         IOptions<LoginNoticesOptions> loginNoticesOptions,
@@ -53,6 +57,8 @@ public class ExternalLoginConfirmationModel : PageModel
         _loginService = loginService;
         _settingsService = settingsService;
         _brandingService = brandingService;
+        _userManagementService = userManagementService;
+        _loginHistoryService = loginHistoryService;
         _localizer = localizer;
         _logger = logger;
         _loginNoticesOptions = loginNoticesOptions.Value;
@@ -167,6 +173,8 @@ public class ExternalLoginConfirmationModel : PageModel
             }
             
             await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
+            await _userManagementService.UpdateLastLoginAsync(user.Id);
+            await RecordSuccessfulLoginAsync(user.Id);
             return LocalRedirect(ReturnUrl);
         }
 
@@ -230,8 +238,10 @@ public class ExternalLoginConfirmationModel : PageModel
              }
              
              await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
+             await _userManagementService.UpdateLastLoginAsync(user.Id);
+             await RecordSuccessfulLoginAsync(user.Id);
              return LocalRedirect(ReturnUrl);
-         }
+          }
         catch (Exception ex)
         {
              _logger.LogError(ex, "JIT Provisioning failed for {Provider}", info.LoginProvider);
@@ -243,6 +253,30 @@ public class ExternalLoginConfirmationModel : PageModel
              Email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? "Unknown";
              ShowRegistrationButton = registrationEnabled;
              return Page();
+        }
+    }
+
+    private async Task RecordSuccessfulLoginAsync(Guid userId)
+    {
+        try
+        {
+            var loginHistory = new LoginHistory
+            {
+                UserId = userId,
+                LoginTime = DateTime.UtcNow,
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers["User-Agent"].ToString(),
+                IsSuccessful = true,
+                RiskScore = 0,
+                IsFlaggedAbnormal = false
+            };
+
+            loginHistory.IsFlaggedAbnormal = await _loginHistoryService.DetectAbnormalLoginAsync(loginHistory);
+            await _loginHistoryService.RecordLoginAsync(loginHistory);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to record external login history for user {UserId}", userId);
         }
     }
 }

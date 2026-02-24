@@ -63,7 +63,7 @@ const page = ref(1)
 const totalCount = ref(0)
 const search = ref('')
 const isActiveFilter = ref('') // '', 'true', 'false'
-const sort = ref('email:asc')
+const sort = ref('createdAt:desc')
 const inFlightParams = ref(null)
 
 const fetchUsers = async () => {

@@ -75,6 +75,29 @@ public partial class LoginService : ILoginService
         return (true, null);
     }
 
+    public async Task<LoginResult> ValidateExternalUserSignInAsync(ApplicationUser user)
+    {
+        if (!user.IsActive)
+        {
+            LogUserDeactivated(user.UserName);
+            return LoginResult.UserInactive();
+        }
+
+        var personCheckResult = await ValidatePersonStatusAsync(user);
+        if (personCheckResult != null)
+        {
+            return personCheckResult;
+        }
+
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            LogUserLockedOut(user.UserName);
+            return LoginResult.LockedOut();
+        }
+
+        return LoginResult.Success(user);
+    }
+
     private async Task<LoginResult> AuthenticateLocalUserAsync(ApplicationUser user, string password)
     {
         // Check if user account is active

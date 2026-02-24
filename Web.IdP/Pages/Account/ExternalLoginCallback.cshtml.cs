@@ -23,6 +23,7 @@ public partial class ExternalLoginCallbackModel : PageModel
     private readonly ExternalLoginOptions _externalLoginOptions;
     private readonly Core.Application.ILoginService _loginService;
     private readonly Core.Application.IUserManagementService _userManagementService;
+    private readonly Core.Application.ILoginHistoryService _loginHistoryService;
 
     public ExternalLoginCallbackModel(
         SignInManager<ApplicationUser> signInManager,
@@ -30,7 +31,8 @@ public partial class ExternalLoginCallbackModel : PageModel
         ILogger<ExternalLoginCallbackModel> logger,
         IOptions<ExternalLoginOptions> externalLoginOptions,
         Core.Application.ILoginService loginService,
-        Core.Application.IUserManagementService userManagementService)
+        Core.Application.IUserManagementService userManagementService,
+        Core.Application.ILoginHistoryService loginHistoryService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -38,6 +40,7 @@ public partial class ExternalLoginCallbackModel : PageModel
         _externalLoginOptions = externalLoginOptions.Value;
         _loginService = loginService;
         _userManagementService = userManagementService;
+        _loginHistoryService = loginHistoryService;
     }
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null)
@@ -86,17 +89,16 @@ public partial class ExternalLoginCallbackModel : PageModel
             var user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
             if (user != null)
             {
-                // Phase 18: Check Person status before allowing external login
-                var personCheckResult = await _loginService.AuthenticateAsync(user.Email ?? user.UserName!, "dummy");
-                if (!personCheckResult.IsSuccess && personCheckResult.Status == LoginStatus.PersonInactive)
+                var eligibility = await _loginService.ValidateExternalUserSignInAsync(user);
+                if (!eligibility.IsSuccess)
                 {
-                    LogPersonInactive(user.Email ?? user.UserName!, personCheckResult.Message ?? "Person is inactive");
-                    return RedirectToPage("./Login", new { error = "PersonInactive", message = personCheckResult.Message });
+                    return HandleExternalSignInBlocked(user, eligibility);
                 }
                 
                 // Re-sign in with AMR claims
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id);
+                await RecordSuccessfulLoginAsync(user.Id);
                 
                 // Store AMR in session for MFA enforcement logic
                 if (externalMfaPerformed)
@@ -141,19 +143,18 @@ public partial class ExternalLoginCallbackModel : PageModel
                         var addLoginResult = await _userManager.AddLoginAsync(user, info);
                         if (addLoginResult.Succeeded)
                         {
-                            // Phase 18: Check Person status before allowing auto-link login
-                            var personCheckResult = await _loginService.AuthenticateAsync(user.Email ?? user.UserName!, "dummy");
-                            if (!personCheckResult.IsSuccess && personCheckResult.Status == LoginStatus.PersonInactive)
+                            var eligibility = await _loginService.ValidateExternalUserSignInAsync(user);
+                            if (!eligibility.IsSuccess)
                             {
-                                // Remove the login we just added since person is inactive
+                                // Remove the login we just added since user is not eligible to sign in
                                 await _userManager.RemoveLoginAsync(user, info.LoginProvider, info.ProviderKey);
-                                LogPersonInactive(user.Email ?? user.UserName!, personCheckResult.Message ?? "Person is inactive");
-                                return RedirectToPage("./Login", new { error = "PersonInactive", message = personCheckResult.Message });
+                                return HandleExternalSignInBlocked(user, eligibility);
                             }
                             
                             // Sign in with AMR claims
                             await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
                             await _userManagementService.UpdateLastLoginAsync(user.Id);
+                            await RecordSuccessfulLoginAsync(user.Id);
                             
                             // Store AMR in session
                             if (externalMfaPerformed)
@@ -174,8 +175,52 @@ public partial class ExternalLoginCallbackModel : PageModel
         // If we get here, the user is new or not linked. Redirect to confirmation page.
         // pass ReturnUrl
         // We need to store returnUrl in ViewData or pass it to next page
-        
+
         return RedirectToPage("./ExternalLoginConfirmation", new { ReturnUrl = returnUrl });
+    }
+
+    private IActionResult HandleExternalSignInBlocked(ApplicationUser user, LoginResult eligibility)
+    {
+        if (eligibility.Status == LoginStatus.LockedOut)
+        {
+            return RedirectToPage("./Lockout");
+        }
+
+        var reason = eligibility.Message ?? eligibility.Status.ToString();
+        LogPersonInactive(user.Email ?? user.UserName!, reason);
+
+        var error = eligibility.Status switch
+        {
+            LoginStatus.UserInactive => "UserInactive",
+            LoginStatus.PersonInactive => "PersonInactive",
+            _ => "ExternalLoginFailure"
+        };
+
+        return RedirectToPage("./Login", new { error, message = reason });
+    }
+
+    private async Task RecordSuccessfulLoginAsync(Guid userId)
+    {
+        try
+        {
+            var loginHistory = new LoginHistory
+            {
+                UserId = userId,
+                LoginTime = DateTime.UtcNow,
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers["User-Agent"].ToString(),
+                IsSuccessful = true,
+                RiskScore = 0,
+                IsFlaggedAbnormal = false
+            };
+
+            loginHistory.IsFlaggedAbnormal = await _loginHistoryService.DetectAbnormalLoginAsync(loginHistory);
+            await _loginHistoryService.RecordLoginAsync(loginHistory);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to record external login history for user {UserId}", userId);
+        }
     }
 
     #region LoggerMessage Methods

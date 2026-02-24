@@ -22,4 +22,12 @@ public interface ILoginService
     /// <param name="provider">The provider name (e.g. Google).</param>
     /// <returns>A tuple indicating success and an error message if failed.</returns>
     Task<(bool Succeeded, string? Error)> CanLinkExternalLoginAsync(Core.Domain.ApplicationUser user, string provider);
+
+    /// <summary>
+    /// Validates whether an existing user can complete external sign-in without
+    /// affecting password failure counters.
+    /// </summary>
+    /// <param name="user">The application user resolved from external login.</param>
+    /// <returns>A <see cref="LoginResult"/> describing whether sign-in may continue.</returns>
+    Task<LoginResult> ValidateExternalUserSignInAsync(Core.Domain.ApplicationUser user);
 }

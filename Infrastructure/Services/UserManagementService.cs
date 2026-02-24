@@ -38,8 +38,8 @@ public class UserManagementService : IUserManagementService
         string? search = null,
         string? role = null,
         bool? isActive = null,
-        string? sortBy = "email",
-        string? sortDirection = "asc")
+        string? sortBy = "createdat",
+        string? sortDirection = "desc")
     {
         var query = _userManager.Users.Include(u => u.Person).AsQueryable();
 

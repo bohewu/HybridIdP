@@ -16,8 +16,8 @@ public interface IUserManagementService
         string? search = null,
         string? role = null,
         bool? isActive = null,
-        string? sortBy = "email",
-        string? sortDirection = "asc");
+        string? sortBy = "createdat",
+        string? sortDirection = "desc");
 
     /// <summary>
     /// Get detailed information about a specific user

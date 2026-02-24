@@ -58,8 +58,8 @@ public class UsersController : ControllerBase
     /// </summary>
     /// <param name="role">Optional role filter</param>
     /// <param name="isActive">Optional active status filter</param>
-    /// <param name="sortBy">Optional sort field: email, username, firstname, lastname, department, createdat (default: email)</param>
-    /// <param name="sortDirection">Sort direction: asc or desc (default: asc)</param>
+    /// <param name="sortBy">Optional sort field: email, username, firstname, lastname, department, createdat (default: createdat)</param>
+    /// <param name="sortDirection">Sort direction: asc or desc (default: desc)</param>
     [HttpGet]
     [HasPermission(Permissions.Users.Read)]
     public async Task<IActionResult> GetUsers(
@@ -68,8 +68,8 @@ public class UsersController : ControllerBase
         [FromQuery] string? search = null,
         [FromQuery] string? role = null,
         [FromQuery] bool? isActive = null,
-        [FromQuery] string? sortBy = "email",
-        [FromQuery] string? sortDirection = "asc")
+        [FromQuery] string? sortBy = "createdat",
+        [FromQuery] string? sortDirection = "desc")
     {
         try
         {
