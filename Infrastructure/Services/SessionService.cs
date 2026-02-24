@@ -147,7 +147,7 @@ public class SessionService : ISessionService
         }
 
         return items
-            .OrderByDescending(s => s.CreatedAt ?? DateTime.MinValue)
+            .OrderByDescending(s => s.CreatedAt ?? DateTimeOffset.MinValue)
             .ToList();
     }
 

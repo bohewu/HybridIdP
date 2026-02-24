@@ -644,8 +644,13 @@ public class ClientService : IClientService
             .AnyAsync(co => co.ClientId == clientIdStr && co.CreatedByPersonId == personId);
     }
 
-    private static List<string> GetSupportedRoles(System.Collections.Immutable.ImmutableDictionary<string, JsonElement> properties)
+    private static List<string> GetSupportedRoles(System.Collections.Immutable.ImmutableDictionary<string, JsonElement>? properties)
     {
+        if (properties is null)
+        {
+            return new();
+        }
+
         if (properties.TryGetValue(AuthConstants.Properties.SupportedRoles, out var element) &&
             element.ValueKind == JsonValueKind.Array)
         {
@@ -654,8 +659,13 @@ public class ClientService : IClientService
         return new();
     }
 
-    private static bool GetDisableExternalProviders(System.Collections.Immutable.ImmutableDictionary<string, JsonElement> properties)
+    private static bool GetDisableExternalProviders(System.Collections.Immutable.ImmutableDictionary<string, JsonElement>? properties)
     {
+        if (properties is null)
+        {
+            return false;
+        }
+
         if (!properties.TryGetValue(AuthConstants.Properties.DisableExternalProviders, out var element))
         {
             return false;
