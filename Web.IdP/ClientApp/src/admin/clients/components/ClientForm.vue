@@ -38,7 +38,8 @@ const formData = ref({
   requiredScopes: [],
   supportedRoles: [],
   requirePkce: true,
-  disableExternalProviders: false
+  disableExternalProviders: false,
+  enableTurnstile: false
 })
 
 const generatedClientSecret = ref(null)
@@ -118,7 +119,8 @@ const resetForm = () => {
     requiredScopes: [],
     supportedRoles: [],
     requirePkce: true,
-    disableExternalProviders: false
+    disableExternalProviders: false,
+    enableTurnstile: false
   }
   error.value = null
   fieldErrors.value = {}
@@ -140,7 +142,8 @@ watch(() => props.client, async (newClient) => {
       requiredScopes: [],
       supportedRoles: newClient.supportedRoles || [],
       requirePkce: resolveRequirePkce(newClient.type === 'confidential' ? 'confidential' : 'public', newClient.requirePkce),
-      disableExternalProviders: newClient.disableExternalProviders === true
+      disableExternalProviders: newClient.disableExternalProviders === true,
+      enableTurnstile: newClient.enableTurnstile === true
     }
     
     // Fetch required scopes (still separate table)
@@ -199,7 +202,8 @@ const handleSubmit = async () => {
       permissions: formData.value.permissions,
       supportedRoles: formData.value.supportedRoles,
       requirePkce: resolveRequirePkce(formData.value.clientType, formData.value.requirePkce),
-      disableExternalProviders: formData.value.disableExternalProviders
+      disableExternalProviders: formData.value.disableExternalProviders,
+      enableTurnstile: formData.value.enableTurnstile
     }
 
     const url = isEdit.value
@@ -486,6 +490,21 @@ const closeSecretModal = () => {
                         <span>{{ $t('clients.form.disableExternalProvidersToggle') }}</span>
                       </label>
                       <p class="mt-1 text-xs text-gray-500">{{ $t('clients.form.disableExternalProvidersHelp') }}</p>
+                    </div>
+
+                    <div class="mb-5">
+                      <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        {{ $t('clients.form.turnstile') }}
+                      </label>
+                      <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          v-model="formData.enableTurnstile"
+                          type="checkbox"
+                          class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500"
+                        />
+                        <span>{{ $t('clients.form.enableTurnstileToggle') }}</span>
+                      </label>
+                      <p class="mt-1 text-xs text-gray-500">{{ $t('clients.form.enableTurnstileHelp') }}</p>
                     </div>
 
                     <!-- Consent Type -->

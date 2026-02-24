@@ -11,6 +11,7 @@ using OpenIddict.Abstractions;
 using Xunit;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using System.Text.Json;
+using System.Collections.Immutable;
 using AuthConstants = Core.Domain.Constants.AuthConstants;
 
 namespace Tests.Infrastructure.UnitTests;
@@ -226,6 +227,129 @@ public class ClientServiceTests
                 d.Properties[AuthConstants.Properties.SupportedRoles].ToString().Contains("Admin")
             ), 
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateClient_WithEnableTurnstileTrue_ShouldPersistProperty()
+    {
+        var request = new CreateClientRequest(
+            ClientId: "test-turnstile",
+            ClientSecret: "secret",
+            DisplayName: "Test Turnstile",
+            ApplicationType: ApplicationTypes.Web,
+            Type: ClientTypes.Confidential,
+            ConsentType: ConsentTypes.Explicit,
+            RedirectUris: new List<string> { "https://localhost" },
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: null)
+        {
+            EnableTurnstile = true
+        };
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object)null);
+
+        var dummyApp = new object();
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(dummyApp);
+        _mockApplicationManager.Setup(m => m.GetIdAsync(dummyApp, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("new-id");
+
+        await _service.CreateClientAsync(request);
+
+        _mockApplicationManager.Verify(m => m.CreateAsync(
+            It.Is<OpenIddictApplicationDescriptor>(d =>
+                d.Properties.ContainsKey(AuthConstants.Properties.EnableTurnstile) &&
+                d.Properties[AuthConstants.Properties.EnableTurnstile].ValueKind == JsonValueKind.True),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetClientById_WhenEnableTurnstilePropertyMissing_ShouldReturnFalse()
+    {
+        var id = Guid.NewGuid();
+        var app = new object();
+
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(id.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(app, It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<ImmutableArray<string>>(ImmutableArray<string>.Empty));
+        _mockApplicationManager.Setup(m => m.GetPostLogoutRedirectUrisAsync(app, It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<ImmutableArray<string>>(ImmutableArray<string>.Empty));
+        _mockApplicationManager.Setup(m => m.GetPermissionsAsync(app, It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<ImmutableArray<string>>(ImmutableArray<string>.Empty));
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), app, It.IsAny<CancellationToken>()))
+            .Returns(default(ValueTask));
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(app, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ClientTypes.Public);
+        _mockApplicationManager.Setup(m => m.GetPropertiesAsync(app, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableDictionary<string, JsonElement>.Empty);
+        _mockApplicationManager.Setup(m => m.GetIdAsync(app, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(id.ToString());
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(app, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("client-a");
+        _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(app, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Client A");
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(app, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Explicit);
+        _mockApplicationManager.Setup(m => m.GetApplicationTypeAsync(app, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApplicationTypes.Web);
+
+        var result = await _service.GetClientByIdAsync(id);
+
+        Assert.NotNull(result);
+        Assert.False(result.EnableTurnstile);
+    }
+
+    [Fact]
+    public async Task UpdateClient_WithEnableTurnstileFalse_ShouldRemoveProperty()
+    {
+        var clientId = Guid.NewGuid();
+        var app = new object();
+
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), app, It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((d, _, _) =>
+            {
+                d.ClientId = "client-b";
+                d.ApplicationType = ApplicationTypes.Web;
+                d.ClientType = ClientTypes.Confidential;
+                d.Permissions.Add(Permissions.Endpoints.Token);
+                d.Permissions.Add(Permissions.GrantTypes.ClientCredentials);
+                d.Properties[AuthConstants.Properties.EnableTurnstile] = JsonSerializer.SerializeToElement(true);
+            })
+            .Returns(default(ValueTask));
+
+        _mockApplicationManager.Setup(m => m.PopulateAsync(app, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, _) =>
+            {
+                Assert.False(d.Properties.ContainsKey(AuthConstants.Properties.EnableTurnstile));
+            })
+            .Returns(default(ValueTask));
+
+        _mockApplicationManager.Setup(m => m.UpdateAsync(app, It.IsAny<CancellationToken>()))
+            .Returns(default(ValueTask));
+
+        var request = new UpdateClientRequest(
+            ClientId: null,
+            ClientSecret: null,
+            DisplayName: null,
+            Type: null,
+            ConsentType: null,
+            RedirectUris: null,
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: null)
+        {
+            EnableTurnstile = false
+        };
+
+        await _service.UpdateClientAsync(clientId, request);
+
+        _mockApplicationManager.Verify(m => m.UpdateAsync(app, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

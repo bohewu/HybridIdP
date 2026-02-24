@@ -168,7 +168,8 @@ public class ClientService : IClientService
             Permissions = permissions.ToList(),
             SupportedRoles = GetSupportedRoles(properties),
             RequirePkce = clientType == ClientTypes.Public || descriptor.Requirements.Contains(Requirements.Features.ProofKeyForCodeExchange),
-            DisableExternalProviders = GetDisableExternalProviders(properties)
+            DisableExternalProviders = GetDisableExternalProviders(properties),
+            EnableTurnstile = GetEnableTurnstile(properties)
         };
     }
 
@@ -242,6 +243,11 @@ public class ClientService : IClientService
         if (request.DisableExternalProviders == true)
         {
             descriptor.Properties[AuthConstants.Properties.DisableExternalProviders] = JsonSerializer.SerializeToElement(true);
+        }
+
+        if (request.EnableTurnstile == true)
+        {
+            descriptor.Properties[AuthConstants.Properties.EnableTurnstile] = JsonSerializer.SerializeToElement(true);
         }
 
         // Validate Native app constraints
@@ -547,6 +553,18 @@ public class ClientService : IClientService
             }
         }
 
+        if (request.EnableTurnstile != null)
+        {
+            if (request.EnableTurnstile == true)
+            {
+                descriptor.Properties[AuthConstants.Properties.EnableTurnstile] = JsonSerializer.SerializeToElement(true);
+            }
+            else
+            {
+                descriptor.Properties.Remove(AuthConstants.Properties.EnableTurnstile);
+            }
+        }
+
         // Validate Redirect URIs for interactive clients
         if ((descriptor.Permissions.Contains(Permissions.GrantTypes.AuthorizationCode) ||
              descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit)) &&
@@ -667,6 +685,27 @@ public class ClientService : IClientService
         }
 
         if (!properties.TryGetValue(AuthConstants.Properties.DisableExternalProviders, out var element))
+        {
+            return false;
+        }
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(element.GetString(), out var parsed) => parsed,
+            _ => false
+        };
+    }
+
+    private static bool GetEnableTurnstile(System.Collections.Immutable.ImmutableDictionary<string, JsonElement>? properties)
+    {
+        if (properties is null)
+        {
+            return false;
+        }
+
+        if (!properties.TryGetValue(AuthConstants.Properties.EnableTurnstile, out var element))
         {
             return false;
         }

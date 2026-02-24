@@ -136,5 +136,11 @@ public static class AuthConstants
         /// When absent, client follows global external provider configuration.
         /// </summary>
         public const string DisableExternalProviders = "iodc:client:disable_external_providers";
+
+        /// <summary>
+        /// When true, Turnstile is enabled for this client.
+        /// When absent, Turnstile remains disabled for this client.
+        /// </summary>
+        public const string EnableTurnstile = "iodc:client:enable_turnstile";
     }
 }

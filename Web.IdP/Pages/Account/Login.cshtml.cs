@@ -98,10 +98,11 @@ public partial class LoginModel : PageModel
     /// <summary>
     /// Calculate if Turnstile should be enabled based on settings and key configuration
     /// </summary>
-    private async Task LoadTurnstileStateAsync()
+    private async Task LoadTurnstileStateAsync(string? returnUrl)
     {
         var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled);
-        var isEnabledFlag = dbTurnstileEnabled ?? _turnstileOptions.Enabled;
+        var globalTurnstileEnabled = dbTurnstileEnabled ?? _turnstileOptions.Enabled;
+        var clientTurnstileEnabled = await IsTurnstileEnabledForClientAsync(returnUrl);
         
         var dbSiteKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SiteKey);
         TurnstileSiteKey = !string.IsNullOrEmpty(dbSiteKey) ? dbSiteKey : _turnstileOptions.SiteKey;
@@ -111,7 +112,7 @@ public partial class LoginModel : PageModel
         
         var hasSiteKey = !string.IsNullOrWhiteSpace(TurnstileSiteKey);
         
-        TurnstileEnabled = isEnabledFlag && hasSiteKey && hasSecretKey && _turnstileStateService.IsAvailable;
+        TurnstileEnabled = globalTurnstileEnabled && clientTurnstileEnabled && hasSiteKey && hasSecretKey && _turnstileStateService.IsAvailable;
     }
 
     public class InputModel
@@ -163,7 +164,7 @@ public partial class LoginModel : PageModel
         CustomForgotPasswordUrl = policy.CustomForgotPasswordUrl;
 
         // Load Turnstile enabled state
-        await LoadTurnstileStateAsync();
+        await LoadTurnstileStateAsync(returnUrl);
 
         // Clear AMR session on Get
         HttpContext.Session.Remove("AuthenticationMethods");
@@ -181,9 +182,7 @@ public partial class LoginModel : PageModel
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         PasskeyEnabled = policy.EnablePasskey;
         CustomForgotPasswordUrl = policy.CustomForgotPasswordUrl;
-        await LoadTurnstileStateAsync();
-
-        await LoadTurnstileStateAsync();
+        await LoadTurnstileStateAsync(returnUrl);
 
         ExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl);
 
@@ -582,7 +581,7 @@ public partial class LoginModel : PageModel
 
     private async Task<bool> IsExternalProvidersDisabledAsync(string? returnUrl)
     {
-        var clientId = TryGetClientIdFromReturnUrl(returnUrl);
+        var clientId = ResolveClientIdFromLoginContext(returnUrl);
         if (string.IsNullOrWhiteSpace(clientId))
         {
             return false;
@@ -607,6 +606,53 @@ public partial class LoginModel : PageModel
             JsonValueKind.String when bool.TryParse(element.GetString(), out var parsed) => parsed,
             _ => false
         };
+    }
+
+    private async Task<bool> IsTurnstileEnabledForClientAsync(string? returnUrl)
+    {
+        var clientId = ResolveClientIdFromLoginContext(returnUrl);
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            return false;
+        }
+
+        var application = await _applicationManager.FindByClientIdAsync(clientId);
+        if (application is null)
+        {
+            return false;
+        }
+
+        var properties = await _applicationManager.GetPropertiesAsync(application);
+        if (!properties.TryGetValue(AuthConstants.Properties.EnableTurnstile, out var element))
+        {
+            return false;
+        }
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(element.GetString(), out var parsed) => parsed,
+            _ => false
+        };
+    }
+
+    private string? ResolveClientIdFromLoginContext(string? returnUrl)
+    {
+        var clientIdFromReturnUrl = TryGetClientIdFromReturnUrl(returnUrl);
+        if (!string.IsNullOrWhiteSpace(clientIdFromReturnUrl))
+        {
+            return clientIdFromReturnUrl;
+        }
+
+        var queryClientId = Request.Query["client_id"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(queryClientId))
+        {
+            return queryClientId;
+        }
+
+        var formClientId = Request.HasFormContentType ? Request.Form["client_id"].FirstOrDefault() : null;
+        return string.IsNullOrWhiteSpace(formClientId) ? null : formClientId;
     }
 
     private string? TryGetClientIdFromReturnUrl(string? returnUrl)
