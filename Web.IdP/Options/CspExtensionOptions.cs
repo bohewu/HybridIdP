@@ -8,6 +8,8 @@ public class CspExtensionOptions
     public List<string> ScriptSrcElem { get; set; } = [];
     public List<string> StyleSrc { get; set; } = [];
     public List<string> StyleSrcElem { get; set; } = [];
+    public List<string> FontSrc { get; set; } = [];
+    public List<string> FontSrcElem { get; set; } = [];
     public List<string> ConnectSrc { get; set; } = [];
     public List<string> FrameSrc { get; set; } = [];
     public List<string> AdditionalDirectives { get; set; } = [];
@@ -16,6 +18,8 @@ public class CspExtensionOptions
     public IEnumerable<string> GetValidatedScriptSrcElem() => FilterSources(ScriptSrcElem);
     public IEnumerable<string> GetValidatedStyleSrc() => FilterSources(StyleSrc);
     public IEnumerable<string> GetValidatedStyleSrcElem() => FilterSources(StyleSrcElem);
+    public IEnumerable<string> GetValidatedFontSrc() => FilterSources(FontSrc);
+    public IEnumerable<string> GetValidatedFontSrcElem() => FilterSources(FontSrcElem);
     public IEnumerable<string> GetValidatedConnectSrc() => FilterSources(ConnectSrc);
     public IEnumerable<string> GetValidatedFrameSrc() => FilterSources(FrameSrc);
     public IEnumerable<string> GetValidatedAdditionalDirectives() => FilterDirectives(AdditionalDirectives);

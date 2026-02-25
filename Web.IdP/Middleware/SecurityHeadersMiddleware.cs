@@ -34,6 +34,7 @@ public class SecurityHeadersMiddleware
         var styleSrc = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com https://fonts.googleapis.com 'unsafe-inline'";
         var styleSrcElem = "'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com https://fonts.googleapis.com 'unsafe-inline'";
         var styleSrcAttr = "'unsafe-inline'";
+        var fontSrc = "'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:";
         var connectSrc = "'self' https://challenges.cloudflare.com";
         var frameSrc = "https://challenges.cloudflare.com";
 
@@ -54,7 +55,8 @@ public class SecurityHeadersMiddleware
         var mergedScriptSrc = MergeDirectiveSources(scriptSrc, _cspOptions.GetValidatedScriptSrc());
         var mergedScriptSrcElem = MergeDirectiveSources(mergedScriptSrc, _cspOptions.GetValidatedScriptSrcElem());
         var mergedStyleSrc = MergeDirectiveSources(styleSrc, _cspOptions.GetValidatedStyleSrc());
-        var mergedStyleSrcElem = MergeDirectiveSources(mergedStyleSrcElem: styleSrcElem, extraSources: _cspOptions.GetValidatedStyleSrcElem(), inheritedSources: _cspOptions.GetValidatedStyleSrc());
+        var mergedStyleSrcElem = MergeDirectiveSources(baseSources: styleSrcElem, extraSources: _cspOptions.GetValidatedStyleSrcElem(), inheritedSources: _cspOptions.GetValidatedStyleSrc());
+        var mergedFontSrc = MergeDirectiveSources(baseSources: fontSrc, extraSources: _cspOptions.GetValidatedFontSrcElem(), inheritedSources: _cspOptions.GetValidatedFontSrc());
         var mergedConnectSrc = MergeDirectiveSources(connectSrc, _cspOptions.GetValidatedConnectSrc());
         var mergedFrameSrc = MergeDirectiveSources(frameSrc, _cspOptions.GetValidatedFrameSrc());
 
@@ -66,7 +68,7 @@ public class SecurityHeadersMiddleware
             $"style-src {mergedStyleSrc}",
             $"style-src-elem {mergedStyleSrcElem}",
             $"style-src-attr {styleSrcAttr}",
-            "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:",
+            $"font-src {mergedFontSrc}",
             "img-src 'self' data: https:",
             $"connect-src {mergedConnectSrc}",
             $"frame-src {mergedFrameSrc}",
@@ -143,10 +145,10 @@ public class SecurityHeadersMiddleware
         return string.Join(' ', values);
     }
 
-    private static string MergeDirectiveSources(string mergedStyleSrcElem, IEnumerable<string> extraSources, IEnumerable<string> inheritedSources)
+    private static string MergeDirectiveSources(string baseSources, IEnumerable<string> extraSources, IEnumerable<string> inheritedSources)
     {
         return MergeDirectiveSources(
-            MergeDirectiveSources(mergedStyleSrcElem, inheritedSources),
+            MergeDirectiveSources(baseSources, inheritedSources),
             extraSources);
     }
 
