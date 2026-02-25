@@ -1,0 +1,11 @@
+@using Microsoft.Extensions.Options
+@using Web.IdP.Options
+@inject IOptions<LayoutAssetInjectionOptions> LayoutAssetOptions
+@{
+    var cssLinks = LayoutAssetOptions.Value.GetValidatedExternalCssLinks();
+}
+
+@foreach (var cssLink in cssLinks)
+{
+    <link rel="stylesheet" href="@cssLink" />
+}

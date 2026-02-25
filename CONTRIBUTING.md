@@ -23,6 +23,11 @@ The maintainers have limited bandwidth to review external contributions at this 
 - Modify it for your own use under the MIT license
 - No need to ask permission
 
+### Example Data Safety
+- Do not include real organization domains, internal hosts, credentials, or tenant-specific values in docs/examples
+- Use placeholders such as `example.com`, `api.example.com`, and `your-tenant-id`
+- Redact sensitive values before posting issues, snippets, logs, or screenshots
+
 ### 💬 Discussions
 - Questions and ideas are welcome in [Discussions](../../discussions)
 

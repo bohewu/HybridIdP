@@ -1,0 +1,51 @@
+@using Microsoft.Extensions.Options
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Web.IdP.Options
+@inject IOptions<LayoutAssetInjectionOptions> LayoutAssetOptions
+@{
+    var jsLinks = LayoutAssetOptions.Value.GetValidatedExternalJsLinks();
+    var scriptTags = LayoutAssetOptions.Value.GetValidatedExternalScriptTags();
+}
+
+@foreach (var jsLink in jsLinks)
+{
+    <script src="@jsLink"></script>
+}
+
+@foreach (var scriptTag in scriptTags)
+{
+    var tagBuilder = new TagBuilder("script");
+    tagBuilder.Attributes["src"] = scriptTag.Src;
+
+    if (scriptTag.Async)
+    {
+        tagBuilder.Attributes["async"] = "async";
+    }
+
+    if (scriptTag.Defer)
+    {
+        tagBuilder.Attributes["defer"] = "defer";
+    }
+
+    if (!string.IsNullOrWhiteSpace(scriptTag.Integrity))
+    {
+        tagBuilder.Attributes["integrity"] = scriptTag.Integrity;
+    }
+
+    if (!string.IsNullOrWhiteSpace(scriptTag.CrossOrigin))
+    {
+        tagBuilder.Attributes["crossorigin"] = scriptTag.CrossOrigin;
+    }
+
+    if (!string.IsNullOrWhiteSpace(scriptTag.ReferrerPolicy))
+    {
+        tagBuilder.Attributes["referrerpolicy"] = scriptTag.ReferrerPolicy;
+    }
+
+    foreach (var dataAttribute in scriptTag.DataAttributes)
+    {
+        tagBuilder.Attributes[dataAttribute.Key] = dataAttribute.Value;
+    }
+
+    @tagBuilder
+}

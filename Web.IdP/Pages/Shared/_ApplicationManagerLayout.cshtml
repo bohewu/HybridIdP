@@ -46,6 +46,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+    <partial name="_ExternalLayoutCss" />
 </head>
 @{
     var isImpersonating = User?.Identity is System.Security.Claims.ClaimsIdentity claimsId && claimsId.Actor != null;
@@ -215,6 +216,7 @@
     <div class="mobile-overlay fixed inset-0 bg-black/50 z-35 hidden transition-opacity" id="mobile-overlay"></div>
     
     @* Page-specific scripts (e.g., Vue.js bundles) *@
+    <partial name="_ExternalLayoutJs" />
     @RenderSection("Scripts", required: false)
     <partial name="_CookieConsent" />
 </body>

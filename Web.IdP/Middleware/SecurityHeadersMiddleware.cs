@@ -1,5 +1,8 @@
 namespace Web.IdP.Middleware;
 
+using Microsoft.Extensions.Options;
+using Web.IdP.Options;
+
 /// <summary>
 /// Middleware to add security headers to HTTP responses for CSP compliance and security best practices
 /// </summary>
@@ -7,11 +10,13 @@ public class SecurityHeadersMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IWebHostEnvironment _env;
+    private readonly CspExtensionOptions _cspOptions;
 
-    public SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvironment env)
+    public SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvironment env, IOptions<CspExtensionOptions> cspOptions)
     {
         _next = next;
         _env = env;
+        _cspOptions = cspOptions.Value;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -46,23 +51,32 @@ public class SecurityHeadersMiddleware
             connectSrc += " wss: https://cdn.jsdelivr.net"; // Production: SignalR WebSocket and source maps
         }
 
-        var cspParts = new[]
+        var mergedScriptSrc = MergeDirectiveSources(scriptSrc, _cspOptions.GetValidatedScriptSrc());
+        var mergedScriptSrcElem = MergeDirectiveSources(mergedScriptSrc, _cspOptions.GetValidatedScriptSrcElem());
+        var mergedStyleSrc = MergeDirectiveSources(styleSrc, _cspOptions.GetValidatedStyleSrc());
+        var mergedStyleSrcElem = MergeDirectiveSources(mergedStyleSrcElem: styleSrcElem, extraSources: _cspOptions.GetValidatedStyleSrcElem(), inheritedSources: _cspOptions.GetValidatedStyleSrc());
+        var mergedConnectSrc = MergeDirectiveSources(connectSrc, _cspOptions.GetValidatedConnectSrc());
+        var mergedFrameSrc = MergeDirectiveSources(frameSrc, _cspOptions.GetValidatedFrameSrc());
+
+        var cspParts = new List<string>
         {
             "default-src 'self'",
-            $"script-src {scriptSrc}",
-            $"script-src-elem {scriptSrc}",
-            $"style-src {styleSrc}",
-            $"style-src-elem {styleSrcElem}",
+            $"script-src {mergedScriptSrc}",
+            $"script-src-elem {mergedScriptSrcElem}",
+            $"style-src {mergedStyleSrc}",
+            $"style-src-elem {mergedStyleSrcElem}",
             $"style-src-attr {styleSrcAttr}",
             "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:",
             "img-src 'self' data: https:",
-            $"connect-src {connectSrc}",
-            $"frame-src {frameSrc}",
+            $"connect-src {mergedConnectSrc}",
+            $"frame-src {mergedFrameSrc}",
             "frame-ancestors 'none'",
             "base-uri 'self'",
             "form-action 'self' https:",
             "object-src 'none'"
         };
+
+        cspParts.AddRange(_cspOptions.GetValidatedAdditionalDirectives());
 
         context.Response.Headers.Append("Content-Security-Policy", string.Join("; ", cspParts));
 
@@ -103,6 +117,42 @@ public class SecurityHeadersMiddleware
         context.Response.Headers.Remove("X-Powered-By");
 
         await _next(context);
+    }
+
+    private static string MergeDirectiveSources(string baseSources, IEnumerable<string> extraSources)
+    {
+        var values = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var source in Tokenize(baseSources))
+        {
+            if (seen.Add(source))
+            {
+                values.Add(source);
+            }
+        }
+
+        foreach (var source in extraSources)
+        {
+            if (seen.Add(source))
+            {
+                values.Add(source);
+            }
+        }
+
+        return string.Join(' ', values);
+    }
+
+    private static string MergeDirectiveSources(string mergedStyleSrcElem, IEnumerable<string> extraSources, IEnumerable<string> inheritedSources)
+    {
+        return MergeDirectiveSources(
+            MergeDirectiveSources(mergedStyleSrcElem, inheritedSources),
+            extraSources);
+    }
+
+    private static IEnumerable<string> Tokenize(string sources)
+    {
+        return sources.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }
 
