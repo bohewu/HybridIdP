@@ -5,7 +5,9 @@ using Core.Application.DTOs;
 using Core.Domain.Entities;
 using Core.Domain.Events;
 using Infrastructure.Services;
+using Infrastructure.Options;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Moq;
 using OpenIddict.Abstractions;
 using Xunit;
@@ -35,7 +37,8 @@ public class ClientServiceTests
             _mockApplicationManager.Object,
             _mockEventPublisher.Object,
             _mockContext.Object,
-            _mockScopeManager.Object
+            _mockScopeManager.Object,
+            Options.Create(new RedirectUriSecurityPolicyOptions())
         );
     }
 
@@ -51,7 +54,7 @@ public class ClientServiceTests
             Type: null,
             ConsentType: null,
 
-            RedirectUris: new List<string> { "http://dummy" },
+            RedirectUris: new List<string> { "https://dummy" },
             PostLogoutRedirectUris: null,
             Permissions: null,
             SupportedRoles: null
@@ -91,7 +94,7 @@ public class ClientServiceTests
             DisplayName: null,
             Type: null,
             ConsentType: null,
-            RedirectUris: new List<string> { "http://dummy" },
+            RedirectUris: new List<string> { "https://dummy" },
             PostLogoutRedirectUris: null,
             Permissions: null,
             SupportedRoles: null
@@ -115,7 +118,7 @@ public class ClientServiceTests
             ClientSecret: "secret",
             DisplayName: null,
             ConsentType: null,
-            RedirectUris: new List<string> { "http://dummy" },
+            RedirectUris: new List<string> { "https://dummy" },
             PostLogoutRedirectUris: null,
             Permissions: null,
             SupportedRoles: null
@@ -188,6 +191,152 @@ public class ClientServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateClientAsync(request));
+    }
+
+    [Fact]
+    public async Task CreateClient_WithHttpRedirect_NonLocalhost_ShouldBeBlockedWhenHttpsEnforced()
+    {
+        var request = new CreateClientRequest(
+            ClientId: "http-non-localhost",
+            ClientSecret: "secret",
+            DisplayName: null,
+            ApplicationType: ApplicationTypes.Web,
+            Type: ClientTypes.Confidential,
+            ConsentType: null,
+            RedirectUris: new List<string> { "http://example.com/callback" },
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: null
+        );
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateClientAsync(request));
+
+        Assert.Contains("HTTP redirect URI", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateClient_WithHttpLocalhostRedirect_ShouldBeAllowedWhenConfigured()
+    {
+        var request = new CreateClientRequest(
+            ClientId: "http-localhost",
+            ClientSecret: "secret",
+            DisplayName: null,
+            ApplicationType: ApplicationTypes.Web,
+            Type: ClientTypes.Confidential,
+            ConsentType: null,
+            RedirectUris: new List<string> { "http://localhost/callback" },
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: null
+        );
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+
+        var created = new object();
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(created);
+        _mockApplicationManager.Setup(m => m.GetIdAsync(created, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("new-id");
+
+        var result = await _service.CreateClientAsync(request);
+
+        Assert.NotNull(result);
+        _mockApplicationManager.Verify(m => m.CreateAsync(
+            It.Is<OpenIddictApplicationDescriptor>(d => d.RedirectUris.Any(u => u.ToString() == "http://localhost/callback")),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateClient_WithHostRestriction_ShouldBlockRedirectToUnlistedHost()
+    {
+        var serviceWithHostPolicy = new ClientService(
+            _mockApplicationManager.Object,
+            _mockEventPublisher.Object,
+            _mockContext.Object,
+            _mockScopeManager.Object,
+            Options.Create(new RedirectUriSecurityPolicyOptions
+            {
+                EnforceHttps = true,
+                AllowLocalhostHttp = true,
+                AllowedHosts = ["trusted.example"]
+            }));
+
+        var request = new CreateClientRequest(
+            ClientId: "host-restricted",
+            ClientSecret: "secret",
+            DisplayName: null,
+            ApplicationType: ApplicationTypes.Web,
+            Type: ClientTypes.Confidential,
+            ConsentType: null,
+            RedirectUris: new List<string> { "https://evil.example/callback" },
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: null
+        );
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(request.ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => serviceWithHostPolicy.CreateClientAsync(request));
+
+        Assert.Contains("not allowed", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateAndUpdate_InvalidRedirectUri_ShouldUseConsistentValidationBehavior()
+    {
+        var createRequest = new CreateClientRequest(
+            ClientId: "create-invalid-uri",
+            ClientSecret: "secret",
+            DisplayName: null,
+            ApplicationType: ApplicationTypes.Web,
+            Type: ClientTypes.Confidential,
+            ConsentType: null,
+            RedirectUris: new List<string> { "not-a-uri" },
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: null
+        );
+
+        _mockApplicationManager.Setup(m => m.FindByClientIdAsync(createRequest.ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+
+        var createException = await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateClientAsync(createRequest));
+        Assert.Contains("RedirectUris", createException.Message);
+
+        var clientId = Guid.NewGuid();
+        var existingApp = new object();
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingApp);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), existingApp, It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((d, _, _) =>
+            {
+                d.ClientId = "existing";
+                d.ApplicationType = ApplicationTypes.Web;
+                d.ClientType = ClientTypes.Confidential;
+                d.Permissions.Add(Permissions.Endpoints.Token);
+                d.Permissions.Add(Permissions.GrantTypes.ClientCredentials);
+            })
+            .Returns(default(ValueTask));
+
+        var updateRequest = new UpdateClientRequest(
+            ClientId: null,
+            ClientSecret: null,
+            DisplayName: null,
+            Type: null,
+            ConsentType: null,
+            RedirectUris: new List<string> { "not-a-uri" },
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: null
+        );
+
+        var updateException = await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateClientAsync(clientId, updateRequest));
+        Assert.Contains("RedirectUris", updateException.Message);
     }
 
     [Fact]

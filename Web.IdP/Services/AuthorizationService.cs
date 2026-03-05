@@ -122,7 +122,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             {
                 if (promptValues.Contains("none", StringComparer.OrdinalIgnoreCase))
                 {
-                    LogPromptNoneWithoutAuthenticatedUser(request.ClientId);
+                    await LogSuspiciousAuthorizeProbeAsync(request, prompt);
                     return new ForbidResult(
                         authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
                         properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -669,6 +669,35 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
 
+        private async Task LogSuspiciousAuthorizeProbeAsync(OpenIddictRequest request, string? prompt)
+        {
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var userAgent = Request.Headers.UserAgent.ToString();
+
+            var details = JsonSerializer.Serialize(new
+            {
+                clientId = request.ClientId,
+                prompt,
+                scope = request.Scope,
+                ip,
+                userAgent
+            });
+
+            await _auditService.LogEventAsync(
+                "AuthorizationPromptNoneProbe",
+                null,
+                details,
+                ip,
+                userAgent);
+
+            LogPromptNoneProbeDetected(
+                request.ClientId,
+                prompt,
+                request.Scope,
+                ip,
+                userAgent);
+        }
+
 
 
         private async Task LoadScopeInfosAsync(ImmutableArray<string> scopeNames, Guid clientId, CancellationToken cancellationToken = default)
@@ -756,8 +785,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
         [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid prompt combination for client {ClientId}: {Prompt}")]
         partial void LogInvalidPromptCombination(string? clientId, string prompt);
 
-        [LoggerMessage(Level = LogLevel.Information, Message = "prompt=none requested by client {ClientId} without authenticated user. Returning login_required.")]
-        partial void LogPromptNoneWithoutAuthenticatedUser(string? clientId);
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Suspicious authorize probe detected: prompt=none without authenticated principal. clientId={ClientId}, prompt={Prompt}, scope={Scope}, ip={Ip}, userAgent={UserAgent}")]
+        partial void LogPromptNoneProbeDetected(string? clientId, string? prompt, string? scope, string? ip, string? userAgent);
 
         [LoggerMessage(Level = LogLevel.Warning, Message = "Client {ClientId} requested response_type=id_token without permission.")]
         partial void LogUnauthorizedIdTokenRequest(string? clientId);

@@ -2,6 +2,8 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Events;
 using Infrastructure.Services;
+using Infrastructure.Options;
+using Microsoft.Extensions.Options;
 using Moq;
 using OpenIddict.Abstractions;
 using System;
@@ -29,7 +31,12 @@ public class ClientServiceTests
         _mockScopeManager = new Mock<IOpenIddictScopeManager>();
         _mockEventPublisher = new Mock<IDomainEventPublisher>();
         _mockContext = new Mock<IApplicationDbContext>();
-        _clientService = new ClientService(_mockApplicationManager.Object, _mockEventPublisher.Object, _mockContext.Object, _mockScopeManager.Object);
+        _clientService = new ClientService(
+            _mockApplicationManager.Object,
+            _mockEventPublisher.Object,
+            _mockContext.Object,
+            _mockScopeManager.Object,
+            Options.Create(new RedirectUriSecurityPolicyOptions()));
     }
 
     #region GetClientsAsync Tests
@@ -978,7 +985,7 @@ public class ClientServiceTests
     }
 
     [Fact]
-    public async Task CreateClientAsync_ShouldIgnoreInvalidRedirectUris()
+    public async Task CreateClientAsync_ShouldRejectInvalidRedirectUris()
     {
         // Arrange
         var req = new CreateClientRequest(
@@ -997,13 +1004,6 @@ public class ClientServiceTests
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync("cid-urls", It.IsAny<CancellationToken>()))
             .ReturnsAsync((object?)null);
         _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
-            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((d, _) =>
-            {
-                Assert.Single(d.RedirectUris);
-                Assert.Contains(d.RedirectUris, u => u.ToString() == "https://valid/");
-                Assert.Single(d.PostLogoutRedirectUris);
-                Assert.Contains(d.PostLogoutRedirectUris, u => u.ToString() == "http://valid-pl/");
-            })
             .ReturnsAsync(new { Id = Guid.NewGuid() });
         _mockApplicationManager.Setup(m => m.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Guid.NewGuid().ToString());
@@ -1013,10 +1013,10 @@ public class ClientServiceTests
             .ReturnsAsync("Name");
 
         // Act
-        var result = await _clientService.CreateClientAsync(req);
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() => _clientService.CreateClientAsync(req));
 
         // Assert
-        Assert.NotNull(result);
+        Assert.Equal("RedirectUris", exception.ParamName);
     }
 
     [Fact]

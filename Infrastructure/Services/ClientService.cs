@@ -8,6 +8,8 @@ using OpenIddict.Abstractions;
 using System.Security.Cryptography;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using System.Text.Json;
+using Infrastructure.Options;
+using Microsoft.Extensions.Options;
 using AuthConstants = Core.Domain.Constants.AuthConstants;
 
 namespace Infrastructure.Services;
@@ -18,17 +20,25 @@ public class ClientService : IClientService
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly IApplicationDbContext _context;
     private readonly IOpenIddictScopeManager _scopeManager;
+    private readonly RedirectUriSecurityPolicyOptions _redirectUriSecurityPolicy;
+    private readonly HashSet<string> _allowedRedirectHosts;
 
     public ClientService(
         IOpenIddictApplicationManager applicationManager, 
         IDomainEventPublisher eventPublisher,
         IApplicationDbContext context,
-        IOpenIddictScopeManager scopeManager)
+        IOpenIddictScopeManager scopeManager,
+        IOptions<RedirectUriSecurityPolicyOptions> redirectUriSecurityPolicyOptions)
     {
         _applicationManager = applicationManager;
         _eventPublisher = eventPublisher;
         _context = context;
         _scopeManager = scopeManager;
+        _redirectUriSecurityPolicy = redirectUriSecurityPolicyOptions.Value;
+        _allowedRedirectHosts = (_redirectUriSecurityPolicy.AllowedHosts ?? [])
+            .Where(host => !string.IsNullOrWhiteSpace(host))
+            .Select(host => host.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<(IEnumerable<ClientSummary> items, int totalCount)> GetClientsAsync(
@@ -256,29 +266,8 @@ public class ClientService : IClientService
             throw new ArgumentException("Native applications must be public clients (cannot have a client secret).");
         }
 
-        // Add redirect URIs
-        if (request.RedirectUris != null)
-        {
-            foreach (var uri in request.RedirectUris)
-            {
-                if (Uri.TryCreate(uri, UriKind.Absolute, out var validUri))
-                {
-                    descriptor.RedirectUris.Add(validUri);
-                }
-            }
-        }
-
-        // Add post logout redirect URIs
-        if (request.PostLogoutRedirectUris != null)
-        {
-            foreach (var uri in request.PostLogoutRedirectUris)
-            {
-                if (Uri.TryCreate(uri, UriKind.Absolute, out var validUri))
-                {
-                    descriptor.PostLogoutRedirectUris.Add(validUri);
-                }
-            }
-        }
+        ApplyValidatedRedirectUris(descriptor.RedirectUris, request.RedirectUris, nameof(request.RedirectUris));
+        ApplyValidatedRedirectUris(descriptor.PostLogoutRedirectUris, request.PostLogoutRedirectUris, nameof(request.PostLogoutRedirectUris));
 
         // Add permissions
         if (request.Permissions != null)
@@ -444,25 +433,8 @@ public class ClientService : IClientService
             throw new ArgumentException("Native applications must be public clients (cannot have a client secret).");
         }
 
-        // Handle redirect URIs - replace if provided
-        if (request.RedirectUris != null)
-        {
-            descriptor.RedirectUris.Clear();
-            foreach (var uri in request.RedirectUris)
-            {
-                descriptor.RedirectUris.Add(new Uri(uri));
-            }
-        }
-
-        // Handle post logout redirect URIs - replace if provided
-        if (request.PostLogoutRedirectUris != null)
-        {
-            descriptor.PostLogoutRedirectUris.Clear();
-            foreach (var uri in request.PostLogoutRedirectUris)
-            {
-                descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
-            }
-        }
+        ApplyValidatedRedirectUris(descriptor.RedirectUris, request.RedirectUris, nameof(request.RedirectUris));
+        ApplyValidatedRedirectUris(descriptor.PostLogoutRedirectUris, request.PostLogoutRedirectUris, nameof(request.PostLogoutRedirectUris));
 
         // Handle permissions - replace if provided
         if (request.Permissions != null)
@@ -734,5 +706,53 @@ public class ClientService : IClientService
         {
             descriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange);
         }
+    }
+
+    private void ApplyValidatedRedirectUris(
+        ICollection<Uri> targetUris,
+        IEnumerable<string>? requestedUris,
+        string argumentName)
+    {
+        if (requestedUris == null)
+        {
+            return;
+        }
+
+        targetUris.Clear();
+        foreach (var requestedUri in requestedUris)
+        {
+            targetUris.Add(ParseAndValidateRedirectUri(requestedUri, argumentName));
+        }
+    }
+
+    private Uri ParseAndValidateRedirectUri(string requestedUri, string argumentName)
+    {
+        if (string.IsNullOrWhiteSpace(requestedUri))
+        {
+            throw new ArgumentException($"{argumentName} contains an empty URI.", argumentName);
+        }
+
+        if (!Uri.TryCreate(requestedUri, UriKind.Absolute, out var parsedUri))
+        {
+            throw new ArgumentException($"'{requestedUri}' is not a valid absolute URI.", argumentName);
+        }
+
+        if (_redirectUriSecurityPolicy.EnforceHttps &&
+            string.Equals(parsedUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+            !(_redirectUriSecurityPolicy.AllowLocalhostHttp && parsedUri.IsLoopback))
+        {
+            throw new ArgumentException(
+                $"HTTP redirect URI '{requestedUri}' is not allowed by policy.",
+                argumentName);
+        }
+
+        if (_allowedRedirectHosts.Count > 0 && !_allowedRedirectHosts.Contains(parsedUri.Host))
+        {
+            throw new ArgumentException(
+                $"Host '{parsedUri.Host}' is not allowed by redirect URI policy.",
+                argumentName);
+        }
+
+        return parsedUri;
     }
 }

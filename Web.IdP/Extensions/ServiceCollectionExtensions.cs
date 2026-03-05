@@ -129,6 +129,7 @@ public static class ServiceCollectionExtensions
         services.Configure<LayoutAssetInjectionOptions>(configuration.GetSection(LayoutAssetInjectionOptions.Section));
         services.Configure<CspExtensionOptions>(configuration.GetSection(CspExtensionOptions.Section));
         services.Configure<TurnstileOptions>(configuration.GetSection(TurnstileOptions.Section));
+        services.Configure<RedirectUriSecurityPolicyOptions>(configuration.GetSection(RedirectUriSecurityPolicyOptions.Section));
         services.Configure<ObservabilityOptions>(options =>
         {
             configuration.GetSection(ObservabilityOptions.MonitoringSection).Bind(options);
@@ -676,6 +677,30 @@ public static class ServiceCollectionExtensions
                         {
                             PermitLimit = rateLimitingOptions.TokenPermitLimit,
                             Window = TimeSpan.FromSeconds(rateLimitingOptions.TokenWindowSeconds),
+                            QueueLimit = rateLimitingOptions.QueueLimit,
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                        });
+                });
+
+                // Authorize endpoint policy - per client ID (fallback to IP)
+                options.AddPolicy("authorize", httpContext =>
+                {
+                    var clientId = httpContext.Request.Query["client_id"].ToString();
+                    if (string.IsNullOrEmpty(clientId) && httpContext.Request.HasFormContentType)
+                    {
+                        clientId = httpContext.Request.Form["client_id"].ToString();
+                    }
+
+                    var partitionKey = string.IsNullOrEmpty(clientId)
+                        ? $"ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}"
+                        : $"client:{clientId}";
+
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: partitionKey,
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = rateLimitingOptions.AuthorizePermitLimit,
+                            Window = TimeSpan.FromSeconds(rateLimitingOptions.AuthorizeWindowSeconds),
                             QueueLimit = rateLimitingOptions.QueueLimit,
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst
                         });

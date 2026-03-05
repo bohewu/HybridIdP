@@ -18,6 +18,7 @@ using Core.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System;
+using System.Net;
 using OpenIddict.Server.AspNetCore;
 using System.Threading;
 using System.Collections.Immutable;
@@ -198,6 +199,47 @@ namespace Tests.Application.UnitTests
             Assert.Equal(
                 OpenIddictConstants.Errors.LoginRequired,
                 forbidResult.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+        }
+
+        [Fact]
+        public async Task HandleAuthorizeRequestAsync_WithPromptNoneAndUnauthenticatedUser_LogsSecurityTelemetry()
+        {
+            // Arrange
+            var user = new ClaimsPrincipal(new ClaimsIdentity()); // Unauthenticated
+            var request = new OpenIddictRequest
+            {
+                ClientId = "probe-client",
+                Prompt = "none",
+                Scope = "openid profile"
+            };
+
+            var context = new DefaultHttpContext();
+            context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
+            context.Request.Headers["User-Agent"] = "security-probe-agent";
+
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            // Act
+            var result = await _authorizationService.HandleAuthorizeRequestAsync(user, request, request.Prompt);
+
+            // Assert
+            var forbidResult = Assert.IsType<ForbidResult>(result);
+            Assert.Equal(
+                OpenIddictConstants.Errors.LoginRequired,
+                forbidResult.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+
+            _mockAuditService.Verify(a => a.LogEventAsync(
+                "AuthorizationPromptNoneProbe",
+                null,
+                It.Is<string>(details =>
+                    details.Contains("\"clientId\":\"probe-client\"") &&
+                    details.Contains("\"prompt\":\"none\"") &&
+                    details.Contains("\"scope\":\"openid profile\"") &&
+                    details.Contains("\"ip\":\"203.0.113.10\"") &&
+                    details.Contains("\"userAgent\":\"security-probe-agent\"")),
+                "203.0.113.10",
+                "security-probe-agent"),
+                Times.Once);
         }
 
         [Fact]

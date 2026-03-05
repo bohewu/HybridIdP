@@ -33,7 +33,18 @@ public class RateLimitingOptions
     /// Time window in seconds for token rate limiting.
     /// </summary>
     public int TokenWindowSeconds { get; set; } = 60;
-    
+
+    // Authorization endpoint limits (per client ID or IP)
+    /// <summary>
+    /// Maximum authorize requests per window.
+    /// </summary>
+    public int AuthorizePermitLimit { get; set; } = 30;
+
+    /// <summary>
+    /// Time window in seconds for authorize endpoint rate limiting.
+    /// </summary>
+    public int AuthorizeWindowSeconds { get; set; } = 60;
+
     // Admin API limits (per client ID)
     /// <summary>
     /// Maximum admin API requests per window.

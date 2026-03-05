@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using Web.IdP.Services;
@@ -20,6 +21,7 @@ namespace Web.IdP.Controllers.Connect
 
         [HttpGet("~/connect/authorize")]
         [HttpPost("~/connect/authorize")]
+        [EnableRateLimiting("authorize")]
         [IgnoreAntiforgeryToken] // OpenIddict handles CSRF protection
         [RequireClientPermission(OpenIddictConstants.Permissions.Endpoints.Authorization)]
         public async Task<IActionResult> Authorize()
