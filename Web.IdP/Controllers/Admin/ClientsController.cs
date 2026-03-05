@@ -1,9 +1,12 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Options;
 using Core.Domain.Constants;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using Web.IdP.Attributes;
 using DomainPermissions = Core.Domain.Constants.Permissions;
@@ -21,13 +24,16 @@ public class ClientsController : ControllerBase
 {
     private readonly IClientService _clientService;
     private readonly IClientAllowedScopesService _allowedScopesService;
+    private readonly ClientAdminApiHardeningOptions _clientAdminApiHardeningOptions;
 
     public ClientsController(
         IClientService clientService,
-        IClientAllowedScopesService allowedScopesService)
+        IClientAllowedScopesService allowedScopesService,
+        IOptions<ClientAdminApiHardeningOptions> clientAdminApiHardeningOptions)
     {
         _clientService = clientService;
         _allowedScopesService = allowedScopesService;
+        _clientAdminApiHardeningOptions = clientAdminApiHardeningOptions.Value;
     }
 
     /// <summary>
@@ -93,6 +99,12 @@ public class ClientsController : ControllerBase
     [HasPermission(DomainPermissions.Clients.Create)]
     public async Task<IActionResult> CreateClient([FromBody] CreateClientRequest request)
     {
+        var hardeningBlockResult = EnforceClientWriteHardening();
+        if (hardeningBlockResult != null)
+        {
+            return hardeningBlockResult;
+        }
+
         try
         {
             var personId = GetCurrentPersonId();
@@ -124,6 +136,12 @@ public class ClientsController : ControllerBase
     [HasPermission(DomainPermissions.Clients.Update)]
     public async Task<IActionResult> UpdateClient(string id, [FromBody] UpdateClientRequest request)
     {
+        var hardeningBlockResult = EnforceClientWriteHardening();
+        if (hardeningBlockResult != null)
+        {
+            return hardeningBlockResult;
+        }
+
         if (!Guid.TryParse(id, out var clientId))
         {
             return BadRequest(new { message = "Invalid client ID format." });
@@ -155,6 +173,12 @@ public class ClientsController : ControllerBase
     [HasPermission(DomainPermissions.Clients.Delete)]
     public async Task<IActionResult> DeleteClient(string id)
     {
+        var hardeningBlockResult = EnforceClientWriteHardening();
+        if (hardeningBlockResult != null)
+        {
+            return hardeningBlockResult;
+        }
+
         if (!Guid.TryParse(id, out var clientId))
         {
             return BadRequest(new { message = "Invalid client ID format." });
@@ -178,6 +202,12 @@ public class ClientsController : ControllerBase
     [HasPermission(DomainPermissions.Clients.Update)]
     public async Task<IActionResult> RegenerateSecret(string id)
     {
+        var hardeningBlockResult = EnforceClientWriteHardening();
+        if (hardeningBlockResult != null)
+        {
+            return hardeningBlockResult;
+        }
+
         if (!Guid.TryParse(id, out var clientId))
         {
             return BadRequest(new { message = "Invalid client ID format." });
@@ -225,6 +255,12 @@ public class ClientsController : ControllerBase
     [HasPermission(DomainPermissions.Clients.Update)]
     public async Task<IActionResult> SetAllowedScopes(string id, [FromBody] SetAllowedScopesRequest request)
     {
+        var hardeningBlockResult = EnforceClientWriteHardening();
+        if (hardeningBlockResult != null)
+        {
+            return hardeningBlockResult;
+        }
+
         if (!Guid.TryParse(id, out var clientId))
         {
             return BadRequest(new { message = "Invalid client ID format." });
@@ -290,6 +326,12 @@ public class ClientsController : ControllerBase
     [HasPermission(DomainPermissions.Clients.Update)]
     public async Task<IActionResult> SetRequiredScopes(string id, [FromBody] SetRequiredScopesRequest request)
     {
+        var hardeningBlockResult = EnforceClientWriteHardening();
+        if (hardeningBlockResult != null)
+        {
+            return hardeningBlockResult;
+        }
+
         if (!Guid.TryParse(id, out var clientId))
         {
             return BadRequest(new { message = "Invalid client ID format." });
@@ -328,6 +370,19 @@ public class ClientsController : ControllerBase
     private bool IsAdmin()
     {
         return User.IsInRole(AuthConstants.Roles.Admin);
+    }
+
+    private IActionResult? EnforceClientWriteHardening()
+    {
+        if (!_clientAdminApiHardeningOptions.DisableClientWriteEndpoints)
+        {
+            return null;
+        }
+
+        return StatusCode(StatusCodes.Status423Locked, new
+        {
+            message = "Client write operations are disabled by deployment hardening policy. Use deployment-managed configuration changes instead."
+        });
     }
 
     #endregion
