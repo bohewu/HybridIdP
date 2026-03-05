@@ -126,6 +126,8 @@ public static class ServiceCollectionExtensions
         services.Configure<AuditOptions>(configuration.GetSection(AuditOptions.SectionName));
         services.Configure<BrandingOptions>(configuration.GetSection(BrandingOptions.Section));
         services.Configure<LoginNoticesOptions>(configuration.GetSection(LoginNoticesOptions.Section));
+        services.Configure<ExternalLoginOptions>(configuration.GetSection(ExternalLoginOptions.Section));
+        services.Configure<PrivilegedRoleProtectionOptions>(configuration.GetSection(PrivilegedRoleProtectionOptions.Section));
         services.Configure<LayoutAssetInjectionOptions>(configuration.GetSection(LayoutAssetInjectionOptions.Section));
         services.Configure<CspExtensionOptions>(configuration.GetSection(CspExtensionOptions.Section));
         services.Configure<TurnstileOptions>(configuration.GetSection(TurnstileOptions.Section));

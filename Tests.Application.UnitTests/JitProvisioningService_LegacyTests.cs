@@ -6,6 +6,7 @@ using Infrastructure;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -29,7 +30,18 @@ public class JitProvisioningService_LegacyTests : IDisposable
         _userManagerMock = new Mock<UserManager<ApplicationUser>>(
             userStoreMock.Object, null, null, null, null, null, null, null, null);
 
-        _service = new JitProvisioningService(_userManagerMock.Object, _context);
+        _userManagerMock.Setup(um => um.IsInRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+            .ReturnsAsync(false);
+        _userManagerMock.Setup(um => um.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        _service = new JitProvisioningService(
+            _userManagerMock.Object,
+            _context,
+            Options.Create(new Core.Application.Options.ExternalLoginOptions
+            {
+                AutoProvisionDefaultRole = Core.Domain.Constants.AuthConstants.Roles.User
+            }));
     }
 
     public void Dispose()

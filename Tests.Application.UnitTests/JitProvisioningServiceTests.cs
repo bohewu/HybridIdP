@@ -23,7 +23,19 @@ public class JitProvisioningServiceTests : IDisposable
     {
         _userManagerMock = CreateUserManagerMock();
         _context = CreateInMemoryDbContext();
-        _service = new JitProvisioningService(_userManagerMock.Object, _context);
+
+        _userManagerMock.Setup(um => um.IsInRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+            .ReturnsAsync(false);
+        _userManagerMock.Setup(um => um.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        _service = new JitProvisioningService(
+            _userManagerMock.Object,
+            _context,
+            Options.Create(new Core.Application.Options.ExternalLoginOptions
+            {
+                AutoProvisionDefaultRole = Core.Domain.Constants.AuthConstants.Roles.User
+            }));
     }
 
     [Fact]
@@ -76,6 +88,37 @@ public class JitProvisioningServiceTests : IDisposable
         Assert.NotNull(person);
         Assert.Equal("John", person.FirstName);
         Assert.Equal("EMP001", person.EmployeeId);
+    }
+
+    [Fact]
+    public async Task ProvisionExternalUser_FirstTimeLogin_ShouldAssignDefaultRole()
+    {
+        var externalAuth = new ExternalAuthResult
+        {
+            Provider = "Google",
+            ProviderKey = "google-user-001",
+            Email = "new.user@company.com",
+            FirstName = "New",
+            LastName = "User"
+        };
+
+        _userManagerMock.Setup(um => um.FindByLoginAsync(externalAuth.Provider, externalAuth.ProviderKey))
+            .ReturnsAsync((ApplicationUser?)null);
+
+        _userManagerMock.Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        _userManagerMock.Setup(um => um.FindByNameAsync(It.IsAny<string>()))
+            .ReturnsAsync((ApplicationUser?)null);
+
+        _userManagerMock.Setup(um => um.AddLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<UserLoginInfo>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        await _service.ProvisionExternalUserAsync(externalAuth);
+
+        _userManagerMock.Verify(
+            um => um.AddToRoleAsync(It.IsAny<ApplicationUser>(), Core.Domain.Constants.AuthConstants.Roles.User),
+            Times.Once);
     }
 
     [Fact]

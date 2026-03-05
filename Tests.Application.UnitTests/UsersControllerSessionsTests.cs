@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Options;
 using Core.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
@@ -28,6 +29,7 @@ public class UsersControllerSessionsTests
         var userMgmt = new Mock<IUserManagementService>();
 
         var store = new Mock<IUserStore<ApplicationUser>>();
+        var roleStore = new Mock<IRoleStore<ApplicationRole>>();
         var userManager = new UserManager<ApplicationUser>(
             store.Object,
             Options.Create(new IdentityOptions()),
@@ -39,18 +41,29 @@ public class UsersControllerSessionsTests
             new Mock<IServiceProvider>().Object,
             new Mock<ILogger<UserManager<ApplicationUser>>>().Object);
 
+        var roleManager = new RoleManager<ApplicationRole>(
+            roleStore.Object,
+            Array.Empty<IRoleValidator<ApplicationRole>>(),
+            new UpperInvariantLookupNormalizer(),
+            new IdentityErrorDescriber(),
+            new Mock<ILogger<RoleManager<ApplicationRole>>>().Object);
+
         sessionServiceMock = new Mock<ISessionService>();
         var loginHistoryMock = new Mock<ILoginHistoryService>();
+        var dbContextMock = new Mock<IApplicationDbContext>();
         var localizerMock = new Mock<IStringLocalizer<SharedResource>>();
         var impersonationMock = new Mock<IImpersonationService>();
 
         return new UsersController(
             userMgmt.Object, 
             userManager, 
+            roleManager,
             sessionServiceMock.Object, 
             loginHistoryMock.Object,
+            dbContextMock.Object,
             localizerMock.Object,
             impersonationMock.Object,
+            Options.Create(new PrivilegedRoleProtectionOptions()),
             new Mock<ILogger<UsersController>>().Object);
     }
 

@@ -1,16 +1,19 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Options;
 using Core.Domain;
 using Core.Domain.Constants;
 using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using System;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 using Web.IdP;
 using Web.IdP.Services;
 
@@ -29,27 +32,36 @@ public class UsersController : ControllerBase
 {
     private readonly IUserManagementService _userManagementService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly ISessionService _sessionService;
     private readonly ILoginHistoryService _loginHistoryService;
+    private readonly IApplicationDbContext _dbContext;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IImpersonationService _impersonationService;
     private readonly ILogger<UsersController> _logger;
+    private readonly PrivilegedRoleProtectionOptions _privilegedRoleProtectionOptions;
 
     public UsersController(
         IUserManagementService userManagementService,
         UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
         ISessionService sessionService,
         ILoginHistoryService loginHistoryService,
+        IApplicationDbContext dbContext,
         IStringLocalizer<SharedResource> localizer,
         IImpersonationService impersonationService,
+        IOptions<PrivilegedRoleProtectionOptions> privilegedRoleProtectionOptions,
         ILogger<UsersController> logger)
     {
         _userManagementService = userManagementService;
         _userManager = userManager;
+        _roleManager = roleManager;
         _sessionService = sessionService;
         _loginHistoryService = loginHistoryService;
+        _dbContext = dbContext;
         _localizer = localizer;
         _impersonationService = impersonationService;
+        _privilegedRoleProtectionOptions = privilegedRoleProtectionOptions.Value;
         _logger = logger;
     }
 
@@ -115,6 +127,12 @@ public class UsersController : ControllerBase
     {
         try
         {
+            var privilegedRoleCreatePolicyResult = await EnforcePrivilegedRoleCreationPolicyAsync(request.Roles);
+            if (privilegedRoleCreatePolicyResult != null)
+            {
+                return privilegedRoleCreatePolicyResult;
+            }
+
             var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             Guid? createdBy = currentUserId != null ? Guid.Parse(currentUserId) : null;
 
@@ -143,6 +161,12 @@ public class UsersController : ControllerBase
     {
         try
         {
+            var privilegedRolePolicyResult = await EnforcePrivilegedRoleAssignmentPolicyAsync(id, request.Roles);
+            if (privilegedRolePolicyResult != null)
+            {
+                return privilegedRolePolicyResult;
+            }
+
             var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             Guid? modifiedBy = currentUserId != null ? Guid.Parse(currentUserId) : null;
 
@@ -319,6 +343,12 @@ public class UsersController : ControllerBase
     {
         try
         {
+            var privilegedRolePolicyResult = await EnforcePrivilegedRoleAssignmentPolicyAsync(id, request.Roles);
+            if (privilegedRolePolicyResult != null)
+            {
+                return privilegedRolePolicyResult;
+            }
+
             var (success, errors) = await _userManagementService.AssignRolesAsync(id, request.Roles);
 
             if (!success)
@@ -353,6 +383,22 @@ public class UsersController : ControllerBase
     {
         try
         {
+            var requestedRoleNames = new List<string>();
+            foreach (var roleId in request.RoleIds)
+            {
+                var role = await _roleManager.FindByIdAsync(roleId.ToString());
+                if (!string.IsNullOrWhiteSpace(role?.Name))
+                {
+                    requestedRoleNames.Add(role.Name!);
+                }
+            }
+
+            var privilegedRolePolicyResult = await EnforcePrivilegedRoleAssignmentPolicyAsync(id, requestedRoleNames);
+            if (privilegedRolePolicyResult != null)
+            {
+                return privilegedRolePolicyResult;
+            }
+
             var (success, errors) = await _userManagementService.AssignRolesByIdAsync(id, request.RoleIds);
 
             if (!success)
@@ -666,5 +712,145 @@ public class UsersController : ControllerBase
         {
             return StatusCode(500, new { error = "An error occurred while resetting MFA", details = ex.Message });
         }
+    }
+
+    private async Task<IActionResult?> EnforcePrivilegedRoleCreationPolicyAsync(IEnumerable<string>? requestedRoles)
+    {
+        if (!ContainsProtectedRole(requestedRoles))
+        {
+            return null;
+        }
+
+        if (_privilegedRoleProtectionOptions.RequireOperatorMfaForPrivilegedRoleAssignment)
+        {
+            var operatorUser = await GetCurrentOperatorAsync();
+            if (operatorUser == null)
+            {
+                return Unauthorized();
+            }
+
+            if (!await HasAnyMfaMethodEnabledAsync(operatorUser))
+            {
+                return BadRequest(new
+                {
+                    errors = new[]
+                    {
+                        "Operator must enable MFA before assigning privileged roles."
+                    }
+                });
+            }
+        }
+
+        if (_privilegedRoleProtectionOptions.RequireTargetMfaForPrivilegedRoleAssignment)
+        {
+            return BadRequest(new
+            {
+                errors = new[]
+                {
+                    "Privileged roles cannot be assigned during user creation when target MFA enforcement is enabled. Create the user, complete MFA enrollment, then assign the privileged role."
+                }
+            });
+        }
+
+        return null;
+    }
+
+    private async Task<IActionResult?> EnforcePrivilegedRoleAssignmentPolicyAsync(Guid targetUserId, IEnumerable<string>? requestedRoles)
+    {
+        if (!ContainsProtectedRole(requestedRoles))
+        {
+            return null;
+        }
+
+        var targetUser = await _userManager.FindByIdAsync(targetUserId.ToString());
+        if (targetUser == null)
+        {
+            return NotFound(new { errors = new[] { "User not found" } });
+        }
+
+        if (_privilegedRoleProtectionOptions.RequireOperatorMfaForPrivilegedRoleAssignment)
+        {
+            var operatorUser = await GetCurrentOperatorAsync();
+            if (operatorUser == null)
+            {
+                return Unauthorized();
+            }
+
+            if (!await HasAnyMfaMethodEnabledAsync(operatorUser))
+            {
+                return BadRequest(new
+                {
+                    errors = new[]
+                    {
+                        "Operator must enable MFA before assigning privileged roles."
+                    }
+                });
+            }
+        }
+
+        if (_privilegedRoleProtectionOptions.RequireTargetMfaForPrivilegedRoleAssignment &&
+            !await HasAnyMfaMethodEnabledAsync(targetUser))
+        {
+            return BadRequest(new
+            {
+                errors = new[]
+                {
+                    "Target user must enable MFA before being assigned privileged roles."
+                }
+            });
+        }
+
+        return null;
+    }
+
+    private bool ContainsProtectedRole(IEnumerable<string>? requestedRoles)
+    {
+        if (requestedRoles == null)
+        {
+            return false;
+        }
+
+        var protectedRoles = (_privilegedRoleProtectionOptions.ProtectedRoles ?? Array.Empty<string>())
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Select(r => r.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (protectedRoles.Count == 0)
+        {
+            return false;
+        }
+
+        return requestedRoles
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Select(r => r.Trim())
+            .Any(role => protectedRoles.Contains(role));
+    }
+
+    private async Task<ApplicationUser?> GetCurrentOperatorAsync()
+    {
+        var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                            ?? User.FindFirst(OpenIddictConstants.Claims.Subject)?.Value;
+
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            return null;
+        }
+
+        return await _userManager.FindByIdAsync(currentUserId);
+    }
+
+    private async Task<bool> HasAnyMfaMethodEnabledAsync(ApplicationUser user)
+    {
+        if (user.TwoFactorEnabled || user.EmailMfaEnabled)
+        {
+            return true;
+        }
+
+        if (!_privilegedRoleProtectionOptions.CountPasskeyAsMfa)
+        {
+            return false;
+        }
+
+        return await _dbContext.UserCredentials.AnyAsync(c => c.UserId == user.Id);
     }
     }

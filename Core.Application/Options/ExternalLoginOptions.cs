@@ -22,6 +22,12 @@ public class ExternalLoginOptions
     /// </summary>
     public bool ForceAccountSelection { get; set; } = true;
 
+    /// <summary>
+    /// Default role assigned to newly auto-provisioned external users.
+    /// Set empty to disable automatic role assignment.
+    /// </summary>
+    public string AutoProvisionDefaultRole { get; set; } = Core.Domain.Constants.AuthConstants.Roles.User;
+
     public ProviderOptions Google { get; set; } = new();
     public ProviderOptions Microsoft { get; set; } = new();
 }

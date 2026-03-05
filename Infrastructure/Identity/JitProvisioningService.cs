@@ -1,10 +1,12 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Options;
 using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Identity;
 
@@ -12,13 +14,16 @@ public class JitProvisioningService : IJitProvisioningService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IApplicationDbContext _context;
+    private readonly ExternalLoginOptions _externalLoginOptions;
 
     public JitProvisioningService(
         UserManager<ApplicationUser> userManager,
-        IApplicationDbContext context)
+        IApplicationDbContext context,
+        IOptions<ExternalLoginOptions> externalLoginOptions)
     {
         _userManager = userManager;
         _context = context;
+        _externalLoginOptions = externalLoginOptions.Value;
     }
 
     public async Task<ApplicationUser> ProvisionExternalUserAsync(
@@ -193,6 +198,8 @@ public class JitProvisioningService : IJitProvisioningService
                     $"Failed to create user: {string.Join(", ", createResult.Errors.Select(e => e.Description))}"
                 );
             }
+
+            await AssignDefaultRoleIfConfiguredAsync(newUser);
         }
         else
         {
@@ -229,6 +236,28 @@ public class JitProvisioningService : IJitProvisioningService
         await _context.SaveChangesAsync(cancellationToken);
 
         return newUser;
+    }
+
+    private async Task AssignDefaultRoleIfConfiguredAsync(ApplicationUser user)
+    {
+        var defaultRole = _externalLoginOptions.AutoProvisionDefaultRole?.Trim();
+        if (string.IsNullOrWhiteSpace(defaultRole))
+        {
+            return;
+        }
+
+        if (await _userManager.IsInRoleAsync(user, defaultRole))
+        {
+            return;
+        }
+
+        var roleResult = await _userManager.AddToRoleAsync(user, defaultRole);
+        if (!roleResult.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"Failed to assign default role '{defaultRole}' to auto-provisioned user: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}"
+            );
+        }
     }
 
     /// <summary>
