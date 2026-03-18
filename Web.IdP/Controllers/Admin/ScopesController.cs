@@ -48,7 +48,8 @@ public class ScopesController : ControllerBase
         [FromQuery] int skip = 0,
         [FromQuery] int take = 25,
         [FromQuery] string? search = null,
-        [FromQuery] string? sort = null)
+        [FromQuery] string? sort = null,
+        CancellationToken cancellationToken = default)
     {
         // Admin sees all scopes with full edit rights.
         // ApplicationManager sees all scopes, but IsReadOnly is set for scopes they don't own.
@@ -56,7 +57,7 @@ public class ScopesController : ControllerBase
         Guid? ownerFilterId = null; // Do not filter out scopes
         Guid? viewerPersonId = IsAdmin() ? null : GetCurrentPersonId();
         
-        var (items, totalCount) = await _scopeService.GetScopesAsync(skip, take, search, sort, ownerFilterId, viewerPersonId);
+        var (items, totalCount) = await _scopeService.GetScopesAsync(skip, take, search, sort, ownerFilterId, viewerPersonId, cancellationToken);
         return Ok(new { items, totalCount });
     }
 
@@ -65,9 +66,9 @@ public class ScopesController : ControllerBase
     /// </summary>
     [HttpGet("{id}")]
     [HasPermission(Permissions.Scopes.Read)]
-    public async Task<ActionResult> Get(string id)
+    public async Task<ActionResult> Get(string id, CancellationToken cancellationToken = default)
     {
-        var scope = await _scopeService.GetScopeByIdAsync(id);
+        var scope = await _scopeService.GetScopeByIdAsync(id, cancellationToken);
         if (scope == null)
         {
             return NotFound(new { message = $"Scope with ID '{id}' not found." });
@@ -80,7 +81,7 @@ public class ScopesController : ControllerBase
     /// </summary>
     [HttpPost]
     [HasPermission(Permissions.Scopes.Create)]
-    public async Task<ActionResult> Create([FromBody] CreateScopeRequest request)
+    public async Task<ActionResult> Create([FromBody] CreateScopeRequest request, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
@@ -91,7 +92,7 @@ public class ScopesController : ControllerBase
         {
             var personId = GetCurrentPersonId();
             
-            var result = await _scopeService.CreateScopeAsync(request, personId);
+            var result = await _scopeService.CreateScopeAsync(request, personId, cancellationToken);
             return CreatedAtAction(nameof(Get), new { id = result.Id }, new
             {
                 id = result.Id,
@@ -111,13 +112,13 @@ public class ScopesController : ControllerBase
     /// </summary>
     [HttpPut("{id}")]
     [HasPermission(Permissions.Scopes.Update)]
-    public async Task<ActionResult> Update(string id, [FromBody] UpdateScopeRequest request)
+    public async Task<ActionResult> Update(string id, [FromBody] UpdateScopeRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
             if (!IsAdmin())
             {
-                var existingScope = await _scopeService.GetScopeByIdAsync(id);
+                var existingScope = await _scopeService.GetScopeByIdAsync(id, cancellationToken);
                 if (existingScope == null)
                 {
                     return NotFound(new { message = $"Scope with ID '{id}' not found or update failed." });
@@ -129,7 +130,7 @@ public class ScopesController : ControllerBase
                 }
             }
 
-            var updated = await _scopeService.UpdateScopeAsync(id, request);
+            var updated = await _scopeService.UpdateScopeAsync(id, request, cancellationToken);
             if (!updated)
             {
                 return NotFound(new { message = $"Scope with ID '{id}' not found or update failed." });
@@ -151,9 +152,9 @@ public class ScopesController : ControllerBase
     /// </summary>
     [HttpDelete("{id}")]
     [HasPermission(Permissions.Scopes.Delete)]
-    public async Task<ActionResult> Delete(string id)
+    public async Task<ActionResult> Delete(string id, CancellationToken cancellationToken = default)
     {
-        var deleted = await _scopeService.DeleteScopeAsync(id);
+        var deleted = await _scopeService.DeleteScopeAsync(id, cancellationToken);
         if (!deleted)
         {
             return BadRequest(new { message = "Cannot delete this scope because it is currently in use or not found." });
@@ -166,11 +167,11 @@ public class ScopesController : ControllerBase
     /// </summary>
     [HttpGet("{scopeId}/claims")]
     [HasPermission(Permissions.Scopes.Read)]
-    public async Task<ActionResult> GetScopeClaims(string scopeId)
+    public async Task<ActionResult> GetScopeClaims(string scopeId, CancellationToken cancellationToken = default)
     {
         try
         {
-            var result = await _scopeService.GetScopeClaimsAsync(scopeId);
+            var result = await _scopeService.GetScopeClaimsAsync(scopeId, cancellationToken);
             return Ok(new
             {
                 scopeId = result.scopeId,
@@ -189,13 +190,13 @@ public class ScopesController : ControllerBase
     /// </summary>
     [HttpPut("{scopeId}/claims")]
     [HasPermission(Permissions.Scopes.Update)]
-    public async Task<ActionResult> UpdateScopeClaims(string scopeId, [FromBody] UpdateScopeClaimsRequest request)
+    public async Task<ActionResult> UpdateScopeClaims(string scopeId, [FromBody] UpdateScopeClaimsRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
             if (!IsAdmin())
             {
-                var existingScope = await _scopeService.GetScopeByIdAsync(scopeId);
+                var existingScope = await _scopeService.GetScopeByIdAsync(scopeId, cancellationToken);
                 if (existingScope == null)
                 {
                     return NotFound(new { message = $"Scope with ID '{scopeId}' not found." });
@@ -207,7 +208,7 @@ public class ScopesController : ControllerBase
                 }
             }
 
-            var result = await _scopeService.UpdateScopeClaimsAsync(scopeId, request);
+            var result = await _scopeService.UpdateScopeClaimsAsync(scopeId, request, cancellationToken);
             return Ok(new
             {
                 scopeId = result.scopeId,

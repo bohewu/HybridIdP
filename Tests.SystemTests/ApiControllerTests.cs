@@ -71,9 +71,10 @@ public class ApiControllerTests : IClassFixture<WebIdPServerFixture>, IAsyncLife
         Assert.True(response.Headers.TryGetValues("Set-Cookie", out var setCookies));
         var cultureCookie = setCookies.FirstOrDefault(c => c.Contains(CookieRequestCultureProvider.DefaultCookieName));
         Assert.False(string.IsNullOrEmpty(cultureCookie));
-        Assert.Contains("c=en-US", cultureCookie);
-        Assert.Contains("uic=en-US", cultureCookie);
-        Assert.Contains("Path=/", cultureCookie);
+        var decodedCultureCookie = Uri.UnescapeDataString(cultureCookie!);
+        Assert.Contains("c=en-US", decodedCultureCookie);
+        Assert.Contains("uic=en-US", decodedCultureCookie);
+        Assert.Contains("path=/", cultureCookie!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -41,7 +41,7 @@ namespace Web.IdP.Services
             ArgumentNullException.ThrowIfNull(request);
 
             // Validate client grant type permissions (required for passthrough mode)
-            var permissionError = await ValidateClientGrantPermissionAsync(request);
+            var permissionError = await ValidateClientGrantPermissionAsync(request, cancellationToken);
             if (permissionError != null)
             {
                 return permissionError;
@@ -54,7 +54,7 @@ namespace Web.IdP.Services
 
             if (request.IsAuthorizationCodeGrantType())
             {
-                return await HandleAuthorizationCodeGrantAsync(request, schemePrincipal);
+                return await HandleAuthorizationCodeGrantAsync(request, schemePrincipal, cancellationToken);
             }
 
             if (request.IsRefreshTokenGrantType())
@@ -69,7 +69,7 @@ namespace Web.IdP.Services
 
             if (request.IsClientCredentialsGrantType())
             {
-                return await HandleClientCredentialsGrantAsync(request);
+                return await HandleClientCredentialsGrantAsync(request, cancellationToken);
             }
 
             return new ForbidResult(
@@ -81,10 +81,10 @@ namespace Web.IdP.Services
                 }));
         }
 
-        private async Task<IActionResult?> ValidateClientGrantPermissionAsync(OpenIddictRequest request)
+        private async Task<IActionResult?> ValidateClientGrantPermissionAsync(OpenIddictRequest request, CancellationToken cancellationToken)
         {
              // Resolve the application to check permissions
-            var application = await _applicationManager.FindByClientIdAsync(request.ClientId ?? string.Empty);
+            var application = await _applicationManager.FindByClientIdAsync(request.ClientId ?? string.Empty, cancellationToken);
             if (application == null)
             {
                 return new ForbidResult(
@@ -96,7 +96,7 @@ namespace Web.IdP.Services
                     }));
             }
 
-            var permissions = await _applicationManager.GetPermissionsAsync(application);
+            var permissions = await _applicationManager.GetPermissionsAsync(application, cancellationToken);
             
             // Map grant types to permissions
             var requiredPermission = request.GrantType switch
@@ -156,7 +156,7 @@ namespace Web.IdP.Services
                  // Audit failed login attempt
                 var ip = "unknown"; 
                 var ua = "unknown";
-                await _auditService.LogEventAsync("UserLogin", user.Id.ToString(), System.Text.Json.JsonSerializer.Serialize(new { Success = false, FailureReason = "Invalid password" }), ip, ua);
+                await _auditService.LogEventAsync("UserLogin", user.Id.ToString(), System.Text.Json.JsonSerializer.Serialize(new { Success = false, FailureReason = "Invalid password" }), ip, ua, cancellationToken);
 
                 return new ForbidResult(
                     authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
@@ -200,12 +200,12 @@ namespace Web.IdP.Services
             // Audit successful login
             var ip2 = "unknown";
             var ua2 = "unknown";
-            await _auditService.LogEventAsync("UserLogin", user.Id.ToString(), System.Text.Json.JsonSerializer.Serialize(new { Success = true }), ip2, ua2);
+            await _auditService.LogEventAsync("UserLogin", user.Id.ToString(), System.Text.Json.JsonSerializer.Serialize(new { Success = true }), ip2, ua2, cancellationToken);
 
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, principal);
         }
 
-        private async Task<IActionResult> HandleAuthorizationCodeGrantAsync(OpenIddictRequest request, ClaimsPrincipal? principal)
+        private async Task<IActionResult> HandleAuthorizationCodeGrantAsync(OpenIddictRequest request, ClaimsPrincipal? principal, CancellationToken cancellationToken)
         {
             if (principal == null)
              {
@@ -396,9 +396,9 @@ namespace Web.IdP.Services
             }
         }
 
-        private async Task<IActionResult> HandleClientCredentialsGrantAsync(OpenIddictRequest request)
+        private async Task<IActionResult> HandleClientCredentialsGrantAsync(OpenIddictRequest request, CancellationToken cancellationToken)
         {
-            var application = await _applicationManager.FindByClientIdAsync(request.ClientId!);
+            var application = await _applicationManager.FindByClientIdAsync(request.ClientId!, cancellationToken);
             if (application == null)
             {
                  return new ForbidResult(
@@ -415,8 +415,8 @@ namespace Web.IdP.Services
                 nameType: Claims.Name,
                 roleType: Claims.Role);
             
-            identity.SetClaim(Claims.Subject, await _applicationManager.GetClientIdAsync(application));
-            identity.SetClaim(Claims.Name, await _applicationManager.GetDisplayNameAsync(application));
+            identity.SetClaim(Claims.Subject, await _applicationManager.GetClientIdAsync(application, cancellationToken));
+            identity.SetClaim(Claims.Name, await _applicationManager.GetDisplayNameAsync(application, cancellationToken));
             
             identity.SetScopes(request.GetScopes());
             identity.SetDestinations(GetDestinations);

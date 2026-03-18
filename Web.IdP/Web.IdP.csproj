@@ -27,6 +27,7 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Fido2.AspNet" Version="4.0.0" />
+    <PackageReference Include="Microsoft.Bcl.Memory" Version="9.0.14" />
     
     <!-- OpenTelemetry packages for observability -->
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />

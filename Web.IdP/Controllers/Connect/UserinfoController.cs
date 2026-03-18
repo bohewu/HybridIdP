@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Server.AspNetCore;
+using System.Threading;
 using Web.IdP.Services;
 
 namespace Web.IdP.Controllers.Connect;
@@ -25,9 +26,9 @@ public class UserinfoController : ControllerBase
         Policy = "RequireScope:openid")]
     [HttpGet("~/connect/userinfo")]
     [HttpPost("~/connect/userinfo")]
-    public async Task<IActionResult> Userinfo()
+    public async Task<IActionResult> Userinfo(CancellationToken cancellationToken)
     {
-        var userInfo = await _userInfoService.GetUserInfoAsync(User);
+        var userInfo = await _userInfoService.GetUserInfoAsync(User, cancellationToken);
         return Ok(userInfo);
     }
 }

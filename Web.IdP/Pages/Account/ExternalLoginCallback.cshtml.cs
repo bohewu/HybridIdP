@@ -43,7 +43,7 @@ public partial class ExternalLoginCallbackModel : PageModel
         _loginHistoryService = loginHistoryService;
     }
 
-    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null, CancellationToken cancellationToken = default)
     {
         returnUrl = returnUrl ?? Url.Content("~/");
         if (remoteError != null)
@@ -89,7 +89,7 @@ public partial class ExternalLoginCallbackModel : PageModel
             var user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
             if (user != null)
             {
-                var eligibility = await _loginService.ValidateExternalUserSignInAsync(user);
+                var eligibility = await _loginService.ValidateExternalUserSignInAsync(user, cancellationToken);
                 if (!eligibility.IsSuccess)
                 {
                     return HandleExternalSignInBlocked(user, eligibility);
@@ -97,7 +97,7 @@ public partial class ExternalLoginCallbackModel : PageModel
                 
                 // Re-sign in with AMR claims
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
-                await _userManagementService.UpdateLastLoginAsync(user.Id);
+                await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 await RecordSuccessfulLoginAsync(user.Id);
                 
                 // Store AMR in session for MFA enforcement logic
@@ -128,7 +128,7 @@ public partial class ExternalLoginCallbackModel : PageModel
                 if (user != null)
                 {
                     // Security Check: Enforce MaxLoginsPerProvider
-                    var checkResult = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider);
+                    var checkResult = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider, cancellationToken);
                     bool canLink = checkResult.Succeeded;
                     
                     if (!canLink)
@@ -143,7 +143,7 @@ public partial class ExternalLoginCallbackModel : PageModel
                         var addLoginResult = await _userManager.AddLoginAsync(user, info);
                         if (addLoginResult.Succeeded)
                         {
-                            var eligibility = await _loginService.ValidateExternalUserSignInAsync(user);
+                            var eligibility = await _loginService.ValidateExternalUserSignInAsync(user, cancellationToken);
                             if (!eligibility.IsSuccess)
                             {
                                 // Remove the login we just added since user is not eligible to sign in
@@ -153,7 +153,7 @@ public partial class ExternalLoginCallbackModel : PageModel
                             
                             // Sign in with AMR claims
                             await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
-                            await _userManagementService.UpdateLastLoginAsync(user.Id);
+                            await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                             await RecordSuccessfulLoginAsync(user.Id);
                             
                             // Store AMR in session

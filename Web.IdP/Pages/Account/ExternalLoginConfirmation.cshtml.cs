@@ -91,7 +91,7 @@ public class ExternalLoginConfirmationModel : PageModel
         public string Password { get; set; } = string.Empty;
     }
 
-    public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
         ReturnUrl = returnUrl ?? Url.Content("~/");
 
@@ -106,13 +106,13 @@ public class ExternalLoginConfirmationModel : PageModel
         Email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? "Unknown";
         AppName = await _brandingService.GetAppNameAsync();
 
-        ShowRegistrationButton = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
+        ShowRegistrationButton = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled, cancellationToken) ?? true;
 
         return Page();
     }
 
     // ACTION: Link to Existing Account
-    public async Task<IActionResult> OnPostLinkAsync(string? returnUrl = null)
+    public async Task<IActionResult> OnPostLinkAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
         ReturnUrl = returnUrl ?? Url.Content("~/");
         var info = await _signInManager.GetExternalLoginInfoAsync();
@@ -125,7 +125,7 @@ public class ExternalLoginConfirmationModel : PageModel
         DisplayName = info.Principal.Identity?.Name ?? "Unknown";
         Email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? "Unknown";
         AppName = await _brandingService.GetAppNameAsync();
-        ShowRegistrationButton = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
+        ShowRegistrationButton = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled, cancellationToken) ?? true;
 
         if (!ModelState.IsValid)
         {
@@ -133,7 +133,7 @@ public class ExternalLoginConfirmationModel : PageModel
         }
 
         // 1. Authenticate local credentials
-        var result = await _loginService.AuthenticateAsync(Input.Login, Input.Password);
+        var result = await _loginService.AuthenticateAsync(Input.Login, Input.Password, cancellationToken);
         if (result.Status != Core.Application.DTOs.LoginStatus.Success && 
             result.Status != Core.Application.DTOs.LoginStatus.LegacySuccess)
         {
@@ -144,7 +144,7 @@ public class ExternalLoginConfirmationModel : PageModel
         var user = result.User!;
 
         // 2. Check MaxLoginsPerProvider limit
-        var canLink = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider);
+        var canLink = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider, cancellationToken);
         if (!canLink.Succeeded)
         {
              ModelState.AddModelError(string.Empty, _localizer["ProviderLimitReached"] ?? "You have reached the maximum number of linked accounts.");
@@ -173,7 +173,7 @@ public class ExternalLoginConfirmationModel : PageModel
             }
             
             await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
-            await _userManagementService.UpdateLastLoginAsync(user.Id);
+            await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
             await RecordSuccessfulLoginAsync(user.Id);
             return LocalRedirect(ReturnUrl);
         }
@@ -186,12 +186,12 @@ public class ExternalLoginConfirmationModel : PageModel
     }
 
     // ACTION: Create New Account (JIT)
-    public async Task<IActionResult> OnPostCreateAsync(string? returnUrl = null)
+    public async Task<IActionResult> OnPostCreateAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
         ReturnUrl = returnUrl ?? Url.Content("~/");
         
         // Security check: Is registration enabled?
-        var registrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
+        var registrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled, cancellationToken) ?? true;
         if (!registrationEnabled)
         {
              return RedirectToPage("./Login"); // Should not happen if UI is correct
@@ -220,7 +220,7 @@ public class ExternalLoginConfirmationModel : PageModel
 
         try 
         {
-             var user = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth);
+             var user = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth, cancellationToken);
              
              // Extract AMR claims from external provider and sign in with them
              var externalAmrClaims = info.Principal.FindAll(AuthConstants.ClaimTypes.Amr)
@@ -238,8 +238,8 @@ public class ExternalLoginConfirmationModel : PageModel
              }
              
              await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
-             await _userManagementService.UpdateLastLoginAsync(user.Id);
-             await RecordSuccessfulLoginAsync(user.Id);
+              await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
+              await RecordSuccessfulLoginAsync(user.Id);
              return LocalRedirect(ReturnUrl);
           }
         catch (Exception ex)

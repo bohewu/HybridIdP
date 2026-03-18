@@ -145,7 +145,7 @@ public partial class MfaController : ControllerBase
         if (isValid)
         {
             LogMfaEnabled(user.Id);
-            await _auditService.LogEventAsync("MfaEnabled", user.Id.ToString(), null, null, null);
+            await _auditService.LogEventAsync("MfaEnabled", user.Id.ToString(), null, null, null, ct);
 
             // Generate recovery codes
             var recoveryCodes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
@@ -227,7 +227,7 @@ public partial class MfaController : ControllerBase
         await _mfaService.DisableMfaAsync(user, ct);
 
         LogMfaDisabled(user.Id);
-        await _auditService.LogEventAsync("MfaDisabled", user.Id.ToString(), null, null, null);
+        await _auditService.LogEventAsync("MfaDisabled", user.Id.ToString(), null, null, null, ct);
 
         return Ok(new { success = true });
     }
@@ -259,7 +259,7 @@ public partial class MfaController : ControllerBase
         var codes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
 
         LogRecoveryCodesRegenerated(user.Id);
-        await _auditService.LogEventAsync("MfaRecoveryCodesRegenerated", user.Id.ToString(), null, null, null);
+        await _auditService.LogEventAsync("MfaRecoveryCodesRegenerated", user.Id.ToString(), null, null, null, ct);
 
         return Ok(new RecoveryCodesResponse
         {
@@ -355,7 +355,7 @@ public partial class MfaController : ControllerBase
         await _mfaService.EnableEmailMfaAsync(user, ct);
 
         LogEmailMfaEnabled(user.Id);
-        await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null);
+        await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null, ct);
 
         return Ok(new { success = true });
     }
@@ -390,7 +390,7 @@ public partial class MfaController : ControllerBase
         await _mfaService.DisableEmailMfaAsync(user, ct);
 
         LogEmailMfaDisabled(user.Id);
-        await _auditService.LogEventAsync("EmailMfaDisabled", user.Id.ToString(), null, null, null);
+        await _auditService.LogEventAsync("EmailMfaDisabled", user.Id.ToString(), null, null, null, ct);
 
         return Ok(new { success = true });
     }

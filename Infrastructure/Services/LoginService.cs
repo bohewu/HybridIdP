@@ -43,21 +43,21 @@ public partial class LoginService : ILoginService
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public async Task<LoginResult> AuthenticateAsync(string login, string password)
+    public async Task<LoginResult> AuthenticateAsync(string login, string password, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByEmailAsync(login) 
                    ?? await _userManager.FindByNameAsync(login);
 
         if (user != null)
         {
-            return await AuthenticateLocalUserAsync(user, password);
+            return await AuthenticateLocalUserAsync(user, password, cancellationToken);
         }
 
-        return await AuthenticateLegacyUserAsync(login, password);
+        return await AuthenticateLegacyUserAsync(login, password, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task<(bool Succeeded, string? Error)> CanLinkExternalLoginAsync(ApplicationUser user, string provider)
+    public async Task<(bool Succeeded, string? Error)> CanLinkExternalLoginAsync(ApplicationUser user, string provider, CancellationToken cancellationToken = default)
     {
         if (_externalLoginOptions.MaxLoginsPerProvider <= 0)
         {
@@ -75,7 +75,7 @@ public partial class LoginService : ILoginService
         return (true, null);
     }
 
-    public async Task<LoginResult> ValidateExternalUserSignInAsync(ApplicationUser user)
+    public async Task<LoginResult> ValidateExternalUserSignInAsync(ApplicationUser user, CancellationToken cancellationToken = default)
     {
         if (!user.IsActive)
         {
@@ -83,7 +83,7 @@ public partial class LoginService : ILoginService
             return LoginResult.UserInactive();
         }
 
-        var personCheckResult = await ValidatePersonStatusAsync(user);
+        var personCheckResult = await ValidatePersonStatusAsync(user, cancellationToken);
         if (personCheckResult != null)
         {
             return personCheckResult;
@@ -98,7 +98,7 @@ public partial class LoginService : ILoginService
         return LoginResult.Success(user);
     }
 
-    private async Task<LoginResult> AuthenticateLocalUserAsync(ApplicationUser user, string password)
+    private async Task<LoginResult> AuthenticateLocalUserAsync(ApplicationUser user, string password, CancellationToken cancellationToken)
     {
         // Check if user account is active
         if (!user.IsActive)
@@ -108,7 +108,7 @@ public partial class LoginService : ILoginService
         }
 
         // Phase 18: Check Person status before authentication
-        var personCheckResult = await ValidatePersonStatusAsync(user);
+        var personCheckResult = await ValidatePersonStatusAsync(user, cancellationToken);
         if (personCheckResult != null)
         {
             return personCheckResult;
@@ -148,7 +148,7 @@ public partial class LoginService : ILoginService
         return LoginResult.InvalidCredentials();
     }
 
-    private async Task<LoginResult> AuthenticateLegacyUserAsync(string login, string password)
+    private async Task<LoginResult> AuthenticateLegacyUserAsync(string login, string password, CancellationToken cancellationToken)
     {
         var legacyResult = await _legacyAuthService.ValidateAsync(login, password);
         if (!legacyResult.IsAuthenticated)
@@ -174,7 +174,7 @@ public partial class LoginService : ILoginService
              ResidentCertificateNumber = legacyResult.ResidentCertificateNumber
         };
 
-        var provisionedUser = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth);
+        var provisionedUser = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth, cancellationToken);
 
         // Check if provisioned user account is active
         if (!provisionedUser.IsActive)
@@ -184,7 +184,7 @@ public partial class LoginService : ILoginService
         }
 
         // Phase 18: Check Person status after JIT provisioning
-        var personCheckResult = await ValidatePersonStatusAsync(provisionedUser);
+        var personCheckResult = await ValidatePersonStatusAsync(provisionedUser, cancellationToken);
         if (personCheckResult != null)
         {
             return personCheckResult;
@@ -198,7 +198,7 @@ public partial class LoginService : ILoginService
     /// Validates if the user's linked Person is allowed to authenticate.
     /// Phase 18: Personnel Lifecycle Management
     /// </summary>
-    private async Task<LoginResult?> ValidatePersonStatusAsync(ApplicationUser user)
+    private async Task<LoginResult?> ValidatePersonStatusAsync(ApplicationUser user, CancellationToken cancellationToken)
     {
         // If user is not linked to a Person, allow login (no Person-level restrictions)
         if (user.PersonId == null)
@@ -209,7 +209,7 @@ public partial class LoginService : ILoginService
         // Load the Person from the database
         var person = await _dbContext.Persons
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == user.PersonId);
+            .FirstOrDefaultAsync(p => p.Id == user.PersonId, cancellationToken);
 
         if (person == null)
         {

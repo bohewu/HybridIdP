@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Threading;
 using Xunit;
 
 namespace Tests.Infrastructure.UnitTests;
@@ -594,7 +595,8 @@ public class PersonServiceTests : IDisposable
                 createdBy.ToString(),
                 It.IsAny<string>(),
                 null,
-                null),
+                null,
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -628,7 +630,8 @@ public class PersonServiceTests : IDisposable
                 modifiedBy.ToString(),
                 It.IsAny<string>(),
                 null,
-                null),
+                null,
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -654,7 +657,8 @@ public class PersonServiceTests : IDisposable
                 null,
                 It.IsAny<string>(),
                 null,
-                null),
+                null,
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -692,7 +696,8 @@ public class PersonServiceTests : IDisposable
                 linkedBy.ToString(),
                 It.IsAny<string>(),
                 null,
-                null),
+                null,
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -731,7 +736,8 @@ public class PersonServiceTests : IDisposable
                 unlinkedBy.ToString(),
                 It.IsAny<string>(),
                 null,
-                null),
+                null,
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -1038,7 +1044,8 @@ public class PersonServiceTests : IDisposable
                 verifierId.ToString(),
                 It.IsAny<string>(),
                 null,
-                null),
+                null,
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -1232,6 +1239,6 @@ public class PersonServiceTests : IDisposable
         Assert.Equal(toPerson.Id, updatedClient.CreatedByPersonId);
 
         // Verify Audit Log
-        _auditServiceMock.Verify(s => s.LogEventAsync("ResourceOwnershipTransferred", It.IsAny<string>(), It.IsAny<string>(), null, null), Times.Once);
+        _auditServiceMock.Verify(s => s.LogEventAsync("ResourceOwnershipTransferred", It.IsAny<string>(), It.IsAny<string>(), null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

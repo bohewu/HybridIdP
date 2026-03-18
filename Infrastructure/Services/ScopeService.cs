@@ -42,10 +42,10 @@ public class ScopeService : IScopeService
         _eventPublisher = eventPublisher;
     }
 
-    public async Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerFilterId = null, Guid? viewerPersonId = null)
+    public async Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerFilterId = null, Guid? viewerPersonId = null, CancellationToken cancellationToken = default)
     {
         var scopes = new List<ScopeSummary>();
-        var scopeExtensions = await _db.ScopeExtensions.ToDictionaryAsync(se => se.ScopeId);
+        var scopeExtensions = await _db.ScopeExtensions.ToDictionaryAsync(se => se.ScopeId, cancellationToken);
         
         // Get owned scope IDs if filtering by owner
         HashSet<string>? ownedScopeIds = null;
@@ -54,7 +54,7 @@ public class ScopeService : IScopeService
             ownedScopeIds = (await _db.ScopeOwnerships
                 .Where(so => so.CreatedByPersonId == ownerFilterId.Value)
                 .Select(so => so.ScopeId)
-                .ToListAsync())
+                .ToListAsync(cancellationToken))
                 .ToHashSet();
         }
         
@@ -65,11 +65,11 @@ public class ScopeService : IScopeService
             viewerOwnedScopeIds = (await _db.ScopeOwnerships
                 .Where(so => so.CreatedByPersonId == viewerPersonId.Value)
                 .Select(so => so.ScopeId)
-                .ToListAsync())
+                .ToListAsync(cancellationToken))
                 .ToHashSet();
         }
 
-        await foreach (var scope in _scopeManager.ListAsync())
+        await foreach (var scope in _scopeManager.ListAsync().WithCancellation(cancellationToken))
         {
             var id = await _scopeManager.GetIdAsync(scope);
             
@@ -152,21 +152,21 @@ public class ScopeService : IScopeService
         return (items, totalCount);
     }
 
-    public async Task<ScopeSummary?> GetScopeByIdAsync(string id)
+    public async Task<ScopeSummary?> GetScopeByIdAsync(string id, CancellationToken cancellationToken = default)
     {
-        var scope = await _scopeManager.FindByIdAsync(id);
+        var scope = await _scopeManager.FindByIdAsync(id, cancellationToken);
         if (scope == null) return null;
         
-        var resources = await _scopeManager.GetResourcesAsync(scope);
-        var extension = await _db.ScopeExtensions.FirstOrDefaultAsync(se => se.ScopeId == id);
+        var resources = await _scopeManager.GetResourcesAsync(scope, cancellationToken);
+        var extension = await _db.ScopeExtensions.FirstOrDefaultAsync(se => se.ScopeId == id, cancellationToken);
         
         return new ScopeSummary
         {
 #pragma warning disable CS8601
-            Id = await _scopeManager.GetIdAsync(scope),
-            Name = await _scopeManager.GetNameAsync(scope),
-            DisplayName = await _scopeManager.GetDisplayNameAsync(scope),
-            Description = await _scopeManager.GetDescriptionAsync(scope),
+            Id = await _scopeManager.GetIdAsync(scope, cancellationToken),
+            Name = await _scopeManager.GetNameAsync(scope, cancellationToken),
+            DisplayName = await _scopeManager.GetDisplayNameAsync(scope, cancellationToken),
+            Description = await _scopeManager.GetDescriptionAsync(scope, cancellationToken),
             Resources = resources.ToList(),
             ConsentDisplayNameKey = extension?.ConsentDisplayNameKey,
             ConsentDescriptionKey = extension?.ConsentDescriptionKey,
@@ -179,10 +179,10 @@ public class ScopeService : IScopeService
         };
     }
 
-    public async Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request, Guid? creatorPersonId = null)
+    public async Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request, Guid? creatorPersonId = null, CancellationToken cancellationToken = default)
     {
         // Check if scope already exists
-        var existing = await _scopeManager.FindByNameAsync(request.Name);
+        var existing = await _scopeManager.FindByNameAsync(request.Name, cancellationToken);
         if (existing != null)
         {
             throw new InvalidOperationException($"Scope '{request.Name}' already exists.");
@@ -207,8 +207,8 @@ public class ScopeService : IScopeService
             descriptor.Resources.Add(AuthConstants.Resources.ResourceServer);
         }
         
-        var scope = await _scopeManager.CreateAsync(descriptor);
-        var id = await _scopeManager.GetIdAsync(scope);
+        var scope = await _scopeManager.CreateAsync(descriptor, cancellationToken);
+        var id = await _scopeManager.GetIdAsync(scope, cancellationToken);
         
         // Create ScopeExtension for consent customization if any fields are provided
         if (!string.IsNullOrWhiteSpace(request.ConsentDisplayNameKey) ||
@@ -231,7 +231,7 @@ public class ScopeService : IScopeService
                 IsPublic = request.IsPublic
             };
             _db.ScopeExtensions.Add(extension);
-            await _db.SaveChangesAsync(CancellationToken.None);
+            await _db.SaveChangesAsync(cancellationToken);
         }
         
         // Create ownership record if creator info is provided
@@ -245,7 +245,7 @@ public class ScopeService : IScopeService
                 CreatedAt = DateTime.UtcNow
             };
             _db.ScopeOwnerships.Add(ownership);
-            await _db.SaveChangesAsync(CancellationToken.None);
+            await _db.SaveChangesAsync(cancellationToken);
         }
         
         var summary = new ScopeSummary
@@ -269,32 +269,32 @@ public class ScopeService : IScopeService
         return summary;
     }
 
-    public async Task<bool> UpdateScopeAsync(string id, UpdateScopeRequest request)
+    public async Task<bool> UpdateScopeAsync(string id, UpdateScopeRequest request, CancellationToken cancellationToken = default)
     {
-        var scope = await _scopeManager.FindByIdAsync(id);
+        var scope = await _scopeManager.FindByIdAsync(id, cancellationToken);
         if (scope == null) return false;
 
-        var scopeName = await _scopeManager.GetNameAsync(scope);
+        var scopeName = await _scopeManager.GetNameAsync(scope, cancellationToken);
         
         var descriptor = new OpenIddictScopeDescriptor
         {
             Name = request.Name ?? scopeName,
-            DisplayName = request.DisplayName ?? await _scopeManager.GetDisplayNameAsync(scope),
-            Description = request.Description ?? await _scopeManager.GetDescriptionAsync(scope)
+            DisplayName = request.DisplayName ?? await _scopeManager.GetDisplayNameAsync(scope, cancellationToken),
+            Description = request.Description ?? await _scopeManager.GetDescriptionAsync(scope, cancellationToken)
         };
         
-        var existingResources = await _scopeManager.GetResourcesAsync(scope);
+        var existingResources = await _scopeManager.GetResourcesAsync(scope, cancellationToken);
         var resources = request.Resources ?? existingResources.ToList();
         foreach (var resource in resources)
         {
             descriptor.Resources.Add(resource);
         }
         
-        await _scopeManager.PopulateAsync(scope, descriptor);
-        await _scopeManager.UpdateAsync(scope);
+        await _scopeManager.PopulateAsync(scope, descriptor, cancellationToken);
+        await _scopeManager.UpdateAsync(scope, cancellationToken);
         
         // Update or create ScopeExtension
-        var extension = await _db.ScopeExtensions.FirstOrDefaultAsync(se => se.ScopeId == id);
+        var extension = await _db.ScopeExtensions.FirstOrDefaultAsync(se => se.ScopeId == id, cancellationToken);
         
         if (extension == null)
         {
@@ -338,24 +338,24 @@ public class ScopeService : IScopeService
                 extension.IsPublic = request.IsPublic.Value;
         }
         
-        await _db.SaveChangesAsync(CancellationToken.None);
+        await _db.SaveChangesAsync(cancellationToken);
 
-        await _eventPublisher.PublishAsync(new ScopeUpdatedEvent(id, await _scopeManager.GetNameAsync(scope) ?? "", "Scope updated"));
+        await _eventPublisher.PublishAsync(new ScopeUpdatedEvent(id, await _scopeManager.GetNameAsync(scope, cancellationToken) ?? "", "Scope updated"));
 
         return true;
     }
 
-    public async Task<bool> DeleteScopeAsync(string id)
+    public async Task<bool> DeleteScopeAsync(string id, CancellationToken cancellationToken = default)
     {
         // Note: id is actually the scope name, not a GUID
-        var scope = await _scopeManager.FindByNameAsync(id);
+        var scope = await _scopeManager.FindByNameAsync(id, cancellationToken);
         if (scope == null) return false;
         
         // Check if scope is in use by any clients
         var clientsCount = 0;
-        await foreach (var app in _applicationManager.ListAsync())
+        await foreach (var app in _applicationManager.ListAsync().WithCancellation(cancellationToken))
         {
-            var permissions = await _applicationManager.GetPermissionsAsync(app);
+            var permissions = await _applicationManager.GetPermissionsAsync(app, cancellationToken);
             if (permissions.Any(p => p == $"{OpenIddictConstants.Permissions.Prefixes.Scope}{id}"))
             {
                 clientsCount++;
@@ -367,15 +367,15 @@ public class ScopeService : IScopeService
         
         try
         {
-            var scopeId = await _scopeManager.GetIdAsync(scope);
-            var extension = await _db.ScopeExtensions.FirstOrDefaultAsync(se => se.ScopeId == scopeId);
+            var scopeId = await _scopeManager.GetIdAsync(scope, cancellationToken);
+            var extension = await _db.ScopeExtensions.FirstOrDefaultAsync(se => se.ScopeId == scopeId, cancellationToken);
             if (extension != null)
             {
                 _db.ScopeExtensions.Remove(extension);
-                await _db.SaveChangesAsync(CancellationToken.None);
+                await _db.SaveChangesAsync(cancellationToken);
             }
             
-            await _scopeManager.DeleteAsync(scope);
+            await _scopeManager.DeleteAsync(scope, cancellationToken);
 
             await _eventPublisher.PublishAsync(new ScopeDeletedEvent(scopeId!, id));
 
@@ -387,16 +387,16 @@ public class ScopeService : IScopeService
         }
     }
 
-    public async Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> GetScopeClaimsAsync(string scopeId)
+    public async Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> GetScopeClaimsAsync(string scopeId, CancellationToken cancellationToken = default)
     {
         // Verify scope exists
-        var scope = await _scopeManager.FindByIdAsync(scopeId);
+        var scope = await _scopeManager.FindByIdAsync(scopeId, cancellationToken);
         if (scope == null)
         {
             throw new KeyNotFoundException($"Scope with ID '{scopeId}' not found.");
         }
 
-        var scopeName = await _scopeManager.GetNameAsync(scope);
+        var scopeName = await _scopeManager.GetNameAsync(scope, cancellationToken);
 
         // Get all claims associated with this scope
         var scopeClaims = await _db.ScopeClaims
@@ -413,21 +413,21 @@ public class ScopeService : IScopeService
                 AlwaysInclude = sc.AlwaysInclude,
                 CustomMappingLogic = sc.CustomMappingLogic
             })
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return (scopeId, scopeName ?? "", scopeClaims);
     }
 
-    public async Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> UpdateScopeClaimsAsync(string scopeId, UpdateScopeClaimsRequest request)
+    public async Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> UpdateScopeClaimsAsync(string scopeId, UpdateScopeClaimsRequest request, CancellationToken cancellationToken = default)
     {
         // Verify scope exists
-        var scope = await _scopeManager.FindByIdAsync(scopeId);
+        var scope = await _scopeManager.FindByIdAsync(scopeId, cancellationToken);
         if (scope == null)
         {
             throw new KeyNotFoundException($"Scope with ID '{scopeId}' not found.");
         }
 
-        var scopeName = await _scopeManager.GetNameAsync(scope);
+        var scopeName = await _scopeManager.GetNameAsync(scope, cancellationToken);
 
         var requestedClaimIds = (request.ClaimIds ?? new List<int>())
             .Distinct()
@@ -437,13 +437,13 @@ public class ScopeService : IScopeService
         var existingScopeClaims = await _db.ScopeClaims
             .Where(sc => sc.ScopeId == scopeId)
             .Include(sc => sc.ClaimDefinition)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         var claimsById = requestedClaimIds.Count == 0
             ? new Dictionary<int, ClaimDefinition>()
             : await _db.ClaimDefinitions
                 .Where(c => requestedClaimIds.Contains(c.Id))
-                .ToDictionaryAsync(c => c.Id);
+                .ToDictionaryAsync(c => c.Id, cancellationToken);
 
         // Verify all requested claims exist
         var missingClaimId = requestedClaimIds.FirstOrDefault(id => !claimsById.ContainsKey(id));
@@ -508,7 +508,7 @@ public class ScopeService : IScopeService
             }
         }
 
-        await _db.SaveChangesAsync(CancellationToken.None);
+        await _db.SaveChangesAsync(cancellationToken);
 
         // Return updated claims
         var updatedClaims = await _db.ScopeClaims
@@ -525,7 +525,7 @@ public class ScopeService : IScopeService
                 AlwaysInclude = sc.AlwaysInclude,
                 CustomMappingLogic = sc.CustomMappingLogic
             })
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         await _eventPublisher.PublishAsync(new ScopeClaimChangedEvent(scopeId, scopeName ?? "", "Scope claims updated"));
 
@@ -587,9 +587,9 @@ public class ScopeService : IScopeService
         };
     }
 
-    public async Task<bool> IsScopeOwnedByPersonAsync(string scopeId, Guid personId)
+    public async Task<bool> IsScopeOwnedByPersonAsync(string scopeId, Guid personId, CancellationToken cancellationToken = default)
     {
         return await _db.ScopeOwnerships
-            .AnyAsync(so => so.ScopeId == scopeId && so.CreatedByPersonId == personId);
+            .AnyAsync(so => so.ScopeId == scopeId && so.CreatedByPersonId == personId, cancellationToken);
     }
 }

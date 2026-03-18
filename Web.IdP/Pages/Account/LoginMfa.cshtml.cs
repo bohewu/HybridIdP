@@ -92,7 +92,7 @@ public partial class LoginMfaModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
     {
         var returnUrl = ReturnUrl ?? Url.Content("~/");
 
@@ -136,7 +136,7 @@ public partial class LoginMfaModel : PageModel
                 };
 
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
-                await _userManagementService.UpdateLastLoginAsync(user.Id);
+                await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 LogLoginWithTotp(_logger);
                 
                 await _eventPublisher.PublishAsync(new LoginAttemptEvent(
@@ -182,7 +182,7 @@ public partial class LoginMfaModel : PageModel
                 };
 
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
-                await _userManagementService.UpdateLastLoginAsync(user.Id);
+                await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 LogLoginWithRecovery(_logger);
                 
                 var remainingCodes = await _mfaService.CountRecoveryCodesAsync(user);

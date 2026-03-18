@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Core.Application;
 using Core.Application.DTOs;
@@ -77,7 +78,7 @@ public class UsersControllerSessionsTests
             new SessionDto("auth-1", null, null, null, null, null),
             new SessionDto("auth-2", null, null, null, null, null)
         };
-        sessMock.Setup(s => s.ListSessionsAsync(userId)).ReturnsAsync(sessions);
+        sessMock.Setup(s => s.ListSessionsAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(sessions);
         var result = await controller.ListSessions(userId, 1, 10);
         var ok = Assert.IsType<OkObjectResult>(result);
         var anon = ok.Value!;
@@ -92,7 +93,7 @@ public class UsersControllerSessionsTests
     {
         var controller = CreateController(out var sessMock);
         var userId = Guid.NewGuid();
-        sessMock.Setup(s => s.ListSessionsAsync(userId))
+        sessMock.Setup(s => s.ListSessionsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<SessionDto>());
         var result = await controller.ListSessions(userId, 1, 5);
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -108,7 +109,7 @@ public class UsersControllerSessionsTests
     {
         var controller = CreateController(out var sessMock);
         var userId = Guid.NewGuid();
-        sessMock.Setup(s => s.ListSessionsAsync(userId))
+        sessMock.Setup(s => s.ListSessionsAsync(userId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Database error"));
         var result = await controller.ListSessions(userId, 1, 10);
         var statusResult = Assert.IsType<ObjectResult>(result);
@@ -120,10 +121,10 @@ public class UsersControllerSessionsTests
     {
         var controller = CreateController(out var sessMock);
         var userId = Guid.NewGuid();
-        sessMock.Setup(s => s.ListSessionsAsync(userId))
+        sessMock.Setup(s => s.ListSessionsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<SessionDto>());
         await controller.ListSessions(userId, 1, 10);
-        sessMock.Verify(s => s.ListSessionsAsync(userId), Times.Once);
+        sessMock.Verify(s => s.ListSessionsAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -131,7 +132,7 @@ public class UsersControllerSessionsTests
     {
         var controller = CreateController(out var sessMock);
         var userId = Guid.NewGuid();
-        sessMock.Setup(s => s.RevokeSessionAsync(userId, "auth-1")).ReturnsAsync(true);
+        sessMock.Setup(s => s.RevokeSessionAsync(userId, "auth-1", It.IsAny<CancellationToken>())).ReturnsAsync(true);
         // Simulate the caller being the same user (owner) so the controller allows the operation
         var claims = new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, userId.ToString()) };
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(claims, "TestAuth")) } };
@@ -154,7 +155,7 @@ public class UsersControllerSessionsTests
     {
         var controller = CreateController(out var sessMock);
         var userId = Guid.NewGuid();
-        sessMock.Setup(s => s.RevokeSessionAsync(userId, "auth-x")).ReturnsAsync(false);
+        sessMock.Setup(s => s.RevokeSessionAsync(userId, "auth-x", It.IsAny<CancellationToken>())).ReturnsAsync(false);
         // Simulate the caller being the same user (owner) so the controller allows the operation to run
         var claims = new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, userId.ToString()) };
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(claims, "TestAuth")) } };
@@ -178,7 +179,7 @@ public class UsersControllerSessionsTests
         var sessions = Enumerable.Range(1, 5)
             .Select(i => new SessionDto($"auth-{i}", null, null, null, null, null))
             .ToArray();
-        sessMock.Setup(s => s.ListSessionsAsync(userId)).ReturnsAsync(sessions);
+        sessMock.Setup(s => s.ListSessionsAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(sessions);
         var result = await controller.ListSessions(userId, 2, 2);
         var ok = Assert.IsType<OkObjectResult>(result);
         var anon = ok.Value!;

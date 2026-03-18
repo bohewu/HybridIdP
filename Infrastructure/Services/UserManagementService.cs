@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using System.Text.Json;
+using System.Threading;
 
 namespace Infrastructure.Services;
 
@@ -39,7 +40,8 @@ public class UserManagementService : IUserManagementService
         string? role = null,
         bool? isActive = null,
         string? sortBy = "createdat",
-        string? sortDirection = "desc")
+        string? sortDirection = "desc",
+        CancellationToken cancellationToken = default)
     {
         var query = _userManager.Users.Include(u => u.Person).AsQueryable();
 
@@ -47,7 +49,7 @@ public class UserManagementService : IUserManagementService
         var usersWithPasskeys = await _context.UserCredentials
             .Select(c => c.UserId)
             .Distinct()
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         // Filter out soft-deleted users
         query = query.Where(u => !u.IsDeleted);
@@ -146,11 +148,11 @@ public class UserManagementService : IUserManagementService
         };
     }
 
-    public async Task<UserDetailDto?> GetUserByIdAsync(Guid userId)
+    public async Task<UserDetailDto?> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.Users
             .Include(u => u.Person)
-            .FirstOrDefaultAsync(u => u.Id == userId);
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
         if (user == null)
             return null;
 
@@ -194,7 +196,8 @@ public class UserManagementService : IUserManagementService
 
     public async Task<(bool Success, Guid? UserId, IEnumerable<string> Errors)> CreateUserAsync(
         CreateUserDto createDto,
-        Guid? createdBy = null)
+        Guid? createdBy = null,
+        CancellationToken cancellationToken = default)
     {
         // Phase 10.4: Create Person first, then ApplicationUser
         var person = new Person
@@ -210,7 +213,7 @@ public class UserManagementService : IUserManagementService
         };
 
         _context.Persons.Add(person);
-        await _context.SaveChangesAsync(CancellationToken.None);
+        await _context.SaveChangesAsync(cancellationToken);
 
         var user = new ApplicationUser
         {
@@ -256,11 +259,12 @@ public class UserManagementService : IUserManagementService
     public async Task<(bool Success, IEnumerable<string> Errors)> UpdateUserAsync(
         Guid userId,
         UpdateUserDto updateDto,
-        Guid? modifiedBy = null)
+        Guid? modifiedBy = null,
+        CancellationToken cancellationToken = default)
     {
         var user = await _userManager.Users
             .Include(u => u.Person)
-            .FirstOrDefaultAsync(u => u.Id == userId);
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
         if (user == null)
         {
             return (false, new[] { "User not found" });
@@ -287,7 +291,7 @@ public class UserManagementService : IUserManagementService
             user.Person.ModifiedBy = modifiedBy;
             user.Person.ModifiedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync(CancellationToken.None);
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         // Update ApplicationUser properties (keep for backward compatibility)
@@ -358,7 +362,8 @@ public class UserManagementService : IUserManagementService
 
     public async Task<(bool Success, IEnumerable<string> Errors)> DeactivateUserAsync(
         Guid userId,
-        Guid? modifiedBy = null)
+        Guid? modifiedBy = null,
+        CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user == null)
@@ -385,7 +390,8 @@ public class UserManagementService : IUserManagementService
 
     public async Task<(bool Success, IEnumerable<string> Errors)> ReactivateUserAsync(
         Guid userId,
-        Guid? modifiedBy = null)
+        Guid? modifiedBy = null,
+        CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user == null)
@@ -410,7 +416,7 @@ public class UserManagementService : IUserManagementService
             : (false, result.Errors.Select(e => e.Description));
     }
 
-    public async Task UpdateLastLoginAsync(Guid userId)
+    public async Task UpdateLastLoginAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user != null)
@@ -422,11 +428,12 @@ public class UserManagementService : IUserManagementService
 
     public async Task<(bool Success, IEnumerable<string> Errors)> AssignRolesAsync(
         Guid userId,
-        IEnumerable<string> roles)
+        IEnumerable<string> roles,
+        CancellationToken cancellationToken = default)
     {
         var user = await _userManager.Users
             .Include(u => u.Person)
-            .FirstOrDefaultAsync(u => u.Id == userId);
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
             
         if (user == null)
         {
@@ -444,7 +451,7 @@ public class UserManagementService : IUserManagementService
         {
             siblingAccounts = await _userManager.Users
                 .Where(u => u.PersonId == user.PersonId.Value && u.Id != userId)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
         // Remove roles from main user and siblings
@@ -506,7 +513,8 @@ public class UserManagementService : IUserManagementService
 
     public async Task<(bool Success, IEnumerable<string> Errors)> AssignRolesByIdAsync(
         Guid userId,
-        IEnumerable<Guid> roleIds)
+        IEnumerable<Guid> roleIds,
+        CancellationToken cancellationToken = default)
     {
         var roleNames = new List<string>();
         var errors = new List<string>();
@@ -532,20 +540,21 @@ public class UserManagementService : IUserManagementService
         }
 
         // Delegate to existing AssignRolesAsync method
-        return await AssignRolesAsync(userId, roleNames);
+        return await AssignRolesAsync(userId, roleNames, cancellationToken);
     }
-    public async Task<List<string>> GetUserAppRolesAsync(Guid userId, string clientId)
+    public async Task<List<string>> GetUserAppRolesAsync(Guid userId, string clientId, CancellationToken cancellationToken = default)
     {
         return await _context.UserAppRoles
             .Where(uar => uar.UserId == userId && uar.ClientId == clientId)
             .Select(uar => uar.RoleName)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<(bool Success, IEnumerable<string> Errors)> AssignUserAppRolesAsync(
         Guid userId,
         string clientId,
-        IEnumerable<string> roleNames)
+        IEnumerable<string> roleNames,
+        CancellationToken cancellationToken = default)
     {
         // 1. Validate User exists
         var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -555,14 +564,14 @@ public class UserManagementService : IUserManagementService
         }
 
         // 2. Validate Client exists
-        var application = await _applicationManager.FindByClientIdAsync(clientId);
+        var application = await _applicationManager.FindByClientIdAsync(clientId, cancellationToken);
         if (application == null)
         {
             return (false, new[] { "Client not found" });
         }
 
         // 3. Get SupportedRoles from Client Properties
-        var properties = await _applicationManager.GetPropertiesAsync(application);
+        var properties = await _applicationManager.GetPropertiesAsync(application, cancellationToken);
         var supportedRoles = new List<string>();
         
         if (properties.TryGetValue(Core.Domain.Constants.AuthConstants.Properties.SupportedRoles, out var element) &&
@@ -584,7 +593,7 @@ public class UserManagementService : IUserManagementService
         // Fetch existing roles
         var existingRoles = await _context.UserAppRoles
             .Where(uar => uar.UserId == userId && uar.ClientId == clientId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         _context.UserAppRoles.RemoveRange(existingRoles);
 
@@ -598,7 +607,7 @@ public class UserManagementService : IUserManagementService
 
         _context.UserAppRoles.AddRange(newRoles);
 
-        await _context.SaveChangesAsync(CancellationToken.None);
+        await _context.SaveChangesAsync(cancellationToken);
 
         // Publish event for audit/sync if needed (Optional for now)
         // await _eventPublisher.PublishAsync(new UserAppRolesUpdatedEvent(...));

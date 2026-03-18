@@ -238,7 +238,8 @@ namespace Tests.Application.UnitTests
                     details.Contains("\"ip\":\"203.0.113.10\"") &&
                     details.Contains("\"userAgent\":\"security-probe-agent\"")),
                 "203.0.113.10",
-                "security-probe-agent"),
+                "security-probe-agent",
+                It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 

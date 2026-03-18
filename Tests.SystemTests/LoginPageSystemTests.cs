@@ -342,9 +342,9 @@ public class LoginPageSystemTests : IAsyncLifetime
         var loginResponse = await _httpClient.PostAsync("/Account/Login", userFormData);
         Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
         
-        // Verify access to protected resource using _httpClient (which has user cookie)
-        var homeResponse = await _httpClient.GetAsync("/");
-        Assert.Equal(HttpStatusCode.OK, homeResponse.StatusCode);
+        // Verify access to a protected page using _httpClient (which has user cookie)
+        var dashboardResponse = await _httpClient.GetAsync("/Dashboard");
+        Assert.Equal(HttpStatusCode.OK, dashboardResponse.StatusCode);
 
         // 2. Login as Admin (separate client) to access Admin API
         using var adminHandler = new HttpClientHandler 
@@ -381,7 +381,7 @@ public class LoginPageSystemTests : IAsyncLifetime
         // 5. Verify User Access Revoked (using _httpClient)
         // Note: Cookie auth middleware validates cookie on every request. 
         // If session store says revoked / missing, it should challenge.
-        var accessResponse = await _httpClient.GetAsync("/");
+        var accessResponse = await _httpClient.GetAsync("/Dashboard");
         
         // Should be redirect to login
         Assert.Equal(HttpStatusCode.Redirect, accessResponse.StatusCode);

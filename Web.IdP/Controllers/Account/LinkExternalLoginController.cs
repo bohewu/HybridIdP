@@ -46,7 +46,7 @@ public partial class LinkExternalLoginController : Controller
     }
 
     [HttpGet("Callback")]
-    public async Task<IActionResult> Callback()
+    public async Task<IActionResult> Callback(CancellationToken cancellationToken = default)
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
@@ -62,7 +62,7 @@ public partial class LinkExternalLoginController : Controller
         }
 
         // Check MaxLoginsPerProvider limit
-        var linkCheck = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider);
+        var linkCheck = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider, cancellationToken);
         if (!linkCheck.Succeeded)
         {
              return Redirect("/Account/Profile?error=ProviderLimitReached");

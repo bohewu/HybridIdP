@@ -1,4 +1,5 @@
 using Core.Application.DTOs;
+using System.Threading;
 
 namespace Core.Application;
 
@@ -17,19 +18,21 @@ public interface IUserManagementService
         string? role = null,
         bool? isActive = null,
         string? sortBy = "createdat",
-        string? sortDirection = "desc");
+        string? sortDirection = "desc",
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get detailed information about a specific user
     /// </summary>
-    Task<UserDetailDto?> GetUserByIdAsync(Guid userId);
+    Task<UserDetailDto?> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Create a new user account
     /// </summary>
     Task<(bool Success, Guid? UserId, IEnumerable<string> Errors)> CreateUserAsync(
         CreateUserDto createDto,
-        Guid? createdBy = null);
+        Guid? createdBy = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Update an existing user account
@@ -37,48 +40,53 @@ public interface IUserManagementService
     Task<(bool Success, IEnumerable<string> Errors)> UpdateUserAsync(
         Guid userId,
         UpdateUserDto updateDto,
-        Guid? modifiedBy = null);
+        Guid? modifiedBy = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Soft delete a user (set IsActive = false)
     /// </summary>
     Task<(bool Success, IEnumerable<string> Errors)> DeactivateUserAsync(
         Guid userId,
-        Guid? modifiedBy = null);
+        Guid? modifiedBy = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Reactivate a deactivated user
     /// </summary>
     Task<(bool Success, IEnumerable<string> Errors)> ReactivateUserAsync(
         Guid userId,
-        Guid? modifiedBy = null);
+        Guid? modifiedBy = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Update user's last login timestamp
     /// </summary>
-    Task UpdateLastLoginAsync(Guid userId);
+    Task UpdateLastLoginAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Assign roles to a user (replaces existing roles)
     /// </summary>
     Task<(bool Success, IEnumerable<string> Errors)> AssignRolesAsync(
         Guid userId,
-        IEnumerable<string> roles);
+        IEnumerable<string> roles,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Assign roles to a user by role IDs (replaces existing roles)
     /// </summary>
     Task<(bool Success, IEnumerable<string> Errors)> AssignRolesByIdAsync(
         Guid userId,
-        IEnumerable<Guid> roleIds);
+        IEnumerable<Guid> roleIds,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the list of app-specific roles assigned to a user for a specific client.
     /// </summary>
-    Task<List<string>> GetUserAppRolesAsync(Guid userId, string clientId);
+    Task<List<string>> GetUserAppRolesAsync(Guid userId, string clientId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Assigns app-specific roles to a user for a specific client.
     /// </summary>
-    Task<(bool Success, IEnumerable<string> Errors)> AssignUserAppRolesAsync(Guid userId, string clientId, IEnumerable<string> roleNames);
+    Task<(bool Success, IEnumerable<string> Errors)> AssignUserAppRolesAsync(Guid userId, string clientId, IEnumerable<string> roleNames, CancellationToken cancellationToken = default);
 }

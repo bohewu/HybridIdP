@@ -148,7 +148,8 @@ public partial class PasskeyController : ControllerBase
                 user.Id.ToString(),
                 null, // details
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
-                Request.Headers["User-Agent"].FirstOrDefault());
+                Request.Headers["User-Agent"].FirstOrDefault(),
+                ct);
 
             // FIX: If user is in MFA Setup (partial auth), sign them in fully now that they have a passkey
             if (User.Identity != null && User.Identity.AuthenticationType == IdentityConstants.TwoFactorUserIdScheme)
@@ -213,7 +214,8 @@ public partial class PasskeyController : ControllerBase
             user.Id.ToString(),
             $"{{\"passkeyId\":{id}}}",
             HttpContext.Connection.RemoteIpAddress?.ToString(),
-            Request.Headers["User-Agent"].FirstOrDefault());
+            Request.Headers["User-Agent"].FirstOrDefault(),
+            ct);
         return Ok(new { success = true });
     }
 
@@ -296,7 +298,7 @@ public partial class PasskeyController : ControllerBase
             };
 
             await _signInManager.SignInWithClaimsAsync(result.User, isPersistent: false, claims);
-            await _userManagementService.UpdateLastLoginAsync(result.User.Id);
+            await _userManagementService.UpdateLastLoginAsync(result.User.Id, ct);
             LogPasskeyLogin(result.User.UserName);
             return Ok(new { success = true, username = result.User.UserName });
         }

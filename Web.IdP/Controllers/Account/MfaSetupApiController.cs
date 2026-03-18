@@ -147,7 +147,7 @@ public partial class MfaSetupApiController : ControllerBase
         if (isValid)
         {
             LogMfaEnabled(user.Id);
-            await _auditService.LogEventAsync("MfaEnabled", user.Id.ToString(), null, null, null);
+            await _auditService.LogEventAsync("MfaEnabled", user.Id.ToString(), null, null, null, ct);
 
             // UX Improvement: Sign in user fully so they can access the app immediately
             // This prevents redirection back to Login page and ensures AMR claims are correct
@@ -201,7 +201,7 @@ public partial class MfaSetupApiController : ControllerBase
         await _mfaService.EnableEmailMfaAsync(user, ct);
 
         LogEmailMfaEnabled(user.Id);
-        await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null);
+        await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null, ct);
 
         // UX Improvement: Sign in user fully
         await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, new[] 

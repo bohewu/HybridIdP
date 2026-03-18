@@ -88,15 +88,15 @@ public class RegisterModel : PageModel
         public string ConfirmPassword { get; set; } = default!;
     }
 
-    private async Task LoadTurnstileStateAsync()
+    private async Task LoadTurnstileStateAsync(CancellationToken cancellationToken = default)
     {
-        var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled);
+        var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled, cancellationToken);
         var isEnabledFlag = dbTurnstileEnabled ?? _turnstileOptions.Enabled;
         
-        var dbSiteKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SiteKey);
+        var dbSiteKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SiteKey, cancellationToken);
         TurnstileSiteKey = !string.IsNullOrEmpty(dbSiteKey) ? dbSiteKey : _turnstileOptions.SiteKey;
         
-        var dbSecretKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SecretKey);
+        var dbSecretKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SecretKey, cancellationToken);
         var hasSecretKey = !string.IsNullOrEmpty(dbSecretKey) || !string.IsNullOrWhiteSpace(_turnstileOptions.SecretKey);
         
         var hasSiteKey = !string.IsNullOrWhiteSpace(TurnstileSiteKey);
@@ -104,7 +104,7 @@ public class RegisterModel : PageModel
         TurnstileEnabled = isEnabledFlag && hasSiteKey && hasSecretKey && _turnstileStateService.IsAvailable;
     }
 
-    public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
         // Redirect if already logged in
         if (User.Identity?.IsAuthenticated == true)
@@ -116,7 +116,7 @@ public class RegisterModel : PageModel
         CurrentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
 
         // Check if registration is enabled
-        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
+        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled, cancellationToken) ?? true;
         
         if (!RegistrationEnabled)
         {
@@ -125,13 +125,13 @@ public class RegisterModel : PageModel
         }
 
         // Load Turnstile enabled setting
-        await LoadTurnstileStateAsync();
+        await LoadTurnstileStateAsync(cancellationToken);
         
         ReturnUrl = returnUrl;
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
+    public async Task<IActionResult> OnPostAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
         returnUrl ??= Url.Content("~/");
         
@@ -139,7 +139,7 @@ public class RegisterModel : PageModel
         CurrentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
         
         // Block registration if disabled
-        var isEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
+        var isEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled, cancellationToken) ?? true;
         if (!isEnabled)
         {
             return Forbid();
@@ -159,7 +159,7 @@ public class RegisterModel : PageModel
         if (ModelState.IsValid)
         {
             // Load Turnstile state before validation
-            await LoadTurnstileStateAsync();
+            await LoadTurnstileStateAsync(cancellationToken);
 
             // Validate Turnstile if enabled
             if (TurnstileEnabled)
@@ -190,7 +190,7 @@ public class RegisterModel : PageModel
                 CreatedAt = DateTime.UtcNow
             };
             _context.Persons.Add(person);
-            await _context.SaveChangesAsync(CancellationToken.None);
+            await _context.SaveChangesAsync(cancellationToken);
 
             var user = new ApplicationUser
             {
@@ -220,7 +220,8 @@ public class RegisterModel : PageModel
                     user.Id.ToString(),
                     auditDetails,
                     HttpContext.Connection.RemoteIpAddress?.ToString(),
-                    HttpContext.Request.Headers["User-Agent"].ToString());
+                    HttpContext.Request.Headers["User-Agent"].ToString(),
+                    cancellationToken);
 
                 // Assign default User role
                 await _userManager.AddToRoleAsync(user, "User");

@@ -38,7 +38,7 @@ public class IndexModel : PageModel
     public int ScopeCount { get; set; }
     public int ResourceCount { get; set; }
 
-    public async Task OnGetAsync()
+    public async Task OnGetAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -63,11 +63,11 @@ public class IndexModel : PageModel
 
                 // Count clients - admin sees all, others see only their own
                 Guid? ownerFilter = isAdmin ? null : personId;
-                var clientsResult = await _clientService.GetClientsAsync(0, int.MaxValue, null, null, null, ownerFilter);
+                var clientsResult = await _clientService.GetClientsAsync(0, int.MaxValue, null, null, null, ownerFilter, cancellationToken);
                 ClientCount = clientsResult.totalCount;
 
                 // Count scopes - admin sees all, others see only their own
-                var scopesResult = await _scopeService.GetScopesAsync(0, int.MaxValue, null, null, ownerFilter);
+                var scopesResult = await _scopeService.GetScopesAsync(0, int.MaxValue, null, null, ownerFilter, null, cancellationToken);
                 ScopeCount = scopesResult.totalCount;
 
                 // Count resources - currently no owner filter, so all are visible

@@ -87,7 +87,7 @@ public class LoginModelTurnstileTests
     private static async Task InvokeLoadTurnstileStateAsync(LoginModel model, string? returnUrl)
     {
         var method = typeof(LoginModel).GetMethod("LoadTurnstileStateAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        var task = (Task)method.Invoke(model, new object?[] { returnUrl })!;
+        var task = (Task)method.Invoke(model, new object?[] { returnUrl, CancellationToken.None })!;
         await task;
     }
 

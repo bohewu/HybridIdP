@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using OpenIddict.Validation.AspNetCore;
 
 namespace Web.IdP.Attributes;
 
@@ -21,6 +22,7 @@ public class ValidateCsrfForCookiesAttribute : Attribute, IAsyncActionFilter
     {
         var httpContext = context.HttpContext;
         var method = httpContext.Request.Method;
+        var authorizationHeader = httpContext.Request.Headers.Authorization.ToString();
 
         // Only validate for mutating methods (POST, PUT, DELETE, PATCH)
         if (HttpMethods.IsGet(method) ||
@@ -40,6 +42,7 @@ public class ValidateCsrfForCookiesAttribute : Attribute, IAsyncActionFilter
             // Check if authenticated via Bearer token (JWT)
             var authScheme = user.Identity.AuthenticationType;
             if (authScheme == "Bearer" ||  // JWT Bearer tokens
+                authScheme == OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme ||
                 authScheme == "AuthenticationTypes.Federation" ||  // Federated tokens
                 authScheme?.Contains("Jwt", StringComparison.OrdinalIgnoreCase) == true)
             {
@@ -47,6 +50,12 @@ public class ValidateCsrfForCookiesAttribute : Attribute, IAsyncActionFilter
                 await next();
                 return;
             }
+        }
+
+        if (authorizationHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            await next();
+            return;
         }
 
         // Cookie-authenticated or unauthenticated mutating request - validate CSRF

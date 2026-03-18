@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
+using System.Threading;
 using Web.IdP.Filters;
 using Web.IdP.Services;
 
@@ -25,7 +26,7 @@ namespace Web.IdP.Controllers.Connect
         [IgnoreAntiforgeryToken]
         [Produces("application/json")]
         [RequireClientPermission(OpenIddictConstants.Permissions.Endpoints.Token)]
-        public async Task<IActionResult> Exchange()
+        public async Task<IActionResult> Exchange(CancellationToken cancellationToken)
         {
             var request = HttpContext.GetOpenIddictServerRequest();
             if (request == null)
@@ -42,7 +43,7 @@ namespace Web.IdP.Controllers.Connect
                 schemePrincipal = result.Principal;
             }
 
-            return await _tokenService.HandleTokenRequestAsync(request, schemePrincipal);
+            return await _tokenService.HandleTokenRequestAsync(request, schemePrincipal, cancellationToken);
         }
     }
 }

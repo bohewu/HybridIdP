@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Core.Domain.Constants;
 using OtpNet;
 using Xunit;
@@ -286,17 +287,23 @@ public partial class MfaApiTests : IAsyncLifetime
         
         var cookieHeaders = impersonateResponse.Headers.GetValues("Set-Cookie");
         Assert.NotEmpty(cookieHeaders);
-        
-        // Extract all cookies (name=value) and join them
-        var cookies = cookieHeaders.Select(h => h.Split(';')[0]).ToList();
-        var cookieHeader = string.Join("; ", cookies); 
+        var cookieContainer = new CookieContainer();
+        foreach (var setCookieHeader in cookieHeaders)
+        {
+            cookieContainer.SetCookies(_httpClient.BaseAddress!, setCookieHeader);
+        }
 
         // 5. Setup MFA as Impersonated User (Using Cookie)
-        var userClient = new HttpClient(new HttpClientHandler { UseCookies = false, ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator }) 
+        using var userClient = new HttpClient(new HttpClientHandler
+        {
+            UseCookies = true,
+            CookieContainer = cookieContainer,
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        }) 
         { 
             BaseAddress = _httpClient.BaseAddress 
         };
-        userClient.DefaultRequestHeaders.Add("Cookie", cookieHeader);
+        await SetCsrfTokenAsync(userClient);
 
         var setupResponse = await userClient.GetAsync("/api/account/mfa/setup");
         Assert.Equal(HttpStatusCode.OK, setupResponse.StatusCode);
@@ -313,13 +320,12 @@ public partial class MfaApiTests : IAsyncLifetime
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminUserToken);
         var refreshImpersonationResponse = await _httpClient.PostAsync($"/api/admin/users/{userId}/impersonate", null);
         Assert.Equal(HttpStatusCode.OK, refreshImpersonationResponse.StatusCode);
-        var refreshCookieHeader = refreshImpersonationResponse.Headers.GetValues("Set-Cookie");
-        var distinctCookies = refreshCookieHeader.Select(h => h.Split(';')[0]).ToList();
-        var refreshedCookieString = string.Join("; ", distinctCookies);
-
-        // Update user client with new cookie
-        userClient.DefaultRequestHeaders.Remove("Cookie");
-        userClient.DefaultRequestHeaders.Add("Cookie", refreshedCookieString);
+        var refreshCookieHeaders = refreshImpersonationResponse.Headers.GetValues("Set-Cookie");
+        foreach (var setCookieHeader in refreshCookieHeaders)
+        {
+            cookieContainer.SetCookies(_httpClient.BaseAddress!, setCookieHeader);
+        }
+        await SetCsrfTokenAsync(userClient);
 
         // 7. Disable MFA (Passwordless Flow)
         var totpCodeDisable = GenerateTotp(setup!.SharedKey, offsetSeconds: 30); 
@@ -469,6 +475,26 @@ public partial class MfaApiTests : IAsyncLifetime
         var content = await response.Content.ReadAsStringAsync();
         var tokenJson = JsonDocument.Parse(content);
         return tokenJson.RootElement.GetProperty("access_token").GetString()!;
+    }
+
+    private static async Task SetCsrfTokenAsync(HttpClient client)
+    {
+        var response = await client.GetAsync("/Account/Profile");
+        response.EnsureSuccessStatusCode();
+        var html = await response.Content.ReadAsStringAsync();
+        var match = Regex.Match(html, @"meta\s+name=""csrf-token""\s+content=""([^""]+)""");
+        if (!match.Success)
+        {
+            match = Regex.Match(html, @"content=""([^""]+)""\s+name=""csrf-token""");
+        }
+
+        if (!match.Success)
+        {
+            throw new Exception("Could not find csrf-token in HTML");
+        }
+
+        client.DefaultRequestHeaders.Remove("X-XSRF-TOKEN");
+        client.DefaultRequestHeaders.Add("X-XSRF-TOKEN", match.Groups[1].Value);
     }
 
     #endregion

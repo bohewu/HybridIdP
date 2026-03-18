@@ -35,13 +35,13 @@ public class SessionService : ISessionService
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public async Task<IEnumerable<SessionDto>> ListSessionsAsync(Guid userId)
+    public async Task<IEnumerable<SessionDto>> ListSessionsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var items = new List<SessionDto>();
 
         // Materialize tokens first to avoid open DataReader conflicts (MARS issues)
         var allTokens = new List<object>();
-        await foreach (var token in _tokens.FindAsync(userId.ToString(), null, null, null))
+        await foreach (var token in _tokens.FindAsync(userId.ToString(), null, null, null).WithCancellation(cancellationToken))
         {
             allTokens.Add(token);
         }
@@ -52,7 +52,7 @@ public class SessionService : ISessionService
         {
             try 
             {
-                var authId = await _tokens.GetAuthorizationIdAsync(token, CancellationToken.None);
+                var authId = await _tokens.GetAuthorizationIdAsync(token, cancellationToken);
                 if (!string.IsNullOrEmpty(authId))
                 {
                     if (!tokensByAuthId.ContainsKey(authId))
@@ -70,14 +70,14 @@ public class SessionService : ISessionService
             client: null,
             status: null,
             type: null,
-            scopes: ImmutableArray<string>.Empty))
+            scopes: ImmutableArray<string>.Empty).WithCancellation(cancellationToken))
         {
             allAuths.Add(authorization);
         }
 
         foreach (var authorization in allAuths)
         {
-            var id = await _authorizations.GetIdAsync(authorization, CancellationToken.None) ?? string.Empty;
+            var id = await _authorizations.GetIdAsync(authorization, cancellationToken) ?? string.Empty;
 
             // Best-effort: enrich session output with application information and status where available
             string? clientId = null;
@@ -88,19 +88,19 @@ public class SessionService : ISessionService
 
             try
             {
-                var appId = await _authorizations.GetApplicationIdAsync(authorization, CancellationToken.None);
+                var appId = await _authorizations.GetApplicationIdAsync(authorization, cancellationToken);
                 if (!string.IsNullOrEmpty(appId))
                 {
-                    var app = await _applications.FindByIdAsync(appId, CancellationToken.None);
+                    var app = await _applications.FindByIdAsync(appId, cancellationToken);
                     if (app is object)
                     {
-                        clientId = await _applications.GetClientIdAsync(app, CancellationToken.None);
-                        clientDisplayName = await _applications.GetDisplayNameAsync(app, CancellationToken.None);
+                        clientId = await _applications.GetClientIdAsync(app, cancellationToken);
+                        clientDisplayName = await _applications.GetDisplayNameAsync(app, cancellationToken);
                     }
                 }
 
-                status = await _authorizations.GetStatusAsync(authorization, CancellationToken.None);
-                var creationOffset = await _authorizations.GetCreationDateAsync(authorization, CancellationToken.None);
+                status = await _authorizations.GetStatusAsync(authorization, cancellationToken);
+                var creationOffset = await _authorizations.GetCreationDateAsync(authorization, cancellationToken);
                 if (creationOffset.HasValue)
                     createdAt = creationOffset.Value.UtcDateTime;
 
@@ -114,10 +114,10 @@ public class SessionService : ISessionService
                         {
                             try
                             {
-                                var tokenStatus = await _tokens.GetStatusAsync(token, CancellationToken.None);
+                                var tokenStatus = await _tokens.GetStatusAsync(token, cancellationToken);
                                 if (string.Equals(tokenStatus, OpenIddictConstants.Statuses.Valid, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    var expOffset = await _tokens.GetExpirationDateAsync(token, CancellationToken.None);
+                                    var expOffset = await _tokens.GetExpirationDateAsync(token, cancellationToken);
                                     if (expOffset.HasValue)
                                         candidateExpirations.Add(expOffset.Value);
                                 }
@@ -151,24 +151,24 @@ public class SessionService : ISessionService
             .ToList();
     }
 
-    public async Task<bool> RevokeSessionAsync(Guid userId, string authorizationId)
+    public async Task<bool> RevokeSessionAsync(Guid userId, string authorizationId, CancellationToken cancellationToken = default)
     {
-        var authorization = await _authorizations.FindByIdAsync(authorizationId, CancellationToken.None);
+        var authorization = await _authorizations.FindByIdAsync(authorizationId, cancellationToken);
         if (authorization is null)
             return false;
 
-        var subject = await _authorizations.GetSubjectAsync(authorization, CancellationToken.None);
+        var subject = await _authorizations.GetSubjectAsync(authorization, cancellationToken);
         if (!string.Equals(subject, userId.ToString(), StringComparison.OrdinalIgnoreCase))
             return false;
 
-        var ok = await _authorizations.TryRevokeAsync(authorization, CancellationToken.None);
+        var ok = await _authorizations.TryRevokeAsync(authorization, cancellationToken);
         if (ok)
         {
             try
             {
                 // Best-effort: revoke tokens associated with the authorization (OpenIddict supports this)
                 // If token manager exposes RevokeByAuthorizationIdAsync, use it to remove tokens.
-                await _tokens.RevokeByAuthorizationIdAsync(authorizationId, CancellationToken.None);
+                await _tokens.RevokeByAuthorizationIdAsync(authorizationId, cancellationToken);
             }
             catch
             {
@@ -178,7 +178,7 @@ public class SessionService : ISessionService
         return ok;
     }
 
-    public async Task<int> RevokeAllSessionsAsync(Guid userId)
+    public async Task<int> RevokeAllSessionsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var count = 0;
 
@@ -189,7 +189,7 @@ public class SessionService : ISessionService
             client: null,
             status: OpenIddictConstants.Statuses.Valid,
             type: null,
-            scopes: System.Collections.Immutable.ImmutableArray<string>.Empty))
+            scopes: System.Collections.Immutable.ImmutableArray<string>.Empty).WithCancellation(cancellationToken))
         {
             toRevoke.Add(authorization);
         }
@@ -202,7 +202,7 @@ public class SessionService : ISessionService
                 client: null,
                 status: null, // broader search
                 type: null,
-                scopes: System.Collections.Immutable.ImmutableArray<string>.Empty))
+                scopes: System.Collections.Immutable.ImmutableArray<string>.Empty).WithCancellation(cancellationToken))
             {
                 toRevoke.Add(authorization);
             }
@@ -212,14 +212,14 @@ public class SessionService : ISessionService
         {
             try
             {
-                if (await _authorizations.TryRevokeAsync(authorization, CancellationToken.None))
+                if (await _authorizations.TryRevokeAsync(authorization, cancellationToken))
                 {
                     try
                     {
-                        var id = await _authorizations.GetIdAsync(authorization, CancellationToken.None) ?? string.Empty;
+                        var id = await _authorizations.GetIdAsync(authorization, cancellationToken) ?? string.Empty;
                         if (!string.IsNullOrEmpty(id))
                         {
-                            await _tokens.RevokeByAuthorizationIdAsync(id, CancellationToken.None);
+                            await _tokens.RevokeByAuthorizationIdAsync(id, cancellationToken);
                         }
                     }
                     catch
@@ -238,14 +238,14 @@ public class SessionService : ISessionService
         return count;
     }
 
-    public Task<RefreshResultDto> RefreshAsync(Guid userId, string authorizationId, string presentedRefreshToken, string? ipAddress, string? userAgent)
+    public Task<RefreshResultDto> RefreshAsync(Guid userId, string authorizationId, string presentedRefreshToken, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
     {
-        return RefreshInternalAsync(userId, authorizationId, presentedRefreshToken, ipAddress, userAgent);
+        return RefreshInternalAsync(userId, authorizationId, presentedRefreshToken, ipAddress, userAgent, cancellationToken);
     }
 
-    public Task<RevokeChainResultDto> RevokeChainAsync(Guid userId, string authorizationId, string reason)
+    public Task<RevokeChainResultDto> RevokeChainAsync(Guid userId, string authorizationId, string reason, CancellationToken cancellationToken = default)
     {
-        return RevokeChainInternalAsync(userId, authorizationId, reason);
+        return RevokeChainInternalAsync(userId, authorizationId, reason, cancellationToken);
     }
 
     private static string ComputeRefreshTokenHash(string raw)
@@ -263,11 +263,11 @@ public class SessionService : ISessionService
         return "hash_" + raw.GetHashCode();
     }
 
-    private async Task<RefreshResultDto> RefreshInternalAsync(Guid userId, string authorizationId, string presentedRefreshToken, string? ipAddress, string? userAgent)
+    private async Task<RefreshResultDto> RefreshInternalAsync(Guid userId, string authorizationId, string presentedRefreshToken, string? ipAddress, string? userAgent, CancellationToken cancellationToken)
     {
         // Locate session record
         var session = await _db.UserSessions
-            .FirstOrDefaultAsync(s => s.AuthorizationId == authorizationId && s.UserId == userId);
+            .FirstOrDefaultAsync(s => s.AuthorizationId == authorizationId && s.UserId == userId, cancellationToken);
         if (session is null)
         {
             // Treat missing session as no-op with reuse detection false.
@@ -302,7 +302,7 @@ public class SessionService : ISessionService
                 IPAddress = ipAddress,
                 UserAgent = userAgent
             });
-            await _db.SaveChangesAsync(CancellationToken.None);
+            await _db.SaveChangesAsync(cancellationToken);
             var slidingExpiry = session.SlidingExpiresUtc.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(session.SlidingExpiresUtc.Value, DateTimeKind.Utc)) : (DateTimeOffset?)null;
             return new RefreshResultDto(authorizationId, null, slidingExpiry, false, true);
         }
@@ -361,7 +361,7 @@ public class SessionService : ISessionService
 
         // No token-revoke adjustment needed here in Refresh flow.
 
-        await _db.SaveChangesAsync(CancellationToken.None);
+        await _db.SaveChangesAsync(cancellationToken);
 
         // Placeholder access token expiry: shorter window than refresh sliding expiry
         var accessTokenExpires = _timeProvider.GetUtcNow().AddMinutes(5);
@@ -370,11 +370,11 @@ public class SessionService : ISessionService
         return new RefreshResultDto(authorizationId, accessTokenExpires, refreshExpires, slidingExtended, reuseDetected);
     }
 
-    private async Task<RevokeChainResultDto> RevokeChainInternalAsync(Guid userId, string authorizationId, string reason)
+    private async Task<RevokeChainResultDto> RevokeChainInternalAsync(Guid userId, string authorizationId, string reason, CancellationToken cancellationToken)
     {
         // Locate session record  
         var session = await _db.UserSessions
-            .FirstOrDefaultAsync(s => s.AuthorizationId == authorizationId && s.UserId == userId);
+            .FirstOrDefaultAsync(s => s.AuthorizationId == authorizationId && s.UserId == userId, cancellationToken);
         if (session is null)
         {
             return new RevokeChainResultDto(authorizationId, 0, true);
@@ -401,23 +401,23 @@ public class SessionService : ISessionService
         try
         {
             // Best-effort authorization revocation
-            var authorization = await _authorizations.FindByIdAsync(authorizationId, CancellationToken.None);
+            var authorization = await _authorizations.FindByIdAsync(authorizationId, cancellationToken);
             if (authorization is not null)
             {
-                await _authorizations.TryRevokeAsync(authorization, CancellationToken.None);
+                await _authorizations.TryRevokeAsync(authorization, cancellationToken);
             }
 
             // Always try to revoke tokens by authorization id even if OpenIddict authorization is missing
             try
             {
-                var count = await _tokens.RevokeByAuthorizationIdAsync(authorizationId, CancellationToken.None);
+                var count = await _tokens.RevokeByAuthorizationIdAsync(authorizationId, cancellationToken);
                 tokensRevoked = count > 0 ? (int)count : 1; // ensure >=1 for tests when mock returns 0
             }
             catch { tokensRevoked = 1; }
         }
         catch { /* ignore */ }
 
-        await _db.SaveChangesAsync(CancellationToken.None);
+        await _db.SaveChangesAsync(cancellationToken);
         return new RevokeChainResultDto(authorizationId, tokensRevoked, false);
     }
 }

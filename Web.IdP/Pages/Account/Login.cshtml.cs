@@ -98,16 +98,16 @@ public partial class LoginModel : PageModel
     /// <summary>
     /// Calculate if Turnstile should be enabled based on settings and key configuration
     /// </summary>
-    private async Task LoadTurnstileStateAsync(string? returnUrl)
+    private async Task LoadTurnstileStateAsync(string? returnUrl, CancellationToken cancellationToken = default)
     {
-        var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled);
+        var dbTurnstileEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Turnstile.Enabled, cancellationToken);
         var globalTurnstileEnabled = dbTurnstileEnabled ?? _turnstileOptions.Enabled;
-        var clientTurnstileEnabled = await IsTurnstileEnabledForClientAsync(returnUrl);
+        var clientTurnstileEnabled = await IsTurnstileEnabledForClientAsync(returnUrl, cancellationToken);
         
-        var dbSiteKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SiteKey);
+        var dbSiteKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SiteKey, cancellationToken);
         TurnstileSiteKey = !string.IsNullOrEmpty(dbSiteKey) ? dbSiteKey : _turnstileOptions.SiteKey;
         
-        var dbSecretKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SecretKey);
+        var dbSecretKey = await _settingsService.GetValueAsync<string?>(SettingKeys.Turnstile.SecretKey, cancellationToken);
         var hasSecretKey = !string.IsNullOrEmpty(dbSecretKey) || !string.IsNullOrWhiteSpace(_turnstileOptions.SecretKey);
         
         var hasSiteKey = !string.IsNullOrWhiteSpace(TurnstileSiteKey);
@@ -134,9 +134,9 @@ public partial class LoginModel : PageModel
 
     public IList<AuthenticationScheme> ExternalLogins { get; set; } = new List<AuthenticationScheme>();
 
-    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null, CancellationToken cancellationToken = default)
     {
-        ExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl);
+        ExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl, cancellationToken);
 
         // If user is already authenticated, redirect away from login page
         if (User.Identity?.IsAuthenticated == true)
@@ -156,7 +156,7 @@ public partial class LoginModel : PageModel
         }
 
         // Load registration setting
-        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
+        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled, cancellationToken) ?? true;
         
         // Load Passkey enabled state
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
@@ -164,7 +164,7 @@ public partial class LoginModel : PageModel
         CustomForgotPasswordUrl = policy.CustomForgotPasswordUrl;
 
         // Load Turnstile enabled state
-        await LoadTurnstileStateAsync(returnUrl);
+        await LoadTurnstileStateAsync(returnUrl, cancellationToken);
 
         // Clear AMR session on Get
         HttpContext.Session.Remove("AuthenticationMethods");
@@ -173,20 +173,20 @@ public partial class LoginModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
+    public async Task<IActionResult> OnPostAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
         returnUrl ??= Url.Content("~/");
 
         // Load settings needed for UI re-rendering
-        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled) ?? true;
+        RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled, cancellationToken) ?? true;
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         PasskeyEnabled = policy.EnablePasskey;
         CustomForgotPasswordUrl = policy.CustomForgotPasswordUrl;
-        await LoadTurnstileStateAsync(returnUrl);
+        await LoadTurnstileStateAsync(returnUrl, cancellationToken);
 
-        ExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl);
+        ExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl, cancellationToken);
 
-        await ApplyDynamicLoginRequiredMessageAsync();
+        await ApplyDynamicLoginRequiredMessageAsync(cancellationToken);
 
         if (!ModelState.IsValid)
         {
@@ -204,7 +204,7 @@ public partial class LoginModel : PageModel
             }
         }
 
-        var result = await _loginService.AuthenticateAsync(Input.Login, Input.Password);
+        var result = await _loginService.AuthenticateAsync(Input.Login, Input.Password, cancellationToken);
 
         switch (result.Status)
         {
@@ -286,7 +286,7 @@ public partial class LoginModel : PageModel
                     var currentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
                     if (currentPolicy.EnforceMandatoryMfaEnrollment)
                     {
-                        var passkeys = await _passkeyService.GetUserPasskeysAsync(result.User.Id);
+                        var passkeys = await _passkeyService.GetUserPasskeysAsync(result.User.Id, cancellationToken);
                         if (passkeys.Count == 0)
                         {
                             // User has NO MFA enabled and NO Passkeys registered
@@ -345,7 +345,7 @@ public partial class LoginModel : PageModel
                             
                             // Note: SignInAsync below merges these claims into the principal
                             await _signInManager.SignInWithClaimsAsync(result.User, Input.RememberMe, claims);
-                            await _userManagementService.UpdateLastLoginAsync(result.User.Id);
+                            await _userManagementService.UpdateLastLoginAsync(result.User.Id, cancellationToken);
                             return this.SafeRedirect(returnUrl);
                         }
                     }
@@ -360,7 +360,7 @@ public partial class LoginModel : PageModel
 
                 // Sign in user (role claims are automatically added by Identity)
                 await _signInManager.SignInWithClaimsAsync(result.User!, isPersistent: Input.RememberMe, amrClaimsList);
-                await _userManagementService.UpdateLastLoginAsync(result.User!.Id);
+                await _userManagementService.UpdateLastLoginAsync(result.User!.Id, cancellationToken);
                 LogUserSignedIn(result.User!.UserName);
                 
                 // Publish audit event for successful login
@@ -495,13 +495,13 @@ public partial class LoginModel : PageModel
         }
     }
 
-    public async Task<IActionResult> OnPostExternalLogin(string provider, string? returnUrl = null)
+    public async Task<IActionResult> OnPostExternalLogin(string provider, string? returnUrl = null, CancellationToken cancellationToken = default)
     {
         returnUrl ??= Request.Form["returnUrl"].FirstOrDefault();
         returnUrl ??= Request.Query["returnUrl"].FirstOrDefault();
         returnUrl ??= Request.Query["ReturnUrl"].FirstOrDefault();
 
-        var availableExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl);
+        var availableExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl, cancellationToken);
         var providerAvailable = availableExternalLogins.Any(scheme =>
             string.Equals(scheme.Name, provider, StringComparison.Ordinal));
 
@@ -516,7 +516,7 @@ public partial class LoginModel : PageModel
         return new ChallengeResult(provider, properties);
     }
 
-    private async Task ApplyDynamicLoginRequiredMessageAsync()
+    private async Task ApplyDynamicLoginRequiredMessageAsync(CancellationToken cancellationToken = default)
     {
         const string loginFieldKey = $"{nameof(Input)}.{nameof(InputModel.Login)}";
 
@@ -527,14 +527,14 @@ public partial class LoginModel : PageModel
             return;
         }
 
-        var displayName = await ResolveLoginDisplayNameAsync();
+        var displayName = await ResolveLoginDisplayNameAsync(cancellationToken);
         var requiredFieldTemplate = _localizer["RequiredField"].Value;
 
         loginFieldState.Errors.Clear();
         ModelState.AddModelError(loginFieldKey, FormatRequiredFieldMessage(requiredFieldTemplate, displayName));
     }
 
-    private async Task<string> ResolveLoginDisplayNameAsync()
+    private async Task<string> ResolveLoginDisplayNameAsync(CancellationToken cancellationToken = default)
     {
         var culture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
 
@@ -569,9 +569,9 @@ public partial class LoginModel : PageModel
         }
     }
 
-    private async Task<IList<AuthenticationScheme>> GetAvailableExternalLoginsAsync(string? returnUrl)
+    private async Task<IList<AuthenticationScheme>> GetAvailableExternalLoginsAsync(string? returnUrl, CancellationToken cancellationToken = default)
     {
-        if (await IsExternalProvidersDisabledAsync(returnUrl))
+        if (await IsExternalProvidersDisabledAsync(returnUrl, cancellationToken))
         {
             return new List<AuthenticationScheme>();
         }
@@ -579,7 +579,7 @@ public partial class LoginModel : PageModel
         return (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
     }
 
-    private async Task<bool> IsExternalProvidersDisabledAsync(string? returnUrl)
+    private async Task<bool> IsExternalProvidersDisabledAsync(string? returnUrl, CancellationToken cancellationToken = default)
     {
         var clientId = ResolveClientIdFromLoginContext(returnUrl);
         if (string.IsNullOrWhiteSpace(clientId))
@@ -587,13 +587,13 @@ public partial class LoginModel : PageModel
             return false;
         }
 
-        var application = await _applicationManager.FindByClientIdAsync(clientId);
+        var application = await _applicationManager.FindByClientIdAsync(clientId, cancellationToken);
         if (application is null)
         {
             return false;
         }
 
-        var properties = await _applicationManager.GetPropertiesAsync(application);
+        var properties = await _applicationManager.GetPropertiesAsync(application, cancellationToken);
         if (!properties.TryGetValue(AuthConstants.Properties.DisableExternalProviders, out var element))
         {
             return false;
@@ -608,7 +608,7 @@ public partial class LoginModel : PageModel
         };
     }
 
-    private async Task<bool> IsTurnstileEnabledForClientAsync(string? returnUrl)
+    private async Task<bool> IsTurnstileEnabledForClientAsync(string? returnUrl, CancellationToken cancellationToken = default)
     {
         var clientId = ResolveClientIdFromLoginContext(returnUrl);
         if (string.IsNullOrWhiteSpace(clientId))
@@ -616,13 +616,13 @@ public partial class LoginModel : PageModel
             return false;
         }
 
-        var application = await _applicationManager.FindByClientIdAsync(clientId);
+        var application = await _applicationManager.FindByClientIdAsync(clientId, cancellationToken);
         if (application is null)
         {
             return false;
         }
 
-        var properties = await _applicationManager.GetPropertiesAsync(application);
+        var properties = await _applicationManager.GetPropertiesAsync(application, cancellationToken);
         if (!properties.TryGetValue(AuthConstants.Properties.EnableTurnstile, out var element))
         {
             return false;

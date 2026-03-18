@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Threading;
 
 namespace Infrastructure.Services;
 
@@ -42,24 +43,24 @@ public partial class PersonService : IPersonService
         _piiMaskingLevel = auditOptions.Value.PiiMaskingLevel;
     }
 
-    public async Task<Person?> GetPersonByIdAsync(Guid personId)
+    public async Task<Person?> GetPersonByIdAsync(Guid personId, CancellationToken cancellationToken = default)
     {
         return await _context.Persons
             .Include(p => p.Accounts)
-            .FirstOrDefaultAsync(p => p.Id == personId);
+            .FirstOrDefaultAsync(p => p.Id == personId, cancellationToken);
     }
 
-    public async Task<Person?> GetPersonByEmployeeIdAsync(string employeeId)
+    public async Task<Person?> GetPersonByEmployeeIdAsync(string employeeId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(employeeId))
             return null;
 
         return await _context.Persons
             .Include(p => p.Accounts)
-            .FirstOrDefaultAsync(p => p.EmployeeId == employeeId);
+            .FirstOrDefaultAsync(p => p.EmployeeId == employeeId, cancellationToken);
     }
 
-    public async Task<List<Person>> GetAllPersonsAsync(int skip = 0, int take = 50)
+    public async Task<List<Person>> GetAllPersonsAsync(int skip = 0, int take = 50, CancellationToken cancellationToken = default)
     {
         return await _context.Persons
             .Include(p => p.Accounts)
@@ -67,10 +68,10 @@ public partial class PersonService : IPersonService
             .ThenBy(p => p.FirstName)
             .Skip(skip)
             .Take(take)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<Person> CreatePersonAsync(Person person, Guid? createdBy = null)
+    public async Task<Person> CreatePersonAsync(Person person, Guid? createdBy = null, CancellationToken cancellationToken = default)
     {
         // Set audit fields
         person.Id = Guid.NewGuid();
@@ -90,7 +91,7 @@ public partial class PersonService : IPersonService
         // Validate EmployeeId uniqueness if provided
         if (!string.IsNullOrWhiteSpace(person.EmployeeId))
         {
-            var existingPerson = await GetPersonByEmployeeIdAsync(person.EmployeeId);
+            var existingPerson = await GetPersonByEmployeeIdAsync(person.EmployeeId, cancellationToken);
             if (existingPerson != null)
             {
                 throw new InvalidOperationException($"A person with EmployeeId '{person.EmployeeId}' already exists.");
@@ -133,7 +134,8 @@ public partial class PersonService : IPersonService
             nationalIdHash,
             passportHash,
             residentCertHash,
-            null);
+            null,
+            cancellationToken);
 
         if (!isUnique)
         {
@@ -150,7 +152,7 @@ public partial class PersonService : IPersonService
             person.NationalId, person.PassportNumber, person.ResidentCertificateNumber);
 
         _context.Persons.Add(person);
-        await _context.SaveChangesAsync(CancellationToken.None);
+        await _context.SaveChangesAsync(cancellationToken);
 
         LogPersonCreated(person.Id, person.EmployeeId ?? "N/A");
 
@@ -168,14 +170,15 @@ public partial class PersonService : IPersonService
             createdBy?.ToString(),
             auditDetails,
             null,
-            null);
+            null,
+            cancellationToken);
 
         return person;
     }
 
-    public async Task<Person?> UpdatePersonAsync(Guid personId, Person person, Guid? modifiedBy = null)
+    public async Task<Person?> UpdatePersonAsync(Guid personId, Person person, Guid? modifiedBy = null, CancellationToken cancellationToken = default)
     {
-        var existingPerson = await GetPersonByIdAsync(personId);
+        var existingPerson = await GetPersonByIdAsync(personId, cancellationToken);
         if (existingPerson == null)
             return null;
 
@@ -191,7 +194,7 @@ public partial class PersonService : IPersonService
         if (!string.IsNullOrWhiteSpace(person.EmployeeId) && 
             person.EmployeeId != existingPerson.EmployeeId)
         {
-            var duplicatePerson = await GetPersonByEmployeeIdAsync(person.EmployeeId);
+            var duplicatePerson = await GetPersonByEmployeeIdAsync(person.EmployeeId, cancellationToken);
             if (duplicatePerson != null && duplicatePerson.Id != personId)
             {
                 throw new InvalidOperationException($"A person with EmployeeId '{person.EmployeeId}' already exists.");
@@ -241,7 +244,8 @@ public partial class PersonService : IPersonService
             finalNationalId,
             finalPassport,
             finalResidentCert,
-            personId);
+            personId,
+            cancellationToken);
 
         if (!isUnique)
         {
@@ -306,7 +310,7 @@ public partial class PersonService : IPersonService
         existingPerson.ModifiedAt = DateTime.UtcNow;
         existingPerson.ModifiedBy = modifiedBy;
 
-        await _context.SaveChangesAsync(CancellationToken.None);
+        await _context.SaveChangesAsync(cancellationToken);
 
         LogPersonUpdated(personId, existingPerson.EmployeeId ?? "N/A");
 
@@ -325,20 +329,21 @@ public partial class PersonService : IPersonService
             modifiedBy?.ToString(),
             auditDetails,
             null,
-            null);
+            null,
+            cancellationToken);
 
         return existingPerson;
     }
 
-    public async Task<bool> DeletePersonAsync(Guid personId)
+    public async Task<bool> DeletePersonAsync(Guid personId, CancellationToken cancellationToken = default)
     {
-        var person = await _context.Persons.FindAsync(personId);
+        var person = await _context.Persons.FindAsync([personId], cancellationToken);
         if (person == null)
             return false;
 
         // Note: Related ApplicationUsers will have their PersonId set to NULL due to OnDelete: SetNull
         _context.Persons.Remove(person);
-        await _context.SaveChangesAsync(CancellationToken.None);
+        await _context.SaveChangesAsync(cancellationToken);
 
         LogPersonDeleted(personId, person.EmployeeId ?? "N/A");
 
@@ -356,23 +361,24 @@ public partial class PersonService : IPersonService
             null, // Deletion typically done by admin, tracked at controller level
             auditDetails,
             null,
-            null);
+            null,
+            cancellationToken);
 
         return true;
     }
 
-    public async Task<List<ApplicationUser>> GetPersonAccountsAsync(Guid personId)
+    public async Task<List<ApplicationUser>> GetPersonAccountsAsync(Guid personId, CancellationToken cancellationToken = default)
     {
         return await _context.Users
             .Where(u => u.PersonId == personId)
             .OrderBy(u => u.UserName)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<bool> LinkAccountToPersonAsync(Guid personId, Guid userId, Guid? modifiedBy = null)
+    public async Task<bool> LinkAccountToPersonAsync(Guid personId, Guid userId, Guid? modifiedBy = null, CancellationToken cancellationToken = default)
     {
         // Verify person exists
-        var person = await GetPersonByIdAsync(personId);
+        var person = await GetPersonByIdAsync(personId, cancellationToken);
         if (person == null)
         {
             LogPersonNotFoundForLinking(personId);
@@ -381,7 +387,7 @@ public partial class PersonService : IPersonService
 
         // Verify user exists and fetch fresh data from database (avoid cache)
         var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Id == userId);
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
         if (user == null)
         {
             LogUserNotFoundForLinking(userId);
@@ -410,7 +416,7 @@ public partial class PersonService : IPersonService
         // Sync roles from existing accounts in the same Person
         var existingAccounts = await _context.Users
             .Where(u => u.PersonId == personId && u.Id != userId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
             
         if (existingAccounts.Count > 0)
         {
@@ -429,7 +435,7 @@ public partial class PersonService : IPersonService
             }
         }
 
-        await _context.SaveChangesAsync(CancellationToken.None);
+        await _context.SaveChangesAsync(cancellationToken);
 
         LogPersonAccountLinked(userId, user.UserName, personId, person.EmployeeId ?? "N/A");
 
@@ -448,14 +454,15 @@ public partial class PersonService : IPersonService
             modifiedBy?.ToString(),
             auditDetails,
             null,
-            null);
+            null,
+            cancellationToken);
 
         return true;
     }
 
-    public async Task<bool> UnlinkAccountFromPersonAsync(Guid userId, Guid? modifiedBy = null)
+    public async Task<bool> UnlinkAccountFromPersonAsync(Guid userId, Guid? modifiedBy = null, CancellationToken cancellationToken = default)
     {
-        var user = await _context.Users.FindAsync(userId);
+        var user = await _context.Users.FindAsync([userId], cancellationToken);
         if (user == null)
         {
             LogUserNotFoundForUnlinking(userId);
@@ -469,7 +476,7 @@ public partial class PersonService : IPersonService
         user.ModifiedAt = DateTime.UtcNow;
         user.ModifiedBy = modifiedBy;
 
-        await _context.SaveChangesAsync(CancellationToken.None);
+        await _context.SaveChangesAsync(cancellationToken);
 
         LogPersonAccountUnlinked(userId, user.UserName, previousPersonId ?? Guid.Empty);
 
@@ -487,15 +494,16 @@ public partial class PersonService : IPersonService
             modifiedBy?.ToString(),
             auditDetails,
             null,
-            null);
+            null,
+            cancellationToken);
 
         return true;
     }
 
-    public async Task<List<Person>> SearchPersonsAsync(string searchTerm, int skip = 0, int take = 50)
+    public async Task<List<Person>> SearchPersonsAsync(string searchTerm, int skip = 0, int take = 50, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
-            return await GetAllPersonsAsync(skip, take);
+            return await GetAllPersonsAsync(skip, take, cancellationToken);
 
         var term = searchTerm.ToLower();
 
@@ -510,16 +518,16 @@ public partial class PersonService : IPersonService
             .ThenBy(p => p.FirstName)
             .Skip(skip)
             .Take(take)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<int> GetPersonsCountAsync()
+    public async Task<int> GetPersonsCountAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.Persons.CountAsync();
+        return await _context.Persons.CountAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task<List<ApplicationUser>> GetUnlinkedUsersAsync(string? searchTerm = null)
+    public async Task<List<ApplicationUser>> GetUnlinkedUsersAsync(string? searchTerm = null, CancellationToken cancellationToken = default)
     {
         LogGettingUnlinkedUsers(searchTerm ?? "(none)");
 
@@ -538,7 +546,7 @@ public partial class PersonService : IPersonService
         return await query
             .OrderBy(u => u.Email)
             .Take(100) // Limit to prevent large result sets
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -546,7 +554,8 @@ public partial class PersonService : IPersonService
         string? nationalId,
         string? passportNumber,
         string? residentCertificateNumber,
-        Guid? excludePersonId = null)
+        Guid? excludePersonId = null,
+        CancellationToken cancellationToken = default)
     {
         // Normalize empty strings to null for proper comparison
         nationalId = string.IsNullOrWhiteSpace(nationalId) ? null : nationalId;
@@ -568,7 +577,7 @@ public partial class PersonService : IPersonService
                 (nationalId != null && p.NationalId == nationalId) ||
                 (passportNumber != null && p.PassportNumber == passportNumber) ||
                 (residentCertificateNumber != null && p.ResidentCertificateNumber == residentCertificateNumber))
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (existingPerson != null)
         {
@@ -579,9 +588,9 @@ public partial class PersonService : IPersonService
     }
 
     /// <inheritdoc />
-    public async Task<bool> VerifyPersonIdentityAsync(Guid personId, Guid verifiedByUserId)
+    public async Task<bool> VerifyPersonIdentityAsync(Guid personId, Guid verifiedByUserId, CancellationToken cancellationToken = default)
     {
-        var person = await GetPersonByIdAsync(personId);
+        var person = await GetPersonByIdAsync(personId, cancellationToken);
         if (person == null)
         {
             LogPersonNotFoundForVerification(personId);
@@ -601,7 +610,7 @@ public partial class PersonService : IPersonService
         person.IdentityVerifiedAt = DateTime.UtcNow;
         person.IdentityVerifiedBy = verifiedByUserId;
 
-        await _context.SaveChangesAsync(CancellationToken.None);
+        await _context.SaveChangesAsync(cancellationToken);
 
         LogPersonIdentityVerified(personId, verifiedByUserId);
 
@@ -620,7 +629,8 @@ public partial class PersonService : IPersonService
             verifiedByUserId.ToString(),
             auditDetails,
             null,
-            null);
+            null,
+            cancellationToken);
 
         return true;
     }
@@ -677,13 +687,13 @@ public partial class PersonService : IPersonService
     partial void LogAssetsTransferred(Guid fromPersonId, Guid toPersonId, int apiCount, int scopeCount, int clientCount);
 
     /// <inheritdoc />
-    public async Task TransferAssetsAsync(Guid fromPersonId, Guid toPersonId)
+    public async Task TransferAssetsAsync(Guid fromPersonId, Guid toPersonId, CancellationToken cancellationToken = default)
     {
-        var fromPerson = await GetPersonByIdAsync(fromPersonId);
+        var fromPerson = await GetPersonByIdAsync(fromPersonId, cancellationToken);
         if (fromPerson == null)
             throw new KeyNotFoundException($"Source person {fromPersonId} not found");
 
-        var toPerson = await GetPersonByIdAsync(toPersonId);
+        var toPerson = await GetPersonByIdAsync(toPersonId, cancellationToken);
         if (toPerson == null)
             throw new KeyNotFoundException($"Target person {toPersonId} not found");
 
@@ -694,7 +704,7 @@ public partial class PersonService : IPersonService
         // 1. ApiResources
         var apiResources = await _context.ApiResources
             .Where(r => r.OwnerPersonId == fromPersonId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
         foreach (var r in apiResources)
         {
             r.OwnerPersonId = toPersonId;
@@ -704,7 +714,7 @@ public partial class PersonService : IPersonService
         // 2. ScopeOwnerships
         var scopes = await _context.ScopeOwnerships
             .Where(o => o.CreatedByPersonId == fromPersonId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
         foreach (var s in scopes)
         {
             s.CreatedByPersonId = toPersonId;
@@ -714,14 +724,14 @@ public partial class PersonService : IPersonService
         // 3. ClientOwnerships
         var clients = await _context.ClientOwnerships
             .Where(o => o.CreatedByPersonId == fromPersonId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
         foreach (var c in clients)
         {
             c.CreatedByPersonId = toPersonId;
         }
         var clientsCount = clients.Count;
 
-        await _context.SaveChangesAsync(CancellationToken.None);
+        await _context.SaveChangesAsync(cancellationToken);
 
         LogAssetsTransferred(fromPersonId, toPersonId, apiResourcesCount, scopesCount, clientsCount);
 
@@ -743,7 +753,8 @@ public partial class PersonService : IPersonService
             null, // Triggered by admin usually
             auditDetails,
             null,
-            null);
+            null,
+            cancellationToken);
     }
 
     /// <summary>

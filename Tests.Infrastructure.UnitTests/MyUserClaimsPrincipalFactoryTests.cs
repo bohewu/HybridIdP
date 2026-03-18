@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Threading;
 using Xunit;
 using Core.Domain.Constants;
 
@@ -214,7 +215,8 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
             user.Id.ToString(),
             It.Is<string>(s => s.Contains("PersonId") && s.Contains("ApplicationUserId") && s.Contains("HealedAt")),
             null,
-            null), Times.Once);
+            null,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -271,7 +273,7 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
         Assert.Equal(initialPersonCount, finalPersonCount);
 
         // Verify no audit was logged
-        _auditServiceMock.Verify(a => a.LogEventAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _auditServiceMock.Verify(a => a.LogEventAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
 }

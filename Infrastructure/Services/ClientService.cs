@@ -8,6 +8,7 @@ using OpenIddict.Abstractions;
 using System.Security.Cryptography;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using System.Text.Json;
+using System.Threading;
 using Infrastructure.Options;
 using Microsoft.Extensions.Options;
 using AuthConstants = Core.Domain.Constants.AuthConstants;
@@ -47,7 +48,8 @@ public class ClientService : IClientService
         string? search,
         string? type,
         string? sort,
-        Guid? ownerPersonId = null)
+        Guid? ownerPersonId = null,
+        CancellationToken cancellationToken = default)
     {
         var summaries = new List<ClientSummary>();
 
@@ -58,11 +60,11 @@ public class ClientService : IClientService
             ownedClientIds = (await _context.ClientOwnerships
                 .Where(co => co.CreatedByPersonId == ownerPersonId.Value)
                 .Select(co => co.ClientId)
-                .ToListAsync())
+                .ToListAsync(cancellationToken))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
 
-        await foreach (var application in _applicationManager.ListAsync())
+        await foreach (var application in _applicationManager.ListAsync().WithCancellation(cancellationToken))
         {
             var id = await _applicationManager.GetIdAsync(application);
             var clientId = await _applicationManager.GetClientIdAsync(application);
@@ -149,9 +151,9 @@ public class ClientService : IClientService
         return (items, totalCount);
     }
 
-    public async Task<ClientDetail?> GetClientByIdAsync(Guid id)
+    public async Task<ClientDetail?> GetClientByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var application = await _applicationManager.FindByIdAsync(id.ToString());
+        var application = await _applicationManager.FindByIdAsync(id.ToString(), cancellationToken);
         if (application == null)
         {
             return null;
@@ -161,7 +163,7 @@ public class ClientService : IClientService
         var postLogoutUris = await _applicationManager.GetPostLogoutRedirectUrisAsync(application);
         var permissions = await _applicationManager.GetPermissionsAsync(application);
         var descriptor = new OpenIddictApplicationDescriptor();
-        await _applicationManager.PopulateAsync(descriptor, application);
+        await _applicationManager.PopulateAsync(descriptor, application, cancellationToken);
         var clientType = await _applicationManager.GetClientTypeAsync(application) ?? string.Empty;
         var properties = await _applicationManager.GetPropertiesAsync(application);
 
@@ -183,7 +185,7 @@ public class ClientService : IClientService
         };
     }
 
-    public async Task<CreateClientResponse> CreateClientAsync(CreateClientRequest request, Guid? creatorPersonId = null)
+    public async Task<CreateClientResponse> CreateClientAsync(CreateClientRequest request, Guid? creatorPersonId = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.ClientId))
         {
@@ -191,7 +193,7 @@ public class ClientService : IClientService
         }
 
         // Check if client already exists
-        var existing = await _applicationManager.FindByClientIdAsync(request.ClientId);
+        var existing = await _applicationManager.FindByClientIdAsync(request.ClientId, cancellationToken);
         if (existing != null)
         {
             throw new InvalidOperationException($"Client with ID '{request.ClientId}' already exists.");
@@ -317,12 +319,12 @@ public class ClientService : IClientService
             // Check if any requested scope is public
             foreach (var scopeName in requestedScopes)
             {
-                var scope = await _scopeManager.FindByNameAsync(scopeName);
+                var scope = await _scopeManager.FindByNameAsync(scopeName, cancellationToken);
                 if (scope != null)
                 {
-                    var scopeId = await _scopeManager.GetIdAsync(scope);
+                    var scopeId = await _scopeManager.GetIdAsync(scope, cancellationToken);
                     var extension = await _context.ScopeExtensions
-                        .FirstOrDefaultAsync(se => se.ScopeId == scopeId);
+                        .FirstOrDefaultAsync(se => se.ScopeId == scopeId, cancellationToken);
                     
                     if (extension?.IsPublic == true)
                     {
@@ -342,8 +344,8 @@ public class ClientService : IClientService
             throw new ArgumentException("Redirect URIs are required for interactive clients (Authorization Code or Implicit flow).");
         }
 
-        var application = await _applicationManager.CreateAsync(descriptor);
-        var id = await _applicationManager.GetIdAsync(application);
+        var application = await _applicationManager.CreateAsync(descriptor, cancellationToken);
+        var id = await _applicationManager.GetIdAsync(application, cancellationToken);
 
         // Create ownership record if creator info provided
         if (creatorPersonId.HasValue)
@@ -355,7 +357,7 @@ public class ClientService : IClientService
                 CreatedAt = DateTime.UtcNow
             };
             _context.ClientOwnerships.Add(ownership);
-            await _context.SaveChangesAsync(CancellationToken.None);
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         // Publish domain event
@@ -370,9 +372,9 @@ public class ClientService : IClientService
         };
     }
 
-    public async Task UpdateClientAsync(Guid id, UpdateClientRequest request)
+    public async Task UpdateClientAsync(Guid id, UpdateClientRequest request, CancellationToken cancellationToken = default)
     {
-        var application = await _applicationManager.FindByIdAsync(id.ToString());
+        var application = await _applicationManager.FindByIdAsync(id.ToString(), cancellationToken);
         if (application == null)
         {
             throw new KeyNotFoundException($"Client with ID '{id}' not found.");
@@ -380,7 +382,7 @@ public class ClientService : IClientService
 
         // Get descriptor populated from existing application to preserve all properties
         var descriptor = new OpenIddictApplicationDescriptor();
-        await _applicationManager.PopulateAsync(descriptor, application);
+        await _applicationManager.PopulateAsync(descriptor, application, cancellationToken);
 
         // Ensure ApplicationType and ClientType are set (fix for existing apps without type)
         if (string.IsNullOrEmpty(descriptor.ApplicationType))
@@ -473,12 +475,12 @@ public class ClientService : IClientService
                 // Check if any requested scope is public
                 foreach (var scopeName in requestedScopes)
                 {
-                    var scope = await _scopeManager.FindByNameAsync(scopeName);
+                    var scope = await _scopeManager.FindByNameAsync(scopeName, cancellationToken);
                     if (scope != null)
                     {
-                        var scopeId = await _scopeManager.GetIdAsync(scope);
+                        var scopeId = await _scopeManager.GetIdAsync(scope, cancellationToken);
                         var extension = await _context.ScopeExtensions
-                            .FirstOrDefaultAsync(se => se.ScopeId == scopeId);
+                            .FirstOrDefaultAsync(se => se.ScopeId == scopeId, cancellationToken);
                         
                         if (extension?.IsPublic == true)
                         {
@@ -545,8 +547,8 @@ public class ClientService : IClientService
             throw new ArgumentException("Redirect URIs are required for interactive clients (Authorization Code or Implicit flow).");
         }
 
-        await _applicationManager.PopulateAsync(application, descriptor);
-        await _applicationManager.UpdateAsync(application);
+        await _applicationManager.PopulateAsync(application, descriptor, cancellationToken);
+        await _applicationManager.UpdateAsync(application, cancellationToken);
 
         // Publish domain event
         var changes = "Updated client details";
@@ -559,17 +561,17 @@ public class ClientService : IClientService
         }
     }
 
-    public async Task DeleteClientAsync(Guid id)
+    public async Task DeleteClientAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var application = await _applicationManager.FindByIdAsync(id.ToString());
+        var application = await _applicationManager.FindByIdAsync(id.ToString(), cancellationToken);
         if (application == null)
         {
             throw new KeyNotFoundException($"Client with ID '{id}' not found.");
         }
 
-        var clientId = await _applicationManager.GetClientIdAsync(application);
+        var clientId = await _applicationManager.GetClientIdAsync(application, cancellationToken);
 
-        await _applicationManager.DeleteAsync(application);
+        await _applicationManager.DeleteAsync(application, cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(clientId))
         {
@@ -577,22 +579,22 @@ public class ClientService : IClientService
                 .Where(co => co.ClientId == clientId);
 
             _context.ClientOwnerships.RemoveRange(ownerships);
-            await _context.SaveChangesAsync(CancellationToken.None);
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         // Publish domain event
         await _eventPublisher.PublishAsync(new ClientDeletedEvent(id.ToString(), clientId!));
     }
 
-    public async Task<string> RegenerateSecretAsync(Guid id)
+    public async Task<string> RegenerateSecretAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var application = await _applicationManager.FindByIdAsync(id.ToString());
+        var application = await _applicationManager.FindByIdAsync(id.ToString(), cancellationToken);
         if (application == null)
         {
             throw new KeyNotFoundException($"Client with ID '{id}' not found.");
         }
 
-        var clientType = await _applicationManager.GetClientTypeAsync(application);
+        var clientType = await _applicationManager.GetClientTypeAsync(application, cancellationToken);
         if (clientType != ClientTypes.Confidential)
         {
             throw new InvalidOperationException("Secret regeneration is only available for confidential clients.");
@@ -602,36 +604,36 @@ public class ClientService : IClientService
         var newSecret = Base64UrlTextEncoder.Encode(bytes);
 
         var descriptor = new OpenIddictApplicationDescriptor();
-        await _applicationManager.PopulateAsync(descriptor, application);
+        await _applicationManager.PopulateAsync(descriptor, application, cancellationToken);
         descriptor.ClientSecret = newSecret;
 
-        await _applicationManager.PopulateAsync(application, descriptor);
-        await _applicationManager.UpdateAsync(application);
+        await _applicationManager.PopulateAsync(application, descriptor, cancellationToken);
+        await _applicationManager.UpdateAsync(application, cancellationToken);
 
         // Publish domain event
-        var clientId = await _applicationManager.GetClientIdAsync(application);
+        var clientId = await _applicationManager.GetClientIdAsync(application, cancellationToken);
         await _eventPublisher.PublishAsync(new ClientSecretChangedEvent(id.ToString(), clientId!));
 
         return newSecret;
     }
 
-    public async Task<bool> IsClientOwnedByPersonAsync(Guid clientId, Guid personId)
+    public async Task<bool> IsClientOwnedByPersonAsync(Guid clientId, Guid personId, CancellationToken cancellationToken = default)
     {
         // First get the clientId string from the application
-        var application = await _applicationManager.FindByIdAsync(clientId.ToString());
+        var application = await _applicationManager.FindByIdAsync(clientId.ToString(), cancellationToken);
         if (application == null)
         {
             return false;
         }
 
-        var clientIdStr = await _applicationManager.GetClientIdAsync(application);
+        var clientIdStr = await _applicationManager.GetClientIdAsync(application, cancellationToken);
         if (string.IsNullOrEmpty(clientIdStr))
         {
             return false;
         }
 
         return await _context.ClientOwnerships
-            .AnyAsync(co => co.ClientId == clientIdStr && co.CreatedByPersonId == personId);
+            .AnyAsync(co => co.ClientId == clientIdStr && co.CreatedByPersonId == personId, cancellationToken);
     }
 
     private static List<string> GetSupportedRoles(System.Collections.Immutable.ImmutableDictionary<string, JsonElement>? properties)

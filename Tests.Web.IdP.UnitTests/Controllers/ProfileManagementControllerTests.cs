@@ -343,7 +343,8 @@ public class ProfileManagementControllerTests : IDisposable
             It.IsAny<string>(),
             It.IsAny<string>(),
             It.IsAny<string>(),
-            It.IsAny<string>()))
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -366,7 +367,8 @@ public class ProfileManagementControllerTests : IDisposable
             _testUser.Id.ToString(),
             It.IsAny<string>(),
             null,
-            null), Times.Once);
+            null,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -483,7 +485,8 @@ public class ProfileManagementControllerTests : IDisposable
             It.IsAny<string>(),
             It.IsAny<string>(),
             It.IsAny<string>(),
-            It.IsAny<string>()))
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var request = new ChangePasswordRequest
@@ -506,7 +509,8 @@ public class ProfileManagementControllerTests : IDisposable
             _testUser.Id.ToString(),
             It.IsAny<string>(),
             null,
-            null), Times.Once);
+            null,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -529,7 +533,8 @@ public class ProfileManagementControllerTests : IDisposable
             It.IsAny<string>(),
             It.IsAny<string>(),
             It.IsAny<string>(),
-            It.IsAny<string>()))
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var request = new RemoveLoginRequest
@@ -557,7 +562,8 @@ public class ProfileManagementControllerTests : IDisposable
             _testUser.Id.ToString(),
             It.IsAny<string>(),
             null,
-            null), Times.Once);
+            null,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

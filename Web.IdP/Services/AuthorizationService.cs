@@ -122,7 +122,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             {
                 if (promptValues.Contains("none", StringComparer.OrdinalIgnoreCase))
                 {
-                    await LogSuspiciousAuthorizeProbeAsync(request, prompt);
+                    await LogSuspiciousAuthorizeProbeAsync(request, prompt, cancellationToken);
                     return new ForbidResult(
                         authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
                         properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -194,7 +194,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 {
                     LogMfaRequiredButNotPresent();
 
-                    var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id);
+                    var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, cancellationToken);
                     var hasPasskeys = passkeys.Count > 0;
 
                     // Check if user has capability to perform MFA.
@@ -410,7 +410,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     requested = requestScopes,
                     reason = "user_denied"
                 });
-                await _auditService.LogEventAsync("AuthorizationDenied", userPrincipal.GetClaim(Claims.Subject), denyDetails, ip, ua);
+                await _auditService.LogEventAsync("AuthorizationDenied", userPrincipal.GetClaim(Claims.Subject), denyDetails, ip, ua, cancellationToken);
 
                 return new ForbidResult(
                     authenticationSchemes: new []{ OpenIddictServerAspNetCoreDefaults.AuthenticationScheme },
@@ -487,7 +487,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     missingRequiredScopes = missingRequired,
                     grantedScopes = granted_scopes ?? Array.Empty<string>()
                 });
-                await _auditService.LogEventAsync("ConsentTamperingDetected", userPrincipal.GetClaim(Claims.Subject), tamperDetails, ip, ua);
+                await _auditService.LogEventAsync("ConsentTamperingDetected", userPrincipal.GetClaim(Claims.Subject), tamperDetails, ip, ua, cancellationToken);
                 
                 // Return BadRequest. NOTE: In a real controller this would be BadRequestResult or ContentResult.
                 // Here we might need a custom result type or just return a simple IActionResult that Controller can interpret.
@@ -580,7 +580,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 await _userManager.GetUserIdAsync(user),
                 auditDetails,
                 ipAddress,
-                userAgent);
+                userAgent,
+                cancellationToken);
 
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
         }
@@ -669,7 +670,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
 
-        private async Task LogSuspiciousAuthorizeProbeAsync(OpenIddictRequest request, string? prompt)
+        private async Task LogSuspiciousAuthorizeProbeAsync(OpenIddictRequest request, string? prompt, CancellationToken cancellationToken = default)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var userAgent = Request.Headers.UserAgent.ToString();
@@ -688,7 +689,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 null,
                 details,
                 ip,
-                userAgent);
+                userAgent,
+                cancellationToken);
 
             LogPromptNoneProbeDetected(
                 request.ClientId,

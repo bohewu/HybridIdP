@@ -26,7 +26,7 @@ public class UserInfoService : IUserInfoService
         _logger = logger ?? NullLogger<UserInfoService>.Instance;
     }
 
-    public async Task<Dictionary<string, object>> GetUserInfoAsync(ClaimsPrincipal principal)
+    public async Task<Dictionary<string, object>> GetUserInfoAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
         if (principal == null)
         {
@@ -52,7 +52,7 @@ public class UserInfoService : IUserInfoService
         var scopeClaims = await _db.ScopeClaims
             .Where(sc => grantedScopes.Contains(sc.ScopeName))
             .Include(sc => sc.ClaimDefinition)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         foreach (var scopeClaim in scopeClaims)
         {

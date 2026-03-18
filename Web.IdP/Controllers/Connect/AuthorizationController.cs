@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +25,7 @@ namespace Web.IdP.Controllers.Connect
         [EnableRateLimiting("authorize")]
         [IgnoreAntiforgeryToken] // OpenIddict handles CSRF protection
         [RequireClientPermission(OpenIddictConstants.Permissions.Endpoints.Authorization)]
-        public async Task<IActionResult> Authorize()
+        public async Task<IActionResult> Authorize(CancellationToken cancellationToken)
         {
             var request = HttpContext.GetOpenIddictServerRequest() ??
                 throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
@@ -36,12 +37,12 @@ namespace Web.IdP.Controllers.Connect
                 var submit = Request.Form["submit"]; // "allow" or "deny"
                 var grantedScopes = Request.Form["granted_scopes"].ToString().Split(',', StringSplitOptions.RemoveEmptyEntries); 
                 
-                return await _authorizationService.HandleAuthorizeSubmitAsync(User, request, submit, grantedScopes);
+                return await _authorizationService.HandleAuthorizeSubmitAsync(User, request, submit, grantedScopes, cancellationToken);
             }
             
             // GET request (render consent or challenge)
             string? prompt = request.Prompt;
-            var result = await _authorizationService.HandleAuthorizeRequestAsync(User, request, prompt);
+            var result = await _authorizationService.HandleAuthorizeRequestAsync(User, request, prompt, cancellationToken);
 
             if (result is OkResult)
             {

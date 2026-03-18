@@ -47,12 +47,13 @@ public class ClientsController : ControllerBase
         [FromQuery] int take = 25,
         [FromQuery] string? search = null,
         [FromQuery] string? type = null,
-        [FromQuery] string? sort = null)
+        [FromQuery] string? sort = null,
+        CancellationToken cancellationToken = default)
     {
         // Admin sees all clients, non-Admin sees only their own
         Guid? ownerPersonId = IsAdmin() ? null : GetCurrentPersonId();
         
-        var (items, totalCount) = await _clientService.GetClientsAsync(skip, take, search, type, sort, ownerPersonId);
+        var (items, totalCount) = await _clientService.GetClientsAsync(skip, take, search, type, sort, ownerPersonId, cancellationToken);
         return Ok(new { items, totalCount });
     }
 
@@ -61,14 +62,14 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpGet("{id}")]
     [HasPermission(DomainPermissions.Clients.Read)]
-    public async Task<IActionResult> GetClient(string id)
+    public async Task<IActionResult> GetClient(string id, CancellationToken cancellationToken = default)
     {
         if (!Guid.TryParse(id, out var clientId))
         {
             return BadRequest(new { message = "Invalid client ID format." });
         }
 
-        var client = await _clientService.GetClientByIdAsync(clientId);
+        var client = await _clientService.GetClientByIdAsync(clientId, cancellationToken);
         if (client == null)
         {
             return NotFound(new { message = $"Client with ID '{id}' not found." });
@@ -97,7 +98,7 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpPost]
     [HasPermission(DomainPermissions.Clients.Create)]
-    public async Task<IActionResult> CreateClient([FromBody] CreateClientRequest request)
+    public async Task<IActionResult> CreateClient([FromBody] CreateClientRequest request, CancellationToken cancellationToken = default)
     {
         var hardeningBlockResult = EnforceClientWriteHardening();
         if (hardeningBlockResult != null)
@@ -109,7 +110,7 @@ public class ClientsController : ControllerBase
         {
             var personId = GetCurrentPersonId();
             
-            var response = await _clientService.CreateClientAsync(request, personId);
+            var response = await _clientService.CreateClientAsync(request, personId, cancellationToken);
             return CreatedAtAction(nameof(GetClient), new { id = response.Id }, new
             {
                 id = response.Id,
@@ -134,7 +135,7 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpPut("{id}")]
     [HasPermission(DomainPermissions.Clients.Update)]
-    public async Task<IActionResult> UpdateClient(string id, [FromBody] UpdateClientRequest request)
+    public async Task<IActionResult> UpdateClient(string id, [FromBody] UpdateClientRequest request, CancellationToken cancellationToken = default)
     {
         var hardeningBlockResult = EnforceClientWriteHardening();
         if (hardeningBlockResult != null)
@@ -149,7 +150,7 @@ public class ClientsController : ControllerBase
 
         try
         {
-            await _clientService.UpdateClientAsync(clientId, request);
+            await _clientService.UpdateClientAsync(clientId, request, cancellationToken);
             return Ok(new
             {
                 id,
@@ -171,7 +172,7 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpDelete("{id}")]
     [HasPermission(DomainPermissions.Clients.Delete)]
-    public async Task<IActionResult> DeleteClient(string id)
+    public async Task<IActionResult> DeleteClient(string id, CancellationToken cancellationToken = default)
     {
         var hardeningBlockResult = EnforceClientWriteHardening();
         if (hardeningBlockResult != null)
@@ -186,7 +187,7 @@ public class ClientsController : ControllerBase
 
         try
         {
-            await _clientService.DeleteClientAsync(clientId);
+            await _clientService.DeleteClientAsync(clientId, cancellationToken);
             return Ok(new { message = "Client deleted successfully." });
         }
         catch (KeyNotFoundException ex)
@@ -200,7 +201,7 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpPost("{id}/regenerate-secret")]
     [HasPermission(DomainPermissions.Clients.Update)]
-    public async Task<IActionResult> RegenerateSecret(string id)
+    public async Task<IActionResult> RegenerateSecret(string id, CancellationToken cancellationToken = default)
     {
         var hardeningBlockResult = EnforceClientWriteHardening();
         if (hardeningBlockResult != null)
@@ -215,7 +216,7 @@ public class ClientsController : ControllerBase
 
         try
         {
-            var newSecret = await _clientService.RegenerateSecretAsync(clientId);
+            var newSecret = await _clientService.RegenerateSecretAsync(clientId, cancellationToken);
             return Ok(new
             {
                 message = "Client secret regenerated successfully.",

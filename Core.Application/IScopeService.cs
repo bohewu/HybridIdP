@@ -1,5 +1,6 @@
 using Core.Application.DTOs;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Core.Application
@@ -15,9 +16,9 @@ namespace Core.Application
         /// <param name="sort">Sort field and direction</param>
         /// <param name="ownerFilterId">Optional: Filter by owner PersonId (for strict filtering)</param>
         /// <param name="viewerPersonId">Optional: The PersonId of the viewer (to calculate IsReadOnly)</param>
-        Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerFilterId = null, Guid? viewerPersonId = null);
+        Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerFilterId = null, Guid? viewerPersonId = null, CancellationToken cancellationToken = default);
         
-        Task<ScopeSummary?> GetScopeByIdAsync(string id);
+        Task<ScopeSummary?> GetScopeByIdAsync(string id, CancellationToken cancellationToken = default);
         
         /// <summary>
         /// Create a new scope.
@@ -25,10 +26,10 @@ namespace Core.Application
         /// <param name="request">Scope creation request</param>
         /// <param name="creatorUserId">The ApplicationUser ID creating this scope</param>
         /// <param name="creatorPersonId">The Person ID owning this scope (for ownership tracking)</param>
-        Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request, Guid? creatorPersonId = null);
+        Task<ScopeSummary> CreateScopeAsync(CreateScopeRequest request, Guid? creatorPersonId = null, CancellationToken cancellationToken = default);
         
-        Task<bool> UpdateScopeAsync(string id, UpdateScopeRequest request);
-        Task<bool> DeleteScopeAsync(string id);
+        Task<bool> UpdateScopeAsync(string id, UpdateScopeRequest request, CancellationToken cancellationToken = default);
+        Task<bool> DeleteScopeAsync(string id, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets all claims associated with a specific scope.
@@ -36,7 +37,7 @@ namespace Core.Application
         /// <param name="scopeId">The scope ID</param>
         /// <returns>Tuple containing scope ID, scope name, and list of associated claims</returns>
         /// <exception cref="KeyNotFoundException">Thrown when the scope is not found</exception>
-        Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> GetScopeClaimsAsync(string scopeId);
+        Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> GetScopeClaimsAsync(string scopeId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Updates the claims associated with a specific scope.
@@ -47,7 +48,7 @@ namespace Core.Application
         /// <returns>Tuple containing scope ID, scope name, and updated list of claims</returns>
         /// <exception cref="KeyNotFoundException">Thrown when the scope is not found</exception>
         /// <exception cref="ArgumentException">Thrown when a claim ID is not found</exception>
-        Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> UpdateScopeClaimsAsync(string scopeId, UpdateScopeClaimsRequest request);
+        Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> UpdateScopeClaimsAsync(string scopeId, UpdateScopeClaimsRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Classifies requested scopes into allowed (including required), required and rejected sets.
@@ -62,6 +63,6 @@ namespace Core.Application
         /// <summary>
         /// Check if a user (by PersonId) owns a specific scope.
         /// </summary>
-        Task<bool> IsScopeOwnedByPersonAsync(string scopeId, Guid personId);
+        Task<bool> IsScopeOwnedByPersonAsync(string scopeId, Guid personId, CancellationToken cancellationToken = default);
     }
 }

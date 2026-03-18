@@ -59,7 +59,7 @@ public class AuditService : IAuditService,
         _piiMaskingLevel = auditOptions.Value.PiiMaskingLevel;
     }
 
-    public async Task LogEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent)
+    public async Task LogEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
     {
         var auditEvent = new AuditEvent
         {
@@ -72,10 +72,10 @@ public class AuditService : IAuditService,
         };
 
         _db.AuditEvents.Add(auditEvent);
-        await _db.SaveChangesAsync(CancellationToken.None);
+        await _db.SaveChangesAsync(cancellationToken);
 
         // Retention policy purge (config key: Audit.RetentionDays)
-        var retentionDays = await _settingsService.GetValueAsync<int>(SettingKeys.Audit.RetentionDays, CancellationToken.None);
+        var retentionDays = await _settingsService.GetValueAsync<int>(SettingKeys.Audit.RetentionDays, cancellationToken);
         if (retentionDays > 0)
         {
             var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
@@ -83,7 +83,7 @@ public class AuditService : IAuditService,
             if (oldEvents.Count > 0)
             {
                 _db.AuditEvents.RemoveRange(oldEvents);
-                await _db.SaveChangesAsync(CancellationToken.None);
+                await _db.SaveChangesAsync(cancellationToken);
             }
         }
 
@@ -92,7 +92,7 @@ public class AuditService : IAuditService,
         await _eventPublisher.PublishAsync(domainEvent);
     }
 
-    public async Task<(IEnumerable<AuditEventDto> items, int totalCount)> GetEventsAsync(AuditEventFilterDto filter)
+    public async Task<(IEnumerable<AuditEventDto> items, int totalCount)> GetEventsAsync(AuditEventFilterDto filter, CancellationToken cancellationToken = default)
     {
         var query = _db.AuditEvents.AsQueryable();
 
@@ -121,7 +121,7 @@ public class AuditService : IAuditService,
             query = query.Where(e => e.IPAddress == filter.IPAddress);
         }
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken);
 
         var items = await query
             .OrderByDescending(e => e.Timestamp)
@@ -137,12 +137,12 @@ public class AuditService : IAuditService,
                 IPAddress = e.IPAddress,
                 UserAgent = e.UserAgent
             })
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return (items, totalCount);
     }
 
-    public async Task<AuditEventExportDto?> ExportEventAsync(int eventId)
+    public async Task<AuditEventExportDto?> ExportEventAsync(int eventId, CancellationToken cancellationToken = default)
     {
         var result = await (from e in _db.AuditEvents
                            where e.Id == eventId
@@ -158,7 +158,7 @@ public class AuditService : IAuditService,
                                IPAddress = e.IPAddress,
                                UserAgent = e.UserAgent,
                                Username = u.UserName
-                           }).FirstOrDefaultAsync();
+                            }).FirstOrDefaultAsync(cancellationToken);
 
         return result;
     }
@@ -297,27 +297,27 @@ public class AuditService : IAuditService,
         await LogEventAsync("SecurityPolicyUpdated", @event.UpdatedByUserId, $"Security policies updated by '{maskedUserName}': {@event.PolicyChanges}", null, null);
     }
 
-    public async Task LogRoleSwitchAsync(Guid userId, Guid oldRoleId, Guid newRoleId, string sessionAuthorizationId, string ipAddress, string userAgent)
+    public async Task LogRoleSwitchAsync(Guid userId, Guid oldRoleId, Guid newRoleId, string sessionAuthorizationId, string ipAddress, string userAgent, CancellationToken cancellationToken = default)
     {
         // Get role names for better audit readability
-        var oldRole = await _dbContext.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == oldRoleId);
-        var newRole = await _dbContext.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == newRoleId);
+        var oldRole = await _dbContext.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == oldRoleId, cancellationToken);
+        var newRole = await _dbContext.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == newRoleId, cancellationToken);
 
         var details = $"User switched from role '{oldRole?.Name ?? oldRoleId.ToString()}' to '{newRole?.Name ?? newRoleId.ToString()}'. Session: {sessionAuthorizationId}";
         
-        await LogEventAsync("RoleSwitch", userId.ToString(), details, ipAddress, userAgent);
+        await LogEventAsync("RoleSwitch", userId.ToString(), details, ipAddress, userAgent, cancellationToken);
     }
 
-    public async Task LogAccountSwitchAsync(Guid currentUserId, Guid targetAccountId, string reason, string ipAddress, string userAgent)
+    public async Task LogAccountSwitchAsync(Guid currentUserId, Guid targetAccountId, string reason, string ipAddress, string userAgent, CancellationToken cancellationToken = default)
     {
         // Get user information for better audit readability
-        var currentUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == currentUserId);
-        var targetUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == targetAccountId);
+        var currentUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == currentUserId, cancellationToken);
+        var targetUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == targetAccountId, cancellationToken);
 
         var maskedCurrentUserName = PiiMasker.MaskUserName(currentUser?.UserName ?? currentUserId.ToString(), _piiMaskingLevel);
         var maskedTargetUserName = PiiMasker.MaskUserName(targetUser?.UserName ?? targetAccountId.ToString(), _piiMaskingLevel);
         var details = $"User '{maskedCurrentUserName}' switched to account '{maskedTargetUserName}'. Reason: {reason}";
         
-        await LogEventAsync("AccountSwitch", currentUserId.ToString(), details, ipAddress, userAgent);
+        await LogEventAsync("AccountSwitch", currentUserId.ToString(), details, ipAddress, userAgent, cancellationToken);
     }
 }

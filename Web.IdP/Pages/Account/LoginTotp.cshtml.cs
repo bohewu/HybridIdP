@@ -91,7 +91,7 @@ public partial class LoginTotpModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
     {
         var returnUrl = ReturnUrl ?? Url.Content("~/");
 
@@ -133,7 +133,7 @@ public partial class LoginTotpModel : PageModel
                 };
 
                 await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
-                await _userManagementService.UpdateLastLoginAsync(user.Id);
+                await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 
                 _logger.LogInformation("User logged in with TOTP 2FA.");
                 
@@ -171,7 +171,7 @@ public partial class LoginTotpModel : PageModel
                 AddAmrToSession(AuthConstants.Amr.Mfa); // Recovery code is still mfa, but not otp? Actually design says "mfa" for recovery.
 
                 await _signInManager.SignInAsync(user, isPersistent: RememberMe);
-                await _userManagementService.UpdateLastLoginAsync(user.Id);
+                await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 _logger.LogInformation("User logged in with recovery code.");
                 
                 var remainingCodes = await _userManager.CountRecoveryCodesAsync(user);

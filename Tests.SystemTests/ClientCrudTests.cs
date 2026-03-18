@@ -160,7 +160,7 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "native",
             Type: "public",
             ConsentType: "explicit",
-            RedirectUris: new List<string> { "http://dummy" },
+            RedirectUris: new List<string> { "https://localhost:5000/callback" },
             PostLogoutRedirectUris: null,
             Permissions: null,
             SupportedRoles: null
@@ -517,7 +517,7 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             ApplicationType: "native",
             Type: "public",
             ConsentType: "explicit",
-            RedirectUris: new List<string> { "http://dummy" }, 
+            RedirectUris: new List<string> { "https://localhost:5000/callback" }, 
             PostLogoutRedirectUris: null, Permissions: null,
             SupportedRoles: null
         );

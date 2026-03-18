@@ -167,7 +167,7 @@ public class ProfileManagementController : ControllerBase
     /// PUT api/profile - Update user's profile (Person table fields)
     /// </summary>
     [HttpPut]
-    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
@@ -229,7 +229,8 @@ public class ProfileManagementController : ControllerBase
             userId: user.Id.ToString(),
             details: $"User updated profile: PhoneNumber={request.PhoneNumber}, Locale={request.Locale}, TimeZone={request.TimeZone}",
             ipAddress: null,
-            userAgent: null
+            userAgent: null,
+            cancellationToken: cancellationToken
         );
 
         // Limit cookie update to valid locales only? 
@@ -251,7 +252,7 @@ public class ProfileManagementController : ControllerBase
     /// POST api/profile/change-password - Change current user's password
     /// </summary>
     [HttpPost("change-password")]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
@@ -301,7 +302,8 @@ public class ProfileManagementController : ControllerBase
             userId: user.Id.ToString(),
             details: "User successfully changed their password",
             ipAddress: null,
-            userAgent: null
+            userAgent: null,
+            cancellationToken: cancellationToken
         );
 
         _logger.LogInformation("User {UserId} ({UserName}) successfully changed their password",
@@ -314,7 +316,7 @@ public class ProfileManagementController : ControllerBase
     /// POST api/profile/remove-login - Remove an external login
     /// </summary>
     [HttpPost("remove-login")]
-    public async Task<IActionResult> RemoveLogin([FromBody] RemoveLoginRequest request)
+    public async Task<IActionResult> RemoveLogin([FromBody] RemoveLoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
@@ -339,7 +341,8 @@ public class ProfileManagementController : ControllerBase
             userId: user.Id.ToString(),
             details: $"User removed external login: {request.LoginProvider}",
             ipAddress: null,
-            userAgent: null
+            userAgent: null,
+            cancellationToken: cancellationToken
         );
 
         return Ok(new { message = "Login removed successfully" });

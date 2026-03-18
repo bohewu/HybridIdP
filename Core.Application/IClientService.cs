@@ -1,4 +1,5 @@
 using Core.Application.DTOs;
+using System.Threading;
 
 namespace Core.Application;
 
@@ -22,12 +23,13 @@ public interface IClientService
         string? search, 
         string? type, 
         string? sort,
-        Guid? ownerPersonId = null);
+        Guid? ownerPersonId = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get detailed information about a specific client.
     /// </summary>
-    Task<ClientDetail?> GetClientByIdAsync(Guid id);
+    Task<ClientDetail?> GetClientByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Create a new OIDC client.
@@ -36,28 +38,28 @@ public interface IClientService
     /// <param name="creatorUserId">The ApplicationUser ID creating this client</param>
     /// <param name="creatorPersonId">The Person ID owning this client (for ownership tracking)</param>
     /// <returns>Created client details including generated secret if confidential.</returns>
-    Task<CreateClientResponse> CreateClientAsync(CreateClientRequest request, Guid? creatorPersonId = null);
+    Task<CreateClientResponse> CreateClientAsync(CreateClientRequest request, Guid? creatorPersonId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Update an existing OIDC client.
     /// </summary>
     /// <exception cref="KeyNotFoundException">When client is not found.</exception>
-    Task UpdateClientAsync(Guid id, UpdateClientRequest request);
+    Task UpdateClientAsync(Guid id, UpdateClientRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Delete an OIDC client.
     /// </summary>
     /// <exception cref="KeyNotFoundException">When client is not found.</exception>
-    Task DeleteClientAsync(Guid id);
+    Task DeleteClientAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Regenerate the secret for a confidential client.
     /// </summary>
     /// <returns>The new client secret.</returns>
-    Task<string> RegenerateSecretAsync(Guid id);
+    Task<string> RegenerateSecretAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Check if a user (by PersonId) owns a specific client.
     /// </summary>
-    Task<bool> IsClientOwnedByPersonAsync(Guid clientId, Guid personId);
+    Task<bool> IsClientOwnedByPersonAsync(Guid clientId, Guid personId, CancellationToken cancellationToken = default);
 }

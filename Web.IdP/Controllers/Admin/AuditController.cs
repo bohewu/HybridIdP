@@ -29,9 +29,9 @@ public class AuditController : ControllerBase
     /// </summary>
     [HttpGet("events")]
     [HasPermission(Permissions.Audit.Read)]
-    public async Task<ActionResult> GetEvents([FromQuery] AuditEventFilterDto filter)
+    public async Task<ActionResult> GetEvents([FromQuery] AuditEventFilterDto filter, CancellationToken cancellationToken = default)
     {
-        var (items, totalCount) = await _auditService.GetEventsAsync(filter);
+        var (items, totalCount) = await _auditService.GetEventsAsync(filter, cancellationToken);
         return Ok(new { items, totalCount });
     }
 
@@ -40,9 +40,9 @@ public class AuditController : ControllerBase
     /// </summary>
     [HttpGet("events/{id}/export")]
     [HasPermission(Permissions.Audit.Read)]
-    public async Task<ActionResult> ExportEvent(int id)
+    public async Task<ActionResult> ExportEvent(int id, CancellationToken cancellationToken = default)
     {
-        var exportDto = await _auditService.ExportEventAsync(id);
+        var exportDto = await _auditService.ExportEventAsync(id, cancellationToken);
         if (exportDto == null)
         {
             return NotFound();

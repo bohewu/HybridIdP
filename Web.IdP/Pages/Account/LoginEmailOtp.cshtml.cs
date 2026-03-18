@@ -126,7 +126,7 @@ public partial class LoginEmailOtpModel : PageModel
         }
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
     {
         var returnUrl = ReturnUrl ?? Url.Content("~/");
 
@@ -161,7 +161,7 @@ public partial class LoginEmailOtpModel : PageModel
             };
 
             await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
-            await _userManagementService.UpdateLastLoginAsync(user.Id);
+            await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
             _logger.LogInformation("User logged in with Email MFA.");
             
             await _eventPublisher.PublishAsync(new LoginAttemptEvent(

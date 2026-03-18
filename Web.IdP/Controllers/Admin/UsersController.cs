@@ -81,12 +81,13 @@ public class UsersController : ControllerBase
         [FromQuery] string? role = null,
         [FromQuery] bool? isActive = null,
         [FromQuery] string? sortBy = "createdat",
-        [FromQuery] string? sortDirection = "desc")
+        [FromQuery] string? sortDirection = "desc",
+        CancellationToken cancellationToken = default)
     {
         try
         {
             var result = await _userManagementService.GetUsersAsync(
-                skip, take, search, role, isActive, sortBy, sortDirection);
+                skip, take, search, role, isActive, sortBy, sortDirection, cancellationToken);
             return Ok(result);
         }
         catch (Exception ex)
@@ -101,11 +102,11 @@ public class UsersController : ControllerBase
     /// <param name="id">User ID</param>
     [HttpGet("{id}")]
     [HasPermission(Permissions.Users.Read)]
-    public async Task<IActionResult> GetUser(Guid id)
+    public async Task<IActionResult> GetUser(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
-            var user = await _userManagementService.GetUserByIdAsync(id);
+            var user = await _userManagementService.GetUserByIdAsync(id, cancellationToken);
             if (user == null)
                 return NotFound(new { error = "User not found" });
 
@@ -123,7 +124,7 @@ public class UsersController : ControllerBase
     /// <param name="request">User creation data</param>
     [HttpPost]
     [HasPermission(Permissions.Users.Create)]
-    public async Task<IActionResult> CreateUser([FromBody] CreateUserDto request)
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserDto request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -136,12 +137,12 @@ public class UsersController : ControllerBase
             var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             Guid? createdBy = currentUserId != null ? Guid.Parse(currentUserId) : null;
 
-            var (success, userId, errors) = await _userManagementService.CreateUserAsync(request, createdBy);
+            var (success, userId, errors) = await _userManagementService.CreateUserAsync(request, createdBy, cancellationToken);
 
             if (!success)
                 return BadRequest(new { errors });
 
-            var createdUser = await _userManagementService.GetUserByIdAsync(userId!.Value);
+            var createdUser = await _userManagementService.GetUserByIdAsync(userId!.Value, cancellationToken);
             return CreatedAtAction(nameof(GetUser), new { id = userId }, createdUser);
         }
         catch (Exception ex)
@@ -157,7 +158,7 @@ public class UsersController : ControllerBase
     /// <param name="request">User update data</param>
     [HttpPut("{id}")]
     [HasPermission(Permissions.Users.Update)]
-    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserDto request)
+    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserDto request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -170,7 +171,7 @@ public class UsersController : ControllerBase
             var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             Guid? modifiedBy = currentUserId != null ? Guid.Parse(currentUserId) : null;
 
-            var (success, errors) = await _userManagementService.UpdateUserAsync(id, request, modifiedBy);
+            var (success, errors) = await _userManagementService.UpdateUserAsync(id, request, modifiedBy, cancellationToken);
 
             if (!success)
             {
@@ -179,7 +180,7 @@ public class UsersController : ControllerBase
                 return BadRequest(new { errors });
             }
 
-            var updatedUser = await _userManagementService.GetUserByIdAsync(id);
+            var updatedUser = await _userManagementService.GetUserByIdAsync(id, cancellationToken);
             return Ok(updatedUser);
         }
         catch (Exception ex)
@@ -194,14 +195,14 @@ public class UsersController : ControllerBase
     /// <param name="id">User ID</param>
     [HttpPost("{id}/deactivate")]
     [HasPermission(Permissions.Users.Delete)]
-    public async Task<IActionResult> DeactivateUser(Guid id)
+    public async Task<IActionResult> DeactivateUser(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
             var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             Guid? modifiedBy = currentUserId != null ? Guid.Parse(currentUserId) : null;
 
-            var (success, errors) = await _userManagementService.DeactivateUserAsync(id, modifiedBy);
+            var (success, errors) = await _userManagementService.DeactivateUserAsync(id, modifiedBy, cancellationToken);
 
             if (!success)
             {
@@ -276,14 +277,14 @@ public class UsersController : ControllerBase
     /// <param name="id">User ID</param>
     [HttpPost("{id}/reactivate")]
     [HasPermission(Permissions.Users.Update)]
-    public async Task<IActionResult> ReactivateUser(Guid id)
+    public async Task<IActionResult> ReactivateUser(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
             var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             Guid? modifiedBy = currentUserId != null ? Guid.Parse(currentUserId) : null;
 
-            var (success, errors) = await _userManagementService.ReactivateUserAsync(id, modifiedBy);
+            var (success, errors) = await _userManagementService.ReactivateUserAsync(id, modifiedBy, cancellationToken);
 
             if (!success)
             {
@@ -292,7 +293,7 @@ public class UsersController : ControllerBase
                 return BadRequest(new { errors });
             }
 
-            var reactivatedUser = await _userManagementService.GetUserByIdAsync(id);
+            var reactivatedUser = await _userManagementService.GetUserByIdAsync(id, cancellationToken);
             return Ok(reactivatedUser);
         }
         catch (Exception ex)
@@ -339,7 +340,7 @@ public class UsersController : ControllerBase
     /// <param name="request">Role assignment data</param>
     [HttpPut("{id}/roles")]
     [HasPermission(Permissions.Users.Update)]
-    public async Task<IActionResult> AssignRoles(Guid id, [FromBody] AssignRolesRequest request)
+    public async Task<IActionResult> AssignRoles(Guid id, [FromBody] AssignRolesRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -349,7 +350,7 @@ public class UsersController : ControllerBase
                 return privilegedRolePolicyResult;
             }
 
-            var (success, errors) = await _userManagementService.AssignRolesAsync(id, request.Roles);
+            var (success, errors) = await _userManagementService.AssignRolesAsync(id, request.Roles, cancellationToken);
 
             if (!success)
             {
@@ -358,7 +359,7 @@ public class UsersController : ControllerBase
                 return BadRequest(new { errors });
             }
 
-            var updatedUser = await _userManagementService.GetUserByIdAsync(id);
+            var updatedUser = await _userManagementService.GetUserByIdAsync(id, cancellationToken);
             return Ok(updatedUser);
         }
         catch (Exception ex)
@@ -379,7 +380,7 @@ public class UsersController : ControllerBase
     /// <param name="request">Role assignment data with role IDs</param>
     [HttpPut("{id}/roles/ids")]
     [HasPermission(Permissions.Users.Update)]
-    public async Task<IActionResult> AssignRolesByIds(Guid id, [FromBody] AssignRolesByIdRequest request)
+    public async Task<IActionResult> AssignRolesByIds(Guid id, [FromBody] AssignRolesByIdRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -399,7 +400,7 @@ public class UsersController : ControllerBase
                 return privilegedRolePolicyResult;
             }
 
-            var (success, errors) = await _userManagementService.AssignRolesByIdAsync(id, request.RoleIds);
+            var (success, errors) = await _userManagementService.AssignRolesByIdAsync(id, request.RoleIds, cancellationToken);
 
             if (!success)
             {
@@ -408,7 +409,7 @@ public class UsersController : ControllerBase
                 return BadRequest(new { errors });
             }
 
-            var updatedUser = await _userManagementService.GetUserByIdAsync(id);
+            var updatedUser = await _userManagementService.GetUserByIdAsync(id, cancellationToken);
             return Ok(updatedUser);
         }
         catch (Exception ex)
@@ -429,11 +430,11 @@ public class UsersController : ControllerBase
     /// <param name="clientId">Client ID</param>
     [HttpGet("{id}/app-roles/{clientId}")]
     [HasPermission(Permissions.Users.Read)]
-    public async Task<IActionResult> GetUserAppRoles(Guid id, string clientId)
+    public async Task<IActionResult> GetUserAppRoles(Guid id, string clientId, CancellationToken cancellationToken = default)
     {
         try
         {
-            var roles = await _userManagementService.GetUserAppRolesAsync(id, clientId);
+            var roles = await _userManagementService.GetUserAppRolesAsync(id, clientId, cancellationToken);
             return Ok(roles);
         }
         catch (Exception ex)
@@ -450,11 +451,11 @@ public class UsersController : ControllerBase
     /// <param name="request">List of role names</param>
     [HttpPut("{id}/app-roles/{clientId}")]
     [HasPermission(Permissions.Users.Update)]
-    public async Task<IActionResult> AssignUserAppRoles(Guid id, string clientId, [FromBody] List<string> request)
+    public async Task<IActionResult> AssignUserAppRoles(Guid id, string clientId, [FromBody] List<string> request, CancellationToken cancellationToken = default)
     {
         try
         {
-            var (success, errors) = await _userManagementService.AssignUserAppRolesAsync(id, clientId, request);
+            var (success, errors) = await _userManagementService.AssignUserAppRolesAsync(id, clientId, request, cancellationToken);
 
             if (!success)
             {
@@ -479,13 +480,13 @@ public class UsersController : ControllerBase
     /// <param name="pageSize">Items per page (default: 10)</param>
     [HttpGet("{id}/sessions")]
     [HasPermission(Permissions.Users.Read)]
-    public async Task<IActionResult> ListSessions(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    public async Task<IActionResult> ListSessions(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, CancellationToken cancellationToken = default)
     {
         try
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
-            var all = (await _sessionService.ListSessionsAsync(id)).ToList();
+            var all = (await _sessionService.ListSessionsAsync(id, cancellationToken)).ToList();
             var total = all.Count;
             var pages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)pageSize);
             if (page > pages) page = pages;
@@ -505,7 +506,7 @@ public class UsersController : ControllerBase
     /// <param name="authorizationId">Authorization ID</param>
     [HttpPost("{id}/sessions/{authorizationId}/revoke")]
     [HasPermission(Permissions.Users.Update)]
-    public async Task<IActionResult> RevokeSession(Guid id, string authorizationId)
+    public async Task<IActionResult> RevokeSession(Guid id, string authorizationId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -515,7 +516,7 @@ public class UsersController : ControllerBase
             // Self-revocation logic would require relaxed attribute, but for now assuming Admin-only or M2M-Admin.
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            var success = await _sessionService.RevokeSessionAsync(id, authorizationId);
+            var success = await _sessionService.RevokeSessionAsync(id, authorizationId, cancellationToken);
             if (!success)
             {
                 return NotFound(new { error = "Authorization not found or not owned by user" });
@@ -558,14 +559,14 @@ public class UsersController : ControllerBase
     /// <param name="id">User ID</param>
     [HttpPost("{id}/sessions/revoke-all")]
     [HasPermission(Permissions.Users.Update)]
-    public async Task<IActionResult> RevokeAllSessions(Guid id)
+    public async Task<IActionResult> RevokeAllSessions(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
             // [HasPermission] already validated access.
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            var count = await _sessionService.RevokeAllSessionsAsync(id);
+            var count = await _sessionService.RevokeAllSessionsAsync(id, cancellationToken);
             
             // Force invalidation of existing cookies by updating Security Stamp
             var user = await _userManager.FindByIdAsync(id.ToString());

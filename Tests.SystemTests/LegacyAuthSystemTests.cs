@@ -59,10 +59,9 @@ public class LegacyAuthSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncL
         var location = loginResponse.Headers.Location?.ToString();
         Assert.True(location == "/" || location.Contains("returnUrl"), $"Expected redirect to root, got {location}");
 
-        // 4. Follow Redirect to ensure we are authenticated (Cookie check)
-        // If we follow redirect, we should get 200 OK on Home Page
-        var homeResponse = await HttpClient.GetAsync("/");
-        homeResponse.EnsureSuccessStatusCode();
+        // 4. Request a protected page to ensure the auth cookie is valid.
+        var dashboardResponse = await HttpClient.GetAsync("/Dashboard");
+        dashboardResponse.EnsureSuccessStatusCode();
         
         // Optionally check if username is in the returned HTML (if the layout displays it)
         // This confirms we are actually logged in

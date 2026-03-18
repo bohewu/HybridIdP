@@ -45,12 +45,12 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpGet]
     [HasPermission(Permissions.Persons.Read)]
-    public async Task<ActionResult<PersonListResponseDto>> GetPersons([FromQuery] int skip = 0, [FromQuery] int take = 50)
+    public async Task<ActionResult<PersonListResponseDto>> GetPersons([FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken cancellationToken = default)
     {
         try
         {
-            var persons = await _personService.GetAllPersonsAsync(skip, take);
-            var totalCount = await _personService.GetPersonsCountAsync();
+            var persons = await _personService.GetAllPersonsAsync(skip, take, cancellationToken);
+            var totalCount = await _personService.GetPersonsCountAsync(cancellationToken);
 
             var response = new PersonListResponseDto
             {
@@ -74,11 +74,11 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpGet("{id}")]
     [HasPermission(Permissions.Persons.Read)]
-    public async Task<ActionResult<PersonResponseDto>> GetPerson(Guid id)
+    public async Task<ActionResult<PersonResponseDto>> GetPerson(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
-            var person = await _personService.GetPersonByIdAsync(id);
+            var person = await _personService.GetPersonByIdAsync(id, cancellationToken);
             if (person == null)
                 return NotFound($"Person with ID {id} not found");
 
@@ -99,12 +99,13 @@ public partial class PersonsController : ControllerBase
     public async Task<ActionResult<PersonListResponseDto>> SearchPersons(
         [FromQuery] string term, 
         [FromQuery] int skip = 0, 
-        [FromQuery] int take = 50)
+        [FromQuery] int take = 50,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var persons = await _personService.SearchPersonsAsync(term, skip, take);
-            var totalCount = await _personService.GetPersonsCountAsync(); // Note: This is total, not search result count
+            var persons = await _personService.SearchPersonsAsync(term, skip, take, cancellationToken);
+            var totalCount = await _personService.GetPersonsCountAsync(cancellationToken); // Note: This is total, not search result count
 
             var response = new PersonListResponseDto
             {
@@ -128,21 +129,22 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpPost]
     [HasPermission(Permissions.Persons.Create)]
-    public async Task<ActionResult<PersonResponseDto>> CreatePerson([FromBody] PersonDto dto)
+    public async Task<ActionResult<PersonResponseDto>> CreatePerson([FromBody] PersonDto dto, CancellationToken cancellationToken = default)
     {
         try
         {
             var currentUserId = GetCurrentUserId();
             var person = MapFromDto(dto);
 
-            var createdPerson = await _personService.CreatePersonAsync(person, currentUserId);
+            var createdPerson = await _personService.CreatePersonAsync(person, currentUserId, cancellationToken);
 
             await _auditService.LogEventAsync(
                 "PersonCreated",
                 currentUserId?.ToString(),
                 $"Created person {createdPerson.Id} (EmployeeId: {createdPerson.EmployeeId})",
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
-                HttpContext.Request.Headers["User-Agent"].ToString());
+                HttpContext.Request.Headers["User-Agent"].ToString(),
+                cancellationToken);
 
             return CreatedAtAction(
                 nameof(GetPerson),
@@ -165,14 +167,14 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpPut("{id}")]
     [HasPermission(Permissions.Persons.Update)]
-    public async Task<ActionResult<PersonResponseDto>> UpdatePerson(Guid id, [FromBody] PersonDto dto)
+    public async Task<ActionResult<PersonResponseDto>> UpdatePerson(Guid id, [FromBody] PersonDto dto, CancellationToken cancellationToken = default)
     {
         try
         {
             var currentUserId = GetCurrentUserId();
             var person = MapFromDto(dto);
 
-            var updatedPerson = await _personService.UpdatePersonAsync(id, person, currentUserId);
+            var updatedPerson = await _personService.UpdatePersonAsync(id, person, currentUserId, cancellationToken);
             if (updatedPerson == null)
                 return NotFound($"Person with ID {id} not found");
 
@@ -181,7 +183,8 @@ public partial class PersonsController : ControllerBase
                 currentUserId?.ToString(),
                 $"Updated person {id} (EmployeeId: {updatedPerson.EmployeeId})",
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
-                HttpContext.Request.Headers["User-Agent"].ToString());
+                HttpContext.Request.Headers["User-Agent"].ToString(),
+                cancellationToken);
 
             return Ok(MapToResponseDto(updatedPerson));
         }
@@ -201,12 +204,12 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpDelete("{id}")]
     [HasPermission(Permissions.Persons.Delete)]
-    public async Task<IActionResult> DeletePerson(Guid id)
+    public async Task<IActionResult> DeletePerson(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
             var currentUserId = GetCurrentUserId();
-            var deleted = await _personService.DeletePersonAsync(id);
+            var deleted = await _personService.DeletePersonAsync(id, cancellationToken);
 
             if (!deleted)
                 return NotFound($"Person with ID {id} not found");
@@ -216,7 +219,8 @@ public partial class PersonsController : ControllerBase
                 currentUserId?.ToString(),
                 $"Deleted person {id}",
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
-                HttpContext.Request.Headers["User-Agent"].ToString());
+                HttpContext.Request.Headers["User-Agent"].ToString(),
+                cancellationToken);
 
             return NoContent();
         }
@@ -232,15 +236,15 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpGet("{id}/accounts")]
     [HasPermission(Permissions.Persons.Read)]
-    public async Task<ActionResult<List<LinkedAccountDto>>> GetPersonAccounts(Guid id)
+    public async Task<ActionResult<List<LinkedAccountDto>>> GetPersonAccounts(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
-            var person = await _personService.GetPersonByIdAsync(id);
+            var person = await _personService.GetPersonByIdAsync(id, cancellationToken);
             if (person == null)
                 return NotFound($"Person with ID {id} not found");
 
-            var accounts = await _personService.GetPersonAccountsAsync(id);
+            var accounts = await _personService.GetPersonAccountsAsync(id, cancellationToken);
             var accountDtos = accounts.Select(a => new LinkedAccountDto
             {
                 Id = a.Id,
@@ -264,12 +268,12 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpPost("{id}/accounts")]
     [HasPermission(Permissions.Persons.Update)]
-    public async Task<IActionResult> LinkAccount(Guid id, [FromBody] LinkAccountDto dto)
+    public async Task<IActionResult> LinkAccount(Guid id, [FromBody] LinkAccountDto dto, CancellationToken cancellationToken = default)
     {
         try
         {
             var currentUserId = GetCurrentUserId();
-            var linked = await _personService.LinkAccountToPersonAsync(id, dto.UserId, currentUserId);
+            var linked = await _personService.LinkAccountToPersonAsync(id, dto.UserId, currentUserId, cancellationToken);
 
             if (!linked)
                 return NotFound("Person or user not found");
@@ -279,7 +283,8 @@ public partial class PersonsController : ControllerBase
                 currentUserId?.ToString(),
                 $"Linked user {dto.UserId} to person {id}",
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
-                HttpContext.Request.Headers["User-Agent"].ToString());
+                HttpContext.Request.Headers["User-Agent"].ToString(),
+                cancellationToken);
 
             return NoContent();
         }
@@ -300,12 +305,12 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpDelete("accounts/{userId}")]
     [HasPermission(Permissions.Persons.Update)]
-    public async Task<IActionResult> UnlinkAccount(Guid userId)
+    public async Task<IActionResult> UnlinkAccount(Guid userId, CancellationToken cancellationToken = default)
     {
         try
         {
             var currentUserId = GetCurrentUserId();
-            var unlinked = await _personService.UnlinkAccountFromPersonAsync(userId, currentUserId);
+            var unlinked = await _personService.UnlinkAccountFromPersonAsync(userId, currentUserId, cancellationToken);
 
             if (!unlinked)
                 return NotFound($"User with ID {userId} not found");
@@ -315,7 +320,8 @@ public partial class PersonsController : ControllerBase
                 currentUserId?.ToString(),
                 $"Unlinked user {userId} from their person",
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
-                HttpContext.Request.Headers["User-Agent"].ToString());
+                HttpContext.Request.Headers["User-Agent"].ToString(),
+                cancellationToken);
 
             return NoContent();
         }
@@ -331,11 +337,11 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpGet("available-users")]
     [HasPermission(Permissions.Persons.Read)]
-    public async Task<ActionResult<List<LinkedAccountDto>>> GetAvailableUsers([FromQuery] string? search = null)
+    public async Task<ActionResult<List<LinkedAccountDto>>> GetAvailableUsers([FromQuery] string? search = null, CancellationToken cancellationToken = default)
     {
         try
         {
-            var availableUsers = await _personService.GetUnlinkedUsersAsync(search);
+            var availableUsers = await _personService.GetUnlinkedUsersAsync(search, cancellationToken);
             var accountDtos = availableUsers.Select(a => new LinkedAccountDto
             {
                 Id = a.Id,
@@ -359,7 +365,7 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpPost("{id}/verify-identity")]
     [HasPermission(Permissions.Persons.Update)]
-    public async Task<IActionResult> VerifyIdentity(Guid id)
+    public async Task<IActionResult> VerifyIdentity(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -367,7 +373,7 @@ public partial class PersonsController : ControllerBase
             if (currentUserId == null)
                 return Unauthorized();
 
-            var verified = await _personService.VerifyPersonIdentityAsync(id, currentUserId.Value);
+            var verified = await _personService.VerifyPersonIdentityAsync(id, currentUserId.Value, cancellationToken);
 
             if (!verified)
                 return BadRequest("Person not found or no identity document provided");
@@ -377,7 +383,8 @@ public partial class PersonsController : ControllerBase
                 currentUserId?.ToString(),
                 $"Verified identity for person {id}",
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
-                HttpContext.Request.Headers["User-Agent"].ToString());
+                HttpContext.Request.Headers["User-Agent"].ToString(),
+                cancellationToken);
 
             return NoContent();
         }
@@ -393,20 +400,21 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpPost("{id}/transfer-assets")]
     [HasPermission(Permissions.Persons.Update)]
-    public async Task<IActionResult> TransferAssets(Guid id, [FromBody] TransferAssetsViewModel model)
+    public async Task<IActionResult> TransferAssets(Guid id, [FromBody] TransferAssetsViewModel model, CancellationToken cancellationToken = default)
     {
         try
         {
             var currentUserId = GetCurrentUserId();
             
-            await _personService.TransferAssetsAsync(id, model.TargetPersonId);
+            await _personService.TransferAssetsAsync(id, model.TargetPersonId, cancellationToken);
 
             await _auditService.LogEventAsync(
                 "ResourceOwnershipTransferInitiated",
                 currentUserId?.ToString(),
                 $"Initiated transfer from person {id} to {model.TargetPersonId}",
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
-                HttpContext.Request.Headers["User-Agent"].ToString());
+                HttpContext.Request.Headers["User-Agent"].ToString(),
+                cancellationToken);
 
             return NoContent();
         }

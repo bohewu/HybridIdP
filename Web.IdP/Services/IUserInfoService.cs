@@ -4,5 +4,5 @@ namespace Web.IdP.Services;
 
 public interface IUserInfoService
 {
-    Task<Dictionary<string, object>> GetUserInfoAsync(ClaimsPrincipal principal);
+    Task<Dictionary<string, object>> GetUserInfoAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default);
 }
