@@ -38,6 +38,9 @@ services:
       context: ../
       dockerfile: Web.IdP/Dockerfile
     # NO ports exposed - only accessible from nginx-gateway
+    env_file:
+      # Pass through every key from the selected deploy env file; explicit entries below still win.
+      - ${IDP_ENV_FILE:-.env}
     environment:
       - ASPNETCORE_URLS=http://+:80
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}

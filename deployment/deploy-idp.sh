@@ -8,6 +8,7 @@ COMPOSE_MAIN="docker-compose.splithost-nginx-nodb.yml"
 COMPOSE_OVERRIDE="docker-compose.override.yml"
 COMPOSE_GHCR_OVERRIDE="docker-compose.ghcr-image.yml"
 ENV_FILE=".env"
+EMPTY_ENV_FILE=".env.empty"
 SERVICE="idp-service"
 SOURCE="local"
 IMAGE_REF=""
@@ -129,6 +130,7 @@ MAIN_PATH="$(resolve_path "$COMPOSE_MAIN")"
 OVERRIDE_PATH="$(resolve_path "$COMPOSE_OVERRIDE")"
 GHCR_OVERRIDE_PATH="$(resolve_path "$COMPOSE_GHCR_OVERRIDE")"
 ENV_PATH="$(resolve_path "$ENV_FILE")"
+EMPTY_ENV_PATH="$(resolve_path "$EMPTY_ENV_FILE")"
 
 if [[ ! -f "$MAIN_PATH" ]]; then
     error "Compose file not found: $MAIN_PATH"
@@ -153,8 +155,14 @@ fi
 
 if [[ -f "$ENV_PATH" ]]; then
     COMPOSE_ARGS+=( --env-file "$ENV_PATH" )
+    export IDP_ENV_FILE="$ENV_PATH"
 else
     warn "Env file not found, continuing without it: $ENV_PATH"
+    if [[ ! -f "$EMPTY_ENV_PATH" ]]; then
+        error "Fallback env file not found: $EMPTY_ENV_PATH"
+        exit 1
+    fi
+    export IDP_ENV_FILE="$EMPTY_ENV_PATH"
 fi
 
 if [[ -n "$IMAGE_REF" ]]; then

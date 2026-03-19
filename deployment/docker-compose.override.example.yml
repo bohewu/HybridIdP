@@ -1,7 +1,7 @@
 services:
   idp-service:
     environment:
-      # Override environment variables here
+      # Override explicit defaults here; any extra keys from deploy .env now flow through automatically.
       - ASPNETCORE_ENVIRONMENT=Development
     ports:
       # Expose additional ports if needed

@@ -22,6 +22,9 @@ services:
       # Option 2: Leave INTERNAL_IP unset to bind to all interfaces (0.0.0.0)
       #   Relies on firewall + Proxy__KnownProxies for security
       - "${INTERNAL_IP:-0.0.0.0}:8080:80"
+    env_file:
+      # Pass through every key from the selected deploy env file; explicit entries below still win.
+      - ${IDP_ENV_FILE:-.env}
     environment:
       - ASPNETCORE_URLS=http://+:80
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
