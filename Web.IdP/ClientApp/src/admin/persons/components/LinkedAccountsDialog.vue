@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseModal from '@/components/common/BaseModal.vue'
 
@@ -26,6 +26,18 @@ const searchTerm = ref('')
 const showLinkDialog = ref(false)
 const selectedUserId = ref(null)
 const linking = ref(false)
+
+const personDisplayName = computed(() => {
+  const nameParts = [props.person.firstName, props.person.lastName]
+    .map(value => typeof value === 'string' ? value.trim() : '')
+    .filter(Boolean)
+
+  if (nameParts.length > 0) {
+    return nameParts.join(' ')
+  }
+
+  return props.person.email || props.person.userName || props.person.username || 'Unknown person'
+})
 
 onMounted(() => {
   fetchLinkedAccounts()
@@ -169,7 +181,7 @@ const handleCloseLinkDialog = () => {
   >
     <template #body>
       <p class="text-sm text-gray-500 mb-4">
-        {{ t('persons.linkedAccounts.personName', { name: `${person.firstName} ${person.lastName}` }) }}
+        {{ t('persons.linkedAccounts.personName', { name: personDisplayName }) }}
       </p>
 
       <!-- Error Message -->
