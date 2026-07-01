@@ -68,3 +68,7 @@ deployment/docker-compose.override.yml
 
 # Pipeline output
 .pipeline-output/
+
+# Local agent/tooling state
+.codex/
+.codegraph/
