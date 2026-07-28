@@ -54,10 +54,7 @@ public class MfaSetupRedirectionTests : IClassFixture<WebIdPServerFixture>, IAsy
         // This avoids issues where Admin user themselves might be forced into MFA setup
         var m2mToken = await GetM2MAdminTokenAsync();
         
-        using var apiClient = new HttpClient 
-        { 
-            BaseAddress = _httpClient.BaseAddress 
-        };
+        var apiClient = _httpClient;
         apiClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", m2mToken);
 
         // 2. Enable Mandatory MFA Policy
@@ -79,6 +76,8 @@ public class MfaSetupRedirectionTests : IClassFixture<WebIdPServerFixture>, IAsy
                 var updateResponse = await apiClient.PutAsJsonAsync("/api/admin/security/policies", policy);
                 updateResponse.EnsureSuccessStatusCode();
             }
+
+            apiClient.DefaultRequestHeaders.Authorization = null;
 
             // 3. Perform User Login with seeded user for MFA enforcement testing
             // User: mfa-enforce@hybridauth.local / Test@123 (Seeded by UserSeeder)
@@ -122,7 +121,9 @@ public class MfaSetupRedirectionTests : IClassFixture<WebIdPServerFixture>, IAsy
             if (policy != null)
             {
                 policy.EnforceMandatoryMfaEnrollment = originalEnforcement;
+                apiClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", m2mToken);
                 await apiClient.PutAsJsonAsync("/api/admin/security/policies", policy);
+                apiClient.DefaultRequestHeaders.Authorization = null;
             }
         }
     }
@@ -143,9 +144,7 @@ public class MfaSetupRedirectionTests : IClassFixture<WebIdPServerFixture>, IAsy
             ["scope"] = "openid profile roles settings.read settings.update" 
         });
 
-        // Use a clean client for token request
-        using var tokenClient = new HttpClient { BaseAddress = _httpClient.BaseAddress };
-        var response = await tokenClient.PostAsync("/connect/token", tokenRequest);
+        var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
         
         if (!response.IsSuccessStatusCode)
         {

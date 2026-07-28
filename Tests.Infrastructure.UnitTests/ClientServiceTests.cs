@@ -472,14 +472,14 @@ public class ClientServiceTests
             })
             .Returns(default(ValueTask));
 
-        _mockApplicationManager.Setup(m => m.PopulateAsync(app, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                app,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()))
             .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, _) =>
             {
                 Assert.False(d.Properties.ContainsKey(AuthConstants.Properties.EnableTurnstile));
             })
-            .Returns(default(ValueTask));
-
-        _mockApplicationManager.Setup(m => m.UpdateAsync(app, It.IsAny<CancellationToken>()))
             .Returns(default(ValueTask));
 
         var request = new UpdateClientRequest(
@@ -498,7 +498,11 @@ public class ClientServiceTests
 
         await _service.UpdateClientAsync(clientId, request);
 
-        _mockApplicationManager.Verify(m => m.UpdateAsync(app, It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            app,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(app, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -592,14 +596,14 @@ public class ClientServiceTests
             })
             .Returns(default(ValueTask));
 
-        _mockApplicationManager.Setup(m => m.PopulateAsync(existingApp, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                existingApp,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()))
             .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, _) =>
             {
                 Assert.DoesNotContain(Requirements.Features.ProofKeyForCodeExchange, d.Requirements);
             })
-            .Returns(default(ValueTask));
-
-        _mockApplicationManager.Setup(m => m.UpdateAsync(existingApp, It.IsAny<CancellationToken>()))
             .Returns(default(ValueTask));
 
         var request = new UpdateClientRequest(
@@ -618,7 +622,11 @@ public class ClientServiceTests
 
         await _service.UpdateClientAsync(clientId, request);
 
-        _mockApplicationManager.Verify(m => m.UpdateAsync(existingApp, It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            existingApp,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(existingApp, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

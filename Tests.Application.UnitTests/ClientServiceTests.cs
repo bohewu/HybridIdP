@@ -10,6 +10,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -1217,46 +1219,91 @@ public class ClientServiceTests
             .ReturnsAsync(client);
         _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                client,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask);
 
         // Act
         await _clientService.UpdateClientAsync(clientId, request);
 
         // Assert
-        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task UpdateClientAsync_ShouldSetClientTypeToConfidential_WhenSecretProvided()
+    public async Task UpdateClientAsync_ShouldPersistReplacementSecretViaDescriptor_BeforePublishingSuccessEvents()
     {
         // Arrange
         var clientId = Guid.NewGuid();
         var client = new { Id = clientId };
+        var replacementSecret = "replacement-secret-value";
+        var cancellationToken = new CancellationTokenSource().Token;
+        var persistenceCompleted = false;
+        var publishedEventTypes = new List<Type>();
         // UpdateClientRequest(ClientId, ClientSecret, DisplayName, Type, ConsentType, RedirectUris, PostLogoutRedirectUris, Permissions)
-        var request = new UpdateClientRequest(null, "new-secret", null, null, null, null, null, null, null);
+        var request = new UpdateClientRequest(null, replacementSecret, null, null, null, null, null, null, null);
         
-        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), cancellationToken))
             .ReturnsAsync(client);
-        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.PopulateAsync(
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                client,
+                cancellationToken))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((descriptor, _, _) =>
+            {
+                descriptor.ClientId = "confidential-client";
+                descriptor.ClientSecret = "persisted-secret-verifier";
+                descriptor.ClientType = ClientTypes.Confidential;
+            })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                client,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                cancellationToken))
             .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, descriptor, _) =>
             {
                 Assert.Equal(ClientTypes.Confidential, descriptor.ClientType);
-                Assert.Equal("new-secret", descriptor.ClientSecret);
+                AssertSecretEquals(replacementSecret, descriptor.ClientSecret);
+                persistenceCompleted = true;
             })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
+        _mockEventPublisher.Setup(p => p.PublishAsync(It.IsAny<ClientUpdatedEvent>()))
+            .Callback<ClientUpdatedEvent>(_ =>
+            {
+                Assert.True(persistenceCompleted);
+                publishedEventTypes.Add(typeof(ClientUpdatedEvent));
+            })
+            .Returns(Task.CompletedTask);
+        _mockEventPublisher.Setup(p => p.PublishAsync(It.IsAny<ClientSecretChangedEvent>()))
+            .Callback<ClientSecretChangedEvent>(_ =>
+            {
+                Assert.True(persistenceCompleted);
+                publishedEventTypes.Add(typeof(ClientSecretChangedEvent));
+            })
+            .Returns(Task.CompletedTask);
 
         // Act
-        await _clientService.UpdateClientAsync(clientId, request);
+        await _clientService.UpdateClientAsync(clientId, request, cancellationToken);
 
         // Assert
-        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(
+            new[] { typeof(ClientUpdatedEvent), typeof(ClientSecretChangedEvent) },
+            publishedEventTypes);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            cancellationToken), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, cancellationToken), Times.Never);
+        _mockApplicationManager.Verify(m => m.PopulateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            cancellationToken), Times.Never);
     }
 
     [Fact]
@@ -1282,7 +1329,10 @@ public class ClientServiceTests
                 d.Permissions.Add("old-perm");
             })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                client,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()))
             .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, __) =>
             {
                 Assert.Equal(new[] { "https://a/", "https://b/" }, d.RedirectUris.Select(u => u.ToString()));
@@ -1291,14 +1341,16 @@ public class ClientServiceTests
                 Assert.Equal("keep", d.ClientSecret); // unchanged
             })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
 
         // Act
         await _clientService.UpdateClientAsync(clientId, req);
 
         // Assert
-        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -1320,29 +1372,36 @@ public class ClientServiceTests
                 d.ClientSecret = "existing";
             })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                client,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()))
             .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, __) =>
             {
                 Assert.Equal(ApplicationTypes.Web, d.ApplicationType);
                 Assert.Equal(ClientTypes.Confidential, d.ClientType); // inferred from having a secret
             })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
 
         // Act
         await _clientService.UpdateClientAsync(clientId, req);
 
         // Assert
-        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task UpdateClientAsync_ShouldUpdateBasicFields_WithoutChangingSecret()
+    public async Task UpdateClientAsync_ShouldPreservePersistedSecretViaDescriptor_WhenRequestSecretIsNull()
     {
         // Arrange
         var clientId = Guid.NewGuid();
         var client = new { Id = clientId };
+        var persistedSecretVerifier = "persisted-secret-verifier";
+        var persistenceCompleted = false;
         var req = new UpdateClientRequest("new-id", null, "new-name", null, ConsentTypes.Implicit, null, null, null, null);
 
         _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
@@ -1350,26 +1409,104 @@ public class ClientServiceTests
         _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
             .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((d, _, __) =>
             {
-                d.ClientSecret = "keepme";
+                d.ClientSecret = persistedSecretVerifier;
             })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                client,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()))
             .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, __) =>
             {
                 Assert.Equal("new-id", d.ClientId);
                 Assert.Equal("new-name", d.DisplayName);
                 Assert.Equal(ConsentTypes.Implicit, d.ConsentType);
-                Assert.Equal("keepme", d.ClientSecret);
+                AssertSecretEquals(persistedSecretVerifier, d.ClientSecret);
+                persistenceCompleted = true;
             })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
+        _mockEventPublisher.Setup(p => p.PublishAsync(It.IsAny<ClientUpdatedEvent>()))
+            .Callback<ClientUpdatedEvent>(_ => Assert.True(persistenceCompleted))
+            .Returns(Task.CompletedTask);
 
         // Act
         await _clientService.UpdateClientAsync(clientId, req);
 
         // Assert
-        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Never);
+        _mockEventPublisher.Verify(p => p.PublishAsync(It.IsAny<ClientUpdatedEvent>()), Times.Once);
+        _mockEventPublisher.Verify(p => p.PublishAsync(It.IsAny<ClientSecretChangedEvent>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateClientAsync_ShouldPropagateDescriptorUpdateFailure_WithoutPersistingOrPublishingSuccessEvents()
+    {
+        // Arrange
+        var clientId = Guid.NewGuid();
+        var client = new { Id = clientId };
+        var persistedSecretVerifier = "persisted-secret-verifier";
+        var replacementSecret = "replacement-secret-value";
+        var committedSecretState = persistedSecretVerifier;
+        var persistenceShouldFail = true;
+        var persistenceException = new InvalidOperationException("Descriptor update failed.");
+        var request = new UpdateClientRequest(
+            null,
+            replacementSecret,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(client);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                client,
+                It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((descriptor, _, _) =>
+            {
+                descriptor.ClientId = "confidential-client";
+                descriptor.ClientSecret = persistedSecretVerifier;
+                descriptor.ClientType = ClientTypes.Confidential;
+            })
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                client,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<object, OpenIddictApplicationDescriptor, CancellationToken>((_, descriptor, _) =>
+            {
+                AssertSecretEquals(replacementSecret, descriptor.ClientSecret);
+                if (persistenceShouldFail)
+                {
+                    throw persistenceException;
+                }
+
+                committedSecretState = descriptor.ClientSecret!;
+                return ValueTask.CompletedTask;
+            });
+
+        // Act
+        var actualException = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _clientService.UpdateClientAsync(clientId, request));
+
+        // Assert
+        Assert.Same(persistenceException, actualException);
+        AssertSecretEquals(persistedSecretVerifier, committedSecretState);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Never);
+        _mockEventPublisher.Verify(p => p.PublishAsync(It.IsAny<ClientUpdatedEvent>()), Times.Never);
+        _mockEventPublisher.Verify(p => p.PublishAsync(It.IsAny<ClientSecretChangedEvent>()), Times.Never);
     }
 
     [Fact]
@@ -1399,21 +1536,26 @@ public class ClientServiceTests
             .ReturnsAsync(client);
         _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                client,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()))
             .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, _) =>
             {
                 // Should auto-add response_type:code when authorization_code grant is present
                 Assert.Contains(Permissions.ResponseTypes.Code, d.Permissions);
             })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
 
         // Act
         await _clientService.UpdateClientAsync(clientId, request);
 
         // Assert
-        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -1442,7 +1584,10 @@ public class ClientServiceTests
             .ReturnsAsync(client);
         _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                client,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()))
             .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, _) =>
             {
                 // Should auto-add response_type:code, token, and id_token for implicit flow
@@ -1451,14 +1596,16 @@ public class ClientServiceTests
                 Assert.Contains(Permissions.ResponseTypes.IdToken, d.Permissions);
             })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
 
         // Act
         await _clientService.UpdateClientAsync(clientId, request);
 
         // Assert
-        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     #endregion
@@ -1530,35 +1677,141 @@ public class ClientServiceTests
     }
 
     [Fact]
-    public async Task RegenerateSecretAsync_ShouldGenerateNewSecret_WhenClientIsConfidential()
+    public async Task RegenerateSecretAsync_ShouldPersistGeneratedSecretViaDescriptor_BeforePublishingAndReturning()
     {
         // Arrange
         var clientId = Guid.NewGuid();
         var client = new { Id = clientId };
+        using var cancellationSource = new CancellationTokenSource();
+        var cancellationToken = cancellationSource.Token;
+        var updateCompletion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? descriptorSecret = null;
+        var persistenceCompleted = false;
         
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), cancellationToken))
+            .ReturnsAsync(client);
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(client, cancellationToken))
+            .ReturnsAsync(ClientTypes.Confidential);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                client,
+                cancellationToken))
+            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                client,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                cancellationToken))
+            .Returns<object, OpenIddictApplicationDescriptor, CancellationToken>((_, descriptor, _) =>
+            {
+                Assert.False(string.IsNullOrEmpty(descriptor.ClientSecret));
+                descriptorSecret = descriptor.ClientSecret;
+                return new ValueTask(updateCompletion.Task);
+            });
+        _mockApplicationManager.Setup(m => m.GetClientIdAsync(client, cancellationToken))
+            .ReturnsAsync("confidential-client");
+        _mockEventPublisher.Setup(p => p.PublishAsync(It.IsAny<ClientSecretChangedEvent>()))
+            .Callback<ClientSecretChangedEvent>(_ => Assert.True(persistenceCompleted))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var regenerationTask = _clientService.RegenerateSecretAsync(clientId, cancellationToken);
+        Assert.False(regenerationTask.IsCompleted);
+        persistenceCompleted = true;
+        updateCompletion.SetResult(true);
+        var returnedSecret = await regenerationTask;
+
+        // Assert
+        Assert.False(string.IsNullOrEmpty(descriptorSecret));
+        AssertSecretEquals(descriptorSecret, returnedSecret);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            cancellationToken), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, cancellationToken), Times.Never);
+        _mockApplicationManager.Verify(m => m.PopulateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            cancellationToken), Times.Never);
+        _mockEventPublisher.Verify(p => p.PublishAsync(It.IsAny<ClientSecretChangedEvent>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RegenerateSecretAsync_ShouldPropagateDescriptorUpdateFailure_WithoutPersistingOrPublishingSuccessEvent()
+    {
+        // Arrange
+        var clientId = Guid.NewGuid();
+        var client = new { Id = clientId };
+        var persistedSecretVerifier = "persisted-secret-verifier";
+        var committedSecretState = persistedSecretVerifier;
+        var persistenceShouldFail = true;
+        var persistenceException = new InvalidOperationException("Descriptor update failed.");
+
         _mockApplicationManager.Setup(m => m.FindByIdAsync(clientId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(client);
         _mockApplicationManager.Setup(m => m.GetClientTypeAsync(client, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ClientTypes.Confidential);
-        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), client, It.IsAny<CancellationToken>()))
+        _mockApplicationManager.Setup(m => m.PopulateAsync(
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                client,
+                It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((descriptor, _, _) =>
+            {
+                descriptor.ClientSecret = persistedSecretVerifier;
+            })
             .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.PopulateAsync(client, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
-        _mockApplicationManager.Setup(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
+        _mockApplicationManager.Setup(m => m.UpdateAsync(
+                client,
+                It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<object, OpenIddictApplicationDescriptor, CancellationToken>((_, descriptor, _) =>
+            {
+                Assert.False(string.IsNullOrEmpty(descriptor.ClientSecret));
+                Assert.False(SecretsEqualWithoutExposure(persistedSecretVerifier, descriptor.ClientSecret));
+                if (persistenceShouldFail)
+                {
+                    throw persistenceException;
+                }
+
+                committedSecretState = descriptor.ClientSecret!;
+                return ValueTask.CompletedTask;
+            });
 
         // Act
-        var newSecret = await _clientService.RegenerateSecretAsync(clientId);
+        var actualException = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _clientService.RegenerateSecretAsync(clientId));
 
         // Assert
-        Assert.NotNull(newSecret);
-        Assert.NotEmpty(newSecret);
-        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Same(persistenceException, actualException);
+        AssertSecretEquals(persistedSecretVerifier, committedSecretState);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(
+            client,
+            It.IsAny<OpenIddictApplicationDescriptor>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockApplicationManager.Verify(m => m.UpdateAsync(client, It.IsAny<CancellationToken>()), Times.Never);
+        _mockEventPublisher.Verify(p => p.PublishAsync(It.IsAny<ClientUpdatedEvent>()), Times.Never);
+        _mockEventPublisher.Verify(p => p.PublishAsync(It.IsAny<ClientSecretChangedEvent>()), Times.Never);
     }
 
     #endregion
 
     #region Helper Methods
+
+    private static void AssertSecretEquals(string? expected, string? actual)
+    {
+        Assert.True(SecretsEqualWithoutExposure(expected, actual));
+    }
+
+    private static bool SecretsEqualWithoutExposure(string? expected, string? actual)
+    {
+        if (expected is null || actual is null)
+        {
+            return expected is null && actual is null;
+        }
+
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(expected),
+            Encoding.UTF8.GetBytes(actual));
+    }
 
     private static IAsyncEnumerable<T> CreateAsyncEnumerable<T>(IEnumerable<T> source)
     {

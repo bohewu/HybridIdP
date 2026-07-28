@@ -547,8 +547,7 @@ public class ClientService : IClientService
             throw new ArgumentException("Redirect URIs are required for interactive clients (Authorization Code or Implicit flow).");
         }
 
-        await _applicationManager.PopulateAsync(application, descriptor, cancellationToken);
-        await _applicationManager.UpdateAsync(application, cancellationToken);
+        await _applicationManager.UpdateAsync(application, descriptor, cancellationToken);
 
         // Publish domain event
         var changes = "Updated client details";
@@ -607,8 +606,7 @@ public class ClientService : IClientService
         await _applicationManager.PopulateAsync(descriptor, application, cancellationToken);
         descriptor.ClientSecret = newSecret;
 
-        await _applicationManager.PopulateAsync(application, descriptor, cancellationToken);
-        await _applicationManager.UpdateAsync(application, cancellationToken);
+        await _applicationManager.UpdateAsync(application, descriptor, cancellationToken);
 
         // Publish domain event
         var clientId = await _applicationManager.GetClientIdAsync(application, cancellationToken);
