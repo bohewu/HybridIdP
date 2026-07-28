@@ -17,6 +17,12 @@
 .PARAMETER SkipSeeder
 設為 $true 會跳過執行 DataSeeder (預設: $false)
 
+.PARAMETER EnablePrivilegedTestAdminBootstrap
+明確啟用固定的特權測試管理員 bootstrap (預設: 停用)
+
+.PARAMETER EnvironmentName
+啟用特權測試管理員時使用的環境名稱，必須完全等於 Development 或 Test
+
 .EXAMPLE
 # 只清理資料，保留資料庫結構
 .\ci\reset-database.ps1
@@ -29,17 +35,30 @@
 
 # 清理資料但跳過 seeder
 .\ci\reset-database.ps1 -SkipSeeder $true
+
+# 在 Development 明確啟用特權測試管理員
+.\ci\reset-database.ps1 -EnablePrivilegedTestAdminBootstrap -EnvironmentName Development
 #>
 
 param(
     [bool]$DropDatabase = $false,
     [ValidateSet("SqlServer", "PostgreSQL")]
     [string]$Provider = "SqlServer",
-    [bool]$SkipSeeder = $false
+    [bool]$SkipSeeder = $false,
+    [switch]$EnablePrivilegedTestAdminBootstrap,
+    [string]$EnvironmentName = ""
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$AllowedBootstrapEnvironments = @("Development", "Test")
+$PrivilegedTestAdminCreated = $false
+
+if ($EnablePrivilegedTestAdminBootstrap -and
+    -not ($AllowedBootstrapEnvironments -ccontains $EnvironmentName)) {
+    Write-Host "Error: Privileged test administrator bootstrap requires EnvironmentName exactly Development or Test." -ForegroundColor Red
+    exit 1
+}
 
 # Database configuration
 $SqlServerContainer = "hybrididp-mssql-service-1"
@@ -55,6 +74,10 @@ Write-Host ""
 Write-Host "Provider: $Provider" -ForegroundColor Yellow
 Write-Host "DropDatabase: $DropDatabase" -ForegroundColor Yellow
 Write-Host "SkipSeeder: $SkipSeeder" -ForegroundColor Yellow
+Write-Host "EnablePrivilegedTestAdminBootstrap: $($EnablePrivilegedTestAdminBootstrap.IsPresent)" -ForegroundColor Yellow
+if ($EnablePrivilegedTestAdminBootstrap) {
+    Write-Host "EnvironmentName: $EnvironmentName" -ForegroundColor Yellow
+}
 Write-Host ""
 
 function Invoke-SqlServerQuery {
@@ -286,22 +309,44 @@ Console.WriteLine("Seeder invoked via application startup.");
     Write-Host "Running Web.IdP for database seeding (will stop after a few seconds)..." -ForegroundColor Yellow
     
     $job = Start-Job -ScriptBlock {
-        param($workDir, $provider)
+        param($workDir, $provider, $enablePrivilegedTestAdminBootstrap, $environmentName)
         Set-Location $workDir
         $env:DATABASE_PROVIDER = $provider
-        dotnet run --no-build 2>&1
-    } -ArgumentList (Get-Location), $Provider
+        Remove-Item Env:SeedData__PrivilegedTestAdminBootstrap__Enabled -ErrorAction SilentlyContinue
+
+        if ($enablePrivilegedTestAdminBootstrap) {
+            $env:DOTNET_ENVIRONMENT = $environmentName
+            $env:ASPNETCORE_ENVIRONMENT = $environmentName
+            $env:SeedData__PrivilegedTestAdminBootstrap__Enabled = "true"
+            dotnet run --no-build --no-launch-profile 2>&1
+        }
+        else {
+            dotnet run --no-build 2>&1
+        }
+    } -ArgumentList (Get-Location), $Provider, ([bool]$EnablePrivilegedTestAdminBootstrap), $EnvironmentName
     
     # Wait for seeding to complete (usually takes 5-10 seconds)
     Start-Sleep -Seconds 15
+
+    $jobOutput = Receive-Job $job -Keep -ErrorAction SilentlyContinue | Out-String
+    $startupSucceeded = $job.State -eq "Running" -and
+        ($jobOutput -match "Application started" -or $jobOutput -match "Now listening on")
     
     # Stop the job
     Stop-Job $job -ErrorAction SilentlyContinue
     Remove-Job $job -Force -ErrorAction SilentlyContinue
     
     Pop-Location
+
+    if (-not $startupSucceeded) {
+        Write-Host "DataSeeder startup did not complete successfully; privileged test administrator creation was not reported." -ForegroundColor Red
+        exit 1
+    }
     
     Write-Host "DataSeeder completed!" -ForegroundColor Green
+    if ($EnablePrivilegedTestAdminBootstrap) {
+        $PrivilegedTestAdminCreated = $true
+    }
     
     # Register TestClient for E2E tests
     Write-Host ""
@@ -334,7 +379,15 @@ Write-Host "================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "已建立的資料:" -ForegroundColor Yellow
 Write-Host "  - 系統角色: Admin, User, ApplicationManager" -ForegroundColor White
-Write-Host "  - Admin 使用者: admin@hybridauth.local / Admin@123" -ForegroundColor White
+if ($PrivilegedTestAdminCreated) {
+    Write-Host "  - 特權測試管理員: 已透過明確選擇加入建立" -ForegroundColor White
+}
+elseif ($EnablePrivilegedTestAdminBootstrap -and $SkipSeeder) {
+    Write-Host "  - 特權測試管理員: 未建立 (已跳過 DataSeeder)" -ForegroundColor White
+}
+else {
+    Write-Host "  - 特權測試管理員: 已停用，未建立" -ForegroundColor White
+}
 Write-Host "  - 預設安全政策和設定" -ForegroundColor White
 Write-Host "  - TestClient (E2E 測試用)" -ForegroundColor White
 Write-Host ""

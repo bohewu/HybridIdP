@@ -623,12 +623,11 @@ setup() {
 -   ✅ 需要重啟時先執行完整清理指令
 -   ❌ 不要在多個終端機執行相同的指令
 
-### 8. 預設管理員帳號
+### 8. 特權測試管理員（需明確選擇加入）
 
--   **Email**: `admin@hybridauth.local`
--   **Password**: `Admin@123`
+固定的特權測試管理員預設停用。只有在環境名稱完全為 `Development` 或 `Test`，並明確設定 `SeedData:PrivilegedTestAdminBootstrap:Enabled=true`（環境變數：`SeedData__PrivilegedTestAdminBootstrap__Enabled=true`）時，才會建立或更新它。
 
-**重要**：生產環境請務必修改預設密碼！
+Production、Staging、空白/預設、未知及其他所有環境不會因為這個設定而建立或更新該帳號。一般資料初始化不受此選項影響；系統測試 fixture 的明確選擇加入說明請參閱 `docs/TESTING.md`。
 
 
 ### 9. 測試策略 (Testing Strategy)

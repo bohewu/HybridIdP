@@ -11,7 +11,11 @@ namespace Infrastructure;
 
 public static class DataSeeder
 {
-    public static async Task SeedAsync(IServiceProvider serviceProvider, bool seedTestUsers = false)
+    public static async Task SeedAsync(
+        IServiceProvider serviceProvider,
+        bool seedTestUsers = false,
+        bool enablePrivilegedTestAdminBootstrap = false,
+        string? environmentName = null)
     {
         using var scope = serviceProvider.CreateScope();
         
@@ -40,8 +44,14 @@ public static class DataSeeder
         // This ensures Scope descriptions and Login Notices are present in DB
         await LocalizationSeeder.SeedAsync(context);
 
-        // 5. Seed Users (Admin + Test Users)
-        await UserSeeder.SeedAsync(userManager, roleManager, context, seedTestUsers);
+        // 5. Seed Users (optional privileged test admin + other test users)
+        await UserSeeder.SeedAsync(
+            userManager,
+            roleManager,
+            context,
+            seedTestUsers,
+            enablePrivilegedTestAdminBootstrap,
+            environmentName);
 
         // 6. Seed Clients (M2M, Device, Public, Demo)
         await ClientSeeder.SeedAsync(applicationManager, scopeManager, seedTestUsers);

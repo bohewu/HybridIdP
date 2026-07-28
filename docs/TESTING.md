@@ -31,11 +31,15 @@ The application includes a robust data seeding mechanism (`DataSeeder`) that run
 
 ### Standard Seeded Data (All Environments)
 - **Roles**: Admin, User, ApplicationManager.
-- **Admin User**: `admin@hybridauth.local` / `Admin@123` (Linked to a Person entity).
 - **Scopes**: openid, email, profile, roles, phone.
 - **Claims**: Standard OIDC claims mapped to scopes.
 
-### Test Seeded Data (Development/Test Only)
+### Privileged Test Administrator (Explicit Opt-In)
+The fixed privileged test administrator is disabled by default: an absent or `false` `SeedData:PrivilegedTestAdminBootstrap:Enabled` setting does not create or mutate it in any environment. To enable it, set `SeedData:PrivilegedTestAdminBootstrap:Enabled=true` (or `SeedData__PrivilegedTestAdminBootstrap__Enabled=true`) and run in exactly `Development` or `Test`.
+
+The opt-in has no effect in Production, Staging, an empty/default or unknown environment, or any other environment. Ordinary seed data remains independent of this privileged-test-admin bootstrap.
+
+### Test Seeded Data (Development Only)
 When running in `Development` environment, the following additional data is seeded for testing:
 
 - **Public Test Client**: 
@@ -85,7 +89,7 @@ System tests verify the full integration using `TestServer`.
 ```powershell
 dotnet test Web.IdP.SystemTests
 ```
-*Note: System tests use an in-memory database and seeded M2M clients.*
+*Note: System tests use an in-memory database and seeded M2M clients. `Tests.SystemTests/WebIdPServerFixture` explicitly opts into the privileged test administrator bootstrap under its allowed Development fixture.*
 
 ---
 

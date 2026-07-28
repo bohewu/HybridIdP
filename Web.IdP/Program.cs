@@ -4,6 +4,7 @@ using Web.IdP.Infrastructure.Identity;
 using HybridIdP.Infrastructure.Identity;
 using Infrastructure;
 using Infrastructure.Identity;
+using Infrastructure.Seeding;
 using Infrastructure.Services;
 using Infrastructure.Options;
 using Core.Application;
@@ -120,10 +121,20 @@ app.UseCustomPipeline(builder.Configuration);
 
 app.MapCustomEndpoints(builder.Configuration);
 
-// Seed the database (skip in Test environment - integration tests handle seeding)
-if (!app.Environment.IsEnvironment("Test"))
+var enablePrivilegedTestAdminBootstrap = builder.Configuration.GetValue<bool>(
+    PrivilegedTestAdminBootstrapPolicy.ConfigurationKey);
+var seedPrivilegedTestAdmin = PrivilegedTestAdminBootstrapPolicy.IsEnabled(
+    enablePrivilegedTestAdminBootstrap,
+    app.Environment.EnvironmentName);
+
+// Preserve the default Test-environment skip unless its privileged bootstrap is explicitly enabled.
+if (!app.Environment.IsEnvironment("Test") || seedPrivilegedTestAdmin)
 {
-    await DataSeeder.SeedAsync(app.Services, seedTestUsers: app.Environment.IsDevelopment());
+    await DataSeeder.SeedAsync(
+        app.Services,
+        seedTestUsers: app.Environment.IsDevelopment(),
+        enablePrivilegedTestAdminBootstrap,
+        app.Environment.EnvironmentName);
 }
 
 app.Run();

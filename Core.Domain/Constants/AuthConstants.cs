@@ -28,17 +28,19 @@ public static class AuthConstants
     }
 
     /// <summary>
-    /// Default admin account credentials for seeding.
+    /// Fixed TEST-ONLY privileged administrator bootstrap credentials.
+    /// Bootstrap use requires SeedData:PrivilegedTestAdminBootstrap:Enabled=true
+    /// and an environment name exactly equal to Development or Test.
     /// </summary>
     public static class DefaultAdmin
     {
         /// <summary>
-        /// Default admin email/username.
+        /// Fixed TEST-ONLY bootstrap email/username.
         /// </summary>
         public const string Email = "admin@hybridauth.local";
         
         /// <summary>
-        /// Default admin password. IMPORTANT: Change this in production!
+        /// Fixed TEST-ONLY bootstrap password.
         /// </summary>
         public const string Password = "Admin@123";
     }

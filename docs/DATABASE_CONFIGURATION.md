@@ -493,12 +493,11 @@ docker exec hybrididp-mssql-service-1 /opt/mssql-tools18/bin/sqlcmd -S localhost
 docker exec hybrididp-postgres-service-1 psql -U user -d hybridauth_idp -c "SELECT \"ClientId\", \"DisplayName\" FROM \"OpenIddictApplications\" WHERE \"ClientId\" = 'testclient-public'"
 ```
 
-### 預設測試使用者
+### 特權測試管理員（需明確選擇加入）
 
-由 `DataSeeder` 自動建立:
-- **Email:** admin@hybridauth.local
-- **Password:** Admin@123
-- **Role:** Admin (所有權限)
+固定的特權測試管理員預設不會建立或更新；缺少或為 `false` 的 `SeedData:PrivilegedTestAdminBootstrap:Enabled` 在任何環境都保持停用。只有在環境名稱完全為 `Development` 或 `Test`，且將 `SeedData:PrivilegedTestAdminBootstrap:Enabled=true`（環境變數：`SeedData__PrivilegedTestAdminBootstrap__Enabled=true`）明確啟用時，才會建立或更新它。
+
+Production、Staging、空白/預設、未知及其他所有環境即使設定為 `true` 也不會受到影響。一般資料初始化與此特權測試管理員選擇加入機制彼此獨立；`Tests.SystemTests/WebIdPServerFixture` 只為其允許的 Development 測試 fixture 明確啟用此選項。
 
 ### 執行 E2E 測試
 
@@ -536,7 +535,7 @@ npm test
 
 **腳本會執行：**
 1. 按 FK 順序清理所有資料表
-2. 執行 DataSeeder 重建必要資料 (Admin 角色、使用者、設定等)
+2. 執行 DataSeeder 重建必要的一般資料（角色、設定等；特權測試管理員仍需上述明確選擇加入）
 3. 註冊 TestClient (E2E 測試用)
 
 ---
@@ -866,7 +865,7 @@ docker exec hybrididp-mssql-service-1 /opt/mssql-tools18/bin/sqlcmd -S localhost
 # PostgreSQL - 檢查 migrations 歷史
 docker exec hybrididp-postgres-service-1 psql -U user -d hybridauth_idp -c "SELECT * FROM \"__EFMigrationsHistory\""
 
-# 檢查測試用戶是否存在（應用程式啟動後自動建立）
+# 僅在允許的 Development 或 Test 環境明確啟用特權測試管理員 bootstrap 後，檢查該帳號是否存在
 # SQL Server
 docker exec hybrididp-mssql-service-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -d hybridauth_idp -C -Q "SELECT Email FROM AspNetUsers WHERE Email = 'admin@hybridauth.local'"
 

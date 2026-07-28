@@ -14,10 +14,16 @@ public static class UserSeeder
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         ApplicationDbContext context,
-        bool seedTestUsers)
+        bool seedTestUsers,
+        bool enablePrivilegedTestAdminBootstrap = false,
+        string? environmentName = null)
     {
-        // Seed Standard Admin
-        await SeedAdminUserAsync(userManager, roleManager, context);
+        if (PrivilegedTestAdminBootstrapPolicy.IsEnabled(
+            enablePrivilegedTestAdminBootstrap,
+            environmentName))
+        {
+            await SeedAdminUserAsync(userManager, roleManager, context);
+        }
 
         if (seedTestUsers)
         {
