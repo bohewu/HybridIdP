@@ -17,35 +17,33 @@ services:
       context: ../
       dockerfile: Web.IdP/Dockerfile
     ports:
-      # Option 1: Bind to specific internal IP (recommended if host has public IP)
-      #   Set INTERNAL_IP=192.168.1.20 to only listen on internal network
-      # Option 2: Leave INTERNAL_IP unset to bind to all interfaces (0.0.0.0)
-      #   Relies on firewall + Proxy__KnownProxies for security
-      - "${INTERNAL_IP:-0.0.0.0}:8080:80"
+      # Required: Set INTERNAL_IP to the explicit Host B address that should accept proxy traffic.
+      # Port 8080 binds only to that configured Host B interface.
+      - "${INTERNAL_IP:?INTERNAL_IP is required}:8080:80"
     env_file:
       # Pass through every key from the selected deploy env file; explicit entries below still win.
       - ${IDP_ENV_FILE:-.env}
     environment:
       - ASPNETCORE_URLS=http://+:80
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
-      - DATABASE_PROVIDER=${DATABASE_PROVIDER:-SqlServer}
-      - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection}
-      - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection}
-      - ConnectionStrings__RedisConnection=${ConnectionStrings__RedisConnection}
+      - DATABASE_PROVIDER=${DATABASE_PROVIDER:?DATABASE_PROVIDER is required}
+      - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection:?ConnectionStrings__SqlServerConnection is required}
+      - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection:?ConnectionStrings__PostgreSqlConnection is required}
+      - ConnectionStrings__RedisConnection=${ConnectionStrings__RedisConnection:?ConnectionStrings__RedisConnection is required}
       - Redis__Enabled=${Redis__Enabled:-true}
       # IMPORTANT: Must be true for split-host deployments
       - Proxy__Enabled=true
       # IMPORTANT: Set this to your reverse proxy host's IP
-      - Proxy__KnownProxies=${PROXY_HOST_IP}
+      - Proxy__KnownProxies=${PROXY_HOST_IP:?PROXY_HOST_IP is required}
       # Fido2
       - Fido2__ServerName=${Fido2__ServerName:-}
       - Fido2__ServerDomain=${Fido2__ServerDomain:-localhost}
       - Fido2__Origins=${Fido2__Origins:-https://localhost:7035}
       - Fido2__TimestampDriftTolerance=${Fido2__TimestampDriftTolerance:-300000}
       - Certificates__EncryptionCertificatePath=/app/certs/encryption.pfx
-      - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
+      - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD:?ENCRYPTION_CERT_PASSWORD is required}
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx
-      - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
+      - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD:?SIGNING_CERT_PASSWORD is required}
       # External Login (Google, Microsoft)
       - ExternalLogin__MaxLoginsPerProvider=${ExternalLogin__MaxLoginsPerProvider:-2}
       - ExternalLogin__ForceAccountSelection=${ExternalLogin__ForceAccountSelection:-true}
@@ -75,10 +73,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-YourStrong!Passw0rd}"
-    ports:
-      # Database only accessible from internal network
-      - "${INTERNAL_IP:-127.0.0.1}:1433:1433"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD is required}"
     volumes:
       - mssql-data:/var/opt/mssql
     logging:
@@ -92,10 +87,7 @@ services:
     environment:
       POSTGRES_DB: hybridauth_idp
       POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-    ports:
-      # Database only accessible from internal network
-      - "${INTERNAL_IP:-127.0.0.1}:5432:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     logging:
@@ -106,9 +98,6 @@ services:
 
   redis-service:
     image: redis:alpine
-    ports:
-      # Redis only accessible from internal network
-      - "${INTERNAL_IP:-127.0.0.1}:6379:6379"
     volumes:
       - redis-data:/data
     logging:

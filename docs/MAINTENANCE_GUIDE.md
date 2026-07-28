@@ -424,6 +424,12 @@ fi
 
 ## 常見維運任務
 
+### Persistent Volumes and Local Data Ports
+
+Production compose retains named `mssql-data`, `postgres-data`, `redis-data`, and, where configured, `dataprotection-keys` volumes. These volumes persist database, Redis, and data-protection state across normal deployment updates.
+
+`deployment/docker-compose.local-ports.yml` is a temporary loopback-only host-port override for internal MSSQL, PostgreSQL, and Redis services. Adding or removing that override changes only host-port publication; do not remove volumes or reset databases as part of that change.
+
 ### 更新應用程式
 
 ```bash

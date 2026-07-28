@@ -1,6 +1,6 @@
 {
   "project": "HybridAuth IdP",
-  "updated_at": "2026-07-28T05:35:11Z",
+  "updated_at": "2026-07-28T08:21:52Z",
   "items": [
     {
       "id": "SEC-20260728-admin-bootstrap",
@@ -26,6 +26,30 @@
       ],
       "notes": [
         "Completed run synced without importing unrelated scan findings, dependency warnings, or P3 notes."
+      ]
+    },
+    {
+      "id": "SEC-20260728-deployment-hardening",
+      "title": "Fail-closed deployment configuration and private data services",
+      "status": "done",
+      "completed_at": "2026-07-28T08:21:52Z",
+      "run_id": "20260728-deployment-hardening",
+      "summary": "Deployment hardening completed across all five production modes with explicit local operator overrides preserved.",
+      "evidence": [
+        "Five production modes fail closed when required deployment configuration or database secrets are missing",
+        "Database and Redis services have no default host ports",
+        "Explicit loopback override remains available for local operator access",
+        "Deployment-hardening harness, focused tests, static checks, and final review passed with required_followups empty"
+      ],
+      "links": [
+        ".pipeline-output/20260728-deployment-hardening/pipeline/review-report.json",
+        ".pipeline-output/20260728-deployment-hardening/pipeline/test-report.json",
+        ".pipeline-output/20260728-deployment-hardening/status/tasks/T1.json",
+        ".pipeline-output/20260728-deployment-hardening/status/tasks/T2.json",
+        ".pipeline-output/20260728-deployment-hardening/status/tasks/T3.json"
+      ],
+      "notes": [
+        "Local commit remains pending; unrelated scan findings and deferred work were not imported."
       ]
     }
   ]

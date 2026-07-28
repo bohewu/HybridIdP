@@ -282,7 +282,9 @@ $(if ($useExternalDb) {
 "# External database connection (user-provided)"
 if ($useSqlServer) {
 "ConnectionStrings__SqlServerConnection='Server=$externalDbHost;Database=$externalDbName;User Id=$externalDbUser;Password=$externalDbPassword;Encrypt=True;TrustServerCertificate=True'"
+"ConnectionStrings__PostgreSqlConnection='NotConfiguredForSelectedProvider'"
 } else {
+"ConnectionStrings__SqlServerConnection='NotConfiguredForSelectedProvider'"
 "ConnectionStrings__PostgreSqlConnection='Host=$externalDbHost;Port=$externalDbPort;Database=$externalDbName;Username=$externalDbUser;Password=$externalDbPassword'"
 }
 } else {

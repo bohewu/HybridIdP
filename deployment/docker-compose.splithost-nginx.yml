@@ -18,7 +18,7 @@ services:
     image: nginx:alpine
     ports:
       # Expose to external reverse proxy
-      - "${INTERNAL_IP:-0.0.0.0}:8080:80"
+      - "${INTERNAL_IP:?INTERNAL_IP is required}:8080:80"
     volumes:
       - ./nginx/splithost-gateway.conf:/etc/nginx/nginx.conf:ro
     networks:
@@ -44,18 +44,18 @@ services:
     environment:
       - ASPNETCORE_URLS=http://+:80
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
-      - DATABASE_PROVIDER=${DATABASE_PROVIDER:-SqlServer}
-      - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection}
-      - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection}
-      - ConnectionStrings__RedisConnection=${ConnectionStrings__RedisConnection}
+      - DATABASE_PROVIDER=${DATABASE_PROVIDER:?DATABASE_PROVIDER is required}
+      - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection:?ConnectionStrings__SqlServerConnection is required}
+      - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection:?ConnectionStrings__PostgreSqlConnection is required}
+      - ConnectionStrings__RedisConnection=${ConnectionStrings__RedisConnection:?ConnectionStrings__RedisConnection is required}
       - Redis__Enabled=${Redis__Enabled:-true}
       # Trust the local nginx-gateway
       - Proxy__Enabled=true
       - Proxy__KnownProxies=172.16.0.0/12;192.168.0.0/16;10.0.0.0/8
       - Certificates__EncryptionCertificatePath=/app/certs/encryption.pfx
-      - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
+      - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD:?ENCRYPTION_CERT_PASSWORD is required}
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx
-      - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
+      - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD:?SIGNING_CERT_PASSWORD is required}
       # Fido2
       - Fido2__ServerName=${Fido2__ServerName:-}
       - Fido2__ServerDomain=${Fido2__ServerDomain:-localhost}
@@ -109,7 +109,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-YourStrong!Passw0rd}"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD is required}"
     # No external port - only Docker network
     networks:
       - backend
@@ -121,7 +121,7 @@ services:
     environment:
       POSTGRES_DB: hybridauth_idp
       POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     # No external port - only Docker network
     networks:
       - backend

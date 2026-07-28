@@ -46,6 +46,19 @@ This guide ensures that Host B is strictly locked down to *only* talk to Host A.
 > [!TIP]
 > **Recommended**: Use `splithost-nginx.yml` for production. The app is completely isolated in Docker internal network.
 
+## Data-Service Host Exposure
+
+All Split-Host production compose modes keep MSSQL, PostgreSQL, and Redis off host-published ports by default. The IdP and gateway use their Docker networks; do not treat a database or Redis port as reachable from Host A or the public network.
+
+For a temporary localhost-only diagnostic on a Split-Host mode that includes the internal database services, include the explicit override after the selected compose file:
+
+```bash
+cd deployment
+docker compose -f docker-compose.splithost-nginx.yml -f docker-compose.local-ports.yml --env-file .env up -d
+```
+
+This publishes the existing `mssql-service` (`127.0.0.1:1433`), `postgres-service` (`127.0.0.1:5432`), and `redis-service` (`127.0.0.1:6379`) only to Host B loopback. Omitting `docker-compose.local-ports.yml` restores the secure default. Do not use this override with `docker-compose.splithost-nginx-nodb.yml`, because that mode has no internal database services. Enabling or disabling the override does not require, and must not be accompanied by, volume removal.
+
 ---
 
 ## Prerequisites
@@ -277,30 +290,32 @@ curl -I https://idp.example.com
 
 ### 4.1 Create .env File
 
+Use the setup wizard (recommended):
+
 ```bash
 cd deployment
 ./setup-env.sh  # or .\setup-env.ps1 on Windows
 ```
 
-Or manually create `.env`:
+For a manual `.env`, follow the [`docker-compose.splithost.yml` requirements matrix](../docs/DEPLOYMENT_GUIDE.md#production-configuration-contract) and provide all of these variables:
 
-```bash
-# Core settings
-ASPNETCORE_ENVIRONMENT=Production
-DATABASE_PROVIDER=SqlServer
+- `DATABASE_PROVIDER`
+- `ConnectionStrings__SqlServerConnection`
+- `ConnectionStrings__PostgreSqlConnection`
+- `ConnectionStrings__RedisConnection`
+- `MSSQL_SA_PASSWORD`
+- `POSTGRES_PASSWORD`
+- `ENCRYPTION_CERT_PASSWORD`
+- `SIGNING_CERT_PASSWORD`
+- `INTERNAL_IP`
+- `PROXY_HOST_IP`
 
-# Trust the reverse proxy
-Proxy__Enabled=true
-PROXY_HOST_IP=192.168.1.10
-
-# Database (adjust as needed)
-ConnectionStrings__SqlServerConnection=Server=mssql-service;Database=HybridAuthIdP;...
-```
+Every value must be non-empty and operator-managed. This mode defines both MSSQL and PostgreSQL services, so both database connection strings and both database initialization passwords are required even when `DATABASE_PROVIDER` selects only one provider.
 
 ### 4.2 Start the Application
 
 ```bash
-docker compose -f docker-compose.internal.yml --env-file .env up -d
+docker compose -f docker-compose.splithost.yml --env-file .env up -d
 ```
 
 ---

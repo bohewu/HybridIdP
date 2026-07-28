@@ -43,6 +43,14 @@ All authentication and session cookies are configured with:
 - `Secure`: Transmitted only over HTTPS.
 - `SameSite`: Set to `Lax` or `Strict` for CSRF protection.
 
+### Production Deployment Inputs and Network Boundary
+
+Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, and certificate passwords. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.
+
+Validation rejects missing or empty required inputs before image pull, local build, or service startup. Its diagnostics name the missing variable but never print the configured value. Store and provide these values through the operator's approved secret-management process.
+
+MSSQL, PostgreSQL, and Redis have no host-published ports in the default production compose configuration. `deployment/docker-compose.local-ports.yml` is the explicit, loopback-only diagnostic override for the internal data services; it must not be treated as a production default.
+
 ---
 
 ## Reporting a Vulnerability

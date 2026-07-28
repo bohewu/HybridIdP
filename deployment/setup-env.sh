@@ -268,9 +268,11 @@ if [ "$use_external_db" = true ]; then
     # External DB connection
     if [ "$use_sqlserver" = true ]; then
         db_connection_content="# External database connection (user-provided)
-ConnectionStrings__SqlServerConnection='Server=$external_db_host;Database=$external_db_name;User Id=$external_db_user;Password=$external_db_password;Encrypt=True;TrustServerCertificate=True'"
+ConnectionStrings__SqlServerConnection='Server=$external_db_host;Database=$external_db_name;User Id=$external_db_user;Password=$external_db_password;Encrypt=True;TrustServerCertificate=True'
+ConnectionStrings__PostgreSqlConnection='NotConfiguredForSelectedProvider'"
     else
         db_connection_content="# External database connection (user-provided)
+ConnectionStrings__SqlServerConnection='NotConfiguredForSelectedProvider'
 ConnectionStrings__PostgreSqlConnection='Host=$external_db_host;Port=$external_db_port;Database=$external_db_name;Username=$external_db_user;Password=$external_db_password'"
     fi
     db_credentials_content=""

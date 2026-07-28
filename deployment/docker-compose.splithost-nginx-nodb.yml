@@ -26,7 +26,7 @@ services:
   nginx-gateway:
     image: nginx:alpine
     ports:
-      - "${INTERNAL_IP:-0.0.0.0}:8080:80"
+      - "${INTERNAL_IP:?INTERNAL_IP is required}:8080:80"
     volumes:
       - ./nginx/splithost-gateway.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ip-allowlist.conf:/etc/nginx/conf.d/ip-allowlist.conf:ro
@@ -55,9 +55,9 @@ services:
       - ASPNETCORE_URLS=http://+:80
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
       # Database - connects to EXTERNAL SQL Server/PostgreSQL
-      - DATABASE_PROVIDER=${DATABASE_PROVIDER:-SqlServer}
-      - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection}
-      - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection}
+      - DATABASE_PROVIDER=${DATABASE_PROVIDER:?DATABASE_PROVIDER is required}
+      - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection:?ConnectionStrings__SqlServerConnection is required}
+      - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection:?ConnectionStrings__PostgreSqlConnection is required}
       # Redis - connects to local redis-service
       - Redis__Enabled=${Redis__Enabled:-true}
       - ConnectionStrings__RedisConnection=redis-service:6379
@@ -66,9 +66,9 @@ services:
       - Proxy__KnownProxies=172.16.0.0/12;192.168.0.0/16;10.0.0.0/8
       # OpenIddict Certificates
       - Certificates__EncryptionCertificatePath=/app/certs/encryption.pfx
-      - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD}
+      - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD:?ENCRYPTION_CERT_PASSWORD is required}
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx
-      - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD}
+      - Certificates__SigningCertificatePassword=${SIGNING_CERT_PASSWORD:?SIGNING_CERT_PASSWORD is required}
       # Fido2
       - Fido2__ServerName=${Fido2__ServerName:-}
       - Fido2__ServerDomain=${Fido2__ServerDomain:-localhost}

@@ -6,8 +6,9 @@ This guide covers the deployment of HybridIdP using Docker Compose. The easiest 
 1. [Prerequisites](#prerequisites)
 2. [Quick Start (Recommended)](#quick-start-interactive-wizard)
 3. [Deployment Modes](#deployment-modes)
-4. [Verification](#verification)
-5. [Advanced / Manual Configuration](#advanced--manual-configuration)
+4. [Production Configuration Contract](#production-configuration-contract)
+5. [Verification](#verification)
+6. [Advanced / Manual Configuration](#advanced--manual-configuration)
    - [Manual .env Setup](#manual-env-setup)
    - [Manual Certificate Generation](#manual-certificate-generation)
    - [Database & Redis Options](#database--redis-options)
@@ -57,12 +58,13 @@ docker compose -f docker-compose.nginx.yml --env-file .env up -d
 
 ## Deployment Modes
 
-| Mode | Description | Components |
-|------|-------------|------------|
-| **A. Nginx Reverse Proxy** (Recommended) | Fully compliant setup with SSL termination. | `nginx` + `idp` + `db` + `redis` |
-| **B. Internal / Load Balancer** | For when you have an existing robust LB (AWS ALB, Azure Gateway) handling SSL. | `idp` + `db` + `redis` |
-| **C. Split-Host + Internal DB** | Advanced security. Reverse Proxy is on Host A, IdP+DB on Host B. | `nginx-gateway` + `idp` + `db` + `redis` |
-| **D. Split-Host + External DB** | **Production Preferred**. RP on Host A, IdP on Host B, DB on dedicated server. | `nginx-gateway` + `idp` + `redis` |
+| Mode | Compose file | Description | Components |
+|------|--------------|-------------|------------|
+| **A. Nginx Reverse Proxy** (Recommended) | `docker-compose.nginx.yml` | Fully compliant setup with SSL termination. | `nginx` + `idp` + `db` + `redis` |
+| **B. Internal / Load Balancer** | `docker-compose.internal.yml` | For when an existing LB handles SSL. | `idp` + `db` + `redis` |
+| **C. Split-Host Direct** | `docker-compose.splithost.yml` | Reverse proxy is on Host A; IdP, DB, and Redis are on Host B. | `idp` + `db` + `redis` |
+| **D. Split-Host Local Nginx** | `docker-compose.splithost-nginx.yml` | Gateway and IdP are isolated on Host B. | `nginx-gateway` + `idp` + `db` + `redis` |
+| **E. Split-Host Local Nginx + External DB** | `docker-compose.splithost-nginx-nodb.yml` | Gateway and IdP are on Host B; the database is external. | `nginx-gateway` + `idp` + `redis` |
 
 ### Split-Host Security
 If you choose Mode C or D, the wizard will ask for:
@@ -89,6 +91,50 @@ For Split-Host deployments, you need to configure the Nginx IP allowlist:
 
 > [!TIP]
 > For a deep dive into hardening the Split-Host architecture (DMZ v.s. Trusted Zone), read the [Split-Host Security Guide](../deployment/SPLIT_HOST_SECURITY.md).
+
+---
+
+## Production Configuration Contract
+
+Use the setup scripts to create the operator-managed values in `deployment/.env`, or start from `.env.example` and supply the values through an approved secret-management process. Production compose does not provide a database-password fallback.
+
+All modes require non-empty `DATABASE_PROVIDER`, `ConnectionStrings__SqlServerConnection`, `ConnectionStrings__PostgreSqlConnection`, `ENCRYPTION_CERT_PASSWORD`, and `SIGNING_CERT_PASSWORD`. `DATABASE_PROVIDER` selects the provider used by the IdP, but both database connection-string variables are required by the compose contract because both are passed into the container.
+
+| Compose file | Additional required non-empty values |
+|--------------|--------------------------------------|
+| `docker-compose.internal.yml` | `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, `POSTGRES_PASSWORD` |
+| `docker-compose.nginx.yml` | `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, `POSTGRES_PASSWORD` |
+| `docker-compose.splithost.yml` | `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, `POSTGRES_PASSWORD`, `INTERNAL_IP`, `PROXY_HOST_IP` |
+| `docker-compose.splithost-nginx.yml` | `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, `POSTGRES_PASSWORD`, `INTERNAL_IP` |
+| `docker-compose.splithost-nginx-nodb.yml` | `INTERNAL_IP` |
+
+The external-database mode sets its Redis connection to the local Redis service, so it does not require `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, or `POSTGRES_PASSWORD`. The other four modes contain both database services; therefore their SQL Server and PostgreSQL initialization passwords are required even when only one provider is selected.
+
+Absent or empty required values fail compose validation before `deploy-idp.sh` can pull, build, or start a service. Diagnostics identify the missing variable name; they must never reveal its supplied value. Correct the named input in the operator-managed environment file and rerun the command.
+
+### Data-Service Network Exposure
+
+By default, MSSQL, PostgreSQL, and Redis are available only on their Docker networks: no database or Redis port is published on the host. Named `mssql-data`, `postgres-data`, `redis-data`, and (where used) `dataprotection-keys` volumes persist independently of this host-port choice.
+
+For temporary local diagnostics on a mode that includes the internal MSSQL, PostgreSQL, and Redis services, explicitly include the local override after the selected compose file:
+
+```bash
+cd deployment
+docker compose -f docker-compose.nginx.yml -f docker-compose.local-ports.yml --env-file .env up -d
+```
+
+`docker-compose.local-ports.yml` exposes the existing `mssql-service` (`1433`), `postgres-service` (`5432`), and `redis-service` (`6379`) on loopback only (`127.0.0.1`). It is an opt-in override, not a production default, and is not applicable to `docker-compose.splithost-nginx-nodb.yml`, which has no internal database services. Remove the override from the compose command to return to the default private posture. Do not delete or recreate volumes when adding or removing this override.
+
+### Image and Local-Source Deployments
+
+For GHCR, `deployment/docker-compose.ghcr-image.yml` requires `IDP_IMAGE` and sets `pull_policy: always`. Use the existing deployment flow with a non-secret image placeholder or an approved image tag:
+
+```bash
+cd deployment
+./deploy-idp.sh --source ghcr --image ghcr.io/<owner>/hybrididp-idp-service:main
+```
+
+After validation, the script pulls the selected `idp-service` image and runs `up -d --no-build`, which recreates the service when the image changes. Update the host by rerunning this flow; do not reset the database or remove volumes to update an image. For local source, the same script retains its local build behavior: `--source local` runs `up -d --build`, while `--no-cache` performs the local no-cache build before startup.
 
 ---
 
