@@ -1,6 +1,6 @@
 {
   "project": "HybridAuth IdP",
-  "updated_at": "2026-07-29T04:06:19Z",
+  "updated_at": "2026-07-29T04:27:08Z",
   "items": [
     {
       "id": "SEC-20260728-admin-bootstrap",
@@ -51,6 +51,31 @@
       ],
       "notes": [
         "Local commit remains pending; unrelated scan findings and deferred work were not imported."
+      ]
+    },
+    {
+      "id": "SEC-20260729-client-secret-rotation",
+      "title": "Confidential-client secret rotation verification",
+      "status": "done",
+      "completed_at": "2026-07-29T04:27:08Z",
+      "run_id": "pipeline-20260729T042708Z-client-secret-rotation",
+      "summary": "Verified confidential-client secret rotation end to end: current credentials authenticate through client_secret_post and client_secret_basic, superseded credentials are rejected immediately, regeneration and metadata/atomicity behavior hold, and the rotated credential completes the PKCE/session/logout lifecycle.",
+      "evidence": [
+        "Production descriptor-overload fix was already present in commit dee395db; existing ClientService unit coverage proves descriptor selection, null-secret preservation, ordering, and failure behavior",
+        "ConfidentialClientSecretRotationSystemTests passed in isolation with successful replacement and regenerated credential probes through client_secret_post and client_secret_basic and immediate superseded-credential rejection",
+        "Invalid-update atomicity, metadata-only secret preservation, one-time regeneration output, rotated-credential Authorization Code with S256 PKCE login/code-redemption/session/logout, cleanup, and sensitive-output hygiene checks passed",
+        "Affected PKCE, logout, and client CRUD system-test filter passed: 23 tests; solution build passed with zero errors",
+        "Final review passed with required_followups empty",
+        "Full solution test was partial only because seven unrelated AdminMiscEndpointTests hit the local SQL Server TLS fixture failure; no new product todo was created"
+      ],
+      "links": [
+        ".pipeline-output/pipeline-20260729T042708Z-client-secret-rotation/pipeline/review-report.json",
+        ".pipeline-output/pipeline-20260729T042708Z-client-secret-rotation/pipeline/test-report.json",
+        ".pipeline-output/pipeline-20260729T042708Z-client-secret-rotation/pipeline/task-list.json",
+        ".pipeline-output/pipeline-20260729T042708Z-client-secret-rotation/pipeline/repo-findings.json"
+      ],
+      "notes": [
+        "Delivery was scoped to verification and test coverage; unrelated local SQL TLS fixture failures remain environmental evidence only."
       ]
     }
   ]

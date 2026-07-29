@@ -18,7 +18,7 @@ public sealed class ConfidentialClientSecretRotationSystemTests : IAsyncLifetime
     private const string StandardUserPassword = "Test@123";
     private const string AuthorizationScopes = "openid";
 
-    private static readonly IReadOnlyList<string> ClientPermissions =
+    private static readonly IReadOnlyList<string> AuthorizationCodePermissions =
     [
         "ept:authorization",
         "ept:token",
@@ -26,6 +26,12 @@ public sealed class ConfidentialClientSecretRotationSystemTests : IAsyncLifetime
         "gt:authorization_code",
         "rst:code",
         "scp:openid"
+    ];
+
+    private static readonly IReadOnlyList<string> ClientCredentialsPermissions =
+    [
+        "ept:token",
+        "gt:client_credentials"
     ];
 
     private readonly WebIdPServerFixture _serverFixture;
@@ -79,115 +85,150 @@ public sealed class ConfidentialClientSecretRotationSystemTests : IAsyncLifetime
     [Fact]
     public async Task SecretRotation_ShouldBeAtomicAndPreserveAuthorizationSessionUntilLogout()
     {
-        var clientId = $"rotation-system-{Guid.NewGuid():N}";
+        var runId = Guid.NewGuid().ToString("N");
+        var authorizationClientId = $"rotation-system-auth-{runId}";
+        var probeClientId = $"rotation-system-probe-{runId}";
         var redirectUri = $"{_serverFixture.BaseUrl}/signin-oidc";
         var postLogoutRedirectUri = $"{_serverFixture.BaseUrl}/signout-callback-oidc";
-        string? createdClientId = null;
+        string? createdAuthorizationClientId = null;
+        string? createdProbeClientId = null;
 
         try
         {
-            var createdClient = await CreateClientAsync(
-                clientId,
-                redirectUri,
-                postLogoutRedirectUri,
-                id => createdClientId = id);
-            var initialSecret = createdClient.InitialSecret;
+            await CreateClientAsync(
+                authorizationClientId,
+                [redirectUri],
+                [postLogoutRedirectUri],
+                AuthorizationCodePermissions,
+                id => createdAuthorizationClientId = id);
+            var createdProbeClient = await CreateClientAsync(
+                probeClientId,
+                [],
+                [],
+                ClientCredentialsPermissions,
+                id => createdProbeClientId = id);
+            var initialSecret = createdProbeClient.InitialSecret;
 
             await AssertAuthenticationStatusAsync(
-                clientId,
+                probeClientId,
                 initialSecret,
-                HttpStatusCode.BadRequest);
+                HttpStatusCode.OK);
 
             var rejectedCandidateSecret = GenerateRuntimeSecret();
             using (var rejectedUpdateResponse = await UpdateClientAsync(
-                       createdClientId,
-                       clientId,
+                       createdProbeClientId,
+                       probeClientId,
                        rejectedCandidateSecret,
                        ["not-a-valid-absolute-uri"],
-                       [postLogoutRedirectUri],
-                       "Rejected secret update"))
+                       [],
+                       "Rejected secret update",
+                       ClientCredentialsPermissions))
             {
                 Assert.Equal(HttpStatusCode.BadRequest, rejectedUpdateResponse.StatusCode);
             }
 
             await AssertAuthenticationStatusAsync(
-                clientId,
+                probeClientId,
                 initialSecret,
-                HttpStatusCode.BadRequest);
+                HttpStatusCode.OK);
             await AssertAuthenticationStatusAsync(
-                clientId,
+                probeClientId,
                 rejectedCandidateSecret,
                 HttpStatusCode.Unauthorized);
 
             var replacementSecret = GenerateRuntimeSecret();
             using (var successfulUpdateResponse = await UpdateClientAsync(
-                       createdClientId,
-                       clientId,
+                       createdProbeClientId,
+                       probeClientId,
                        replacementSecret,
-                       [redirectUri],
-                       [postLogoutRedirectUri],
-                       "Rotated confidential client"))
+                       [],
+                       [],
+                       "Rotated confidential client",
+                       ClientCredentialsPermissions))
             {
                 Assert.Equal(HttpStatusCode.OK, successfulUpdateResponse.StatusCode);
             }
 
             await AssertAuthenticationStatusAsync(
-                clientId,
+                probeClientId,
                 replacementSecret,
-                HttpStatusCode.BadRequest);
+                HttpStatusCode.OK);
             await AssertAuthenticationStatusAsync(
-                clientId,
+                probeClientId,
                 initialSecret,
                 HttpStatusCode.Unauthorized);
 
             using (var metadataUpdateResponse = await UpdateClientAsync(
-                       createdClientId,
-                       clientId,
+                       createdProbeClientId,
+                       probeClientId,
                        null,
-                       [redirectUri],
-                       [postLogoutRedirectUri],
-                       "Metadata-only confidential client update"))
+                       [],
+                       [],
+                       "Metadata-only confidential client update",
+                       ClientCredentialsPermissions))
             {
                 Assert.Equal(HttpStatusCode.OK, metadataUpdateResponse.StatusCode);
             }
 
             await AssertAuthenticationStatusAsync(
-                clientId,
+                probeClientId,
                 replacementSecret,
-                HttpStatusCode.BadRequest);
+                HttpStatusCode.OK);
 
-            var regeneratedSecret = await RegenerateSecretAsync(createdClientId);
+            var regeneratedSecret = await RegenerateSecretAsync(createdProbeClientId);
 
             await AssertAuthenticationStatusAsync(
-                clientId,
+                probeClientId,
                 regeneratedSecret,
-                HttpStatusCode.BadRequest);
+                HttpStatusCode.OK);
             await AssertAuthenticationStatusAsync(
-                clientId,
+                probeClientId,
                 replacementSecret,
                 HttpStatusCode.Unauthorized);
 
+            var authorizationReplacementSecret = GenerateRuntimeSecret();
+            using (var authorizationUpdateResponse = await UpdateClientAsync(
+                       createdAuthorizationClientId,
+                       authorizationClientId,
+                       authorizationReplacementSecret,
+                       [redirectUri],
+                       [postLogoutRedirectUri],
+                       "Rotated authorization code client",
+                       AuthorizationCodePermissions))
+            {
+                Assert.Equal(HttpStatusCode.OK, authorizationUpdateResponse.StatusCode);
+            }
+
             await CompleteAuthorizationCodeFlowAndLogoutAsync(
-                clientId,
-                regeneratedSecret,
+                authorizationClientId,
+                authorizationReplacementSecret,
                 redirectUri,
                 postLogoutRedirectUri);
         }
         finally
         {
-            if (createdClientId is not null)
+            try
             {
-                using var deleteResponse =
-                    await _adminClient.DeleteAsync($"/api/admin/clients/{createdClientId}");
-                Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
+                if (createdProbeClientId is not null)
+                {
+                    await DeleteClientAsync(createdProbeClientId);
+                }
+            }
+            finally
+            {
+                if (createdAuthorizationClientId is not null)
+                {
+                    await DeleteClientAsync(createdAuthorizationClientId);
+                }
             }
         }
     }
 
     private async Task<(string Id, string InitialSecret)> CreateClientAsync(
         string clientId,
-        string redirectUri,
-        string postLogoutRedirectUri,
+        List<string> redirectUris,
+        List<string> postLogoutRedirectUris,
+        IReadOnlyList<string> permissions,
         Action<string> trackCreatedClient)
     {
         var request = new CreateClientRequest(
@@ -197,9 +238,9 @@ public sealed class ConfidentialClientSecretRotationSystemTests : IAsyncLifetime
             ApplicationType: "web",
             Type: "confidential",
             ConsentType: "explicit",
-            RedirectUris: [redirectUri],
-            PostLogoutRedirectUris: [postLogoutRedirectUri],
-            Permissions: ClientPermissions.ToList(),
+            RedirectUris: redirectUris,
+            PostLogoutRedirectUris: postLogoutRedirectUris,
+            Permissions: permissions.ToList(),
             SupportedRoles: null)
         {
             RequirePkce = true
@@ -231,7 +272,8 @@ public sealed class ConfidentialClientSecretRotationSystemTests : IAsyncLifetime
         string? clientSecret,
         List<string> redirectUris,
         List<string> postLogoutRedirectUris,
-        string displayName)
+        string displayName,
+        IReadOnlyList<string> permissions)
     {
         var request = new UpdateClientRequest(
             ClientId: clientId,
@@ -241,7 +283,7 @@ public sealed class ConfidentialClientSecretRotationSystemTests : IAsyncLifetime
             ConsentType: "explicit",
             RedirectUris: redirectUris,
             PostLogoutRedirectUris: postLogoutRedirectUris,
-            Permissions: ClientPermissions.ToList(),
+            Permissions: permissions.ToList(),
             SupportedRoles: null)
         {
             RequirePkce = true
@@ -250,6 +292,13 @@ public sealed class ConfidentialClientSecretRotationSystemTests : IAsyncLifetime
         return _adminClient.PutAsJsonAsync(
             $"/api/admin/clients/{createdClientId}",
             request);
+    }
+
+    private async Task DeleteClientAsync(string createdClientId)
+    {
+        using var deleteResponse =
+            await _adminClient.DeleteAsync($"/api/admin/clients/{createdClientId}");
+        Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
     }
 
     private async Task<string> RegenerateSecretAsync(string createdClientId)

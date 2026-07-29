@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-07-29T04:06:19Z._
+_Derived from `todo-ledger.json`; updated 2026-07-29T04:27:08Z._
 
 ## Done
 
@@ -31,3 +31,16 @@ _Derived from `todo-ledger.json`; updated 2026-07-29T04:06:19Z._
   - `.pipeline-output/20260728-deployment-hardening/status/tasks/T2.json`
   - `.pipeline-output/20260728-deployment-hardening/status/tasks/T3.json`
 - Note: Local commit remains pending; unrelated scan findings and deferred work were not imported.
+
+### SEC-20260729-client-secret-rotation — Confidential-client secret rotation verification
+
+- Completed: 2026-07-29T04:27:08Z
+- Run: `pipeline-20260729T042708Z-client-secret-rotation`
+- Summary: Verified confidential-client secret rotation end to end: current credentials authenticate through client_secret_post and client_secret_basic, superseded credentials are rejected immediately, regeneration and metadata/atomicity behavior hold, and the rotated credential completes the PKCE/session/logout lifecycle.
+- Evidence: Production descriptor-overload fix was already present in commit dee395db with existing ClientService unit coverage; isolated rotation system test passed with replacement/regenerated post/basic success and immediate superseded-credential rejection; invalid-update atomicity, metadata-only preservation, one-time regeneration output, PKCE/login/code-redemption/session/logout, cleanup, and sensitive-output hygiene passed; affected PKCE/logout/client CRUD filter passed 23 tests; solution build passed with zero errors; final review passed with required_followups empty; full solution test was partial only because seven unrelated AdminMiscEndpointTests hit the local SQL Server TLS fixture failure.
+- Artifacts:
+  - `.pipeline-output/pipeline-20260729T042708Z-client-secret-rotation/pipeline/review-report.json`
+  - `.pipeline-output/pipeline-20260729T042708Z-client-secret-rotation/pipeline/test-report.json`
+  - `.pipeline-output/pipeline-20260729T042708Z-client-secret-rotation/pipeline/task-list.json`
+  - `.pipeline-output/pipeline-20260729T042708Z-client-secret-rotation/pipeline/repo-findings.json`
+- Note: Delivery was scoped to verification and test coverage; unrelated local SQL TLS fixture failures remain environmental evidence only.
