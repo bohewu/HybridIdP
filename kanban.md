@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-07-29T04:27:08Z._
+_Derived from `todo-ledger.json`; updated 2026-07-29T06:09:18Z._
 
 ## Done
 
@@ -44,3 +44,17 @@ _Derived from `todo-ledger.json`; updated 2026-07-29T04:27:08Z._
   - `.pipeline-output/pipeline-20260729T042708Z-client-secret-rotation/pipeline/task-list.json`
   - `.pipeline-output/pipeline-20260729T042708Z-client-secret-rotation/pipeline/repo-findings.json`
 - Note: Delivery was scoped to verification and test coverage; unrelated local SQL TLS fixture failures remain environmental evidence only.
+
+### SEC-20260729-client-ownership-authorization — Fail-closed client ownership authorization and trusted automation
+
+- Completed: 2026-07-29T06:09:18Z
+- Run: `pipeline-20260729T060918Z-client-ownership`
+- Summary: Closed the High client-ownership authorization gap across client update (including Permissions and scope permissions), secret regeneration or rotation, allowed-scope replacement, and required-scope replacement; trusted test automation now requires a host-controlled closed-by-default bootstrap context, while cross-owner and unrecognized service-principal callers are denied before side effects.
+- Evidence: ClientsController focused unit coverage passed 50/50, including caller classification, all four mutation guards, 403 denial before mutation services, no-effects checks, and preserved same-owner, Admin-role, and trusted-automation success behavior; ClientOwnershipAuthorizationSystemTests passed 7/7 with realistic HTTP coverage for same-owner, cross-owner, Admin-role, recognized testclient-admin automation, and unrecognized service-principal denial; denied state and credential effects were unchanged and 200/400/403/404/423 semantics remained distinct; full Web.IdP unit suite passed 118/118; ClientCrudTests passed 18/18; ConfidentialClientSecretRotationSystemTests passed 1/1; HybridAuthIdP.sln build passed with 0 errors (42 warnings reported); round1 review passed with overall_status pass, required_followups empty, and scope, cleanup, and sensitive-output audits passing; full solution test was not rerun because the previously reproduced unrelated local SQL Server TLS/certificate fixture-startup failure remains environmental, while all affected focused round1 gates passed.
+- Artifacts:
+  - `.pipeline-output/pipeline-20260729T060918Z-client-ownership/pipeline/problem-spec.json`
+  - `.pipeline-output/pipeline-20260729T060918Z-client-ownership/pipeline/task-list.json`
+  - `.pipeline-output/pipeline-20260729T060918Z-client-ownership/pipeline/delta-task-list-round1.json`
+  - `.pipeline-output/pipeline-20260729T060918Z-client-ownership/pipeline/test-report-round1.json`
+  - `.pipeline-output/pipeline-20260729T060918Z-client-ownership/pipeline/review-report-round1.json`
+- Note: The unrelated local SQL Server TLS/certificate fixture limitation is evidence only; no remaining task or blocker was created, and unrelated findings or fixture literals were not imported as work.

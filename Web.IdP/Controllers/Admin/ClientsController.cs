@@ -3,10 +3,13 @@ using Core.Application.DTOs;
 using Core.Application.Options;
 using Core.Domain.Constants;
 using Infrastructure.Authorization;
+using Infrastructure.Seeding;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
 using System.Security.Claims;
 using Web.IdP.Attributes;
 using DomainPermissions = Core.Domain.Constants.Permissions;
@@ -22,18 +25,26 @@ namespace Web.IdP.Controllers.Admin;
 [ValidateCsrfForCookies]
 public class ClientsController : ControllerBase
 {
+    private const string TrustedAdministrationAutomationClientId = "testclient-admin";
+
     private readonly IClientService _clientService;
     private readonly IClientAllowedScopesService _allowedScopesService;
     private readonly ClientAdminApiHardeningOptions _clientAdminApiHardeningOptions;
+    private readonly PrivilegedTestAdminBootstrapOptions _privilegedTestAdminBootstrapOptions;
+    private readonly IHostEnvironment _hostEnvironment;
 
     public ClientsController(
         IClientService clientService,
         IClientAllowedScopesService allowedScopesService,
-        IOptions<ClientAdminApiHardeningOptions> clientAdminApiHardeningOptions)
+        IOptions<ClientAdminApiHardeningOptions> clientAdminApiHardeningOptions,
+        IOptions<PrivilegedTestAdminBootstrapOptions> privilegedTestAdminBootstrapOptions,
+        IHostEnvironment hostEnvironment)
     {
         _clientService = clientService;
         _allowedScopesService = allowedScopesService;
         _clientAdminApiHardeningOptions = clientAdminApiHardeningOptions.Value;
+        _privilegedTestAdminBootstrapOptions = privilegedTestAdminBootstrapOptions.Value;
+        _hostEnvironment = hostEnvironment;
     }
 
     /// <summary>
@@ -150,6 +161,12 @@ public class ClientsController : ControllerBase
 
         try
         {
+            var authorizationResult = await AuthorizeClientMutationAsync(clientId, cancellationToken);
+            if (authorizationResult != null)
+            {
+                return authorizationResult;
+            }
+
             await _clientService.UpdateClientAsync(clientId, request, cancellationToken);
             return Ok(new
             {
@@ -216,6 +233,12 @@ public class ClientsController : ControllerBase
 
         try
         {
+            var authorizationResult = await AuthorizeClientMutationAsync(clientId, cancellationToken);
+            if (authorizationResult != null)
+            {
+                return authorizationResult;
+            }
+
             var newSecret = await _clientService.RegenerateSecretAsync(clientId, cancellationToken);
             return Ok(new
             {
@@ -254,7 +277,10 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpPut("{id}/scopes")]
     [HasPermission(DomainPermissions.Clients.Update)]
-    public async Task<IActionResult> SetAllowedScopes(string id, [FromBody] SetAllowedScopesRequest request)
+    public async Task<IActionResult> SetAllowedScopes(
+        string id,
+        [FromBody] SetAllowedScopesRequest request,
+        CancellationToken cancellationToken = default)
     {
         var hardeningBlockResult = EnforceClientWriteHardening();
         if (hardeningBlockResult != null)
@@ -274,6 +300,12 @@ public class ClientsController : ControllerBase
 
         try
         {
+            var authorizationResult = await AuthorizeClientMutationAsync(clientId, cancellationToken);
+            if (authorizationResult != null)
+            {
+                return authorizationResult;
+            }
+
             await _allowedScopesService.SetAllowedScopesAsync(clientId, request.Scopes);
             return Ok(new { message = "Allowed scopes updated successfully." });
         }
@@ -325,7 +357,10 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpPut("{id}/required-scopes")]
     [HasPermission(DomainPermissions.Clients.Update)]
-    public async Task<IActionResult> SetRequiredScopes(string id, [FromBody] SetRequiredScopesRequest request)
+    public async Task<IActionResult> SetRequiredScopes(
+        string id,
+        [FromBody] SetRequiredScopesRequest request,
+        CancellationToken cancellationToken = default)
     {
         var hardeningBlockResult = EnforceClientWriteHardening();
         if (hardeningBlockResult != null)
@@ -345,6 +380,12 @@ public class ClientsController : ControllerBase
 
         try
         {
+            var authorizationResult = await AuthorizeClientMutationAsync(clientId, cancellationToken);
+            if (authorizationResult != null)
+            {
+                return authorizationResult;
+            }
+
             await _allowedScopesService.SetRequiredScopesAsync(clientId, request.Scopes);
             return Ok(new { message = "Required scopes updated successfully." });
         }
@@ -371,6 +412,50 @@ public class ClientsController : ControllerBase
     private bool IsAdmin()
     {
         return User.IsInRole(AuthConstants.Roles.Admin);
+    }
+
+    private async Task<IActionResult?> AuthorizeClientMutationAsync(
+        Guid clientId,
+        CancellationToken cancellationToken)
+    {
+        var client = await _clientService.GetClientByIdAsync(clientId, cancellationToken);
+        if (client == null)
+        {
+            return NotFound(new { message = $"Client with ID '{clientId}' not found." });
+        }
+
+        if (IsAdmin() || IsTrustedAdministrationAutomation())
+        {
+            return null;
+        }
+
+        var personId = GetCurrentPersonId();
+        if (personId.HasValue &&
+            await _clientService.IsClientOwnedByPersonAsync(
+                clientId,
+                personId.Value,
+                cancellationToken))
+        {
+            return null;
+        }
+
+        return Forbid();
+    }
+
+    private bool IsTrustedAdministrationAutomation()
+    {
+        if (!PrivilegedTestAdminBootstrapPolicy.IsEnabled(
+                _privilegedTestAdminBootstrapOptions.Enabled,
+                _hostEnvironment.EnvironmentName))
+        {
+            return false;
+        }
+
+        var subject = User.FindFirst(OpenIddictConstants.Claims.Subject)?.Value;
+        return string.Equals(
+            subject,
+            TrustedAdministrationAutomationClientId,
+            StringComparison.Ordinal);
     }
 
     private IActionResult? EnforceClientWriteHardening()

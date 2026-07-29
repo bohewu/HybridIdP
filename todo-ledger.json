@@ -1,6 +1,6 @@
 {
   "project": "HybridAuth IdP",
-  "updated_at": "2026-07-29T04:27:08Z",
+  "updated_at": "2026-07-29T06:09:18Z",
   "items": [
     {
       "id": "SEC-20260728-admin-bootstrap",
@@ -76,6 +76,32 @@
       ],
       "notes": [
         "Delivery was scoped to verification and test coverage; unrelated local SQL TLS fixture failures remain environmental evidence only."
+      ]
+    },
+    {
+      "id": "SEC-20260729-client-ownership-authorization",
+      "title": "Fail-closed client ownership authorization and trusted automation",
+      "status": "done",
+      "completed_at": "2026-07-29T06:09:18Z",
+      "run_id": "pipeline-20260729T060918Z-client-ownership",
+      "summary": "Closed the High client-ownership authorization gap across client update (including Permissions and scope permissions), secret regeneration or rotation, allowed-scope replacement, and required-scope replacement; trusted test automation now requires a host-controlled closed-by-default bootstrap context, while cross-owner and unrecognized service-principal callers are denied before side effects.",
+      "evidence": [
+        "ClientsController focused unit coverage passed 50/50, including caller classification, all four mutation guards, 403 denial before mutation services, no-effects checks, and preserved same-owner, Admin-role, and trusted-automation success behavior",
+        "ClientOwnershipAuthorizationSystemTests passed 7/7 with realistic HTTP coverage for same-owner, cross-owner, Admin-role, recognized testclient-admin automation, and unrecognized service-principal denial; denied state and credential effects were unchanged and 200/400/403/404/423 semantics remained distinct",
+        "Full Web.IdP unit suite passed 118/118; ClientCrudTests passed 18/18; ConfidentialClientSecretRotationSystemTests passed 1/1",
+        "HybridAuthIdP.sln build passed with 0 errors (42 warnings reported)",
+        "Round1 review passed with overall_status pass, required_followups empty, and scope, cleanup, and sensitive-output audits passing",
+        "Full solution test was not rerun because the previously reproduced unrelated local SQL Server TLS/certificate fixture-startup failure remains environmental; all affected focused round1 gates passed"
+      ],
+      "links": [
+        ".pipeline-output/pipeline-20260729T060918Z-client-ownership/pipeline/problem-spec.json",
+        ".pipeline-output/pipeline-20260729T060918Z-client-ownership/pipeline/task-list.json",
+        ".pipeline-output/pipeline-20260729T060918Z-client-ownership/pipeline/delta-task-list-round1.json",
+        ".pipeline-output/pipeline-20260729T060918Z-client-ownership/pipeline/test-report-round1.json",
+        ".pipeline-output/pipeline-20260729T060918Z-client-ownership/pipeline/review-report-round1.json"
+      ],
+      "notes": [
+        "The unrelated local SQL Server TLS/certificate fixture limitation is evidence only; no remaining task or blocker was created, and unrelated findings or fixture literals were not imported as work."
       ]
     }
   ]

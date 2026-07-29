@@ -30,7 +30,9 @@ public class WebIdPServerFixture : IAsyncLifetime
             {
                 // Cleanup potential stale process from previous runs
                 await KillExistingServerAsync();
-                await StartServerAsync();
+                await StartServerAsync(
+                    enablePrivilegedTestAdminBootstrap: true,
+                    disableClientWriteEndpoints: false);
                 
                 // Register safety net
                 AppDomain.CurrentDomain.ProcessExit += (s, e) => 
@@ -66,7 +68,76 @@ public class WebIdPServerFixture : IAsyncLifetime
         }
     }
 
-    private async Task StartServerAsync()
+    public async Task RunIsolatedClientAdminHostAsync(
+        bool enablePrivilegedTestAdminBootstrap,
+        bool disableClientWriteEndpoints,
+        Func<Task> test)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            if (!IsRunning)
+            {
+                throw new InvalidOperationException(
+                    "The shared Web.IdP server must be running before an isolated host is started.");
+            }
+
+            Exception? isolatedFailure = null;
+            try
+            {
+                await StopServerAsync();
+                await StartServerAsync(
+                    enablePrivilegedTestAdminBootstrap,
+                    disableClientWriteEndpoints);
+                await test();
+            }
+            catch (Exception exception)
+            {
+                isolatedFailure = exception;
+            }
+
+            Exception? restoreFailure = null;
+            try
+            {
+                await StopServerAsync();
+                await StartServerAsync(
+                    enablePrivilegedTestAdminBootstrap: true,
+                    disableClientWriteEndpoints: false);
+            }
+            catch (Exception exception)
+            {
+                restoreFailure = exception;
+            }
+
+            if (isolatedFailure != null && restoreFailure != null)
+            {
+                throw new AggregateException(
+                    "The isolated client-admin host failed and the shared host could not be restored.",
+                    isolatedFailure,
+                    restoreFailure);
+            }
+
+            if (restoreFailure != null)
+            {
+                throw new InvalidOperationException(
+                    "The shared Web.IdP host could not be restored after isolated execution.",
+                    restoreFailure);
+            }
+
+            if (isolatedFailure != null)
+            {
+                throw isolatedFailure;
+            }
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    private async Task StartServerAsync(
+        bool enablePrivilegedTestAdminBootstrap,
+        bool disableClientWriteEndpoints)
     {
         // Allow overriding database provider via environment variable
         // Default: SqlServer (set TEST_DATABASE_PROVIDER=PostgreSQL to test PostgreSQL compatibility)
@@ -76,10 +147,17 @@ public class WebIdPServerFixture : IAsyncLifetime
         var startInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = "run --launch-profile https --RateLimiting:Enabled=false --Security:ValidationIntervalSeconds=0 --SeedData:PrivilegedTestAdminBootstrap:Enabled=true",
+            Arguments = string.Join(
+                " ",
+                "run",
+                "--launch-profile https",
+                "--RateLimiting:Enabled=false",
+                "--Security:ValidationIntervalSeconds=0",
+                $"--SeedData:PrivilegedTestAdminBootstrap:Enabled={enablePrivilegedTestAdminBootstrap.ToString().ToLowerInvariant()}",
+                $"--ClientAdminApiHardening:DisableClientWriteEndpoints={disableClientWriteEndpoints.ToString().ToLowerInvariant()}"),
             WorkingDirectory = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "Web.IdP"),
             UseShellExecute = false,
-            CreateNoWindow = false, // Maybe true to avoid popup?
+            CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
@@ -116,23 +194,34 @@ public class WebIdPServerFixture : IAsyncLifetime
 
     private async Task StopServerAsync()
     {
+        var process = _serverProcess;
+        _serverProcess = null;
+
         try
         {
-            if (_serverProcess != null && !_serverProcess.HasExited)
+            if (process != null && !process.HasExited)
             {
-                _serverProcess.Kill(entireProcessTree: true);
+                process.Kill(entireProcessTree: true);
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                try { await _serverProcess.WaitForExitAsync(cts.Token); } catch { }
-                _serverProcess.Dispose();
-                _serverProcess = null;
+                try { await process.WaitForExitAsync(cts.Token); } catch { }
             }
         }
         catch { }
+        finally
+        {
+            process?.Dispose();
+        }
         
         // Only aggressive Kill if still alive
         if (await IsServerAliveAsync())
         {
-             await KillExistingServerAsync();
+            await KillExistingServerAsync();
+        }
+
+        if (await IsServerAliveAsync())
+        {
+            throw new InvalidOperationException(
+                $"Web.IdP server listener at {ServerUrl} remained active after teardown.");
         }
     }
 
