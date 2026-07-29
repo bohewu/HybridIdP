@@ -17,6 +17,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Testcontainers.MsSql" Version="4.13.0" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.13.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +30,8 @@
     <ProjectReference Include="..\Core.Application\Core.Application.csproj" />
     <ProjectReference Include="..\Core.Domain\Core.Domain.csproj" />
     <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+    <ProjectReference Include="..\Infrastructure.Migrations.Postgres\Infrastructure.Migrations.Postgres.csproj" />
+    <ProjectReference Include="..\Infrastructure.Migrations.SqlServer\Infrastructure.Migrations.SqlServer.csproj" />
     <ProjectReference Include="..\Web.IdP\Web.IdP.csproj" />
   </ItemGroup>
 

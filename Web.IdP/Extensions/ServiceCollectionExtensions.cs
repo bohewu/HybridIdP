@@ -37,6 +37,7 @@ using Web.IdP;
 using Web.IdP.Services.Localization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 namespace Web.IdP.Extensions;
 
@@ -90,6 +91,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMonitoringService, MonitoringService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IDynamicLoggingService, DynamicLoggingService>();
+        services.AddScoped<IOperationalAdminBootstrapService, OperationalAdminBootstrapService>();
         services.AddHostedService<LogSettingsSyncService>();
 
         // Domain Event Handlers
@@ -123,6 +125,8 @@ public static class ServiceCollectionExtensions
         services.Configure<AppInfoOptions>(configuration.GetSection(AppInfoOptions.Section));
         services.Configure<LegacyAuthOptions>(configuration.GetSection(LegacyAuthOptions.SectionName));
         services.Configure<RateLimitingOptions>(configuration.GetSection(RateLimitingOptions.Section));
+        services.Configure<OperationalAdminBootstrapOptions>(
+            configuration.GetSection(OperationalAdminBootstrapOptions.Section));
         services.Configure<AuditOptions>(configuration.GetSection(AuditOptions.SectionName));
         services.Configure<BrandingOptions>(configuration.GetSection(BrandingOptions.Section));
         services.Configure<LoginNoticesOptions>(configuration.GetSection(LoginNoticesOptions.Section));
@@ -641,6 +645,22 @@ public static class ServiceCollectionExtensions
             services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    if (context.HttpContext.Request.Method == HttpMethods.Post &&
+                        context.HttpContext.Request.Path.Equals(
+                            "/api/operational-bootstrap/admin"))
+                    {
+                        context.HttpContext.Response.ContentType = "application/json";
+                        await context.HttpContext.Response.WriteAsync(
+                            JsonSerializer.Serialize(new
+                            {
+                                code = "operational_bootstrap_unavailable",
+                                correlationId = Guid.NewGuid().ToString("N")
+                            }),
+                            cancellationToken);
+                    }
+                };
 
                 // Default policy - per IP address, general purpose
                 options.AddPolicy("default", httpContext =>
@@ -727,6 +747,22 @@ public static class ServiceCollectionExtensions
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst
                         });
                 });
+
+                // Operational bootstrap policy - per IP address, defense in depth only
+                options.AddPolicy("operational-bootstrap", httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = Math.Max(
+                                1,
+                                rateLimitingOptions.OperationalBootstrapPermitLimit),
+                            Window = TimeSpan.FromSeconds(Math.Max(
+                                1,
+                                rateLimitingOptions.OperationalBootstrapWindowSeconds)),
+                            QueueLimit = 0,
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                        }));
             });
         }
         return services;

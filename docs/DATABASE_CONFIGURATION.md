@@ -381,6 +381,12 @@ aws secretsmanager create-secret \
   --secret-string "Server=prod-rds.amazonaws.com;Database=hybridauth_idp;..."
 ```
 
+### One-Time First-Administrator Data Safety
+
+The optional operational first-administrator capability is disabled by default and does not require a migration. When explicitly enabled for a genuinely fresh deployment, both SQL Server and PostgreSQL execute the creation of the one initial Admin account and the system-owned completion marker in a serializable, all-or-nothing transaction. Existing or ambiguous identity data fails closed.
+
+Do not reset, delete, or alter database data to reuse this capability, including the completion marker. It is unrelated to the fixed Development/Test privileged administrator fixture and to ordinary post-login administrator management. See [Deployment Guide: One-Time Operational First Administrator](DEPLOYMENT_GUIDE.md#one-time-operational-first-administrator) for the secure operator procedure.
+
 ---
 
 ## 🔄 Migration 管理

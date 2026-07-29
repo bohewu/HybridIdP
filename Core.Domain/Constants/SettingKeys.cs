@@ -5,6 +5,17 @@ namespace Core.Domain.Constants;
 /// </summary>
 public static class SettingKeys
 {
+    public const string OperationalAdminBootstrapCompleted =
+        "system.operationalAdminBootstrap.completed";
+
+    public static bool IsSystemOwned(string key)
+    {
+        return string.Equals(
+            key,
+            OperationalAdminBootstrapCompleted,
+            StringComparison.Ordinal);
+    }
+
     public static class Branding
     {
         public const string AppName = "branding.appName";

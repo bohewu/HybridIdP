@@ -51,6 +51,14 @@ Validation rejects missing or empty required inputs before image pull, local bui
 
 MSSQL, PostgreSQL, and Redis have no host-published ports in the default production compose configuration. `deployment/docker-compose.local-ports.yml` is the explicit, loopback-only diagnostic override for the internal data services; it must not be treated as a production default.
 
+### One-Time Operational First Administrator
+
+`OperationalAdminBootstrap` is absent in effect until an operator explicitly enables it; it is disabled by default and is only for a genuinely fresh deployment. It is not a replacement for the fixed Development/Test privileged test fixture or for normal authenticated administrator management after sign-in.
+
+The only accepted capability is a 43-character base64url token supplied in the `X-HybridAuth-Bootstrap-Token` request header over HTTPS. Configuration contains only its hex-encoded SHA-256 digest and an absolute UTC expiry (`OperationalAdminBootstrap__TokenSha256Digest` and `OperationalAdminBootstrap__ExpiresAtUtc`), plus the explicit `OperationalAdminBootstrap__Enabled` switch. The raw token must never appear in configuration, source control, a URL or query string, logs, shell history, or a process list.
+
+When TLS terminates at a proxy, forwarded HTTPS is trusted only through the existing `Proxy__Enabled` and `Proxy__KnownProxies` trust model: specific proxy IPs or CIDRs become the forwarding middleware's known-proxy/known-network set. The caller source IP is only a rate-limiting partition and is never authorization. The completion marker is system-owned, so the ordinary settings API cannot alter it. See [the deployment workflow](DEPLOYMENT_GUIDE.md#one-time-operational-first-administrator) for the required first-use and cleanup procedure.
+
 ---
 
 ## Reporting a Vulnerability

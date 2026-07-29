@@ -44,6 +44,7 @@ Powered by **OpenIddict**:
 - **Bot Protection**: Integrated Cloudflare Turnstile support.
 - **External Identity**: Seamless integration with Google & Microsoft accounts, including auto-linking and AMR support.
 - **Branding**: Customizable UI with configurable Privacy Policy and Help documentation links.
+- **First administrator**: Disabled-by-default, one-time operational bootstrap for genuinely fresh deployments; see the [deployment guidance](docs/DEPLOYMENT_GUIDE.md#one-time-operational-first-administrator).
 
 ---
 

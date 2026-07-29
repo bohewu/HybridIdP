@@ -14,6 +14,8 @@ namespace Web.IdP.Controllers.Admin;
 [ValidateCsrfForCookies]
 public class SettingsController : ControllerBase
 {
+    private const string SystemManagedSettingError =
+        "System-managed settings cannot be modified";
     private readonly ISettingsService _settings;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
@@ -135,6 +137,11 @@ public class SettingsController : ControllerBase
     [Authorize(Policy = Permissions.Settings.Update)]
     public async Task<IActionResult> UpdateSetting(string key, [FromBody] UpdateSettingRequest request)
     {
+        if (SettingKeys.IsSystemOwned(key))
+        {
+            return BadRequest(new { error = SystemManagedSettingError });
+        }
+
         var updatedBy = User.Identity?.Name ?? User.FindFirst("sub")?.Value ?? "unknown";
         
         if (IsSensitive(key) && request.Value == "(set)")
@@ -144,7 +151,14 @@ public class SettingsController : ControllerBase
 
         // Allow empty value to clear the setting (will use default from code)
         var valueToSave = request.Value ?? string.Empty;
-        await _settings.SetValueAsync(key, valueToSave, updatedBy);
+        try
+        {
+            await _settings.SetValueAsync(key, valueToSave, updatedBy);
+        }
+        catch (SystemManagedSettingException)
+        {
+            return BadRequest(new { error = SystemManagedSettingError });
+        }
 
         return Ok(new { key, value = IsSensitive(key) ? "(set)" : valueToSave, message = "Setting updated successfully" });
     }

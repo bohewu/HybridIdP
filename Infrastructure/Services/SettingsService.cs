@@ -1,7 +1,11 @@
 using System.Collections.Concurrent;
+using System.Data;
+using System.Globalization;
 using Core.Application;
+using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.DataProtection;
@@ -92,6 +96,11 @@ public class SettingsService : ISettingsService
 
     public async Task SetValueAsync(string key, object value, string? updatedBy = null, CancellationToken ct = default)
     {
+        if (await IsSystemOwnedAsync(key, ct))
+        {
+            throw new SystemManagedSettingException();
+        }
+
         var existing = await _db.Settings.FirstOrDefaultAsync(s => s.Key == key, ct);
         var valueStr = value is string s ? s : System.Text.Json.JsonSerializer.Serialize(value);
 
@@ -126,6 +135,55 @@ public class SettingsService : ISettingsService
         if (prefix != null)
         {
             await InvalidateAsync(prefix);
+        }
+    }
+
+    private async Task<bool> IsSystemOwnedAsync(string key, CancellationToken ct)
+    {
+        if (SettingKeys.IsSystemOwned(key))
+        {
+            return true;
+        }
+
+        if (_db is not DbContext dbContext || !dbContext.Database.IsRelational())
+        {
+            return false;
+        }
+
+        var connection = dbContext.Database.GetDbConnection();
+        var openedConnection = connection.State != ConnectionState.Open;
+
+        if (openedConnection)
+        {
+            await dbContext.Database.OpenConnectionAsync(ct);
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                "SELECT CASE WHEN @candidate = @reserved THEN 1 ELSE 0 END";
+            command.Transaction = dbContext.Database.CurrentTransaction?.GetDbTransaction();
+
+            var candidateParameter = command.CreateParameter();
+            candidateParameter.ParameterName = "@candidate";
+            candidateParameter.Value = key;
+            command.Parameters.Add(candidateParameter);
+
+            var reservedParameter = command.CreateParameter();
+            reservedParameter.ParameterName = "@reserved";
+            reservedParameter.Value = SettingKeys.OperationalAdminBootstrapCompleted;
+            command.Parameters.Add(reservedParameter);
+
+            var result = await command.ExecuteScalarAsync(ct);
+            return Convert.ToInt32(result, CultureInfo.InvariantCulture) == 1;
+        }
+        finally
+        {
+            if (openedConnection)
+            {
+                await dbContext.Database.CloseConnectionAsync();
+            }
         }
     }
 

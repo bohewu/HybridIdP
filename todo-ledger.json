@@ -1,31 +1,32 @@
 {
   "project": "HybridAuth IdP",
-  "updated_at": "2026-07-28T08:21:52Z",
+  "updated_at": "2026-07-29T04:06:19Z",
   "items": [
     {
       "id": "SEC-20260728-admin-bootstrap",
       "title": "Fail-closed privileged test-admin bootstrap and operational guidance",
       "status": "done",
-      "completed_at": "2026-07-28T05:35:11Z",
-      "run_id": "20260728-critical-admin-bootstrap",
-      "summary": "T1 implemented the fail-closed privileged test-admin bootstrap and focused regressions. T2 and T2-R1 corrected live guidance, including AuthConstants references and explicit reset-database opt-in with truthful output.",
+      "completed_at": "2026-07-29T04:06:19Z",
+      "run_id": "pipeline-20260729T024815Z-bootstrap-critical",
+      "summary": "Provider-correct reserved bootstrap-marker mutation guard, controlled admin API rejection, binding-safe disabled environment example, and focused bootstrap/default-admin regressions completed.",
       "evidence": [
-        "Focused tests 16/16",
-        "Owning integration tests 49/49",
-        "Fixture-backed admin login system test 1/1",
-        "Web.IdP, SystemTests, and solution builds passed",
-        "PowerShell/static environment matrix passed",
-        "Credential scan 0",
-        "Final reviewer pass with required_followups empty"
+        "Focused settings-controller regressions 7/7 passed",
+        "Provider equality and persistence regressions 16/16 passed, including SQL Server case-equivalent rejection/no mutation and PostgreSQL casing-only allowance",
+        "Bootstrap endpoint/login regressions 16/16 passed, including disabled environment-example options binding and default-closed endpoint",
+        "Bootstrap/password/privileged compatibility regressions 74/74 passed",
+        "Solution build passed with 0 errors",
+        "Final review passed with required_followups empty",
+        "Full solution test had 2 unrelated local SQL Server TLS fixture failures; focused remediation coverage passed"
       ],
       "links": [
-        ".pipeline-output/20260728-critical-admin-bootstrap/pipeline/review-report.json",
-        ".pipeline-output/20260728-critical-admin-bootstrap/status/run-status.json",
-        ".pipeline-output/20260728-critical-admin-bootstrap/status/tasks/T1.json",
-        ".pipeline-output/20260728-critical-admin-bootstrap/status/tasks/T2.json"
+        ".pipeline-output/pipeline-20260729T024815Z-bootstrap-critical/pipeline/review-report.json",
+        ".pipeline-output/pipeline-20260729T024815Z-bootstrap-critical/pipeline/test-report.json",
+        ".pipeline-output/pipeline-20260729T024815Z-bootstrap-critical/status/tasks/T1.json",
+        ".pipeline-output/pipeline-20260729T024815Z-bootstrap-critical/pipeline/task-list.json",
+        ".pipeline-output/pipeline-20260729T024815Z-bootstrap-critical/pipeline/delta-task-list-round1.json"
       ],
       "notes": [
-        "Completed run synced without importing unrelated scan findings, dependency warnings, or P3 notes."
+        "Completed Critical OSS bootstrap/default-admin remediation synced without importing the optional TLS environment followup or unrelated findings."
       ]
     },
     {

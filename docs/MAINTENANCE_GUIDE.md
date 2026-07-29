@@ -430,6 +430,10 @@ Production compose retains named `mssql-data`, `postgres-data`, `redis-data`, an
 
 `deployment/docker-compose.local-ports.yml` is a temporary loopback-only host-port override for internal MSSQL, PostgreSQL, and Redis services. Adding or removing that override changes only host-port publication; do not remove volumes or reset databases as part of that change.
 
+### One-Time First-Administrator Cleanup
+
+After a confirmed operational first-administrator bootstrap on a genuinely fresh deployment, disable `OperationalAdminBootstrap__Enabled` and remove `OperationalAdminBootstrap__TokenSha256Digest` and `OperationalAdminBootstrap__ExpiresAtUtc` from host-side configuration or secret storage. Retain the database and its system-owned completion marker. Do not delete identities, reset the database, remove the marker, reuse a token, or promote another account to make this one-time capability available again. Existing deployments keep it disabled and require no migration or reset. The secure first-use procedure is in [Deployment Guide: One-Time Operational First Administrator](DEPLOYMENT_GUIDE.md#one-time-operational-first-administrator).
+
 ### 更新應用程式
 
 ```bash

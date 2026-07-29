@@ -7,8 +7,9 @@ This guide covers the deployment of HybridIdP using Docker Compose. The easiest 
 2. [Quick Start (Recommended)](#quick-start-interactive-wizard)
 3. [Deployment Modes](#deployment-modes)
 4. [Production Configuration Contract](#production-configuration-contract)
-5. [Verification](#verification)
-6. [Advanced / Manual Configuration](#advanced--manual-configuration)
+5. [One-Time Operational First Administrator](#one-time-operational-first-administrator)
+6. [Verification](#verification)
+7. [Advanced / Manual Configuration](#advanced--manual-configuration)
    - [Manual .env Setup](#manual-env-setup)
    - [Manual Certificate Generation](#manual-certificate-generation)
    - [Database & Redis Options](#database--redis-options)
@@ -135,6 +136,56 @@ cd deployment
 ```
 
 After validation, the script pulls the selected `idp-service` image and runs `up -d --no-build`, which recreates the service when the image changes. Update the host by rerunning this flow; do not reset the database or remove volumes to update an image. For local source, the same script retains its local build behavior: `--source local` runs `up -d --build`, while `--no-cache` performs the local no-cache build before startup.
+
+---
+
+## One-Time Operational First Administrator
+
+This optional capability is disabled by default and is for a genuinely fresh deployment only. It is not a migration, reset, repair, or account-recovery mechanism. Existing deployments leave it disabled and need no migration, database reset, or marker removal. It is also distinct from the fixed privileged Development/Test fixture (`SeedData__PrivilegedTestAdminBootstrap__Enabled`), which remains test-only, and from normal post-login administrator management.
+
+### Prepare Host-Side Configuration
+
+Use an approved secret-management process on the deployment host. Generate 32 random bytes out of band, encode them as unpadded base64url, and use the resulting 43-character value as the raw bootstrap token. Compute its SHA-256 digest in hexadecimal and choose a short, absolute UTC expiry. Keep the raw token only in the operator's protected, in-memory or secret-manager workflow; configuration stores only the digest and expiry.
+
+Set these host-side values for the one-time window. The committed [`.env.example`](../deployment/.env.example) intentionally contains placeholders only.
+
+```text
+OperationalAdminBootstrap__Enabled=true
+OperationalAdminBootstrap__TokenSha256Digest=<SHA256_HEX_DIGEST>
+OperationalAdminBootstrap__ExpiresAtUtc=<ABSOLUTE_UTC_EXPIRY>
+```
+
+Do not put the raw token, its digest, or the administrator password in source control. Do not use a command that echoes any of them, or place them in a URL, query string, shell history, process list, or application logs. The expiry must be an absolute UTC value; a missing, expired, or non-UTC expiry leaves the capability unavailable.
+
+The endpoint requires HTTPS. If TLS terminates at a reverse proxy, configure only the actual trusted proxy IPs or CIDRs through the existing `Proxy__Enabled` and `Proxy__KnownProxies` model so forwarded HTTPS is accepted through the forwarding middleware's known-proxy/known-network trust set. Do not treat a caller source IP as authorization: it is rate-limiting defense in depth only.
+
+### Perform the One-Time Request
+
+From a protected operator client, make one HTTPS `POST` request to `/api/operational-bootstrap/admin` with `Content-Type: application/json` and the raw token only in this dedicated header:
+
+```text
+X-HybridAuth-Bootstrap-Token: <43_CHARACTER_BASE64URL_TOKEN>
+```
+
+The JSON body contains operator-chosen, unique values and must be handled without exposing its password:
+
+```json
+{
+  "email": "<UNIQUE_ADMIN_EMAIL>",
+  "name": "<UNIQUE_ADMIN_NAME>",
+  "password": "<OPERATOR_CHOSEN_ADMIN_PASSWORD>"
+}
+```
+
+For SQL Server and PostgreSQL, the operation uses a serializable, all-or-nothing transaction. A successful request creates exactly one initial Admin account and the system-owned completion marker. A replay, a request after expiry, an existing or ambiguous identity state, invalid prerequisite Admin role, or an uncertain outcome remains closed and returns the generic unavailable result. A successful response is `201` with `operational_bootstrap_completed`; the generic unavailable response is `404` with `operational_bootstrap_unavailable`.
+
+Never retry a request when the response is lost or uncertain. Do not attempt to make the capability reusable by deleting identities, resetting the database, removing the marker, reusing the token, or promoting another account. The marker is system-owned and cannot be changed through the ordinary settings API.
+
+### Clean Up and Continue Operations
+
+Immediately after a confirmed success, disable the capability and remove the three bootstrap configuration values (including digest and expiry) from host-side configuration or secret storage. Retain the database and its completion marker. Sign in with the new administrator and use the normal authenticated administrator management surface for all later user and role changes.
+
+For a future Docker deployment, use the released image together with host-side configuration and secrets, then follow the normal image pull/recreate workflow described above. This documentation does not instruct an image pull, publish, or deployment now.
 
 ---
 

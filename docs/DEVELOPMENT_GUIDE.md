@@ -629,6 +629,10 @@ setup() {
 
 Production、Staging、空白/預設、未知及其他所有環境不會因為這個設定而建立或更新該帳號。一般資料初始化不受此選項影響；系統測試 fixture 的明確選擇加入說明請參閱 `docs/TESTING.md`。
 
+#### Operational First-Administrator Bootstrap Is Not a Test Fixture
+
+`OperationalAdminBootstrap` is a separate, disabled-by-default production operation for a genuinely fresh deployment. Do not use it to create, repair, reset, or promote a development or test account, and do not alter the fixed privileged test administrator workflow above. Its secure deployment-only procedure is in [Deployment Guide: One-Time Operational First Administrator](DEPLOYMENT_GUIDE.md#one-time-operational-first-administrator).
+
 
 ### 9. 測試策略 (Testing Strategy)
 

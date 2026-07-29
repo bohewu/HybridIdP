@@ -39,6 +39,8 @@ The fixed privileged test administrator is disabled by default: an absent or `fa
 
 The opt-in has no effect in Production, Staging, an empty/default or unknown environment, or any other environment. Ordinary seed data remains independent of this privileged-test-admin bootstrap.
 
+The operational first-administrator bootstrap is a separate, disabled-by-default capability for a genuinely fresh deployment. It does not create, repair, reset, or promote test accounts, and it must not replace or modify this fixed Development/Test fixture. See [Deployment Guide: One-Time Operational First Administrator](DEPLOYMENT_GUIDE.md#one-time-operational-first-administrator).
+
 ### Test Seeded Data (Development Only)
 When running in `Development` environment, the following additional data is seeded for testing:
 

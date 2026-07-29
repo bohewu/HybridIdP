@@ -55,6 +55,11 @@ public class RateLimitingOptions
     /// Time window in seconds for admin API rate limiting.
     /// </summary>
     public int AdminApiWindowSeconds { get; set; } = 60;
+
+    // Operational bootstrap limits (per IP address, defense in depth only)
+    public int OperationalBootstrapPermitLimit { get; set; } = 5;
+
+    public int OperationalBootstrapWindowSeconds { get; set; } = 60;
     
     // Queue settings
     /// <summary>
