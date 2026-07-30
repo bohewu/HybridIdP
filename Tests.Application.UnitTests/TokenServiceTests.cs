@@ -5,6 +5,8 @@ using System.Security.Claims;
 using System.Threading;
 using Core.Application;
 using Core.Domain;
+using Core.Domain.Entities;
+using Core.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -205,6 +207,121 @@ namespace Tests.Application.UnitTests
             Assert.Contains(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, forbidResult.AuthenticationSchemes);
         }
 
+        [Theory]
+        [InlineData(false, false, false)]
+        [InlineData(true, true, false)]
+        [InlineData(true, false, true)]
+        public async Task HandleTokenRequestAsync_RefreshToken_RestrictedAccount_ReturnsInvalidGrant(
+            bool isActive,
+            bool isDeleted,
+            bool isLockedOut)
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "refresh-user",
+                IsActive = isActive,
+                IsDeleted = isDeleted
+            };
+            var principal = SetupRefreshGrant(user, isLockedOut);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Theory]
+        [InlineData(PersonStatus.Suspended, null, null, false)]
+        [InlineData(PersonStatus.Active, 1, null, false)]
+        [InlineData(PersonStatus.Active, null, -1, false)]
+        [InlineData(PersonStatus.Active, null, null, true)]
+        public async Task HandleTokenRequestAsync_RefreshToken_IneligiblePerson_ReturnsInvalidGrant(
+            PersonStatus status,
+            int? startDateOffsetDays,
+            int? endDateOffsetDays,
+            bool isDeleted)
+        {
+            var personId = Guid.NewGuid();
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "refresh-user",
+                IsActive = true,
+                PersonId = personId
+            };
+            var person = new Person
+            {
+                Id = personId,
+                Status = status,
+                StartDate = startDateOffsetDays.HasValue
+                    ? DateTime.UtcNow.Date.AddDays(startDateOffsetDays.Value)
+                    : null,
+                EndDate = endDateOffsetDays.HasValue
+                    ? DateTime.UtcNow.Date.AddDays(endDateOffsetDays.Value)
+                    : null,
+                IsDeleted = isDeleted
+            };
+            var principal = SetupRefreshGrant(user);
+            SetupMockPersons(person);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_RefreshToken_MissingLinkedPerson_ReturnsInvalidGrant()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "refresh-user",
+                IsActive = true,
+                PersonId = Guid.NewGuid()
+            };
+            var principal = SetupRefreshGrant(user);
+            SetupMockPersons();
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_RefreshToken_EligibleLinkedUser_ReturnsSignInResult()
+        {
+            var personId = Guid.NewGuid();
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "refresh-user",
+                Email = "refresh-user@test.local",
+                IsActive = true,
+                PersonId = personId
+            };
+            var principal = SetupRefreshGrant(user);
+            SetupMockPersons(new Person
+            {
+                Id = personId,
+                Status = PersonStatus.Active
+            });
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                principal);
+
+            var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            Assert.Equal(
+                user.Id.ToString(),
+                signInResult.Principal!.GetClaim(Claims.Subject));
+        }
+
         [Fact]
         public async Task HandleTokenRequestAsync_AuthorizationCode_MissingPermission_ReturnsForbidResult()
         {
@@ -242,6 +359,61 @@ namespace Tests.Application.UnitTests
                  Password = password
              };
         }
+
+        private ClaimsPrincipal SetupRefreshGrant(ApplicationUser user, bool isLockedOut = false)
+        {
+            var clientApp = new object();
+            _mockApplicationManager
+                .Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(clientApp);
+            _mockApplicationManager
+                .Setup(m => m.GetPermissionsAsync(clientApp, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.GrantTypes.RefreshToken));
+
+            _mockUserManager.Setup(m => m.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
+            _mockUserManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(isLockedOut);
+            _mockUserManager.Setup(m => m.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
+            _mockUserManager.Setup(m => m.GetEmailAsync(user)).ReturnsAsync(user.Email);
+            _mockUserManager.Setup(m => m.GetUserNameAsync(user)).ReturnsAsync(user.UserName);
+            _mockUserManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync([]);
+            _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
+
+            return new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(Claims.Subject, user.Id.ToString())],
+                OpenIddictServerAspNetCoreDefaults.AuthenticationScheme));
+        }
+
+        private static void AssertInvalidGrant(IActionResult result)
+        {
+            var forbidResult = Assert.IsType<ForbidResult>(result);
+            Assert.Equal(
+                Errors.InvalidGrant,
+                forbidResult.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+        }
+
+        private void SetupMockPersons(params Person[] persons)
+        {
+            var personsQueryable = persons.AsQueryable();
+            var mockSet = new Mock<DbSet<Person>>();
+            mockSet.As<IAsyncEnumerable<Person>>()
+                .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
+                .Returns(new TestAsyncEnumerator<Person>(personsQueryable.GetEnumerator()));
+            mockSet.As<IQueryable<Person>>()
+                .Setup(m => m.Provider)
+                .Returns(new TestAsyncQueryProvider<Person>(personsQueryable.Provider));
+            mockSet.As<IQueryable<Person>>()
+                .Setup(m => m.Expression)
+                .Returns(personsQueryable.Expression);
+            mockSet.As<IQueryable<Person>>()
+                .Setup(m => m.ElementType)
+                .Returns(personsQueryable.ElementType);
+            mockSet.As<IQueryable<Person>>()
+                .Setup(m => m.GetEnumerator())
+                .Returns(personsQueryable.GetEnumerator());
+
+            _mockDbContext.Setup(c => c.Persons).Returns(mockSet.Object);
+        }
+
         private void SetupMockUsers(params ApplicationUser[] users)
         {
             var usersQueryable = users.AsQueryable();

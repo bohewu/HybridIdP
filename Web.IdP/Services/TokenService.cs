@@ -265,8 +265,10 @@ namespace Web.IdP.Services
             }
              
             var userId = principal.GetClaim(Claims.Subject);
-            var user = await _userManager.FindByIdAsync(userId!);
-            if (user == null || !await _signInManager.CanSignInAsync(user))
+            var user = string.IsNullOrEmpty(userId)
+                ? null
+                : await _userManager.FindByIdAsync(userId);
+            if (user == null || !await CanRedeemRefreshTokenAsync(user, cancellationToken))
             {
                  return new ForbidResult(
                     authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
@@ -310,6 +312,33 @@ namespace Web.IdP.Services
             identity.SetDestinations(GetDestinations);
 
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+        }
+
+        private async Task<bool> CanRedeemRefreshTokenAsync(
+            ApplicationUser user,
+            CancellationToken cancellationToken)
+        {
+            if (!user.IsActive || user.IsDeleted)
+            {
+                return false;
+            }
+
+            if (!await _signInManager.CanSignInAsync(user) ||
+                await _userManager.IsLockedOutAsync(user))
+            {
+                return false;
+            }
+
+            if (user.PersonId is not Guid personId)
+            {
+                return true;
+            }
+
+            var person = await _db.Persons
+                .AsNoTracking()
+                .FirstOrDefaultAsync(candidate => candidate.Id == personId, cancellationToken);
+
+            return person?.CanAuthenticate() == true;
         }
 
         private async Task<IActionResult> HandleDeviceCodeGrantAsync(OpenIddictRequest request, ClaimsPrincipal? schemePrincipal, CancellationToken cancellationToken)
