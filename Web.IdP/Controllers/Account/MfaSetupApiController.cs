@@ -108,6 +108,11 @@ public partial class MfaSetupApiController : ControllerBase
             return Unauthorized();
         }
 
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user.Id))
+        {
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
+        }
+
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableTotpMfa)
         {
@@ -136,6 +141,11 @@ public partial class MfaSetupApiController : ControllerBase
             return Unauthorized();
         }
 
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user.Id))
+        {
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
+        }
+
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableTotpMfa)
         {
@@ -162,6 +172,7 @@ public partial class MfaSetupApiController : ControllerBase
 
             // Generate recovery codes
             var recoveryCodes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
+            MfaEnrollmentSession.Consume(HttpContext.Session);
 
             return Ok(new MfaSetupVerifyResponse
             {

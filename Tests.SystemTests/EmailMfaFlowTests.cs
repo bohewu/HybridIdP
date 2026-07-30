@@ -140,19 +140,24 @@ public class EmailMfaFlowTests : IAsyncLifetime
     [Fact]
     public async Task EmailMfa_CanCoexistWithTotpMfa()
     {
-        // Arrange
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        await MfaEnrollmentTestClient.AuthorizeAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD);
 
-        // 1. Enable Email MFA
-        await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
-
-        // 2. Also enable TOTP MFA (setup first)
-        var setupResponse = await _httpClient.GetAsync("/api/account/mfa/setup");
+        // 1. Enable TOTP MFA after fresh interactive reauthentication.
+        var setupResponse =
+            await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
         var setup = await setupResponse.Content.ReadFromJsonAsync<MfaSetupDto>();
         
         // Generate valid TOTP
         var totpCode = GenerateTotp(setup!.SharedKey);
-        await _httpClient.PostAsJsonAsync("/api/account/mfa/verify", new { Code = totpCode });
+        await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa-setup/totp/verify",
+            new { Code = totpCode });
+
+        // 2. Enable Email MFA as the second factor.
+        await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
 
         // 3. Check both are enabled
         var statusResponse = await _httpClient.GetAsync("/api/account/mfa/status");

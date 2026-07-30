@@ -115,6 +115,10 @@ public class MfaSetupRedirectionTests : IAsyncLifetime
             
             Assert.NotNull(twoFactorCookie);
             Assert.Contains("Identity.TwoFactorUserId", twoFactorCookie);
+
+            var setupApiResponse =
+                await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
+            Assert.Equal(HttpStatusCode.OK, setupApiResponse.StatusCode);
         }
         finally
         {

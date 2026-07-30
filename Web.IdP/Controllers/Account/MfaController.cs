@@ -2,13 +2,16 @@ using System.Threading;
 using System.Threading.Tasks;
 using Core.Application;
 using Core.Domain;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using Web.IdP.Attributes;
 using Core.Application.Interfaces;
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Controllers.Account;
 
@@ -42,6 +45,40 @@ public partial class MfaController : ControllerBase
         _auditService = auditService;
         _passkeyService = passkeyService;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Starts an interactive reauthentication flow before MFA enrollment.
+    /// </summary>
+    [HttpPost("reauthenticate")]
+    public async Task<ActionResult> BeginReauthentication()
+    {
+        var applicationAuthentication =
+            await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (applicationAuthentication.Principal?.Identity?.IsAuthenticated != true)
+        {
+            return StatusCode(403, new { error = "interactiveAuthenticationRequired" });
+        }
+
+        var user = await _userManager.GetUserAsync(applicationAuthentication.Principal);
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+        MfaEnrollmentSession.Begin(HttpContext.Session);
+
+        var setupUrl = QueryHelpers.AddQueryString(
+            "/Account/MfaSetup",
+            "returnUrl",
+            "/Account/Profile");
+        var loginUrl = QueryHelpers.AddQueryString(
+            "/Account/Login",
+            "returnUrl",
+            setupUrl);
+
+        return Ok(new { loginUrl });
     }
 
     /// <summary>
@@ -104,6 +141,11 @@ public partial class MfaController : ControllerBase
             return Unauthorized();
         }
 
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user.Id))
+        {
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
+        }
+
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableTotpMfa)
         {
@@ -133,6 +175,11 @@ public partial class MfaController : ControllerBase
             return Unauthorized();
         }
 
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user.Id))
+        {
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
+        }
+
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableTotpMfa)
         {
@@ -149,6 +196,7 @@ public partial class MfaController : ControllerBase
 
             // Generate recovery codes
             var recoveryCodes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
+            MfaEnrollmentSession.Consume(HttpContext.Session);
 
             return Ok(new MfaVerifyResponse
             {

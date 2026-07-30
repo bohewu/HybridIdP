@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Core.Domain.Constants;
 using OtpNet;
 using Xunit;
@@ -143,25 +142,24 @@ public partial class MfaApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetMfaSetup_ValidUser_ReturnsSetupInfo()
+    public async Task TotpEnrollment_GenericBearerToken_ReturnsForbidden()
     {
         // Arrange
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
 
         // Act
-        var response = await _httpClient.GetAsync("/api/account/mfa/setup");
+        var setupResponse = await _httpClient.GetAsync("/api/account/mfa/setup");
+        var verifyResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa/verify",
+            new { Code = "000000" });
 
         // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var setup = await response.Content.ReadFromJsonAsync<MfaSetupDto>();
-        Assert.NotNull(setup);
-        Assert.NotEmpty(setup.SharedKey);
-        Assert.Contains("otpauth://totp/", setup.AuthenticatorUri);
-        Assert.StartsWith("data:image/png;base64,", setup.QrCodeDataUri);
+        Assert.Equal(HttpStatusCode.Forbidden, setupResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, verifyResponse.StatusCode);
     }
 
     [Fact]
-    public async Task VerifyMfa_InvalidCode_ReturnsFalse()
+    public async Task VerifyMfa_GenericBearerToken_ReturnsForbidden()
     {
         // Arrange
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
@@ -171,11 +169,72 @@ public partial class MfaApiTests : IAsyncLifetime
         var response = await _httpClient.PostAsJsonAsync("/api/account/mfa/verify", new { Code = invalidCode });
 
         // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<MfaVerifyResultDto>();
-        Assert.NotNull(result);
-        Assert.False(result.Success);
-        Assert.NotNull(result.Error);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TotpEnrollment_FreshInteractiveReauthentication_AllowsEnrollment()
+    {
+        _httpClient.DefaultRequestHeaders.Authorization = null;
+        await MfaEnrollmentTestClient.SignInAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD,
+            "/Account/Login");
+
+        var staleApplicationCookieResponse =
+            await _httpClient.GetAsync("/api/account/mfa/setup");
+        Assert.Equal(HttpStatusCode.Forbidden, staleApplicationCookieResponse.StatusCode);
+        var staleSetupFlowResponse =
+            await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
+        Assert.Equal(HttpStatusCode.Forbidden, staleSetupFlowResponse.StatusCode);
+
+        await MfaEnrollmentTestClient.SetCsrfTokenAsync(_httpClient);
+
+        var reauthenticationResponse =
+            await _httpClient.PostAsync("/api/account/mfa/reauthenticate", null);
+        Assert.Equal(HttpStatusCode.OK, reauthenticationResponse.StatusCode);
+        var reauthenticationResult =
+            await reauthenticationResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var loginUrl = reauthenticationResult.GetProperty("loginUrl").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(loginUrl));
+
+        await MfaEnrollmentTestClient.SignInAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD,
+            loginUrl!);
+        await MfaEnrollmentTestClient.SetCsrfTokenAsync(_httpClient);
+
+        var setupResponse =
+            await _httpClient.GetAsync("/api/account/mfa/setup");
+        Assert.Equal(HttpStatusCode.OK, setupResponse.StatusCode);
+        var setup = await setupResponse.Content.ReadFromJsonAsync<MfaSetupDto>();
+        Assert.NotNull(setup);
+
+        var totp = GenerateTotp(setup.SharedKey);
+        var verifyResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa/verify",
+            new { Code = totp });
+        Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
+        var verifyResult =
+            await verifyResponse.Content.ReadFromJsonAsync<MfaVerifyResponse>();
+        Assert.NotNull(verifyResult);
+        Assert.True(verifyResult.Success);
+        Assert.Equal(10, verifyResult.RecoveryCodes?.Count);
+
+        var reusedProofResponse =
+            await _httpClient.GetAsync("/api/account/mfa/setup");
+        Assert.True(
+            reusedProofResponse.StatusCode is
+                HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized);
+
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _userToken);
+        var cleanupResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa/disable",
+            new { Password = TEST_USER_PASSWORD });
+        Assert.Equal(HttpStatusCode.OK, cleanupResponse.StatusCode);
     }
 
     [Fact]
@@ -221,15 +280,20 @@ public partial class MfaApiTests : IAsyncLifetime
     [Fact]
     public async Task DisableMfa_ValidPassword_DisablesMfa()
     {
-        // First enable MFA
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
-        var setupResponse = await _httpClient.GetAsync("/api/account/mfa/setup");
+        await MfaEnrollmentTestClient.AuthorizeAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD);
+        var setupResponse =
+            await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
         var setup = await setupResponse.Content.ReadFromJsonAsync<MfaSetupDto>();
         
         // Generate valid TOTP
         var totp = GenerateTotp(setup!.SharedKey);
         
-        var verifyResponse = await _httpClient.PostAsJsonAsync("/api/account/mfa/verify", new { Code = totp });
+        var verifyResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa-setup/totp/verify",
+            new { Code = totp });
         Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
 
         // Act - Disable
@@ -239,13 +303,15 @@ public partial class MfaApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
         
         // Verify status is disabled
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _userToken);
         var statusResponse = await _httpClient.GetAsync("/api/account/mfa/status");
         var status = await statusResponse.Content.ReadFromJsonAsync<MfaStatusDto>();
         Assert.False(status!.TwoFactorEnabled);
     }
 
     [Fact]
-    public async Task DisableMfa_PasswordlessUser_via_Impersonation()
+    public async Task TotpEnrollment_ImpersonatedCookieWithoutReauthentication_ReturnsForbidden()
     {
         // 1. Authenticate as M2M Admin (Client Credentials) to find user
         // M2M token has explicit scopes permissions.
@@ -303,37 +369,13 @@ public partial class MfaApiTests : IAsyncLifetime
         { 
             BaseAddress = _httpClient.BaseAddress 
         };
-        await SetCsrfTokenAsync(userClient);
+        await MfaEnrollmentTestClient.SetCsrfTokenAsync(userClient);
 
         var setupResponse = await userClient.GetAsync("/api/account/mfa/setup");
-        Assert.Equal(HttpStatusCode.OK, setupResponse.StatusCode);
-        var setup = await setupResponse.Content.ReadFromJsonAsync<MfaSetupDto>();
-
-        // 6. Verify & Enable MFA
-        var totpCodeVerify = GenerateTotp(setup!.SharedKey); 
-        var verifyResponse = await userClient.PostAsJsonAsync("/api/account/mfa/verify", new { Code = totpCodeVerify });
-        Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
-        var verifyResult = await verifyResponse.Content.ReadFromJsonAsync<MfaVerifyResponse>();
-        Assert.True(verifyResult!.Success, "MFA Verify failed: " + verifyResult.Error);
-
-        // REFRESH IMPERSONATION: Enabling 2FA updates SecurityStamp, invalidating the old cookie.
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminUserToken);
-        var refreshImpersonationResponse = await _httpClient.PostAsync($"/api/admin/users/{userId}/impersonate", null);
-        Assert.Equal(HttpStatusCode.OK, refreshImpersonationResponse.StatusCode);
-        var refreshCookieHeaders = refreshImpersonationResponse.Headers.GetValues("Set-Cookie");
-        foreach (var setCookieHeader in refreshCookieHeaders)
-        {
-            cookieContainer.SetCookies(_httpClient.BaseAddress!, setCookieHeader);
-        }
-        await SetCsrfTokenAsync(userClient);
-
-        // 7. Disable MFA (Passwordless Flow)
-        var totpCodeDisable = GenerateTotp(setup!.SharedKey, offsetSeconds: 30); 
-        
-        var disableResponse = await userClient.PostAsJsonAsync("/api/account/mfa/disable", new { TotpCode = totpCodeDisable });
-        Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
-        var disableResult = await disableResponse.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.True(disableResult.GetProperty("success").GetBoolean());
+        Assert.Equal(HttpStatusCode.Forbidden, setupResponse.StatusCode);
+        var setupFlowResponse =
+            await userClient.GetAsync("/api/account/mfa-setup/totp/setup");
+        Assert.Equal(HttpStatusCode.Forbidden, setupFlowResponse.StatusCode);
     }
 
     #region Email MFA Tests (Phase 20.3)
@@ -475,26 +517,6 @@ public partial class MfaApiTests : IAsyncLifetime
         var content = await response.Content.ReadAsStringAsync();
         var tokenJson = JsonDocument.Parse(content);
         return tokenJson.RootElement.GetProperty("access_token").GetString()!;
-    }
-
-    private static async Task SetCsrfTokenAsync(HttpClient client)
-    {
-        var response = await client.GetAsync("/Account/Profile");
-        response.EnsureSuccessStatusCode();
-        var html = await response.Content.ReadAsStringAsync();
-        var match = Regex.Match(html, @"meta\s+name=""csrf-token""\s+content=""([^""]+)""");
-        if (!match.Success)
-        {
-            match = Regex.Match(html, @"content=""([^""]+)""\s+name=""csrf-token""");
-        }
-
-        if (!match.Success)
-        {
-            throw new Exception("Could not find csrf-token in HTML");
-        }
-
-        client.DefaultRequestHeaders.Remove("X-XSRF-TOKEN");
-        client.DefaultRequestHeaders.Add("X-XSRF-TOKEN", match.Groups[1].Value);
     }
 
     #endregion

@@ -141,6 +141,22 @@ describe('MfaSettings.vue', () => {
         expect(wrapper.find('.mfa-content').exists()).toBe(false);
     });
 
+    it('shows an inline error when interactive reauthentication cannot start', async () => {
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        fetch.mockResolvedValueOnce({ ok: false });
+
+        await wrapper.vm.startSetup();
+        await flushPromises();
+
+        expect(fetch).toHaveBeenCalledWith('/api/account/mfa/reauthenticate', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        expect(wrapper.find('[role="alert"]').text()).toBe('mfa.errors.setupFailed');
+        expect(wrapper.find('.btn-enable').attributes('disabled')).toBeUndefined();
+    });
+
     it('shows warning message when requireMfaForPasskey is enabled and user has no MFA but has passkeys', async () => {
         // Mock: user has passkeys, no MFA, and policy requires MFA for passkeys
         fetch.mockImplementation((url) => {

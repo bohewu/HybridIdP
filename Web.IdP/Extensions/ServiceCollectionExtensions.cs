@@ -38,6 +38,7 @@ using Web.IdP.Services.Localization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Extensions;
 
@@ -399,7 +400,17 @@ public static class ServiceCollectionExtensions
             options.Cookie.SameSite = SameSiteMode.Lax;
             options.Cookie.Name = cookieOptions.GetIdentityCookieName();
 
+            options.Events.OnSigningIn = context =>
+            {
+                if (context.Principal != null)
+                {
+                    MfaEnrollmentSession.CompletePending(
+                        context.HttpContext.Session,
+                        context.Principal);
+                }
 
+                return Task.CompletedTask;
+            };
             options.Events.OnRedirectToLogin = context =>
             {
                 if (context.Request.Path.StartsWithSegments("/api") ||

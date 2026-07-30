@@ -32,7 +32,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | Task | Finding | Status | Acceptance criteria |
 | --- | --- | --- | --- |
 | H1 Role-assignment authorization boundary | `csf_22f90b83d6be6ca8c98d2e42` | done | Any IdP global-role set change requires `roles.update`; `users.update` alone cannot add or remove roles. Metadata-only user updates with an unchanged role set remain compatible. Administrators and authorized role managers retain the existing routes, DTOs, and successful responses. |
-| H2 TOTP enrollment authorization | `csf_5446839cb1ab3ec3b103069a` | pending | Retrieving or enabling a TOTP secret requires the intended account-management authorization and fresh authentication. The normal interactive enrollment flow remains functional. |
+| H2 TOTP enrollment authorization | `csf_5446839cb1ab3ec3b103069a` | done | Retrieving or enabling a TOTP secret requires the intended account-management authorization and fresh authentication. The normal interactive enrollment flow remains functional. |
 | H3 Recovery-code regeneration authorization | `csf_d648cf493455299a40c96ecd` | pending | Replacing or retrieving recovery codes requires the intended account-management authorization and reauthentication. Existing recovery-code consumption remains compatible. |
 | H4 Privileged-operation session assurance | `csf_edc0a91a588b8b31027d34dd` | pending | Privileged role operations verify that the current session completed MFA rather than only checking factor enrollment. Existing properly authenticated administrator sessions continue to work. |
 | H5 Email MFA possession proof | `csf_dd9a1204a8e34c5525c609a2` | pending | Email MFA is not enabled and no MFA-labelled application session is issued until the pending OTP is successfully verified. |
@@ -54,6 +54,28 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 - Focused controller tests, the full Application unit-test project, the full
   Vue test suite, a temporary-output production frontend build, the solution
   build, permission-handler tests, and the existing User CRUD system tests
+  passed.
+
+### H2 Verification Evidence
+
+- Before the fix, a password-grant bearer token with only the existing
+  `openid profile roles` scopes received HTTP 200 from the TOTP setup endpoint;
+  the regression expected HTTP 403 and failed.
+- Generic bearer tokens, stale application cookies, and impersonation cookies
+  can no longer retrieve a TOTP secret or enable the factor.
+- Self-service enrollment now starts with a CSRF-protected application-cookie
+  request, signs out the current application cookie, and requires a real
+  interactive sign-in. The resulting proof is user-bound, expires after five
+  minutes, and is consumed after successful TOTP enrollment.
+- The existing routes and successful response DTOs remain unchanged. Bearer
+  enrollment is intentionally no longer supported; the repository's
+  production caller used cookie authentication and now continues through the
+  existing `/Account/MfaSetup` flow.
+- Mandatory enrollment through the fresh `TwoFactorUserId` partial cookie
+  remains functional, including setup-key retrieval.
+- Focused proof-helper tests, the full Web IdP unit-test project, MFA API and
+  full-flow system tests, the complete backend test suite, the full Vue test
+  suite, a temporary-output production frontend build, and the solution build
   passed.
 
 ## P1 - Medium

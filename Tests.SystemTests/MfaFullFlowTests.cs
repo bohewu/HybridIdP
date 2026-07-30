@@ -93,11 +93,14 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
     [Fact]
     public async Task MfaFullFlow_EnableWithValidTotp_ThenDisable()
     {
-        // Arrange
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        await MfaEnrollmentTestClient.AuthorizeAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD);
 
         // Step 1: Get MFA setup info
-        var setupResponse = await _httpClient.GetAsync("/api/account/mfa/setup");
+        var setupResponse =
+            await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
         Assert.Equal(HttpStatusCode.OK, setupResponse.StatusCode);
         
         var setupContent = await setupResponse.Content.ReadAsStringAsync();
@@ -112,7 +115,9 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         var validCode = totp.ComputeTotp();
 
         // Step 3: Verify and enable MFA
-        var verifyResponse = await _httpClient.PostAsJsonAsync("/api/account/mfa/verify", new { code = validCode });
+        var verifyResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa-setup/totp/verify",
+            new { code = validCode });
         Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
         
         var verifyContent = await verifyResponse.Content.ReadAsStringAsync();
@@ -141,6 +146,8 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
 
         // Verify MFA is disabled
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _userToken);
         var finalStatusResponse = await _httpClient.GetAsync("/api/account/mfa/status");
         var finalStatus = JsonDocument.Parse(await finalStatusResponse.Content.ReadAsStringAsync()).RootElement;
         Assert.False(finalStatus.GetProperty("twoFactorEnabled").GetBoolean(), "MFA should be disabled after cleanup");
@@ -155,11 +162,14 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
     [Fact]
     public async Task MfaRecoveryCode_ValidCode_ConsumesCode()
     {
-        // Arrange
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        await MfaEnrollmentTestClient.AuthorizeAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD);
 
         // Enable MFA first
-        var setupResponse = await _httpClient.GetAsync("/api/account/mfa/setup");
+        var setupResponse =
+            await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
         var setup = JsonDocument.Parse(await setupResponse.Content.ReadAsStringAsync()).RootElement;
         var sharedKey = setup.GetProperty("sharedKey").GetString()!;
         
@@ -167,7 +177,9 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         var totp = new Totp(secretBytes);
         var validCode = totp.ComputeTotp();
 
-        var verifyResponse = await _httpClient.PostAsJsonAsync("/api/account/mfa/verify", new { code = validCode });
+        var verifyResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa-setup/totp/verify",
+            new { code = validCode });
         var verifyResult = JsonDocument.Parse(await verifyResponse.Content.ReadAsStringAsync()).RootElement;
         
         if (!verifyResult.GetProperty("success").GetBoolean())
@@ -191,11 +203,14 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
     [Fact]
     public async Task MfaRecoveryCodes_Regenerate_ReturnsNewCodes()
     {
-        // Arrange
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        await MfaEnrollmentTestClient.AuthorizeAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD);
 
         // Enable MFA first
-        var setupResponse = await _httpClient.GetAsync("/api/account/mfa/setup");
+        var setupResponse =
+            await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
         var setup = JsonDocument.Parse(await setupResponse.Content.ReadAsStringAsync()).RootElement;
         var sharedKey = setup.GetProperty("sharedKey").GetString()!;
         
@@ -203,7 +218,9 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         var totp = new Totp(secretBytes);
         var validCode = totp.ComputeTotp();
 
-        var verifyResponse = await _httpClient.PostAsJsonAsync("/api/account/mfa/verify", new { code = validCode });
+        var verifyResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa-setup/totp/verify",
+            new { code = validCode });
         var verifyResult = JsonDocument.Parse(await verifyResponse.Content.ReadAsStringAsync()).RootElement;
         
         if (!verifyResult.GetProperty("success").GetBoolean())
@@ -231,14 +248,18 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
     [Fact]
     public async Task MfaVerify_InvalidTotp_ReturnsFalse()
     {
-        // Arrange
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        await MfaEnrollmentTestClient.AuthorizeAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD);
 
         // First get setup to ensure we have a key
-        await _httpClient.GetAsync("/api/account/mfa/setup");
+        await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
 
         // Act - Try with invalid code
-        var verifyResponse = await _httpClient.PostAsJsonAsync("/api/account/mfa/verify", new { code = "000000" });
+        var verifyResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa-setup/totp/verify",
+            new { code = "000000" });
         
         // Assert
         Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
@@ -252,10 +273,13 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
     [Fact]
     public async Task MfaVerify_ExpiredTotp_ReturnsFalse()
     {
-        // Arrange
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        await MfaEnrollmentTestClient.AuthorizeAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD);
 
-        var setupResponse = await _httpClient.GetAsync("/api/account/mfa/setup");
+        var setupResponse =
+            await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
         var setup = JsonDocument.Parse(await setupResponse.Content.ReadAsStringAsync()).RootElement;
         var sharedKey = setup.GetProperty("sharedKey").GetString()!;
         
@@ -266,7 +290,9 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         var expiredCode = totp.ComputeTotp(DateTime.UtcNow.AddMinutes(-2));
 
         // Act
-        var verifyResponse = await _httpClient.PostAsJsonAsync("/api/account/mfa/verify", new { code = expiredCode });
+        var verifyResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa-setup/totp/verify",
+            new { code = expiredCode });
         
         // Assert
         Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);

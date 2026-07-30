@@ -32,9 +32,10 @@
         <div class="status-text">
           <h3>{{ t('mfa.notEnabled') }}</h3>
           <p>{{ t('mfa.enableDescription') }}</p>
+          <p v-if="totpSetupError" class="error-message" role="alert">{{ totpSetupError }}</p>
         </div>
-        <button class="btn-enable" @click="startSetup">
-          {{ t('mfa.enable') }}
+        <button class="btn-enable" @click="startSetup" :disabled="totpSetupLoading">
+          {{ totpSetupLoading ? '...' : t('mfa.enable') }}
         </button>
       </div>
 
@@ -390,6 +391,8 @@ const verifyCode = ref('');
 const setupError = ref('');
 const setupComplete = ref(false);
 const recoveryCodes = ref<string[]>([]);
+const totpSetupLoading = ref(false);
+const totpSetupError = ref('');
 
 // Disable Modal
 const showDisableModal = ref(false);
@@ -574,18 +577,28 @@ async function disableEmailMfa() {
 }
 
 async function startSetup() {
-  showSetupModal.value = true;
-  setupComplete.value = false;
-  verifyCode.value = '';
-  setupError.value = '';
-  
+  totpSetupLoading.value = true;
+  totpSetupError.value = '';
+
   try {
-    const response = await fetch('/api/account/mfa/setup', { credentials: 'include' });
-    if (response.ok) {
-      setupInfo.value = await response.json();
+    const response = await fetch('/api/account/mfa/reauthenticate', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      throw new Error('Reauthentication could not be started');
     }
+
+    const result = await response.json();
+    if (!result.loginUrl) {
+      throw new Error('Reauthentication URL was not returned');
+    }
+
+    window.location.assign(result.loginUrl);
   } catch (err) {
-    setupError.value = t('mfa.errors.setupFailed');
+    totpSetupError.value = t('mfa.errors.setupFailed');
+  } finally {
+    totpSetupLoading.value = false;
   }
 }
 
