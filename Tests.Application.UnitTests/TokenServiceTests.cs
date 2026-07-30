@@ -28,6 +28,7 @@ namespace Tests.Application.UnitTests
         private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
         private readonly Mock<IApiResourceService> _mockApiResourceService;
         private readonly Mock<IAuditService> _mockAuditService;
+        private readonly Mock<ISecurityPolicyService> _mockSecurityPolicyService;
         private readonly Mock<IApplicationDbContext> _mockDbContext;
         private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
         private readonly Mock<ILogger<TokenService>> _mockLogger;
@@ -52,6 +53,7 @@ namespace Tests.Application.UnitTests
 
             _mockApiResourceService = new Mock<IApiResourceService>();
             _mockAuditService = new Mock<IAuditService>();
+            _mockSecurityPolicyService = new Mock<ISecurityPolicyService>();
             _mockDbContext = new Mock<IApplicationDbContext>();
             _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
             _mockLogger = new Mock<ILogger<TokenService>>();
@@ -64,6 +66,9 @@ namespace Tests.Application.UnitTests
                 .Returns(Task.CompletedTask);
             _mockClaimsEnricher.Setup(x => x.AddAppSpecificRolesAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
+            _mockSecurityPolicyService
+                .Setup(x => x.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy());
 
             _service = new TokenService(
                 _mockUserManager.Object,
@@ -71,6 +76,7 @@ namespace Tests.Application.UnitTests
                 _mockRoleManager.Object,
                 _mockApiResourceService.Object,
                 _mockAuditService.Object,
+                _mockSecurityPolicyService.Object,
                 _mockDbContext.Object,
                 _mockApplicationManager.Object,
                 _mockLogger.Object,
@@ -182,6 +188,9 @@ namespace Tests.Application.UnitTests
             var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
             Assert.NotNull(signInResult.Principal);
             Assert.True(signInResult.Principal.HasClaim(Claims.Subject, userId.ToString()));
+            _mockUserManager.Verify(
+                manager => manager.ResetAccessFailedCountAsync(user),
+                Times.Once);
         }
 
         [Fact]
@@ -203,8 +212,301 @@ namespace Tests.Application.UnitTests
             var result = await _service.HandleTokenRequestAsync(request, null);
 
             // Assert
-            var forbidResult = Assert.IsType<ForbidResult>(result);
-            Assert.Contains(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, forbidResult.AuthenticationSchemes);
+            AssertPasswordGrantRejected(result);
+        }
+
+        [Theory]
+        [InlineData(false, false, false)]
+        [InlineData(true, true, false)]
+        [InlineData(true, false, true)]
+        public async Task HandleTokenRequestAsync_Password_RestrictedAccount_ReturnsInvalidGrant(
+            bool isActive,
+            bool isDeleted,
+            bool isLockedOut)
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "password-user",
+                IsActive = isActive,
+                IsDeleted = isDeleted
+            };
+            SetupPasswordGrant(user, isLockedOut: isLockedOut);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+        }
+
+        [Theory]
+        [InlineData(PersonStatus.Suspended, null, null, false)]
+        [InlineData(PersonStatus.Active, 1, null, false)]
+        [InlineData(PersonStatus.Active, null, -1, false)]
+        [InlineData(PersonStatus.Active, null, null, true)]
+        public async Task HandleTokenRequestAsync_Password_IneligiblePerson_ReturnsInvalidGrant(
+            PersonStatus status,
+            int? startDateOffsetDays,
+            int? endDateOffsetDays,
+            bool isDeleted)
+        {
+            var personId = Guid.NewGuid();
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "password-user",
+                IsActive = true,
+                PersonId = personId
+            };
+            SetupPasswordGrant(user);
+            SetupMockPersons(new Person
+            {
+                Id = personId,
+                Status = status,
+                StartDate = startDateOffsetDays.HasValue
+                    ? DateTime.UtcNow.Date.AddDays(startDateOffsetDays.Value)
+                    : null,
+                EndDate = endDateOffsetDays.HasValue
+                    ? DateTime.UtcNow.Date.AddDays(endDateOffsetDays.Value)
+                    : null,
+                IsDeleted = isDeleted
+            });
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_MissingLinkedPerson_ReturnsInvalidGrant()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "password-user",
+                IsActive = true,
+                PersonId = Guid.NewGuid()
+            };
+            SetupPasswordGrant(user);
+            SetupMockPersons();
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+        }
+
+        [Theory]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        public async Task HandleTokenRequestAsync_Password_MfaEnabled_ReturnsInvalidGrant(
+            bool twoFactorEnabled,
+            bool emailMfaEnabled)
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "password-user",
+                IsActive = true,
+                TwoFactorEnabled = twoFactorEnabled,
+                EmailMfaEnabled = emailMfaEnabled
+            };
+            SetupPasswordGrant(user);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_MandatoryMfaGraceExpired_ReturnsInvalidGrant()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "password-user",
+                IsActive = true,
+                MfaRequirementNotifiedAt = DateTime.UtcNow.AddDays(-4)
+            };
+            SetupPasswordGrant(user);
+            SetupMockUserCredentials();
+            SetupMandatoryMfaPolicy(gracePeriodDays: 3);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_MandatoryMfaGraceActive_ReturnsSignInResult()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "password-user",
+                IsActive = true,
+                MfaRequirementNotifiedAt = DateTime.UtcNow.AddDays(-1)
+            };
+            SetupPasswordGrant(user);
+            SetupMockUserCredentials();
+            SetupMandatoryMfaPolicy(gracePeriodDays: 3);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_MandatoryMfaFirstUse_StartsGracePeriod()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "password-user",
+                IsActive = true
+            };
+            SetupPasswordGrant(user);
+            SetupMockUserCredentials();
+            SetupMandatoryMfaPolicy(gracePeriodDays: 3);
+            _mockUserManager
+                .Setup(manager => manager.UpdateAsync(user))
+                .ReturnsAsync(IdentityResult.Success);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            Assert.NotNull(user.MfaRequirementNotifiedAt);
+            _mockUserManager.Verify(manager => manager.UpdateAsync(user), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_MandatoryMfaNotificationPersistenceFails_ReturnsInvalidGrant()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "password-user",
+                IsActive = true
+            };
+            SetupPasswordGrant(user);
+            SetupMockUserCredentials();
+            SetupMandatoryMfaPolicy(gracePeriodDays: 3);
+            _mockUserManager
+                .Setup(manager => manager.UpdateAsync(user))
+                .ReturnsAsync(IdentityResult.Failed(new IdentityError
+                {
+                    Code = "ConcurrencyFailure",
+                    Description = "The account was modified."
+                }));
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_MandatoryMfaWithPasskey_ReturnsSignInResult()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "password-user",
+                IsActive = true,
+                MfaRequirementNotifiedAt = DateTime.UtcNow.AddDays(-30)
+            };
+            SetupPasswordGrant(user);
+            SetupMockUserCredentials(new UserCredential { UserId = user.Id });
+            SetupMandatoryMfaPolicy(gracePeriodDays: 3);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_InvalidPassword_AppliesConfiguredLockout()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "password-user",
+                IsActive = true
+            };
+            SetupPasswordGrant(user, passwordIsValid: false);
+            _mockSecurityPolicyService
+                .Setup(service => service.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy
+                {
+                    MaxFailedAccessAttempts = 3,
+                    LockoutDurationMinutes = 15
+                });
+            _mockUserManager
+                .Setup(manager => manager.AccessFailedAsync(user))
+                .ReturnsAsync(IdentityResult.Success);
+            _mockUserManager
+                .Setup(manager => manager.GetAccessFailedCountAsync(user))
+                .ReturnsAsync(3);
+            _mockUserManager
+                .Setup(manager => manager.SetLockoutEndDateAsync(
+                    user,
+                    It.IsAny<DateTimeOffset?>()))
+                .ReturnsAsync(IdentityResult.Success);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+            _mockUserManager.Verify(manager => manager.AccessFailedAsync(user), Times.Once);
+            _mockUserManager.Verify(
+                manager => manager.SetLockoutEndDateAsync(user, It.IsAny<DateTimeOffset?>()),
+                Times.Once);
         }
 
         [Theory]
@@ -383,12 +685,61 @@ namespace Tests.Application.UnitTests
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme));
         }
 
+        private void SetupPasswordGrant(
+            ApplicationUser user,
+            bool isLockedOut = false,
+            bool passwordIsValid = true)
+        {
+            var clientApp = new object();
+            _mockApplicationManager
+                .Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(clientApp);
+            _mockApplicationManager
+                .Setup(m => m.GetPermissionsAsync(clientApp, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.GrantTypes.Password));
+
+            _mockUserManager.Setup(m => m.FindByNameAsync(user.UserName!)).ReturnsAsync(user);
+            _mockUserManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(isLockedOut);
+            _mockUserManager
+                .Setup(m => m.CheckPasswordAsync(user, "valid-password"))
+                .ReturnsAsync(passwordIsValid);
+            _mockUserManager
+                .Setup(m => m.ResetAccessFailedCountAsync(user))
+                .ReturnsAsync(IdentityResult.Success);
+            _mockUserManager.Setup(m => m.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
+            _mockUserManager.Setup(m => m.GetEmailAsync(user)).ReturnsAsync(user.Email);
+            _mockUserManager.Setup(m => m.GetUserNameAsync(user)).ReturnsAsync(user.UserName);
+            _mockUserManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync([]);
+            _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
+        }
+
+        private void SetupMandatoryMfaPolicy(int gracePeriodDays)
+        {
+            _mockSecurityPolicyService
+                .Setup(service => service.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy
+                {
+                    EnforceMandatoryMfaEnrollment = true,
+                    MfaEnforcementGracePeriodDays = gracePeriodDays
+                });
+        }
+
         private static void AssertInvalidGrant(IActionResult result)
         {
             var forbidResult = Assert.IsType<ForbidResult>(result);
             Assert.Equal(
                 Errors.InvalidGrant,
                 forbidResult.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+        }
+
+        private static void AssertPasswordGrantRejected(IActionResult result)
+        {
+            AssertInvalidGrant(result);
+            var forbidResult = Assert.IsType<ForbidResult>(result);
+            Assert.Equal(
+                "The username/password couple is invalid.",
+                forbidResult.Properties!.Items[
+                    OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription]);
         }
 
         private void SetupMockPersons(params Person[] persons)
@@ -412,6 +763,29 @@ namespace Tests.Application.UnitTests
                 .Returns(personsQueryable.GetEnumerator());
 
             _mockDbContext.Setup(c => c.Persons).Returns(mockSet.Object);
+        }
+
+        private void SetupMockUserCredentials(params UserCredential[] credentials)
+        {
+            var credentialsQueryable = credentials.AsQueryable();
+            var mockSet = new Mock<DbSet<UserCredential>>();
+            mockSet.As<IAsyncEnumerable<UserCredential>>()
+                .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
+                .Returns(new TestAsyncEnumerator<UserCredential>(credentialsQueryable.GetEnumerator()));
+            mockSet.As<IQueryable<UserCredential>>()
+                .Setup(m => m.Provider)
+                .Returns(new TestAsyncQueryProvider<UserCredential>(credentialsQueryable.Provider));
+            mockSet.As<IQueryable<UserCredential>>()
+                .Setup(m => m.Expression)
+                .Returns(credentialsQueryable.Expression);
+            mockSet.As<IQueryable<UserCredential>>()
+                .Setup(m => m.ElementType)
+                .Returns(credentialsQueryable.ElementType);
+            mockSet.As<IQueryable<UserCredential>>()
+                .Setup(m => m.GetEnumerator())
+                .Returns(credentialsQueryable.GetEnumerator());
+
+            _mockDbContext.Setup(c => c.UserCredentials).Returns(mockSet.Object);
         }
 
         private void SetupMockUsers(params ApplicationUser[] users)

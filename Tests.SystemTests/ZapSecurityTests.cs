@@ -14,14 +14,14 @@ namespace Tests.SystemTests;
 /// </summary>
 [Trait("Category", "Security")]
 [Trait("Category", "SuperSlow")]
-public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class ZapSecurityTests : IAsyncLifetime
 {
     private readonly HttpClient _httpClient;
     private readonly HttpClient _zapClient;
     private readonly string _idpBaseUrl;
     private readonly string _zapBaseUrl;
     private string _adminToken = string.Empty;
-    private string _userToken = string.Empty;
 
     public ZapSecurityTests(WebIdPServerFixture fixture)
     {
@@ -98,9 +98,8 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
             }
         }
 
-        // Get tokens
+        // Get the machine-to-machine token used by the authenticated scans.
         _adminToken = await GetAdminTokenAsync();
-        _userToken = await GetUserTokenAsync();
     }
 
     private async Task<bool> IsZapRunningAsync()
@@ -384,26 +383,6 @@ public class ZapSecurityTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
             ["client_id"] = "testclient-admin",
             ["client_secret"] = "admin-test-secret-2024",
             ["scope"] = string.Join(" ", scopes)
-        });
-
-        var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
-        response.EnsureSuccessStatusCode();
-        
-        var content = await response.Content.ReadAsStringAsync();
-        var tokenJson = JsonSerializer.Deserialize<JsonElement>(content);
-        return tokenJson.GetProperty("access_token").GetString()!;
-    }
-
-    private async Task<string> GetUserTokenAsync()
-    {
-        var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["grant_type"] = "password",
-            ["client_id"] = "testclient-public", // Seeded in ClientSeeder
-            // Public clients don't use secrets for ROPC in our config
-            ["username"] = "admin@hybridauth.local",
-            ["password"] = "Admin@123",
-            ["scope"] = "openid profile email"
         });
 
         var response = await _httpClient.PostAsync("/connect/token", tokenRequest);

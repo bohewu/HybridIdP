@@ -91,6 +91,10 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
 
         _mockTokenLogger = new Mock<ILogger<TokenService>>();
         _mockClaimsLogger = new Mock<ILogger<ClaimsEnrichmentService>>();
+        var securityPolicyService = new Mock<ISecurityPolicyService>();
+        securityPolicyService
+            .Setup(service => service.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicy());
 
         // 5. Instantiate Real Services
         _claimsEnricher = new ClaimsEnrichmentService(
@@ -105,6 +109,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             _roleManager,
             _mockApiResourceService.Object,
             _mockAuditService.Object,
+            securityPolicyService.Object,
             _db,
             _mockAppManager.Object,
             _mockTokenLogger.Object,

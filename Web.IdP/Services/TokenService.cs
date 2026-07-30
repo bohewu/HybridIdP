@@ -21,6 +21,7 @@ namespace Web.IdP.Services
         RoleManager<ApplicationRole> roleManager,
         IApiResourceService apiResourceService,
         IAuditService auditService,
+        ISecurityPolicyService securityPolicyService,
         IApplicationDbContext db,
         IOpenIddictApplicationManager applicationManager,
         ILogger<TokenService> logger,
@@ -31,6 +32,7 @@ namespace Web.IdP.Services
         private readonly RoleManager<ApplicationRole> _roleManager = roleManager;
         private readonly IApiResourceService _apiResourceService = apiResourceService;
         private readonly IAuditService _auditService = auditService;
+        private readonly ISecurityPolicyService _securityPolicyService = securityPolicyService;
         private readonly IApplicationDbContext _db = db;
         private readonly IOpenIddictApplicationManager _applicationManager = applicationManager;
         private readonly ILogger<TokenService> _logger = logger;
@@ -139,20 +141,22 @@ namespace Web.IdP.Services
                     }));
             }
 
-            // Ensure the user is allowed to sign in
-            if (!await _signInManager.CanSignInAsync(user))
+            if (!await CanIssueTokenForCurrentUserStateAsync(user, cancellationToken))
             {
                 return new ForbidResult(
                     authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
                     properties: new AuthenticationProperties(new Dictionary<string, string?>
                     {
                         [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
-                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The user is no longer allowed to sign in."
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                            "The username/password couple is invalid."
                     }));
             }
 
             if (!await _userManager.CheckPasswordAsync(user, request.Password!))
             {
+                await RecordPasswordGrantFailureAsync(user);
+
                  // Audit failed login attempt
                 var ip = "unknown"; 
                 var ua = "unknown";
@@ -164,6 +168,32 @@ namespace Web.IdP.Services
                     {
                         [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
                         [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The username/password couple is invalid."
+                    }));
+            }
+
+            await _userManager.ResetAccessFailedCountAsync(user);
+
+            if (!await CanCompletePasswordGrantAsync(user, cancellationToken))
+            {
+                await _auditService.LogEventAsync(
+                    "UserLogin",
+                    user.Id.ToString(),
+                    System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        Success = false,
+                        FailureReason = "Additional authentication required"
+                    }),
+                    "unknown",
+                    "unknown",
+                    cancellationToken);
+
+                return new ForbidResult(
+                    authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                            "The username/password couple is invalid."
                     }));
             }
 
@@ -268,7 +298,7 @@ namespace Web.IdP.Services
             var user = string.IsNullOrEmpty(userId)
                 ? null
                 : await _userManager.FindByIdAsync(userId);
-            if (user == null || !await CanRedeemRefreshTokenAsync(user, cancellationToken))
+            if (user == null || !await CanIssueTokenForCurrentUserStateAsync(user, cancellationToken))
             {
                  return new ForbidResult(
                     authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
@@ -314,7 +344,7 @@ namespace Web.IdP.Services
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
         }
 
-        private async Task<bool> CanRedeemRefreshTokenAsync(
+        private async Task<bool> CanIssueTokenForCurrentUserStateAsync(
             ApplicationUser user,
             CancellationToken cancellationToken)
         {
@@ -339,6 +369,72 @@ namespace Web.IdP.Services
                 .FirstOrDefaultAsync(candidate => candidate.Id == personId, cancellationToken);
 
             return person?.CanAuthenticate() == true;
+        }
+
+        private async Task<bool> CanCompletePasswordGrantAsync(
+            ApplicationUser user,
+            CancellationToken cancellationToken)
+        {
+            // The password grant cannot perform an MFA challenge. Issuing a token here
+            // would bypass the second factor required by the interactive login flow.
+            if (user.TwoFactorEnabled || user.EmailMfaEnabled)
+            {
+                return false;
+            }
+
+            var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+            if (!policy.EnforceMandatoryMfaEnrollment)
+            {
+                return true;
+            }
+
+            // Match the interactive login contract: an enrolled passkey satisfies the
+            // mandatory-enrollment policy even when TOTP and Email MFA are not enabled.
+            var hasPasskey = await _db.UserCredentials
+                .AsNoTracking()
+                .AnyAsync(credential => credential.UserId == user.Id, cancellationToken);
+            if (hasPasskey)
+            {
+                return true;
+            }
+
+            var now = DateTime.UtcNow;
+            if (user.MfaRequirementNotifiedAt == null)
+            {
+                user.MfaRequirementNotifiedAt = now;
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    return false;
+                }
+            }
+
+            var gracePeriodEndsAt = user.MfaRequirementNotifiedAt.Value
+                .AddDays(policy.MfaEnforcementGracePeriodDays);
+            return now < gracePeriodEndsAt;
+        }
+
+        private async Task RecordPasswordGrantFailureAsync(ApplicationUser user)
+        {
+            var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+            if (policy.MaxFailedAccessAttempts <= 0)
+            {
+                return;
+            }
+
+            var failureResult = await _userManager.AccessFailedAsync(user);
+            if (!failureResult.Succeeded)
+            {
+                return;
+            }
+
+            var failedAttempts = await _userManager.GetAccessFailedCountAsync(user);
+            if (failedAttempts >= policy.MaxFailedAccessAttempts)
+            {
+                await _userManager.SetLockoutEndDateAsync(
+                    user,
+                    DateTimeOffset.UtcNow.AddMinutes(policy.LockoutDurationMinutes));
+            }
         }
 
         private async Task<IActionResult> HandleDeviceCodeGrantAsync(OpenIddictRequest request, ClaimsPrincipal? schemePrincipal, CancellationToken cancellationToken)

@@ -8,7 +8,8 @@ using Xunit;
 
 namespace Tests.SystemTests;
 
-public class MfaSetupRedirectionTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection("Shared Server")]
+public class MfaSetupRedirectionTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;
