@@ -478,8 +478,21 @@ public static class ServiceCollectionExtensions
                 var encryptionCertPassword = configuration["Certificates:EncryptionCertificatePassword"];
                 var signingCertPath = configuration["Certificates:SigningCertificatePath"];
                 var signingCertPassword = configuration["Certificates:SigningCertificatePassword"];
+                var useEphemeralKeysForTesting =
+                    configuration.GetValue<bool>("OpenIddict:UseEphemeralKeysForTesting");
 
-                if (!string.IsNullOrEmpty(encryptionCertPath) && File.Exists(encryptionCertPath) &&
+                if (useEphemeralKeysForTesting)
+                {
+                    if (!environment.IsDevelopment() && !environment.IsEnvironment("Test"))
+                    {
+                        throw new InvalidOperationException(
+                            "OpenIddict ephemeral keys are restricted to Development and Test environments.");
+                    }
+
+                    options.AddEphemeralEncryptionKey()
+                           .AddEphemeralSigningKey();
+                }
+                else if (!string.IsNullOrEmpty(encryptionCertPath) && File.Exists(encryptionCertPath) &&
                     !string.IsNullOrEmpty(signingCertPath) && File.Exists(signingCertPath))
                 {
                     options.AddEncryptionCertificate(X509CertificateLoader.LoadPkcs12FromFile(encryptionCertPath, encryptionCertPassword));

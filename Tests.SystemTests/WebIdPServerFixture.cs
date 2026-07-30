@@ -1,24 +1,41 @@
 using System.Diagnostics;
 using System.Net;
+using System.Text.Json;
 
 namespace Tests.SystemTests;
 
 public class WebIdPServerFixture : IAsyncLifetime
 {
-    // Static state for shared server
     private static readonly SemaphoreSlim _semaphore = new(1, 1);
     private static Process? _serverProcess;
     private static int _usageCount;
+    private static bool _processExitHandlerRegistered;
     
-    // We use the same port for now to test "Shared Instance" parallelism.
     private const string ServerUrl = "https://localhost:7035";
+    private const string SqlServerProvider = "SqlServer";
+    private const string PostgreSqlProvider = "PostgreSQL";
+    private const string TestDatabaseProviderVariable = "TEST_DATABASE_PROVIDER";
+    private const string TestSqlServerConnectionStringVariable = "TEST_SQLSERVER_CONNECTION_STRING";
+    private const string TestPostgreSqlConnectionStringVariable = "TEST_POSTGRESQL_CONNECTION_STRING";
     public string BaseUrl => ServerUrl;
 
     public bool IsRunning => _serverProcess != null && !_serverProcess.HasExited;
 
     public async Task InitializeAsync()
     {
-        await EnsureServerRunningAsync();
+        await _semaphore.WaitAsync();
+        try
+        {
+            await EnsureServerRunningUnderLockAsync();
+            checked
+            {
+                _usageCount++;
+            }
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
     
     public async Task EnsureServerRunningAsync()
@@ -26,22 +43,7 @@ public class WebIdPServerFixture : IAsyncLifetime
         await _semaphore.WaitAsync();
         try
         {
-            if (!IsRunning)
-            {
-                // Cleanup potential stale process from previous runs
-                await KillExistingServerAsync();
-                await StartServerAsync(
-                    enablePrivilegedTestAdminBootstrap: true,
-                    disableClientWriteEndpoints: false);
-                
-                // Register safety net
-                AppDomain.CurrentDomain.ProcessExit += (s, e) => 
-                {
-                    try { _serverProcess?.Kill(entireProcessTree: true); } catch { }
-                };
-            }
-            // Only increment if we are successfully running (or attached)
-            Interlocked.Increment(ref _usageCount);
+            await EnsureServerRunningUnderLockAsync();
         }
         finally
         {
@@ -54,11 +56,15 @@ public class WebIdPServerFixture : IAsyncLifetime
         await _semaphore.WaitAsync();
         try
         {
-            int count = Interlocked.Decrement(ref _usageCount);
-            if (count <= 0)
+            if (_usageCount <= 0)
             {
-                // Last user left, kill server
-                Interlocked.Exchange(ref _usageCount, 0);
+                throw new InvalidOperationException(
+                    "The shared Web.IdP fixture was disposed without a matching initialization.");
+            }
+
+            _usageCount--;
+            if (_usageCount == 0)
+            {
                 await StopServerAsync();
             }
         }
@@ -80,6 +86,12 @@ public class WebIdPServerFixture : IAsyncLifetime
             {
                 throw new InvalidOperationException(
                     "The shared Web.IdP server must be running before an isolated host is started.");
+            }
+
+            if (_usageCount != 1)
+            {
+                throw new InvalidOperationException(
+                    "An isolated Web.IdP host requires a non-parallel test collection with no other active server fixtures.");
             }
 
             Exception? isolatedFailure = null;
@@ -139,57 +151,82 @@ public class WebIdPServerFixture : IAsyncLifetime
         bool enablePrivilegedTestAdminBootstrap,
         bool disableClientWriteEndpoints)
     {
-        // Allow overriding database provider via environment variable
-        // Default: SqlServer (set TEST_DATABASE_PROVIDER=PostgreSQL to test PostgreSQL compatibility)
-        var databaseProvider = Environment.GetEnvironmentVariable("TEST_DATABASE_PROVIDER") ?? "SqlServer";
-        
-        // ... (unchanged arguments)
+        var webIdpDirectory = GetWebIdPDirectory();
+        var buildConfiguration = GetBuildConfiguration();
+        var databaseProvider = ResolveDatabaseProvider();
+        var (connectionStringName, connectionString) =
+            ResolveTestConnectionString(webIdpDirectory, databaseProvider);
+
         var startInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
             Arguments = string.Join(
                 " ",
                 "run",
+                "--no-build",
+                "--no-restore",
+                "--configuration",
+                buildConfiguration,
                 "--launch-profile https",
                 "--RateLimiting:Enabled=false",
                 "--Security:ValidationIntervalSeconds=0",
                 $"--SeedData:PrivilegedTestAdminBootstrap:Enabled={enablePrivilegedTestAdminBootstrap.ToString().ToLowerInvariant()}",
                 $"--ClientAdminApiHardening:DisableClientWriteEndpoints={disableClientWriteEndpoints.ToString().ToLowerInvariant()}"),
-            WorkingDirectory = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "Web.IdP"),
+            WorkingDirectory = webIdpDirectory,
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
-        
-        // Set database provider for tests
+
+        startInfo.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Development";
         startInfo.EnvironmentVariables["DATABASE_PROVIDER"] = databaseProvider;
-        // ...
+        startInfo.EnvironmentVariables[$"ConnectionStrings__{connectionStringName}"] = connectionString;
+        startInfo.EnvironmentVariables["OpenIddict__UseEphemeralKeysForTesting"] = "true";
 
         _serverProcess = Process.Start(startInfo);
         if (_serverProcess == null)
-            throw new Exception("Failed to start Web.IdP server");
+        {
+            throw new InvalidOperationException("Failed to start the Web.IdP test server.");
+        }
         
         var stderr = new System.Text.StringBuilder();
-        _serverProcess.ErrorDataReceived += (sender, args) => {
-             if (args.Data != null) stderr.AppendLine(args.Data);
+        _serverProcess.ErrorDataReceived += (_, args) =>
+        {
+            if (args.Data != null)
+            {
+                stderr.AppendLine(args.Data);
+            }
         };
         _serverProcess.BeginErrorReadLine();
-        _serverProcess.OutputDataReceived += (sender, args) => { };
+        _serverProcess.OutputDataReceived += (_, _) => { };
         _serverProcess.BeginOutputReadLine();
 
         var stopwatch = Stopwatch.StartNew();
-        while (stopwatch.ElapsedMilliseconds < 60000) 
+        while (stopwatch.ElapsedMilliseconds < 60000)
         {
             if (_serverProcess.HasExited)
-                 throw new Exception($"Web.IdP server process exited prematurely with code {_serverProcess.ExitCode}. Error: {stderr}");
+            {
+                var exitCode = _serverProcess.ExitCode;
+                _serverProcess.Dispose();
+                _serverProcess = null;
+                throw new InvalidOperationException(
+                    $"Web.IdP test server exited prematurely with code {exitCode} " +
+                    $"while using database provider '{databaseProvider}'. Error: {stderr}");
+            }
 
-            if (await IsServerAliveAsync()) return;
+            if (await IsServerAliveAsync())
+            {
+                return;
+            }
+
             await Task.Delay(100);
         }
 
-        try { _serverProcess.Kill(entireProcessTree: true); } catch { }
-        throw new TimeoutException($"Web.IdP server did not start within 60s. Last error: {stderr}");
+        await StopServerAsync();
+        throw new TimeoutException(
+            $"Web.IdP test server did not start within 60 seconds " +
+            $"while using database provider '{databaseProvider}'. Last error: {stderr}");
     }
 
     private async Task StopServerAsync()
@@ -212,16 +249,11 @@ public class WebIdPServerFixture : IAsyncLifetime
             process?.Dispose();
         }
         
-        // Only aggressive Kill if still alive
-        if (await IsServerAliveAsync())
-        {
-            await KillExistingServerAsync();
-        }
-
         if (await IsServerAliveAsync())
         {
             throw new InvalidOperationException(
-                $"Web.IdP server listener at {ServerUrl} remained active after teardown.");
+                $"The Web.IdP listener at {ServerUrl} remained active after the tracked test process stopped. " +
+                "The fixture will not terminate an untracked process.");
         }
     }
 
@@ -243,22 +275,116 @@ public class WebIdPServerFixture : IAsyncLifetime
         }
     }
 
-    private async Task KillExistingServerAsync()
+    private static string GetWebIdPDirectory()
     {
-        try
+        var directory = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Web.IdP"));
+
+        if (!Directory.Exists(directory))
         {
-            // Simple robust kill by name
-            foreach (var process in Process.GetProcessesByName("Web.IdP"))
-            {
-                try { process.Kill(); } catch { }
-            }
-            
-            // Also kill any dotnet process that has Web.IdP in cmdline? Too risky.
-            // Just rely on Name check and _serverProcess tracking.
-            
-            await Task.Delay(200);
+            throw new DirectoryNotFoundException(
+                $"The Web.IdP project directory was not found at '{directory}'.");
         }
-        catch { }
+
+        return directory;
     }
 
+    private static string GetBuildConfiguration()
+    {
+        var outputDirectory = new DirectoryInfo(AppContext.BaseDirectory);
+        var buildConfiguration = outputDirectory.Parent?.Name;
+        if (string.IsNullOrWhiteSpace(buildConfiguration))
+        {
+            throw new InvalidOperationException(
+                $"The test build configuration could not be resolved from '{AppContext.BaseDirectory}'.");
+        }
+
+        return buildConfiguration;
+    }
+
+    private static string ResolveDatabaseProvider()
+    {
+        var configuredProvider =
+            Environment.GetEnvironmentVariable(TestDatabaseProviderVariable) ?? SqlServerProvider;
+
+        if (configuredProvider.Equals(SqlServerProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            return SqlServerProvider;
+        }
+
+        if (configuredProvider.Equals(PostgreSqlProvider, StringComparison.OrdinalIgnoreCase) ||
+            configuredProvider.Equals("Postgres", StringComparison.OrdinalIgnoreCase))
+        {
+            return PostgreSqlProvider;
+        }
+
+        throw new InvalidOperationException(
+            $"{TestDatabaseProviderVariable} must be '{SqlServerProvider}' or '{PostgreSqlProvider}'.");
+    }
+
+    private static (string Name, string Value) ResolveTestConnectionString(
+        string webIdpDirectory,
+        string databaseProvider)
+    {
+        var isPostgreSql = databaseProvider == PostgreSqlProvider;
+        var connectionStringName =
+            isPostgreSql ? "PostgreSqlConnection" : "SqlServerConnection";
+        var overrideVariable =
+            isPostgreSql
+                ? TestPostgreSqlConnectionStringVariable
+                : TestSqlServerConnectionStringVariable;
+        var overrideValue = Environment.GetEnvironmentVariable(overrideVariable);
+
+        if (!string.IsNullOrWhiteSpace(overrideValue))
+        {
+            return (connectionStringName, overrideValue);
+        }
+
+        var settingsPath = Path.Combine(webIdpDirectory, "appsettings.Development.json");
+        using var document = JsonDocument.Parse(File.ReadAllText(settingsPath));
+        if (!document.RootElement.TryGetProperty("ConnectionStrings", out var connectionStrings) ||
+            !connectionStrings.TryGetProperty(connectionStringName, out var configuredValue) ||
+            string.IsNullOrWhiteSpace(configuredValue.GetString()))
+        {
+            throw new InvalidOperationException(
+                $"ConnectionStrings:{connectionStringName} is required in appsettings.Development.json " +
+                $"when {overrideVariable} is not set.");
+        }
+
+        return (connectionStringName, configuredValue.GetString()!);
+    }
+
+    private async Task EnsureServerRunningUnderLockAsync()
+    {
+        if (IsRunning)
+        {
+            return;
+        }
+
+        if (await IsServerAliveAsync())
+        {
+            throw new InvalidOperationException(
+                $"A Web.IdP listener is already active at {ServerUrl}, but it was not started by this test run. " +
+                "Stop the external host before running system tests.");
+        }
+
+        await StartServerAsync(
+            enablePrivilegedTestAdminBootstrap: true,
+            disableClientWriteEndpoints: false);
+
+        if (!_processExitHandlerRegistered)
+        {
+            AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+            {
+                try
+                {
+                    _serverProcess?.Kill(entireProcessTree: true);
+                }
+                catch
+                {
+                }
+            };
+            _processExitHandlerRegistered = true;
+        }
+    }
 }

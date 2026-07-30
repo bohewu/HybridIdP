@@ -22,6 +22,18 @@ dotnet test Tests.SystemTests --filter "Category!=Slow"
 dotnet test Tests.SystemTests
 ```
 
+The suite starts a real `Web.IdP` child process and connects to the local SQL Server configured in
+`Web.IdP/appsettings.Development.json`. It does not use an in-memory database. To test a different
+local database without modifying application settings, set `TEST_DATABASE_PROVIDER` plus either
+`TEST_SQLSERVER_CONNECTION_STRING` or `TEST_POSTGRESQL_CONNECTION_STRING`. Never use a deployed or
+production database for this suite.
+
+Tests that restart the shared child process belong to the non-parallel
+`Isolated Client Admin Host` collection. Keep any future host-restart scenarios in that collection
+so active token signing and database initialization cannot overlap process teardown. The fixture
+uses process-local OpenIddict keys and the application rejects that test-only option outside
+Development and Test.
+
 ### Slow Tests
 
 #### Run All Slow Tests

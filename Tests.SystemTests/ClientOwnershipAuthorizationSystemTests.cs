@@ -11,7 +11,7 @@ using OpenIddict.Abstractions;
 
 namespace Tests.SystemTests;
 
-[Collection("Shared Server")]
+[Collection(IsolatedClientAdminHostCollection.Name)]
 public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
 {
     private const string TestPrefix = "t2_ownership_";
@@ -45,20 +45,7 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
         Assert.True(_serverFixture.IsRunning);
 
         _anonymousClient = CreateHttpClient();
-        _administrationAutomationClient = CreateHttpClient();
-
-        var administrationToken = await GetClientCredentialsTokenAsync(
-            _anonymousClient,
-            TrustedAutomationClientId,
-            TrustedAutomationClientSecret,
-            [
-                "clients.read",
-                "clients.create",
-                "clients.update",
-                "clients.delete"
-            ]);
-        _administrationAutomationClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", administrationToken);
+        await RefreshAdministrationAutomationClientAsync();
 
         await CleanupByPrefixAsync();
 
@@ -76,6 +63,7 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
         {
             if (_administrationAutomationClient != null)
             {
+                await RefreshAdministrationAutomationClientAsync();
                 await CleanupTrackedClientsAsync();
                 await CleanupByPrefixAsync();
                 await AssertNoDisposableClientsRemainAsync();
@@ -896,6 +884,38 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
         {
             throw new AggregateException("Disposable client cleanup failed.", failures);
         }
+    }
+
+    private async Task RefreshAdministrationAutomationClientAsync()
+    {
+        var anonymousClient = _anonymousClient ??
+            throw new InvalidOperationException("The anonymous HTTP client has not been initialized.");
+        var replacement = CreateHttpClient();
+
+        try
+        {
+            var administrationToken = await GetClientCredentialsTokenAsync(
+                anonymousClient,
+                TrustedAutomationClientId,
+                TrustedAutomationClientSecret,
+                [
+                    "clients.read",
+                    "clients.create",
+                    "clients.update",
+                    "clients.delete"
+                ]);
+            replacement.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", administrationToken);
+        }
+        catch
+        {
+            replacement.Dispose();
+            throw;
+        }
+
+        var previous = _administrationAutomationClient;
+        _administrationAutomationClient = replacement;
+        previous?.Dispose();
     }
 
     private async Task CleanupByPrefixAsync()

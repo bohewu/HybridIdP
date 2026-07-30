@@ -87,11 +87,30 @@ dotnet test Web.IdP.UnitTests
 ```
 
 ### System Tests
-System tests verify the full integration using `TestServer`.
+System tests start the real `Web.IdP` child process and use the configured local SQL Server by default.
 ```powershell
-dotnet test Web.IdP.SystemTests
+dotnet test Tests.SystemTests/Tests.SystemTests.csproj
 ```
-*Note: System tests use an in-memory database and seeded M2M clients. `Tests.SystemTests/WebIdPServerFixture` explicitly opts into the privileged test administrator bootstrap under its allowed Development fixture.*
+`WebIdPServerFixture` reads the selected connection string from
+`Web.IdP/appsettings.Development.json` and injects it into the child process so that user secrets
+or unrelated host settings cannot silently change the test database or TLS behavior. Override it
+only for the current test process when needed:
+
+```powershell
+$env:TEST_DATABASE_PROVIDER = "SqlServer"
+$env:TEST_SQLSERVER_CONNECTION_STRING = "<test-only SQL Server connection string>"
+
+# Or:
+$env:TEST_DATABASE_PROVIDER = "PostgreSQL"
+$env:TEST_POSTGRESQL_CONNECTION_STRING = "<test-only PostgreSQL connection string>"
+```
+
+Do not point these variables at a deployed or production database. Tests that restart the child
+host run in a non-parallel collection so they cannot invalidate active requests from other system
+tests. The child host also uses process-local OpenIddict signing and encryption keys, avoiding the
+Windows development-certificate store; that option is rejected outside Development and Test. The
+fixture explicitly opts into the privileged test administrator bootstrap only for its allowed
+Development test host.
 
 ---
 
