@@ -22,7 +22,10 @@
   "enterTotpToDisable": "Enter verification code from your authenticator app",
   "regenerateTitle": "Regenerate Recovery Codes",
   "regenerateWarning": "This will invalidate all your existing recovery codes. Make sure to save the new codes.",
+  "enterPasswordToRegenerate": "Enter your current password",
+  "enterTotpToRegenerate": "Enter the current 6-digit code from your authenticator app",
   "regenerate": "Regenerate",
+  "regenerating": "Regenerating...",
   "errors": {
     "setupFailed": "Failed to start MFA setup",
     "invalidCode": "Invalid verification code",
@@ -31,6 +34,7 @@
     "invalidPassword": "Invalid password",
     "totpRequired": "Verification code is required",
     "passwordRequired": "Password is required",
+    "regenerateFailed": "Failed to regenerate recovery codes. Please try again.",
     "toggleFailed": "Failed to toggle Email MFA",
     "registerPasskeyFailed": "Failed to register passkey",
     "deletePasskeyFailed": "Failed to delete passkey",

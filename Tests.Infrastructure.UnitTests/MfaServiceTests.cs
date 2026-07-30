@@ -235,11 +235,8 @@ public class MfaServiceTests
     {
         // Arrange
         var user = CreateTestUser();
-        var codes = new[] { "CODE1", "CODE2", "CODE3", "CODE4", "CODE5", 
-                           "CODE6", "CODE7", "CODE8", "CODE9", "CODE10" };
-        
-        _userManagerMock.Setup(x => x.GenerateNewTwoFactorRecoveryCodesAsync(user, 10))
-            .ReturnsAsync(codes);
+        _userManagerMock.Setup(x => x.UpdateAsync(user))
+            .ReturnsAsync(IdentityResult.Success);
 
         // Act
         var result = await _sut.GenerateRecoveryCodesAsync(user);
@@ -253,16 +250,40 @@ public class MfaServiceTests
     {
         // Arrange
         var user = CreateTestUser();
-        var codes = new[] { "CODE1", "CODE2", "CODE3", "CODE4", "CODE5" };
-        
-        _userManagerMock.Setup(x => x.GenerateNewTwoFactorRecoveryCodesAsync(user, 5))
-            .ReturnsAsync(codes);
+        _userManagerMock.Setup(x => x.UpdateAsync(user))
+            .ReturnsAsync(IdentityResult.Success);
 
         // Act
         var result = await _sut.GenerateRecoveryCodesAsync(user, count: 5);
 
         // Assert
         result.Should().HaveCount(5);
+    }
+
+    [Fact]
+    public async Task GenerateRecoveryCodesAsync_PersistenceFailure_ThrowsAndRestoresPreviousState()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        var previousRecoveryCodes =
+            System.Text.Json.JsonSerializer.Serialize(new[] { Guid.NewGuid().ToString("N") });
+        user.RecoveryCodes = previousRecoveryCodes;
+        _userManagerMock.Setup(x => x.UpdateAsync(user))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError
+            {
+                Code = "PersistenceFailure"
+            }));
+
+        // Act
+        Func<Task> act = async () =>
+        {
+            _ = await _sut.GenerateRecoveryCodesAsync(user);
+        };
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        user.RecoveryCodes.Should().Be(previousRecoveryCodes);
+        _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
     }
 
     #endregion

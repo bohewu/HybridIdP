@@ -149,6 +149,8 @@ public class MfaService : IMfaService
 
     public async Task<IEnumerable<string>> GenerateRecoveryCodesAsync(ApplicationUser user, int count = 10, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+
         var codes = new List<string>();
         var hashedCodes = new List<string>();
 
@@ -159,8 +161,21 @@ public class MfaService : IMfaService
             hashedCodes.Add(_passwordHasher.HashPassword(user, code));
         }
 
+        var previousRecoveryCodes = user.RecoveryCodes;
         user.RecoveryCodes = System.Text.Json.JsonSerializer.Serialize(hashedCodes);
-        await _userManager.UpdateAsync(user);
+        try
+        {
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                throw new InvalidOperationException("Recovery codes could not be persisted.");
+            }
+        }
+        catch
+        {
+            user.RecoveryCodes = previousRecoveryCodes;
+            throw;
+        }
 
         return codes;
     }

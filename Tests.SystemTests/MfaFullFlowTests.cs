@@ -230,7 +230,9 @@ public class MfaFullFlowTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         }
 
         // Act - Regenerate recovery codes
-        var regenerateResponse = await _httpClient.PostAsync("/api/account/mfa/recovery-codes", null);
+        var regenerateResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa/recovery-codes",
+            new { password = TEST_USER_PASSWORD });
         Assert.Equal(HttpStatusCode.OK, regenerateResponse.StatusCode);
 
         var regenerateResult = JsonDocument.Parse(await regenerateResponse.Content.ReadAsStringAsync()).RootElement;

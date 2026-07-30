@@ -22,7 +22,10 @@
   "enterTotpToDisable": "請輸入驗證器應用程式中的驗證碼",
   "regenerateTitle": "重新產生救援碼",
   "regenerateWarning": "這將使所有現有的救援碼失效。請務必保存新的救援碼。",
+  "enterPasswordToRegenerate": "請輸入您目前的密碼",
+  "enterTotpToRegenerate": "請輸入驗證器應用程式目前的 6 位數驗證碼",
   "regenerate": "重新產生",
+  "regenerating": "正在重新產生...",
   "errors": {
     "setupFailed": "無法開始 MFA 設定",
     "invalidCode": "驗證碼無效",
@@ -31,6 +34,7 @@
     "invalidPassword": "密碼錯誤",
     "totpRequired": "請輸入驗證碼",
     "passwordRequired": "請輸入密碼",
+    "regenerateFailed": "無法重新產生救援碼，請再試一次。",
     "toggleFailed": "切換電子郵件 MFA 失敗",
     "registerPasskeyFailed": "註冊密鑰失敗",
     "deletePasskeyFailed": "刪除密鑰失敗",

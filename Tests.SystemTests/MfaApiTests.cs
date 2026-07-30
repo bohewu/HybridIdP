@@ -241,13 +241,66 @@ public partial class MfaApiTests : IAsyncLifetime
     public async Task GenerateRecoveryCodes_MfaNotEnabled_ReturnsBadRequest()
     {
         // Arrange
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        _httpClient.DefaultRequestHeaders.Authorization = null;
+        await MfaEnrollmentTestClient.SignInAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD,
+            "/Account/Login");
+        await MfaEnrollmentTestClient.SetCsrfTokenAsync(_httpClient);
 
         // Act
-        var response = await _httpClient.PostAsync("/api/account/mfa/recovery-codes", null);
+        var response = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa/recovery-codes",
+            new { password = TEST_USER_PASSWORD });
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GenerateRecoveryCodes_GenericBearerWithoutFreshProof_ReturnsForbidden()
+    {
+        await MfaEnrollmentTestClient.AuthorizeAsync(
+            _httpClient,
+            TEST_USER_EMAIL,
+            TEST_USER_PASSWORD);
+        var setupResponse =
+            await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
+        var setup = await setupResponse.Content.ReadFromJsonAsync<MfaSetupDto>();
+        Assert.NotNull(setup);
+
+        var verifyResponse = await _httpClient.PostAsJsonAsync(
+            "/api/account/mfa-setup/totp/verify",
+            new { Code = GenerateTotp(setup.SharedKey) });
+        Assert.Equal(HttpStatusCode.OK, verifyResponse.StatusCode);
+
+        using var bearerClient = new HttpClient(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback =
+                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        })
+        {
+            BaseAddress = _httpClient.BaseAddress
+        };
+        bearerClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _userToken);
+
+        var response =
+            await bearerClient.PostAsync("/api/account/mfa/recovery-codes", null);
+
+        Assert.True(
+            response.StatusCode is
+                HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized);
+        var responseBody = await response.Content.ReadAsStringAsync();
+        if (!string.IsNullOrWhiteSpace(responseBody))
+        {
+            using var responseJson = JsonDocument.Parse(responseBody);
+            Assert.False(
+                responseJson.RootElement.TryGetProperty("recoveryCodes", out var recoveryCodes) &&
+                recoveryCodes.ValueKind == JsonValueKind.Array &&
+                recoveryCodes.GetArrayLength() > 0);
+        }
     }
 
     [Fact]

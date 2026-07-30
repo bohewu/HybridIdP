@@ -30,8 +30,11 @@ public interface IMfaService
     Task DisableMfaAsync(ApplicationUser user, CancellationToken ct = default);
     
     /// <summary>
-    /// Generates new recovery codes for the user.
+    /// Generates and persists new recovery codes for the user.
     /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the replacement recovery codes cannot be persisted.
+    /// </exception>
     Task<IEnumerable<string>> GenerateRecoveryCodesAsync(ApplicationUser user, int count = 10, CancellationToken ct = default);
     
     /// <summary>

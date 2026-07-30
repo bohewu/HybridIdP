@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
@@ -284,9 +285,18 @@ public partial class MfaController : ControllerBase
     /// Generate new recovery codes.
     /// </summary>
     [HttpPost("recovery-codes")]
-    public async Task<ActionResult<RecoveryCodesResponse>> GenerateRecoveryCodes(CancellationToken ct)
+    public async Task<ActionResult<RecoveryCodesResponse>> GenerateRecoveryCodes(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RecoveryCodesRequest? request,
+        CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var applicationAuthentication =
+            await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (applicationAuthentication.Principal?.Identity?.IsAuthenticated != true)
+        {
+            return StatusCode(403, new { error = "interactiveAuthenticationRequired" });
+        }
+
+        var user = await _userManager.GetUserAsync(applicationAuthentication.Principal);
         if (user == null)
         {
             return Unauthorized();
@@ -302,6 +312,34 @@ public partial class MfaController : ControllerBase
         if (!user.TwoFactorEnabled)
         {
             return BadRequest(new { error = "MFA is not enabled" });
+        }
+
+        var hasPassword = await _userManager.HasPasswordAsync(user);
+        if (hasPassword)
+        {
+            if (string.IsNullOrEmpty(request?.Password))
+            {
+                return BadRequest(new { error = "passwordRequired" });
+            }
+
+            var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+            if (!isPasswordValid)
+            {
+                return BadRequest(new { error = "invalidPassword" });
+            }
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(request?.TotpCode))
+            {
+                return BadRequest(new { error = "totpRequired", requiresTotp = true });
+            }
+
+            var isTotpValid = await _mfaService.ValidateTotpCodeAsync(user, request.TotpCode, ct);
+            if (!isTotpValid)
+            {
+                return BadRequest(new { error = "invalidCode" });
+            }
         }
 
         var codes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
@@ -528,6 +566,19 @@ public record MfaDisableRequest
     
     /// <summary>
     /// TOTP code for users without local passwords (legacy/SSO).
+    /// </summary>
+    public string? TotpCode { get; init; }
+}
+
+public record RecoveryCodesRequest
+{
+    /// <summary>
+    /// Current password for users with local credentials.
+    /// </summary>
+    public string? Password { get; init; }
+
+    /// <summary>
+    /// Current TOTP code for users without local credentials.
     /// </summary>
     public string? TotpCode { get; init; }
 }

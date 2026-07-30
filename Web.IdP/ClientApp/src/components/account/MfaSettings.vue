@@ -52,7 +52,7 @@
           <p>{{ t('mfa.recoveryCodesLeft', { count: mfaStatus.recoveryCodesLeft }) }}</p>
         </div>
         <div class="action-buttons">
-          <button class="btn-secondary" @click="showRegenerateModal = true">
+          <button class="btn-secondary" @click="openRegenerateModal">
             {{ t('mfa.regenerateCodes') }}
           </button>
           <button class="btn-danger" @click="showDisableModal = true">
@@ -288,15 +288,68 @@
     </div>
 
     <!-- Regenerate Codes Modal -->
-    <div v-if="showRegenerateModal" class="modal-overlay" @click.self="showRegenerateModal = false">
-      <div class="modal-content">
+    <div v-if="showRegenerateModal" class="modal-overlay" @click.self="cancelRegenerate">
+      <div class="modal-content" :aria-busy="regenerateLoading">
         <h2>{{ t('mfa.regenerateTitle') }}</h2>
         
         <div v-if="!regeneratedCodes.length">
           <p>{{ t('mfa.regenerateWarning') }}</p>
+
+          <div v-if="mfaStatus.hasPassword" class="password-section">
+            <label for="regenerate-password">{{ t('mfa.enterPasswordToRegenerate') }}</label>
+            <input
+              id="regenerate-password"
+              v-model="regeneratePassword"
+              data-testid="regenerate-password"
+              type="password"
+              autocomplete="current-password"
+              class="password-input"
+              :disabled="regenerateLoading"
+              :aria-describedby="regenerateError ? 'regenerate-error' : undefined"
+              @keyup.enter="regenerateCodes"
+            />
+          </div>
+
+          <div v-else class="password-section">
+            <label for="regenerate-totp">{{ t('mfa.enterTotpToRegenerate') }}</label>
+            <input
+              id="regenerate-totp"
+              v-model="regenerateTotpCode"
+              data-testid="regenerate-totp"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="6"
+              autocomplete="one-time-code"
+              placeholder="000000"
+              class="code-input"
+              :disabled="regenerateLoading"
+              :aria-describedby="regenerateError ? 'regenerate-error' : undefined"
+              @keyup.enter="regenerateCodes"
+            />
+          </div>
+
+          <p
+            v-if="regenerateError"
+            id="regenerate-error"
+            class="error-message"
+            role="alert"
+          >
+            {{ regenerateError }}
+          </p>
+
           <div class="modal-actions">
-            <button class="btn-cancel" @click="showRegenerateModal = false">{{ t('common.cancel') }}</button>
-            <button class="btn-primary" @click="regenerateCodes">{{ t('mfa.regenerate') }}</button>
+            <button class="btn-cancel" :disabled="regenerateLoading" @click="cancelRegenerate">
+              {{ t('common.cancel') }}
+            </button>
+            <button
+              class="btn-primary"
+              data-testid="regenerate-submit"
+              :disabled="!canRegenerateCodes"
+              @click="regenerateCodes"
+            >
+              {{ regenerateLoading ? t('mfa.regenerating') : t('mfa.regenerate') }}
+            </button>
           </div>
         </div>
         
@@ -403,6 +456,20 @@ const disableError = ref('');
 // Regenerate Modal
 const showRegenerateModal = ref(false);
 const regeneratedCodes = ref<string[]>([]);
+const regeneratePassword = ref('');
+const regenerateTotpCode = ref('');
+const regenerateError = ref('');
+const regenerateLoading = ref(false);
+
+const canRegenerateCodes = computed(() => {
+  if (regenerateLoading.value) {
+    return false;
+  }
+
+  return mfaStatus.value.hasPassword
+    ? regeneratePassword.value.length > 0
+    : /^\d{6}$/.test(regenerateTotpCode.value);
+});
 
 onMounted(async () => {
   await loadMfaStatus();
@@ -680,25 +747,88 @@ function cancelDisable() {
   disableError.value = '';
 }
 
+function clearRegenerateProof() {
+  regeneratePassword.value = '';
+  regenerateTotpCode.value = '';
+}
+
+function openRegenerateModal() {
+  regeneratedCodes.value = [];
+  clearRegenerateProof();
+  regenerateError.value = '';
+  showRegenerateModal.value = true;
+}
+
+function cancelRegenerate() {
+  if (regenerateLoading.value) {
+    return;
+  }
+
+  showRegenerateModal.value = false;
+  regeneratedCodes.value = [];
+  clearRegenerateProof();
+  regenerateError.value = '';
+}
+
 async function regenerateCodes() {
+  if (regenerateLoading.value) {
+    return;
+  }
+
+  regenerateError.value = '';
+
+  if (!canRegenerateCodes.value) {
+    regenerateError.value = mfaStatus.value.hasPassword
+      ? t('mfa.errors.passwordRequired')
+      : t('mfa.errors.totpRequired');
+    return;
+  }
+
+  regenerateLoading.value = true;
+
   try {
+    const payload = mfaStatus.value.hasPassword
+      ? { password: regeneratePassword.value }
+      : { totpCode: regenerateTotpCode.value };
+
     const response = await fetch('/api/account/mfa/recovery-codes', {
       method: 'POST',
-      credentials: 'include'
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
     });
     
     if (response.ok) {
       const result = await response.json();
       regeneratedCodes.value = result.recoveryCodes || [];
+      clearRegenerateProof();
+      regenerateError.value = '';
+    } else {
+      let errorKey = '';
+      try {
+        const result = await response.json();
+        errorKey = result?.error || '';
+      } catch {
+        // Use the localized fallback below when the response has no JSON error body.
+      }
+
+      const knownErrors = ['passwordRequired', 'invalidPassword', 'totpRequired', 'invalidCode'];
+      regenerateError.value = knownErrors.includes(errorKey)
+        ? t(`mfa.errors.${errorKey}`)
+        : t('mfa.errors.regenerateFailed');
     }
-  } catch (err) {
-    console.error('Failed to regenerate codes:', err);
+  } catch {
+    regenerateError.value = t('mfa.errors.regenerateFailed');
+  } finally {
+    regenerateLoading.value = false;
   }
 }
 
 function finishRegenerate() {
   showRegenerateModal.value = false;
   regeneratedCodes.value = [];
+  clearRegenerateProof();
+  regenerateError.value = '';
   loadMfaStatus();
 }
 </script>
