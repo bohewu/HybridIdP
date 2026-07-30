@@ -204,6 +204,12 @@ public class ClientsController : ControllerBase
 
         try
         {
+            var authorizationResult = await AuthorizeClientMutationAsync(clientId, cancellationToken);
+            if (authorizationResult != null)
+            {
+                return authorizationResult;
+            }
+
             await _clientService.DeleteClientAsync(clientId, cancellationToken);
             return Ok(new { message = "Client deleted successfully." });
         }

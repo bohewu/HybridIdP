@@ -22,14 +22,17 @@ public class ClientsControllerTests
 
     [Theory]
     [InlineData(MutationOperation.Update, CallerKind.SameOwner)]
+    [InlineData(MutationOperation.Delete, CallerKind.SameOwner)]
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.SameOwner)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.SameOwner)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.SameOwner)]
     [InlineData(MutationOperation.Update, CallerKind.Admin)]
+    [InlineData(MutationOperation.Delete, CallerKind.Admin)]
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.Admin)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.Admin)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.Admin)]
     [InlineData(MutationOperation.Update, CallerKind.TrustedAutomation)]
+    [InlineData(MutationOperation.Delete, CallerKind.TrustedAutomation)]
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.TrustedAutomation)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.TrustedAutomation)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.TrustedAutomation)]
@@ -76,30 +79,37 @@ public class ClientsControllerTests
 
     [Theory]
     [InlineData(MutationOperation.Update, CallerKind.CrossOwner)]
+    [InlineData(MutationOperation.Delete, CallerKind.CrossOwner)]
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.CrossOwner)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.CrossOwner)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.CrossOwner)]
     [InlineData(MutationOperation.Update, CallerKind.Unowned)]
+    [InlineData(MutationOperation.Delete, CallerKind.Unowned)]
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.Unowned)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.Unowned)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.Unowned)]
     [InlineData(MutationOperation.Update, CallerKind.NoPerson)]
+    [InlineData(MutationOperation.Delete, CallerKind.NoPerson)]
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.NoPerson)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.NoPerson)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.NoPerson)]
     [InlineData(MutationOperation.Update, CallerKind.UnrecognizedAutomation)]
+    [InlineData(MutationOperation.Delete, CallerKind.UnrecognizedAutomation)]
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.UnrecognizedAutomation)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.UnrecognizedAutomation)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.UnrecognizedAutomation)]
     [InlineData(MutationOperation.Update, CallerKind.SameSubjectUntrustedAutomation)]
+    [InlineData(MutationOperation.Delete, CallerKind.SameSubjectUntrustedAutomation)]
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.SameSubjectUntrustedAutomation)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.SameSubjectUntrustedAutomation)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.SameSubjectUntrustedAutomation)]
     [InlineData(MutationOperation.Update, CallerKind.SameSubjectProductionAutomation)]
+    [InlineData(MutationOperation.Delete, CallerKind.SameSubjectProductionAutomation)]
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.SameSubjectProductionAutomation)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.SameSubjectProductionAutomation)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.SameSubjectProductionAutomation)]
     [InlineData(MutationOperation.Update, CallerKind.AppRoleAdmin)]
+    [InlineData(MutationOperation.Delete, CallerKind.AppRoleAdmin)]
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.AppRoleAdmin)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.AppRoleAdmin)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.AppRoleAdmin)]
@@ -120,6 +130,7 @@ public class ClientsControllerTests
 
     [Theory]
     [InlineData(MutationOperation.Update)]
+    [InlineData(MutationOperation.Delete)]
     [InlineData(MutationOperation.RegenerateSecret)]
     [InlineData(MutationOperation.SetAllowedScopes)]
     [InlineData(MutationOperation.SetRequiredScopes)]
@@ -147,6 +158,7 @@ public class ClientsControllerTests
 
     [Theory]
     [InlineData(MutationOperation.Update)]
+    [InlineData(MutationOperation.Delete)]
     [InlineData(MutationOperation.RegenerateSecret)]
     [InlineData(MutationOperation.SetAllowedScopes)]
     [InlineData(MutationOperation.SetRequiredScopes)]
@@ -172,6 +184,7 @@ public class ClientsControllerTests
 
     [Theory]
     [InlineData(MutationOperation.Update)]
+    [InlineData(MutationOperation.Delete)]
     [InlineData(MutationOperation.RegenerateSecret)]
     [InlineData(MutationOperation.SetAllowedScopes)]
     [InlineData(MutationOperation.SetRequiredScopes)]
@@ -362,6 +375,7 @@ public class ClientsControllerTests
                     ["https://client.example/signout"],
                     ["ept:token", "scp:profile"],
                     ["operator"])),
+            MutationOperation.Delete => await controller.DeleteClient(id),
             MutationOperation.RegenerateSecret => await controller.RegenerateSecret(id),
             MutationOperation.SetAllowedScopes => await controller.SetAllowedScopes(
                 id,
@@ -387,6 +401,11 @@ public class ClientsControllerTests
                     payload.GetProperty("id").GetString());
                 Assert.Equal(
                     "Client updated successfully.",
+                    payload.GetProperty("message").GetString());
+                break;
+            case MutationOperation.Delete:
+                Assert.Equal(
+                    "Client deleted successfully.",
                     payload.GetProperty("message").GetString());
                 break;
             case MutationOperation.RegenerateSecret:
@@ -425,6 +444,13 @@ public class ClientsControllerTests
                     service => service.UpdateClientAsync(
                         TargetClientId,
                         It.IsAny<UpdateClientRequest>(),
+                        It.IsAny<CancellationToken>()),
+                    times);
+                break;
+            case MutationOperation.Delete:
+                _clientService.Verify(
+                    service => service.DeleteClientAsync(
+                        TargetClientId,
                         It.IsAny<CancellationToken>()),
                     times);
                 break;
@@ -476,6 +502,7 @@ public class ClientsControllerTests
     public enum MutationOperation
     {
         Update,
+        Delete,
         RegenerateSecret,
         SetAllowedScopes,
         SetRequiredScopes

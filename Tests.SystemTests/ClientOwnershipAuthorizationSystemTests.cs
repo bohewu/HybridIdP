@@ -143,7 +143,7 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
                     anonymousClient,
                     TrustedAutomationClientId,
                     TrustedAutomationClientSecret,
-                    ["clients.read", "clients.update"]);
+                    ["clients.read", "clients.update", "clients.delete"]);
                 using var sameSubjectClient = CreateHttpClient();
                 sameSubjectClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", token);
@@ -176,7 +176,7 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
                     anonymousClient,
                     TrustedAutomationClientId,
                     TrustedAutomationClientSecret,
-                    ["clients.read", "clients.update"]);
+                    ["clients.read", "clients.update", "clients.delete"]);
                 using var hardenedClient = CreateHttpClient();
                 hardenedClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", token);
@@ -212,7 +212,7 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
             AnonymousClient,
             servicePrincipal.ClientId,
             servicePrincipalSecret,
-            ["clients.update"]);
+            ["clients.update", "clients.delete"]);
         using var servicePrincipalClient = CreateHttpClient();
         servicePrincipalClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", servicePrincipalToken);
@@ -282,6 +282,12 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
         using (var response = await ApplicationManagerClient.PutAsJsonAsync(
                    $"/api/admin/clients/{missingId}/required-scopes",
                    new { scopes = new[] { CompanyReadScope } }))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        using (var response = await ApplicationManagerClient.DeleteAsync(
+                   $"/api/admin/clients/{missingId}"))
         {
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
@@ -376,6 +382,14 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
         Assert.False(subsequentBody.Contains(regeneratedSecret, StringComparison.Ordinal));
         using var subsequentJson = JsonDocument.Parse(subsequentBody);
         Assert.False(subsequentJson.RootElement.TryGetProperty("clientSecret", out _));
+
+        using var deleteResponse = await actor.DeleteAsync(
+            $"/api/admin/clients/{target.Id}");
+        Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
+
+        using var deletedClientResponse = await AdministrationAutomationClient.GetAsync(
+            $"/api/admin/clients/{target.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, deletedClientResponse.StatusCode);
     }
 
     private async Task<ForbiddenResponseShape> AssertDeniedMutationMatrixAsync(
@@ -425,6 +439,14 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
         {
             await AssertForbiddenWithoutSensitiveOutputAsync(
                 requiredScopesResponse,
+                attemptedReplacementSecret);
+        }
+
+        using (var deleteResponse = await actor.DeleteAsync(
+                   $"/api/admin/clients/{target.Id}"))
+        {
+            await AssertForbiddenWithoutSensitiveOutputAsync(
+                deleteResponse,
                 attemptedReplacementSecret);
         }
 
@@ -487,6 +509,14 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
                 attemptedReplacementSecret);
         }
 
+        using (var deleteResponse = await actor.DeleteAsync(
+                   $"/api/admin/clients/{target.Id}"))
+        {
+            await AssertLockedWithoutSensitiveOutputAsync(
+                deleteResponse,
+                attemptedReplacementSecret);
+        }
+
         var after = await GetClientStateAsync(target, actor);
         AssertClientStateEqual(before, after);
         Assert.True(await CanAuthenticateClientAsync(target.ClientId, currentSecret, CompanyReadScope));
@@ -536,6 +566,14 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
         {
             await AssertLockedWithoutSensitiveOutputAsync(
                 requiredScopesResponse,
+                attemptedSecret);
+        }
+
+        using (var deleteResponse = await actor.DeleteAsync(
+                   $"/api/admin/clients/{missingId}"))
+        {
+            await AssertLockedWithoutSensitiveOutputAsync(
+                deleteResponse,
                 attemptedSecret);
         }
     }
@@ -589,7 +627,8 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
             [
                 OpenIddictConstants.Permissions.Endpoints.Token,
                 OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                $"{OpenIddictConstants.Permissions.Prefixes.Scope}clients.update"
+                $"{OpenIddictConstants.Permissions.Prefixes.Scope}clients.update",
+                $"{OpenIddictConstants.Permissions.Prefixes.Scope}clients.delete"
             ],
             SupportedRoles: null);
 
