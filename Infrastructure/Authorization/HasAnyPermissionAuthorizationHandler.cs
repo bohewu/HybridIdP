@@ -2,7 +2,6 @@ using Core.Domain;
 using Core.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using System.Security.Claims;
 
 namespace Infrastructure.Authorization;
 
@@ -46,13 +45,8 @@ public class HasAnyPermissionAuthorizationHandler : AuthorizationHandler<HasAnyP
             return;
         }
 
-        // 3) Fallback for sessions without active_role: evaluate all role claims.
-        var roleNames = context.User.Claims
-            .Where(c => c.Type == ClaimTypes.Role || c.Type == "role")
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        // 3) Fallback for sessions without active_role: evaluate IdP roles only.
+        var roleNames = AuthorizationRoleClaimResolver.GetIdpRoleNames(context.User);
 
         if (roleNames.Count == 0)
         {

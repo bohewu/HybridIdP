@@ -99,6 +99,10 @@ public class ClientsControllerTests
     [InlineData(MutationOperation.RegenerateSecret, CallerKind.SameSubjectProductionAutomation)]
     [InlineData(MutationOperation.SetAllowedScopes, CallerKind.SameSubjectProductionAutomation)]
     [InlineData(MutationOperation.SetRequiredScopes, CallerKind.SameSubjectProductionAutomation)]
+    [InlineData(MutationOperation.Update, CallerKind.AppRoleAdmin)]
+    [InlineData(MutationOperation.RegenerateSecret, CallerKind.AppRoleAdmin)]
+    [InlineData(MutationOperation.SetAllowedScopes, CallerKind.AppRoleAdmin)]
+    [InlineData(MutationOperation.SetRequiredScopes, CallerKind.AppRoleAdmin)]
     public async Task Mutation_RestrictedCaller_ReturnsForbiddenBeforeMutationService(
         MutationOperation operation,
         CallerKind callerKind)
@@ -230,8 +234,17 @@ public class ClientsControllerTests
             case CallerKind.SameOwner:
             case CallerKind.CrossOwner:
             case CallerKind.Unowned:
+            case CallerKind.AppRoleAdmin:
                 claims.Add(new Claim(AuthConstants.Claims.PersonId, personId.ToString()));
-                claims.Add(new Claim(ClaimTypes.Role, AuthConstants.Roles.ApplicationManager));
+                if (callerKind == CallerKind.AppRoleAdmin)
+                {
+                    claims.Add(new Claim("app_role", AuthConstants.Roles.Admin));
+                    claims.Add(new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin));
+                }
+                else
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, AuthConstants.Roles.ApplicationManager));
+                }
                 break;
             case CallerKind.Admin:
                 claims.Add(new Claim(AuthConstants.Claims.PersonId, personId.ToString()));
@@ -315,7 +328,7 @@ public class ClientsControllerTests
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
         }
-        else if (callerKind is CallerKind.CrossOwner or CallerKind.Unowned)
+        else if (callerKind is CallerKind.CrossOwner or CallerKind.Unowned or CallerKind.AppRoleAdmin)
         {
             _clientService
                 .Setup(service => service.IsClientOwnedByPersonAsync(
@@ -478,6 +491,7 @@ public class ClientsControllerTests
         NoPerson,
         UnrecognizedAutomation,
         SameSubjectUntrustedAutomation,
-        SameSubjectProductionAutomation
+        SameSubjectProductionAutomation,
+        AppRoleAdmin
     }
 }

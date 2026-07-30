@@ -1,6 +1,9 @@
 using System.Security.Claims;
 using Core.Domain; // Added for ApplicationRole and ApplicationUser
+using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Infrastructure.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -8,6 +11,7 @@ using Web.IdP.Services;
 using Xunit;
 using Core.Application;
 using Infrastructure;
+using IdentityModel;
 using Microsoft.EntityFrameworkCore;
 
 using UserAppRoleEntity = Core.Domain.Entities.UserAppRole;
@@ -111,7 +115,7 @@ public class ClaimsEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task AddAppSpecificRolesAsync_AddsAppRoleClaims_WhenRoleExists()
+    public async Task AddAppSpecificRolesAsync_PreservesRoleCompatibility_WithoutGrantingGlobalPermission()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -128,7 +132,7 @@ public class ClaimsEnrichmentServiceTests
         { 
             UserId = userId, 
             ClientId = clientAppId, 
-            RoleName = "AppAdmin", 
+            RoleName = "Admin",
             CreatedAt = DateTime.UtcNow
         };
         context.UserAppRoles.Add(role);
@@ -141,13 +145,27 @@ public class ClaimsEnrichmentServiceTests
             context, // Real context
             _mockLogger.Object);
 
-        var identity = new ClaimsIdentity();
+        var identity = new ClaimsIdentity(
+            authenticationType: "Test",
+            nameType: JwtClaimTypes.Name,
+            roleType: JwtClaimTypes.Role);
 
         // Act
         await service.AddAppSpecificRolesAsync(identity, user, clientAppId);
 
         // Assert
-        Assert.True(identity.HasClaim(c => c.Type == "app_role" && c.Value == "AppAdmin"));
+        Assert.True(identity.HasClaim(c => c.Type == "app_role" && c.Value == "Admin"));
+        Assert.True(identity.HasClaim(c => c.Type == JwtClaimTypes.Role && c.Value == "Admin"));
+        var principal = new ClaimsPrincipal(identity);
+        Assert.True(principal.IsInRole("Admin"));
+
+        var requirement = new PermissionRequirement(Permissions.Users.Read);
+        var authorizationContext = new AuthorizationHandlerContext([requirement], principal, null);
+        var handler = new PermissionAuthorizationHandler(_mockRoleManager.Object);
+
+        await handler.HandleAsync(authorizationContext);
+
+        Assert.False(authorizationContext.HasSucceeded);
     }
 
     [Fact]

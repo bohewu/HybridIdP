@@ -247,7 +247,9 @@ public class ScopesController : ControllerBase
 
     private bool IsAdmin()
     {
-        return User.IsInRole(AuthConstants.Roles.Admin);
+        return AuthorizationRoleClaimResolver.IsInIdpRole(
+            User,
+            AuthConstants.Roles.Admin);
     }
 
     private static bool IsStandardOidcScope(string? scopeName)

@@ -7,8 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Web.IdP.Services; // For IScopeService if needed, or simply the namespace
 using Core.Application; // For IApplicationDbContext
 using Core.Application.Utilities;
-using Microsoft.Extensions.Logging;
 using IdentityModel;
+using Microsoft.Extensions.Logging;
 
 using UserAppRoleEntity = Core.Domain.Entities.UserAppRole;
 
@@ -188,12 +188,11 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
             {
                 if (!string.IsNullOrWhiteSpace(role.RoleName))
                 {
-                    // Use "app_role" claim type to distinguish from global roles (keep for backward compatibility)
+                    // Keep the explicit app_role claim as the authorization boundary marker.
                     identity.AddClaim(new Claim("app_role", role.RoleName));
 
-                    // Map to standard "role" claim for compatibility with ASP.NET Core Identity and other frameworks
-                    // This allows [Authorize(Roles = "X")] to work out of the box.
-                    identity.AddClaim(new Claim(JwtClaimTypes.Role, role.RoleName)); 
+                    // Preserve the standard role claim expected by downstream ASP.NET Core apps.
+                    identity.AddClaim(new Claim(JwtClaimTypes.Role, role.RoleName));
                 }
             }
         }

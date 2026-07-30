@@ -78,7 +78,9 @@ public class PermissionAuthorizationHandlerTests
         var roleManager = CreateRoleManagerMock();
         var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
-            new Claim("permission", Permissions.Scopes.Update)
+            new Claim("permission", Permissions.Scopes.Update),
+            new Claim("app_role", AuthConstants.Roles.Admin),
+            new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin)
         }, "Test"));
 
         var requirement = new PermissionRequirement(Permissions.Scopes.Update);
@@ -90,6 +92,50 @@ public class PermissionAuthorizationHandlerTests
 
         // Assert
         Assert.True(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task PermissionHandler_AppRoleAdmin_ShouldNotGrantGlobalPermission()
+    {
+        // Arrange
+        var roleManager = CreateRoleManagerMock();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("app_role", AuthConstants.Roles.Admin.ToLowerInvariant()),
+            new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin)
+        }, "Test"));
+
+        var requirement = new PermissionRequirement(Permissions.Scopes.Update);
+        var context = new AuthorizationHandlerContext([requirement], principal, null);
+        var handler = new PermissionAuthorizationHandler(roleManager.Object);
+
+        // Act
+        await handler.HandleAsync(context);
+
+        // Assert
+        Assert.False(context.HasSucceeded);
+        roleManager.Verify(m => m.FindByNameAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PermissionHandler_GlobalAndAppRoleAdmin_ShouldPreserveGlobalPermission()
+    {
+        var roleManager = CreateRoleManagerMock();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("app_role", AuthConstants.Roles.Admin),
+            new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin),
+            new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin)
+        }, "Test"));
+
+        var requirement = new PermissionRequirement(Permissions.Scopes.Update);
+        var context = new AuthorizationHandlerContext([requirement], principal, null);
+        var handler = new PermissionAuthorizationHandler(roleManager.Object);
+
+        await handler.HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+        roleManager.Verify(m => m.FindByNameAsync(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -145,5 +191,51 @@ public class PermissionAuthorizationHandlerTests
 
         // Assert
         Assert.False(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task HasAnyPermissionHandler_AppRoleAdmin_ShouldNotGrantGlobalPermission()
+    {
+        // Arrange
+        var roleManager = CreateRoleManagerMock();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("app_role", AuthConstants.Roles.Admin),
+            new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin)
+        }, "Test"));
+
+        var requirement = new HasAnyPermissionRequirement(Permissions.Clients.Update, Permissions.Scopes.Update);
+        var context = new AuthorizationHandlerContext([requirement], principal, null);
+        var handler = new HasAnyPermissionAuthorizationHandler(roleManager.Object);
+
+        // Act
+        await handler.HandleAsync(context);
+
+        // Assert
+        Assert.False(context.HasSucceeded);
+        roleManager.Verify(m => m.FindByNameAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HasAnyPermissionHandler_GlobalAndAppRoleAdmin_ShouldPreserveGlobalPermission()
+    {
+        var roleManager = CreateRoleManagerMock();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("app_role", AuthConstants.Roles.Admin),
+            new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin),
+            new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin)
+        }, "Test"));
+
+        var requirement = new HasAnyPermissionRequirement(
+            Permissions.Clients.Update,
+            Permissions.Scopes.Update);
+        var context = new AuthorizationHandlerContext([requirement], principal, null);
+        var handler = new HasAnyPermissionAuthorizationHandler(roleManager.Object);
+
+        await handler.HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+        roleManager.Verify(m => m.FindByNameAsync(It.IsAny<string>()), Times.Never);
     }
 }

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Core.Domain.Constants;
+using Infrastructure.Authorization;
 
 namespace Web.IdP.Extensions;
 
@@ -23,6 +24,8 @@ public static class ClaimsPrincipalExtensions
     /// <returns>True if the user is an Admin; otherwise, false.</returns>
     public static bool IsAdmin(this ClaimsPrincipal user)
     {
-        return user.IsInRole(AuthConstants.Roles.Admin);
+        return AuthorizationRoleClaimResolver.IsInIdpRole(
+            user,
+            AuthConstants.Roles.Admin);
     }
 }

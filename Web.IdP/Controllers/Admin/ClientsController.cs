@@ -411,7 +411,9 @@ public class ClientsController : ControllerBase
 
     private bool IsAdmin()
     {
-        return User.IsInRole(AuthConstants.Roles.Admin);
+        return AuthorizationRoleClaimResolver.IsInIdpRole(
+            User,
+            AuthConstants.Roles.Admin);
     }
 
     private async Task<IActionResult?> AuthorizeClientMutationAsync(

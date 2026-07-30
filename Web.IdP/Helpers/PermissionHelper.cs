@@ -1,5 +1,6 @@
 using Core.Domain;
 using Core.Domain.Constants;
+using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Identity;
 
 namespace Web.IdP.Helpers;
@@ -20,7 +21,9 @@ public static class PermissionHelper
         var permissions = new HashSet<string>();
 
         // Check if user is admin - admin has all permissions
-        if (user.IsInRole(AuthConstants.Roles.Admin))
+        if (AuthorizationRoleClaimResolver.IsInIdpRole(
+                user,
+                AuthConstants.Roles.Admin))
         {
             return Permissions.GetAll().ToHashSet();
         }
