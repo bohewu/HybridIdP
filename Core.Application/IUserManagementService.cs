@@ -44,6 +44,15 @@ public interface IUserManagementService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Update an existing user without reading or mutating their IdP role assignments.
+    /// </summary>
+    Task<(bool Success, IEnumerable<string> Errors)> UpdateUserWithoutRolesAsync(
+        Guid userId,
+        UpdateUserDto updateDto,
+        Guid? modifiedBy = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Soft delete a user (set IsActive = false)
     /// </summary>
     Task<(bool Success, IEnumerable<string> Errors)> DeactivateUserAsync(

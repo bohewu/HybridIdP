@@ -542,6 +542,39 @@ public class UserManagementServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdateUserWithoutRolesAsync_ShouldPreserveRoles_WhenDtoContainsDifferentRoles()
+    {
+        var existingUser = new ApplicationUser
+        {
+            Email = "test@test.com",
+            UserName = "testuser"
+        };
+        await _userManager.CreateAsync(existingUser);
+
+        await _roleManager.CreateAsync(new ApplicationRole { Name = "User" });
+        await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
+        await _userManager.AddToRoleAsync(existingUser, "User");
+
+        var updateDto = new UpdateUserDto
+        {
+            Email = "updated@test.com",
+            Roles = new List<string> { "Admin" }
+        };
+
+        var (success, errors) = await _service.UpdateUserWithoutRolesAsync(
+            existingUser.Id,
+            updateDto);
+
+        Assert.True(success);
+        Assert.Empty(errors);
+        var roles = await _userManager.GetRolesAsync(existingUser);
+        Assert.Contains("User", roles);
+        Assert.DoesNotContain("Admin", roles);
+        var updatedUser = await _userManager.FindByIdAsync(existingUser.Id.ToString());
+        Assert.Equal("updated@test.com", updatedUser!.Email);
+    }
+
+    [Fact]
     public async Task UpdateUserAsync_ShouldReturnError_WhenAddToRolesFails()
     {
         // Arrange - Create user but DON'T create the role (will cause failure)

@@ -262,6 +262,35 @@ public class UserManagementService : IUserManagementService
         Guid? modifiedBy = null,
         CancellationToken cancellationToken = default)
     {
+        return await UpdateUserCoreAsync(
+            userId,
+            updateDto,
+            modifiedBy,
+            updateRoles: true,
+            cancellationToken);
+    }
+
+    public async Task<(bool Success, IEnumerable<string> Errors)> UpdateUserWithoutRolesAsync(
+        Guid userId,
+        UpdateUserDto updateDto,
+        Guid? modifiedBy = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await UpdateUserCoreAsync(
+            userId,
+            updateDto,
+            modifiedBy,
+            updateRoles: false,
+            cancellationToken);
+    }
+
+    private async Task<(bool Success, IEnumerable<string> Errors)> UpdateUserCoreAsync(
+        Guid userId,
+        UpdateUserDto updateDto,
+        Guid? modifiedBy,
+        bool updateRoles,
+        CancellationToken cancellationToken)
+    {
         var user = await _userManager.Users
             .Include(u => u.Person)
             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
@@ -330,26 +359,28 @@ public class UserManagementService : IUserManagementService
             return (false, result.Errors.Select(e => e.Description));
         }
 
-        // Update roles
-        var currentRoles = await _userManager.GetRolesAsync(user);
-        var rolesToRemove = currentRoles.Except(updateDto.Roles).ToList();
-        var rolesToAdd = updateDto.Roles.Except(currentRoles).ToList();
-
-        if (rolesToRemove.Count > 0)
+        if (updateRoles)
         {
-            var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
-            if (!removeResult.Succeeded)
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            var rolesToRemove = currentRoles.Except(updateDto.Roles).ToList();
+            var rolesToAdd = updateDto.Roles.Except(currentRoles).ToList();
+
+            if (rolesToRemove.Count > 0)
             {
-                return (false, removeResult.Errors.Select(e => e.Description));
+                var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+                if (!removeResult.Succeeded)
+                {
+                    return (false, removeResult.Errors.Select(e => e.Description));
+                }
             }
-        }
 
-        if (rolesToAdd.Count > 0)
-        {
-            var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
-            if (!addResult.Succeeded)
+            if (rolesToAdd.Count > 0)
             {
-                return (false, addResult.Errors.Select(e => e.Description));
+                var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+                if (!addResult.Succeeded)
+                {
+                    return (false, addResult.Errors.Select(e => e.Description));
+                }
             }
         }
 

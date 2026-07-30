@@ -18,6 +18,7 @@ using Web.IdP;
 using Web.IdP.Services;
 
 using Web.IdP.Attributes;
+using AspNetCoreAuthorizationService = Microsoft.AspNetCore.Authorization.IAuthorizationService;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -38,6 +39,7 @@ public class UsersController : ControllerBase
     private readonly IApplicationDbContext _dbContext;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IImpersonationService _impersonationService;
+    private readonly AspNetCoreAuthorizationService _authorizationService;
     private readonly ILogger<UsersController> _logger;
     private readonly PrivilegedRoleProtectionOptions _privilegedRoleProtectionOptions;
 
@@ -50,6 +52,7 @@ public class UsersController : ControllerBase
         IApplicationDbContext dbContext,
         IStringLocalizer<SharedResource> localizer,
         IImpersonationService impersonationService,
+        AspNetCoreAuthorizationService authorizationService,
         IOptions<PrivilegedRoleProtectionOptions> privilegedRoleProtectionOptions,
         ILogger<UsersController> logger)
     {
@@ -61,6 +64,7 @@ public class UsersController : ControllerBase
         _dbContext = dbContext;
         _localizer = localizer;
         _impersonationService = impersonationService;
+        _authorizationService = authorizationService;
         _privilegedRoleProtectionOptions = privilegedRoleProtectionOptions.Value;
         _logger = logger;
     }
@@ -128,6 +132,15 @@ public class UsersController : ControllerBase
     {
         try
         {
+            if (request.Roles.Count > 0)
+            {
+                var roleMutationPolicyResult = await RequireRoleUpdatePermissionAsync();
+                if (roleMutationPolicyResult != null)
+                {
+                    return roleMutationPolicyResult;
+                }
+            }
+
             var privilegedRoleCreatePolicyResult = await EnforcePrivilegedRoleCreationPolicyAsync(request.Roles);
             if (privilegedRoleCreatePolicyResult != null)
             {
@@ -162,16 +175,37 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var privilegedRolePolicyResult = await EnforcePrivilegedRoleAssignmentPolicyAsync(id, request.Roles);
-            if (privilegedRolePolicyResult != null)
+            var targetUser = await _userManagementService.GetUserByIdAsync(id, cancellationToken);
+            if (targetUser == null)
             {
-                return privilegedRolePolicyResult;
+                return NotFound(new { errors = new[] { "User not found" } });
+            }
+
+            var requestedRoleSet = request.Roles.ToHashSet(StringComparer.Ordinal);
+            var currentRoleSet = targetUser.Roles.ToHashSet(StringComparer.Ordinal);
+            var rolesChanged = !currentRoleSet.SetEquals(requestedRoleSet);
+
+            if (rolesChanged)
+            {
+                var roleMutationPolicyResult = await RequireRoleUpdatePermissionAsync();
+                if (roleMutationPolicyResult != null)
+                {
+                    return roleMutationPolicyResult;
+                }
+
+                var privilegedRolePolicyResult = await EnforcePrivilegedRoleAssignmentPolicyAsync(id, request.Roles);
+                if (privilegedRolePolicyResult != null)
+                {
+                    return privilegedRolePolicyResult;
+                }
             }
 
             var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             Guid? modifiedBy = currentUserId != null ? Guid.Parse(currentUserId) : null;
 
-            var (success, errors) = await _userManagementService.UpdateUserAsync(id, request, modifiedBy, cancellationToken);
+            var (success, errors) = rolesChanged
+                ? await _userManagementService.UpdateUserAsync(id, request, modifiedBy, cancellationToken)
+                : await _userManagementService.UpdateUserWithoutRolesAsync(id, request, modifiedBy, cancellationToken);
 
             if (!success)
             {
@@ -344,6 +378,12 @@ public class UsersController : ControllerBase
     {
         try
         {
+            var roleMutationPolicyResult = await RequireRoleUpdatePermissionAsync();
+            if (roleMutationPolicyResult != null)
+            {
+                return roleMutationPolicyResult;
+            }
+
             var privilegedRolePolicyResult = await EnforcePrivilegedRoleAssignmentPolicyAsync(id, request.Roles);
             if (privilegedRolePolicyResult != null)
             {
@@ -384,6 +424,12 @@ public class UsersController : ControllerBase
     {
         try
         {
+            var roleMutationPolicyResult = await RequireRoleUpdatePermissionAsync();
+            if (roleMutationPolicyResult != null)
+            {
+                return roleMutationPolicyResult;
+            }
+
             var requestedRoleNames = new List<string>();
             foreach (var roleId in request.RoleIds)
             {
@@ -713,6 +759,16 @@ public class UsersController : ControllerBase
         {
             return StatusCode(500, new { error = "An error occurred while resetting MFA", details = ex.Message });
         }
+    }
+
+    private async Task<IActionResult?> RequireRoleUpdatePermissionAsync()
+    {
+        var authorizationResult = await _authorizationService.AuthorizeAsync(
+            User,
+            resource: null,
+            Permissions.Roles.Update);
+
+        return authorizationResult.Succeeded ? null : Forbid();
     }
 
     private async Task<IActionResult?> EnforcePrivilegedRoleCreationPolicyAsync(IEnumerable<string>? requestedRoles)

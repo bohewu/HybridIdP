@@ -42,6 +42,8 @@ const fetchRoles = async () => {
 }
 
 const toggleRole = (roleName) => {
+  if (!props.canUpdate) return
+
   const index = selectedRoles.value.indexOf(roleName)
   if (index > -1) {
     selectedRoles.value.splice(index, 1)
@@ -55,6 +57,8 @@ const isSelected = (roleName) => {
 }
 
 const handleSave = async () => {
+  if (!props.canUpdate) return
+
   saving.value = true
   error.value = ''
   
@@ -132,15 +136,19 @@ onMounted(() => {
                     <div
                       v-for="role in availableRoles"
                       :key="role.id"
-                      class="relative flex items-start p-3 border rounded-md cursor-pointer transition-all"
-                      :class="isSelected(role.name) ? 'bg-google-100 border-google-500' : 'bg-white border-gray-300 hover:bg-gray-50'"
-                      @click="toggleRole(role.name)"
+                      class="relative flex items-start p-3 border rounded-md transition-all"
+                      :class="[
+                        isSelected(role.name) ? 'bg-google-100 border-google-500' : 'bg-white border-gray-300',
+                        canUpdate ? 'cursor-pointer hover:bg-gray-50' : 'cursor-not-allowed opacity-60'
+                      ]"
+                      @click="canUpdate && toggleRole(role.name)"
                     >
                       <div class="flex h-5 items-center">
                         <input
                           :id="`role-${role.id}`"
                           type="checkbox"
                           :checked="isSelected(role.name)"
+                          :disabled="!canUpdate"
                           @click.stop
                           @change="toggleRole(role.name)"
                           class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500"
@@ -176,7 +184,7 @@ onMounted(() => {
       <button
         type="button"
         @click="handleSave"
-        :disabled="saving || loading"
+        :disabled="!canUpdate || saving || loading"
         class="inline-flex w-full justify-center rounded-md bg-google-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-google-1000 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

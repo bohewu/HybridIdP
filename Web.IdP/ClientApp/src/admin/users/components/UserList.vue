@@ -17,6 +17,7 @@ const props = defineProps({
   totalCount: { type: Number, required: true },
   sort: { type: String, default: '' },
   canUpdate: { type: Boolean, default: false },
+  canManageRoles: { type: Boolean, default: false },
   canDelete: { type: Boolean, default: false },
   canRead: { type: Boolean, default: false },
   canImpersonate: { type: Boolean, default: false },
@@ -271,7 +272,8 @@ const getSortIcon = (field) => {
                       {{ t('users.edit') }}
                     </button>
                     <button
-                      v-if="canUpdate"
+                      v-if="canManageRoles"
+                      data-testid="manage-roles-action"
                       @click="emit('manage-roles', user); close()"
                       class="text-left w-full block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >

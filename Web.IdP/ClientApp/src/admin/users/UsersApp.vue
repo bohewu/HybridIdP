@@ -30,6 +30,7 @@ const securityPolicy = ref(null)
 // Check permissions
 const canCreate = ref(false)
 const canUpdate = ref(false)
+const canManageRoles = ref(false)
 const canDelete = ref(false)
 const canRead = ref(false)
 
@@ -41,6 +42,9 @@ onMounted(async () => {
   await permissionService.loadPermissions()
   canCreate.value = permissionService.hasPermission(Permissions.Users.Create)
   canUpdate.value = permissionService.hasPermission(Permissions.Users.Update)
+  canManageRoles.value = canUpdate.value &&
+    permissionService.hasPermission(Permissions.Roles.Read) &&
+    permissionService.hasPermission(Permissions.Roles.Update)
   canDelete.value = permissionService.hasPermission(Permissions.Users.Delete)
   canRead.value = permissionService.hasPermission(Permissions.Users.Read)
   canImpersonate.value = permissionService.hasPermission(Permissions.Users.Impersonate)
@@ -151,10 +155,16 @@ const handleEdit = async (user) => {
 }
 
 const handleManageRoles = (user) => {
-  if (!canUpdate.value) {
+  if (!canManageRoles.value) {
     showAccessDenied.value = true
     deniedMessage.value = t('deniedMessages.manageRoles')
-    deniedPermission.value = Permissions.Users.Update
+    if (!canUpdate.value) {
+      deniedPermission.value = Permissions.Users.Update
+    } else if (!permissionService.hasPermission(Permissions.Roles.Read)) {
+      deniedPermission.value = Permissions.Roles.Read
+    } else {
+      deniedPermission.value = Permissions.Roles.Update
+    }
     return
   }
   selectedUser.value = user
@@ -485,6 +495,7 @@ const handleImpersonate = async (user) => {
         :total-count="totalCount"
         :sort="sort"
         :can-update="canUpdate"
+        :can-manage-roles="canManageRoles"
         :can-delete="canDelete"
         :can-read="canRead"
         :can-impersonate="canImpersonate"
@@ -528,7 +539,7 @@ const handleImpersonate = async (user) => {
       <RoleAssignment
         v-if="showRoleDialog"
         :user="selectedUser"
-        :can-update="canUpdate"
+        :can-update="canManageRoles"
         @close="handleRoleDialogClose"
         @save="handleRolesSaved"
       />

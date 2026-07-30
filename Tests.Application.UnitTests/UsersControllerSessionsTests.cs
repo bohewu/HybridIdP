@@ -7,6 +7,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Options;
 using Core.Domain;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,7 @@ using Web.IdP.Controllers.Admin;
 using Web.IdP.Services;
 using Xunit;
 using Microsoft.Extensions.DependencyInjection;
+using AspNetCoreAuthorizationService = Microsoft.AspNetCore.Authorization.IAuthorizationService;
 
 namespace Tests.Application.UnitTests;
 
@@ -64,6 +66,7 @@ public class UsersControllerSessionsTests
             dbContextMock.Object,
             localizerMock.Object,
             impersonationMock.Object,
+            new Mock<AspNetCoreAuthorizationService>().Object,
             Options.Create(new PrivilegedRoleProtectionOptions()),
             new Mock<ILogger<UsersController>>().Object);
     }

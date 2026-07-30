@@ -1,0 +1,136 @@
+# Security Remediation Backlog
+
+This backlog tracks the reportable findings from the repository-wide static
+security review of commit `e2dcf7a9538865ef7420ded42948a5afd4366ce3`
+performed on 2026-07-30.
+
+The scan reported 0 Critical, 7 High, 25 Medium, and 17 Low findings. Four
+additional candidates require evidence outside the authorized static scope.
+The GitHub Dependabot cross-check is also pending because authenticated
+read-only access was unavailable; local NuGet and npm audits were completed.
+
+## Delivery and Compatibility Rules
+
+- Fix one security boundary per change set and keep unrelated refactors out.
+- Preserve existing routes, request and response DTOs, successful status codes,
+  audit behavior, and supported cookie and bearer authentication paths unless
+  the finding requires an intentional contract change.
+- Preserve legitimate administrator behavior. When a permission boundary is
+  tightened, align the admin UI so it does not offer an operation that the
+  current principal cannot perform.
+- Add a negative regression test for the reported attack and a positive test
+  for the legitimate control through the same boundary.
+- Do not add migrations, deployment resets, credential rotation, or live
+  environment changes unless a task explicitly requires them.
+- Reassess downstream compatibility for OIDC/OAuth behavior, claims, roles,
+  cookies, and deployment inputs before closing a task.
+
+Status values: `in_progress`, `pending`, `deferred`, and `done`.
+
+## P0 - High
+
+| Task | Finding | Status | Acceptance criteria |
+| --- | --- | --- | --- |
+| H1 Role-assignment authorization boundary | `csf_22f90b83d6be6ca8c98d2e42` | done | Any IdP global-role set change requires `roles.update`; `users.update` alone cannot add or remove roles. Metadata-only user updates with an unchanged role set remain compatible. Administrators and authorized role managers retain the existing routes, DTOs, and successful responses. |
+| H2 TOTP enrollment authorization | `csf_5446839cb1ab3ec3b103069a` | pending | Retrieving or enabling a TOTP secret requires the intended account-management authorization and fresh authentication. The normal interactive enrollment flow remains functional. |
+| H3 Recovery-code regeneration authorization | `csf_d648cf493455299a40c96ecd` | pending | Replacing or retrieving recovery codes requires the intended account-management authorization and reauthentication. Existing recovery-code consumption remains compatible. |
+| H4 Privileged-operation session assurance | `csf_edc0a91a588b8b31027d34dd` | pending | Privileged role operations verify that the current session completed MFA rather than only checking factor enrollment. Existing properly authenticated administrator sessions continue to work. |
+| H5 Email MFA possession proof | `csf_dd9a1204a8e34c5525c609a2` | pending | Email MFA is not enabled and no MFA-labelled application session is issued until the pending OTP is successfully verified. |
+| H6 Linked-account switching eligibility | `csf_8858d11ce2afd4b3037b3081` | pending | Switching accounts applies the same user, Person, lockout, lifecycle, and MFA eligibility checks as a normal sign-in. |
+| H7 Passkey sign-in eligibility | `csf_5f21ecdf3e28328eb46c9a39` | pending | Passkey sign-in checks deleted and inactive state, lockout, `CanSignIn`, and Person eligibility before issuing an application cookie. |
+
+### H1 Verification Evidence
+
+- The pre-fix regression returned HTTP-action `Ok` for a caller with
+  `users.update` but without `roles.update`; the patched path returns `Forbid`
+  before the mutation service is called.
+- Role additions, complete role removal, create-with-roles, and role-ID
+  replacement are covered as denied cases without `roles.update`.
+- Metadata-only updates with the existing role set and authorized role changes
+  retain their previous successful response shapes.
+- The admin role-management action now requires `users.update`, `roles.read`,
+  and `roles.update`; other user-management actions keep their existing
+  permission requirements.
+- Focused controller tests, the full Application unit-test project, the full
+  Vue test suite, a temporary-output production frontend build, the solution
+  build, permission-handler tests, and the existing User CRUD system tests
+  passed.
+
+## P1 - Medium
+
+### OAuth, OIDC, and Browser Intent
+
+| Finding | Status | Summary |
+| --- | --- | --- |
+| `csf_f27142404da832c902ea5492` | pending | Apply the current-account lifecycle predicate during authorization-code exchange. |
+| `csf_14ab71c83a4dbbec064ce0c5` | pending | Apply the current-account lifecycle predicate during device-code exchange. |
+| `csf_4f7926baaf87d0ebe0ea1861` | pending | Enforce antiforgery validation on authorization consent POST. |
+| `csf_ab24e2d45bb89d24d8b45833` | pending | Enforce antiforgery validation on device-verification POST. |
+| `csf_2115040b736c248be7b31b82` | pending | Protect the interactive authorization page from framing without breaking machine-readable `/connect` responses. |
+| `csf_d565c43230e9a213dbf13391` | pending | Bound authorization rate-limit partitions derived from untrusted `client_id`. |
+| `csf_8ff43c021c099308b250550d` | pending | Bound token rate-limit partitions derived from unauthenticated `client_id`. |
+| `csf_c6e8b1456a3c11f02b825e11` | pending | Pin the production public origin and reject arbitrary forwarded Host values. |
+
+### Ownership and Administrative Data
+
+| Finding | Status | Summary |
+| --- | --- | --- |
+| `csf_4bb9d23e632799503c0e50e9` | pending | Enforce client ownership on object-specific read routes. |
+| `csf_e546334e3f5b0f012de26f25` | pending | Enforce scope ownership on update, delete, and claim-mapping routes. |
+| `csf_eaec1c785f5afd7510f2a12f` | pending | Prevent broad `settings.read` from returning decrypted sensitive settings. |
+| `csf_fd26a429e678ad053edf97c1` | pending | Never return the raw configuration-backed SMTP password as a default. |
+| `csf_8e4d91cc2977abfcd9c3d276` | pending | Allowlist custom-claim source properties so secret-bearing identity fields cannot enter tokens. |
+
+### External Identity and Lifecycle
+
+| Finding | Status | Summary |
+| --- | --- | --- |
+| `csf_46561f9a0937502b347ee99a` | pending | Require trusted upstream email-verification evidence before JIT email binding. |
+| `csf_e91772f4aee2b360fc1d4610` | pending | Require trusted upstream email-verification evidence before external auto-linking. |
+| `csf_1a0a04d1a20e4682fb094540` | pending | Validate the expected local-user XSRF binding in the external-link callback. |
+| `csf_c6b4a71a14cc93e15be81b2c` | pending | Revoke or safely terminate linked accounts when a Person is hard-deleted. |
+| `csf_31193ff88cb59c04e6ff7815` | pending | Invalidate Identity cookies when user or Person lifecycle state becomes ineligible. |
+
+### MFA, Passkeys, UI, Monitoring, and Deployment
+
+| Finding | Status | Summary |
+| --- | --- | --- |
+| `csf_d27a8baae7afb246883faaee` | pending | Generate email OTPs cryptographically and enforce a pending-code attempt limit. |
+| `csf_e63c44630467bda5532dfbb8` | pending | Reject passkey login when the security policy disables passkeys. |
+| `csf_65f2561e219c2e3061ca2ec9` | pending | Do not label user-verification-preferred assertions as MFA without verified UV. |
+| `csf_6979042d4ed939d5baaf58aa` | pending | Prevent configured localization content from becoming anonymous stored XSS. |
+| `csf_46710f5179fa498ef6327608` | pending | Authenticate and authorize monitoring hub subscriptions and caller methods. |
+| `csf_b3ba101b8e2c1014cda67044` | pending | Verify external database TLS peer identity in production setup guidance and generated configuration. |
+| `csf_5f4b4b4b513c35cbf65f0b09` | pending | Remove public monitoring-port defaults and repository-known Grafana fallback credentials from operational guidance. |
+
+## P2 - Low Hardening
+
+| Finding | Status | Summary |
+| --- | --- | --- |
+| `csf_b052652dfb855342d00c7616` | pending | Neutralize spreadsheet formulas and correctly quote audit CSV fields. |
+| `csf_e90bcd3f0350f0d6e81b5ce9` | pending | Avoid all-interface split-host gateway defaults. |
+| `csf_654c771187626cf6f26c8f37` | pending | Protect seeded SMTP credentials with the sensitive-setting protector. |
+| `csf_e3c4898e191a7db50e953da6` | pending | Narrow application binding and forwarded-header trust defaults. |
+| `csf_e9b4261aa3d035db5a33f996` | pending | Validate the MFA enrollment completion return URL. |
+| `csf_f78a425cb2a2c60f43f40c14` | pending | Reject slash-backslash network-path login redirects. |
+| `csf_5ae48e412b4ed7cf43feb514` | pending | Keep live database passwords out of command-line arguments in documentation. |
+| `csf_85f765104c94681892ff0387` | pending | Make single-use MFA credential consumption atomic and check persistence results. |
+| `csf_5afcc4091262878d6ad864e2` | pending | Pin third-party scripts with integrity metadata or self-host them. |
+| `csf_d68de0f409f12da4a08f2653` | pending | Create backup archives with restrictive permissions. |
+| `csf_7f0ae77c761a012380471239` | pending | Stop printing caller-supplied database connection strings. |
+| `csf_36cc6040dad01c9d4a7e3391` | pending | Pin write-capable GitHub Actions to immutable revisions. |
+| `csf_b9261fe49ea7427579600b35` | pending | Create generated deployment environment files with restrictive permissions. |
+| `csf_ce51dfebb42fa33d6977ad2c` | pending | Encrypt or strictly protect maintenance archives containing operational secrets. |
+| `csf_345d837ec3ca1e07626e0652` | pending | Remove copyable external-login examples that bypass two-factor checks. |
+| `csf_e72deac61f2553025c97014e` | pending | Support immutable image digests or verified signatures for remote deployment. |
+| `csf_e90dde79cc231e86efafaaa7` | pending | Require verified TLS in remote database migration examples. |
+
+## Deferred Evidence
+
+| Candidate | Status | Required evidence |
+| --- | --- | --- |
+| `candidate-6f0216b32ee92fd6` | deferred | Current confidential-client persistence and revocation evidence, without retrieving or reproducing credential values. |
+| `candidate-2f3b58afd5c9367a` | deferred | Registration confirmation policy and pre-confirmation session capabilities. |
+| `candidate-4ed3635eb0b4fe3a` | deferred | A shipped response-controlled dangerous URI and platform-dispatch path. |
+| `candidate-923760322237131f` | deferred | Database-reader reachability and a practical identifier corpus. |
+| Dependabot cross-check | deferred | Authenticated read-only GitHub access to enumerate currently open alerts and reconcile them with local package-manager audits. |
