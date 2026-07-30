@@ -2,13 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Core.Domain.Entities;
-using System.Security.Claims;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Authentication; // Added for SignOutAsync
-using Core.Domain; // For ApplicationUser
-using Core.Domain.Constants; // For AuthConstants
-using Microsoft.Extensions.Options; // Added
-using Core.Application.Options; // Added
+using Microsoft.AspNetCore.Authentication;
+using Core.Domain;
 
 namespace Web.IdP.Controllers.Account;
 
@@ -19,20 +15,17 @@ public partial class LinkExternalLoginController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<LinkExternalLoginController> _logger;
-    private readonly ExternalLoginOptions _externalLoginOptions;
     private readonly Core.Application.ILoginService _loginService;
 
     public LinkExternalLoginController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         ILogger<LinkExternalLoginController> logger,
-        IOptions<ExternalLoginOptions> externalLoginOptions,
         Core.Application.ILoginService loginService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _logger = logger;
-        _externalLoginOptions = externalLoginOptions.Value;
         _loginService = loginService;
     }
 
@@ -79,26 +72,6 @@ public partial class LinkExternalLoginController : Controller
             LogAddLoginFailed(user.Id, info.LoginProvider); // Modified: Changed errors to info.LoginProvider
             return Redirect("/Account/Profile?error=LinkFailed");
         }
-
-        // Extract AMR from external provider
-        var externalAmrClaims = info.Principal.FindAll(AuthConstants.ClaimTypes.Amr)
-            .Select(c => c.Value)
-            .ToList();
-
-        // Update authentication cookie with AMR claims
-        var amrClaims = new List<Claim>
-        {
-            new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.External)
-        };
-
-        foreach (var amr in externalAmrClaims)
-        {
-            amrClaims.Add(new Claim(AuthConstants.ClaimTypes.Amr, amr));
-        }
-
-        // Refresh sign-in with new AMR claims
-        await _signInManager.RefreshSignInAsync(user);
-        await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
 
         // Clear the external authentication cookie to ensure a clean state
         await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);

@@ -167,7 +167,7 @@ public partial class LoginModel : PageModel
         await LoadTurnstileStateAsync(returnUrl, cancellationToken);
 
         // Clear AMR session on Get
-        HttpContext.Session.Remove("AuthenticationMethods");
+        HttpContext.Session.Remove(AuthenticationMethodSession.SessionKey);
 
         ReturnUrl = returnUrl;
         return Page();
@@ -247,6 +247,10 @@ public partial class LoginModel : PageModel
                     await _loginHistoryService.RecordLoginAsync(loginHistory);
                 }
 
+                AuthenticationMethodSession.Replace(
+                    HttpContext.Session,
+                    AuthConstants.Amr.Password);
+
                 // Check if user has MFA enabled - redirect to MFA verification page
                 // Support both TOTP MFA (TwoFactorEnabled) and Email MFA (EmailMfaEnabled)
                 if (result.User!.TwoFactorEnabled || result.User!.EmailMfaEnabled)
@@ -277,9 +281,6 @@ public partial class LoginModel : PageModel
                     }
                 }
 
-                // Add AMR to session
-                AddAmrToSession(AuthConstants.Amr.Password);
-
                 // Check for mandatory MFA enrollment
                 if (!result.User!.TwoFactorEnabled && !result.User!.EmailMfaEnabled)
                 {
@@ -298,11 +299,7 @@ public partial class LoginModel : PageModel
                             }
                             // Expiry is now checked entirely in MfaSetup page
 
-                            // 1. Issue AMR: pwd claim (Password authentication)
-                            // We use a list to support multiple values as per spec (though here it's just one initially)
-                            var amrList = new List<string> { Core.Domain.Constants.AuthConstants.Amr.Password };
                             await HttpContext.Session.LoadAsync();
-                            HttpContext.Session.SetString("AuthenticationMethods", System.Text.Json.JsonSerializer.Serialize(amrList));
                             
                             // 2. Check Mandatory MFA Policy
                             // If policy is enforced and user has NO MFA, force them to setup
@@ -338,10 +335,7 @@ public partial class LoginModel : PageModel
                             
                             // Normal flow or Grace Period Active
                             // Issue cookie with amr claim
-                            var claims = new List<System.Security.Claims.Claim>
-                            {
-                                new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Password)
-                            };
+                            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
                             
                             // Note: SignInAsync below merges these claims into the principal
                             await _signInManager.SignInWithClaimsAsync(result.User, Input.RememberMe, claims);
@@ -351,12 +345,7 @@ public partial class LoginModel : PageModel
                     }
                 }
 
-                // Add AMR to session and issue cookie with amr: pwd
-                AddAmrToSession(AuthConstants.Amr.Password);
-                var amrClaimsList = new List<System.Security.Claims.Claim>
-                {
-                    new System.Security.Claims.Claim("amr", AuthConstants.Amr.Password)
-                };
+                var amrClaimsList = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
                 // Sign in user (role claims are automatically added by Identity)
                 await _signInManager.SignInWithClaimsAsync(result.User!, isPersistent: Input.RememberMe, amrClaimsList);
@@ -480,20 +469,6 @@ public partial class LoginModel : PageModel
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Login failed for user '{Login}': Invalid credentials.")]
     partial void LogInvalidCredentials(string login);
-
-    private void AddAmrToSession(string amr)
-    {
-        var currentAmrJson = HttpContext.Session.GetString("AuthenticationMethods");
-        List<string> amrList = string.IsNullOrEmpty(currentAmrJson) 
-            ? new List<string>() 
-            : JsonSerializer.Deserialize<List<string>>(currentAmrJson!) ?? new List<string>();
-        
-        if (!amrList.Contains(amr))
-        {
-            amrList.Add(amr);
-            HttpContext.Session.SetString("AuthenticationMethods", JsonSerializer.Serialize(amrList));
-        }
-    }
 
     public async Task<IActionResult> OnPostExternalLogin(string provider, string? returnUrl = null, CancellationToken cancellationToken = default)
     {

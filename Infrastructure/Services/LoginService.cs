@@ -77,7 +77,7 @@ public partial class LoginService : ILoginService
 
     public async Task<LoginResult> ValidateExternalUserSignInAsync(ApplicationUser user, CancellationToken cancellationToken = default)
     {
-        if (!user.IsActive)
+        if (!user.IsActive || user.IsDeleted)
         {
             LogUserDeactivated(user.UserName);
             return LoginResult.UserInactive();

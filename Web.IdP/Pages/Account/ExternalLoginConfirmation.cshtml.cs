@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
-using System.Text.Json;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -9,15 +8,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Web.IdP.Infrastructure.Identity;
 using Web.IdP.Services;
-using Web.IdP.Options; // RESTORED
-using Core.Application.Options;
+using Web.IdP.Options;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using Infrastructure.Services;
 using Core.Domain.Constants;
 using Core.Application.Interfaces;
 using Core.Application;
-using Core.Domain; // Explicitly include Core.Domain for ApplicationUser
+using Core.Domain;
 
 namespace Web.IdP.Pages.Account;
 
@@ -35,7 +33,7 @@ public class ExternalLoginConfirmationModel : PageModel
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ExternalLoginConfirmationModel> _logger;
     private readonly LoginNoticesOptions _loginNoticesOptions; 
-    private readonly ExternalLoginOptions _externalLoginOptions; // Added field
+    private readonly IExternalSignInCoordinator _externalSignInCoordinator;
 
     public ExternalLoginConfirmationModel(
         UserManager<ApplicationUser> userManager,
@@ -49,7 +47,7 @@ public class ExternalLoginConfirmationModel : PageModel
         IStringLocalizer<SharedResource> localizer,
         ILogger<ExternalLoginConfirmationModel> logger,
         IOptions<LoginNoticesOptions> loginNoticesOptions,
-        IOptions<ExternalLoginOptions> externalLoginOptions) // Added parameter
+        IExternalSignInCoordinator externalSignInCoordinator)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -62,7 +60,7 @@ public class ExternalLoginConfirmationModel : PageModel
         _localizer = localizer;
         _logger = logger;
         _loginNoticesOptions = loginNoticesOptions.Value;
-        _externalLoginOptions = externalLoginOptions.Value; // Initialize
+        _externalSignInCoordinator = externalSignInCoordinator;
     }
 
     public LoginNoticesOptions LoginNotices => _loginNoticesOptions;
@@ -156,23 +154,22 @@ public class ExternalLoginConfirmationModel : PageModel
         if (addResult.Succeeded)
         {
             _logger.LogInformation("User {UserId} linked {Provider} account.", user.Id, info.LoginProvider);
-            
-            // Extract AMR claims from external provider and sign in with them
-            var externalAmrClaims = info.Principal.FindAll(AuthConstants.ClaimTypes.Amr)
-                .Select(c => c.Value)
-                .ToList();
-            
-            var amrClaims = new List<Claim>
+
+            var completion = await _externalSignInCoordinator.CompleteAsync(
+                HttpContext,
+                user,
+                cancellationToken);
+            if (completion.Status == ExternalSignInCompletionStatus.Blocked)
             {
-                new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.External)
-            };
-            
-            foreach (var amr in externalAmrClaims)
-            {
-                amrClaims.Add(new Claim(AuthConstants.ClaimTypes.Amr, amr));
+                await _userManager.RemoveLoginAsync(user, info.LoginProvider, info.ProviderKey);
+                return HandleExternalSignInIncomplete(completion, ReturnUrl);
             }
-            
-            await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
+
+            if (!completion.IsSucceeded)
+            {
+                return HandleExternalSignInIncomplete(completion, ReturnUrl);
+            }
+
             await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
             await RecordSuccessfulLoginAsync(user.Id);
             return LocalRedirect(ReturnUrl);
@@ -220,28 +217,21 @@ public class ExternalLoginConfirmationModel : PageModel
 
         try 
         {
-             var user = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth, cancellationToken);
-             
-             // Extract AMR claims from external provider and sign in with them
-             var externalAmrClaims = info.Principal.FindAll(AuthConstants.ClaimTypes.Amr)
-                 .Select(c => c.Value)
-                 .ToList();
-             
-             var amrClaims = new List<Claim>
-             {
-                 new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.External)
-             };
-             
-             foreach (var amr in externalAmrClaims)
-             {
-                 amrClaims.Add(new Claim(AuthConstants.ClaimTypes.Amr, amr));
-             }
-             
-             await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
-              await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
-              await RecordSuccessfulLoginAsync(user.Id);
-             return LocalRedirect(ReturnUrl);
-          }
+            var user = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth, cancellationToken);
+
+            var completion = await _externalSignInCoordinator.CompleteAsync(
+                HttpContext,
+                user,
+                cancellationToken);
+            if (!completion.IsSucceeded)
+            {
+                return HandleExternalSignInIncomplete(completion, ReturnUrl);
+            }
+
+            await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
+            await RecordSuccessfulLoginAsync(user.Id);
+            return LocalRedirect(ReturnUrl);
+        }
         catch (Exception ex)
         {
              _logger.LogError(ex, "JIT Provisioning failed for {Provider}", info.LoginProvider);
@@ -254,6 +244,28 @@ public class ExternalLoginConfirmationModel : PageModel
              ShowRegistrationButton = registrationEnabled;
              return Page();
         }
+    }
+
+    private IActionResult HandleExternalSignInIncomplete(
+        ExternalSignInCompletionResult completion,
+        string returnUrl)
+    {
+        return completion.Status switch
+        {
+            ExternalSignInCompletionStatus.TotpRequired =>
+                RedirectToPage("./LoginTotp", new { returnUrl, rememberMe = false }),
+            ExternalSignInCompletionStatus.EmailOtpRequired =>
+                RedirectToPage("./LoginEmailOtp", new { returnUrl, rememberMe = false }),
+            ExternalSignInCompletionStatus.MfaEnrollmentRequired =>
+                RedirectToPage("./MfaSetup", new { returnUrl }),
+            ExternalSignInCompletionStatus.Blocked when completion.Denial?.Status == LoginStatus.LockedOut =>
+                RedirectToPage("./Lockout"),
+            ExternalSignInCompletionStatus.Blocked when completion.Denial?.Status == LoginStatus.UserInactive =>
+                RedirectToPage("./Login", new { error = "UserInactive", message = completion.Denial.Message }),
+            ExternalSignInCompletionStatus.Blocked when completion.Denial?.Status == LoginStatus.PersonInactive =>
+                RedirectToPage("./Login", new { error = "PersonInactive", message = completion.Denial.Message }),
+            _ => RedirectToPage("./Login", new { ReturnUrl = returnUrl, error = "ExternalLoginFailure" })
+        };
     }
 
     private async Task RecordSuccessfulLoginAsync(Guid userId)

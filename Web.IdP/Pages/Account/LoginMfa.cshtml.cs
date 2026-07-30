@@ -123,17 +123,11 @@ public partial class LoginMfaModel : PageModel
             var isValid = await _mfaService.ValidateTotpCodeAsync(user, Input.TotpCode);
             if (isValid)
             {
-                AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa);
-                AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Otp);
-
-                // Issue cookie with amr claims.
-                // Both pwd and MFA/OTP are satisfied in this flow.
-                var claims = new List<System.Security.Claims.Claim>
-                {
-                    new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Password),
-                    new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Mfa),
-                    new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Otp)
-                };
+                AuthenticationMethodSession.Add(
+                    HttpContext.Session,
+                    Core.Domain.Constants.AuthConstants.Amr.Mfa,
+                    Core.Domain.Constants.AuthConstants.Amr.Otp);
+                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
@@ -171,15 +165,10 @@ public partial class LoginMfaModel : PageModel
             
             if (success)
             {
-                AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa);
-
-                // Issue cookie with amr claims. 
-                // Recovery code satisfies MFA but not OTP.
-                var claims = new List<System.Security.Claims.Claim>
-                {
-                    new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Password),
-                    new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Mfa)
-                };
+                AuthenticationMethodSession.Add(
+                    HttpContext.Session,
+                    Core.Domain.Constants.AuthConstants.Amr.Mfa);
+                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
@@ -229,20 +218,6 @@ public partial class LoginMfaModel : PageModel
         }
         
         return user;
-    }
-
-    private void AddAmrToSession(string amr)
-    {
-        var currentAmrJson = HttpContext.Session.GetString("AuthenticationMethods");
-        List<string> amrList = string.IsNullOrEmpty(currentAmrJson) 
-            ? new List<string>() 
-            : System.Text.Json.JsonSerializer.Deserialize<List<string>>(currentAmrJson) ?? new List<string>();
-        
-        if (!amrList.Contains(amr))
-        {
-            amrList.Add(amr);
-            HttpContext.Session.SetString("AuthenticationMethods", System.Text.Json.JsonSerializer.Serialize(amrList));
-        }
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "User account locked out.")]

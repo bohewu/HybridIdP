@@ -8,7 +8,6 @@ using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Events;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
 using Web.IdP.Helpers;
 
 namespace Web.IdP.Pages.Account;
@@ -122,15 +121,11 @@ public partial class LoginTotpModel : PageModel
             var isValid = await _mfaService.ValidateTotpCodeAsync(user, Input.TotpCode);
             if (isValid)
             {
-                AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa);
-                AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Otp);
-
-                // Create the principal with the new claims for the cookie
-                 var claims = new List<System.Security.Claims.Claim>
-                {
-                    new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Mfa),
-                    new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Otp)
-                };
+                AuthenticationMethodSession.Add(
+                    HttpContext.Session,
+                    AuthConstants.Amr.Mfa,
+                    AuthConstants.Amr.Otp);
+                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
                 await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
@@ -168,9 +163,9 @@ public partial class LoginTotpModel : PageModel
             
             if (result.Succeeded)
             {
-                AddAmrToSession(AuthConstants.Amr.Mfa); // Recovery code is still mfa, but not otp? Actually design says "mfa" for recovery.
-
-                await _signInManager.SignInAsync(user, isPersistent: RememberMe);
+                AuthenticationMethodSession.Add(HttpContext.Session, AuthConstants.Amr.Mfa);
+                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+                await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 _logger.LogInformation("User logged in with recovery code.");
                 
@@ -220,17 +215,4 @@ public partial class LoginTotpModel : PageModel
         return user;
     }
 
-    private void AddAmrToSession(string amr)
-    {
-        var currentAmrJson = HttpContext.Session.GetString("AuthenticationMethods");
-        List<string> amrList = string.IsNullOrEmpty(currentAmrJson) 
-            ? new List<string>() 
-            : JsonSerializer.Deserialize<List<string>>(currentAmrJson) ?? new List<string>();
-        
-        if (!amrList.Contains(amr))
-        {
-            amrList.Add(amr);
-            HttpContext.Session.SetString("AuthenticationMethods", JsonSerializer.Serialize(amrList));
-        }
-    }
 }

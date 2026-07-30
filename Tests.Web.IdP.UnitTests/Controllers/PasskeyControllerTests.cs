@@ -19,6 +19,7 @@ using Xunit;
 using Core.Domain;
 using Core.Domain.Constants;
 using Infrastructure;
+using Tests.Web.IdP.UnitTests.TestSupport;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
 
@@ -32,7 +33,7 @@ public class PasskeyControllerTests
     private readonly ApplicationDbContext _dbContext;
     private readonly Mock<IAuditService> _auditServiceMock;
     private readonly Mock<ILogger<PasskeyController>> _loggerMock;
-    private readonly Mock<ISession> _sessionMock;
+    private readonly MemorySession _session;
     private readonly PasskeyController _controller;
 
     public PasskeyControllerTests()
@@ -59,10 +60,9 @@ public class PasskeyControllerTests
         _auditServiceMock = new Mock<IAuditService>();
         _loggerMock = new Mock<ILogger<PasskeyController>>();
         
-        // Mock Session
-        _sessionMock = new Mock<ISession>();
+        _session = new MemorySession();
         var httpContext = new DefaultHttpContext();
-        httpContext.Session = _sessionMock.Object;
+        httpContext.Session = _session;
 
         _controller = new PasskeyController(
             _passkeyServiceMock.Object,
@@ -87,8 +87,7 @@ public class PasskeyControllerTests
         var user = new ApplicationUser { Person = person, IsActive = true };
         
         // Mock session data
-        var sessionValue = System.Text.Encoding.UTF8.GetBytes("{\"challenge\":\"123\"}");
-        _sessionMock.Setup(s => s.TryGetValue("fido2.assertionOptions", out sessionValue)).Returns(true);
+        _session.SetString("fido2.assertionOptions", "{\"challenge\":\"123\"}");
 
         _passkeyServiceMock.Setup(x => x.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, user, (string?)null));
@@ -123,8 +122,7 @@ public class PasskeyControllerTests
         var user = new ApplicationUser { Person = person, IsActive = false }; // Deactivated
         
         // Mock session data
-        var sessionValue = System.Text.Encoding.UTF8.GetBytes("{\"challenge\":\"123\"}");
-        _sessionMock.Setup(s => s.TryGetValue("fido2.assertionOptions", out sessionValue)).Returns(true);
+        _session.SetString("fido2.assertionOptions", "{\"challenge\":\"123\"}");
 
         _passkeyServiceMock.Setup(x => x.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, user, (string?)null));
@@ -153,8 +151,7 @@ public class PasskeyControllerTests
         var person = new Person { Status = PersonStatus.Active };
         var user = new ApplicationUser { UserName="testuser", Person = person, IsActive = true };
         
-        var sessionValue = System.Text.Encoding.UTF8.GetBytes("{\"challenge\":\"123\"}");
-        _sessionMock.Setup(s => s.TryGetValue("fido2.assertionOptions", out sessionValue)).Returns(true);
+        _session.SetString("fido2.assertionOptions", "{\"challenge\":\"123\"}");
 
         _passkeyServiceMock.Setup(x => x.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, user, (string?)null));

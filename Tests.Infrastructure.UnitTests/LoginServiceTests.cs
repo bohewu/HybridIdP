@@ -133,6 +133,51 @@ namespace Tests.Infrastructure.UnitTests
         }
 
         [Fact]
+        public async Task ValidateExternalUserSignInAsync_ShouldReturnUserInactive_WhenUserIsDeleted()
+        {
+            var user = new ApplicationUser
+            {
+                UserName = "deleted",
+                IsActive = true,
+                IsDeleted = true
+            };
+
+            var result = await _service.ValidateExternalUserSignInAsync(user);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(Core.Application.DTOs.LoginStatus.UserInactive, result.Status);
+            _userManagerMock.Verify(
+                manager => manager.IsLockedOutAsync(It.IsAny<ApplicationUser>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task ValidateExternalUserSignInAsync_ShouldReturnPersonInactive_WhenPersonIsSuspended()
+        {
+            var person = new Person
+            {
+                Id = Guid.NewGuid(),
+                Status = PersonStatus.Suspended
+            };
+            var user = new ApplicationUser
+            {
+                UserName = "suspended-person",
+                IsActive = true,
+                PersonId = person.Id
+            };
+            _dbContext.Persons.Add(person);
+            await _dbContext.SaveChangesAsync();
+
+            var result = await _service.ValidateExternalUserSignInAsync(user);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(Core.Application.DTOs.LoginStatus.PersonInactive, result.Status);
+            _userManagerMock.Verify(
+                manager => manager.IsLockedOutAsync(It.IsAny<ApplicationUser>()),
+                Times.Never);
+        }
+
+        [Fact]
         public async Task AuthenticateAsync_ShouldSucceed_WhenUserIsActive()
         {
             // Arrange

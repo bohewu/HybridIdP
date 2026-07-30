@@ -1,5 +1,3 @@
-using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Core.Application;
@@ -9,6 +7,7 @@ using Core.Domain.Entities;
 using Core.Domain.Enums;
 using Fido2NetLib;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using Infrastructure;
 
 using Web.IdP.Attributes;
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Controllers.Account;
 
@@ -151,12 +151,19 @@ public partial class PasskeyController : ControllerBase
                 Request.Headers["User-Agent"].FirstOrDefault(),
                 ct);
 
-            // FIX: If user is in MFA Setup (partial auth), sign them in fully now that they have a passkey
-            if (User.Identity != null && User.Identity.AuthenticationType == IdentityConstants.TwoFactorUserIdScheme)
+            var partialAuthentication = await HttpContext.AuthenticateAsync(
+                IdentityConstants.TwoFactorUserIdScheme);
+            if (partialAuthentication.Succeeded)
             {
-                 // Add AMR to session
-                AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa); // They just set up MFA
-                await _signInManager.SignInAsync(user, isPersistent: false);
+                AuthenticationMethodSession.Add(
+                    HttpContext.Session,
+                    Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
+                    Core.Domain.Constants.AuthConstants.Amr.UserPresence,
+                    Core.Domain.Constants.AuthConstants.Amr.Mfa);
+                await _signInManager.SignInWithClaimsAsync(
+                    user,
+                    isPersistent: false,
+                    AuthenticationMethodSession.CreateClaims(HttpContext.Session));
             }
 
             return Ok(new { success = true });
@@ -283,19 +290,14 @@ public partial class PasskeyController : ControllerBase
                 return BadRequest(new { success = false, error = "User account deactivated" });
             }
             
-            // 3. All checks passed - Sign in
-            // Add AMR to session
-            AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.HardwareKey);
-            AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.UserPresence);
-            AddAmrToSession(Core.Domain.Constants.AuthConstants.Amr.Mfa);
+            AuthenticationMethodSession.Replace(
+                HttpContext.Session,
+                Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
+                Core.Domain.Constants.AuthConstants.Amr.UserPresence,
+                Core.Domain.Constants.AuthConstants.Amr.Mfa);
 
             // Issue cookie with amr claims
-            var claims = new List<System.Security.Claims.Claim>
-            {
-                new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.HardwareKey),
-                new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.UserPresence),
-                new System.Security.Claims.Claim("amr", Core.Domain.Constants.AuthConstants.Amr.Mfa)
-            };
+            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
             await _signInManager.SignInWithClaimsAsync(result.User, isPersistent: false, claims);
             await _userManagementService.UpdateLastLoginAsync(result.User.Id, ct);
@@ -339,17 +341,4 @@ public partial class PasskeyController : ControllerBase
     [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked for deactivated user {UserId}")]
     partial void LogPasskeyLoginBlockedByDeactivation(Guid userId);
 
-    private void AddAmrToSession(string amr)
-    {
-        var currentAmrJson = HttpContext.Session.GetString("AuthenticationMethods");
-        List<string> amrList = string.IsNullOrEmpty(currentAmrJson) 
-            ? new List<string>() 
-            : JsonSerializer.Deserialize<List<string>>(currentAmrJson) ?? new List<string>();
-        
-        if (!amrList.Contains(amr))
-        {
-            amrList.Add(amr);
-            HttpContext.Session.SetString("AuthenticationMethods", JsonSerializer.Serialize(amrList));
-        }
-    }
 }

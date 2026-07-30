@@ -85,6 +85,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBrandingService, BrandingService>();
         services.AddScoped<ISecurityPolicyService, SecurityPolicyService>();
         services.AddScoped<ILoginService, LoginService>();
+        services.AddScoped<IExternalSignInCoordinator, ExternalSignInCoordinator>();
         services.AddScoped<ILoginHistoryService, LoginHistoryService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IAccountManagementService, AccountManagementService>();

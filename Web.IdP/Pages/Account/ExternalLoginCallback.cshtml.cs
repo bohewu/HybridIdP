@@ -1,16 +1,14 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Core.Domain.Entities;
-using Core.Domain.Constants;
 using Core.Application.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Web.IdP.Infrastructure.Identity;
 using Core.Application.Options;
 using Microsoft.Extensions.Options;
-using Core.Domain; // Explicitly include Core.Domain for ApplicationUser
+using Core.Domain;
+using Web.IdP.Services;
 
 namespace Web.IdP.Pages.Account;
 
@@ -24,6 +22,7 @@ public partial class ExternalLoginCallbackModel : PageModel
     private readonly Core.Application.ILoginService _loginService;
     private readonly Core.Application.IUserManagementService _userManagementService;
     private readonly Core.Application.ILoginHistoryService _loginHistoryService;
+    private readonly IExternalSignInCoordinator _externalSignInCoordinator;
 
     public ExternalLoginCallbackModel(
         SignInManager<ApplicationUser> signInManager,
@@ -32,7 +31,8 @@ public partial class ExternalLoginCallbackModel : PageModel
         IOptions<ExternalLoginOptions> externalLoginOptions,
         Core.Application.ILoginService loginService,
         Core.Application.IUserManagementService userManagementService,
-        Core.Application.ILoginHistoryService loginHistoryService)
+        Core.Application.ILoginHistoryService loginHistoryService,
+        IExternalSignInCoordinator externalSignInCoordinator)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -41,6 +41,7 @@ public partial class ExternalLoginCallbackModel : PageModel
         _loginService = loginService;
         _userManagementService = userManagementService;
         _loginHistoryService = loginHistoryService;
+        _externalSignInCoordinator = externalSignInCoordinator;
     }
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null, CancellationToken cancellationToken = default)
@@ -59,62 +60,23 @@ public partial class ExternalLoginCallbackModel : PageModel
             return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
         }
 
-        // Extract AMR claims from external provider
-        var externalAmrClaims = info.Principal.FindAll(AuthConstants.ClaimTypes.Amr)
-            .Select(c => c.Value)
-            .ToList();
-
-        // Check if external provider performed MFA
-        bool externalMfaPerformed = externalAmrClaims.Contains(AuthConstants.Amr.Mfa) || 
-                                    externalAmrClaims.Contains(AuthConstants.Amr.Otp) ||
-                                    externalAmrClaims.Contains(AuthConstants.Amr.HardwareKey);
-
-        // Build our AMR claim list
-        var amrClaims = new List<Claim>
+        var linkedUser = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+        if (linkedUser != null)
         {
-            new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.External)
-        };
-
-        // Add external provider's AMR claims
-        foreach (var amr in externalAmrClaims)
-        {
-            amrClaims.Add(new Claim(AuthConstants.ClaimTypes.Amr, amr));
-        }
-
-        // Sign in the user with this external login provider if the user already has a login.
-        var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
-        if (result.Succeeded)
-        {
-            // User already exists and is linked, update their authentication cookie with AMR
-            var user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
-            if (user != null)
+            var completion = await _externalSignInCoordinator.CompleteAsync(
+                HttpContext,
+                linkedUser,
+                cancellationToken);
+            if (!completion.IsSucceeded)
             {
-                var eligibility = await _loginService.ValidateExternalUserSignInAsync(user, cancellationToken);
-                if (!eligibility.IsSuccess)
-                {
-                    return HandleExternalSignInBlocked(user, eligibility);
-                }
-                
-                // Re-sign in with AMR claims
-                await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
-                await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
-                await RecordSuccessfulLoginAsync(user.Id);
-                
-                // Store AMR in session for MFA enforcement logic
-                if (externalMfaPerformed)
-                {
-                    var sessionAmr = new List<string> { AuthConstants.Amr.External, AuthConstants.Amr.Mfa };
-                    HttpContext.Session.SetString("AuthenticationMethods", 
-                        JsonSerializer.Serialize(sessionAmr));
-                }
+                return HandleExternalSignInIncomplete(linkedUser, completion, returnUrl);
             }
-            
-            LogExternalLoginSuccess(info.Principal.Identity?.Name ?? "Unknown", info.LoginProvider, string.Join(", ", externalAmrClaims));
+
+            await _userManagementService.UpdateLastLoginAsync(linkedUser.Id, cancellationToken);
+            await RecordSuccessfulLoginAsync(linkedUser.Id);
+
+            LogExternalLoginSuccess(info.Principal.Identity?.Name ?? "Unknown", info.LoginProvider);
             return LocalRedirect(returnUrl);
-        }
-        if (result.IsLockedOut)
-        {
-            return RedirectToPage("./Lockout");
         }
 
         // If the user does not have an account, then ask the user to create an account.
@@ -143,28 +105,25 @@ public partial class ExternalLoginCallbackModel : PageModel
                         var addLoginResult = await _userManager.AddLoginAsync(user, info);
                         if (addLoginResult.Succeeded)
                         {
-                            var eligibility = await _loginService.ValidateExternalUserSignInAsync(user, cancellationToken);
-                            if (!eligibility.IsSuccess)
+                            var completion = await _externalSignInCoordinator.CompleteAsync(
+                                HttpContext,
+                                user,
+                                cancellationToken);
+                            if (completion.Status == ExternalSignInCompletionStatus.Blocked)
                             {
-                                // Remove the login we just added since user is not eligible to sign in
                                 await _userManager.RemoveLoginAsync(user, info.LoginProvider, info.ProviderKey);
-                                return HandleExternalSignInBlocked(user, eligibility);
+                                return HandleExternalSignInIncomplete(user, completion, returnUrl);
                             }
-                            
-                            // Sign in with AMR claims
-                            await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, amrClaims);
+
+                            if (!completion.IsSucceeded)
+                            {
+                                return HandleExternalSignInIncomplete(user, completion, returnUrl);
+                            }
+
                             await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                             await RecordSuccessfulLoginAsync(user.Id);
-                            
-                            // Store AMR in session
-                            if (externalMfaPerformed)
-                            {
-                                var sessionAmr = new List<string> { AuthConstants.Amr.External, AuthConstants.Amr.Mfa };
-                                HttpContext.Session.SetString("AuthenticationMethods", 
-                                    JsonSerializer.Serialize(sessionAmr));
-                            }
-                            
-                            LogAutoLinkSuccess(email, info.LoginProvider, string.Join(", ", externalAmrClaims));
+
+                            LogAutoLinkSuccess(email, info.LoginProvider);
                             return LocalRedirect(returnUrl);
                         }
                     }
@@ -177,6 +136,25 @@ public partial class ExternalLoginCallbackModel : PageModel
         // We need to store returnUrl in ViewData or pass it to next page
 
         return RedirectToPage("./ExternalLoginConfirmation", new { ReturnUrl = returnUrl });
+    }
+
+    private IActionResult HandleExternalSignInIncomplete(
+        ApplicationUser user,
+        ExternalSignInCompletionResult completion,
+        string returnUrl)
+    {
+        return completion.Status switch
+        {
+            ExternalSignInCompletionStatus.TotpRequired =>
+                RedirectToPage("./LoginTotp", new { returnUrl, rememberMe = false }),
+            ExternalSignInCompletionStatus.EmailOtpRequired =>
+                RedirectToPage("./LoginEmailOtp", new { returnUrl, rememberMe = false }),
+            ExternalSignInCompletionStatus.MfaEnrollmentRequired =>
+                RedirectToPage("./MfaSetup", new { returnUrl }),
+            ExternalSignInCompletionStatus.Blocked when completion.Denial != null =>
+                HandleExternalSignInBlocked(user, completion.Denial),
+            _ => RedirectToPage("./Login", new { ReturnUrl = returnUrl, error = "ExternalLoginFailure" })
+        };
     }
 
     private IActionResult HandleExternalSignInBlocked(ApplicationUser user, LoginResult eligibility)
@@ -231,11 +209,11 @@ public partial class ExternalLoginCallbackModel : PageModel
     [LoggerMessage(Level = LogLevel.Warning, Message = "Error loading external login information.")]
     partial void LogExternalLoginInfoNotFound();
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "{Name} logged in with {LoginProvider} provider. AMR: {Amr}")]
-    partial void LogExternalLoginSuccess(string name, string loginProvider, string amr);
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Name} logged in with {LoginProvider} provider.")]
+    partial void LogExternalLoginSuccess(string name, string loginProvider);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Auto-linked {Email} to external login {Provider}. AMR: {Amr}")]
-    partial void LogAutoLinkSuccess(string email, string provider, string amr);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Auto-linked {Email} to external login {Provider}.")]
+    partial void LogAutoLinkSuccess(string email, string provider);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "External login blocked for {Email} due to Person status: {Reason}")]
     partial void LogPersonInactive(string email, string reason);

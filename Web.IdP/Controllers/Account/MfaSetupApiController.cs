@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using Core.Application.Interfaces;
 using Core.Domain.Constants;
 using Web.IdP.Attributes;
-using System.Security.Claims;
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Controllers.Account;
 
@@ -151,12 +151,14 @@ public partial class MfaSetupApiController : ControllerBase
 
             // UX Improvement: Sign in user fully so they can access the app immediately
             // This prevents redirection back to Login page and ensures AMR claims are correct
-            await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, new[] 
-            { 
-                new Claim("amr", AuthConstants.Amr.Password),
-                new Claim("amr", AuthConstants.Amr.Mfa),
-                new Claim("amr", AuthConstants.Amr.Otp)
-            });
+            AuthenticationMethodSession.Add(
+                HttpContext.Session,
+                AuthConstants.Amr.Mfa,
+                AuthConstants.Amr.Otp);
+            await _signInManager.SignInWithClaimsAsync(
+                user,
+                isPersistent: false,
+                AuthenticationMethodSession.CreateClaims(HttpContext.Session));
 
             // Generate recovery codes
             var recoveryCodes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
@@ -204,12 +206,14 @@ public partial class MfaSetupApiController : ControllerBase
         await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null, ct);
 
         // UX Improvement: Sign in user fully
-        await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, new[] 
-        { 
-            new Claim("amr", AuthConstants.Amr.Password),
-            new Claim("amr", AuthConstants.Amr.Mfa),
-            new Claim("amr", AuthConstants.Amr.Otp)
-        });
+        AuthenticationMethodSession.Add(
+            HttpContext.Session,
+            AuthConstants.Amr.Mfa,
+            AuthConstants.Amr.Otp);
+        await _signInManager.SignInWithClaimsAsync(
+            user,
+            isPersistent: false,
+            AuthenticationMethodSession.CreateClaims(HttpContext.Session));
 
         return Ok(new { success = true });
     }
