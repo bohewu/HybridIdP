@@ -174,11 +174,11 @@ public sealed class OperationalAdminBootstrapProviderTests(
         var storedSettings = await dbContext.Settings
             .AsNoTracking()
             .ToListAsync();
-        var exactMarker = Assert.Single(storedSettings.Where(setting =>
+        var exactMarker = Assert.Single(storedSettings, setting =>
             string.Equals(
                 setting.Key,
                 SettingKeys.OperationalAdminBootstrapCompleted,
-                StringComparison.Ordinal)));
+                StringComparison.Ordinal));
         Assert.Equal("completed", exactMarker.Value);
 
         if (shouldReject)
@@ -199,11 +199,11 @@ public sealed class OperationalAdminBootstrapProviderTests(
         {
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
-            var providerSpecificSetting = Assert.Single(storedSettings.Where(setting =>
+            var providerSpecificSetting = Assert.Single(storedSettings, setting =>
                 string.Equals(
                     setting.Key,
                     providerEquivalentKey,
-                    StringComparison.Ordinal)));
+                    StringComparison.Ordinal));
             Assert.Equal("tampered", providerSpecificSetting.Value);
         }
     }

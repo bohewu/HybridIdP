@@ -423,10 +423,9 @@ public sealed class ConfidentialClientSecretRotationSystemTests : IAsyncLifetime
 
         var redirectLocation = consentResponse.Headers.Location;
         Assert.True(redirectLocation.IsAbsoluteUri);
-        Assert.True(string.Equals(
-            redirectLocation.GetLeftPart(UriPartial.Path),
+        Assert.Equal(
             redirectUri,
-            StringComparison.Ordinal));
+            redirectLocation.GetLeftPart(UriPartial.Path));
 
         var authorizationCode =
             HttpUtility.ParseQueryString(redirectLocation.Query)["code"];
@@ -481,11 +480,7 @@ public sealed class ConfidentialClientSecretRotationSystemTests : IAsyncLifetime
         var signedOutPath = signedOutLocation.IsAbsoluteUri
             ? signedOutLocation.AbsolutePath
             : new Uri(new Uri(_serverFixture.BaseUrl), signedOutLocation).AbsolutePath;
-        Assert.True(
-            string.Equals(
-                signedOutPath,
-                "/Account/Login",
-                StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("/Account/Login", signedOutPath, ignoreCase: true);
     }
 
     private async Task<string> GetAdminTokenAsync()

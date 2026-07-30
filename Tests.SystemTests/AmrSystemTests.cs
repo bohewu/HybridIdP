@@ -101,10 +101,9 @@ public class AmrSystemTests : IAsyncLifetime
     public async Task Authorize_WithAcrValuesMfa_WithEnrollment_Succeeds()
     {
         // 1. Login with seeded MFA user
-        // amr-mfa@hybridauth.local / Test@123 / Secret: KBQXG5DSMVZWK3TU
+        // amr-mfa@hybridauth.local / Test@123
         var username = "amr-mfa@hybridauth.local";
         var password = "Test@123";
-        var secret = "KBQXG5DSMVZWK3TU";
 
         // A. Login Page (Password)
         var (token, _) = await GetLoginPageAsync();
