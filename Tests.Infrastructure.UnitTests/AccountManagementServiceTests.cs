@@ -5,10 +5,13 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Interfaces;
 using Core.Domain;
+using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Infrastructure;
 using Infrastructure.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -26,6 +29,10 @@ public class AccountManagementServiceTests
     private readonly Mock<SignInManager<ApplicationUser>> _signInManagerMock;
     private readonly Mock<ISessionService> _sessionServiceMock;
     private readonly Mock<IAuditService> _auditServiceMock;
+    private readonly Mock<ILoginService> _loginServiceMock;
+    private readonly Mock<ISecurityPolicyService> _securityPolicyServiceMock;
+    private readonly Mock<IPasskeyService> _passkeyServiceMock;
+    private readonly DefaultHttpContext _httpContext;
     private readonly AccountManagementService _service;
 
     public AccountManagementServiceTests()
@@ -50,6 +57,14 @@ public class AccountManagementServiceTests
 
         // Mock SignInManager
         var contextAccessorMock = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
+        _httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.Password)],
+                "Test"))
+        };
+        contextAccessorMock.Setup(accessor => accessor.HttpContext)
+            .Returns(_httpContext);
         var claimsFactoryMock = new Mock<IUserClaimsPrincipalFactory<ApplicationUser>>();
         _signInManagerMock = new Mock<SignInManager<ApplicationUser>>(
             _userManagerMock.Object,
@@ -60,6 +75,24 @@ public class AccountManagementServiceTests
         // Mock SessionService and AuditService
         _sessionServiceMock = new Mock<ISessionService>();
         _auditServiceMock = new Mock<IAuditService>();
+        _loginServiceMock = new Mock<ILoginService>();
+        _securityPolicyServiceMock = new Mock<ISecurityPolicyService>();
+        _passkeyServiceMock = new Mock<IPasskeyService>();
+        _loginServiceMock
+            .Setup(service => service.ValidateExternalUserSignInAsync(
+                It.IsAny<ApplicationUser>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ApplicationUser user, CancellationToken _) =>
+                LoginResult.Success(user));
+        _signInManagerMock
+            .Setup(manager => manager.CanSignInAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(true);
+        _securityPolicyServiceMock
+            .Setup(service => service.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicy
+            {
+                EnforceMandatoryMfaEnrollment = false
+            });
 
         // Create test logger factory for debugging
         var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
@@ -73,6 +106,9 @@ public class AccountManagementServiceTests
             _signInManagerMock.Object,
             _sessionServiceMock.Object,
             _auditServiceMock.Object,
+            _loginServiceMock.Object,
+            _securityPolicyServiceMock.Object,
+            _passkeyServiceMock.Object,
             logger);
     }
 
@@ -265,6 +301,270 @@ public class AccountManagementServiceTests
     }
 
     [Fact]
+    public async Task SwitchToAccountAsync_WithInactiveTarget_ShouldFailWithoutSigningIn()
+    {
+        // Arrange
+        var personId = Guid.NewGuid();
+        var currentUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var currentUser = new ApplicationUser
+        {
+            Id = currentUserId,
+            UserName = "active.current@example.com",
+            PersonId = personId,
+            IsActive = true
+        };
+        var targetUser = new ApplicationUser
+        {
+            Id = targetUserId,
+            UserName = "inactive.target@example.com",
+            PersonId = personId,
+            IsActive = false
+        };
+
+        _userManagerMock.Setup(manager => manager.FindByIdAsync(currentUserId.ToString()))
+            .ReturnsAsync(currentUser);
+        _userManagerMock.Setup(manager => manager.FindByIdAsync(targetUserId.ToString()))
+            .ReturnsAsync(targetUser);
+        _loginServiceMock
+            .Setup(service => service.ValidateExternalUserSignInAsync(
+                targetUser,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(LoginResult.UserInactive());
+        _signInManagerMock.Setup(manager => manager.SignOutAsync())
+            .Returns(Task.CompletedTask);
+        _signInManagerMock.Setup(manager => manager.SignInAsync(targetUser, true, null))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.SwitchToAccountAsync(
+            currentUserId,
+            targetUserId,
+            "Attempting switch to inactive target");
+
+        // Assert
+        Assert.False(result);
+        _signInManagerMock.Verify(manager => manager.SignOutAsync(), Times.Never);
+        _signInManagerMock.Verify(
+            manager => manager.SignInAsync(
+                It.IsAny<ApplicationUser>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>()),
+            Times.Never);
+        _auditServiceMock.Verify(
+            service => service.LogAccountSwitchAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SwitchToAccountAsync_WithPersonIneligibleTarget_ShouldFailWithoutSigningIn()
+    {
+        // Arrange
+        var (currentUser, targetUser) = ArrangeSamePersonSwitch();
+        _loginServiceMock
+            .Setup(service => service.ValidateExternalUserSignInAsync(
+                targetUser,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(LoginResult.PersonInactive("Person is suspended"));
+
+        // Act
+        var result = await _service.SwitchToAccountAsync(
+            currentUser.Id,
+            targetUser.Id,
+            "Attempting switch to Person-ineligible target");
+
+        // Assert
+        Assert.False(result);
+        VerifyNoSwitchSideEffects();
+    }
+
+    [Fact]
+    public async Task SwitchToAccountAsync_WithLockedOutTarget_ShouldFailWithoutSigningIn()
+    {
+        // Arrange
+        var (currentUser, targetUser) = ArrangeSamePersonSwitch();
+        _loginServiceMock
+            .Setup(service => service.ValidateExternalUserSignInAsync(
+                targetUser,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(LoginResult.LockedOut());
+
+        // Act
+        var result = await _service.SwitchToAccountAsync(
+            currentUser.Id,
+            targetUser.Id,
+            "Attempting switch to locked target");
+
+        // Assert
+        Assert.False(result);
+        VerifyNoSwitchSideEffects();
+    }
+
+    [Fact]
+    public async Task SwitchToAccountAsync_WithIneligibleCurrentSessionUser_ShouldFailWithoutSigningIn()
+    {
+        // Arrange
+        var (currentUser, targetUser) = ArrangeSamePersonSwitch();
+        _loginServiceMock
+            .Setup(service => service.ValidateExternalUserSignInAsync(
+                currentUser,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(LoginResult.UserInactive());
+
+        // Act
+        var result = await _service.SwitchToAccountAsync(
+            currentUser.Id,
+            targetUser.Id,
+            "Attempting switch from stale inactive session");
+
+        // Assert
+        Assert.False(result);
+        VerifyNoSwitchSideEffects();
+        _loginServiceMock.Verify(
+            service => service.ValidateExternalUserSignInAsync(
+                targetUser,
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SwitchToAccountAsync_WithIdentityPolicyDeniedTarget_ShouldFailWithoutSigningIn()
+    {
+        // Arrange
+        var (currentUser, targetUser) = ArrangeSamePersonSwitch();
+        _signInManagerMock
+            .Setup(manager => manager.CanSignInAsync(targetUser))
+            .ReturnsAsync(false);
+
+        // Act
+        var result = await _service.SwitchToAccountAsync(
+            currentUser.Id,
+            targetUser.Id,
+            "Attempting switch to Identity-ineligible target");
+
+        // Assert
+        Assert.False(result);
+        VerifyNoSwitchSideEffects();
+    }
+
+    [Fact]
+    public async Task SwitchToAccountAsync_WithMfaEnabledTargetAndPasswordOnlySession_ShouldFail()
+    {
+        // Arrange
+        var (currentUser, targetUser) = ArrangeSamePersonSwitch();
+        targetUser.TwoFactorEnabled = true;
+
+        // Act
+        var result = await _service.SwitchToAccountAsync(
+            currentUser.Id,
+            targetUser.Id,
+            "Attempting switch without session MFA");
+
+        // Assert
+        Assert.False(result);
+        VerifyNoSwitchSideEffects();
+    }
+
+    [Fact]
+    public async Task SwitchToAccountAsync_WithMfaEnabledTargetAndMfaSession_ShouldSucceed()
+    {
+        // Arrange
+        var (currentUser, targetUser) = ArrangeSamePersonSwitch();
+        targetUser.EmailMfaEnabled = true;
+        _httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.Mfa)],
+            "Test"));
+        SetupSuccessfulSwitch(targetUser);
+
+        // Act
+        var result = await _service.SwitchToAccountAsync(
+            currentUser.Id,
+            targetUser.Id,
+            "Switching with session MFA");
+
+        // Assert
+        Assert.True(result);
+        _signInManagerMock.Verify(manager => manager.SignOutAsync(), Times.Once);
+        _signInManagerMock.Verify(
+            manager => manager.SignInAsync(targetUser, true, null),
+            Times.Once);
+        _auditServiceMock.Verify(
+            service => service.LogAccountSwitchAsync(
+                currentUser.Id,
+                targetUser.Id,
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SwitchToAccountAsync_WithExpiredMandatoryMfaGrace_ShouldFail()
+    {
+        // Arrange
+        var (currentUser, targetUser) = ArrangeSamePersonSwitch();
+        targetUser.MfaRequirementNotifiedAt = DateTime.UtcNow.AddDays(-2);
+        _securityPolicyServiceMock
+            .Setup(service => service.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicy
+            {
+                EnforceMandatoryMfaEnrollment = true,
+                MfaEnforcementGracePeriodDays = 1
+            });
+        _passkeyServiceMock
+            .Setup(service => service.GetUserPasskeysAsync(
+                targetUser.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        // Act
+        var result = await _service.SwitchToAccountAsync(
+            currentUser.Id,
+            targetUser.Id,
+            "Attempting switch after mandatory MFA grace expired");
+
+        // Assert
+        Assert.False(result);
+        VerifyNoSwitchSideEffects();
+    }
+
+    [Fact]
+    public async Task SwitchToAccountAsync_WithActiveMandatoryMfaGrace_ShouldSucceed()
+    {
+        // Arrange
+        var (currentUser, targetUser) = ArrangeSamePersonSwitch();
+        targetUser.MfaRequirementNotifiedAt = DateTime.UtcNow;
+        _securityPolicyServiceMock
+            .Setup(service => service.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicy
+            {
+                EnforceMandatoryMfaEnrollment = true,
+                MfaEnforcementGracePeriodDays = 1
+            });
+        _passkeyServiceMock
+            .Setup(service => service.GetUserPasskeysAsync(
+                targetUser.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        SetupSuccessfulSwitch(targetUser);
+
+        // Act
+        var result = await _service.SwitchToAccountAsync(
+            currentUser.Id,
+            targetUser.Id,
+            "Switching during mandatory MFA grace");
+
+        // Assert
+        Assert.True(result);
+        _signInManagerMock.Verify(manager => manager.SignInAsync(targetUser, true, null), Times.Once);
+    }
+
+    [Fact]
     public async Task SwitchToAccountAsync_WithDifferentPersonId_ShouldFail()
     {
         // Arrange: Two accounts belonging to different persons
@@ -384,5 +684,58 @@ public class AccountManagementServiceTests
         // Assert
         Assert.False(result);
         _signInManagerMock.Verify(sm => sm.SignOutAsync(), Times.Never);
+    }
+
+    private (ApplicationUser CurrentUser, ApplicationUser TargetUser) ArrangeSamePersonSwitch()
+    {
+        var personId = Guid.NewGuid();
+        var currentUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "current@example.com",
+            PersonId = personId,
+            IsActive = true
+        };
+        var targetUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "target@example.com",
+            PersonId = personId,
+            IsActive = true
+        };
+
+        _userManagerMock.Setup(manager => manager.FindByIdAsync(currentUser.Id.ToString()))
+            .ReturnsAsync(currentUser);
+        _userManagerMock.Setup(manager => manager.FindByIdAsync(targetUser.Id.ToString()))
+            .ReturnsAsync(targetUser);
+
+        return (currentUser, targetUser);
+    }
+
+    private void SetupSuccessfulSwitch(ApplicationUser targetUser)
+    {
+        _signInManagerMock.Setup(manager => manager.SignOutAsync())
+            .Returns(Task.CompletedTask);
+        _signInManagerMock.Setup(manager => manager.SignInAsync(targetUser, true, null))
+            .Returns(Task.CompletedTask);
+    }
+
+    private void VerifyNoSwitchSideEffects()
+    {
+        _signInManagerMock.Verify(manager => manager.SignOutAsync(), Times.Never);
+        _signInManagerMock.Verify(
+            manager => manager.SignInAsync(
+                It.IsAny<ApplicationUser>(),
+                It.IsAny<bool>(),
+                It.IsAny<string?>()),
+            Times.Never);
+        _auditServiceMock.Verify(
+            service => service.LogAccountSwitchAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()),
+            Times.Never);
     }
 }

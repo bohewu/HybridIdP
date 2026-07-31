@@ -36,7 +36,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | H3 Recovery-code regeneration authorization | `csf_d648cf493455299a40c96ecd` | done | Replacing or retrieving recovery codes requires the intended account-management authorization and reauthentication. Existing recovery-code consumption remains compatible. |
 | H4 Privileged-operation session assurance | `csf_edc0a91a588b8b31027d34dd` | done | Privileged role operations verify that the current session completed MFA rather than only checking factor enrollment. Existing properly authenticated administrator sessions continue to work. |
 | H5 Email MFA possession proof | `csf_dd9a1204a8e34c5525c609a2` | done | Email MFA is not enabled and no MFA-labelled application session is issued until the pending OTP is successfully verified. |
-| H6 Linked-account switching eligibility | `csf_8858d11ce2afd4b3037b3081` | pending | Switching accounts applies the same user, Person, lockout, lifecycle, and MFA eligibility checks as a normal sign-in. |
+| H6 Linked-account switching eligibility | `csf_8858d11ce2afd4b3037b3081` | done | Switching accounts applies the same user, Person, lockout, lifecycle, and MFA eligibility checks as a normal sign-in. |
 | H7 Passkey sign-in eligibility | `csf_5f21ecdf3e28328eb46c9a39` | pending | Passkey sign-in checks deleted and inactive state, lockout, `CanSignIn`, and Person eligibility before issuing an application cookie. |
 
 ### H1 Verification Evidence
@@ -143,6 +143,29 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   passed 23/23. The frontend suite passed 98/98.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,348 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped. Diff validation found no whitespace errors, generated output, or
+  live credential material.
+
+### H6 Verification Evidence
+
+- Before the fix, a same-Person target with an inactive user record was signed
+  in successfully. The negative regression failed because the switch returned
+  success and issued the target cookie instead of rejecting the request.
+- Both the current and target accounts now pass the shared user, Person,
+  lifecycle, lockout, and Identity `CanSignIn` checks before any sign-out,
+  target sign-in, or success audit occurs.
+- A switch involving an MFA-enabled account requires an MFA-authenticated
+  current session. The target account also follows the existing mandatory
+  enrollment policy, including TOTP, Email MFA, passkeys, notification
+  persistence, and the configured grace period.
+- The real cookie-and-CSRF HTTP regression creates disposable linked accounts,
+  deactivates the target, verifies HTTP 403 from
+  `/api/my/switch-account`, and confirms the original account remains the
+  current session. Test account links are restored before cleanup.
+- Focused account-management and shared login-policy tests passed 22/22;
+  linked-account, AMR, and API system regressions passed 16/16.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,358 tests with 0 failed and 1 existing aggressive ZAP test
   skipped. Diff validation found no whitespace errors, generated output, or
   live credential material.
 

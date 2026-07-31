@@ -22,6 +22,11 @@ public interface IAccountManagementService
     /// <param name="currentUserId">Current user ID</param>
     /// <param name="targetAccountId">Target account ID to switch to</param>
     /// <param name="reason">Reason for account switch (audit trail)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if successful</returns>
-    Task<bool> SwitchToAccountAsync(Guid currentUserId, Guid targetAccountId, string reason);
+    Task<bool> SwitchToAccountAsync(
+        Guid currentUserId,
+        Guid targetAccountId,
+        string reason,
+        CancellationToken cancellationToken = default);
 }

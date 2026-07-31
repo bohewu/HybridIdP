@@ -86,7 +86,8 @@ public class MyAccountController : ControllerBase
         var result = await _accountManagementService.SwitchToAccountAsync(
             currentUserId,
             request.TargetAccountId,
-            request.Reason ?? "User requested account switch");
+            request.Reason ?? "User requested account switch",
+            HttpContext.RequestAborted);
 
         if (!result)
         {
