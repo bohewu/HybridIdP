@@ -37,7 +37,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | H4 Privileged-operation session assurance | `csf_edc0a91a588b8b31027d34dd` | done | Privileged role operations verify that the current session completed MFA rather than only checking factor enrollment. Existing properly authenticated administrator sessions continue to work. |
 | H5 Email MFA possession proof | `csf_dd9a1204a8e34c5525c609a2` | done | Email MFA is not enabled and no MFA-labelled application session is issued until the pending OTP is successfully verified. |
 | H6 Linked-account switching eligibility | `csf_8858d11ce2afd4b3037b3081` | done | Switching accounts applies the same user, Person, lockout, lifecycle, and MFA eligibility checks as a normal sign-in. |
-| H7 Passkey sign-in eligibility | `csf_5f21ecdf3e28328eb46c9a39` | pending | Passkey sign-in checks deleted and inactive state, lockout, `CanSignIn`, and Person eligibility before issuing an application cookie. |
+| H7 Passkey sign-in eligibility | `csf_5f21ecdf3e28328eb46c9a39` | done | Passkey sign-in checks deleted and inactive state, lockout, `CanSignIn`, and Person eligibility before issuing an application cookie. |
 
 ### H1 Verification Evidence
 
@@ -166,6 +166,26 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   linked-account, AMR, and API system regressions passed 16/16.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,358 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped. Diff validation found no whitespace errors, generated output, or
+  live credential material.
+
+### H7 Verification Evidence
+
+- Before the fix, a successfully verified passkey belonging to a soft-deleted
+  but still active user reached `SignInWithClaimsAsync`; the negative
+  regression failed with `OkObjectResult` instead of `BadRequestObjectResult`.
+- The verified-assertion path now rejects inactive or deleted users, missing
+  Person links or records, Person status/date/deletion ineligibility, lockout,
+  and Identity `CanSignIn` rejection before AMR session mutation, application
+  cookie issuance, or last-login update.
+- Existing deactivated-user and suspended-Person error behavior remains
+  unchanged. An eligible active user still receives the existing nonpersistent
+  cookie with the current `hwk`, `user`, and `mfa` AMR values.
+- Focused passkey-controller tests passed 9/9; the full Web IdP unit-test
+  project passed 173/173. Related passkey/login service tests passed 13/13,
+  and existing passkey/AMR system regressions passed 9/9.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,364 tests with 0 failed and 1 existing aggressive ZAP test
   skipped. Diff validation found no whitespace errors, generated output, or
   live credential material.
 

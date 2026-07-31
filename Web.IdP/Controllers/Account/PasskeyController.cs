@@ -4,7 +4,6 @@ using Core.Application;
 using Core.Application.Interfaces;
 using Core.Domain;
 using Core.Domain.Entities;
-using Core.Domain.Enums;
 using Fido2NetLib;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
@@ -276,18 +275,32 @@ public partial class PasskeyController : ControllerBase
 
         if (result.Success && result.User != null)
         {
-            // 1. Check Person.Status (CRITICAL SECURITY FIX)
-            if (result.User.Person != null && result.User.Person.Status != PersonStatus.Active)
-            {
-                LogPasskeyLoginBlockedByStatus(result.User.Person.Id, result.User.Person.Status);
-                return BadRequest(new { success = false, error = "Account not active" });
-            }
-            
-            // 2. Check User.IsActive
-            if (!result.User.IsActive)
+            if (!result.User.IsActive || result.User.IsDeleted)
             {
                 LogPasskeyLoginBlockedByDeactivation(result.User.Id);
                 return BadRequest(new { success = false, error = "User account deactivated" });
+            }
+
+            if (!result.User.PersonId.HasValue ||
+                result.User.Person is null ||
+                !result.User.Person.CanAuthenticate())
+            {
+                LogPasskeyLoginBlockedByPersonEligibility(
+                    result.User.Id,
+                    result.User.PersonId);
+                return BadRequest(new { success = false, error = "Account not active" });
+            }
+
+            if (await _userManager.IsLockedOutAsync(result.User))
+            {
+                LogPasskeyLoginBlockedByLockout(result.User.Id);
+                return BadRequest(new { success = false, error = "Account not active" });
+            }
+
+            if (!await _signInManager.CanSignInAsync(result.User))
+            {
+                LogPasskeyLoginBlockedByIdentityPolicy(result.User.Id);
+                return BadRequest(new { success = false, error = "Account not active" });
             }
             
             AuthenticationMethodSession.Replace(
@@ -335,10 +348,16 @@ public partial class PasskeyController : ControllerBase
     [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} deleted passkey {CredentialId}")]
     partial void LogPasskeyDeleted(Guid userId, int credentialId);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked for person {PersonId} with status {Status}")]
-    partial void LogPasskeyLoginBlockedByStatus(Guid personId, PersonStatus status);
-
     [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked for deactivated user {UserId}")]
     partial void LogPasskeyLoginBlockedByDeactivation(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked because user {UserId} has no eligible Person record (PersonId: {PersonId})")]
+    partial void LogPasskeyLoginBlockedByPersonEligibility(Guid userId, Guid? personId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked for locked-out user {UserId}")]
+    partial void LogPasskeyLoginBlockedByLockout(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked because Identity policy does not allow user {UserId} to sign in")]
+    partial void LogPasskeyLoginBlockedByIdentityPolicy(Guid userId);
 
 }
