@@ -470,7 +470,8 @@ namespace Web.IdP.Services
                     .Include(u => u.Person)
                     .FirstOrDefaultAsync(u => u.Id == Guid.Parse(subject), cancellationToken);
 
-                if (user == null || !await _signInManager.CanSignInAsync(user))
+                if (user == null ||
+                    !await CanIssueTokenForCurrentUserStateAsync(user, cancellationToken))
                 {
                         return new ForbidResult(
                         authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Xunit;
@@ -51,7 +52,7 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         var outputPath = Path.Combine(Path.GetTempPath(), $"device_results_{Guid.NewGuid()}.json");
         
         // Ensure we are logged in first
-        await LoginAsync();
+        await LoginAsync(HttpClient, Username, Password);
 
         // Act - Start Client
         var startInfo = new ProcessStartInfo
@@ -97,8 +98,8 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         var userCode = await userCodeTask;
         
         // Act - Simulate User
-        var content = await SubmitUserCodeAsync(userCode);
-        await ConfirmConsentAsync(content);
+        var content = await SubmitUserCodeAsync(HttpClient, userCode);
+        await ConfirmConsentAsync(HttpClient, content);
 
         // Wait for process to finish
         await process.WaitForExitAsync();
@@ -124,10 +125,85 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         }
     }
 
-    private async Task LoginAsync()
+    [Fact]
+    public async Task DeviceCodeExchange_WhenUserDeactivatedAfterApproval_ReturnsInvalidGrant()
+    {
+        using var browserClient = CreateHttpClient(useCookies: true, allowAutoRedirect: true);
+        using var adminClient = CreateHttpClient(useCookies: false, allowAutoRedirect: false);
+        using var pollingClient = CreateHttpClient(useCookies: false, allowAutoRedirect: false);
+
+        await LoginAsync(browserClient, "pkce@hybridauth.local", "Pkce@123");
+
+        using var deviceRequest = new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["client_id"] = "testclient-device",
+                ["scope"] = "openid profile offline_access"
+            });
+        using var deviceResponse = await pollingClient.PostAsync("/connect/device", deviceRequest);
+        Assert.Equal(HttpStatusCode.OK, deviceResponse.StatusCode);
+        using var devicePayload = await JsonDocument.ParseAsync(
+            await deviceResponse.Content.ReadAsStreamAsync());
+        var deviceCode = devicePayload.RootElement.GetProperty("device_code").GetString();
+        var userCode = devicePayload.RootElement.GetProperty("user_code").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(deviceCode));
+        Assert.False(string.IsNullOrWhiteSpace(userCode));
+
+        var verificationHtml = await SubmitUserCodeAsync(browserClient, userCode!);
+        await ConfirmConsentAsync(browserClient, verificationHtml);
+
+        var adminToken = await GetAdminTokenAsync(adminClient);
+        adminClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", adminToken);
+        var userId = await FindUserIdAsync(adminClient, "pkce@hybridauth.local");
+        var userWasDeactivated = false;
+
+        try
+        {
+            using var deactivateResponse =
+                await adminClient.PostAsync($"/api/admin/users/{userId}/deactivate", null);
+            userWasDeactivated = true;
+            Assert.Equal(HttpStatusCode.NoContent, deactivateResponse.StatusCode);
+
+            using var tokenRequest = new FormUrlEncodedContent(
+                new Dictionary<string, string>
+                {
+                    ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code",
+                    ["client_id"] = "testclient-device",
+                    ["device_code"] = deviceCode!
+                });
+            using var tokenResponse =
+                await pollingClient.PostAsync("/connect/token", tokenRequest);
+
+            Assert.Equal(HttpStatusCode.BadRequest, tokenResponse.StatusCode);
+            Assert.Equal("application/json", tokenResponse.Content.Headers.ContentType?.MediaType);
+            using var tokenPayload = await JsonDocument.ParseAsync(
+                await tokenResponse.Content.ReadAsStreamAsync());
+            Assert.Equal(
+                "invalid_grant",
+                tokenPayload.RootElement.GetProperty("error").GetString());
+            Assert.False(tokenPayload.RootElement.TryGetProperty("access_token", out _));
+            Assert.False(tokenPayload.RootElement.TryGetProperty("id_token", out _));
+            Assert.False(tokenPayload.RootElement.TryGetProperty("refresh_token", out _));
+        }
+        finally
+        {
+            if (userWasDeactivated)
+            {
+                using var reactivateResponse =
+                    await adminClient.PostAsync($"/api/admin/users/{userId}/reactivate", null);
+                Assert.Equal(HttpStatusCode.OK, reactivateResponse.StatusCode);
+            }
+        }
+    }
+
+    private static async Task LoginAsync(
+        HttpClient client,
+        string username,
+        string password)
     {
         // Get Login Page to grab AntiForgeryToken
-        var response = await HttpClient.GetAsync("/Account/Login");
+        var response = await client.GetAsync("/Account/Login");
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
         var token = GetRequestVerificationToken(content);
@@ -135,20 +211,22 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         // Post Login
         var formData = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("Input.Login", Username),
-            new KeyValuePair<string, string>("Input.Password", Password),
+            new KeyValuePair<string, string>("Input.Login", username),
+            new KeyValuePair<string, string>("Input.Password", password),
             new KeyValuePair<string, string>("__RequestVerificationToken", token)
         });
 
-        var loginResponse = await HttpClient.PostAsync("/Account/Login", formData);
+        var loginResponse = await client.PostAsync("/Account/Login", formData);
         loginResponse.EnsureSuccessStatusCode();
         // Check if redirected or successfully logged in (cookie should be set)
     }
 
-    private async Task<string> SubmitUserCodeAsync(string userCode)
+    private static async Task<string> SubmitUserCodeAsync(
+        HttpClient client,
+        string userCode)
     {
         // Get Verify Page
-        var response = await HttpClient.GetAsync("/connect/verify");
+        var response = await client.GetAsync("/connect/verify");
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
         var token = GetRequestVerificationToken(content);
@@ -163,13 +241,13 @@ public class DeviceFlowSystemTests : IAsyncLifetime
             new KeyValuePair<string, string>("__RequestVerificationToken", token)
         });
 
-        var submitResponse = await HttpClient.PostAsync("/connect/verify", formData);
+        var submitResponse = await client.PostAsync("/connect/verify", formData);
         submitResponse.EnsureSuccessStatusCode();
 
         return await submitResponse.Content.ReadAsStringAsync();
     }
 
-    private async Task ConfirmConsentAsync(string html)
+    private static async Task ConfirmConsentAsync(HttpClient client, string html)
     {
         if (!html.Contains("Authorize Application"))
         {
@@ -240,7 +318,9 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         // Add submit button
         formData.Add(new KeyValuePair<string, string>("submit", "allow"));
 
-        var response = await HttpClient.PostAsync("/connect/authorize", new FormUrlEncodedContent(formData));
+        var response = await client.PostAsync(
+            "/connect/authorize",
+            new FormUrlEncodedContent(formData));
         response.EnsureSuccessStatusCode();
         
         var content = await response.Content.ReadAsStringAsync();
@@ -248,7 +328,59 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         // Verify success?
     }
 
-    private string GetRequestVerificationToken(string html)
+    private static HttpClient CreateHttpClient(bool useCookies, bool allowAutoRedirect)
+    {
+        var handler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback =
+                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+            AllowAutoRedirect = allowAutoRedirect,
+            UseCookies = useCookies
+        };
+        if (useCookies)
+        {
+            handler.CookieContainer = new CookieContainer();
+        }
+
+        return new HttpClient(handler) { BaseAddress = new Uri(Authority) };
+    }
+
+    private static async Task<string> GetAdminTokenAsync(HttpClient adminClient)
+    {
+        using var request = new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = "testclient-admin",
+                ["client_secret"] = "admin-test-secret-2024",
+                ["scope"] = "users.read users.update users.delete"
+            });
+        using var response = await adminClient.PostAsync("/connect/token", request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var payload = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync());
+        var accessToken = payload.RootElement.GetProperty("access_token").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(accessToken));
+        return accessToken!;
+    }
+
+    private static async Task<string> FindUserIdAsync(HttpClient adminClient, string email)
+    {
+        using var response = await adminClient.GetAsync(
+            $"/api/admin/users?search={Uri.EscapeDataString(email)}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var payload = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync());
+        var items = payload.RootElement.GetProperty("items");
+        Assert.Single(items.EnumerateArray());
+        var userId = items[0].GetProperty("id").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(userId));
+        return userId!;
+    }
+
+    private static string GetRequestVerificationToken(string html)
     {
         var match = Regex.Match(html, @"input name=""__RequestVerificationToken"" type=""hidden"" value=""([^""]+)""");
         if (match.Success) return match.Groups[1].Value;

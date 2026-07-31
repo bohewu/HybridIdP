@@ -737,6 +737,140 @@ namespace Tests.Application.UnitTests
             Assert.Equal(user.Id.ToString(), signInResult.Principal!.GetClaim(Claims.Subject));
         }
 
+        [Theory]
+        [InlineData(false, false, false)]
+        [InlineData(true, true, false)]
+        [InlineData(true, false, true)]
+        public async Task HandleTokenRequestAsync_DeviceCode_RestrictedAccount_ReturnsInvalidGrant(
+            bool isActive,
+            bool isDeleted,
+            bool isLockedOut)
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "device-code-user",
+                IsActive = isActive,
+                IsDeleted = isDeleted
+            };
+            var principal = SetupDeviceCodeGrant(user, isLockedOut);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.DeviceCode),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Theory]
+        [InlineData(PersonStatus.Suspended, null, null, false)]
+        [InlineData(PersonStatus.Active, 1, null, false)]
+        [InlineData(PersonStatus.Active, null, -1, false)]
+        [InlineData(PersonStatus.Active, null, null, true)]
+        public async Task HandleTokenRequestAsync_DeviceCode_IneligiblePerson_ReturnsInvalidGrant(
+            PersonStatus status,
+            int? startDateOffsetDays,
+            int? endDateOffsetDays,
+            bool isDeleted)
+        {
+            var personId = Guid.NewGuid();
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "device-code-user",
+                IsActive = true,
+                PersonId = personId
+            };
+            var person = new Person
+            {
+                Id = personId,
+                Status = status,
+                StartDate = startDateOffsetDays.HasValue
+                    ? DateTime.UtcNow.Date.AddDays(startDateOffsetDays.Value)
+                    : null,
+                EndDate = endDateOffsetDays.HasValue
+                    ? DateTime.UtcNow.Date.AddDays(endDateOffsetDays.Value)
+                    : null,
+                IsDeleted = isDeleted
+            };
+            var principal = SetupDeviceCodeGrant(user);
+            SetupMockPersons(person);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.DeviceCode),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_DeviceCode_MissingLinkedPerson_ReturnsInvalidGrant()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "device-code-user",
+                IsActive = true,
+                PersonId = Guid.NewGuid()
+            };
+            var principal = SetupDeviceCodeGrant(user);
+            SetupMockPersons();
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.DeviceCode),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_DeviceCode_EligibleLinkedUser_PreservesScopes()
+        {
+            var personId = Guid.NewGuid();
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "device-code-user",
+                IsActive = true,
+                PersonId = personId
+            };
+            var principal = SetupDeviceCodeGrant(user);
+            SetupMockPersons(new Person
+            {
+                Id = personId,
+                Status = PersonStatus.Active
+            });
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.DeviceCode),
+                principal);
+
+            var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            Assert.Equal(user.Id.ToString(), signInResult.Principal!.GetClaim(Claims.Subject));
+            Assert.Equal(
+                principal.GetScopes().Order(),
+                signInResult.Principal.GetScopes().Order());
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_DeviceCode_EligibleUnlinkedUser_ReturnsSignInResult()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "device-code-user",
+                IsActive = true
+            };
+            var principal = SetupDeviceCodeGrant(user);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.DeviceCode),
+                principal);
+
+            var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            Assert.Equal(user.Id.ToString(), signInResult.Principal!.GetClaim(Claims.Subject));
+        }
+
         [Fact]
         public async Task HandleTokenRequestAsync_AuthorizationCode_MissingPermission_ReturnsForbidResult()
         {
@@ -818,6 +952,35 @@ namespace Tests.Application.UnitTests
             return new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(Claims.Subject, user.Id.ToString())],
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme));
+        }
+
+        private ClaimsPrincipal SetupDeviceCodeGrant(
+            ApplicationUser user,
+            bool isLockedOut = false)
+        {
+            var clientApp = new object();
+            _mockApplicationManager
+                .Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(clientApp);
+            _mockApplicationManager
+                .Setup(m => m.GetPermissionsAsync(clientApp, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableArray.Create(
+                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode));
+
+            SetupMockUsers(user);
+            _mockUserManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(isLockedOut);
+            _mockUserManager.Setup(m => m.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
+            _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
+            _mockApiResourceService
+                .Setup(service => service.GetAudiencesByScopesAsync(
+                    It.IsAny<IEnumerable<string>>()))
+                .ReturnsAsync([]);
+
+            var identity = new ClaimsIdentity(
+                [new Claim(Claims.Subject, user.Id.ToString())],
+                OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+            identity.SetScopes(Scopes.OpenId, Scopes.Profile);
+            return new ClaimsPrincipal(identity);
         }
 
         private void SetupPasswordGrant(

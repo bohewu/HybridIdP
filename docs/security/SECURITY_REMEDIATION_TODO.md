@@ -196,7 +196,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | Finding | Status | Summary |
 | --- | --- | --- |
 | `csf_f27142404da832c902ea5492` | fixed | Apply the current-account lifecycle predicate during authorization-code exchange. |
-| `csf_14ab71c83a4dbbec064ce0c5` | pending | Apply the current-account lifecycle predicate during device-code exchange. |
+| `csf_14ab71c83a4dbbec064ce0c5` | fixed | Apply the current-account lifecycle predicate during device-code exchange. |
 | `csf_4f7926baaf87d0ebe0ea1861` | pending | Enforce antiforgery validation on authorization consent POST. |
 | `csf_ab24e2d45bb89d24d8b45833` | pending | Enforce antiforgery validation on device-verification POST. |
 | `csf_2115040b736c248be7b31b82` | pending | Protect the interactive authorization page from framing without breaking machine-readable `/connect` responses. |
@@ -282,6 +282,28 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   confidential-client secret-rotation system regressions passed 8/8.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,377 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped.
+
+### M3 Verification Evidence
+
+- Before the fix, an approved device code belonging to an inactive user still
+  produced a token-issuing `SignInResult`. The negative regression failed
+  instead of returning OAuth `invalid_grant`.
+- Device-code polling now reuses the current-account lifecycle predicate used
+  by password, refresh-token, and authorization-code grants. It rejects
+  inactive, deleted, or locked users and missing or ineligible linked Person
+  records immediately before token issuance.
+- Eligible linked users retain the approved scopes and existing claim
+  enrichment behavior. Eligible legacy users without a Person link remain
+  supported.
+- The real HTTP regression obtains and approves a device code, deactivates the
+  user before polling `/connect/token`, and verifies HTTP 400 JSON
+  `invalid_grant` without access, ID, or refresh tokens. The account is
+  reactivated in test cleanup.
+- Focused TokenService tests passed 50/50. The new lifecycle regression and
+  existing end-to-end device client flow passed 2/2.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,388 tests with 0 failed and 1 existing aggressive ZAP test
   skipped.
 
 ## P2 - Low Hardening
