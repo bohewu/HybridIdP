@@ -786,13 +786,13 @@ public class UsersController : ControllerBase
                 return Unauthorized();
             }
 
-            if (!await HasAnyMfaMethodEnabledAsync(operatorUser))
+            if (!HasCompletedMfaInCurrentSession())
             {
                 return BadRequest(new
                 {
                     errors = new[]
                     {
-                        "Operator must enable MFA before assigning privileged roles."
+                        "Operator must complete MFA in the current session before assigning privileged roles."
                     }
                 });
             }
@@ -833,13 +833,13 @@ public class UsersController : ControllerBase
                 return Unauthorized();
             }
 
-            if (!await HasAnyMfaMethodEnabledAsync(operatorUser))
+            if (!HasCompletedMfaInCurrentSession())
             {
                 return BadRequest(new
                 {
                     errors = new[]
                     {
-                        "Operator must enable MFA before assigning privileged roles."
+                        "Operator must complete MFA in the current session before assigning privileged roles."
                     }
                 });
             }
@@ -894,6 +894,28 @@ public class UsersController : ControllerBase
         }
 
         return await _userManager.FindByIdAsync(currentUserId);
+    }
+
+    private bool HasCompletedMfaInCurrentSession()
+    {
+        var authenticationMethods = User.Claims
+            .Where(claim =>
+                claim.Type == AuthConstants.ClaimTypes.Amr ||
+                claim.Type == AuthConstants.ClaimTypes.AuthenticationMethod)
+            .Select(claim => claim.Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var hasOtp = authenticationMethods.Contains(AuthConstants.Amr.Otp);
+        var hasMfa = authenticationMethods.Contains(AuthConstants.Amr.Mfa);
+        var hasHardwareKey = authenticationMethods.Contains(AuthConstants.Amr.HardwareKey);
+
+        if (hasHardwareKey && !_privilegedRoleProtectionOptions.CountPasskeyAsMfa && !hasOtp)
+        {
+            return false;
+        }
+
+        return hasMfa ||
+               (_privilegedRoleProtectionOptions.CountPasskeyAsMfa && hasHardwareKey);
     }
 
     private async Task<bool> HasAnyMfaMethodEnabledAsync(ApplicationUser user)

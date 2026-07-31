@@ -5,7 +5,8 @@ public class PrivilegedRoleProtectionOptions
     public const string Section = "PrivilegedRoleProtection";
 
     /// <summary>
-    /// When true, the operator assigning privileged roles must have MFA enabled.
+    /// When true, the operator assigning privileged roles must have completed MFA
+    /// in the current authenticated session.
     /// </summary>
     public bool RequireOperatorMfaForPrivilegedRoleAssignment { get; set; } = false;
 

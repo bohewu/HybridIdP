@@ -34,7 +34,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | H1 Role-assignment authorization boundary | `csf_22f90b83d6be6ca8c98d2e42` | done | Any IdP global-role set change requires `roles.update`; `users.update` alone cannot add or remove roles. Metadata-only user updates with an unchanged role set remain compatible. Administrators and authorized role managers retain the existing routes, DTOs, and successful responses. |
 | H2 TOTP enrollment authorization | `csf_5446839cb1ab3ec3b103069a` | done | Retrieving or enabling a TOTP secret requires the intended account-management authorization and fresh authentication. The normal interactive enrollment flow remains functional. |
 | H3 Recovery-code regeneration authorization | `csf_d648cf493455299a40c96ecd` | done | Replacing or retrieving recovery codes requires the intended account-management authorization and reauthentication. Existing recovery-code consumption remains compatible. |
-| H4 Privileged-operation session assurance | `csf_edc0a91a588b8b31027d34dd` | pending | Privileged role operations verify that the current session completed MFA rather than only checking factor enrollment. Existing properly authenticated administrator sessions continue to work. |
+| H4 Privileged-operation session assurance | `csf_edc0a91a588b8b31027d34dd` | done | Privileged role operations verify that the current session completed MFA rather than only checking factor enrollment. Existing properly authenticated administrator sessions continue to work. |
 | H5 Email MFA possession proof | `csf_dd9a1204a8e34c5525c609a2` | pending | Email MFA is not enabled and no MFA-labelled application session is issued until the pending OTP is successfully verified. |
 | H6 Linked-account switching eligibility | `csf_8858d11ce2afd4b3037b3081` | pending | Switching accounts applies the same user, Person, lockout, lifecycle, and MFA eligibility checks as a normal sign-in. |
 | H7 Passkey sign-in eligibility | `csf_5f21ecdf3e28328eb46c9a39` | pending | Passkey sign-in checks deleted and inactive state, lockout, `CanSignIn`, and Person eligibility before issuing an application cookie. |
@@ -99,6 +99,25 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   suite passed 1,328 tests with 0 failed and 1 skipped; the frontend suite
   passed 93/93. Diff validation, generated-output checks, and sensitive-output
   checks passed.
+
+### H4 Verification Evidence
+
+- Before the fix, password-only cookie and bearer principals belonging to an
+  MFA-enrolled operator both reached privileged role persistence. The
+  regression failed 2/2 with `Ok` instead of the required rejection.
+- The privileged-role creation and assignment boundaries now require an MFA
+  authentication-method claim from the current principal. Factor-enrollment
+  flags remain limited to the separate target-enrollment policy.
+- Focused tests cover cookie and bearer principals, both supported
+  authentication-method claim types, TOTP and passkey sessions, the existing
+  passkey policy switch, target enrollment, unprotected roles, and the
+  existing disabled-policy compatibility behavior.
+- Focused role and authorization tests passed 29/29; the full Application
+  unit-test project passed 551/551; existing user CRUD, role assignment, and
+  MFA-enabled password-grant system regressions passed 10/10.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,342 tests with 0 failed and 1 skipped. Diff validation found
+  no whitespace errors, generated output, or live credential material.
 
 ## P1 - Medium
 
