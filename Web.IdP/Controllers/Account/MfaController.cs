@@ -403,11 +403,25 @@ public partial class MfaController : ControllerBase
             return Unauthorized();
         }
 
-        var isValid = await _mfaService.VerifyEmailMfaCodeAsync(user, request.Code, ct);
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (!policy.EnableEmailMfa)
+        {
+            LogEmailMfaEnablementBlocked(user.Id);
+            return StatusCode(403, new { error = "mfaDisabled" });
+        }
+
+        if (string.IsNullOrEmpty(user.Email))
+        {
+            return BadRequest(new { error = "noEmail", message = "User does not have an email address." });
+        }
+
+        var isValid = await _mfaService.VerifyAndEnableEmailMfaAsync(user, request.Code, ct);
 
         if (isValid)
         {
             LogEmailMfaCodeVerified(user.Id);
+            LogEmailMfaEnabled(user.Id);
+            await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null, ct);
             return Ok(new { success = true });
         }
 
@@ -415,7 +429,7 @@ public partial class MfaController : ControllerBase
     }
 
     /// <summary>
-    /// Enable Email MFA for the user.
+    /// Reject direct Email MFA enablement without an OTP possession proof.
     /// </summary>
     [HttpPost("email/enable")]
     public async Task<ActionResult> EnableEmailMfa(CancellationToken ct)
@@ -438,12 +452,7 @@ public partial class MfaController : ControllerBase
             return BadRequest(new { error = "noEmail", message = "User does not have an email address." });
         }
 
-        await _mfaService.EnableEmailMfaAsync(user, ct);
-
-        LogEmailMfaEnabled(user.Id);
-        await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null, ct);
-
-        return Ok(new { success = true });
+        return BadRequest(new { error = "verificationRequired" });
     }
 
     /// <summary>

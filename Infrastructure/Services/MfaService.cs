@@ -281,14 +281,25 @@ public class MfaService : IMfaService
         return (true, 60);
     }
 
-    public async Task<bool> VerifyEmailMfaCodeAsync(ApplicationUser user, string code, CancellationToken ct = default)
+    public Task<bool> VerifyEmailMfaCodeAsync(ApplicationUser user, string code, CancellationToken ct = default) =>
+        VerifyEmailMfaCodeCoreAsync(user, code, enableEmailMfa: false, ct);
+
+    public Task<bool> VerifyAndEnableEmailMfaAsync(ApplicationUser user, string code, CancellationToken ct = default) =>
+        VerifyEmailMfaCodeCoreAsync(user, code, enableEmailMfa: true, ct);
+
+    private async Task<bool> VerifyEmailMfaCodeCoreAsync(
+        ApplicationUser user,
+        string code,
+        bool enableEmailMfa,
+        CancellationToken ct)
     {
         if (string.IsNullOrEmpty(user.EmailMfaCode))
         {
             return false; // No code pending
         }
 
-        if (user.EmailMfaCodeExpiry.HasValue && user.EmailMfaCodeExpiry.Value < _timeProvider.GetUtcNow().DateTime)
+        if (!user.EmailMfaCodeExpiry.HasValue ||
+            user.EmailMfaCodeExpiry.Value <= _timeProvider.GetUtcNow().DateTime)
         {
             // Code expired, clear it
             user.EmailMfaCode = null;
@@ -304,18 +315,28 @@ public class MfaService : IMfaService
             return false;
         }
 
-        // Clear the code after successful verification
+        var previousCode = user.EmailMfaCode;
+        var previousExpiry = user.EmailMfaCodeExpiry;
+        var wasEmailMfaEnabled = user.EmailMfaEnabled;
+
+        // Consume the proof and, for enrollment, persist enablement in the same update.
         user.EmailMfaCode = null;
         user.EmailMfaCodeExpiry = null;
-        await _userManager.UpdateAsync(user);
+        if (enableEmailMfa)
+        {
+            user.EmailMfaEnabled = true;
+        }
 
-        return true;
-    }
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (updateResult.Succeeded)
+        {
+            return true;
+        }
 
-    public async Task EnableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default)
-    {
-        user.EmailMfaEnabled = true;
-        await _userManager.UpdateAsync(user);
+        user.EmailMfaCode = previousCode;
+        user.EmailMfaCodeExpiry = previousExpiry;
+        user.EmailMfaEnabled = wasEmailMfaEnabled;
+        return false;
     }
 
     public async Task DisableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default)

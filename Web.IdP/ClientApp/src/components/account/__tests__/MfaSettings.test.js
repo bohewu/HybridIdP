@@ -248,6 +248,98 @@ describe('MfaSettings.vue', () => {
         expect(passkeySection.exists()).toBe(true);
     });
 
+    it('requires an emailed code before enabling Email MFA', async () => {
+        fetch.mockImplementation((url) => {
+            if (url === '/api/account/mfa/status') {
+                return Promise.resolve(jsonResponse({
+                    twoFactorEnabled: false,
+                    emailMfaEnabled: false,
+                    enableTotpMfa: true,
+                    enableEmailMfa: true,
+                    enablePasskey: false
+                }));
+            }
+            if (url === '/api/profile') {
+                return Promise.resolve(jsonResponse({ email: 'test@example.com' }));
+            }
+            if (url === '/api/account/mfa/email/send') {
+                return Promise.resolve(jsonResponse({ success: true }));
+            }
+            if (url === '/api/account/mfa/email/verify') {
+                return Promise.resolve(jsonResponse({ success: true }));
+            }
+            if (url === '/api/passkey/list') {
+                return Promise.resolve(jsonResponse([]));
+            }
+            if (url === '/api/account/security-policy') {
+                return Promise.resolve(jsonResponse({ requireMfaForPasskey: false }));
+            }
+            return Promise.resolve(jsonResponse({}));
+        });
+
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        await wrapper.vm.openEmailMfaSetup();
+        await flushPromises();
+
+        expect(wrapper.find('.email-mfa-modal').exists()).toBe(true);
+        expect(fetch).toHaveBeenCalledWith('/api/account/mfa/email/send', {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        await wrapper.get('#email-mfa-code').setValue('123456');
+        await wrapper.vm.verifyEmailMfa();
+        await flushPromises();
+
+        const verifyRequest = fetch.mock.calls.find(
+            ([url]) => url === '/api/account/mfa/email/verify');
+        expect(verifyRequest).toBeTruthy();
+        expect(JSON.parse(verifyRequest[1].body)).toEqual({ code: '123456' });
+        expect(fetch.mock.calls.some(
+            ([url]) => url === '/api/account/mfa/email/enable')).toBe(false);
+        expect(wrapper.find('.email-mfa-modal').exists()).toBe(false);
+    });
+
+    it('keeps Email MFA verification open when the code is invalid', async () => {
+        fetch.mockImplementation((url) => {
+            if (url === '/api/account/mfa/status') {
+                return Promise.resolve(jsonResponse({
+                    twoFactorEnabled: false,
+                    emailMfaEnabled: false,
+                    enableTotpMfa: true,
+                    enableEmailMfa: true,
+                    enablePasskey: false
+                }));
+            }
+            if (url === '/api/profile') {
+                return Promise.resolve(jsonResponse({ email: 'test@example.com' }));
+            }
+            if (url === '/api/account/mfa/email/send') {
+                return Promise.resolve(jsonResponse({ success: true }));
+            }
+            if (url === '/api/account/mfa/email/verify') {
+                return Promise.resolve(jsonResponse({
+                    success: false,
+                    error: 'invalidOrExpiredCode'
+                }));
+            }
+            return Promise.resolve(jsonResponse({}));
+        });
+
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        await wrapper.vm.openEmailMfaSetup();
+        await flushPromises();
+        await wrapper.get('#email-mfa-code').setValue('000000');
+        await wrapper.vm.verifyEmailMfa();
+        await flushPromises();
+
+        expect(wrapper.find('.email-mfa-modal').exists()).toBe(true);
+        expect(wrapper.get('.email-mfa-modal [role="alert"]').text())
+            .toBe('mfa.errors.invalidOrExpiredCode');
+    });
+
     it('requires password proof and sends only the password contract property for password users', async () => {
         mockMfaAccount({
             hasPassword: true,
@@ -431,6 +523,31 @@ describe('MfaSettings.vue', () => {
         expect(enMfa.errors.regenerateFailed.length).toBeGreaterThan(0);
         expect(typeof zhMfa.errors.regenerateFailed).toBe('string');
         expect(zhMfa.errors.regenerateFailed.length).toBeGreaterThan(0);
+    });
+
+    it('provides matching Email MFA possession-proof keys in both supported locales', () => {
+        const topLevelKeys = [
+            'emailSetupTitle',
+            'emailSetupDescription',
+            'emailCodeSent',
+            'emailCodeLabel',
+            'emailCodeHelp',
+            'sendCode',
+            'resendCode',
+            'verifyAndEnable'
+        ];
+
+        for (const key of topLevelKeys) {
+            expect(typeof enMfa[key]).toBe('string');
+            expect(enMfa[key].length).toBeGreaterThan(0);
+            expect(typeof zhMfa[key]).toBe('string');
+            expect(zhMfa[key].length).toBeGreaterThan(0);
+        }
+
+        expect(typeof enMfa.errors.sendCodeFailed).toBe('string');
+        expect(typeof zhMfa.errors.sendCodeFailed).toBe('string');
+        expect(typeof enMfa.errors.invalidOrExpiredCode).toBe('string');
+        expect(typeof zhMfa.errors.invalidOrExpiredCode).toBe('string');
     });
 });
 

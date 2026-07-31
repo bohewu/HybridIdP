@@ -450,28 +450,21 @@ public partial class MfaApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task EmailMfa_EnableDisable_Works()
+    public async Task EmailMfa_DirectEnableWithoutOtpProof_IsRejected()
     {
         // Arrange
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
 
-        // Act - Enable
+        // Act - direct enable without a pending, verified email code
         var enableResponse = await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
-        Assert.Equal(HttpStatusCode.OK, enableResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, enableResponse.StatusCode);
+        var enableResult = await enableResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("verificationRequired", enableResult.GetProperty("error").GetString());
 
-        // Verify enabled
+        // Assert - state remains disabled
         var statusResponse = await _httpClient.GetAsync("/api/account/mfa/status");
         var status = await statusResponse.Content.ReadFromJsonAsync<MfaStatusDto>();
-        Assert.True(status!.EmailMfaEnabled);
-
-        // Act - Disable
-        var disableResponse = await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
-        Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
-
-        // Verify disabled
-        var statusResponse2 = await _httpClient.GetAsync("/api/account/mfa/status");
-        var status2 = await statusResponse2.Content.ReadFromJsonAsync<MfaStatusDto>();
-        Assert.False(status2!.EmailMfaEnabled);
+        Assert.False(status!.EmailMfaEnabled);
     }
 
     [Fact]

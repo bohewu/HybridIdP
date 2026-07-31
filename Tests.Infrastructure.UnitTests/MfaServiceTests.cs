@@ -562,27 +562,114 @@ public class MfaServiceTests
     }
 
     [Fact]
-    public async Task EnableEmailMfaAsync_SetsEmailMfaEnabled()
+    public async Task VerifyAndEnableEmailMfaAsync_ValidCode_ConsumesProofAndEnablesEmailMfa()
     {
         // Arrange
         var user = CreateTestUser();
         user.EmailMfaEnabled = false;
+        user.EmailMfaCode = "HASHED_CODE";
+        user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5);
         
         var emailServiceMock = new Mock<IEmailService>();
         var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
+        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "123456"))
+            .Returns(PasswordVerificationResult.Success);
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
         
         var sut = CreateMfaService(emailServiceMock, emailTemplateServiceMock, passwordHasherMock, distributedCacheMock);
 
         // Act
-        await sut.EnableEmailMfaAsync(user);
+        var result = await sut.VerifyAndEnableEmailMfaAsync(user, "123456");
 
         // Assert
+        result.Should().BeTrue();
         user.EmailMfaEnabled.Should().BeTrue();
+        user.EmailMfaCode.Should().BeNull();
+        user.EmailMfaCodeExpiry.Should().BeNull();
         _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
+    }
+
+    [Fact]
+    public async Task VerifyAndEnableEmailMfaAsync_InvalidCode_DoesNotEnableEmailMfa()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        user.EmailMfaCode = "HASHED_CODE";
+        user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5);
+        var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
+        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "000000"))
+            .Returns(PasswordVerificationResult.Failed);
+        var sut = CreateMfaService(passwordHasherMock: passwordHasherMock);
+
+        // Act
+        var result = await sut.VerifyAndEnableEmailMfaAsync(user, "000000");
+
+        // Assert
+        result.Should().BeFalse();
+        user.EmailMfaEnabled.Should().BeFalse();
+        user.EmailMfaCode.Should().Be("HASHED_CODE");
+        _userManagerMock.Verify(
+            x => x.UpdateAsync(It.IsAny<ApplicationUser>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task VerifyAndEnableEmailMfaAsync_MissingExpiry_DoesNotEnableEmailMfa()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        user.EmailMfaCode = "HASHED_CODE";
+        user.EmailMfaCodeExpiry = null;
+        var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
+        var sut = CreateMfaService(passwordHasherMock: passwordHasherMock);
+
+        // Act
+        var result = await sut.VerifyAndEnableEmailMfaAsync(user, "123456");
+
+        // Assert
+        result.Should().BeFalse();
+        user.EmailMfaEnabled.Should().BeFalse();
+        user.EmailMfaCode.Should().BeNull();
+        user.EmailMfaCodeExpiry.Should().BeNull();
+        passwordHasherMock.Verify(
+            x => x.VerifyHashedPassword(
+                It.IsAny<ApplicationUser>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()),
+            Times.Never);
+        _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
+    }
+
+    [Fact]
+    public async Task VerifyAndEnableEmailMfaAsync_PersistenceFailure_DoesNotPromoteInMemoryState()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        var pendingExpiry = DateTime.UtcNow.AddMinutes(5);
+        user.EmailMfaCode = "HASHED_CODE";
+        user.EmailMfaCodeExpiry = pendingExpiry;
+        var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
+        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "123456"))
+            .Returns(PasswordVerificationResult.Success);
+        _userManagerMock.Setup(x => x.UpdateAsync(user))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError
+            {
+                Code = "PersistenceFailed",
+                Description = "Test-only persistence failure"
+            }));
+        var sut = CreateMfaService(passwordHasherMock: passwordHasherMock);
+
+        // Act
+        var result = await sut.VerifyAndEnableEmailMfaAsync(user, "123456");
+
+        // Assert
+        result.Should().BeFalse();
+        user.EmailMfaEnabled.Should().BeFalse();
+        user.EmailMfaCode.Should().Be("HASHED_CODE");
+        user.EmailMfaCodeExpiry.Should().Be(pendingExpiry);
     }
 
     [Fact]

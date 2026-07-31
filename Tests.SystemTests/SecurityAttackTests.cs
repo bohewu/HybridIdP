@@ -64,11 +64,7 @@ public class SecurityAttackTests : IAsyncLifetime
         // Arrange
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
         
-        // Enable Email MFA first
-        var enableResponse = await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
-        Assert.Equal(HttpStatusCode.OK, enableResponse.StatusCode);
-        
-        // Send code
+        // Enrollment now starts by sending a possession-proof code.
         var sendResponse = await _httpClient.PostAsync("/api/account/mfa/email/send", null);
         Assert.Equal(HttpStatusCode.OK, sendResponse.StatusCode);
         
@@ -99,10 +95,6 @@ public class SecurityAttackTests : IAsyncLifetime
     {
         // Arrange
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
-        
-        // Enable Email MFA
-        var enableResponse = await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
-        Assert.Equal(HttpStatusCode.OK, enableResponse.StatusCode);
         
         // Wait for rate limit to reset before sending code
         await Task.Delay(1000);

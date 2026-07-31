@@ -58,7 +58,7 @@ public class EmailMfaFlowTests : IAsyncLifetime
     #region Email MFA Enable/Disable Flow
 
     [Fact]
-    public async Task EmailMfa_FullEnableDisableFlow_Works()
+    public async Task EmailMfa_DirectEnableWithoutProof_DoesNotChangeState()
     {
         // Arrange
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
@@ -68,23 +68,14 @@ public class EmailMfaFlowTests : IAsyncLifetime
         var status = await statusResponse.Content.ReadFromJsonAsync<MfaStatusDto>();
         Assert.False(status!.EmailMfaEnabled, "Email MFA should be disabled initially");
 
-        // 2. Enable Email MFA
+        // 2. Direct enable without an OTP possession proof must fail
         var enableResponse = await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
-        Assert.Equal(HttpStatusCode.OK, enableResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, enableResponse.StatusCode);
 
-        // 3. Verify it's enabled
+        // 3. Verify it remains disabled
         var statusAfterEnable = await _httpClient.GetAsync("/api/account/mfa/status");
         var enabledStatus = await statusAfterEnable.Content.ReadFromJsonAsync<MfaStatusDto>();
-        Assert.True(enabledStatus!.EmailMfaEnabled, "Email MFA should be enabled after enable call");
-
-        // 4. Disable Email MFA
-        var disableResponse = await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
-        Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
-
-        // 5. Verify it's disabled
-        var statusAfterDisable = await _httpClient.GetAsync("/api/account/mfa/status");
-        var disabledStatus = await statusAfterDisable.Content.ReadFromJsonAsync<MfaStatusDto>();
-        Assert.False(disabledStatus!.EmailMfaEnabled, "Email MFA should be disabled after disable call");
+        Assert.False(enabledStatus!.EmailMfaEnabled, "Email MFA must remain disabled without proof");
     }
 
     #endregion
@@ -107,6 +98,10 @@ public class EmailMfaFlowTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var result = await response.Content.ReadFromJsonAsync<VerifyCodeResponse>();
         Assert.False(result!.Success, "Verification without pending code should fail");
+
+        var statusResponse = await _httpClient.GetAsync("/api/account/mfa/status");
+        var status = await statusResponse.Content.ReadFromJsonAsync<MfaStatusDto>();
+        Assert.False(status!.EmailMfaEnabled, "Failed verification must not enable Email MFA");
     }
 
     #endregion
@@ -138,7 +133,7 @@ public class EmailMfaFlowTests : IAsyncLifetime
     #region Concurrent MFA Methods
 
     [Fact]
-    public async Task EmailMfa_CanCoexistWithTotpMfa()
+    public async Task EmailMfa_CannotBeAddedToTotpSessionWithoutEmailProof()
     {
         await MfaEnrollmentTestClient.AuthorizeAsync(
             _httpClient,
@@ -156,18 +151,19 @@ public class EmailMfaFlowTests : IAsyncLifetime
             "/api/account/mfa-setup/totp/verify",
             new { Code = totpCode });
 
-        // 2. Enable Email MFA as the second factor.
-        await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
+        // 2. Direct Email MFA enablement still requires its own possession proof.
+        var directEnableResponse =
+            await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
+        Assert.Equal(HttpStatusCode.BadRequest, directEnableResponse.StatusCode);
 
-        // 3. Check both are enabled
+        // 3. TOTP remains enabled, but Email MFA does not.
         var statusResponse = await _httpClient.GetAsync("/api/account/mfa/status");
         var status = await statusResponse.Content.ReadFromJsonAsync<MfaStatusDto>();
         
-        Assert.True(status!.EmailMfaEnabled, "Email MFA should be enabled");
+        Assert.False(status!.EmailMfaEnabled, "Email MFA requires its own verified code");
         Assert.True(status.TwoFactorEnabled, "TOTP MFA should also be enabled");
 
         // Cleanup
-        await _httpClient.PostAsync("/api/account/mfa/email/disable", null);
         await _httpClient.PostAsJsonAsync("/api/account/mfa/disable", new { Password = TEST_USER_PASSWORD });
     }
 

@@ -62,9 +62,10 @@ public interface IMfaService
     Task<bool> VerifyEmailMfaCodeAsync(ApplicationUser user, string code, CancellationToken ct = default);
     
     /// <summary>
-    /// Enables Email MFA for the user.
+    /// Verifies the pending email code and enables Email MFA atomically.
+    /// Returns true only when the code is valid and the enabled state is persisted.
     /// </summary>
-    Task EnableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default);
+    Task<bool> VerifyAndEnableEmailMfaAsync(ApplicationUser user, string code, CancellationToken ct = default);
     
     /// <summary>
     /// Disables Email MFA for the user.

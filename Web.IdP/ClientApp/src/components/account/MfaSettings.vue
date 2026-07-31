@@ -80,7 +80,7 @@
             <button 
               v-if="!mfaStatus.emailMfaEnabled" 
               class="btn-enable" 
-              @click="enableEmailMfa"
+              @click="openEmailMfaSetup"
               :disabled="emailMfaLoading"
             >
               {{ emailMfaLoading ? '...' : t('mfa.enable') }}
@@ -162,6 +162,64 @@
         
         <p v-if="passkeyError" class="error-message">{{ passkeyError }}</p>
         <p v-if="passkeySuccess" class="success-message">{{ passkeySuccess }}</p>
+      </div>
+    </div>
+
+    <!-- Email MFA Verification Modal -->
+    <div v-if="showEmailMfaModal" class="modal-overlay" @click.self="closeEmailMfaSetup">
+      <div
+        class="modal-content email-mfa-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="email-mfa-setup-title"
+      >
+        <h2 id="email-mfa-setup-title">{{ t('mfa.emailSetupTitle') }}</h2>
+        <p class="setup-instruction">
+          {{ t('mfa.emailSetupDescription', { email: maskedEmail }) }}
+        </p>
+
+        <p v-if="emailCodeSent" class="success-message" role="status">
+          {{ t('mfa.emailCodeSent') }}
+        </p>
+        <p v-if="emailMfaModalError" class="error-message" role="alert">
+          {{ emailMfaModalError }}
+        </p>
+
+        <form @submit.prevent="verifyEmailMfa">
+          <div class="verify-section">
+            <label for="email-mfa-code">{{ t('mfa.emailCodeLabel') }}</label>
+            <input
+              id="email-mfa-code"
+              ref="emailCodeInput"
+              v-model.trim="emailMfaCode"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              pattern="[0-9]*"
+              maxlength="6"
+              placeholder="000000"
+              class="code-input"
+              :disabled="emailMfaLoading"
+            />
+            <p class="field-hint">{{ t('mfa.emailCodeHelp') }}</p>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" @click="closeEmailMfaSetup" :disabled="emailMfaLoading">
+              {{ t('common.cancel') }}
+            </button>
+            <button type="button" class="btn-secondary" @click="sendEmailMfaCode" :disabled="emailMfaLoading">
+              {{ emailCodeSent ? t('mfa.resendCode') : t('mfa.sendCode') }}
+            </button>
+            <button
+              type="submit"
+              class="btn-primary"
+              :disabled="emailMfaLoading || !/^\d{6}$/.test(emailMfaCode)"
+            >
+              {{ emailMfaLoading ? '...' : t('mfa.verifyAndEnable') }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -368,7 +426,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWebAuthn } from '../../composables/useWebAuthn';
 
@@ -407,6 +465,11 @@ const userTimeZone = ref('');
 const emailMfaLoading = ref(false);
 const emailMfaError = ref('');
 const emailMfaSuccess = ref('');
+const showEmailMfaModal = ref(false);
+const emailMfaCode = ref('');
+const emailCodeSent = ref(false);
+const emailMfaModalError = ref('');
+const emailCodeInput = ref<HTMLInputElement | null>(null);
 
 // Passkeys (Phase 20.4)
 const { registerPasskey } = useWebAuthn();
@@ -589,28 +652,76 @@ async function loadMfaStatus() {
   }
 }
 
-async function enableEmailMfa() {
+async function openEmailMfaSetup() {
+  showEmailMfaModal.value = true;
+  emailMfaCode.value = '';
+  emailCodeSent.value = false;
+  emailMfaModalError.value = '';
+  await sendEmailMfaCode();
+}
+
+function closeEmailMfaSetup() {
+  if (emailMfaLoading.value) return;
+  showEmailMfaModal.value = false;
+  emailMfaCode.value = '';
+  emailCodeSent.value = false;
+  emailMfaModalError.value = '';
+}
+
+async function sendEmailMfaCode() {
   emailMfaLoading.value = true;
-  emailMfaError.value = '';
-  emailMfaSuccess.value = '';
+  emailMfaModalError.value = '';
   
   try {
-    const response = await fetch('/api/account/mfa/email/enable', {
+    const response = await fetch('/api/account/mfa/email/send', {
       method: 'POST',
       credentials: 'include'
     });
+    const result = await response.json().catch(() => ({}));
     
     if (response.ok) {
+      emailCodeSent.value = true;
+      await nextTick();
+      emailCodeInput.value?.focus();
+    } else {
+      emailMfaModalError.value = result.message || t('mfa.errors.sendCodeFailed');
+    }
+  } catch (err) {
+    emailMfaModalError.value = t('mfa.errors.sendCodeFailed');
+  } finally {
+    emailMfaLoading.value = false;
+  }
+}
+
+async function verifyEmailMfa() {
+  if (!/^\d{6}$/.test(emailMfaCode.value)) return;
+
+  emailMfaLoading.value = true;
+  emailMfaModalError.value = '';
+  emailMfaSuccess.value = '';
+
+  try {
+    const response = await fetch('/api/account/mfa/email/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ code: emailMfaCode.value })
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (response.ok && result.success) {
+      showEmailMfaModal.value = false;
+      emailMfaCode.value = '';
+      emailCodeSent.value = false;
       await loadMfaStatus();
       emailMfaSuccess.value = t('mfa.emailMfaEnabled');
       emit('status-changed');
       setTimeout(() => { emailMfaSuccess.value = ''; }, 3000);
     } else {
-      const result = await response.json();
-      emailMfaError.value = result.message || t('mfa.errors.toggleFailed');
+      emailMfaModalError.value = result.message || t('mfa.errors.invalidOrExpiredCode');
     }
   } catch (err) {
-    emailMfaError.value = t('mfa.errors.toggleFailed');
+    emailMfaModalError.value = t('mfa.errors.verifyFailed');
   } finally {
     emailMfaLoading.value = false;
   }
@@ -1028,6 +1139,10 @@ function finishRegenerate() {
   max-width: 400px;
 }
 
+.email-mfa-modal {
+  max-width: 440px;
+}
+
 .setup-instruction {
   text-align: center;
   color: #5f6368;
@@ -1105,6 +1220,17 @@ function finishRegenerate() {
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
 }
 
+.code-input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.field-hint {
+  margin: 8px 0 0;
+  color: #5f6368;
+  font-size: 13px;
+}
+
 .error-message {
   color: #c5221f;
   font-size: 13px;
@@ -1131,6 +1257,7 @@ function finishRegenerate() {
 
 .modal-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 24px;

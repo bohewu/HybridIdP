@@ -35,7 +35,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | H2 TOTP enrollment authorization | `csf_5446839cb1ab3ec3b103069a` | done | Retrieving or enabling a TOTP secret requires the intended account-management authorization and fresh authentication. The normal interactive enrollment flow remains functional. |
 | H3 Recovery-code regeneration authorization | `csf_d648cf493455299a40c96ecd` | done | Replacing or retrieving recovery codes requires the intended account-management authorization and reauthentication. Existing recovery-code consumption remains compatible. |
 | H4 Privileged-operation session assurance | `csf_edc0a91a588b8b31027d34dd` | done | Privileged role operations verify that the current session completed MFA rather than only checking factor enrollment. Existing properly authenticated administrator sessions continue to work. |
-| H5 Email MFA possession proof | `csf_dd9a1204a8e34c5525c609a2` | pending | Email MFA is not enabled and no MFA-labelled application session is issued until the pending OTP is successfully verified. |
+| H5 Email MFA possession proof | `csf_dd9a1204a8e34c5525c609a2` | done | Email MFA is not enabled and no MFA-labelled application session is issued until the pending OTP is successfully verified. |
 | H6 Linked-account switching eligibility | `csf_8858d11ce2afd4b3037b3081` | pending | Switching accounts applies the same user, Person, lockout, lifecycle, and MFA eligibility checks as a normal sign-in. |
 | H7 Passkey sign-in eligibility | `csf_5f21ecdf3e28328eb46c9a39` | pending | Passkey sign-in checks deleted and inactive state, lockout, `CanSignIn`, and Person eligibility before issuing an application cookie. |
 
@@ -118,6 +118,33 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,342 tests with 0 failed and 1 skipped. Diff validation found
   no whitespace errors, generated output, or live credential material.
+
+### H5 Verification Evidence
+
+- Before the fix, the partial-authentication setup endpoint accepted a direct
+  enable request, persisted Email MFA without a possession proof, and promoted
+  the partial principal to an `Identity.Application` session carrying
+  `amr=mfa` and `amr=otp`. The negative regression failed with `Ok` instead of
+  `BadRequest`.
+- Both account settings and mandatory setup now send a pending code and call an
+  atomic verify-and-enable service operation. Invalid, expired, missing-expiry,
+  or persistence-failed proofs do not enable the factor, issue a full
+  application cookie, or publish the success audit.
+- The legacy direct-enable routes remain present for compatibility discovery
+  but return `verificationRequired`; the repository's Vue callers now use the
+  send/verify sequence with loading, resend, invalid-code, disabled, focus, and
+  en-US/zh-TW states.
+- The real partial-authentication HTTP flow confirms that an unverified direct
+  enable receives HTTP 400, emits no `Identity.Application` cookie, and leaves
+  Email MFA disabled. Existing code-consumption and replay protections remain
+  functional after the enrollment contract change.
+- Focused service tests passed 8/8, focused setup-controller tests passed 3/3,
+  focused frontend tests passed 20/20, and the affected Email MFA system flows
+  passed 23/23. The frontend suite passed 98/98.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,348 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped. Diff validation found no whitespace errors, generated output, or
+  live credential material.
 
 ## P1 - Medium
 

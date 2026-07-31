@@ -81,7 +81,7 @@
           <p v-if="mfaStatus.emailMfaEnabled">{{ t('mfa.emailMfaEnabled') }}</p>
           <p v-else>{{ t('mfa.emailMfaDescription') }}</p>
         </div>
-        <button v-if="!mfaStatus.emailMfaEnabled" class="btn-enable" @click="enableEmailMfa" :disabled="emailLoading">
+        <button v-if="!mfaStatus.emailMfaEnabled" class="btn-enable" @click="startEmailMfaSetup" :disabled="emailLoading">
           {{ emailLoading ? '...' : t('mfa.enable') }}
         </button>
         <span v-else class="status-badge enabled">✓</span>
@@ -144,6 +144,61 @@
       </div>
     </div>
 
+    <!-- Email MFA Verification Modal -->
+    <div v-if="showEmailModal" class="modal-overlay" @click.self="closeEmailMfaSetup">
+      <div
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="email-mfa-setup-title"
+      >
+        <h2 id="email-mfa-setup-title">{{ t('mfa.emailSetupTitle') }}</h2>
+        <p>{{ t('mfa.emailSetupDescription', { email: t('mfa.yourEmailAddress') }) }}</p>
+
+        <p v-if="emailCodeSent" class="email-code-sent" role="status">
+          {{ t('mfa.emailCodeSent') }}
+        </p>
+        <p v-if="emailError" class="email-modal-error" role="alert">
+          {{ emailError }}
+        </p>
+
+        <form @submit.prevent="verifyEmailMfa">
+          <div class="verify-section">
+            <label for="setup-email-mfa-code">{{ t('mfa.emailCodeLabel') }}</label>
+            <input
+              id="setup-email-mfa-code"
+              ref="emailCodeInput"
+              v-model.trim="emailCode"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              pattern="[0-9]*"
+              maxlength="6"
+              placeholder="000000"
+              :disabled="emailLoading"
+            />
+            <p class="field-hint">{{ t('mfa.emailCodeHelp') }}</p>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" @click="closeEmailMfaSetup" :disabled="emailLoading">
+              {{ t('common.cancel') }}
+            </button>
+            <button type="button" class="btn-cancel" @click="sendEmailMfaCode" :disabled="emailLoading">
+              {{ emailCodeSent ? t('mfa.resendCode') : t('mfa.sendCode') }}
+            </button>
+            <button
+              type="submit"
+              class="btn-primary"
+              :disabled="emailLoading || !/^\d{6}$/.test(emailCode)"
+            >
+              {{ emailLoading ? '...' : t('mfa.verifyAndEnable') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Footer Actions -->
     <div class="footer-actions">
       <div v-if="!gracePeriodExpired" class="skip-section">
@@ -163,7 +218,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWebAuthn } from '../composables/useWebAuthn'
 
@@ -197,6 +252,11 @@ const emailLoading = ref(false)
 const passkeyLoading = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
+const showEmailModal = ref(false)
+const emailCode = ref('')
+const emailCodeSent = ref(false)
+const emailError = ref('')
+const emailCodeInput = ref(null)
 
 // TOTP Modal
 const showTotpModal = ref(false)
@@ -305,31 +365,82 @@ function finishTotpSetup() {
   }, 1000)
 }
 
-async function enableEmailMfa() {
+async function startEmailMfaSetup() {
+  showEmailModal.value = true
+  emailCode.value = ''
+  emailCodeSent.value = false
+  emailError.value = ''
+  await sendEmailMfaCode()
+}
+
+function closeEmailMfaSetup() {
+  if (emailLoading.value) return
+  showEmailModal.value = false
+  emailCode.value = ''
+  emailCodeSent.value = false
+  emailError.value = ''
+}
+
+async function sendEmailMfaCode() {
   emailLoading.value = true
-  errorMessage.value = ''
+  emailError.value = ''
   
   try {
-    const res = await fetch('/api/account/mfa-setup/email/enable', {
+    const res = await fetch('/api/account/mfa-setup/email/send', {
       method: 'POST',
       headers: {
         'X-XSRF-TOKEN': csrfToken.value
       },
       credentials: 'include'
     })
+    const result = await res.json().catch(() => ({}))
     
     if (res.ok) {
+      emailCodeSent.value = true
+      await nextTick()
+      emailCodeInput.value?.focus()
+    } else {
+      emailError.value = result.message || t('mfa.errors.sendCodeFailed')
+    }
+  } catch (err) {
+    emailError.value = t('mfa.errors.sendCodeFailed')
+  } finally {
+    emailLoading.value = false
+  }
+}
+
+async function verifyEmailMfa() {
+  if (!/^\d{6}$/.test(emailCode.value)) return
+
+  emailLoading.value = true
+  emailError.value = ''
+
+  try {
+    const res = await fetch('/api/account/mfa-setup/email/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-XSRF-TOKEN': csrfToken.value
+      },
+      credentials: 'include',
+      body: JSON.stringify({ code: emailCode.value })
+    })
+    const result = await res.json().catch(() => ({}))
+
+    if (res.ok && result.success) {
+      showEmailModal.value = false
+      emailCode.value = ''
+      emailCodeSent.value = false
       await loadData()
       successMessage.value = t('mfa.emailMfaEnabled')
-      // Redirect to ReturnUrl after short delay
-      setTimeout(() => { 
+      setTimeout(() => {
         window.location.href = returnUrl.value
       }, 1000)
     } else {
-      errorMessage.value = t('mfa.errors.toggleFailed')
+      emailError.value = result.message || t('mfa.errors.invalidOrExpiredCode')
     }
   } catch (err) {
-    errorMessage.value = t('mfa.errors.toggleFailed')
+    emailError.value = t('mfa.errors.verifyFailed')
   } finally {
     emailLoading.value = false
   }
@@ -663,8 +774,44 @@ async function registerPasskey() {
   text-align: center;
 }
 
+.verify-section input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.verify-section input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.field-hint {
+  margin: 0.5rem 0 0;
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.email-code-sent,
+.email-modal-error {
+  margin: 1rem 0 0;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.email-code-sent {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.email-modal-error {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .modal-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: flex-end;
   margin-top: 1rem;

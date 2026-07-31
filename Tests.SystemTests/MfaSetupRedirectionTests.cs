@@ -119,6 +119,39 @@ public class MfaSetupRedirectionTests : IAsyncLifetime
             var setupApiResponse =
                 await _httpClient.GetAsync("/api/account/mfa-setup/totp/setup");
             Assert.Equal(HttpStatusCode.OK, setupApiResponse.StatusCode);
+
+            // A partial-authentication cookie alone must not enable Email MFA
+            // or promote the session to a full MFA-labelled application cookie.
+            var setupPageResponse = await _httpClient.GetAsync(location);
+            setupPageResponse.EnsureSuccessStatusCode();
+            var setupPageHtml = await setupPageResponse.Content.ReadAsStringAsync();
+            var setupCsrfToken = ExtractAntiForgeryToken(setupPageHtml);
+            using var directEnableRequest =
+                new HttpRequestMessage(HttpMethod.Post, "/api/account/mfa-setup/email/enable");
+            directEnableRequest.Headers.Add("X-XSRF-TOKEN", setupCsrfToken);
+
+            var directEnableResponse = await _httpClient.SendAsync(directEnableRequest);
+            Assert.Equal(HttpStatusCode.BadRequest, directEnableResponse.StatusCode);
+            var directEnableResult =
+                await directEnableResponse.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal(
+                "verificationRequired",
+                directEnableResult.GetProperty("error").GetString());
+            if (directEnableResponse.Headers.TryGetValues("Set-Cookie", out var setCookies))
+            {
+                Assert.DoesNotContain(
+                    setCookies,
+                    cookie => cookie.Contains(
+                        "Identity.Application",
+                        StringComparison.OrdinalIgnoreCase));
+            }
+
+            var setupStatusResponse =
+                await _httpClient.GetAsync("/api/account/mfa-setup/status");
+            setupStatusResponse.EnsureSuccessStatusCode();
+            var setupStatus =
+                await setupStatusResponse.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.False(setupStatus.GetProperty("emailMfaEnabled").GetBoolean());
         }
         finally
         {
@@ -175,6 +208,14 @@ public class MfaSetupRedirectionTests : IAsyncLifetime
 
     private static string ExtractAntiForgeryToken(string html)
     {
+        var dataAttributeMatch = Regex.Match(
+            html,
+            "data-csrf-token=\"([^\"]+)\"");
+        if (dataAttributeMatch.Success)
+        {
+            return System.Net.WebUtility.HtmlDecode(dataAttributeMatch.Groups[1].Value);
+        }
+
         var match = Regex.Match(html, @"name=""__RequestVerificationToken""\s+type=""hidden""\s+value=""([^""]+)""");
         if (match.Success) return match.Groups[1].Value;
         

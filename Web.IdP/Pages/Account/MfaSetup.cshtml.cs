@@ -48,6 +48,7 @@ public class MfaSetupModel : PageModel
             return RedirectToPage("./Login");
         }
 
+        await PromotePartialPrincipalForAntiforgeryAsync(user);
         _signInManager.Context.Items["MfaEnforcementUser"] = user; // Internal tracking
         
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
@@ -134,5 +135,27 @@ public class MfaSetupModel : PageModel
         }
         
         return user;
+    }
+
+    private async Task PromotePartialPrincipalForAntiforgeryAsync(ApplicationUser user)
+    {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return;
+        }
+
+        var partialAuthentication =
+            await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+        var partialPrincipal = partialAuthentication.Principal;
+        var userId = partialPrincipal?.FindFirst(
+            System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (partialAuthentication.Succeeded &&
+            partialPrincipal?.Identity?.IsAuthenticated == true &&
+            Guid.TryParse(userId, out var partialUserId) &&
+            partialUserId == user.Id)
+        {
+            HttpContext.User = partialPrincipal;
+        }
     }
 }

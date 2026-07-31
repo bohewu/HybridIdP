@@ -189,7 +189,45 @@ public partial class MfaSetupApiController : ControllerBase
     }
 
     /// <summary>
-    /// Enable Email MFA (supports partial authentication).
+    /// Send an Email MFA verification code (supports partial authentication).
+    /// </summary>
+    [HttpPost("email/send")]
+    public async Task<ActionResult> SendEmailMfaCode(CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (!policy.EnableEmailMfa)
+        {
+            return StatusCode(403, new { error = "mfaDisabled" });
+        }
+
+        if (string.IsNullOrEmpty(user.Email))
+        {
+            return BadRequest(new { error = "noEmail", message = "User does not have an email address." });
+        }
+
+        var (success, remainingSeconds) = await _mfaService.SendEmailMfaCodeAsync(user, ct);
+        if (!success)
+        {
+            return StatusCode(429, new
+            {
+                success = false,
+                remainingSeconds,
+                error = "rateLimitExceeded"
+            });
+        }
+
+        LogEmailMfaCodeSent(user.Id);
+        return Ok(new { success = true, remainingSeconds });
+    }
+
+    /// <summary>
+    /// Reject direct Email MFA enablement without an OTP possession proof.
     /// </summary>
     [HttpPost("email/enable")]
     public async Task<ActionResult> EnableEmailMfa(CancellationToken ct)
@@ -211,12 +249,43 @@ public partial class MfaSetupApiController : ControllerBase
             return BadRequest(new { error = "noEmail", message = "User does not have an email address." });
         }
 
-        await _mfaService.EnableEmailMfaAsync(user, ct);
+        return BadRequest(new { error = "verificationRequired" });
+    }
+
+    /// <summary>
+    /// Verify the pending Email MFA code, enable the factor, and complete login.
+    /// </summary>
+    [HttpPost("email/verify")]
+    public async Task<ActionResult> VerifyEmailMfaCode(
+        [FromBody] MfaSetupVerifyRequest request,
+        CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        if (!policy.EnableEmailMfa)
+        {
+            return StatusCode(403, new { error = "mfaDisabled" });
+        }
+
+        if (string.IsNullOrEmpty(user.Email))
+        {
+            return BadRequest(new { error = "noEmail", message = "User does not have an email address." });
+        }
+
+        var isValid = await _mfaService.VerifyAndEnableEmailMfaAsync(user, request.Code, ct);
+        if (!isValid)
+        {
+            return Ok(new { success = false, error = "invalidOrExpiredCode" });
+        }
 
         LogEmailMfaEnabled(user.Id);
         await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null, ct);
 
-        // UX Improvement: Sign in user fully
         AuthenticationMethodSession.Add(
             HttpContext.Session,
             AuthConstants.Amr.Mfa,
@@ -225,6 +294,7 @@ public partial class MfaSetupApiController : ControllerBase
             user,
             isPersistent: false,
             AuthenticationMethodSession.CreateClaims(HttpContext.Session));
+        MfaEnrollmentSession.Consume(HttpContext.Session);
 
         return Ok(new { success = true });
     }
@@ -282,6 +352,9 @@ public partial class MfaSetupApiController : ControllerBase
 
     [LoggerMessage(Level = LogLevel.Information, Message = "User {UserId} enabled Email MFA via setup flow")]
     partial void LogEmailMfaEnabled(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Email MFA setup code sent to user {UserId}")]
+    partial void LogEmailMfaCodeSent(Guid userId);
 
     #endregion
 }

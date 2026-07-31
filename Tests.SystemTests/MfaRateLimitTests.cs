@@ -14,11 +14,7 @@ public partial class MfaApiTests
         // Arrange
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
         
-        // 1. Enable Email MFA (may already be enabled from other tests)
-        var enableResponse = await _httpClient.PostAsync("/api/account/mfa/email/enable", null);
-        // Don't assert on enable - it may already be enabled
-
-        // 2. Wait for any existing rate limit cooldown from previous test runs
+        // 1. Wait for any existing rate limit cooldown from previous test runs
         await Task.Delay(100); // Small delay to ensure clean state
         
         // Try sending - if rate limited, wait and retry once
@@ -39,7 +35,7 @@ public partial class MfaApiTests
         var result1 = await sendResponse1.Content.ReadFromJsonAsync<SendEmailMfaCodeResponse>();
         Assert.True(result1!.Success, "First send should succeed");
 
-        // 3. Send Code - Immediately After (Should Fail with Rate Limit)
+        // 2. Send Code - Immediately After (Should Fail with Rate Limit)
         var sendResponse2 = await _httpClient.PostAsync("/api/account/mfa/email/send", null);
         
         // Assert: Should return 429 Too Many Requests
