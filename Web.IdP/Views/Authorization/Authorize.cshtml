@@ -1,5 +1,6 @@
 @using Microsoft.AspNetCore.Mvc.Localization
 @using Web.IdP.Services
+@using Web.IdP.Helpers
 @using Core.Application
 @inject IViewLocalizer Localizer
 @inject IViteManifestService ViteService
@@ -50,6 +51,10 @@
             
             <div class="google-login-body">
                 <form method="post" action="@Url.Action("Authorize")">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden"
+                           name="@AuthorizationConsentSession.FormFieldName"
+                           value="@ViewData["ConsentIntent"]" />
                     @* Preserve original authorize request parameters in the POST body *@
                     @foreach (var kvp in Context.Request.Query)
                     {

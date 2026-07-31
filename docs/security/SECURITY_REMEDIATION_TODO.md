@@ -197,7 +197,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | --- | --- | --- |
 | `csf_f27142404da832c902ea5492` | fixed | Apply the current-account lifecycle predicate during authorization-code exchange. |
 | `csf_14ab71c83a4dbbec064ce0c5` | fixed | Apply the current-account lifecycle predicate during device-code exchange. |
-| `csf_4f7926baaf87d0ebe0ea1861` | pending | Enforce antiforgery validation on authorization consent POST. |
+| `csf_4f7926baaf87d0ebe0ea1861` | fixed | Enforce antiforgery validation on authorization consent POST. |
 | `csf_ab24e2d45bb89d24d8b45833` | pending | Enforce antiforgery validation on device-verification POST. |
 | `csf_2115040b736c248be7b31b82` | pending | Protect the interactive authorization page from framing without breaking machine-readable `/connect` responses. |
 | `csf_d565c43230e9a213dbf13391` | pending | Bound authorization rate-limit partitions derived from untrusted `client_id`. |
@@ -304,6 +304,32 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   existing end-to-end device client flow passed 2/2.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,388 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped.
+
+### M4 Verification Evidence
+
+- Before the fix, a cookie-authenticated consent submission without an
+  antiforgery token returned HTTP 302 and redirected with an authorization
+  code. The new real-host regression failed on that response before the
+  production path was changed.
+- Browser consent POSTs now require both the repository's cookie-aware
+  antiforgery validation and a cryptographically random, one-time session
+  intent bound to the current user and exact OpenID Connect authorization
+  request.
+- Missing or invalid antiforgery proofs and missing, unknown, expired,
+  altered-request, wrong-user, or replayed consent intents return HTTP 400
+  without redirecting to the client or issuing an authorization code.
+- The intent store supports up to eight concurrent consent tabs and expires
+  entries after five minutes. Rejected matching intents are consumed so they
+  cannot later be reused.
+- A valid allow submission retains the existing authorization-code redirect.
+  Existing deny, PKCE, device-flow, AMR, and confidential-client secret
+  rotation regressions also remain functional.
+- Focused intent-helper tests passed 5/5, authorization owner tests passed
+  8/8, the Web IdP unit-test project passed 178/178, and affected real-host
+  system regressions passed 17/17.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,394 tests with 0 failed and 1 existing aggressive ZAP test
   skipped.
 
 ## P2 - Low Hardening

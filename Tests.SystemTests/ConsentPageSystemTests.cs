@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 using Core.Domain.Constants;
@@ -109,6 +110,94 @@ public class ConsentPageSystemTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Consent_Allow_RequiresAntiforgeryAndPreservesValidSubmission()
+    {
+        var (codeChallenge, _) = GeneratePkce();
+        var authorizeUrl = $"/connect/authorize?client_id={ClientId}&redirect_uri={HttpUtility.UrlEncode(RedirectUri)}&response_type=code&scope={HttpUtility.UrlEncode(DefaultScopes)}&prompt=consent&code_challenge={codeChallenge}&code_challenge_method=S256";
+
+        using var getResponse = await _httpClient.GetAsync(authorizeUrl);
+        getResponse.EnsureSuccessStatusCode();
+        var html = await getResponse.Content.ReadAsStringAsync();
+        var validFields = ExtractHiddenInputs(html);
+        validFields.Add(new KeyValuePair<string, string>("submit", "allow"));
+        foreach (var scope in DefaultScopes.Split(' '))
+        {
+            validFields.Add(new KeyValuePair<string, string>("granted_scopes", scope));
+        }
+
+        var missingTokenFields = validFields
+            .Where(field => field.Key != "__RequestVerificationToken")
+            .ToList();
+        using (var missingTokenResponse = await _httpClient.PostAsync(
+                   "/connect/authorize",
+                   new FormUrlEncodedContent(missingTokenFields)))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, missingTokenResponse.StatusCode);
+            Assert.Null(missingTokenResponse.Headers.Location);
+        }
+
+        var invalidTokenFields = validFields
+            .Where(field => field.Key != "__RequestVerificationToken")
+            .Append(new KeyValuePair<string, string>(
+                "__RequestVerificationToken",
+                "invalid-antiforgery-token"));
+        using (var invalidTokenResponse = await _httpClient.PostAsync(
+                   "/connect/authorize",
+                   new FormUrlEncodedContent(invalidTokenFields)))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, invalidTokenResponse.StatusCode);
+            Assert.Null(invalidTokenResponse.Headers.Location);
+        }
+
+        var missingIntentFields = validFields
+            .Where(field => field.Key != "consent_intent")
+            .ToList();
+        using (var missingIntentResponse = await _httpClient.PostAsync(
+                   "/connect/authorize",
+                   new FormUrlEncodedContent(missingIntentFields)))
+        {
+            await AssertInvalidConsentIntentAsync(missingIntentResponse);
+        }
+
+        var unknownIntentFields = validFields
+            .Where(field => field.Key != "consent_intent")
+            .Append(new KeyValuePair<string, string>(
+                "consent_intent",
+                "unknown-consent-intent"));
+        using (var unknownIntentResponse = await _httpClient.PostAsync(
+                   "/connect/authorize",
+                   new FormUrlEncodedContent(unknownIntentFields)))
+        {
+            await AssertInvalidConsentIntentAsync(unknownIntentResponse);
+        }
+
+        using var validResponse = await _httpClient.PostAsync(
+            "/connect/authorize",
+            new FormUrlEncodedContent(validFields));
+        var validResponseBody = await validResponse.Content.ReadAsStringAsync();
+        Assert.True(
+            validResponse.StatusCode == HttpStatusCode.Redirect,
+            $"Expected consent redirect but received {validResponse.StatusCode}: {validResponseBody}");
+        Assert.NotNull(validResponse.Headers.Location);
+        Assert.True(
+            validResponse.Headers.Location.ToString().StartsWith(
+                RedirectUri,
+                StringComparison.Ordinal),
+            "Expected the consent response to redirect to the registered URI.");
+        var redirectParameters = HttpUtility.ParseQueryString(
+            validResponse.Headers.Location.Query);
+        Assert.True(
+            !string.IsNullOrWhiteSpace(redirectParameters["code"]),
+            "Expected the consent redirect to contain an authorization code.");
+        Assert.Null(redirectParameters["error"]);
+
+        using var replayResponse = await _httpClient.PostAsync(
+            "/connect/authorize",
+            new FormUrlEncodedContent(validFields));
+        await AssertInvalidConsentIntentAsync(replayResponse);
+    }
+
+    [Fact]
     public async Task Consent_Deny_ShouldRedirectWithError()
     {
         // Arrange
@@ -200,37 +289,30 @@ public class ConsentPageSystemTests : IAsyncLifetime
     private static List<KeyValuePair<string, string>> ExtractHiddenInputs(string html)
     {
         var inputs = new List<KeyValuePair<string, string>>();
-        
-        // Extract all hidden inputs (this captures antiforgery token, and any OpenIddict state parameters)
-        var matches = Regex.Matches(html, @"<input\s+type=""hidden""\s+name=""([^""]+)""\s+value=""([^""]*)""");
-        
-        foreach (Match match in matches)
+
+        var hiddenInputs = Regex.Matches(html, @"<input[^>]*type=""hidden""[^>]*>");
+        foreach (Match hiddenInput in hiddenInputs)
         {
-            inputs.Add(new KeyValuePair<string, string>(match.Groups[1].Value, match.Groups[2].Value));
+            var name = Regex.Match(hiddenInput.Value, @"name=""([^""]+)""").Groups[1].Value;
+            var value = Regex.Match(hiddenInput.Value, @"value=""([^""]*)""").Groups[1].Value;
+            if (!string.IsNullOrEmpty(name))
+            {
+                inputs.Add(new KeyValuePair<string, string>(name, value));
+            }
         }
 
-        // Also catch inputs where attributes are ordered differently
-        // Simplified regex, might miss some edge cases but good enough for standard ASP.NET Core views
-        // Note: The previous regex expects type="hidden" first. Let's try a more robust approach if that fails?
-        // Actually, let's just grab the specific ones we know we typically need if the generic one misses.
-        // Usually OpenIddict puts state in hidden fields.
+        return inputs.Distinct().ToList();
+    }
 
-        if (inputs.Count == 0)
-        {
-            // Fallback: Try looser matching
-             var regex = new Regex(@"<input[^>]*type=""hidden""[^>]*>");
-             foreach (Match m in regex.Matches(html))
-             {
-                 var name = Regex.Match(m.Value, @"name=""([^""]+)""").Groups[1].Value;
-                 var value = Regex.Match(m.Value, @"value=""([^""]*)""").Groups[1].Value;
-                 if (!string.IsNullOrEmpty(name))
-                 {
-                     inputs.Add(new KeyValuePair<string, string>(name, value));
-                 }
-             }
-        }
-
-        return inputs.Distinct().ToList(); // Remove simple duplicates
+    private static async Task AssertInvalidConsentIntentAsync(HttpResponseMessage response)
+    {
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Null(response.Headers.Location);
+        using var payload = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync());
+        Assert.Equal(
+            "invalid_consent_intent",
+            payload.RootElement.GetProperty("error").GetString());
     }
 
     #endregion
