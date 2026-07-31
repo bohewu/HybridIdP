@@ -158,6 +158,7 @@ Check the database tables `ApiResources` and `ApiResourceScopes` to confirm `com
 ### Email OTP (信箱驗證碼)
 - **手動測試**: 在設定頁點擊「發送驗證碼」。
 - **技巧**: 使用 [Mailpit](http://localhost:8025) 攔截本地郵件，無需真實收信。
+- **安全行為**: 每組待驗證碼最多嘗試 5 次；第 5 次錯誤後，即使輸入原本正確的碼也必須失敗。重新發送的新碼會取得新的 5 次嘗試額度。
 
 ### Passkey (WebAuthn)
 - **手動測試**: 使用電腦生物辨識或 Yubikey。

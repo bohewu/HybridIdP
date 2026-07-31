@@ -74,6 +74,12 @@ public class ApplicationUser : IdentityUser<Guid>
     /// Expiration time for the email MFA code. Code is invalid after this time.
     /// </summary>
     public DateTime? EmailMfaCodeExpiry { get; set; }
+
+    /// <summary>
+    /// Number of verification attempts reserved for the current email MFA code.
+    /// Reset whenever the pending code is replaced or consumed.
+    /// </summary>
+    public int EmailMfaVerificationAttempts { get; set; }
     
     // Soft Delete
     public bool IsDeleted { get; set; }

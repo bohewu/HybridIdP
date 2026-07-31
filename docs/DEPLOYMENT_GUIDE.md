@@ -137,6 +137,8 @@ cd deployment
 
 After validation, the script pulls the selected `idp-service` image and runs `up -d --no-build`, which recreates the service when the image changes. Update the host by rerunning this flow; do not reset the database or remove volumes to update an image. For local source, the same script retains its local build behavior: `--source local` runs `up -d --build`, while `--no-cache` performs the local no-cache build before startup.
 
+The IdP applies EF Core migrations during startup before normal seed processing. Back up the database before deploying an image that contains schema changes and allow the new container to complete startup before sending traffic. The Email MFA attempt-limit migration is additive: it adds a non-null counter with a default of `0`, preserves existing users and credentials, and does not require a database reset or volume replacement.
+
 ---
 
 ## One-Time Operational First Administrator

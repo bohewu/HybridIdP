@@ -115,6 +115,9 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Property<bool>("EmailMfaEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("EmailMfaVerificationAttempts")
+                        .HasColumnType("integer");
+
                     b.Property<string>("EmployeeId")
                         .HasColumnType("text");
 

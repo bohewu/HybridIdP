@@ -228,13 +228,39 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 
 | Finding | Status | Summary |
 | --- | --- | --- |
-| `csf_d27a8baae7afb246883faaee` | pending | Generate email OTPs cryptographically and enforce a pending-code attempt limit. |
+| `csf_d27a8baae7afb246883faaee` | fixed | Generate email OTPs cryptographically and enforce a pending-code attempt limit. |
 | `csf_e63c44630467bda5532dfbb8` | pending | Reject passkey login when the security policy disables passkeys. |
 | `csf_65f2561e219c2e3061ca2ec9` | pending | Do not label user-verification-preferred assertions as MFA without verified UV. |
 | `csf_6979042d4ed939d5baaf58aa` | pending | Prevent configured localization content from becoming anonymous stored XSS. |
 | `csf_46710f5179fa498ef6327608` | pending | Authenticate and authorize monitoring hub subscriptions and caller methods. |
 | `csf_b3ba101b8e2c1014cda67044` | pending | Verify external database TLS peer identity in production setup guidance and generated configuration. |
 | `csf_5f4b4b4b513c35cbf65f0b09` | pending | Remove public monitoring-port defaults and repository-known Grafana fallback credentials from operational guidance. |
+
+### M1 Verification Evidence
+
+- Before the fix, five invalid Email OTP submissions did not consume or
+  invalidate the pending proof; the regression then accepted the original
+  correct code. Code generation also used a newly constructed
+  non-cryptographic `Random` instance.
+- Email OTPs now use `RandomNumberGenerator.GetInt32` and invariant six-digit
+  formatting. Pending codes remain password-hashed and retain the existing
+  10-minute expiry, send cooldown, API response, and frontend contract.
+- Every pending code has a five-attempt verification budget. A conditional
+  database update reserves an attempt before password-hash verification, and
+  the fifth failed attempt invalidates the matching code without revealing
+  the remaining budget to the caller. Resending, successful consumption,
+  expiry, user disablement, and administrator reset clear the counter.
+- Additive SQL Server and PostgreSQL migrations add the non-null counter with
+  a default of `0`; existing users and credentials are preserved and no
+  database reset is required.
+- Focused `MfaService` tests passed 27/27. Real-provider concurrency tests
+  passed 2/2 and proved that 20 parallel requests against both SQL Server and
+  PostgreSQL admit exactly five verifier attempts. Affected Email MFA HTTP
+  regressions passed 23/23.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,367 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped. Diff validation found no whitespace errors, generated application
+  output, or live credential material.
 
 ## P2 - Low Hardening
 

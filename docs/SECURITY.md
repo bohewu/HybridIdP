@@ -16,7 +16,9 @@ We support three primary MFA methods to ensure account security:
 ### 2. Email OTP
 
 - **Standard**: 6-digit one-time code sent via email.
-- **Features**: Background queue processing (non-blocking), rate-limiting, and short-lived expiry.
+- **Generation and storage**: Codes use a cryptographically secure random-number generator and are stored only as password hashes.
+- **Verification budget**: Each pending code permits at most five verification attempts. The fifth failed attempt invalidates that code; sending a replacement code starts a new budget.
+- **Features**: Background queue processing (non-blocking), send rate-limiting, and a 10-minute expiry.
 
 ### 3. Passkey (WebAuthn)
 

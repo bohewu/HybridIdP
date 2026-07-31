@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,10 +29,14 @@ public class MfaService : IMfaService
     private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
     private readonly IDistributedCache _cache;
     private readonly ISecurityPolicyService _securityPolicyService;
+    private readonly IEmailMfaAttemptStore _emailMfaAttemptStore;
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<MfaService> _logger;
     private readonly TimeProvider _timeProvider;
     private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
+    private const int EmailMfaCodeLifetimeMinutes = 10;
+    private const int EmailMfaCooldownSeconds = 60;
+    private const int MaxEmailMfaVerificationAttempts = 5;
 
     public MfaService(
         UserManager<ApplicationUser> userManager, 
@@ -40,6 +46,7 @@ public class MfaService : IMfaService
         IPasswordHasher<ApplicationUser> passwordHasher,
         IDistributedCache cache,
         ISecurityPolicyService securityPolicyService,
+        IEmailMfaAttemptStore emailMfaAttemptStore,
         ApplicationDbContext dbContext,
         ILogger<MfaService> logger,
         TimeProvider? timeProvider = null)
@@ -51,6 +58,7 @@ public class MfaService : IMfaService
         _passwordHasher = passwordHasher;
         _cache = cache;
         _securityPolicyService = securityPolicyService;
+        _emailMfaAttemptStore = emailMfaAttemptStore;
         _dbContext = dbContext;
         _logger = logger;
         _timeProvider = timeProvider ?? TimeProvider.System;
@@ -256,29 +264,34 @@ public class MfaService : IMfaService
              }
         }
 
-        // Generate 6-digit numeric code
-        var random = new Random();
-        var code = random.Next(100000, 999999).ToString();
+        // Generate a uniformly distributed 6-digit numeric code, including leading zeroes.
+        var code = RandomNumberGenerator
+            .GetInt32(0, 1_000_000)
+            .ToString("D6", CultureInfo.InvariantCulture);
 
         // Hash the code before storing
         user.EmailMfaCode = _passwordHasher.HashPassword(user, code);
-        user.EmailMfaCodeExpiry = _timeProvider.GetUtcNow().DateTime.AddMinutes(10); // 10-minute expiry
+        user.EmailMfaCodeExpiry = _timeProvider.GetUtcNow().DateTime.AddMinutes(EmailMfaCodeLifetimeMinutes);
+        user.EmailMfaVerificationAttempts = 0;
 
         await _userManager.UpdateAsync(user);
 
         // Send email via template service
-        var (subject, body) = await _emailTemplateService.RenderMfaCodeEmailAsync(code, 10, user.Locale);
+        var (subject, body) = await _emailTemplateService.RenderMfaCodeEmailAsync(
+            code,
+            EmailMfaCodeLifetimeMinutes,
+            user.Locale);
         await _emailService.SendEmailAsync(user.Email, subject, body, isHtml: true, ct);
 
         // Set Cooldown
-        var cooldownExpiry = DateTimeOffset.UtcNow.AddSeconds(60);
+        var cooldownExpiry = DateTimeOffset.UtcNow.AddSeconds(EmailMfaCooldownSeconds);
         await _cache.SetStringAsync(
             cacheKey, 
             cooldownExpiry.Ticks.ToString(), 
             new DistributedCacheEntryOptions { AbsoluteExpiration = cooldownExpiry }, 
             ct);
         
-        return (true, 60);
+        return (true, EmailMfaCooldownSeconds);
     }
 
     public Task<bool> VerifyEmailMfaCodeAsync(ApplicationUser user, string code, CancellationToken ct = default) =>
@@ -304,24 +317,47 @@ public class MfaService : IMfaService
             // Code expired, clear it
             user.EmailMfaCode = null;
             user.EmailMfaCodeExpiry = null;
+            user.EmailMfaVerificationAttempts = 0;
             await _userManager.UpdateAsync(user);
             return false;
         }
 
+        var pendingCodeHash = user.EmailMfaCode;
+        var reservation = await _emailMfaAttemptStore.TryReserveAttemptAsync(
+            user.Id,
+            pendingCodeHash,
+            _timeProvider.GetUtcNow().DateTime,
+            MaxEmailMfaVerificationAttempts,
+            ct);
+        if (reservation == EmailMfaAttemptReservation.Rejected)
+        {
+            return false;
+        }
+
         // Verify hashed code
-        var result = _passwordHasher.VerifyHashedPassword(user, user.EmailMfaCode, code);
+        var result = _passwordHasher.VerifyHashedPassword(user, pendingCodeHash, code);
         if (result == PasswordVerificationResult.Failed)
         {
+            if (reservation == EmailMfaAttemptReservation.FinalAttempt)
+            {
+                await _emailMfaAttemptStore.InvalidatePendingCodeAsync(
+                    user.Id,
+                    pendingCodeHash,
+                    ct);
+            }
+
             return false;
         }
 
         var previousCode = user.EmailMfaCode;
         var previousExpiry = user.EmailMfaCodeExpiry;
+        var previousAttempts = user.EmailMfaVerificationAttempts;
         var wasEmailMfaEnabled = user.EmailMfaEnabled;
 
         // Consume the proof and, for enrollment, persist enablement in the same update.
         user.EmailMfaCode = null;
         user.EmailMfaCodeExpiry = null;
+        user.EmailMfaVerificationAttempts = 0;
         if (enableEmailMfa)
         {
             user.EmailMfaEnabled = true;
@@ -335,6 +371,7 @@ public class MfaService : IMfaService
 
         user.EmailMfaCode = previousCode;
         user.EmailMfaCodeExpiry = previousExpiry;
+        user.EmailMfaVerificationAttempts = previousAttempts;
         user.EmailMfaEnabled = wasEmailMfaEnabled;
         return false;
     }
@@ -344,6 +381,7 @@ public class MfaService : IMfaService
         user.EmailMfaEnabled = false;
         user.EmailMfaCode = null;
         user.EmailMfaCodeExpiry = null;
+        user.EmailMfaVerificationAttempts = 0;
         await _userManager.UpdateAsync(user);
         
         // Cascading revocation: if policy requires MFA for passkeys and this was the last MFA method

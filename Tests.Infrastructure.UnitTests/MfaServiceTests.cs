@@ -28,6 +28,7 @@ public class MfaServiceTests
     private readonly Mock<IPasswordHasher<ApplicationUser>> _passwordHasherMock;
     private readonly Mock<IDistributedCache> _distributedCacheMock;
     private readonly Mock<ISecurityPolicyService> _securityPolicyServiceMock;
+    private readonly Mock<IEmailMfaAttemptStore> _emailMfaAttemptStoreMock;
     private readonly Mock<ILogger<MfaService>> _loggerMock;
     private readonly MfaService _sut;
 
@@ -48,6 +49,15 @@ public class MfaServiceTests
         _passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         _distributedCacheMock = new Mock<IDistributedCache>();
         _securityPolicyServiceMock = new Mock<ISecurityPolicyService>();
+        _emailMfaAttemptStoreMock = new Mock<IEmailMfaAttemptStore>();
+        _emailMfaAttemptStoreMock
+            .Setup(x => x.TryReserveAttemptAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailMfaAttemptReservation.Reserved);
         // Default policy: RequireMfaForPasskey = false to avoid DbContext dependency in tests
         _securityPolicyServiceMock.Setup(x => x.GetCurrentPolicyAsync())
             .ReturnsAsync(new Core.Domain.Entities.SecurityPolicy { RequireMfaForPasskey = false });
@@ -61,6 +71,7 @@ public class MfaServiceTests
             _passwordHasherMock.Object,
             _distributedCacheMock.Object,
             _securityPolicyServiceMock.Object,
+            _emailMfaAttemptStoreMock.Object,
             null!, // ApplicationDbContext - not used by the tests we're running
             _loggerMock.Object);
     }
@@ -435,12 +446,15 @@ public class MfaServiceTests
     {
         // Arrange
         var user = CreateTestUser();
+        user.EmailMfaVerificationAttempts = 3;
         var emailServiceMock = new Mock<IEmailService>();
         var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         emailTemplateServiceMock.Setup(x => x.RenderMfaCodeEmailAsync(It.IsAny<string>(), It.IsAny<int>())).ReturnsAsync(("Subject", "Body"));
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
+        string? generatedCode = null;
         passwordHasherMock.Setup(x => x.HashPassword(user, It.IsAny<string>()))
+            .Callback<ApplicationUser, string>((_, code) => generatedCode = code)
             .Returns("HASHED_CODE");
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
@@ -453,6 +467,8 @@ public class MfaServiceTests
         // Assert
         user.EmailMfaCode.Should().Be("HASHED_CODE");
         user.EmailMfaCodeExpiry.Should().BeCloseTo(DateTime.UtcNow.AddMinutes(10), TimeSpan.FromSeconds(5));
+        user.EmailMfaVerificationAttempts.Should().Be(0);
+        generatedCode.Should().MatchRegex("^[0-9]{6}$");
         _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
         emailServiceMock.Verify(x => x.SendEmailAsync(
             user.Email!, 
@@ -490,6 +506,7 @@ public class MfaServiceTests
         var user = CreateTestUser();
         user.EmailMfaCode = "HASHED_CODE";
         user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(-5); // Expired
+        user.EmailMfaVerificationAttempts = 3;
         
         var emailServiceMock = new Mock<IEmailService>();
         var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
@@ -507,6 +524,7 @@ public class MfaServiceTests
         result.Should().BeFalse();
         user.EmailMfaCode.Should().BeNull();
         user.EmailMfaCodeExpiry.Should().BeNull();
+        user.EmailMfaVerificationAttempts.Should().Be(0);
     }
 
     [Fact]
@@ -562,6 +580,59 @@ public class MfaServiceTests
     }
 
     [Fact]
+    public async Task VerifyEmailMfaCodeAsync_FiveInvalidAttempts_InvalidatesPendingCode()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        user.EmailMfaCode = "HASHED_CODE";
+        user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5);
+        var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
+        passwordHasherMock
+            .Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", It.IsAny<string>()))
+            .Returns((ApplicationUser _, string _, string code) =>
+                code == "123456"
+                    ? PasswordVerificationResult.Success
+                    : PasswordVerificationResult.Failed);
+        _userManagerMock.Setup(x => x.UpdateAsync(user))
+            .ReturnsAsync(IdentityResult.Success);
+        _emailMfaAttemptStoreMock
+            .SetupSequence(x => x.TryReserveAttemptAsync(
+                user.Id,
+                "HASHED_CODE",
+                It.IsAny<DateTime>(),
+                5,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailMfaAttemptReservation.Reserved)
+            .ReturnsAsync(EmailMfaAttemptReservation.Reserved)
+            .ReturnsAsync(EmailMfaAttemptReservation.Reserved)
+            .ReturnsAsync(EmailMfaAttemptReservation.Reserved)
+            .ReturnsAsync(EmailMfaAttemptReservation.FinalAttempt)
+            .ReturnsAsync(EmailMfaAttemptReservation.Rejected);
+        var sut = CreateMfaService(passwordHasherMock: passwordHasherMock);
+
+        // Act
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            var invalidResult = await sut.VerifyEmailMfaCodeAsync(user, "000000");
+            invalidResult.Should().BeFalse();
+        }
+
+        var resultAfterLimit = await sut.VerifyEmailMfaCodeAsync(user, "123456");
+
+        // Assert
+        resultAfterLimit.Should().BeFalse();
+        _emailMfaAttemptStoreMock.Verify(
+            x => x.InvalidatePendingCodeAsync(
+                user.Id,
+                "HASHED_CODE",
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        passwordHasherMock.Verify(
+            x => x.VerifyHashedPassword(user, "HASHED_CODE", "123456"),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task VerifyAndEnableEmailMfaAsync_ValidCode_ConsumesProofAndEnablesEmailMfa()
     {
         // Arrange
@@ -569,6 +640,7 @@ public class MfaServiceTests
         user.EmailMfaEnabled = false;
         user.EmailMfaCode = "HASHED_CODE";
         user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5);
+        user.EmailMfaVerificationAttempts = 4;
         
         var emailServiceMock = new Mock<IEmailService>();
         var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
@@ -578,7 +650,15 @@ public class MfaServiceTests
             .Returns(PasswordVerificationResult.Success);
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
-        
+        _emailMfaAttemptStoreMock
+            .Setup(x => x.TryReserveAttemptAsync(
+                user.Id,
+                "HASHED_CODE",
+                It.IsAny<DateTime>(),
+                5,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailMfaAttemptReservation.FinalAttempt);
+
         var sut = CreateMfaService(emailServiceMock, emailTemplateServiceMock, passwordHasherMock, distributedCacheMock);
 
         // Act
@@ -589,6 +669,13 @@ public class MfaServiceTests
         user.EmailMfaEnabled.Should().BeTrue();
         user.EmailMfaCode.Should().BeNull();
         user.EmailMfaCodeExpiry.Should().BeNull();
+        user.EmailMfaVerificationAttempts.Should().Be(0);
+        _emailMfaAttemptStoreMock.Verify(
+            x => x.InvalidatePendingCodeAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
         _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
     }
 
@@ -651,6 +738,7 @@ public class MfaServiceTests
         var pendingExpiry = DateTime.UtcNow.AddMinutes(5);
         user.EmailMfaCode = "HASHED_CODE";
         user.EmailMfaCodeExpiry = pendingExpiry;
+        user.EmailMfaVerificationAttempts = 2;
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "123456"))
             .Returns(PasswordVerificationResult.Success);
@@ -670,6 +758,7 @@ public class MfaServiceTests
         user.EmailMfaEnabled.Should().BeFalse();
         user.EmailMfaCode.Should().Be("HASHED_CODE");
         user.EmailMfaCodeExpiry.Should().Be(pendingExpiry);
+        user.EmailMfaVerificationAttempts.Should().Be(2);
     }
 
     [Fact]
@@ -680,6 +769,7 @@ public class MfaServiceTests
         user.EmailMfaEnabled = true;
         user.EmailMfaCode = "SOME_CODE";
         user.EmailMfaCodeExpiry = DateTime.UtcNow;
+        user.EmailMfaVerificationAttempts = 3;
         
         var emailServiceMock = new Mock<IEmailService>();
         var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
@@ -697,6 +787,7 @@ public class MfaServiceTests
         user.EmailMfaEnabled.Should().BeFalse();
         user.EmailMfaCode.Should().BeNull();
         user.EmailMfaCodeExpiry.Should().BeNull();
+        user.EmailMfaVerificationAttempts.Should().Be(0);
         _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
     }
 
@@ -716,7 +807,8 @@ public class MfaServiceTests
         Mock<IEmailService>? emailServiceMock = null,
         Mock<IEmailTemplateService>? emailTemplateServiceMock = null,
         Mock<IPasswordHasher<ApplicationUser>>? passwordHasherMock = null,
-        Mock<IDistributedCache>? distributedCacheMock = null)
+        Mock<IDistributedCache>? distributedCacheMock = null,
+        Mock<IEmailMfaAttemptStore>? emailMfaAttemptStoreMock = null)
     {
         return new MfaService(
             _userManagerMock.Object,
@@ -726,6 +818,7 @@ public class MfaServiceTests
             passwordHasherMock?.Object ?? _passwordHasherMock.Object,
             distributedCacheMock?.Object ?? _distributedCacheMock.Object,
             _securityPolicyServiceMock.Object,
+            emailMfaAttemptStoreMock?.Object ?? _emailMfaAttemptStoreMock.Object,
             null!,
             _loggerMock.Object);
     }

@@ -751,6 +751,7 @@ public class UsersController : ControllerBase
             user.EmailMfaEnabled = false;
             user.EmailMfaCode = null;
             user.EmailMfaCodeExpiry = null;
+            user.EmailMfaVerificationAttempts = 0;
             await _userManager.UpdateAsync(user);
 
             return Ok(new { success = true, message = "MFA has been reset for the user" });

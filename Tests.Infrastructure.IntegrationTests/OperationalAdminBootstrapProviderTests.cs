@@ -622,6 +622,7 @@ public sealed class ProviderDatabase(
             options => Configure(options, interceptors));
         services.AddScoped<IApplicationDbContext>(
             provider => provider.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<IEmailMfaAttemptStore, EmailMfaAttemptStore>();
         services.AddIdentityCore<ApplicationUser>()
             .AddRoles<ApplicationRole>()
             .AddEntityFrameworkStores<ApplicationDbContext>();
