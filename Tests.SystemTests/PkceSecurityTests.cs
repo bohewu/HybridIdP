@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 using Xunit;
@@ -146,6 +148,58 @@ public class PkceSecurityTests : IAsyncLifetime
         Assert.Contains("access_token", content);
     }
 
+    [Fact]
+    public async Task TokenExchange_WhenUserDeactivatedAfterAuthorization_ShouldReturnInvalidGrant()
+    {
+        var (codeChallenge, codeVerifier) = GeneratePkce();
+        var authCode = await GetAuthorizationCodeWithConsentAsync(codeChallenge);
+        Assert.NotNull(authCode);
+
+        using var adminClient = CreateAdminClient();
+        var adminToken = await GetAdminTokenAsync(adminClient);
+        adminClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", adminToken);
+        var userId = await FindUserIdAsync(adminClient, "pkce@hybridauth.local");
+        var userWasDeactivated = false;
+
+        try
+        {
+            using var deactivateResponse =
+                await adminClient.PostAsync($"/api/admin/users/{userId}/deactivate", null);
+            userWasDeactivated = true;
+            Assert.Equal(HttpStatusCode.NoContent, deactivateResponse.StatusCode);
+
+            using var tokenRequest = new FormUrlEncodedContent(
+                new Dictionary<string, string>
+                {
+                    ["grant_type"] = "authorization_code",
+                    ["client_id"] = ClientId,
+                    ["code"] = authCode!,
+                    ["redirect_uri"] = RedirectUri,
+                    ["code_verifier"] = codeVerifier
+                });
+            using var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+            using var payload = await JsonDocument.ParseAsync(
+                await response.Content.ReadAsStreamAsync());
+            Assert.Equal("invalid_grant", payload.RootElement.GetProperty("error").GetString());
+            Assert.False(payload.RootElement.TryGetProperty("access_token", out _));
+            Assert.False(payload.RootElement.TryGetProperty("id_token", out _));
+            Assert.False(payload.RootElement.TryGetProperty("refresh_token", out _));
+        }
+        finally
+        {
+            if (userWasDeactivated)
+            {
+                using var reactivateResponse =
+                    await adminClient.PostAsync($"/api/admin/users/{userId}/reactivate", null);
+                Assert.Equal(HttpStatusCode.OK, reactivateResponse.StatusCode);
+            }
+        }
+    }
+
     #region Helpers
 
     private static (string CodeChallenge, string CodeVerifier) GeneratePkce()
@@ -229,6 +283,53 @@ public class PkceSecurityTests : IAsyncLifetime
             var content = await loginResponse.Content.ReadAsStringAsync();
             throw new Exception($"Login failed. Status: {loginResponse.StatusCode}. Content: {content}");
         }
+    }
+
+    private HttpClient CreateAdminClient()
+    {
+        var handler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback =
+                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+            UseCookies = false
+        };
+
+        return new HttpClient(handler) { BaseAddress = new Uri(_serverFixture.BaseUrl) };
+    }
+
+    private static async Task<string> GetAdminTokenAsync(HttpClient adminClient)
+    {
+        using var tokenRequest = new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = "testclient-admin",
+                ["client_secret"] = "admin-test-secret-2024",
+                ["scope"] = "users.read users.update users.delete"
+            });
+        using var response = await adminClient.PostAsync("/connect/token", tokenRequest);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var payload = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync());
+        var accessToken = payload.RootElement.GetProperty("access_token").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(accessToken));
+        return accessToken!;
+    }
+
+    private static async Task<string> FindUserIdAsync(HttpClient adminClient, string email)
+    {
+        using var response = await adminClient.GetAsync(
+            $"/api/admin/users?search={Uri.EscapeDataString(email)}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var payload = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync());
+        var items = payload.RootElement.GetProperty("items");
+        Assert.Single(items.EnumerateArray());
+        var userId = items[0].GetProperty("id").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(userId));
+        return userId!;
     }
 
     private static string ExtractAntiForgeryToken(string html)

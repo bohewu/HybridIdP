@@ -195,7 +195,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 
 | Finding | Status | Summary |
 | --- | --- | --- |
-| `csf_f27142404da832c902ea5492` | pending | Apply the current-account lifecycle predicate during authorization-code exchange. |
+| `csf_f27142404da832c902ea5492` | fixed | Apply the current-account lifecycle predicate during authorization-code exchange. |
 | `csf_14ab71c83a4dbbec064ce0c5` | pending | Apply the current-account lifecycle predicate during device-code exchange. |
 | `csf_4f7926baaf87d0ebe0ea1861` | pending | Enforce antiforgery validation on authorization consent POST. |
 | `csf_ab24e2d45bb89d24d8b45833` | pending | Enforce antiforgery validation on device-verification POST. |
@@ -261,6 +261,28 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   suite passed 1,367 tests with 0 failed and 1 existing aggressive ZAP test
   skipped. Diff validation found no whitespace errors, generated application
   output, or live credential material.
+
+### M2 Verification Evidence
+
+- Before the fix, an authorization code issued to an active user could still
+  be exchanged after that user was deactivated. The negative regression
+  failed with `SignInResult` instead of OAuth `invalid_grant`.
+- Authorization-code exchange now reuses the current-account lifecycle
+  predicate already applied to password and refresh-token grants. It rejects
+  inactive, deleted, or locked users and missing or ineligible linked Person
+  records immediately before token issuance.
+- Eligible users retain the existing authorization-code principal, claims,
+  destinations, PKCE behavior, and token response. Legacy users without a
+  Person link remain supported by the existing predicate.
+- The real HTTP regression obtains a code while the seeded PKCE user is
+  eligible, deactivates that account, and verifies that redemption with the
+  correct verifier returns HTTP 400 JSON `invalid_grant` without access, ID,
+  or refresh tokens. The account is reactivated in test cleanup.
+- Focused TokenService tests passed 40/40. PKCE, authorization-code, and
+  confidential-client secret-rotation system regressions passed 8/8.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,377 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped.
 
 ## P2 - Low Hardening
 

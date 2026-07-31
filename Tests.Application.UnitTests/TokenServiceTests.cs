@@ -624,6 +624,119 @@ namespace Tests.Application.UnitTests
                 signInResult.Principal!.GetClaim(Claims.Subject));
         }
 
+        [Theory]
+        [InlineData(false, false, false)]
+        [InlineData(true, true, false)]
+        [InlineData(true, false, true)]
+        public async Task HandleTokenRequestAsync_AuthorizationCode_RestrictedAccount_ReturnsInvalidGrant(
+            bool isActive,
+            bool isDeleted,
+            bool isLockedOut)
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "authorization-code-user",
+                IsActive = isActive,
+                IsDeleted = isDeleted
+            };
+            var principal = SetupAuthorizationCodeGrant(user, isLockedOut);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.AuthorizationCode, code: "opaque-authorization-code"),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Theory]
+        [InlineData(PersonStatus.Suspended, null, null, false)]
+        [InlineData(PersonStatus.Active, 1, null, false)]
+        [InlineData(PersonStatus.Active, null, -1, false)]
+        [InlineData(PersonStatus.Active, null, null, true)]
+        public async Task HandleTokenRequestAsync_AuthorizationCode_IneligiblePerson_ReturnsInvalidGrant(
+            PersonStatus status,
+            int? startDateOffsetDays,
+            int? endDateOffsetDays,
+            bool isDeleted)
+        {
+            var personId = Guid.NewGuid();
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "authorization-code-user",
+                IsActive = true,
+                PersonId = personId
+            };
+            var person = new Person
+            {
+                Id = personId,
+                Status = status,
+                StartDate = startDateOffsetDays.HasValue
+                    ? DateTime.UtcNow.Date.AddDays(startDateOffsetDays.Value)
+                    : null,
+                EndDate = endDateOffsetDays.HasValue
+                    ? DateTime.UtcNow.Date.AddDays(endDateOffsetDays.Value)
+                    : null,
+                IsDeleted = isDeleted
+            };
+            var principal = SetupAuthorizationCodeGrant(user);
+            SetupMockPersons(person);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.AuthorizationCode, code: "opaque-authorization-code"),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_AuthorizationCode_MissingLinkedPerson_ReturnsInvalidGrant()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "authorization-code-user",
+                IsActive = true,
+                PersonId = Guid.NewGuid()
+            };
+            var principal = SetupAuthorizationCodeGrant(user);
+            SetupMockPersons();
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.AuthorizationCode, code: "opaque-authorization-code"),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_AuthorizationCode_EligibleLinkedUser_ReturnsOriginalPrincipal()
+        {
+            var personId = Guid.NewGuid();
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "authorization-code-user",
+                IsActive = true,
+                PersonId = personId
+            };
+            var principal = SetupAuthorizationCodeGrant(user);
+            SetupMockPersons(new Person
+            {
+                Id = personId,
+                Status = PersonStatus.Active
+            });
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.AuthorizationCode, code: "opaque-authorization-code"),
+                principal);
+
+            var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            Assert.Same(principal, signInResult.Principal);
+            Assert.Equal(user.Id.ToString(), signInResult.Principal!.GetClaim(Claims.Subject));
+        }
+
         [Fact]
         public async Task HandleTokenRequestAsync_AuthorizationCode_MissingPermission_ReturnsForbidResult()
         {
@@ -678,6 +791,28 @@ namespace Tests.Application.UnitTests
             _mockUserManager.Setup(m => m.GetEmailAsync(user)).ReturnsAsync(user.Email);
             _mockUserManager.Setup(m => m.GetUserNameAsync(user)).ReturnsAsync(user.UserName);
             _mockUserManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync([]);
+            _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
+
+            return new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(Claims.Subject, user.Id.ToString())],
+                OpenIddictServerAspNetCoreDefaults.AuthenticationScheme));
+        }
+
+        private ClaimsPrincipal SetupAuthorizationCodeGrant(
+            ApplicationUser user,
+            bool isLockedOut = false)
+        {
+            var clientApp = new object();
+            _mockApplicationManager
+                .Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(clientApp);
+            _mockApplicationManager
+                .Setup(m => m.GetPermissionsAsync(clientApp, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableArray.Create(
+                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode));
+
+            _mockUserManager.Setup(m => m.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
+            _mockUserManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(isLockedOut);
             _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
 
             return new ClaimsPrincipal(new ClaimsIdentity(

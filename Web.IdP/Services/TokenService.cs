@@ -262,7 +262,7 @@ namespace Web.IdP.Services
                     }));
             }
 
-            if (!await _signInManager.CanSignInAsync(user))
+            if (!await CanIssueTokenForCurrentUserStateAsync(user, cancellationToken))
             {
                  return new ForbidResult(
                     authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
