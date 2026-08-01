@@ -733,29 +733,19 @@ public static class ServiceCollectionExtensions
                         });
                 });
 
-                // Authorize endpoint policy - per client ID (fallback to IP)
+                // Authorize endpoint policy - per source IP. The client ID has not
+                // been validated at this middleware boundary and must not create
+                // attacker-controlled limiter partitions.
                 options.AddPolicy("authorize", httpContext =>
-                {
-                    var clientId = httpContext.Request.Query["client_id"].ToString();
-                    if (string.IsNullOrEmpty(clientId) && httpContext.Request.HasFormContentType)
-                    {
-                        clientId = httpContext.Request.Form["client_id"].ToString();
-                    }
-
-                    var partitionKey = string.IsNullOrEmpty(clientId)
-                        ? $"ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}"
-                        : $"client:{clientId}";
-
-                    return RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: partitionKey,
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: $"ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
                             PermitLimit = rateLimitingOptions.AuthorizePermitLimit,
                             Window = TimeSpan.FromSeconds(rateLimitingOptions.AuthorizeWindowSeconds),
                             QueueLimit = rateLimitingOptions.QueueLimit,
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-                        });
-                });
+                        }));
                 
                 // Admin API policy - per client ID or IP
                 options.AddPolicy("admin-api", httpContext =>

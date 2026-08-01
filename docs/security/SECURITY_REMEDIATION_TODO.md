@@ -200,7 +200,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_4f7926baaf87d0ebe0ea1861` | fixed | Enforce antiforgery validation on authorization consent POST. |
 | `csf_ab24e2d45bb89d24d8b45833` | fixed | Enforce antiforgery validation and one-time browser intent binding on device-verification POST. |
 | `csf_2115040b736c248be7b31b82` | fixed | Protect the interactive authorization page from framing without breaking machine-readable `/connect` responses. |
-| `csf_d565c43230e9a213dbf13391` | pending | Bound authorization rate-limit partitions derived from untrusted `client_id`. |
+| `csf_d565c43230e9a213dbf13391` | fixed | Bound authorization rate-limit partitions derived from untrusted `client_id`. |
 | `csf_8ff43c021c099308b250550d` | pending | Bound token rate-limit partitions derived from unauthenticated `client_id`. |
 | `csf_c6e8b1456a3c11f02b825e11` | pending | Pin the production public origin and reject arbitrary forwarded Host values. |
 
@@ -380,6 +380,30 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   confidential-client secret-rotation system regressions passed 19/19.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,402 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped.
+
+### M7 Verification Evidence
+
+- Before the fix, a real ASP.NET rate-limiter middleware regression configured
+  one authorization request per minute and sent two requests from the same
+  source with different query `client_id` values. Both returned HTTP 200; the
+  second request bypassed the expected HTTP 429 by creating a new partition.
+- The authorization policy now partitions only by the connection's source IP
+  at this pre-validation boundary. Raw query and form `client_id` values are
+  no longer read by the partition selector, and a missing remote address
+  collapses into the single bounded `ip:unknown` partition.
+- Existing forwarded-header processing still runs before rate limiting when
+  proxy support is enabled. Permit limits, windows, queue behavior, endpoint
+  metadata, rejection status, and OpenIddict request handling are unchanged.
+- The regression covers query, form, and missing `client_id` inputs: the first
+  two same-source requests are allowed under a two-request limit and the third
+  returns HTTP 429. The rate-limit endpoint metadata test passed 1/1, options
+  binding tests passed 3/3, and affected authorization, consent, PKCE, and AMR
+  system regressions passed 16/16.
+- The separate unauthenticated token-endpoint partition finding remains
+  pending and was intentionally not mixed into this patch.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,403 tests with 0 failed and 1 existing aggressive ZAP test
   skipped.
 
 ## P2 - Low Hardening
