@@ -175,7 +175,9 @@ public partial class LoginEmailOtpModel : PageModel
             return RedirectToPage("./Lockout");
         }
 
-        ModelState.AddModelError(nameof(Input.EmailCode), _localizer["InvalidMfaCode"]);
+        ModelState.AddModelError(
+            nameof(Input.EmailCode),
+            _localizer["InvalidOrExpiredEmailCode"]);
         TwoFactorEnabled = user.TwoFactorEnabled;
         MaskEmail(user.Email);
         return Page();

@@ -9,6 +9,7 @@
   "UserCodeRequired": "The user code is required.",
   "MissingSubject": "User authentication failed. Missing subject claim.",
   "InvalidUserCode": "The specified user code is not valid. Please make sure you typed it correctly.",
+  "InteractionExpired": "This verification page has expired. Review the user code and try again.",
   "InvalidClient": "The client application cannot be found.",
   "AppRequestAccess": "{0} is requesting access to your account.",
   "UserRetrievalFailed": "The user details cannot be retrieved.",

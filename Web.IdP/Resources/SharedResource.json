@@ -167,7 +167,7 @@
   "InvalidVerificationCode": "Invalid verification code",
   "InvalidRecoveryCode": "Invalid recovery code",
   "TotpCodeLength": "Code must be 6 digits",
-  "InvalidOrExpiredEmailCode": "Invalid or expired email code",
+  "InvalidOrExpiredEmailCode": "The code is invalid, expired, or has reached its attempt limit. Request a new code and try again.",
   "EmailCodeLength": "Email code must be 6 digits",
   "SendEmailCode": "Send code to email",
   "EmailCodeSent": "Code sent to your email",

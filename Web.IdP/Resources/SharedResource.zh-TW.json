@@ -166,7 +166,7 @@
   "InvalidVerificationCode": "驗證碼無效",
   "InvalidRecoveryCode": "救援碼無效",
   "TotpCodeLength": "驗證碼必須為 6 位數",
-  "InvalidOrExpiredEmailCode": "電子郵件驗證碼無效或已過期",
+  "InvalidOrExpiredEmailCode": "驗證碼無效、已過期或嘗試次數已用完。請重新取得驗證碼後再試一次。",
   "EmailCodeLength": "電子郵件驗證碼必須為 6 位數",
   "SendEmailCode": "發送驗證碼到電子郵件",
   "EmailCodeSent": "驗證碼已發送至您的電子郵件",

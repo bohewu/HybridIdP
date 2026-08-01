@@ -37,7 +37,7 @@
     "regenerateFailed": "Failed to regenerate recovery codes. Please try again.",
     "toggleFailed": "Failed to toggle Email MFA",
     "sendCodeFailed": "Failed to send the email verification code. Please try again.",
-    "invalidOrExpiredCode": "The verification code is invalid or has expired.",
+    "invalidOrExpiredCode": "The code is invalid, expired, or has reached its attempt limit. Request a new code and try again.",
     "registerPasskeyFailed": "Failed to register passkey",
     "deletePasskeyFailed": "Failed to delete passkey",
     "loadPasskeysFailed": "Failed to load passkey list",

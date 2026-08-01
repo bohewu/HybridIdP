@@ -128,10 +128,7 @@ public class DeviceFlowSystemTests : IAsyncLifetime
     [Fact]
     public async Task DeviceVerification_RequiresAntiforgeryAndIntentAndPreservesValidSubmission()
     {
-        using var browserClient = CreateHttpClient(useCookies: true, allowAutoRedirect: true);
         using var pollingClient = CreateHttpClient(useCookies: false, allowAutoRedirect: false);
-
-        await LoginAsync(browserClient, "pkce@hybridauth.local", "Pkce@123");
 
         using var deviceRequest = new FormUrlEncodedContent(
             new Dictionary<string, string>
@@ -210,22 +207,24 @@ public class DeviceFlowSystemTests : IAsyncLifetime
             new FormUrlEncodedContent(withoutIntent));
         await AssertInvalidDeviceVerificationIntentAsync(missingIntentResponse);
 
-        using var unknownIntentBrowser = CreateHttpClient(
+        using var recoveryBrowser = CreateHttpClient(
             useCookies: true,
             allowAutoRedirect: true);
-        await LoginAsync(unknownIntentBrowser, "pkce@hybridauth.local", "Pkce@123");
-        var unknownIntent = (await GetVerificationFieldsAsync(unknownIntentBrowser))
+        await LoginAsync(recoveryBrowser, "pkce@hybridauth.local", "Pkce@123");
+        var unknownIntent = (await GetVerificationFieldsAsync(recoveryBrowser))
             .Select(pair => pair.Key == "device_verification_intent"
                 ? new KeyValuePair<string, string>(pair.Key, "unknown-device-verification-intent")
                 : pair)
             .ToList();
-        using var unknownIntentResponse = await unknownIntentBrowser.PostAsync(
+        using var unknownIntentResponse = await recoveryBrowser.PostAsync(
             "/connect/verify",
             new FormUrlEncodedContent(unknownIntent));
         await AssertInvalidDeviceVerificationIntentAsync(unknownIntentResponse);
 
-        var validFields = await GetVerificationFieldsAsync(browserClient);
-        using var validResponse = await browserClient.PostAsync(
+        var validFields = ExtractHiddenInputs(
+            await unknownIntentResponse.Content.ReadAsStringAsync());
+        validFields.Add(new KeyValuePair<string, string>("user_code", userCode!));
+        using var validResponse = await recoveryBrowser.PostAsync(
             "/connect/verify",
             new FormUrlEncodedContent(validFields));
         Assert.Equal(HttpStatusCode.OK, validResponse.StatusCode);
@@ -255,7 +254,7 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         Assert.False(string.IsNullOrWhiteSpace(
             tokenPayload.RootElement.GetProperty("access_token").GetString()));
 
-        using var replayResponse = await browserClient.PostAsync(
+        using var replayResponse = await recoveryBrowser.PostAsync(
             "/connect/verify",
             new FormUrlEncodedContent(validFields));
         await AssertInvalidDeviceVerificationIntentAsync(replayResponse);
@@ -556,11 +555,20 @@ public class DeviceFlowSystemTests : IAsyncLifetime
     {
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Null(response.Headers.Location);
-        using var payload = await JsonDocument.ParseAsync(
-            await response.Content.ReadAsStreamAsync());
-        Assert.Equal(
-            "invalid_device_verification_intent",
-            payload.RootElement.GetProperty("error").GetString());
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.True(
+            Regex.IsMatch(
+                html,
+                "data-test-id=\\\"device-verification-intent-error\\\"",
+                RegexOptions.IgnoreCase),
+            "The device verification page should render an actionable intent error.");
+        Assert.True(
+            ExtractHiddenInputs(html).Any(pair =>
+                pair.Key == "device_verification_intent" &&
+                !string.IsNullOrWhiteSpace(pair.Value)),
+            "The device verification page should issue a fresh retry intent.");
     }
 
     private string GetProjectDirectory()

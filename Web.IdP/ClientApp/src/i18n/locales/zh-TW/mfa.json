@@ -37,7 +37,7 @@
     "regenerateFailed": "無法重新產生救援碼，請再試一次。",
     "toggleFailed": "切換電子郵件 MFA 失敗",
     "sendCodeFailed": "無法寄送電子郵件驗證碼，請再試一次。",
-    "invalidOrExpiredCode": "驗證碼無效或已過期。",
+    "invalidOrExpiredCode": "驗證碼無效、已過期或嘗試次數已用完。請重新取得驗證碼後再試一次。",
     "registerPasskeyFailed": "註冊密鑰失敗",
     "deletePasskeyFailed": "刪除密鑰失敗",
     "loadPasskeysFailed": "載入密鑰清單失敗",

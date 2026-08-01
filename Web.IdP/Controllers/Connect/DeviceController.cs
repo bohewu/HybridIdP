@@ -43,11 +43,14 @@ public class DeviceController : Controller
                 result,
                 intent))
         {
-            return BadRequest(new
-            {
-                error = "invalid_device_verification_intent",
-                message = "The device verification interaction is invalid or has expired."
-            });
+            var expiredViewModel = await _deviceFlowService.PrepareVerificationViewModelAsync(result);
+            ViewData["DeviceVerificationInteractionExpired"] = true;
+            ViewData["DeviceVerificationIntent"] = DeviceVerificationSession.Issue(
+                HttpContext.Session,
+                User,
+                result);
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            return View(expiredViewModel);
         }
 
         var actionResult = await _deviceFlowService.ProcessVerificationAsync(User, result);
