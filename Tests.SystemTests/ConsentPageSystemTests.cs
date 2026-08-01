@@ -70,6 +70,47 @@ public class ConsentPageSystemTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ConsentPage_PreventsFramingWithoutChangingBackchannelErrors()
+    {
+        var (codeChallenge, _) = GeneratePkce();
+        var authorizeUrl = $"/CoNnEcT/AuThOrIzE?client_id={ClientId}&redirect_uri={HttpUtility.UrlEncode(RedirectUri)}&response_type=code&scope={HttpUtility.UrlEncode(DefaultScopes)}&prompt=consent&code_challenge={codeChallenge}&code_challenge_method=S256";
+
+        using var consentResponse = await _httpClient.GetAsync(authorizeUrl);
+        Assert.Equal(HttpStatusCode.OK, consentResponse.StatusCode);
+        Assert.Equal("text/html", consentResponse.Content.Headers.ContentType?.MediaType);
+        Assert.True(
+            consentResponse.Headers.TryGetValues(
+                "Content-Security-Policy",
+                out var contentSecurityPolicies),
+            "The interactive consent page must declare a frame-ancestors policy.");
+        Assert.Contains(
+            "frame-ancestors 'none'",
+            string.Join("; ", contentSecurityPolicies),
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(
+            "DENY",
+            Assert.Single(consentResponse.Headers.GetValues("X-Frame-Options")));
+
+        var consentHtml = await consentResponse.Content.ReadAsStringAsync();
+        var denyFields = ExtractHiddenInputs(consentHtml);
+        denyFields.Add(new KeyValuePair<string, string>("submit", "deny"));
+        using var redirectResponse = await _httpClient.PostAsync(
+            "/connect/authorize",
+            new FormUrlEncodedContent(denyFields));
+        Assert.Equal(HttpStatusCode.Redirect, redirectResponse.StatusCode);
+        Assert.False(redirectResponse.Headers.Contains("Content-Security-Policy"));
+        Assert.False(redirectResponse.Headers.Contains("X-Frame-Options"));
+
+        using var tokenResponse = await _httpClient.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent([]));
+        Assert.Equal(HttpStatusCode.BadRequest, tokenResponse.StatusCode);
+        Assert.Equal("application/json", tokenResponse.Content.Headers.ContentType?.MediaType);
+        Assert.False(tokenResponse.Headers.Contains("Content-Security-Policy"));
+        Assert.False(tokenResponse.Headers.Contains("X-Frame-Options"));
+    }
+
+    [Fact]
     public async Task Consent_Allow_ShouldRedirectWithAuthCode()
     {
         // Arrange

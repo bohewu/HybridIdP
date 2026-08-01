@@ -199,7 +199,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_14ab71c83a4dbbec064ce0c5` | fixed | Apply the current-account lifecycle predicate during device-code exchange. |
 | `csf_4f7926baaf87d0ebe0ea1861` | fixed | Enforce antiforgery validation on authorization consent POST. |
 | `csf_ab24e2d45bb89d24d8b45833` | fixed | Enforce antiforgery validation and one-time browser intent binding on device-verification POST. |
-| `csf_2115040b736c248be7b31b82` | pending | Protect the interactive authorization page from framing without breaking machine-readable `/connect` responses. |
+| `csf_2115040b736c248be7b31b82` | fixed | Protect the interactive authorization page from framing without breaking machine-readable `/connect` responses. |
 | `csf_d565c43230e9a213dbf13391` | pending | Bound authorization rate-limit partitions derived from untrusted `client_id`. |
 | `csf_8ff43c021c099308b250550d` | pending | Bound token rate-limit partitions derived from unauthenticated `client_id`. |
 | `csf_c6e8b1456a3c11f02b825e11` | pending | Pin the production public origin and reject arbitrary forwarded Host values. |
@@ -358,6 +358,28 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   and device-flow system tests passed 3/3.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,401 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped.
+
+### M6 Verification Evidence
+
+- Before the fix, the real interactive authorization consent response was
+  HTML without a CSP `frame-ancestors` directive or `X-Frame-Options`. The
+  real-host regression failed on the missing policy before the production
+  middleware was changed.
+- The security-header middleware now applies the narrow
+  `frame-ancestors 'none'` CSP and `X-Frame-Options: DENY` only when the final
+  `/connect/authorize` response is HTML. The path comparison is
+  case-insensitive and the final response content type, rather than an
+  attacker-controlled query parameter, selects the policy.
+- Authorization redirects, including non-interactive responses, remain free
+  of the application CSP. Machine-readable `/connect/token` errors retain
+  their JSON content type and do not receive the browser-only headers.
+- The real-host regression covers a mixed-case authorization path, protected
+  consent HTML, the consent-denial redirect, and the token endpoint JSON
+  error. Affected consent, PKCE, authorization-code, AMR, device-flow, and
+  confidential-client secret-rotation system regressions passed 19/19.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,402 tests with 0 failed and 1 existing aggressive ZAP test
   skipped.
 
 ## P2 - Low Hardening

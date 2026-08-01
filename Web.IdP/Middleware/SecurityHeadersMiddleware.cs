@@ -21,9 +21,30 @@ public class SecurityHeadersMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Skip security headers for OAuth/OpenIdConnect endpoints to avoid CSP conflicts
+        // Keep OAuth/OpenID Connect protocol responses free from the application CSP.
+        // Interactive authorization HTML still requires a narrow anti-framing policy.
         if (context.Request.Path.StartsWithSegments("/connect"))
         {
+            if (string.Equals(
+                    context.Request.Path.Value,
+                    "/connect/authorize",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.OnStarting(() =>
+                {
+                    if (context.Response.ContentType?.StartsWith(
+                            "text/html",
+                            StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        context.Response.Headers["Content-Security-Policy"] =
+                            "frame-ancestors 'none'";
+                        context.Response.Headers["X-Frame-Options"] = "DENY";
+                    }
+
+                    return Task.CompletedTask;
+                });
+            }
+
             await _next(context);
             return;
         }
