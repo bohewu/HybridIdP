@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Server.AspNetCore;
+using Web.IdP.Attributes;
+using Web.IdP.Helpers;
 using Web.IdP.Services;
 
 namespace Web.IdP.Controllers.Connect;
@@ -17,26 +19,37 @@ public class DeviceController : Controller
     }
 
     [HttpGet("~/connect/verify")]
-    [Authorize, IgnoreAntiforgeryToken] // Keep attributes from original
+    [Authorize]
     public async Task<IActionResult> Verify()
     {
         var result = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         var vm = await _deviceFlowService.PrepareVerificationViewModelAsync(result);
+        ViewData["DeviceVerificationIntent"] = DeviceVerificationSession.Issue(
+            HttpContext.Session,
+            User,
+            result);
         return View(vm);
     }
 
     [HttpPost("~/connect/verify")]
-    [Authorize, IgnoreAntiforgeryToken]
-    public async Task<IActionResult> Verify(string? user_code) 
+    [Authorize, ValidateCsrfForCookies]
+    public async Task<IActionResult> Verify(string? user_code)
     {
-        // Enforce user_code binding if not present in route/query but submitted via form
-        // However, OpenIddict middleware might extract it?
-        // AuthenticateAsync() should have it if it was in query or if middleware parsed form.
-        // But if form submission, let's rely on what service does.
-        // Wait, ProcessVerificationAsync uses AuthenticateAsync result. 
-        // If AuthenticateAsync fails (no user_code found), service returns VM with error.
-        
         var result = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        var intent = Request.Form[DeviceVerificationSession.FormFieldName].ToString();
+        if (!DeviceVerificationSession.TryConsume(
+                HttpContext.Session,
+                User,
+                result,
+                intent))
+        {
+            return BadRequest(new
+            {
+                error = "invalid_device_verification_intent",
+                message = "The device verification interaction is invalid or has expired."
+            });
+        }
+
         var actionResult = await _deviceFlowService.ProcessVerificationAsync(User, result);
 
         if (actionResult is SignInResult)
@@ -46,6 +59,10 @@ public class DeviceController : Controller
 
         if (actionResult is BadRequestObjectResult badRequest && badRequest.Value is DeviceVerificationViewModel vm)
         {
+            ViewData["DeviceVerificationIntent"] = DeviceVerificationSession.Issue(
+                HttpContext.Session,
+                User,
+                result);
             return View(vm);
         }
 

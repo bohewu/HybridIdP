@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Mvc.Localization
+@using Web.IdP.Helpers
 @model Web.IdP.Services.DeviceVerificationViewModel
 @inject IViewLocalizer Localizer
 @{
@@ -18,7 +19,10 @@
 
     <div class="max-w-md w-full bg-white shadow-sm rounded-lg border border-gray-100 overflow-hidden">
         <div class="p-6 sm:p-10">
-            <form method="post" class="space-y-6">
+            <form method="post" asp-antiforgery="true" class="space-y-6">
+                <input type="hidden"
+                       name="@DeviceVerificationSession.FormFieldName"
+                       value="@ViewData["DeviceVerificationIntent"]" />
                 @if (!string.IsNullOrEmpty(Model.Error))
                 {
                     <div class="bg-red-50 border-l-4 border-red-400 p-4 flex items-start mb-6">

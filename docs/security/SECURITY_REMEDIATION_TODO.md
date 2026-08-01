@@ -198,7 +198,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_f27142404da832c902ea5492` | fixed | Apply the current-account lifecycle predicate during authorization-code exchange. |
 | `csf_14ab71c83a4dbbec064ce0c5` | fixed | Apply the current-account lifecycle predicate during device-code exchange. |
 | `csf_4f7926baaf87d0ebe0ea1861` | fixed | Enforce antiforgery validation on authorization consent POST. |
-| `csf_ab24e2d45bb89d24d8b45833` | pending | Enforce antiforgery validation on device-verification POST. |
+| `csf_ab24e2d45bb89d24d8b45833` | fixed | Enforce antiforgery validation and one-time browser intent binding on device-verification POST. |
 | `csf_2115040b736c248be7b31b82` | pending | Protect the interactive authorization page from framing without breaking machine-readable `/connect` responses. |
 | `csf_d565c43230e9a213dbf13391` | pending | Bound authorization rate-limit partitions derived from untrusted `client_id`. |
 | `csf_8ff43c021c099308b250550d` | pending | Bound token rate-limit partitions derived from unauthenticated `client_id`. |
@@ -330,6 +330,34 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   system regressions passed 17/17.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,394 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped.
+
+### M5 Verification Evidence
+
+- Before the fix, a cookie-authenticated device-verification submission
+  without an antiforgery token returned HTTP 200 and approved the submitted
+  user code. The real-host regression failed on that response before the
+  production path was changed.
+- Browser device-verification POSTs now require both the repository's
+  cookie-aware antiforgery validation and a cryptographically random,
+  one-time session intent. Intents are bound to the current user and, when a
+  valid user code is resolved while rendering the page, that exact device
+  interaction.
+- Manual user-code entry remains supported. Invalid user codes redisplay the
+  form with a fresh intent. Missing or invalid antiforgery proofs and missing,
+  unknown, expired, changed-interaction, wrong-user, or replayed intents return
+  HTTP 400 without approving the interaction.
+- The intent store supports up to eight concurrent verification tabs and
+  expires entries after five minutes. A matching intent is consumed before
+  the approval service runs.
+- The real HTTP regression verifies the negative cases, a valid approval and
+  success redirect, successful device-code redemption, and replay rejection
+  without logging user codes, device codes, or tokens. The existing external
+  device console flow and device-code lifecycle regression remain functional.
+- Focused intent-helper tests passed 6/6, DeviceFlowService tests passed 3/3,
+  and device-flow system tests passed 3/3.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,401 tests with 0 failed and 1 existing aggressive ZAP test
   skipped.
 
 ## P2 - Low Hardening

@@ -126,6 +126,142 @@ public class DeviceFlowSystemTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task DeviceVerification_RequiresAntiforgeryAndIntentAndPreservesValidSubmission()
+    {
+        using var browserClient = CreateHttpClient(useCookies: true, allowAutoRedirect: true);
+        using var pollingClient = CreateHttpClient(useCookies: false, allowAutoRedirect: false);
+
+        await LoginAsync(browserClient, "pkce@hybridauth.local", "Pkce@123");
+
+        using var deviceRequest = new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["client_id"] = "testclient-device",
+                ["scope"] = "openid profile offline_access"
+            });
+        using var deviceResponse = await pollingClient.PostAsync("/connect/device", deviceRequest);
+        Assert.Equal(HttpStatusCode.OK, deviceResponse.StatusCode);
+        using var devicePayload = await JsonDocument.ParseAsync(
+            await deviceResponse.Content.ReadAsStreamAsync());
+        var deviceCode = devicePayload.RootElement.GetProperty("device_code").GetString();
+        var userCode = devicePayload.RootElement.GetProperty("user_code").GetString();
+        var pollingIntervalSeconds = devicePayload.RootElement.TryGetProperty(
+            "interval",
+            out var intervalElement)
+            ? intervalElement.GetInt32()
+            : 5;
+        Assert.False(string.IsNullOrWhiteSpace(deviceCode));
+        Assert.False(string.IsNullOrWhiteSpace(userCode));
+
+        async Task<List<KeyValuePair<string, string>>> GetVerificationFieldsAsync(
+            HttpClient client)
+        {
+            using var verificationPage = await client.GetAsync(
+                $"/connect/verify?user_code={Uri.EscapeDataString(userCode!)}");
+            Assert.Equal(HttpStatusCode.OK, verificationPage.StatusCode);
+            var verificationHtml = await verificationPage.Content.ReadAsStringAsync();
+            var fields = ExtractHiddenInputs(verificationHtml);
+            Assert.Contains(fields, pair => pair.Key == "__RequestVerificationToken");
+            Assert.Contains(fields, pair => pair.Key == "device_verification_intent");
+            Assert.Equal(
+                GetRequestVerificationToken(verificationHtml),
+                fields.Single(pair => pair.Key == "__RequestVerificationToken").Value);
+            fields.Add(new KeyValuePair<string, string>("user_code", userCode!));
+            return fields;
+        }
+
+        using var missingAntiforgeryBrowser = CreateHttpClient(
+            useCookies: true,
+            allowAutoRedirect: true);
+        await LoginAsync(missingAntiforgeryBrowser, "pkce@hybridauth.local", "Pkce@123");
+        var withoutAntiforgery = (await GetVerificationFieldsAsync(missingAntiforgeryBrowser))
+            .Where(pair => pair.Key != "__RequestVerificationToken")
+            .ToList();
+        using var missingAntiforgeryResponse = await missingAntiforgeryBrowser.PostAsync(
+            "/connect/verify",
+            new FormUrlEncodedContent(withoutAntiforgery));
+        Assert.Equal(HttpStatusCode.BadRequest, missingAntiforgeryResponse.StatusCode);
+        Assert.Null(missingAntiforgeryResponse.Headers.Location);
+
+        using var invalidAntiforgeryBrowser = CreateHttpClient(
+            useCookies: true,
+            allowAutoRedirect: true);
+        await LoginAsync(invalidAntiforgeryBrowser, "pkce@hybridauth.local", "Pkce@123");
+        var invalidAntiforgery = (await GetVerificationFieldsAsync(invalidAntiforgeryBrowser))
+            .Select(pair => pair.Key == "__RequestVerificationToken"
+                ? new KeyValuePair<string, string>(pair.Key, "invalid-antiforgery-token")
+                : pair)
+            .ToList();
+        using var invalidAntiforgeryResponse = await invalidAntiforgeryBrowser.PostAsync(
+            "/connect/verify",
+            new FormUrlEncodedContent(invalidAntiforgery));
+        Assert.Equal(HttpStatusCode.BadRequest, invalidAntiforgeryResponse.StatusCode);
+        Assert.Null(invalidAntiforgeryResponse.Headers.Location);
+
+        using var missingIntentBrowser = CreateHttpClient(
+            useCookies: true,
+            allowAutoRedirect: true);
+        await LoginAsync(missingIntentBrowser, "pkce@hybridauth.local", "Pkce@123");
+        var withoutIntent = (await GetVerificationFieldsAsync(missingIntentBrowser))
+            .Where(pair => pair.Key != "device_verification_intent")
+            .ToList();
+        using var missingIntentResponse = await missingIntentBrowser.PostAsync(
+            "/connect/verify",
+            new FormUrlEncodedContent(withoutIntent));
+        await AssertInvalidDeviceVerificationIntentAsync(missingIntentResponse);
+
+        using var unknownIntentBrowser = CreateHttpClient(
+            useCookies: true,
+            allowAutoRedirect: true);
+        await LoginAsync(unknownIntentBrowser, "pkce@hybridauth.local", "Pkce@123");
+        var unknownIntent = (await GetVerificationFieldsAsync(unknownIntentBrowser))
+            .Select(pair => pair.Key == "device_verification_intent"
+                ? new KeyValuePair<string, string>(pair.Key, "unknown-device-verification-intent")
+                : pair)
+            .ToList();
+        using var unknownIntentResponse = await unknownIntentBrowser.PostAsync(
+            "/connect/verify",
+            new FormUrlEncodedContent(unknownIntent));
+        await AssertInvalidDeviceVerificationIntentAsync(unknownIntentResponse);
+
+        var validFields = await GetVerificationFieldsAsync(browserClient);
+        using var validResponse = await browserClient.PostAsync(
+            "/connect/verify",
+            new FormUrlEncodedContent(validFields));
+        Assert.Equal(HttpStatusCode.OK, validResponse.StatusCode);
+        Assert.Equal(
+            "/connect/verify/success",
+            validResponse.RequestMessage?.RequestUri?.AbsolutePath);
+
+        await Task.Delay(TimeSpan.FromSeconds(pollingIntervalSeconds));
+        using var tokenRequest = new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code",
+                ["client_id"] = "testclient-device",
+                ["device_code"] = deviceCode!
+            });
+        using var tokenResponse = await pollingClient.PostAsync("/connect/token", tokenRequest);
+        using var tokenPayload = await JsonDocument.ParseAsync(
+            await tokenResponse.Content.ReadAsStreamAsync());
+        if (tokenResponse.StatusCode != HttpStatusCode.OK)
+        {
+            var error = tokenPayload.RootElement.TryGetProperty("error", out var errorElement)
+                ? errorElement.GetString()
+                : "missing_error";
+            Assert.Fail($"Device token exchange failed with OAuth error '{error}'.");
+        }
+
+        Assert.False(string.IsNullOrWhiteSpace(
+            tokenPayload.RootElement.GetProperty("access_token").GetString()));
+
+        using var replayResponse = await browserClient.PostAsync(
+            "/connect/verify",
+            new FormUrlEncodedContent(validFields));
+        await AssertInvalidDeviceVerificationIntentAsync(replayResponse);
+    }
+
+    [Fact]
     public async Task DeviceCodeExchange_WhenUserDeactivatedAfterApproval_ReturnsInvalidGrant()
     {
         using var browserClient = CreateHttpClient(useCookies: true, allowAutoRedirect: true);
@@ -225,23 +361,15 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         HttpClient client,
         string userCode)
     {
-        // Get Verify Page
         var response = await client.GetAsync("/connect/verify");
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
-        var token = GetRequestVerificationToken(content);
+        var formFields = ExtractHiddenInputs(content);
+        formFields.Add(new KeyValuePair<string, string>("user_code", userCode));
 
-        // Submit Code
-        var formData = new FormUrlEncodedContent(new[]
-        {
-            new KeyValuePair<string, string>("user_code", userCode), // OpenIddict might expect lowercase user_code or Input.UserCode? 
-            // DeviceVerificationViewModel likely binds to user_code. 
-            // Let's check the view model or controller.
-            // DeviceController Verify(string? user_code) -> matches "user_code"
-            new KeyValuePair<string, string>("__RequestVerificationToken", token)
-        });
-
-        var submitResponse = await client.PostAsync("/connect/verify", formData);
+        var submitResponse = await client.PostAsync(
+            "/connect/verify",
+            new FormUrlEncodedContent(formFields));
         submitResponse.EnsureSuccessStatusCode();
 
         return await submitResponse.Content.ReadAsStringAsync();
@@ -385,6 +513,54 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         var match = Regex.Match(html, @"input name=""__RequestVerificationToken"" type=""hidden"" value=""([^""]+)""");
         if (match.Success) return match.Groups[1].Value;
         throw new Exception("Could not find __RequestVerificationToken");
+    }
+
+    private static List<KeyValuePair<string, string>> ExtractHiddenInputs(string html)
+    {
+        var inputs = new List<KeyValuePair<string, string>>();
+        var inputMatches = Regex.Matches(
+            html,
+            @"<input\b[^>]*\btype=""hidden""[^>]*>",
+            RegexOptions.IgnoreCase);
+
+        foreach (Match inputMatch in inputMatches)
+        {
+            var nameMatch = Regex.Match(
+                inputMatch.Value,
+                @"\bname=""([^""]+)""",
+                RegexOptions.IgnoreCase);
+            if (!nameMatch.Success)
+            {
+                continue;
+            }
+
+            var valueMatch = Regex.Match(
+                inputMatch.Value,
+                @"\bvalue=""([^""]*)""",
+                RegexOptions.IgnoreCase);
+            inputs.Add(new KeyValuePair<string, string>(
+                WebUtility.HtmlDecode(nameMatch.Groups[1].Value),
+                valueMatch.Success
+                    ? WebUtility.HtmlDecode(valueMatch.Groups[1].Value)
+                    : string.Empty));
+        }
+
+        return inputs
+            .GroupBy(pair => pair.Key, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .ToList();
+    }
+
+    private static async Task AssertInvalidDeviceVerificationIntentAsync(
+        HttpResponseMessage response)
+    {
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Null(response.Headers.Location);
+        using var payload = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync());
+        Assert.Equal(
+            "invalid_device_verification_intent",
+            payload.RootElement.GetProperty("error").GetString());
     }
 
     private string GetProjectDirectory()
