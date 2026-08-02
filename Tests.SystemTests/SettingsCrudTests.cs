@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Core.Domain.Constants;
 using Xunit;
 
 namespace Tests.SystemTests;
@@ -52,6 +53,24 @@ public class SettingsCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
         // Response should be an array of settings
         var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
         Assert.True(result.ValueKind == JsonValueKind.Array);
+    }
+
+    [Fact]
+    public async Task GetByPrefix_MailSettings_ReturnsOnlySafeSmtpPasswordMetadata()
+    {
+        using var response = await _httpClient.GetAsync(
+            "/api/admin/settings?prefix=Mail.");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var passwordSetting = result.EnumerateArray().Single(setting =>
+            setting.GetProperty("key").GetString() == SettingKeys.Email.SmtpPassword);
+        Assert.True(
+            IsSafeSensitiveMetadata(passwordSetting.GetProperty("value").GetString()),
+            "The effective SMTP password must be empty or masked.");
+        Assert.True(
+            IsSafeSensitiveMetadata(passwordSetting.GetProperty("defaultValue").GetString()),
+            "The configured SMTP password default must be empty or masked.");
     }
 
     [Fact]
@@ -217,5 +236,11 @@ public class SettingsCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
         return JsonSerializer.Deserialize<JsonElement>(content).GetProperty("access_token").GetString()!;
+    }
+
+    private static bool IsSafeSensitiveMetadata(string? value)
+    {
+        return string.IsNullOrEmpty(value) ||
+               string.Equals(value, "(set)", StringComparison.Ordinal);
     }
 }

@@ -70,10 +70,16 @@ public class SettingsController : ControllerBase
             return Ok(emailSettings.Select(s => {
                 var isOverridden = !string.IsNullOrEmpty(s.Value);
                 var displayValue = isOverridden ? s.Value : s.Default;
+                var displayDefaultValue = s.Default;
                 
                 if (IsSensitive(s.Key) && !string.IsNullOrEmpty(displayValue))
                 {
                     displayValue = "(set)";
+                }
+
+                if (IsSensitive(s.Key) && !string.IsNullOrEmpty(displayDefaultValue))
+                {
+                    displayDefaultValue = "(set)";
                 }
 
                 return new
@@ -82,7 +88,7 @@ public class SettingsController : ControllerBase
                     value = displayValue,
                     isOverridden = isOverridden,
                     source = isOverridden ? "Database" : "Configuration",
-                    defaultValue = s.Default,
+                    defaultValue = displayDefaultValue,
                     dataType = "String"
                 };
             }).ToArray());

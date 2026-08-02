@@ -71,6 +71,10 @@ enabled and has no effect in Production.
 Exact-key settings reads never echo a non-empty value whose key is classified
 as a password or secret. They return the existing `(set)` presence marker;
 an empty sensitive value remains empty so the UI can distinguish unset state.
+Mail prefix responses apply the same rule to both the effective value and the
+configuration-backed `defaultValue`; those fields expose only `(set)` or an
+empty value for the SMTP password. Non-sensitive Mail defaults remain visible
+so administrators can still distinguish configuration from database overrides.
 This response masking does not alter internal settings resolution: authorized
 server-side consumers can still decrypt protected values. Replacing or
 clearing a setting continues to require `settings.update`, and submitting the

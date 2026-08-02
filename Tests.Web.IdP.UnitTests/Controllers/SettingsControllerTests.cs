@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Core.Application;
 using Core.Application.Options;
@@ -123,6 +124,58 @@ public class SettingsControllerTests
             SettingKeys.OperationalAdminBootstrapCompleted,
             setting.GetProperty("key").GetString());
         Assert.Equal("completed", setting.GetProperty("value").GetString());
+    }
+
+    [Fact]
+    public async Task GetByPrefix_ConfigurationBackedSmtpPassword_ReturnsOnlyMaskedPresenceMetadata()
+    {
+        const string smtpHost = "smtp.example.test";
+        var configurationSensitiveValue = Convert.ToBase64String(
+            RandomNumberGenerator.GetBytes(32));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{EmailOptions.SectionName}:SmtpHost"] = smtpHost,
+                [$"{EmailOptions.SectionName}:SmtpPassword"] = configurationSensitiveValue
+            })
+            .Build();
+        var emailOptions = new Mock<IOptionsSnapshot<EmailOptions>>();
+        emailOptions.Setup(options => options.Value).Returns(new EmailOptions());
+        var controller = new SettingsController(
+            _settings.Object,
+            Mock.Of<IEmailService>(),
+            configuration,
+            emailOptions.Object);
+
+        _settings
+            .Setup(service => service.GetByPrefixAsync(
+                "Mail.",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, string>());
+
+        var result = await controller.GetByPrefix("Mail.");
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var payload = JsonSerializer.SerializeToElement(okResult.Value);
+        var passwordSetting = payload.EnumerateArray().Single(setting =>
+            setting.GetProperty("key").GetString() == SettingKeys.Email.SmtpPassword);
+        Assert.True(
+            string.Equals(
+                passwordSetting.GetProperty("value").GetString(),
+                "(set)",
+                StringComparison.Ordinal),
+            "The effective SMTP password must expose only presence metadata.");
+        Assert.True(
+            string.Equals(
+                passwordSetting.GetProperty("defaultValue").GetString(),
+                "(set)",
+                StringComparison.Ordinal),
+            "The configured SMTP password default must expose only presence metadata.");
+
+        var hostSetting = payload.EnumerateArray().Single(setting =>
+            setting.GetProperty("key").GetString() == SettingKeys.Email.SmtpHost);
+        Assert.Equal(smtpHost, hostSetting.GetProperty("value").GetString());
+        Assert.Equal(smtpHost, hostSetting.GetProperty("defaultValue").GetString());
     }
 
     [Theory]

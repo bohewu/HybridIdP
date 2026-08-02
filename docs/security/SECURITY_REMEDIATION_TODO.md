@@ -211,7 +211,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_4bb9d23e632799503c0e50e9` | fixed | Enforce client ownership on object-specific read routes. |
 | `csf_e546334e3f5b0f012de26f25` | fixed | Enforce scope ownership on update, delete, and claim-mapping routes. |
 | `csf_eaec1c785f5afd7510f2a12f` | fixed | Prevent broad `settings.read` from returning decrypted sensitive settings. |
-| `csf_fd26a429e678ad053edf97c1` | pending | Never return the raw configuration-backed SMTP password as a default. |
+| `csf_fd26a429e678ad053edf97c1` | fixed | Never return the raw configuration-backed SMTP password as a default. |
 | `csf_8e4d91cc2977abfcd9c3d276` | pending | Allowlist custom-claim source properties so secret-bearing identity fields cannot enter tokens. |
 
 ### External Identity and Lifecycle
@@ -535,6 +535,30 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   suite passed 1,512 tests with 0 failed and 1 existing aggressive ZAP test
   skipped. No database migration, DTO, frontend, OAuth/OIDC protocol, or live
   deployment change was made.
+
+### M13 Verification Evidence
+
+- Before the fix, a focused controller regression supplied a non-empty SMTP
+  password through an in-memory configuration source. The effective `value`
+  was masked, but `defaultValue` was not the expected `(set)` marker, proving
+  that the Mail prefix projection exposed the configuration-backed value. The
+  assertion and test output did not include that value.
+- Mail prefix responses now apply the existing sensitive-key classification to
+  both the effective value and configuration-backed default. A configured SMTP
+  password is represented only as `(set)`; an unset password remains empty.
+- Non-sensitive defaults such as SMTP host remain unchanged. The existing
+  Email UI continues to consume the effective `value`, recognize `(set)`, and
+  preserve the current password when that marker is submitted. Settings
+  resolution, storage, encryption, mail dispatch, DTOs, and authorization are
+  unchanged.
+- Focused SettingsController tests passed 13/13, and the real authenticated
+  Mail prefix HTTP regression passed 1/1. Settings CRUD, mail, and related
+  administrative system regressions passed 19/19; the Web IdP unit project
+  passed 276/276.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,514 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped. No database migration, frontend, OAuth/OIDC protocol, deployment
+  configuration, or live credential change was made.
 
 ## P2 - Low Hardening
 
