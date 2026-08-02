@@ -59,6 +59,49 @@ public class SettingsControllerTests
         Assert.Equal("completed", payload.GetProperty("value").GetString());
     }
 
+    [Theory]
+    [InlineData(SettingKeys.Email.SmtpPassword)]
+    [InlineData(SettingKeys.Turnstile.SecretKey)]
+    [InlineData("custom.lowercase.password")]
+    [InlineData("custom.lowercase.secret")]
+    public async Task GetByKey_SensitiveSetting_ReturnsOnlyMaskedPresenceMetadata(
+        string key)
+    {
+        _settings
+            .Setup(service => service.GetValueAsync(
+                key,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("decrypted-sensitive-value");
+
+        var result = await _controller.GetByKey(key);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var payload = JsonSerializer.SerializeToElement(okResult.Value);
+        Assert.Equal(key, payload.GetProperty("key").GetString());
+        Assert.True(
+            string.Equals(
+                payload.GetProperty("value").GetString(),
+                "(set)",
+                StringComparison.Ordinal),
+            "Sensitive exact-key responses must expose only presence metadata.");
+    }
+
+    [Fact]
+    public async Task GetByKey_EmptySensitiveSetting_PreservesUnsetState()
+    {
+        _settings
+            .Setup(service => service.GetValueAsync(
+                SettingKeys.Turnstile.SecretKey,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(string.Empty);
+
+        var result = await _controller.GetByKey(SettingKeys.Turnstile.SecretKey);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var payload = JsonSerializer.SerializeToElement(okResult.Value);
+        Assert.Equal(string.Empty, payload.GetProperty("value").GetString());
+    }
+
     [Fact]
     public async Task GetByPrefix_SystemOwnedSetting_RemainsVisibleAsNonSensitiveValue()
     {

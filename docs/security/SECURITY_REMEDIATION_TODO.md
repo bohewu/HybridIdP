@@ -210,7 +210,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | --- | --- | --- |
 | `csf_4bb9d23e632799503c0e50e9` | fixed | Enforce client ownership on object-specific read routes. |
 | `csf_e546334e3f5b0f012de26f25` | fixed | Enforce scope ownership on update, delete, and claim-mapping routes. |
-| `csf_eaec1c785f5afd7510f2a12f` | pending | Prevent broad `settings.read` from returning decrypted sensitive settings. |
+| `csf_eaec1c785f5afd7510f2a12f` | fixed | Prevent broad `settings.read` from returning decrypted sensitive settings. |
 | `csf_fd26a429e678ad053edf97c1` | pending | Never return the raw configuration-backed SMTP password as a default. |
 | `csf_8e4d91cc2977abfcd9c3d276` | pending | Allowlist custom-claim source properties so secret-bearing identity fields cannot enter tokens. |
 
@@ -507,6 +507,32 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   270/270.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,506 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped. No database migration, DTO, frontend, OAuth/OIDC protocol, or live
+  deployment change was made.
+
+### M12 Verification Evidence
+
+- Before the fix, a real authenticated test wrote a runtime-only protected
+  secret through the settings update API and then read it through the exact-key
+  endpoint. The response was not the expected `(set)` marker, proving that the
+  endpoint reflected the value returned by the decrypting settings service.
+  The failing assertion and test output did not include the secret value.
+- Exact-key reads now replace every non-empty password- or secret-classified
+  value with the existing `(set)` presence marker. Empty sensitive settings
+  remain empty, and non-sensitive exact-key reads retain their original value
+  and response shape.
+- Internal settings encryption, decryption, caching, configuration resolution,
+  update authorization, and the `(set)` preservation behavior are unchanged;
+  only the administrative read response is shaped at the controller boundary.
+- Focused SettingsController tests passed 12/12, SettingsService tests passed
+  16/16, and the real exploit regression passed 1/1. Settings CRUD, mail, and
+  related administrative system regressions passed 18/18; the Web IdP unit
+  project passed 275/275.
+- The separate configuration-backed SMTP default reflection finding remains
+  pending and was intentionally not mixed into this database-backed exact-key
+  response patch.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,512 tests with 0 failed and 1 existing aggressive ZAP test
   skipped. No database migration, DTO, frontend, OAuth/OIDC protocol, or live
   deployment change was made.
 

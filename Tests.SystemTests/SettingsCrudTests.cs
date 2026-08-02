@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Xunit;
 
@@ -68,7 +69,40 @@ public class SettingsCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var content = await response.Content.ReadAsStringAsync();
         var result = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
-        Assert.True(result.TryGetProperty("value", out _));
+        Assert.True(result.TryGetProperty("value", out var value));
+        Assert.Equal("test_value_123", value.GetString());
+    }
+
+    [Fact]
+    public async Task GetByKey_SensitiveSetting_ReturnsOnlyMaskedPresenceMetadata()
+    {
+        const string testKey = "test.securityRead.SecretValue";
+        var runtimeSecret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+        try
+        {
+            using var setResponse = await _httpClient.PutAsJsonAsync(
+                $"/api/admin/settings/{testKey}",
+                new { value = runtimeSecret });
+            Assert.Equal(HttpStatusCode.OK, setResponse.StatusCode);
+
+            using var response = await _httpClient.GetAsync(
+                $"/api/admin/settings/{testKey}");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var returnedValue = body.GetProperty("value").GetString();
+
+            Assert.True(
+                string.Equals(returnedValue, "(set)", StringComparison.Ordinal),
+                "Sensitive settings must be returned only as masked presence metadata.");
+        }
+        finally
+        {
+            using var clearResponse = await _httpClient.PutAsJsonAsync(
+                $"/api/admin/settings/{testKey}",
+                new { value = string.Empty });
+            Assert.Equal(HttpStatusCode.OK, clearResponse.StatusCode);
+        }
     }
 
     [Fact]

@@ -66,6 +66,16 @@ only by the full IdP Admin role. The fixed administration automation exception
 applies only to custom scopes when its Development/Test fixture is explicitly
 enabled and has no effect in Production.
 
+### Sensitive Administrative Settings
+
+Exact-key settings reads never echo a non-empty value whose key is classified
+as a password or secret. They return the existing `(set)` presence marker;
+an empty sensitive value remains empty so the UI can distinguish unset state.
+This response masking does not alter internal settings resolution: authorized
+server-side consumers can still decrypt protected values. Replacing or
+clearing a setting continues to require `settings.update`, and submitting the
+mask marker preserves the existing secret rather than storing the marker.
+
 ### Production Deployment Inputs and Network Boundary
 
 Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, certificate passwords, and a fixed public OIDC origin. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.

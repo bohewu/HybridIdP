@@ -125,7 +125,11 @@ public class SettingsController : ControllerBase
         {
             return NotFound(new { error = $"Setting '{key}' not found" });
         }
-        return Ok(new { key, value });
+
+        var displayValue = IsSensitive(key) && !string.IsNullOrEmpty(value)
+            ? "(set)"
+            : value;
+        return Ok(new { key, value = displayValue });
     }
 
     /// <summary>
