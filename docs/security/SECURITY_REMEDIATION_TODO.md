@@ -201,7 +201,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_ab24e2d45bb89d24d8b45833` | fixed | Enforce antiforgery validation and one-time browser intent binding on device-verification POST. |
 | `csf_2115040b736c248be7b31b82` | fixed | Protect the interactive authorization page from framing without breaking machine-readable `/connect` responses. |
 | `csf_d565c43230e9a213dbf13391` | fixed | Bound authorization rate-limit partitions derived from untrusted `client_id`. |
-| `csf_8ff43c021c099308b250550d` | pending | Bound token rate-limit partitions derived from unauthenticated `client_id`. |
+| `csf_8ff43c021c099308b250550d` | fixed | Bound token rate-limit partitions derived from unauthenticated `client_id`. |
 | `csf_c6e8b1456a3c11f02b825e11` | pending | Pin the production public origin and reject arbitrary forwarded Host values. |
 
 ### Ownership and Administrative Data
@@ -404,6 +404,32 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   pending and was intentionally not mixed into this patch.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,403 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped.
+
+### M8 Verification Evidence
+
+- Before the fix, a real ASP.NET rate-limiter middleware regression sent
+  same-source token requests with different form `client_id` values. Changing
+  the unauthenticated value created fresh partitions, so a request beyond the
+  configured source budget returned HTTP 200 instead of HTTP 429.
+- The token policy now partitions only by the connection's source IP at this
+  pre-authentication boundary. Raw form client IDs and credential transport
+  no longer select limiter state, and a missing remote address collapses into
+  the single bounded `ip:unknown` partition.
+- The final regression covers two distinct `client_secret_post`-style form
+  client IDs, a `client_secret_basic`-style request, and a request without a
+  client ID. The first three same-source requests are admitted under a
+  three-request limit and the fourth returns HTTP 429. Both authorization and
+  token policy regressions passed 2/2.
+- Existing forwarded-header processing still runs before rate limiting when
+  proxy support is enabled. Permit limits, windows, queue behavior, endpoint
+  metadata, OAuth JSON errors, and OpenIddict client authentication are
+  unchanged.
+- Rate-limit options tests passed 3/3. Affected password, authorization-code
+  and PKCE, device-code, client-credentials, secret-rotation, introspection,
+  and revocation system regressions passed 27/27.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,404 tests with 0 failed and 1 existing aggressive ZAP test
   skipped.
 
 ## P2 - Low Hardening

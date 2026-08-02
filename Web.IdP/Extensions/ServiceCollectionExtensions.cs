@@ -714,24 +714,19 @@ public static class ServiceCollectionExtensions
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst
                         }));
                 
-                // Token endpoint policy - per client ID
+                // Token endpoint policy - per source IP. Client credentials have
+                // not been authenticated at this middleware boundary and must not
+                // create attacker-controlled limiter partitions.
                 options.AddPolicy("token", httpContext =>
-                {
-                    var clientId = httpContext.Request.Form["client_id"].ToString();
-                    if (string.IsNullOrEmpty(clientId))
-                    {
-                        clientId = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                    }
-                    return RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: clientId,
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: $"ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
                             PermitLimit = rateLimitingOptions.TokenPermitLimit,
                             Window = TimeSpan.FromSeconds(rateLimitingOptions.TokenWindowSeconds),
                             QueueLimit = rateLimitingOptions.QueueLimit,
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-                        });
-                });
+                        }));
 
                 // Authorize endpoint policy - per source IP. The client ID has not
                 // been validated at this middleware boundary and must not create
