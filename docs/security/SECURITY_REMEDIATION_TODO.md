@@ -209,7 +209,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | Finding | Status | Summary |
 | --- | --- | --- |
 | `csf_4bb9d23e632799503c0e50e9` | fixed | Enforce client ownership on object-specific read routes. |
-| `csf_e546334e3f5b0f012de26f25` | pending | Enforce scope ownership on update, delete, and claim-mapping routes. |
+| `csf_e546334e3f5b0f012de26f25` | fixed | Enforce scope ownership on update, delete, and claim-mapping routes. |
 | `csf_eaec1c785f5afd7510f2a12f` | pending | Prevent broad `settings.read` from returning decrypted sensitive settings. |
 | `csf_fd26a429e678ad053edf97c1` | pending | Never return the raw configuration-backed SMTP password as a default. |
 | `csf_8e4d91cc2977abfcd9c3d276` | pending | Allowlist custom-claim source properties so secret-bearing identity fields cannot enter tokens. |
@@ -479,6 +479,34 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   passed 232/232.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,457 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped. No database migration, DTO, frontend, OAuth/OIDC protocol, or live
+  deployment change was made.
+
+### M11 Verification Evidence
+
+- Before the fix, real authenticated ApplicationManager requests to update
+  another owner's custom scope, delete it, and replace its claim mappings all
+  returned HTTP 200 instead of HTTP 403. The three failing regressions
+  exercised the deployed controller and persistence services.
+- Scope update, name-based delete, and claim-mapping replacement now apply one
+  shared mutation policy. The exact Person owner and IdP Administrators retain
+  access; other callers receive HTTP 403. Standard OIDC scopes remain writable
+  only by IdP Administrators. The explicitly enabled Development/Test
+  automation fixture retains access to custom scopes and has no Production
+  effect.
+- Existing route contracts remain intact: update and claim mapping continue to
+  identify scopes by persistent ID, delete continues to accept the scope name,
+  and missing-target responses preserve their previous HTTP 404 or HTTP 400
+  semantics.
+- The focused controller authorization matrix passed 39/39, ScopeService tests
+  passed 37/37, scope authorization integration tests passed 14/14, and real
+  HTTP ownership regressions passed 9/9. Existing Scope CRUD compatibility
+  plus the ownership regressions passed 18/18.
+- Affected scope ownership, Scope CRUD, userinfo, PKCE, and token-operation
+  system regressions passed 41/41. The Web IdP unit-test project passed
+  270/270.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,506 tests with 0 failed and 1 existing aggressive ZAP test
   skipped. No database migration, DTO, frontend, OAuth/OIDC protocol, or live
   deployment change was made.
 

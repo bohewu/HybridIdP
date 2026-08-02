@@ -55,6 +55,17 @@ those object-specific routes. The full IdP Admin role can operate across
 owners. The fixed administration automation exception is limited to the
 explicitly enabled Development/Test fixture and has no effect in Production.
 
+### Scope Administration Ownership
+
+Scope-management permissions grant access to the administrative surface but
+do not grant cross-owner mutation rights. ApplicationManagers may view the
+scope catalog, where scopes they do not own are marked read-only, but update,
+delete, and claim-mapping operations require exact Person ownership. Callers
+without a Person cannot mutate scopes. Standard OIDC scopes remain writable
+only by the full IdP Admin role. The fixed administration automation exception
+applies only to custom scopes when its Development/Test fixture is explicitly
+enabled and has no effect in Production.
+
 ### Production Deployment Inputs and Network Boundary
 
 Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, certificate passwords, and a fixed public OIDC origin. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.

@@ -1,9 +1,13 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Options;
 using Core.Domain.Constants;
 using Infrastructure.Authorization;
+using Infrastructure.Seeding;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 using System.Security.Claims;
 using Web.IdP.Attributes;
@@ -21,6 +25,8 @@ namespace Web.IdP.Controllers.Admin;
 [ValidateCsrfForCookies]
 public class ScopesController : ControllerBase
 {
+    private const string TrustedAdministrationAutomationClientId = "testclient-admin";
+
     private static readonly HashSet<string> StandardOidcScopes = new(StringComparer.OrdinalIgnoreCase)
     {
         OpenIddictConstants.Scopes.OpenId,
@@ -32,10 +38,17 @@ public class ScopesController : ControllerBase
     };
 
     private readonly IScopeService _scopeService;
+    private readonly PrivilegedTestAdminBootstrapOptions _privilegedTestAdminBootstrapOptions;
+    private readonly IHostEnvironment _hostEnvironment;
 
-    public ScopesController(IScopeService scopeService)
+    public ScopesController(
+        IScopeService scopeService,
+        IOptions<PrivilegedTestAdminBootstrapOptions> privilegedTestAdminBootstrapOptions,
+        IHostEnvironment hostEnvironment)
     {
         _scopeService = scopeService;
+        _privilegedTestAdminBootstrapOptions = privilegedTestAdminBootstrapOptions.Value;
+        _hostEnvironment = hostEnvironment;
     }
 
     /// <summary>
@@ -116,18 +129,14 @@ public class ScopesController : ControllerBase
     {
         try
         {
-            if (!IsAdmin())
+            var authorizationResult = await AuthorizeScopeMutationAsync(
+                id,
+                identifierIsName: false,
+                NotFound(new { message = $"Scope with ID '{id}' not found or update failed." }),
+                cancellationToken);
+            if (authorizationResult != null)
             {
-                var existingScope = await _scopeService.GetScopeByIdAsync(id, cancellationToken);
-                if (existingScope == null)
-                {
-                    return NotFound(new { message = $"Scope with ID '{id}' not found or update failed." });
-                }
-
-                if (IsStandardOidcScope(existingScope.Name))
-                {
-                    return StatusCode(403, new { message = "Standard scopes can only be updated by administrators." });
-                }
+                return authorizationResult;
             }
 
             var updated = await _scopeService.UpdateScopeAsync(id, request, cancellationToken);
@@ -154,6 +163,16 @@ public class ScopesController : ControllerBase
     [HasPermission(Permissions.Scopes.Delete)]
     public async Task<ActionResult> Delete(string id, CancellationToken cancellationToken = default)
     {
+        var authorizationResult = await AuthorizeScopeMutationAsync(
+            id,
+            identifierIsName: true,
+            missingResult: null,
+            cancellationToken);
+        if (authorizationResult != null)
+        {
+            return authorizationResult;
+        }
+
         var deleted = await _scopeService.DeleteScopeAsync(id, cancellationToken);
         if (!deleted)
         {
@@ -194,18 +213,14 @@ public class ScopesController : ControllerBase
     {
         try
         {
-            if (!IsAdmin())
+            var authorizationResult = await AuthorizeScopeMutationAsync(
+                scopeId,
+                identifierIsName: false,
+                NotFound(new { message = $"Scope with ID '{scopeId}' not found." }),
+                cancellationToken);
+            if (authorizationResult != null)
             {
-                var existingScope = await _scopeService.GetScopeByIdAsync(scopeId, cancellationToken);
-                if (existingScope == null)
-                {
-                    return NotFound(new { message = $"Scope with ID '{scopeId}' not found." });
-                }
-
-                if (IsStandardOidcScope(existingScope.Name))
-                {
-                    return StatusCode(403, new { message = "Standard scopes can only be updated by administrators." });
-                }
+                return authorizationResult;
             }
 
             var result = await _scopeService.UpdateScopeClaimsAsync(scopeId, request, cancellationToken);
@@ -250,6 +265,66 @@ public class ScopesController : ControllerBase
         return AuthorizationRoleClaimResolver.IsInIdpRole(
             User,
             AuthConstants.Roles.Admin);
+    }
+
+    private async Task<ActionResult?> AuthorizeScopeMutationAsync(
+        string scopeIdentifier,
+        bool identifierIsName,
+        ActionResult? missingResult,
+        CancellationToken cancellationToken)
+    {
+        if (IsAdmin())
+        {
+            return null;
+        }
+
+        var existingScope = identifierIsName
+            ? await _scopeService.GetScopeByNameAsync(scopeIdentifier, cancellationToken)
+            : await _scopeService.GetScopeByIdAsync(scopeIdentifier, cancellationToken);
+        if (existingScope == null)
+        {
+            return missingResult;
+        }
+
+        if (IsStandardOidcScope(existingScope.Name))
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new { message = "Standard scopes can only be updated by administrators." });
+        }
+
+        if (IsTrustedAdministrationAutomation())
+        {
+            return null;
+        }
+
+        var personId = GetCurrentPersonId();
+        if (personId.HasValue &&
+            await _scopeService.IsScopeOwnedByPersonAsync(
+                existingScope.Id,
+                personId.Value,
+                cancellationToken))
+        {
+            return null;
+        }
+
+        return Forbid();
+    }
+
+    private bool IsTrustedAdministrationAutomation()
+    {
+        if (!PrivilegedTestAdminBootstrapPolicy.IsEnabled(
+                _privilegedTestAdminBootstrapOptions.Enabled,
+                _hostEnvironment.EnvironmentName))
+        {
+            return false;
+        }
+
+        var subject = User.FindFirst(OpenIddictConstants.Claims.Subject)?.Value;
+        return string.Equals(
+            subject,
+            TrustedAdministrationAutomationClientId,
+            StringComparison.Ordinal);
     }
 
     private static bool IsStandardOidcScope(string? scopeName)

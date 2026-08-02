@@ -156,14 +156,30 @@ public class ScopeService : IScopeService
     {
         var scope = await _scopeManager.FindByIdAsync(id, cancellationToken);
         if (scope == null) return null;
-        
+
+        return await CreateScopeSummaryAsync(scope, cancellationToken);
+    }
+
+    public async Task<ScopeSummary?> GetScopeByNameAsync(string name, CancellationToken cancellationToken = default)
+    {
+        var scope = await _scopeManager.FindByNameAsync(name, cancellationToken);
+        if (scope == null) return null;
+
+        return await CreateScopeSummaryAsync(scope, cancellationToken);
+    }
+
+    private async Task<ScopeSummary> CreateScopeSummaryAsync(
+        object scope,
+        CancellationToken cancellationToken)
+    {
+        var id = await _scopeManager.GetIdAsync(scope, cancellationToken);
         var resources = await _scopeManager.GetResourcesAsync(scope, cancellationToken);
         var extension = await _db.ScopeExtensions.FirstOrDefaultAsync(se => se.ScopeId == id, cancellationToken);
-        
+
         return new ScopeSummary
         {
 #pragma warning disable CS8601
-            Id = await _scopeManager.GetIdAsync(scope, cancellationToken),
+            Id = id,
             Name = await _scopeManager.GetNameAsync(scope, cancellationToken),
             DisplayName = await _scopeManager.GetDisplayNameAsync(scope, cancellationToken),
             Description = await _scopeManager.GetDescriptionAsync(scope, cancellationToken),

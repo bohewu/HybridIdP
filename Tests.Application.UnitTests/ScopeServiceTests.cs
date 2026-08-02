@@ -453,6 +453,48 @@ public class ScopeServiceTests : IDisposable
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task GetScopeByNameAsync_ShouldReturnScopeWithPersistentId_WhenScopeExists()
+    {
+        var scope = new { Id = "scope1", Name = "custom-scope" };
+        _mockScopeManager
+            .Setup(m => m.FindByNameAsync("custom-scope", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(scope);
+        _mockScopeManager
+            .Setup(m => m.GetIdAsync(scope, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("scope1");
+        _mockScopeManager
+            .Setup(m => m.GetNameAsync(scope, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("custom-scope");
+        _mockScopeManager
+            .Setup(m => m.GetDisplayNameAsync(scope, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Custom Scope");
+        _mockScopeManager
+            .Setup(m => m.GetDescriptionAsync(scope, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Description");
+        _mockScopeManager
+            .Setup(m => m.GetResourcesAsync(scope, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+
+        var result = await _scopeService.GetScopeByNameAsync("custom-scope");
+
+        Assert.NotNull(result);
+        Assert.Equal("scope1", result.Id);
+        Assert.Equal("custom-scope", result.Name);
+    }
+
+    [Fact]
+    public async Task GetScopeByNameAsync_ShouldReturnNull_WhenScopeDoesNotExist()
+    {
+        _mockScopeManager
+            .Setup(m => m.FindByNameAsync("missing", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((object?)null);
+
+        var result = await _scopeService.GetScopeByNameAsync("missing");
+
+        Assert.Null(result);
+    }
+
     #endregion
 
     #region CreateScopeAsync Tests

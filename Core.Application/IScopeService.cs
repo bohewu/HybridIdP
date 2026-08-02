@@ -19,6 +19,8 @@ namespace Core.Application
         Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerFilterId = null, Guid? viewerPersonId = null, CancellationToken cancellationToken = default);
         
         Task<ScopeSummary?> GetScopeByIdAsync(string id, CancellationToken cancellationToken = default);
+
+        Task<ScopeSummary?> GetScopeByNameAsync(string name, CancellationToken cancellationToken = default);
         
         /// <summary>
         /// Create a new scope.
