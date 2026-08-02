@@ -232,6 +232,129 @@ public class ClientsControllerTests
         VerifyNoMutationServices();
     }
 
+    [Theory]
+    [InlineData(ReadOperation.Detail, CallerKind.SameOwner)]
+    [InlineData(ReadOperation.AllowedScopes, CallerKind.SameOwner)]
+    [InlineData(ReadOperation.ValidateScopes, CallerKind.SameOwner)]
+    [InlineData(ReadOperation.RequiredScopes, CallerKind.SameOwner)]
+    [InlineData(ReadOperation.Detail, CallerKind.Admin)]
+    [InlineData(ReadOperation.AllowedScopes, CallerKind.Admin)]
+    [InlineData(ReadOperation.ValidateScopes, CallerKind.Admin)]
+    [InlineData(ReadOperation.RequiredScopes, CallerKind.Admin)]
+    [InlineData(ReadOperation.Detail, CallerKind.TrustedAutomation)]
+    [InlineData(ReadOperation.AllowedScopes, CallerKind.TrustedAutomation)]
+    [InlineData(ReadOperation.ValidateScopes, CallerKind.TrustedAutomation)]
+    [InlineData(ReadOperation.RequiredScopes, CallerKind.TrustedAutomation)]
+    public async Task Read_AuthorizedCaller_InvokesExpectedServiceAndPreservesSuccessShape(
+        ReadOperation operation,
+        CallerKind callerKind)
+    {
+        var personId = Guid.NewGuid();
+        var controller = CreateController(callerKind, personId);
+        SetupExistingTarget();
+        SetupOwnership(callerKind, personId);
+        SetupReadResults();
+
+        var result = await InvokeReadAsync(controller, operation);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        AssertReadSuccessShape(operation, okResult.Value);
+        _clientService.Verify(
+            service => service.GetClientByIdAsync(
+                TargetClientId,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        VerifyExpectedScopeRead(operation, Times.Once());
+
+        if (callerKind == CallerKind.SameOwner)
+        {
+            _clientService.Verify(
+                service => service.IsClientOwnedByPersonAsync(
+                    TargetClientId,
+                    personId,
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+        else
+        {
+            _clientService.Verify(
+                service => service.IsClientOwnedByPersonAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+    }
+
+    [Theory]
+    [InlineData(ReadOperation.Detail, CallerKind.CrossOwner)]
+    [InlineData(ReadOperation.AllowedScopes, CallerKind.CrossOwner)]
+    [InlineData(ReadOperation.ValidateScopes, CallerKind.CrossOwner)]
+    [InlineData(ReadOperation.RequiredScopes, CallerKind.CrossOwner)]
+    [InlineData(ReadOperation.Detail, CallerKind.Unowned)]
+    [InlineData(ReadOperation.AllowedScopes, CallerKind.Unowned)]
+    [InlineData(ReadOperation.ValidateScopes, CallerKind.Unowned)]
+    [InlineData(ReadOperation.RequiredScopes, CallerKind.Unowned)]
+    [InlineData(ReadOperation.Detail, CallerKind.NoPerson)]
+    [InlineData(ReadOperation.AllowedScopes, CallerKind.NoPerson)]
+    [InlineData(ReadOperation.ValidateScopes, CallerKind.NoPerson)]
+    [InlineData(ReadOperation.RequiredScopes, CallerKind.NoPerson)]
+    [InlineData(ReadOperation.Detail, CallerKind.UnrecognizedAutomation)]
+    [InlineData(ReadOperation.AllowedScopes, CallerKind.UnrecognizedAutomation)]
+    [InlineData(ReadOperation.ValidateScopes, CallerKind.UnrecognizedAutomation)]
+    [InlineData(ReadOperation.RequiredScopes, CallerKind.UnrecognizedAutomation)]
+    [InlineData(ReadOperation.Detail, CallerKind.AppRoleAdmin)]
+    [InlineData(ReadOperation.AllowedScopes, CallerKind.AppRoleAdmin)]
+    [InlineData(ReadOperation.ValidateScopes, CallerKind.AppRoleAdmin)]
+    [InlineData(ReadOperation.RequiredScopes, CallerKind.AppRoleAdmin)]
+    public async Task Read_RestrictedCaller_ReturnsForbiddenWithoutObjectMetadata(
+        ReadOperation operation,
+        CallerKind callerKind)
+    {
+        var personId = Guid.NewGuid();
+        var controller = CreateController(callerKind, personId);
+        SetupExistingTarget();
+        SetupOwnership(callerKind, personId);
+        SetupReadResults();
+
+        var result = await InvokeReadAsync(controller, operation);
+
+        Assert.IsType<ForbidResult>(result);
+        _clientService.Verify(
+            service => service.GetClientByIdAsync(
+                TargetClientId,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        VerifyNoScopeReadServices();
+    }
+
+    [Theory]
+    [InlineData(ReadOperation.Detail)]
+    [InlineData(ReadOperation.AllowedScopes)]
+    [InlineData(ReadOperation.ValidateScopes)]
+    [InlineData(ReadOperation.RequiredScopes)]
+    public async Task Read_GenuinelyMissingTarget_ReturnsNotFoundBeforeScopeReadService(
+        ReadOperation operation)
+    {
+        var controller = CreateController(CallerKind.NoPerson, Guid.NewGuid());
+        _clientService
+            .Setup(service => service.GetClientByIdAsync(
+                TargetClientId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ClientDetail?)null);
+
+        var result = await InvokeReadAsync(controller, operation);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+        _clientService.Verify(
+            service => service.IsClientOwnedByPersonAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+        VerifyNoScopeReadServices();
+    }
+
     private ClientsController CreateController(
         CallerKind callerKind,
         Guid personId,
@@ -352,6 +475,21 @@ public class ClientsControllerTests
         }
     }
 
+    private void SetupReadResults()
+    {
+        _allowedScopesService
+            .Setup(service => service.GetAllowedScopesAsync(TargetClientId))
+            .ReturnsAsync(["profile"]);
+        _allowedScopesService
+            .Setup(service => service.ValidateRequestedScopesAsync(
+                TargetClientId,
+                It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(["profile"]);
+        _allowedScopesService
+            .Setup(service => service.GetRequiredScopesAsync(TargetClientId))
+            .ReturnsAsync(["profile"]);
+    }
+
     private static async Task<IActionResult> InvokeMutationAsync(
         ClientsController controller,
         MutationOperation operation,
@@ -385,6 +523,48 @@ public class ClientsControllerTests
                 new SetRequiredScopesRequest { Scopes = scopes }),
             _ => throw new ArgumentOutOfRangeException(nameof(operation))
         };
+    }
+
+    private static async Task<IActionResult> InvokeReadAsync(
+        ClientsController controller,
+        ReadOperation operation,
+        string? id = null)
+    {
+        id ??= TargetClientId.ToString();
+
+        return operation switch
+        {
+            ReadOperation.Detail => await controller.GetClient(id),
+            ReadOperation.AllowedScopes => await controller.GetAllowedScopes(id),
+            ReadOperation.ValidateScopes => await controller.ValidateScopes(
+                id,
+                new ValidateScopesRequest { RequestedScopes = ["profile"] }),
+            ReadOperation.RequiredScopes => await controller.GetRequiredScopes(id),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation))
+        };
+    }
+
+    private static void AssertReadSuccessShape(
+        ReadOperation operation,
+        object? value)
+    {
+        var payload = JsonSerializer.SerializeToElement(value);
+        if (operation == ReadOperation.Detail)
+        {
+            Assert.Equal(
+                "target-client",
+                payload.GetProperty("clientId").GetString());
+            return;
+        }
+
+        var propertyName = operation == ReadOperation.ValidateScopes
+            ? "allowedScopes"
+            : "scopes";
+        var scopes = payload.GetProperty(propertyName)
+            .EnumerateArray()
+            .Select(scope => scope.GetString() ?? string.Empty)
+            .ToArray();
+        Assert.Equal(["profile"], scopes);
     }
 
     private static void AssertSuccessShape(
@@ -499,6 +679,50 @@ public class ClientsControllerTests
         }
     }
 
+    private void VerifyExpectedScopeRead(ReadOperation operation, Times times)
+    {
+        switch (operation)
+        {
+            case ReadOperation.Detail:
+                VerifyNoScopeReadServices();
+                break;
+            case ReadOperation.AllowedScopes:
+                _allowedScopesService.Verify(
+                    service => service.GetAllowedScopesAsync(TargetClientId),
+                    times);
+                break;
+            case ReadOperation.ValidateScopes:
+                _allowedScopesService.Verify(
+                    service => service.ValidateRequestedScopesAsync(
+                        TargetClientId,
+                        It.IsAny<IEnumerable<string>>()),
+                    times);
+                break;
+            case ReadOperation.RequiredScopes:
+                _allowedScopesService.Verify(
+                    service => service.GetRequiredScopesAsync(TargetClientId),
+                    times);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(operation));
+        }
+    }
+
+    private void VerifyNoScopeReadServices()
+    {
+        _allowedScopesService.Verify(
+            service => service.GetAllowedScopesAsync(It.IsAny<Guid>()),
+            Times.Never);
+        _allowedScopesService.Verify(
+            service => service.ValidateRequestedScopesAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<IEnumerable<string>>()),
+            Times.Never);
+        _allowedScopesService.Verify(
+            service => service.GetRequiredScopesAsync(It.IsAny<Guid>()),
+            Times.Never);
+    }
+
     public enum MutationOperation
     {
         Update,
@@ -506,6 +730,14 @@ public class ClientsControllerTests
         RegenerateSecret,
         SetAllowedScopes,
         SetRequiredScopes
+    }
+
+    public enum ReadOperation
+    {
+        Detail,
+        AllowedScopes,
+        ValidateScopes,
+        RequiredScopes
     }
 
     public enum CallerKind

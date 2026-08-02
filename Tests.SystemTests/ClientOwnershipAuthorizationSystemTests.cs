@@ -147,12 +147,15 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
                 using var sameSubjectClient = CreateHttpClient();
                 sameSubjectClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", token);
+                using var stateReader = await CreateCookieAuthenticatedClientAsync(
+                    AuthConstants.DefaultAdmin.Email,
+                    AuthConstants.DefaultAdmin.Password);
 
                 await AssertDeniedMutationMatrixAsync(
                     sameSubjectClient,
                     target,
                     originalSecret,
-                    sameSubjectClient);
+                    stateReader);
             });
     }
 
@@ -236,6 +239,86 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
             unownedTarget,
             unownedTargetSecret);
         Assert.Equal(servicePrincipalOwnedShape, servicePrincipalUnownedShape);
+    }
+
+    [Fact]
+    public async Task ApplicationManager_AllCrossOwnerClientReads_ReturnForbiddenWithoutMetadata()
+    {
+        var target = await CreateDisposableClientAsync(
+            AdminPersonClient,
+            "cross_owner_read",
+            CreateSecret());
+        await SetInitialRequiredScopeAsync(target);
+
+        await AssertForbiddenClientReadAsync(
+            await ApplicationManagerClient.GetAsync(
+                $"/api/admin/clients/{target.Id}"),
+            target);
+        await AssertForbiddenClientReadAsync(
+            await ApplicationManagerClient.GetAsync(
+                $"/api/admin/clients/{target.Id}/scopes"),
+            target);
+        await AssertForbiddenClientReadAsync(
+            await ApplicationManagerClient.GetAsync(
+                $"/api/admin/clients/{target.Id}/required-scopes"),
+            target);
+        await AssertForbiddenClientReadAsync(
+            await ApplicationManagerClient.PostAsJsonAsync(
+                $"/api/admin/clients/{target.Id}/scopes/validate",
+                new { requestedScopes = new[] { CompanyReadScope } }),
+            target);
+    }
+
+    [Fact]
+    public async Task SameOwnerApplicationManager_AllClientReads_ReturnOkWithExpectedMetadata()
+    {
+        var target = await CreateDisposableClientAsync(
+            ApplicationManagerClient,
+            "same_owner_read",
+            CreateSecret());
+        await SetInitialRequiredScopeAsync(target);
+
+        using (var detailResponse = await ApplicationManagerClient.GetAsync(
+                   $"/api/admin/clients/{target.Id}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
+            var detail = await detailResponse.Content.ReadFromJsonAsync<ClientDetail>(JsonOptions);
+            Assert.NotNull(detail);
+            Assert.Equal(target.ClientId, detail.ClientId);
+        }
+
+        using (var allowedScopesResponse = await ApplicationManagerClient.GetAsync(
+                   $"/api/admin/clients/{target.Id}/scopes"))
+        {
+            Assert.Equal(HttpStatusCode.OK, allowedScopesResponse.StatusCode);
+            var scopes = await ReadScopesAsync(allowedScopesResponse);
+            Assert.Contains(CompanyReadScope, scopes);
+        }
+
+        using (var requiredScopesResponse = await ApplicationManagerClient.GetAsync(
+                   $"/api/admin/clients/{target.Id}/required-scopes"))
+        {
+            Assert.Equal(HttpStatusCode.OK, requiredScopesResponse.StatusCode);
+            var scopes = await ReadScopesAsync(requiredScopesResponse);
+            Assert.Contains(CompanyReadScope, scopes);
+        }
+
+        using (var validationResponse = await ApplicationManagerClient.PostAsJsonAsync(
+                   $"/api/admin/clients/{target.Id}/scopes/validate",
+                   new
+                   {
+                       requestedScopes = new[]
+                       {
+                           CompanyReadScope,
+                           InventoryReadScope
+                       }
+                   }))
+        {
+            Assert.Equal(HttpStatusCode.OK, validationResponse.StatusCode);
+            var scopes = await ReadScopesAsync(validationResponse, "allowedScopes");
+            Assert.Contains(CompanyReadScope, scopes);
+            Assert.DoesNotContain(InventoryReadScope, scopes);
+        }
     }
 
     [Fact]
@@ -593,6 +676,20 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
             body);
     }
 
+    private static async Task AssertForbiddenClientReadAsync(
+        HttpResponseMessage response,
+        CreatedClient target)
+    {
+        using (response)
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.DoesNotContain(target.ClientId, body, StringComparison.Ordinal);
+            Assert.DoesNotContain(target.DisplayName, body, StringComparison.Ordinal);
+            Assert.DoesNotContain(CompanyReadScope, body, StringComparison.Ordinal);
+        }
+    }
+
     private static async Task AssertLockedWithoutSensitiveOutputAsync(
         HttpResponseMessage response,
         string attemptedSecret)
@@ -748,10 +845,12 @@ public sealed class ClientOwnershipAuthorizationSystemTests : IAsyncLifetime
             requiredScopes);
     }
 
-    private static async Task<string[]> ReadScopesAsync(HttpResponseMessage response)
+    private static async Task<string[]> ReadScopesAsync(
+        HttpResponseMessage response,
+        string propertyName = "scopes")
     {
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return body.GetProperty("scopes")
+        return body.GetProperty(propertyName)
             .EnumerateArray()
             .Select(scope => scope.GetString() ?? string.Empty)
             .OrderBy(scope => scope, StringComparer.Ordinal)

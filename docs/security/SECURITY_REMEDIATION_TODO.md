@@ -208,7 +208,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 
 | Finding | Status | Summary |
 | --- | --- | --- |
-| `csf_4bb9d23e632799503c0e50e9` | pending | Enforce client ownership on object-specific read routes. |
+| `csf_4bb9d23e632799503c0e50e9` | fixed | Enforce client ownership on object-specific read routes. |
 | `csf_e546334e3f5b0f012de26f25` | pending | Enforce scope ownership on update, delete, and claim-mapping routes. |
 | `csf_eaec1c785f5afd7510f2a12f` | pending | Prevent broad `settings.read` from returning decrypted sensitive settings. |
 | `csf_fd26a429e678ad053edf97c1` | pending | Never return the raw configuration-backed SMTP password as a default. |
@@ -458,6 +458,29 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   suite passed 1,419 tests with 0 failed and 1 existing aggressive ZAP test
   skipped. No database migration, reset, credential change, or live deployment
   was performed.
+
+### M10 Verification Evidence
+
+- Before the fix, a real authenticated ApplicationManager request could read
+  another owner's client detail and received HTTP 200 instead of HTTP 403.
+  The regression exercised the deployed controller and authorization stack.
+- The detail, allowed-scope, required-scope, and scope-validation routes now
+  apply one shared object-access policy before returning client metadata.
+  IdP Administrators, explicitly enabled Development/Test trusted automation,
+  and the exact Person owner retain access; other callers receive HTTP 403.
+  A genuinely missing target continues to return HTTP 404.
+- The focused unit authorization matrix passed 36/36 new cases across all four
+  routes, including owner, administrator, trusted-automation, cross-owner,
+  unowned, missing-Person, app-role, and missing-target cases. Real HTTP
+  negative and same-owner positive regressions passed 2/2 without exposing
+  restricted object metadata.
+- Affected ownership, client CRUD, confidential-client secret rotation, PKCE,
+  and logout system regressions passed 32/32. The Web IdP unit-test project
+  passed 232/232.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,457 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped. No database migration, DTO, frontend, OAuth/OIDC protocol, or live
+  deployment change was made.
 
 ## P2 - Low Hardening
 

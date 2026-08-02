@@ -45,6 +45,16 @@ All authentication and session cookies are configured with:
 - `Secure`: Transmitted only over HTTPS.
 - `SameSite`: Set to `Lax` or `Strict` for CSRF protection.
 
+### Client Administration Ownership
+
+Client-management permissions grant access to the administrative surface but
+do not grant cross-owner object access. Person-backed ApplicationManagers can
+list their owned clients; object-specific reads, scope validation, and
+mutations require that exact ownership. Callers without a Person cannot use
+those object-specific routes. The full IdP Admin role can operate across
+owners. The fixed administration automation exception is limited to the
+explicitly enabled Development/Test fixture and has no effect in Production.
+
 ### Production Deployment Inputs and Network Boundary
 
 Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, certificate passwords, and a fixed public OIDC origin. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.

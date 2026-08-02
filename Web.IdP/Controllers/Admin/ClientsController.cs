@@ -86,6 +86,14 @@ public class ClientsController : ControllerBase
             return NotFound(new { message = $"Client with ID '{id}' not found." });
         }
 
+        var authorizationResult = await AuthorizeExistingClientAccessAsync(
+            clientId,
+            cancellationToken);
+        if (authorizationResult != null)
+        {
+            return authorizationResult;
+        }
+
         return Ok(new
         {
             id = client.Id,
@@ -161,7 +169,7 @@ public class ClientsController : ControllerBase
 
         try
         {
-            var authorizationResult = await AuthorizeClientMutationAsync(clientId, cancellationToken);
+            var authorizationResult = await AuthorizeClientAccessAsync(clientId, cancellationToken);
             if (authorizationResult != null)
             {
                 return authorizationResult;
@@ -204,7 +212,7 @@ public class ClientsController : ControllerBase
 
         try
         {
-            var authorizationResult = await AuthorizeClientMutationAsync(clientId, cancellationToken);
+            var authorizationResult = await AuthorizeClientAccessAsync(clientId, cancellationToken);
             if (authorizationResult != null)
             {
                 return authorizationResult;
@@ -239,7 +247,7 @@ public class ClientsController : ControllerBase
 
         try
         {
-            var authorizationResult = await AuthorizeClientMutationAsync(clientId, cancellationToken);
+            var authorizationResult = await AuthorizeClientAccessAsync(clientId, cancellationToken);
             if (authorizationResult != null)
             {
                 return authorizationResult;
@@ -267,11 +275,21 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpGet("{id}/scopes")]
     [HasPermission(DomainPermissions.Clients.Read)]
-    public async Task<IActionResult> GetAllowedScopes(string id)
+    public async Task<IActionResult> GetAllowedScopes(
+        string id,
+        CancellationToken cancellationToken = default)
     {
         if (!Guid.TryParse(id, out var clientId))
         {
             return BadRequest(new { message = "Invalid client ID format." });
+        }
+
+        var authorizationResult = await AuthorizeClientAccessAsync(
+            clientId,
+            cancellationToken);
+        if (authorizationResult != null)
+        {
+            return authorizationResult;
         }
 
         var scopes = await _allowedScopesService.GetAllowedScopesAsync(clientId);
@@ -306,7 +324,7 @@ public class ClientsController : ControllerBase
 
         try
         {
-            var authorizationResult = await AuthorizeClientMutationAsync(clientId, cancellationToken);
+            var authorizationResult = await AuthorizeClientAccessAsync(clientId, cancellationToken);
             if (authorizationResult != null)
             {
                 return authorizationResult;
@@ -326,7 +344,10 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpPost("{id}/scopes/validate")]
     [HasPermission(DomainPermissions.Clients.Read)]
-    public async Task<IActionResult> ValidateScopes(string id, [FromBody] ValidateScopesRequest request)
+    public async Task<IActionResult> ValidateScopes(
+        string id,
+        [FromBody] ValidateScopesRequest request,
+        CancellationToken cancellationToken = default)
     {
         if (!Guid.TryParse(id, out var clientId))
         {
@@ -338,6 +359,14 @@ public class ClientsController : ControllerBase
             return BadRequest(new { message = "RequestedScopes are required." });
         }
 
+        var authorizationResult = await AuthorizeClientAccessAsync(
+            clientId,
+            cancellationToken);
+        if (authorizationResult != null)
+        {
+            return authorizationResult;
+        }
+
         var allowedScopes = await _allowedScopesService.ValidateRequestedScopesAsync(clientId, request.RequestedScopes);
         return Ok(new { allowedScopes });
     }
@@ -347,11 +376,21 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpGet("{id}/required-scopes")]
     [HasPermission(DomainPermissions.Clients.Read)]
-    public async Task<IActionResult> GetRequiredScopes(string id)
+    public async Task<IActionResult> GetRequiredScopes(
+        string id,
+        CancellationToken cancellationToken = default)
     {
         if (!Guid.TryParse(id, out var clientId))
         {
             return BadRequest(new { message = "Invalid client ID format." });
+        }
+
+        var authorizationResult = await AuthorizeClientAccessAsync(
+            clientId,
+            cancellationToken);
+        if (authorizationResult != null)
+        {
+            return authorizationResult;
         }
 
         var scopes = await _allowedScopesService.GetRequiredScopesAsync(clientId);
@@ -386,7 +425,7 @@ public class ClientsController : ControllerBase
 
         try
         {
-            var authorizationResult = await AuthorizeClientMutationAsync(clientId, cancellationToken);
+            var authorizationResult = await AuthorizeClientAccessAsync(clientId, cancellationToken);
             if (authorizationResult != null)
             {
                 return authorizationResult;
@@ -422,7 +461,7 @@ public class ClientsController : ControllerBase
             AuthConstants.Roles.Admin);
     }
 
-    private async Task<IActionResult?> AuthorizeClientMutationAsync(
+    private async Task<IActionResult?> AuthorizeClientAccessAsync(
         Guid clientId,
         CancellationToken cancellationToken)
     {
@@ -432,6 +471,13 @@ public class ClientsController : ControllerBase
             return NotFound(new { message = $"Client with ID '{clientId}' not found." });
         }
 
+        return await AuthorizeExistingClientAccessAsync(clientId, cancellationToken);
+    }
+
+    private async Task<IActionResult?> AuthorizeExistingClientAccessAsync(
+        Guid clientId,
+        CancellationToken cancellationToken)
+    {
         if (IsAdmin() || IsTrustedAdministrationAutomation())
         {
             return null;
