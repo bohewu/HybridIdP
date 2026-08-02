@@ -212,7 +212,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_e546334e3f5b0f012de26f25` | fixed | Enforce scope ownership on update, delete, and claim-mapping routes. |
 | `csf_eaec1c785f5afd7510f2a12f` | fixed | Prevent broad `settings.read` from returning decrypted sensitive settings. |
 | `csf_fd26a429e678ad053edf97c1` | fixed | Never return the raw configuration-backed SMTP password as a default. |
-| `csf_8e4d91cc2977abfcd9c3d276` | pending | Allowlist custom-claim source properties so secret-bearing identity fields cannot enter tokens. |
+| `csf_8e4d91cc2977abfcd9c3d276` | fixed | Allowlist custom-claim source properties so secret-bearing identity fields cannot enter tokens. |
 
 ### External Identity and Lifecycle
 
@@ -559,6 +559,32 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   suite passed 1,514 tests with 0 failed and 1 existing aggressive ZAP test
   skipped. No database migration, frontend, OAuth/OIDC protocol, deployment
   configuration, or live credential change was made.
+
+### M14 Verification Evidence
+
+- Before the fix, a token-service integration test persisted a custom claim
+  mapping whose source was a runtime-only Email MFA value. The unrestricted
+  reflection path added that value under an attacker-selected claim type to
+  the token principal. The assertion and test output did not include the
+  value.
+- Claim source resolution now uses explicit accessors for approved
+  `ApplicationUser` and `Person` profile properties. Unsupported persisted
+  paths are skipped before a claim is created, and claim create/update APIs
+  reject unsupported paths before persistence or partial mutation.
+- Every approved path has policy-level resolution coverage and token-principal
+  integration coverage, including access-token and identity-token
+  destinations. The existing `Person.FirstName` mapping remains functional;
+  credential, MFA, recovery, lockout, navigation, lifecycle, and audit paths
+  are rejected.
+- ClaimsService and source-policy tests passed 40/40, ClaimsEnrichment token
+  integration tests passed 3/3, and ClaimsEnrichment unit tests passed 5/5.
+  Claims/Scope/Userinfo/Token system regressions passed 38/38, the full
+  frontend suite passed 98/98, and a production Vite build to an isolated
+  system-temp directory succeeded with only existing warnings.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,535 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped. No database migration, deployed configuration, live credential, or
+  live VM change was made.
 
 ## P2 - Low Hardening
 

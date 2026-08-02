@@ -351,7 +351,7 @@ public class ClaimsServiceTests : IDisposable
     {
         // Arrange
         var request = new CreateClaimRequest(
-            Name: "custom_claim",
+            Name: "Department",
             DisplayName: null,
             Description: null,
             ClaimType: "custom",
@@ -364,10 +364,33 @@ public class ClaimsServiceTests : IDisposable
         var result = await _claimsService.CreateClaimAsync(request);
 
         // Assert
-        Assert.Equal("custom_claim", result.DisplayName); // Default to Name
-        Assert.Equal("custom_claim", result.UserPropertyPath); // Default to Name
+        Assert.Equal("Department", result.DisplayName); // Default to Name
+        Assert.Equal("Department", result.UserPropertyPath); // Default to Name
         Assert.Equal("String", result.DataType); // Default to String
         Assert.False(result.IsRequired); // Default to false
+    }
+
+    [Theory]
+    [InlineData("PasswordHash")]
+    [InlineData("SecurityStamp")]
+    [InlineData("EmailMfaCode")]
+    [InlineData("RecoveryCodes")]
+    public async Task CreateClaimAsync_ShouldRejectSecuritySensitiveSource(
+        string userPropertyPath)
+    {
+        var request = new CreateClaimRequest(
+            Name: $"rejected_{userPropertyPath}",
+            DisplayName: "Rejected source",
+            Description: null,
+            ClaimType: $"rejected_{userPropertyPath}",
+            UserPropertyPath: userPropertyPath,
+            DataType: "String",
+            IsRequired: false);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _claimsService.CreateClaimAsync(request));
+        Assert.False(await _dbInterface.ClaimDefinitions.AnyAsync(claim =>
+            claim.Name == request.Name));
     }
 
     [Fact]
@@ -462,7 +485,7 @@ public class ClaimsServiceTests : IDisposable
             DisplayName: "Department Name",
             Description: "Updated description",
             ClaimType: "dept",
-            UserPropertyPath: "DeptName",
+            UserPropertyPath: "JobTitle",
             DataType: "String",
             IsRequired: true
         );
@@ -475,8 +498,39 @@ public class ClaimsServiceTests : IDisposable
         Assert.Equal("Department Name", result.DisplayName);
         Assert.Equal("Updated description", result.Description);
         Assert.Equal("dept", result.ClaimType);
-        Assert.Equal("DeptName", result.UserPropertyPath);
+        Assert.Equal("JobTitle", result.UserPropertyPath);
         Assert.True(result.IsRequired);
+    }
+
+    [Fact]
+    public async Task UpdateClaimAsync_ShouldRejectSecuritySensitiveSource_WithoutMutation()
+    {
+        var claim = new ClaimDefinition
+        {
+            Name = "department",
+            DisplayName = "Department",
+            ClaimType = "department",
+            UserPropertyPath = "Department",
+            DataType = "String",
+            IsStandard = false,
+            IsRequired = false
+        };
+        _dbInterface.ClaimDefinitions.Add(claim);
+        await _dbContext.SaveChangesAsync();
+        var request = new UpdateClaimRequest(
+            DisplayName: "Tampered display name",
+            Description: null,
+            ClaimType: "tampered_claim_type",
+            UserPropertyPath: "EmailMfaCode",
+            DataType: null,
+            IsRequired: null);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _claimsService.UpdateClaimAsync(claim.Id, request));
+
+        Assert.Equal("Department", claim.UserPropertyPath);
+        Assert.Equal("Department", claim.DisplayName);
+        Assert.Equal("department", claim.ClaimType);
     }
 
     [Fact]

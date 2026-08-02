@@ -80,6 +80,21 @@ server-side consumers can still decrypt protected values. Replacing or
 clearing a setting continues to require `settings.update`, and submitting the
 mask marker preserves the existing secret rather than storing the marker.
 
+### Custom Claim Source Boundary
+
+Custom and standard scope-mapped claims can read only an explicit set of
+profile properties from `ApplicationUser` and its linked `Person`. Credential,
+MFA, recovery, lockout, lifecycle, navigation, and audit internals are not
+claim sources. Claim issuance uses explicit accessors rather than reflection,
+so an unsupported path already stored in the database is skipped and logged
+without its value. Claims create and update APIs reject unsupported paths
+before persistence; no database migration is required.
+
+The approved set preserves the seeded OIDC mappings and the administration
+UI's documented profile paths, including the intentionally hashed
+`Person.NationalId`. Adding another source property requires an explicit policy
+and test change; adding a property to an entity does not make it token-visible.
+
 ### Production Deployment Inputs and Network Boundary
 
 Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, certificate passwords, and a fixed public OIDC origin. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.

@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Core.Application;
+using Core.Application.Security;
 using Core.Domain; // Added for ApplicationUser
 using Core.Domain.Constants;
 using Core.Domain.Entities;
@@ -205,5 +207,175 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
         var claim = principal.FindFirst("test_person_name");
         Assert.NotNull(claim);
         Assert.Equal("Test", claim.Value);
+    }
+
+    [Fact]
+    public async Task HandleTokenRequestAsync_ShouldNotIncludeClaim_FromSecuritySensitiveSource()
+    {
+        var userId = Guid.NewGuid();
+        var personId = Guid.NewGuid();
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            UserName = "sensitive-source-user",
+            NormalizedUserName = "SENSITIVE-SOURCE-USER",
+            Email = "sensitive-source@example.test",
+            EmailConfirmed = true,
+            PersonId = personId,
+            Person = new Person
+            {
+                Id = personId,
+                FirstName = "Sensitive",
+                LastName = "Source",
+                Email = "sensitive-source@example.test"
+            },
+            EmailMfaCode = Convert.ToBase64String(
+                RandomNumberGenerator.GetBytes(32))
+        };
+        var password = $"P@ssword1-{Convert.ToHexString(RandomNumberGenerator.GetBytes(8))}";
+        await _userManager.CreateAsync(user, password);
+
+        const string claimType = "test_security_sensitive_source";
+        const string scopeName = "test_security_sensitive_scope";
+        var claimDefinition = new ClaimDefinition
+        {
+            Name = claimType,
+            ClaimType = claimType,
+            UserPropertyPath = nameof(ApplicationUser.EmailMfaCode),
+            DataType = "String",
+            IsStandard = false,
+            DisplayName = "Security-sensitive source test"
+        };
+        _db.Set<ClaimDefinition>().Add(claimDefinition);
+        await _db.SaveChangesAsync();
+        _db.ScopeClaims.Add(new ScopeClaim
+        {
+            ScopeName = scopeName,
+            ScopeId = "test_security_sensitive_scope_id",
+            ClaimDefinitionId = claimDefinition.Id,
+            AlwaysInclude = false
+        });
+        await _db.SaveChangesAsync();
+
+        var request = new OpenIddictRequest
+        {
+            GrantType = OpenIddictConstants.GrantTypes.Password,
+            Username = user.UserName,
+            Password = password,
+            Scope = $"openid {scopeName}"
+        };
+
+        var result = await _tokenService.HandleTokenRequestAsync(request, null);
+
+        var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+        Assert.False(
+            signInResult.Principal!.HasClaim(claim => claim.Type == claimType),
+            "Security-sensitive user properties must not become token claims.");
+    }
+
+    [Fact]
+    public async Task HandleTokenRequestAsync_ShouldIncludeEveryApprovedClaimSource()
+    {
+        var personId = Guid.NewGuid();
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "approved-source-user",
+            NormalizedUserName = "APPROVED-SOURCE-USER",
+            Email = "approved-source@example.test",
+            EmailConfirmed = true,
+            PhoneNumber = "+886900000000",
+            PhoneNumberConfirmed = true,
+            FirstName = "Approved",
+            MiddleName = "Profile",
+            LastName = "Source",
+            Nickname = "ApprovedSource",
+            Department = "Engineering",
+            JobTitle = "Engineer",
+            ProfileUrl = "https://example.test/profile",
+            PictureUrl = "https://example.test/picture",
+            Website = "https://example.test",
+            Address = "{}",
+            Birthdate = "2000-01-01",
+            Gender = "unspecified",
+            TimeZone = "Asia/Taipei",
+            Locale = "zh-TW",
+            EmployeeId = "employee-1",
+            PersonId = personId,
+            Person = new Person
+            {
+                Id = personId,
+                Email = "person@example.test",
+                PhoneNumber = "+886911111111",
+                FirstName = "Person",
+                MiddleName = "Profile",
+                LastName = "Source",
+                Nickname = "PersonNickname",
+                EmployeeId = "person-employee-1",
+                Department = "Research",
+                JobTitle = "Researcher",
+                ProfileUrl = "https://example.test/person/profile",
+                PictureUrl = "https://example.test/person/picture",
+                Website = "https://example.test/person",
+                Address = "{}",
+                Birthdate = "2000-02-02",
+                Gender = "unspecified",
+                TimeZone = "Asia/Taipei",
+                Locale = "zh-TW",
+                NationalId = Convert.ToHexString(
+                    RandomNumberGenerator.GetBytes(32))
+            }
+        };
+        var password = $"P@ssword1-{Convert.ToHexString(RandomNumberGenerator.GetBytes(8))}";
+        await _userManager.CreateAsync(user, password);
+
+        const string scopeName = "test_approved_source_scope";
+        var definitions = ClaimSourcePropertyPolicy.AllowedPaths
+            .Select((path, index) => new ClaimDefinition
+            {
+                Name = $"test_approved_source_{index}",
+                ClaimType = $"test_approved_source_{index}",
+                UserPropertyPath = path,
+                DataType = "String",
+                IsStandard = false,
+                DisplayName = $"Approved source {index}"
+            })
+            .ToList();
+        _db.Set<ClaimDefinition>().AddRange(definitions);
+        await _db.SaveChangesAsync();
+        _db.ScopeClaims.AddRange(definitions.Select(definition => new ScopeClaim
+        {
+            ScopeName = scopeName,
+            ScopeId = "test_approved_source_scope_id",
+            ClaimDefinitionId = definition.Id,
+            AlwaysInclude = false
+        }));
+        await _db.SaveChangesAsync();
+
+        var request = new OpenIddictRequest
+        {
+            GrantType = OpenIddictConstants.GrantTypes.Password,
+            Username = user.UserName,
+            Password = password,
+            Scope = $"openid {scopeName}"
+        };
+
+        var result = await _tokenService.HandleTokenRequestAsync(request, null);
+
+        var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+        var principal = Assert.IsType<ClaimsPrincipal>(signInResult.Principal);
+        foreach (var definition in definitions)
+        {
+            var claim = principal.FindFirst(definition.ClaimType);
+            Assert.True(
+                claim is not null,
+                $"Approved source '{definition.UserPropertyPath}' must reach the token principal.");
+            Assert.Contains(
+                OpenIddictConstants.Destinations.AccessToken,
+                claim!.GetDestinations());
+            Assert.Contains(
+                OpenIddictConstants.Destinations.IdentityToken,
+                claim.GetDestinations());
+        }
     }
 }

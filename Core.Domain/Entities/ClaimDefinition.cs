@@ -33,9 +33,8 @@ public class ClaimDefinition
     public required string ClaimType { get; set; }
 
     /// <summary>
-    /// Property path on ApplicationUser entity to source the claim value
-    /// (e.g., "Email", "FirstName", "Department").
-    /// Supports nested properties using dot notation (e.g., "Profile.Bio").
+    /// Approved profile-property path used to source the claim value
+    /// (e.g., "Email", "Department", or "Person.FirstName").
     /// </summary>
     public required string UserPropertyPath { get; set; }
 

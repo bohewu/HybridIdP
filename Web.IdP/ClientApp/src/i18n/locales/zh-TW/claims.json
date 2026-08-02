@@ -53,7 +53,7 @@
     "claimTypeHelp": "出現在權杖中的 JWT claim 名稱",
     "userPropertyPath": "使用者屬性路徑",
     "userPropertyPathPlaceholder": "例如：Department",
-    "userPropertyPathHelp": "ApplicationUser 實體上的屬性路徑",
+    "userPropertyPathHelp": "用作 claim 來源的核准個人資料屬性",
     "dataType": "資料類型",
     "dataTypes": {
       "string": "字串",
@@ -64,7 +64,7 @@
     },
     "isRequired": "一律包含在權杖中（必填）",
     "selectPropertyPath": "選擇屬性...",
-    "useCustomPath": "使用自訂屬性路徑",
+    "useCustomPath": "使用其他核准的個人資料路徑",
     "propertyPaths": {
       "email": "電子郵件",
       "userName": "使用者名稱",

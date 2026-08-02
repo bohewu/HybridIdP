@@ -36,7 +36,7 @@ public interface IClaimsService
     /// </summary>
     /// <param name="request">Claim creation request with required fields.</param>
     /// <returns>Created claim definition DTO.</returns>
-    /// <exception cref="ArgumentException">Thrown when Name or ClaimType is empty.</exception>
+    /// <exception cref="ArgumentException">Thrown when required fields are empty or the source property is not approved.</exception>
     /// <exception cref="InvalidOperationException">Thrown when a claim with the same name already exists.</exception>
     Task<ClaimDefinitionDto> CreateClaimAsync(CreateClaimRequest request);
 

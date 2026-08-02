@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Web.IdP.Services; // For IScopeService if needed, or simply the namespace
 using Core.Application; // For IApplicationDbContext
+using Core.Application.Security;
 using Core.Application.Utilities;
 using IdentityModel;
 using Microsoft.Extensions.Logging;
@@ -31,25 +32,6 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
         _roleManager = roleManager;
         _db = db;
         _logger = logger;
-    }
-
-    // ... (other methods)
-
-    private string? GetProperty(object? obj, string propertyName)
-    {
-         // (Implementation of GetProperty)
-         if (obj == null) return null;
-         var segments = propertyName.Split('.');
-         var current = obj;
-         foreach (var seg in segments)
-         {
-             if (current == null) return null;
-             var type = current.GetType();
-             var prop = type.GetProperty(seg);
-             if (prop == null) return null;
-             current = prop.GetValue(current);
-         }
-         return current?.ToString();
     }
 
     public async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user, string? clientId = null, CancellationToken cancellationToken = default)
@@ -122,9 +104,18 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
             var def = map.ClaimDefinition;
             if (def == null) continue;
 
+            if (!ClaimSourcePropertyPolicy.TryResolve(
+                    user,
+                    def.UserPropertyPath,
+                    out var resolvedValue))
+            {
+                LogRejectedClaimSource(def.ClaimType, def.UserPropertyPath);
+                continue;
+            }
+
             var value = def.ClaimType == OpenIddict.Abstractions.OpenIddictConstants.Claims.Name
                 ? NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName) ?? user.UserName
-                : ResolveUserProperty(user, def.UserPropertyPath);
+                : resolvedValue;
             // Log only which claim is being resolved, not the value
             LogResolvingClaim(def.ClaimType, def.UserPropertyPath);
 
@@ -150,25 +141,6 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
                  identity.AddClaim(new Claim(def.ClaimType, value ?? string.Empty));
             }
         }
-    }
-
-    private static string? ResolveUserProperty(ApplicationUser user, string path)
-    {
-        if (string.IsNullOrWhiteSpace(path)) return null;
-
-        object? current = user;
-        var segments = path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        foreach (var seg in segments)
-        {
-            if (current == null) return null;
-            var type = current.GetType();
-            var prop = type.GetProperty(seg);
-            if (prop == null) return null;
-            current = prop.GetValue(current);
-        }
-
-        return current?.ToString();
     }
 
     public async Task AddAppSpecificRolesAsync(ClaimsIdentity identity, ApplicationUser user, string clientId, CancellationToken cancellationToken = default)
@@ -215,6 +187,9 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Claim {ClaimType} already exists in identity. Skipping.")]
     private partial void LogClaimExists(string claimType);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping claim {ClaimType} because source path {Path} is not approved for token issuance.")]
+    private partial void LogRejectedClaimSource(string claimType, string path);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Found {Count} app-specific roles for user {UserId} and client {ClientId}.")]
     private partial void LogFoundAppSpecificRoles(int count, Guid userId, string clientId);

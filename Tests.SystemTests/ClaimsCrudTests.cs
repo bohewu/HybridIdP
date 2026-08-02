@@ -67,7 +67,7 @@ public class ClaimsCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             displayName = "Test Claim Display",
             description = "A test claim for system tests",
             claimType = $"test_type_{shortId}",
-            userPropertyPath = "CustomData",
+            userPropertyPath = "Department",
             dataType = "String"
         };
 
@@ -170,6 +170,50 @@ public class ClaimsCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task CreateClaim_SecuritySensitiveSource_ReturnsBadRequest()
+    {
+        var shortId = Guid.NewGuid().ToString("N")[..8];
+        var request = new
+        {
+            name = $"{TEST_PREFIX}sensitive_{shortId}",
+            displayName = "Rejected sensitive source",
+            claimType = $"test_sensitive_{shortId}",
+            userPropertyPath = "EmailMfaCode",
+            dataType = "String"
+        };
+
+        using var response = await _httpClient.PostAsJsonAsync(
+            "/api/admin/claims",
+            request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateClaim_SecuritySensitiveSource_ReturnsBadRequestWithoutMutation()
+    {
+        var claimId = await CreateTestClaimAsync();
+        var request = new
+        {
+            displayName = "Tampered display name",
+            claimType = "tampered_claim_type",
+            userPropertyPath = "SecurityStamp"
+        };
+
+        using var response = await _httpClient.PutAsJsonAsync(
+            $"/api/admin/claims/{claimId}",
+            request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var getResponse = await _httpClient.GetAsync(
+            $"/api/admin/claims/{claimId}");
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+        var claim = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Department", claim.GetProperty("userPropertyPath").GetString());
+        Assert.Equal("Test Claim", claim.GetProperty("displayName").GetString());
+    }
+
     // ===== Helper Methods =====
 
     private async Task<int> CreateTestClaimAsync()
@@ -181,7 +225,7 @@ public class ClaimsCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
             displayName = "Test Claim",
             description = "A test claim",
             claimType = $"test_type_{shortId}",
-            userPropertyPath = "CustomData",
+            userPropertyPath = "Department",
             dataType = "String"
         };
         var response = await _httpClient.PostAsJsonAsync("/api/admin/claims", request);

@@ -53,7 +53,7 @@
     "claimTypeHelp": "The JWT claim name that appears in tokens",
     "userPropertyPath": "User Property Path",
     "userPropertyPathPlaceholder": "e.g., Department",
-    "userPropertyPathHelp": "Property path on ApplicationUser entity",
+    "userPropertyPathHelp": "Approved profile property used as the claim source",
     "dataType": "Data Type",
     "dataTypes": {
       "string": "String",
@@ -64,7 +64,7 @@
     },
     "isRequired": "Always include in tokens (Required)",
     "selectPropertyPath": "Select a property...",
-    "useCustomPath": "Use custom property path",
+    "useCustomPath": "Use another approved profile path",
     "propertyPaths": {
       "email": "Email",
       "userName": "Username",

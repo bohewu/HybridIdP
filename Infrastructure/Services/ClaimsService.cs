@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Security;
 using Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -134,6 +135,14 @@ public partial class ClaimsService : IClaimsService
             throw new InvalidOperationException($"A claim with name '{request.Name}' already exists.");
         }
 
+        var requestedPath = request.UserPropertyPath ?? request.Name;
+        if (!ClaimSourcePropertyPolicy.TryNormalize(requestedPath, out var userPropertyPath))
+        {
+            throw new ArgumentException(
+                "UserPropertyPath must reference an approved profile property.",
+                nameof(request.UserPropertyPath));
+        }
+
         // Create new claim with defaults
         var claim = new ClaimDefinition
         {
@@ -141,7 +150,7 @@ public partial class ClaimsService : IClaimsService
             DisplayName = request.DisplayName ?? request.Name,
             Description = request.Description,
             ClaimType = request.ClaimType,
-            UserPropertyPath = request.UserPropertyPath ?? request.Name,
+            UserPropertyPath = userPropertyPath,
             DataType = request.DataType ?? "String",
             IsStandard = false, // Custom claims are always non-standard
             IsRequired = request.IsRequired ?? false
@@ -208,6 +217,20 @@ public partial class ClaimsService : IClaimsService
         }
         else
         {
+            string? userPropertyPath = null;
+            if (!string.IsNullOrWhiteSpace(request.UserPropertyPath))
+            {
+                if (!ClaimSourcePropertyPolicy.TryNormalize(
+                        request.UserPropertyPath,
+                        out var normalizedPath))
+                {
+                    throw new InvalidOperationException(
+                        "UserPropertyPath must reference an approved profile property.");
+                }
+
+                userPropertyPath = normalizedPath;
+            }
+
             // Custom claims: All fields can be updated
             if (!string.IsNullOrWhiteSpace(request.DisplayName))
             {
@@ -224,9 +247,9 @@ public partial class ClaimsService : IClaimsService
                 claim.ClaimType = request.ClaimType;
             }
 
-            if (!string.IsNullOrWhiteSpace(request.UserPropertyPath))
+            if (userPropertyPath != null)
             {
-                claim.UserPropertyPath = request.UserPropertyPath;
+                claim.UserPropertyPath = userPropertyPath;
             }
 
             if (!string.IsNullOrWhiteSpace(request.DataType))
