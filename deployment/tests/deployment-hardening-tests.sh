@@ -61,11 +61,11 @@ COMPOSE_FILES=(
 )
 MODE_NAMES=("internal" "nginx" "splithost" "splithost-nginx" "splithost-nginx-nodb")
 MODE_REQUIRED=(
-    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD"
-    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD"
-    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD INTERNAL_IP PROXY_HOST_IP"
-    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD INTERNAL_IP"
-    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD INTERNAL_IP"
+    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD OpenIddict__Issuer PUBLIC_AUTHORITY"
+    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD OpenIddict__Issuer PUBLIC_AUTHORITY"
+    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD INTERNAL_IP PROXY_HOST_IP OpenIddict__Issuer PUBLIC_AUTHORITY"
+    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD INTERNAL_IP OpenIddict__Issuer PUBLIC_AUTHORITY"
+    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD INTERNAL_IP OpenIddict__Issuer PUBLIC_AUTHORITY"
 )
 MODE_VOLUMES=(
     "mssql-service:mssql-data postgres-service:postgres-data redis-service:redis-data"
@@ -104,6 +104,8 @@ write_env() {
         "INTERNAL_IP=127.0.0.1"
         "PROXY_HOST_IP=127.0.0.2"
         "ALLOWED_PROXY_IPS=127.0.0.2"
+        "OpenIddict__Issuer=https://idp.synthetic.invalid/"
+        "PUBLIC_AUTHORITY=idp.synthetic.invalid"
     )
 
     : >"$output"
@@ -262,6 +264,34 @@ fi
 if ! env_example_sensitive_fields_are_empty "$DEPLOYMENT_DIR/.env.example"; then
     fail "example-sensitive-fields" "credential-field-not-empty-or-unique"
 fi
+
+for nginx_config in nginx/nginx.conf nginx/splithost-gateway.conf; do
+    if ! grep -Fq 'proxy_set_header Host ${PUBLIC_AUTHORITY};' \
+        "$DEPLOYMENT_DIR/$nginx_config"; then
+        fail "fixed-proxy-host" "$nginx_config"
+    fi
+    if grep -Eq 'proxy_set_header Host[[:space:]]+\$host|X-Forwarded-Host[[:space:]]+\$http_x_forwarded_host' \
+        "$DEPLOYMENT_DIR/$nginx_config"; then
+        fail "request-derived-proxy-host" "$nginx_config"
+    fi
+done
+if ! grep -Fq 'return 301 https://${PUBLIC_AUTHORITY}$request_uri;' \
+    "$DEPLOYMENT_DIR/nginx/nginx.conf"; then
+    fail "fixed-redirect-host" "nginx/nginx.conf"
+fi
+for nginx_compose in \
+    docker-compose.nginx.yml \
+    docker-compose.splithost-nginx.yml \
+    docker-compose.splithost-nginx-nodb.yml; do
+    if ! grep -Fq '/etc/nginx/templates/nginx.conf.template:ro' \
+        "$DEPLOYMENT_DIR/$nginx_compose" ||
+       ! grep -Fq 'NGINX_ENVSUBST_FILTER=PUBLIC_AUTHORITY' \
+        "$DEPLOYMENT_DIR/$nginx_compose" ||
+       ! grep -Fq 'NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx' \
+        "$DEPLOYMENT_DIR/$nginx_compose"; then
+        fail "nginx-template-contract" "$nginx_compose"
+    fi
+done
 
 render_compose() {
     local compose_file="$1"

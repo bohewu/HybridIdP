@@ -99,7 +99,16 @@ For Split-Host deployments, you need to configure the Nginx IP allowlist:
 
 Use the setup scripts to create the operator-managed values in `deployment/.env`, or start from `.env.example` and supply the values through an approved secret-management process. Production compose does not provide a database-password fallback.
 
-All modes require non-empty `DATABASE_PROVIDER`, `ConnectionStrings__SqlServerConnection`, `ConnectionStrings__PostgreSqlConnection`, `ENCRYPTION_CERT_PASSWORD`, and `SIGNING_CERT_PASSWORD`. `DATABASE_PROVIDER` selects the provider used by the IdP, but both database connection-string variables are required by the compose contract because both are passed into the container.
+All modes require non-empty `DATABASE_PROVIDER`, `ConnectionStrings__SqlServerConnection`, `ConnectionStrings__PostgreSqlConnection`, `ENCRYPTION_CERT_PASSWORD`, `SIGNING_CERT_PASSWORD`, `OpenIddict__Issuer`, and `PUBLIC_AUTHORITY`. `DATABASE_PROVIDER` selects the provider used by the IdP, but both database connection-string variables are required by the compose contract because both are passed into the container.
+
+`OpenIddict__Issuer` is the stable browser-visible HTTPS origin, with no path, query, fragment, or user information. `PUBLIC_AUTHORITY` is that URI's host and optional non-default port without a scheme. They must describe the same origin, for example:
+
+```text
+OpenIddict__Issuer='https://idp.example.com/'
+PUBLIC_AUTHORITY='idp.example.com'
+```
+
+Production startup derives its Host allowlist from the issuer and fails closed if the issuer is missing or invalid, or if a supplied `PUBLIC_AUTHORITY` does not match. The repository Nginx modes use `PUBLIC_AUTHORITY` as a fixed upstream Host. For direct and external-proxy modes, configure the outer trusted proxy to overwrite the upstream `Host` with this authority and to supply the effective HTTPS scheme; do not relay an arbitrary client-supplied Host.
 
 | Compose file | Additional required non-empty values |
 |--------------|--------------------------------------|
@@ -112,6 +121,8 @@ All modes require non-empty `DATABASE_PROVIDER`, `ConnectionStrings__SqlServerCo
 The external-database mode sets its Redis connection to the local Redis service, so it does not require `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, or `POSTGRES_PASSWORD`. The other four modes contain both database services; therefore their SQL Server and PostgreSQL initialization passwords are required even when only one provider is selected.
 
 Absent or empty required values fail compose validation before `deploy-idp.sh` can pull, build, or start a service. Diagnostics identify the missing variable name; they must never reveal its supplied value. Correct the named input in the operator-managed environment file and rerun the command.
+
+For an existing deployment, add the two public-origin values to the host-side `.env` before pulling or recreating the IdP service. Use the exact public URL already consumed by OIDC clients; changing it changes the token issuer and can break relying-party validation. This configuration update does not change the database schema and does not require a database reset, volume replacement, or credential change.
 
 ### Data-Service Network Exposure
 

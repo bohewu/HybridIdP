@@ -11,6 +11,8 @@ services:
     environment:
       - ASPNETCORE_URLS=http://+:80
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - OpenIddict__Issuer=${OpenIddict__Issuer:?OpenIddict__Issuer is required}
+      - PUBLIC_AUTHORITY=${PUBLIC_AUTHORITY:?PUBLIC_AUTHORITY is required}
       - DATABASE_PROVIDER=${DATABASE_PROVIDER:?DATABASE_PROVIDER is required}
       - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection:?ConnectionStrings__SqlServerConnection is required}
       - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection:?ConnectionStrings__PostgreSqlConnection is required}

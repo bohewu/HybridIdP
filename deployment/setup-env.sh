@@ -253,9 +253,18 @@ fido2_server_name=$(prompt_with_default "Server Name (Passkey prompt title)" "$a
 fido2_domain=$(prompt_with_default "Server Domain (e.g. localhost, idp.example.com)" "localhost")
 fido2_origins=$(prompt_with_default "Allowed Origins (comma-separated)" "https://localhost:7035")
 
-print_title "Advanced: OpenIddict Issuer"
-print_info "Optional: Set a fixed issuer URI. Recommended for production behind reverse proxy."
-oidc_issuer=$(prompt_with_default "Issuer URI (leave empty for auto-detect)" "")
+print_title "Public OIDC Origin"
+print_info "Required: the stable public HTTPS origin used by browsers and OIDC clients."
+while true; do
+    oidc_issuer=$(prompt_with_default "Issuer URI (for example https://idp.example.com/)" "")
+    if [[ "$oidc_issuer" =~ ^https://[^/?#@[:space:]]+/?$ ]]; then
+        public_authority="${oidc_issuer#https://}"
+        public_authority="${public_authority%/}"
+        oidc_issuer="https://$public_authority/"
+        break
+    fi
+    print_warn "Enter an absolute HTTPS origin without a path, query, fragment, or user information."
+done
 
 print_title "Generating .env file"
 
@@ -365,14 +374,13 @@ Branding__ProductName='$product_name'
 Branding__Copyright='$copyright'
 EOF
 
-# Add OpenIddict Issuer if set
-if [ -n "$oidc_issuer" ]; then
-    cat >> "$ENV_PATH" << EOF
+# Add the fixed public OIDC origin
+cat >> "$ENV_PATH" << EOF
 
-# OpenIddict Issuer
+# Fixed public OIDC origin and proxy Host authority
 OpenIddict__Issuer='$oidc_issuer'
+PUBLIC_AUTHORITY='$public_authority'
 EOF
-fi
 
 # Add token and rate limiting defaults
 cat >> "$ENV_PATH" << EOF

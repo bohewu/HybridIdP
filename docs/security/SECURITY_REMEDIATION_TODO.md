@@ -202,7 +202,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_2115040b736c248be7b31b82` | fixed | Protect the interactive authorization page from framing without breaking machine-readable `/connect` responses. |
 | `csf_d565c43230e9a213dbf13391` | fixed | Bound authorization rate-limit partitions derived from untrusted `client_id`. |
 | `csf_8ff43c021c099308b250550d` | fixed | Bound token rate-limit partitions derived from unauthenticated `client_id`. |
-| `csf_c6e8b1456a3c11f02b825e11` | pending | Pin the production public origin and reject arbitrary forwarded Host values. |
+| `csf_c6e8b1456a3c11f02b825e11` | fixed | Pin the production public origin and reject arbitrary forwarded Host values. |
 
 ### Ownership and Administrative Data
 
@@ -431,6 +431,33 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 - The solution build passed with 0 warnings and 0 errors; the full backend
   suite passed 1,404 tests with 0 failed and 1 existing aggressive ZAP test
   skipped.
+
+### M9 Verification Evidence
+
+- Before the fix, a real HTTPS request with `Host: attacker.invalid` received
+  HTTP 200 from discovery, allowing OpenIddict's request-derived issuer and
+  endpoint metadata to follow an untrusted Host. The regression failed because
+  the expected HTTP 400 was not returned.
+- Production now requires a fixed, root-level HTTPS `OpenIddict:Issuer`,
+  derives the ASP.NET Core Host allowlist from that issuer, and rejects a
+  supplied proxy authority that does not exactly match it. Development and
+  test retain request-derived issuer support for the trusted localhost host.
+- All five production Compose modes require the fixed issuer and matching
+  `PUBLIC_AUTHORITY` during configuration preflight. The repository Nginx
+  gateways render that authority into the redirect and upstream Host instead
+  of forwarding request `Host` or `X-Forwarded-Host` values.
+- The real-host regression confirms hostile Host rejection on discovery and
+  authorization without a redirect, while trusted discovery retains the
+  expected issuer. Existing authorization-code, PKCE, and logout regressions
+  passed 12/12.
+- Public-origin configuration tests passed 12/12. Bash and PowerShell setup
+  syntax checks passed, and the deployment hardening harness passed all five
+  production modes, including absent and empty input checks and Nginx template
+  contracts.
+- The solution build passed with 0 warnings and 0 errors; the full backend
+  suite passed 1,419 tests with 0 failed and 1 existing aggressive ZAP test
+  skipped. No database migration, reset, credential change, or live deployment
+  was performed.
 
 ## P2 - Low Hardening
 

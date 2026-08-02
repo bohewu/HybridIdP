@@ -309,8 +309,12 @@ For a manual `.env`, follow the [`docker-compose.splithost.yml` requirements mat
 - `SIGNING_CERT_PASSWORD`
 - `INTERNAL_IP`
 - `PROXY_HOST_IP`
+- `OpenIddict__Issuer`
+- `PUBLIC_AUTHORITY`
 
 Every value must be non-empty and operator-managed. This mode defines both MSSQL and PostgreSQL services, so both database connection strings and both database initialization passwords are required even when `DATABASE_PROVIDER` selects only one provider.
+
+Set `OpenIddict__Issuer` to the existing browser-visible HTTPS origin and set `PUBLIC_AUTHORITY` to its host plus any non-default port. Configure Host A to overwrite the upstream `Host` with that same authority rather than forwarding the incoming Host unchanged.
 
 ### 4.2 Start the Application
 

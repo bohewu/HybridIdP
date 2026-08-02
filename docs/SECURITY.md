@@ -47,7 +47,9 @@ All authentication and session cookies are configured with:
 
 ### Production Deployment Inputs and Network Boundary
 
-Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, and certificate passwords. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.
+Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, certificate passwords, and a fixed public OIDC origin. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.
+
+The public origin is configured as `OpenIddict__Issuer` plus its matching `PUBLIC_AUTHORITY`. Production derives the ASP.NET Core Host allowlist from the issuer. Repository Nginx gateways overwrite the upstream Host with the configured authority and do not trust a request-supplied Host or `X-Forwarded-Host`. External reverse proxies must provide the same fixed Host and the effective HTTPS scheme.
 
 Validation rejects missing or empty required inputs before image pull, local build, or service startup. Its diagnostics name the missing variable but never print the configured value. Store and provide these values through the operator's approved secret-management process.
 

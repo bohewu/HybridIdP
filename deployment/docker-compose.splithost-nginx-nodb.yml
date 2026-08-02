@@ -25,10 +25,14 @@ services:
   # Local Nginx Gateway - The only exposed service
   nginx-gateway:
     image: nginx:alpine
+    environment:
+      - PUBLIC_AUTHORITY=${PUBLIC_AUTHORITY:?PUBLIC_AUTHORITY is required}
+      - NGINX_ENVSUBST_FILTER=PUBLIC_AUTHORITY
+      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
     ports:
       - "${INTERNAL_IP:?INTERNAL_IP is required}:8080:80"
     volumes:
-      - ./nginx/splithost-gateway.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/splithost-gateway.conf:/etc/nginx/templates/nginx.conf.template:ro
       - ./nginx/ip-allowlist.conf:/etc/nginx/conf.d/ip-allowlist.conf:ro
     networks:
       - frontend
@@ -54,6 +58,8 @@ services:
     environment:
       - ASPNETCORE_URLS=http://+:80
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - OpenIddict__Issuer=${OpenIddict__Issuer:?OpenIddict__Issuer is required}
+      - PUBLIC_AUTHORITY=${PUBLIC_AUTHORITY:?PUBLIC_AUTHORITY is required}
       # Database - connects to EXTERNAL SQL Server/PostgreSQL
       - DATABASE_PROVIDER=${DATABASE_PROVIDER:?DATABASE_PROVIDER is required}
       - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection:?ConnectionStrings__SqlServerConnection is required}
@@ -86,8 +92,6 @@ services:
       - Observability__MetricsBaseUrl=http://localhost:80
       # Serilog - Default to Warning to reduce noise (this is the actual logging framework)
       - "Serilog__MinimumLevel__Default=Warning"
-      # Optional: Fixed issuer for production
-      - OpenIddict__Issuer=${OpenIddict__Issuer:-}
       # Legacy Auth (optional) - set in .env if using legacy authentication
       - LegacyAuth__LoginUrl=${LegacyAuth__LoginUrl:-}
       - LegacyAuth__Secret=${LegacyAuth__Secret:-}

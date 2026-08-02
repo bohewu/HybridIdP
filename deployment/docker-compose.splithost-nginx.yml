@@ -16,11 +16,15 @@ services:
   # Local Nginx - The only exposed service
   nginx-gateway:
     image: nginx:alpine
+    environment:
+      - PUBLIC_AUTHORITY=${PUBLIC_AUTHORITY:?PUBLIC_AUTHORITY is required}
+      - NGINX_ENVSUBST_FILTER=PUBLIC_AUTHORITY
+      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
     ports:
       # Expose to external reverse proxy
       - "${INTERNAL_IP:?INTERNAL_IP is required}:8080:80"
     volumes:
-      - ./nginx/splithost-gateway.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/splithost-gateway.conf:/etc/nginx/templates/nginx.conf.template:ro
     networks:
       - frontend
       - backend
@@ -44,6 +48,8 @@ services:
     environment:
       - ASPNETCORE_URLS=http://+:80
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - OpenIddict__Issuer=${OpenIddict__Issuer:?OpenIddict__Issuer is required}
+      - PUBLIC_AUTHORITY=${PUBLIC_AUTHORITY:?PUBLIC_AUTHORITY is required}
       - DATABASE_PROVIDER=${DATABASE_PROVIDER:?DATABASE_PROVIDER is required}
       - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection:?ConnectionStrings__SqlServerConnection is required}
       - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection:?ConnectionStrings__PostgreSqlConnection is required}
@@ -67,8 +73,6 @@ services:
       - Branding__Copyright=${Branding__Copyright:-© 2025}
       # Observability - Internal Metrics Scraping
       - Observability__MetricsBaseUrl=http://localhost:80
-      # Optional OpenIddict Issuer
-      - OpenIddict__Issuer=${OpenIddict__Issuer:-}
       # Login Page Notices (optional)
       - LoginNotices__TopMessage=${LoginNotices__TopMessage:-}
       - LoginNotices__TopType=${LoginNotices__TopType:-info}

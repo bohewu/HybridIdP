@@ -259,9 +259,24 @@ $fido2ServerName = Read-PromptWithDefault -Prompt "Server Name (Passkey prompt t
 $fido2Domain = Read-PromptWithDefault -Prompt "Server Domain (e.g. localhost, idp.example.com)" -Default "localhost"
 $fido2Origins = Read-PromptWithDefault -Prompt "Allowed Origins (comma-separated)" -Default "https://localhost:7035"
 
-Write-Title "Advanced: OpenIddict Issuer"
-Write-Info "Optional: Set a fixed issuer URI. Recommended for production behind reverse proxy."
-$oidcIssuer = Read-PromptWithDefault -Prompt "Issuer URI (leave empty for auto-detect)" -Default ""
+Write-Title "Public OIDC Origin"
+Write-Info "Required: the stable public HTTPS origin used by browsers and OIDC clients."
+do {
+    $oidcIssuer = Read-PromptWithDefault -Prompt "Issuer URI (for example https://idp.example.com/)" -Default ""
+    $issuerUri = $null
+    $validIssuer = [Uri]::TryCreate($oidcIssuer, [UriKind]::Absolute, [ref]$issuerUri) -and
+        $issuerUri.Scheme -eq [Uri]::UriSchemeHttps -and
+        $issuerUri.Host -and
+        -not $issuerUri.UserInfo -and
+        $issuerUri.AbsolutePath -eq "/" -and
+        -not $issuerUri.Query -and
+        -not $issuerUri.Fragment
+    if (-not $validIssuer) {
+        Write-Warn "Enter an absolute HTTPS origin without a path, query, fragment, or user information."
+    }
+} while (-not $validIssuer)
+$oidcIssuer = $issuerUri.GetComponents([UriComponents]::SchemeAndServer, [UriFormat]::UriEscaped) + "/"
+$publicAuthority = $issuerUri.Authority
 
 Write-Title "Generating .env file"
 
@@ -362,14 +377,13 @@ Branding__ProductName='$productName'
 Branding__Copyright='$copyright'
 "@
 
-# Add OpenIddict Issuer if set
-if ($oidcIssuer) {
-    $envContent += @"
+# Add the fixed public OIDC origin
+$envContent += @"
 
-# OpenIddict Issuer
+# Fixed public OIDC origin and proxy Host authority
 OpenIddict__Issuer='$oidcIssuer'
+PUBLIC_AUTHORITY='$publicAuthority'
 "@
-}
 
 # Add token and rate limiting defaults
 $envContent += @"
