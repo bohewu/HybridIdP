@@ -539,6 +539,29 @@ Person (Physical Identity)
 - Person represents real-world identity (verified by ID documents)
 - ApplicationUser represents authentication accounts
 
+### Person hard-delete disposition
+
+Hard-deleting a Person physically removes that Person but retains every linked
+ApplicationUser as an inactive and deleted terminal denial record. In one
+relational Serializable transaction, the service rotates each linked user's
+SecurityStamp, revokes active local UserSession records, and removes the
+Person. External-login and passkey bindings are retained as denial bindings;
+neither accounts nor credentials are physically deleted, and no migration is
+introduced.
+
+Terminal users are rejected before claims/base-principal generation and orphan
+auto-heal, and before JIT provisioning can create, mutate, or link a Person.
+Active eligible orphan auto-heal and legitimate JIT provisioning remain
+available. DELETE `204`/`404`, post-commit audit placement, unrelated users,
+and supported soft-delete/status behavior remain unchanged; there is no Person
+restore feature.
+
+Security-stamp cookie rejection follows the configured validation interval;
+the broader lifecycle-cookie invalidation work remains pending as
+`csf_31193ff88cb59c04e6ff7815`. Existing self-contained access JWTs may remain
+usable until expiry, but terminal user state blocks new code, refresh, device,
+and password issuance.
+
 ---
 
 ## Testing

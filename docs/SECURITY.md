@@ -95,6 +95,29 @@ UI's documented profile paths, including the intentionally hashed
 `Person.NationalId`. Adding another source property requires an explicit policy
 and test change; adding a property to an entity does not make it token-visible.
 
+### Person Hard-Delete Account Termination
+
+A hard delete physically removes the `Person`, but retains every linked
+`ApplicationUser` as an inactive and deleted terminal denial record. The
+operation rotates each linked user's `SecurityStamp` and revokes its active
+local `UserSession` records atomically with Person removal in a relational
+Serializable transaction. External-login and passkey bindings remain attached
+to the terminal user as denial bindings; accounts and credentials are not
+physically deleted, and this change adds no migration.
+
+Terminal users are rejected before claims or a base principal can be created,
+before orphan auto-heal, and before JIT provisioning can create, mutate, or
+link a Person. Eligible active orphan auto-heal and legitimate JIT provisioning
+remain supported. The existing DELETE `204`/`404` behavior, post-commit audit
+placement, unrelated users, and soft-delete/status behavior are unchanged.
+There is no Person restore feature.
+
+Security-stamp cookie rejection occurs at the configured validation interval.
+Immediate broad lifecycle-cookie invalidation remains pending
+`csf_31193ff88cb59c04e6ff7815`. Already-issued self-contained access JWTs may
+remain usable until expiry, although terminal user state blocks new code,
+refresh, device, and password issuance.
+
 ### External Login Email Binding
 
 External authentication proves control of the provider account, but an email

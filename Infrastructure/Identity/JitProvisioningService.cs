@@ -49,6 +49,11 @@ public class JitProvisioningService : IJitProvisioningService
 
         if (existingUser != null)
         {
+            if (!existingUser.IsActive || existingUser.IsDeleted)
+            {
+                throw new InvalidOperationException("User account is unavailable.");
+            }
+
             // Already exists, update ApplicationUser information
             if (hasVerifiedEmail)
             {
@@ -107,6 +112,18 @@ public class JitProvisioningService : IJitProvisioningService
             }
             
             return existingUser;
+        }
+
+        var username = hasVerifiedEmail
+            ? externalAuth.Email!
+            : null;
+        var usernameUser = hasVerifiedEmail
+            ? await _userManager.FindByNameAsync(username!)
+            : null;
+
+        if (usernameUser != null && (!usernameUser.IsActive || usernameUser.IsDeleted))
+        {
+            throw new InvalidOperationException("User account is unavailable.");
         }
 
         // Step 2: Try to find existing Person by identity documents first, then by Email
@@ -181,13 +198,8 @@ public class JitProvisioningService : IJitProvisioningService
         }
 
         // Step 4: Create new ApplicationUser (linked to Person)
-        var username = hasVerifiedEmail
-            ? externalAuth.Email!
-            : $"{externalAuth.Provider}_{externalAuth.ProviderKey}";
-        
-        var newUser = hasVerifiedEmail
-            ? await _userManager.FindByNameAsync(username)
-            : null;
+        username ??= $"{externalAuth.Provider}_{externalAuth.ProviderKey}";
+        var newUser = usernameUser;
         if (newUser == null)
         {
             newUser = new ApplicationUser

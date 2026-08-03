@@ -6,10 +6,13 @@ using Core.Domain.Entities;
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Data.Common;
 using System.Threading;
 using Xunit;
 
@@ -234,6 +237,125 @@ public class PersonServiceTests : IDisposable
 
         // Assert
         Assert.False(result);
+    }
+
+    [Fact]
+    public async Task DeletePersonAsync_ShouldTerminallyRetainLinkedUsersAndRevokeActiveSessions_WhenUsingSqlite()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = CreateSqliteOptions(connection);
+        var fixture = await SeedHardDeleteFixtureAsync(options);
+
+        await using (var context = new ApplicationDbContext(options))
+        {
+            var service = CreateService(context);
+
+            var result = await service.DeletePersonAsync(fixture.PersonId);
+
+            Assert.True(result);
+        }
+
+        await using var verificationContext = new ApplicationDbContext(options);
+        Assert.Null(await verificationContext.Persons.FindAsync(fixture.PersonId));
+
+        var linkedUsers = await verificationContext.Users
+            .Where(user => user.Id == fixture.FirstLinkedUserId || user.Id == fixture.SecondLinkedUserId)
+            .ToDictionaryAsync(user => user.Id);
+        Assert.Equal(2, linkedUsers.Count);
+        Assert.All(linkedUsers.Values, user =>
+        {
+            Assert.False(user.IsActive);
+            Assert.True(user.IsDeleted);
+            Assert.Null(user.PersonId);
+            Assert.NotNull(user.DeletedAt);
+            Assert.NotNull(user.ModifiedAt);
+        });
+        Assert.NotEqual(fixture.FirstLinkedUserSecurityStamp, linkedUsers[fixture.FirstLinkedUserId].SecurityStamp);
+        Assert.NotEqual(fixture.SecondLinkedUserSecurityStamp, linkedUsers[fixture.SecondLinkedUserId].SecurityStamp);
+        Assert.Equal(linkedUsers[fixture.FirstLinkedUserId].DeletedAt, linkedUsers[fixture.SecondLinkedUserId].DeletedAt);
+        Assert.Equal(linkedUsers[fixture.FirstLinkedUserId].ModifiedAt, linkedUsers[fixture.SecondLinkedUserId].ModifiedAt);
+
+        var activeSessions = await verificationContext.UserSessions
+            .Where(session => session.Id == fixture.FirstActiveSessionId || session.Id == fixture.SecondActiveSessionId)
+            .ToDictionaryAsync(session => session.Id);
+        Assert.All(activeSessions.Values, session =>
+        {
+            Assert.NotNull(session.RevokedUtc);
+            Assert.Equal("person-hard-delete", session.RevocationReason);
+        });
+
+        var alreadyRevokedSession = await verificationContext.UserSessions.FindAsync(fixture.AlreadyRevokedSessionId);
+        Assert.NotNull(alreadyRevokedSession);
+        Assert.Equal(fixture.AlreadyRevokedUtc, alreadyRevokedSession.RevokedUtc);
+        Assert.Equal("existing-revocation", alreadyRevokedSession.RevocationReason);
+
+        var unrelatedUser = await verificationContext.Users.FindAsync(fixture.UnrelatedUserId);
+        Assert.NotNull(unrelatedUser);
+        Assert.True(unrelatedUser.IsActive);
+        Assert.False(unrelatedUser.IsDeleted);
+        Assert.Equal(fixture.UnrelatedPersonId, unrelatedUser.PersonId);
+        Assert.Equal(fixture.UnrelatedUserSecurityStamp, unrelatedUser.SecurityStamp);
+
+        var unrelatedSession = await verificationContext.UserSessions.FindAsync(fixture.UnrelatedSessionId);
+        Assert.NotNull(unrelatedSession);
+        Assert.Null(unrelatedSession.RevokedUtc);
+        Assert.Null(unrelatedSession.RevocationReason);
+    }
+
+    [Fact]
+    public async Task DeletePersonAsync_ShouldRollbackAllLinkedState_WhenPersonDeleteFails()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = CreateSqliteOptions(connection);
+        var fixture = await SeedHardDeleteFixtureAsync(options);
+        var failureOptions = CreateSqliteOptions(connection, new ThrowOnPersonDeleteInterceptor());
+
+        await using (var context = new ApplicationDbContext(failureOptions))
+        {
+            var service = CreateService(context);
+
+            await Assert.ThrowsAsync<DbUpdateException>(() => service.DeletePersonAsync(fixture.PersonId));
+        }
+
+        await using var verificationContext = new ApplicationDbContext(options);
+        var person = await verificationContext.Persons.FindAsync(fixture.PersonId);
+        Assert.NotNull(person);
+
+        var linkedUsers = await verificationContext.Users
+            .Where(user => user.Id == fixture.FirstLinkedUserId || user.Id == fixture.SecondLinkedUserId)
+            .ToDictionaryAsync(user => user.Id);
+        Assert.Equal(2, linkedUsers.Count);
+        Assert.All(linkedUsers.Values, user =>
+        {
+            Assert.True(user.IsActive);
+            Assert.False(user.IsDeleted);
+            Assert.Null(user.DeletedAt);
+            Assert.Null(user.ModifiedAt);
+            Assert.Equal(fixture.PersonId, user.PersonId);
+        });
+        Assert.Equal(fixture.FirstLinkedUserSecurityStamp, linkedUsers[fixture.FirstLinkedUserId].SecurityStamp);
+        Assert.Equal(fixture.SecondLinkedUserSecurityStamp, linkedUsers[fixture.SecondLinkedUserId].SecurityStamp);
+
+        var activeSessions = await verificationContext.UserSessions
+            .Where(session => session.Id == fixture.FirstActiveSessionId || session.Id == fixture.SecondActiveSessionId)
+            .ToListAsync();
+        Assert.All(activeSessions, session =>
+        {
+            Assert.Null(session.RevokedUtc);
+            Assert.Null(session.RevocationReason);
+        });
+
+        _auditServiceMock.Verify(
+            auditService => auditService.LogEventAsync(
+                "PersonDeleted",
+                It.IsAny<string?>(),
+                It.IsAny<string>(),
+                null,
+                null,
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -1240,5 +1362,211 @@ public class PersonServiceTests : IDisposable
 
         // Verify Audit Log
         _auditServiceMock.Verify(s => s.LogEventAsync("ResourceOwnershipTransferred", It.IsAny<string>(), It.IsAny<string>(), null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private static DbContextOptions<ApplicationDbContext> CreateSqliteOptions(
+        SqliteConnection connection,
+        params IInterceptor[] interceptors)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection);
+
+        if (interceptors.Length > 0)
+        {
+            optionsBuilder.AddInterceptors(interceptors);
+        }
+
+        return optionsBuilder.Options;
+    }
+
+    private static async Task<HardDeleteFixture> SeedHardDeleteFixtureAsync(
+        DbContextOptions<ApplicationDbContext> options)
+    {
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var now = DateTime.UtcNow;
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Target",
+            LastName = "Person",
+            CreatedAt = now
+        };
+        var unrelatedPerson = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Unrelated",
+            LastName = "Person",
+            CreatedAt = now
+        };
+        var firstLinkedUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "target.one@example.test",
+            NormalizedUserName = "TARGET.ONE@EXAMPLE.TEST",
+            Email = "target.one@example.test",
+            NormalizedEmail = "TARGET.ONE@EXAMPLE.TEST",
+            PersonId = person.Id,
+            IsActive = true,
+            IsDeleted = false,
+            SecurityStamp = "target-one-stamp",
+            CreatedAt = now
+        };
+        var secondLinkedUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "target.two@example.test",
+            NormalizedUserName = "TARGET.TWO@EXAMPLE.TEST",
+            Email = "target.two@example.test",
+            NormalizedEmail = "TARGET.TWO@EXAMPLE.TEST",
+            PersonId = person.Id,
+            IsActive = true,
+            IsDeleted = false,
+            SecurityStamp = "target-two-stamp",
+            CreatedAt = now
+        };
+        var unrelatedUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "unrelated@example.test",
+            NormalizedUserName = "UNRELATED@EXAMPLE.TEST",
+            Email = "unrelated@example.test",
+            NormalizedEmail = "UNRELATED@EXAMPLE.TEST",
+            PersonId = unrelatedPerson.Id,
+            IsActive = true,
+            IsDeleted = false,
+            SecurityStamp = "unrelated-stamp",
+            CreatedAt = now
+        };
+        var role = new ApplicationRole
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestRole",
+            NormalizedName = "TESTROLE"
+        };
+        var alreadyRevokedUtc = now.AddHours(-1);
+        var firstActiveSession = new UserSession
+        {
+            Id = Guid.NewGuid(),
+            UserId = firstLinkedUser.Id,
+            AuthorizationId = "target-one-active",
+            ActiveRoleId = role.Id
+        };
+        var secondActiveSession = new UserSession
+        {
+            Id = Guid.NewGuid(),
+            UserId = secondLinkedUser.Id,
+            AuthorizationId = "target-two-active",
+            ActiveRoleId = role.Id
+        };
+        var alreadyRevokedSession = new UserSession
+        {
+            Id = Guid.NewGuid(),
+            UserId = firstLinkedUser.Id,
+            AuthorizationId = "target-one-revoked",
+            ActiveRoleId = role.Id,
+            RevokedUtc = alreadyRevokedUtc,
+            RevocationReason = "existing-revocation"
+        };
+        var unrelatedSession = new UserSession
+        {
+            Id = Guid.NewGuid(),
+            UserId = unrelatedUser.Id,
+            AuthorizationId = "unrelated-active",
+            ActiveRoleId = role.Id
+        };
+
+        context.AddRange(
+            person,
+            unrelatedPerson,
+            firstLinkedUser,
+            secondLinkedUser,
+            unrelatedUser,
+            role,
+            firstActiveSession,
+            secondActiveSession,
+            alreadyRevokedSession,
+            unrelatedSession);
+        await context.SaveChangesAsync();
+
+        return new HardDeleteFixture(
+            person.Id,
+            unrelatedPerson.Id,
+            firstLinkedUser.Id,
+            secondLinkedUser.Id,
+            unrelatedUser.Id,
+            firstLinkedUser.SecurityStamp,
+            secondLinkedUser.SecurityStamp,
+            unrelatedUser.SecurityStamp,
+            firstActiveSession.Id,
+            secondActiveSession.Id,
+            alreadyRevokedSession.Id,
+            unrelatedSession.Id,
+            alreadyRevokedUtc);
+    }
+
+    private sealed record HardDeleteFixture(
+        Guid PersonId,
+        Guid UnrelatedPersonId,
+        Guid FirstLinkedUserId,
+        Guid SecondLinkedUserId,
+        Guid UnrelatedUserId,
+        string? FirstLinkedUserSecurityStamp,
+        string? SecondLinkedUserSecurityStamp,
+        string? UnrelatedUserSecurityStamp,
+        Guid FirstActiveSessionId,
+        Guid SecondActiveSessionId,
+        Guid AlreadyRevokedSessionId,
+        Guid UnrelatedSessionId,
+        DateTime AlreadyRevokedUtc);
+
+    private sealed class ThrowOnPersonDeleteInterceptor : DbCommandInterceptor
+    {
+        public override InterceptionResult<int> NonQueryExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result)
+        {
+            ThrowWhenDeletingPerson(command);
+            return base.NonQueryExecuting(command, eventData, result);
+        }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            ThrowWhenDeletingPerson(command);
+            return base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
+
+        public override InterceptionResult<DbDataReader> ReaderExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result)
+        {
+            ThrowWhenDeletingPerson(command);
+            return base.ReaderExecuting(command, eventData, result);
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            ThrowWhenDeletingPerson(command);
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
+
+        private static void ThrowWhenDeletingPerson(DbCommand command)
+        {
+            if (command.CommandText.Contains("DELETE FROM \"Persons\"", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Injected failure after linked account updates.");
+            }
+        }
     }
 }

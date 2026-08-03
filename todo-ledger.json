@@ -124,6 +124,31 @@
       "completed_at": "2026-08-03T03:23:21Z",
       "updated_at": "2026-08-03T03:23:21Z",
       "notes": "Scope/acceptance: Explicit external-account linking validates the expected local-user XSRF binding before provider-limit policy or AddLoginAsync, rejects missing/mismatched/unauthenticated contexts without linking side effects, and preserves same-user linking, status/error semantics, and external-cookie cleanup; remediation documentation and tracking were updated. Evidence: exact expectedXsrf enforcement before provider policy/AddLoginAsync; focused regression 3/3; full Web unit suite 292/292; HybridAuthIdP.sln build 0 warnings/errors; mandatory review passed with no required followups; no live VM, provider, or system test was run."
+    },
+    {
+      "id": "SEC-20260803-person-hard-delete-terminalization",
+      "summary": "Safe terminalization of linked accounts on Person hard delete",
+      "status": "done",
+      "priority": "medium",
+      "source": "pipeline",
+      "source_run_id": "pipeline-20260803T033054Z-person-hard-delete",
+      "related_task_ids": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "artifact_paths": [
+        ".pipeline-output/pipeline-20260803T033054Z-person-hard-delete/pipeline/problem-spec.json",
+        ".pipeline-output/pipeline-20260803T033054Z-person-hard-delete/pipeline/task-list.json",
+        ".pipeline-output/pipeline-20260803T033054Z-person-hard-delete/tasks/T1/result.json",
+        ".pipeline-output/pipeline-20260803T033054Z-person-hard-delete/tasks/T2/result.json",
+        ".pipeline-output/pipeline-20260803T033054Z-person-hard-delete/tasks/T3/result.json",
+        ".pipeline-output/pipeline-20260803T033054Z-person-hard-delete/pipeline/test-report.json",
+        ".pipeline-output/pipeline-20260803T033054Z-person-hard-delete/pipeline/review-report.json"
+      ],
+      "completed_at": "2026-08-03T04:42:38Z",
+      "updated_at": "2026-08-03T04:42:38Z",
+      "notes": "Scope/evidence: Serializable atomic terminalization, session revocation, and Person removal; injected late-DELETE failure proves rollback; claims and JIT deny terminal users before mutation or recreation. Focused tests 52 Infrastructure + 18 Application; full tests 285 Infrastructure + 594 Application + 292 Web; solution build passed with 0 warnings/errors; vulnerable-list clean with SQLite 2.1.12; mandatory review passed. No live VM/provider/database/system test was run. Residuals: cookie validation interval remains csf_31193ff88cb59c04e6ff7815, and existing access JWTs may last to expiry."
     }
   ]
 }

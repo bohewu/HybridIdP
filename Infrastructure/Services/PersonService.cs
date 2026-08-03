@@ -1,3 +1,4 @@
+using System.Data;
 using System.Text.Json;
 using Core.Application;
 using Core.Application.Options;
@@ -8,6 +9,7 @@ using Core.Domain.Entities;
 using Infrastructure.Validators;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Threading;
@@ -23,14 +25,15 @@ namespace Infrastructure.Services;
 /// </summary>
 public partial class PersonService : IPersonService
 {
-    private readonly IApplicationDbContext _context;
+    private const string PersonHardDeleteRevocationReason = "person-hard-delete";
+    private readonly ApplicationDbContext _context;
     private readonly ILogger<PersonService> _logger;
     private readonly IAuditService _auditService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly PiiMaskingLevel _piiMaskingLevel;
 
     public PersonService(
-        IApplicationDbContext context,
+        ApplicationDbContext context,
         ILogger<PersonService> logger,
         IAuditService auditService,
         UserManager<ApplicationUser> userManager,
@@ -337,20 +340,88 @@ public partial class PersonService : IPersonService
 
     public async Task<bool> DeletePersonAsync(Guid personId, CancellationToken cancellationToken = default)
     {
-        var person = await _context.Persons.FindAsync([personId], cancellationToken);
-        if (person == null)
-            return false;
+        IDbContextTransaction? transaction = null;
+        Person? person = null;
 
-        // Note: Related ApplicationUsers will have their PersonId set to NULL due to OnDelete: SetNull
-        _context.Persons.Remove(person);
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            if (_context.Database.IsRelational())
+            {
+                transaction = await _context.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+            }
 
-        LogPersonDeleted(personId, person.EmployeeId ?? "N/A");
+            person = await _context.Persons
+                .FirstOrDefaultAsync(candidate => candidate.Id == personId, cancellationToken);
+            if (person == null)
+            {
+                return false;
+            }
+
+            var linkedUsers = await _context.Users
+                .Where(user => user.PersonId == personId)
+                .ToListAsync(cancellationToken);
+            var linkedUserIds = linkedUsers.Select(user => user.Id).ToList();
+            var activeSessions = await _context.UserSessions
+                .Where(session => linkedUserIds.Contains(session.UserId) && session.RevokedUtc == null)
+                .ToListAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+
+            foreach (var user in linkedUsers)
+            {
+                user.IsActive = false;
+                user.IsDeleted = true;
+                user.DeletedAt = now;
+                user.ModifiedAt = now;
+                user.SecurityStamp = Guid.NewGuid().ToString();
+            }
+
+            foreach (var session in activeSessions)
+            {
+                session.RevokedUtc = now;
+                session.RevocationReason = PersonHardDeleteRevocationReason;
+            }
+
+            // Related ApplicationUsers are retained with PersonId set to NULL by the configured SetNull relationship.
+            _context.Persons.Remove(person);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+        }
+        catch
+        {
+            if (transaction is not null)
+            {
+                try
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                }
+                catch
+                {
+                    // Preserve the original persistence error.
+                }
+            }
+
+            throw;
+        }
+        finally
+        {
+            if (transaction is not null)
+            {
+                await transaction.DisposeAsync();
+            }
+        }
+
+        LogPersonDeleted(personId, person!.EmployeeId ?? "N/A");
 
         // Phase 10.5: Audit the deletion
         var auditDetails = JsonSerializer.Serialize(new
         {
-            PersonId = person.Id,
+            PersonId = person!.Id,
             FirstName = PiiMasker.MaskName(person.FirstName, _piiMaskingLevel),
             LastName = PiiMasker.MaskName(person.LastName, _piiMaskingLevel),
             EmployeeId = person.EmployeeId,

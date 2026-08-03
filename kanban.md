@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-08-03T03:23:21Z._
+_Derived from `todo-ledger.json`; updated 2026-08-03T04:42:38Z._
 
 ## Done
 
@@ -91,3 +91,20 @@ _Derived from `todo-ledger.json`; updated 2026-08-03T03:23:21Z._
   - `.pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/tasks/T2/result.json`
   - `.pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/pipeline/test-report.json`
   - `.pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/pipeline/review-report.json`
+
+### SEC-20260803-person-hard-delete-terminalization — Safe terminalization of linked accounts on Person hard delete
+
+- Completed: 2026-08-03T04:42:38Z
+- Run: `pipeline-20260803T033054Z-person-hard-delete`
+- Priority: medium
+- Source: `pipeline`
+- Related tasks: `T1`, `T2`, `T3`
+- Notes: Scope/evidence: Serializable atomic terminalization, session revocation, and Person removal; injected late-DELETE failure proves rollback; claims and JIT deny terminal users before mutation or recreation. Focused tests 52 Infrastructure + 18 Application; full tests 285 Infrastructure + 594 Application + 292 Web; solution build passed with 0 warnings/errors; vulnerable-list clean with SQLite 2.1.12; mandatory review passed. No live VM/provider/database/system test was run. Residuals: cookie validation interval remains csf_31193ff88cb59c04e6ff7815, and existing access JWTs may last to expiry.
+- Artifacts:
+  - `.pipeline-output/pipeline-20260803T033054Z-person-hard-delete/pipeline/problem-spec.json`
+  - `.pipeline-output/pipeline-20260803T033054Z-person-hard-delete/pipeline/task-list.json`
+  - `.pipeline-output/pipeline-20260803T033054Z-person-hard-delete/tasks/T1/result.json`
+  - `.pipeline-output/pipeline-20260803T033054Z-person-hard-delete/tasks/T2/result.json`
+  - `.pipeline-output/pipeline-20260803T033054Z-person-hard-delete/tasks/T3/result.json`
+  - `.pipeline-output/pipeline-20260803T033054Z-person-hard-delete/pipeline/test-report.json`
+  - `.pipeline-output/pipeline-20260803T033054Z-person-hard-delete/pipeline/review-report.json`

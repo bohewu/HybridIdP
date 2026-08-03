@@ -221,7 +221,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_46561f9a0937502b347ee99a` | fixed | Require trusted upstream email-verification evidence before JIT email binding. |
 | `csf_e91772f4aee2b360fc1d4610` | fixed | Require trusted upstream email-verification evidence before external auto-linking. |
 | `csf_1a0a04d1a20e4682fb094540` | fixed | Validate the expected local-user XSRF binding in the external-link callback. |
-| `csf_c6b4a71a14cc93e15be81b2c` | pending | Revoke or safely terminate linked accounts when a Person is hard-deleted. |
+| `csf_c6b4a71a14cc93e15be81b2c` | fixed | Physically remove the Person while retaining linked ApplicationUsers as terminal denial records, revoking active local sessions atomically and blocking claims/JIT re-provisioning. |
 | `csf_31193ff88cb59c04e6ff7815` | pending | Invalidate Identity cookies when user or Person lifecycle state becomes ineligible. |
 
 ### MFA, Passkeys, UI, Monitoring, and Deployment
@@ -608,6 +608,31 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   linking side effects; a matching current-user context continues to link.
 - Focused `LinkExternalLoginControllerSecurityTests` passed 3/3, and the
   solution build passed with 0 warnings and 0 errors.
+
+### M17 Verification Evidence
+
+- Person hard delete physically removes the Person while retaining each linked
+  ApplicationUser as an inactive/deleted terminal denial record, with a rotated
+  SecurityStamp. External-login and passkey bindings are retained; no account,
+  credential, or migration is removed or added.
+- A relational Serializable transaction atomically terminalizes linked users,
+  revokes active local UserSession records, and removes the Person. SQLite
+  success and injected late-DELETE failure tests prove complete success state
+  and rollback without affecting unrelated users. DELETE `204`/`404`,
+  post-commit audit placement, and soft-delete/status behavior remain intact.
+- Terminal users are rejected before claims/base-principal generation or orphan
+  auto-heal and before JIT Person creation, mutation, or linking; active
+  eligible orphan auto-heal and legitimate JIT flows remain functional.
+- Focused Infrastructure and Application tests passed 52 and 18; full
+  Infrastructure, Application, and Web tests passed 285, 594, and 292.
+  The solution build passed with 0 warnings and 0 errors. `dotnet list package
+  --vulnerable --include-transitive` found no vulnerable test packages; the
+  SQLite bundle and library are 2.1.12.
+- Security-stamp cookie rejection occurs at the configured validation interval.
+  Broad lifecycle-cookie invalidation remains pending
+  `csf_31193ff88cb59c04e6ff7815`; already-issued self-contained access JWTs may
+  remain usable until expiry, although terminal user state blocks new code,
+  refresh, device, and password issuance.
 
 ## P2 - Low Hardening
 

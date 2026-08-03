@@ -41,6 +41,11 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
 
     public override async Task<ClaimsPrincipal> CreateAsync(ApplicationUser user)
     {
+        if (!user.IsActive || user.IsDeleted)
+        {
+            throw new InvalidOperationException("User account is unavailable.");
+        }
+
         // Note: Impersonation persistence during security stamp refresh is handled by 
         // SecurityStampValidatorOptions.OnRefreshingPrincipal in ServiceCollectionExtensions.cs
         // because HttpContext.User is not reliable during the validation event.

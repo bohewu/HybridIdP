@@ -170,6 +170,133 @@ public class JitProvisioningServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProvisionExternalUser_TerminalProviderLoginMatch_ShouldRejectWithoutMutatingOrSaving()
+    {
+        var terminalUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "retained-user",
+            Email = "retained@example.com",
+            FirstName = "Retained",
+            PersonId = Guid.NewGuid(),
+            IsActive = false,
+            IsDeleted = false
+        };
+        var externalAuth = new ExternalAuthResult
+        {
+            Provider = "Google",
+            ProviderKey = "retained-provider-key",
+            Email = "attacker@example.com",
+            EmailVerified = true,
+            FirstName = "Attacker"
+        };
+        var contextMock = new Mock<IApplicationDbContext>(MockBehavior.Strict);
+        var service = new JitProvisioningService(
+            _userManagerMock.Object,
+            contextMock.Object,
+            Options.Create(new Core.Application.Options.ExternalLoginOptions()));
+        _userManagerMock.Setup(manager => manager.FindByLoginAsync(externalAuth.Provider, externalAuth.ProviderKey))
+            .ReturnsAsync(terminalUser);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.ProvisionExternalUserAsync(externalAuth));
+
+        Assert.Equal("User account is unavailable.", exception.Message);
+        Assert.Equal("retained@example.com", terminalUser.Email);
+        Assert.Equal("Retained", terminalUser.FirstName);
+        Assert.Equal("retained-user", terminalUser.UserName);
+        _userManagerMock.Verify(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.CreateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.AddLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<UserLoginInfo>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.FindByNameAsync(It.IsAny<string>()), Times.Never);
+        contextMock.VerifyGet(context => context.Persons, Times.Never);
+        contextMock.Verify(context => context.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProvisionExternalUser_TerminalUsernameMatch_ShouldRejectBeforePersonLookupOrMutation()
+    {
+        var terminalUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "retained@example.com",
+            Email = "retained@example.com",
+            FirstName = "Retained",
+            IsActive = true,
+            IsDeleted = true
+        };
+        var externalAuth = new ExternalAuthResult
+        {
+            Provider = "Microsoft",
+            ProviderKey = "new-provider-key",
+            Email = terminalUser.UserName,
+            EmailVerified = true,
+            FirstName = "Attacker"
+        };
+        var contextMock = new Mock<IApplicationDbContext>(MockBehavior.Strict);
+        var service = new JitProvisioningService(
+            _userManagerMock.Object,
+            contextMock.Object,
+            Options.Create(new Core.Application.Options.ExternalLoginOptions()));
+        _userManagerMock.Setup(manager => manager.FindByLoginAsync(externalAuth.Provider, externalAuth.ProviderKey))
+            .ReturnsAsync((ApplicationUser?)null);
+        _userManagerMock.Setup(manager => manager.FindByNameAsync(terminalUser.UserName))
+            .ReturnsAsync(terminalUser);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.ProvisionExternalUserAsync(externalAuth));
+
+        Assert.Equal("User account is unavailable.", exception.Message);
+        Assert.Null(terminalUser.PersonId);
+        Assert.Equal("retained@example.com", terminalUser.Email);
+        Assert.Equal("Retained", terminalUser.FirstName);
+        _userManagerMock.Verify(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.CreateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.AddLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<UserLoginInfo>()), Times.Never);
+        contextMock.VerifyGet(context => context.Persons, Times.Never);
+        contextMock.VerifyGet(context => context.Users, Times.Never);
+        contextMock.Verify(context => context.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProvisionExternalUser_ActiveUsernameMatch_ShouldLinkExistingUser()
+    {
+        var existingUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "eligible@example.com",
+            Email = "eligible@example.com",
+            IsActive = true,
+            IsDeleted = false
+        };
+        var externalAuth = new ExternalAuthResult
+        {
+            Provider = "Google",
+            ProviderKey = "eligible-provider-key",
+            Email = existingUser.UserName,
+            EmailVerified = true,
+            FirstName = "Eligible"
+        };
+        _userManagerMock.Setup(manager => manager.FindByLoginAsync(externalAuth.Provider, externalAuth.ProviderKey))
+            .ReturnsAsync((ApplicationUser?)null);
+        _userManagerMock.Setup(manager => manager.FindByNameAsync(existingUser.UserName))
+            .ReturnsAsync(existingUser);
+        _userManagerMock.Setup(manager => manager.UpdateAsync(existingUser))
+            .ReturnsAsync(IdentityResult.Success);
+        _userManagerMock.Setup(manager => manager.AddLoginAsync(existingUser, It.IsAny<UserLoginInfo>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var result = await _service.ProvisionExternalUserAsync(externalAuth);
+
+        Assert.Same(existingUser, result);
+        Assert.NotNull(existingUser.PersonId);
+        Assert.Single(await _context.Persons.ToListAsync());
+        _userManagerMock.Verify(manager => manager.CreateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.UpdateAsync(existingUser), Times.Once);
+        _userManagerMock.Verify(manager => manager.AddLoginAsync(existingUser, It.IsAny<UserLoginInfo>()), Times.Once);
+    }
+
+    [Fact]
     public async Task ProvisionExternalUser_ExistingLoginWithUnverifiedEmail_ShouldPreserveStoredEmail()
     {
         var personId = Guid.NewGuid();

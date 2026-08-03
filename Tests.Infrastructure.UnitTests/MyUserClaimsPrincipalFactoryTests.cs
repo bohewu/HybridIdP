@@ -27,109 +27,6 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
     private readonly Mock<IAuditService> _auditServiceMock;
     private readonly Mock<ILogger<MyUserClaimsPrincipalFactory>> _loggerMock;
 
-    // Test helper class to expose protected method
-    private class TestableMyUserClaimsPrincipalFactory : MyUserClaimsPrincipalFactory
-    {
-        private readonly IApplicationDbContext _testContext;
-        private readonly IAuditService _testAuditService;
-        private readonly ILogger<MyUserClaimsPrincipalFactory> _testLogger;
-
-        public TestableMyUserClaimsPrincipalFactory(
-            UserManager<ApplicationUser> userManager,
-            RoleManager<ApplicationRole> roleManager,
-            IOptions<IdentityOptions> optionsAccessor,
-            IApplicationDbContext context,
-            IAuditService auditService,
-            IHttpContextAccessor httpContextAccessor,
-            ILogger<MyUserClaimsPrincipalFactory> logger)
-            : base(userManager, roleManager, optionsAccessor, context, auditService, httpContextAccessor, logger)
-        {
-            _testContext = context;
-            _testAuditService = auditService;
-            _testLogger = logger;
-        }
-
-        protected override async Task<System.Security.Claims.ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
-        {
-            // Orphan auto-heal logic
-            if (!user.PersonId.HasValue)
-            {
-                _testLogger.LogWarning("Orphan ApplicationUser detected: {UserId}, auto-creating Person", user.Id);
-                
-                var person = new Core.Domain.Entities.Person
-                {
-                    Id = Guid.NewGuid(),
-                    FirstName = user.FirstName ?? user.Email?.Split('@')[0],
-                    LastName = user.LastName,
-                    Department = user.Department,
-                    CreatedAt = DateTime.UtcNow
-                };
-                _testContext.Persons.Add(person);
-                await _testContext.SaveChangesAsync(CancellationToken.None);
-                
-                user.PersonId = person.Id;
-                await UserManager.UpdateAsync(user);
-                user.Person = person;
-                
-                // Audit the auto-healing operation
-                var auditDetails = System.Text.Json.JsonSerializer.Serialize(new
-                {
-                    PersonId = person.Id,
-                    ApplicationUserId = user.Id,
-                    Email = user.Email,
-                    FirstName = person.FirstName,
-                    LastName = person.LastName,
-                    HealedAt = DateTime.UtcNow,
-                    TriggerPoint = "Login/ClaimsGeneration"
-                });
-                await _testAuditService.LogEventAsync(
-                    "OrphanUserAutoHealed",
-                    user.Id.ToString(),
-                    auditDetails,
-                    null,
-                    null);
-            }
-            // Load Person navigation property if not already loaded
-            else if (user.Person == null)
-            {
-                user.Person = await _testContext.Persons.FindAsync(user.PersonId.Value);
-            }
-
-            // Create a basic identity for testing
-            var identity = new System.Security.Claims.ClaimsIdentity();
-            identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, user.Id.ToString()));
-            if (user.UserName != null)
-            {
-                identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, user.UserName));
-            }
-            if (user.Email != null)
-            {
-                identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, user.Email));
-            }
-
-            // Ensure preferred_username claim
-            var preferredUsername = user.Email ?? user.UserName ?? string.Empty;
-            if (!string.IsNullOrEmpty(preferredUsername) && !identity.HasClaim(c => c.Type == "preferred_username"))
-            {
-                identity.AddClaim(new System.Security.Claims.Claim("preferred_username", preferredUsername));
-            }
-
-            // Add profile claims from Person
-            var department = user.Person?.Department ?? user.Department;
-            if (!string.IsNullOrEmpty(department))
-            {
-                identity.AddClaim(new System.Security.Claims.Claim("department", department));
-            }
-
-            return identity;
-        }
-
-        public async Task<System.Security.Claims.ClaimsIdentity> TestGenerateClaimsAsync(ApplicationUser user)
-        {
-            return await GenerateClaimsAsync(user);
-        }
-    }
-
     public MyUserClaimsPrincipalFactoryTests()
     {
         _options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -166,11 +63,11 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
     }
 
     [Fact]
-    public async Task GenerateClaimsAsync_WhenUserHasNoPerson_CreatesPersonAndLogsAudit()
+    public async Task CreateAsync_WhenActiveUserHasNoPerson_CreatesPersonAndLogsAudit()
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var factory = new TestableMyUserClaimsPrincipalFactory(
+        var factory = new MyUserClaimsPrincipalFactory(
             _userManagerMock.Object,
             _roleManagerMock.Object,
             _optionsAccessorMock.Object,
@@ -192,12 +89,13 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
 
         // Setup UserManager methods
         _userManagerMock.Setup(um => um.UpdateAsync(user)).ReturnsAsync(IdentityResult.Success);
-        _userManagerMock.Setup(um => um.GetRolesAsync(user)).ReturnsAsync(new List<string>());
+        SetupPrincipalGeneration(user);
 
         // Act
-        var identity = await factory.TestGenerateClaimsAsync(user);
+        var principal = await factory.CreateAsync(user);
 
         // Assert
+        Assert.NotNull(principal.Identity);
         Assert.NotNull(user.PersonId);
         Assert.NotNull(user.Person);
         Assert.Equal(user.PersonId, user.Person.Id);
@@ -220,11 +118,11 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
     }
 
     [Fact]
-    public async Task GenerateClaimsAsync_WhenUserHasPerson_NoNewPersonCreated()
+    public async Task CreateAsync_WhenActiveUserHasPerson_DoesNotCreatePerson()
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
-        var factory = new TestableMyUserClaimsPrincipalFactory(
+        var factory = new MyUserClaimsPrincipalFactory(
             _userManagerMock.Object,
             _roleManagerMock.Object,
             _optionsAccessorMock.Object,
@@ -258,12 +156,13 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
         var initialPersonCount = await context.Persons.CountAsync();
 
         // Setup UserManager methods
-        _userManagerMock.Setup(um => um.GetRolesAsync(user)).ReturnsAsync(new List<string>());
+        SetupPrincipalGeneration(user);
 
         // Act
-        var identity = await factory.TestGenerateClaimsAsync(user);
+        var principal = await factory.CreateAsync(user);
 
         // Assert
+        Assert.NotNull(principal.Identity);
         Assert.Equal(person.Id, user.PersonId);
         Assert.NotNull(user.Person);
         Assert.Equal(person.Id, user.Person.Id);
@@ -274,6 +173,55 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
 
         // Verify no audit was logged
         _auditServiceMock.Verify(a => a.LogEventAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task CreateAsync_WhenUserIsTerminal_ThrowsBeforeCreatingPrincipalOrPerson(
+        bool isActive,
+        bool isDeleted)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var factory = new MyUserClaimsPrincipalFactory(
+            _userManagerMock.Object,
+            _roleManagerMock.Object,
+            _optionsAccessorMock.Object,
+            context,
+            _auditServiceMock.Object,
+            _httpContextAccessorMock.Object,
+            _loggerMock.Object);
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "terminal-user",
+            Email = "terminal@example.com",
+            IsActive = isActive,
+            IsDeleted = isDeleted
+        };
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => factory.CreateAsync(user));
+
+        Assert.Equal("User account is unavailable.", exception.Message);
+        Assert.Null(user.PersonId);
+        Assert.Empty(await context.Persons.ToListAsync());
+        _userManagerMock.Verify(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.GetRolesAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _auditServiceMock.Verify(audit => audit.LogEventAsync(
+            It.IsAny<string>(),
+            It.IsAny<string?>(),
+            It.IsAny<string>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private void SetupPrincipalGeneration(ApplicationUser user)
+    {
+        _userManagerMock.Setup(manager => manager.UpdateAsync(user)).ReturnsAsync(IdentityResult.Success);
+        _userManagerMock.Setup(manager => manager.GetRolesAsync(user)).ReturnsAsync(new List<string>());
+        _userManagerMock.Setup(manager => manager.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
+        _userManagerMock.Setup(manager => manager.GetUserNameAsync(user)).ReturnsAsync(user.UserName);
     }
 
 }
