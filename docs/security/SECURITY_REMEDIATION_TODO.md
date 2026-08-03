@@ -222,7 +222,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_e91772f4aee2b360fc1d4610` | fixed | Require trusted upstream email-verification evidence before external auto-linking. |
 | `csf_1a0a04d1a20e4682fb094540` | fixed | Validate the expected local-user XSRF binding in the external-link callback. |
 | `csf_c6b4a71a14cc93e15be81b2c` | fixed | Physically remove the Person while retaining linked ApplicationUsers as terminal denial records, revoking active local sessions atomically and blocking claims/JIT re-provisioning. |
-| `csf_31193ff88cb59c04e6ff7815` | pending | Invalidate Identity cookies when user or Person lifecycle state becomes ineligible. |
+| `csf_31193ff88cb59c04e6ff7815` | fixed | Current user/Person eligibility is checked on every Identity cookie validation and lifecycle mutations rotate linked security stamps. Post-repair independent review passed with no issues or required followups. |
 
 ### MFA, Passkeys, UI, Monitoring, and Deployment
 
@@ -628,11 +628,28 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   The solution build passed with 0 warnings and 0 errors. `dotnet list package
   --vulnerable --include-transitive` found no vulnerable test packages; the
   SQLite bundle and library are 2.1.12.
-- Security-stamp cookie rejection occurs at the configured validation interval.
-  Broad lifecycle-cookie invalidation remains pending
-  `csf_31193ff88cb59c04e6ff7815`; already-issued self-contained access JWTs may
-  remain usable until expiry, although terminal user state blocks new code,
-  refresh, device, and password issuance.
+- Application-cookie current-state validation now rejects lifecycle-ineligible
+  sessions independently of the configured security-stamp interval. It checks
+  inactive, soft-deleted, and currently locked-out users plus linked Person
+  soft deletion, non-`Active` status, future start dates, and expired end
+  dates. Self-contained access JWT lifetime semantics are unchanged.
+
+### M18 Verification Evidence
+
+- `csf_31193ff88cb59c04e6ff7815` is implemented with current-state Identity
+  cookie validation and same-save-boundary linked-user security-stamp rotation
+  for scoped user and Person lifecycle mutations. There is no schema
+  migration, UserSession redesign, endpoint, or production certificate change.
+- The system-test fixture uses an ephemeral localhost certificate only because
+  a local developer certificate cannot be assumed. It does not modify the
+  certificate store and cleans up its temporary material.
+- Post-repair focused delta evidence passed: PersonLifecycle 7/7;
+  lifecycle-cookie 3/3; login lockout 1/1; and the solution build completed
+  with 0 warnings and 0 errors. Mandatory independent review passed with no
+  issues or required followups. The full backend solution suite
+  passed: Application 595 passed; Infrastructure Unit 293 passed; Web.IdP Unit
+  301 passed; Infrastructure Integration 86 passed; System 305 passed and 1
+  skipped.
 
 ## P2 - Low Hardening
 

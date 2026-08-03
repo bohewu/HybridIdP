@@ -556,11 +556,13 @@ available. DELETE `204`/`404`, post-commit audit placement, unrelated users,
 and supported soft-delete/status behavior remain unchanged; there is no Person
 restore feature.
 
-Security-stamp cookie rejection follows the configured validation interval;
-the broader lifecycle-cookie invalidation work remains pending as
-`csf_31193ff88cb59c04e6ff7815`. Existing self-contained access JWTs may remain
-usable until expiry, but terminal user state blocks new code, refresh, device,
-and password issuance.
+Application cookies are also checked against current user and linked Person
+lifecycle eligibility on every validation, independently of the configured
+security-stamp interval. The current-state check composes with existing
+Identity security-stamp refresh and impersonation behavior for eligible
+cookies. Existing self-contained access JWTs may remain usable until expiry,
+but terminal user state blocks new code, refresh, device, and password
+issuance.
 
 ---
 

@@ -185,6 +185,8 @@ public partial class PersonService : IPersonService
         if (existingPerson == null)
             return null;
 
+        var wasAuthenticationEligible = existingPerson.CanAuthenticate();
+
         // Normalize empty strings to null (prevents unique index violations and improves data consistency)
         person.Email = string.IsNullOrWhiteSpace(person.Email) ? null : person.Email;
         person.PhoneNumber = string.IsNullOrWhiteSpace(person.PhoneNumber) ? null : person.PhoneNumber;
@@ -312,6 +314,14 @@ public partial class PersonService : IPersonService
         // Update audit fields
         existingPerson.ModifiedAt = DateTime.UtcNow;
         existingPerson.ModifiedBy = modifiedBy;
+
+        if (wasAuthenticationEligible != existingPerson.CanAuthenticate())
+        {
+            foreach (var linkedUser in existingPerson.Accounts ?? [])
+            {
+                linkedUser.SecurityStamp = Guid.NewGuid().ToString();
+            }
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 

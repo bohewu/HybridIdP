@@ -1,6 +1,10 @@
 using System.Diagnostics;
 using System.Net;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
+using Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace Tests.SystemTests;
 
@@ -8,6 +12,7 @@ public class WebIdPServerFixture : IAsyncLifetime
 {
     private static readonly SemaphoreSlim _semaphore = new(1, 1);
     private static Process? _serverProcess;
+    private static EphemeralHttpsCertificate? _serverCertificate;
     private static int _usageCount;
     private static bool _processExitHandlerRegistered;
     
@@ -147,10 +152,32 @@ public class WebIdPServerFixture : IAsyncLifetime
         }
     }
 
+    public async Task<bool> VerifyUserSecurityStampRemainsUnchangedAsync(
+        Guid userId,
+        Func<Task> operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        var originalSecurityStamp = await ReadUserSecurityStampAsync(userId);
+        if (originalSecurityStamp is null)
+        {
+            return false;
+        }
+
+        await operation();
+
+        var currentSecurityStamp = await ReadUserSecurityStampAsync(userId);
+        return string.Equals(
+            originalSecurityStamp,
+            currentSecurityStamp,
+            StringComparison.Ordinal);
+    }
+
     private async Task StartServerAsync(
         bool enablePrivilegedTestAdminBootstrap,
         bool disableClientWriteEndpoints)
     {
+        EphemeralHttpsCertificate? certificate = null;
         var webIdpDirectory = GetWebIdPDirectory();
         var buildConfiguration = GetBuildConfiguration();
         var databaseProvider = ResolveDatabaseProvider();
@@ -183,50 +210,63 @@ public class WebIdPServerFixture : IAsyncLifetime
         startInfo.EnvironmentVariables["DATABASE_PROVIDER"] = databaseProvider;
         startInfo.EnvironmentVariables[$"ConnectionStrings__{connectionStringName}"] = connectionString;
         startInfo.EnvironmentVariables["OpenIddict__UseEphemeralKeysForTesting"] = "true";
+        try
+        {
+            certificate = EphemeralHttpsCertificate.Create();
+            startInfo.EnvironmentVariables["Kestrel__Certificates__Default__Path"] = certificate.Path;
+            startInfo.EnvironmentVariables["Kestrel__Certificates__Default__Password"] = certificate.Password;
 
-        _serverProcess = Process.Start(startInfo);
-        if (_serverProcess == null)
-        {
-            throw new InvalidOperationException("Failed to start the Web.IdP test server.");
-        }
-        
-        var stderr = new System.Text.StringBuilder();
-        _serverProcess.ErrorDataReceived += (_, args) =>
-        {
-            if (args.Data != null)
+            _serverProcess = Process.Start(startInfo);
+            if (_serverProcess == null)
             {
-                stderr.AppendLine(args.Data);
-            }
-        };
-        _serverProcess.BeginErrorReadLine();
-        _serverProcess.OutputDataReceived += (_, _) => { };
-        _serverProcess.BeginOutputReadLine();
-
-        var stopwatch = Stopwatch.StartNew();
-        while (stopwatch.ElapsedMilliseconds < 60000)
-        {
-            if (_serverProcess.HasExited)
-            {
-                var exitCode = _serverProcess.ExitCode;
-                _serverProcess.Dispose();
-                _serverProcess = null;
                 throw new InvalidOperationException(
-                    $"Web.IdP test server exited prematurely with code {exitCode} " +
-                    $"while using database provider '{databaseProvider}'. Error: {stderr}");
+                    "Failed to start the Web.IdP test server.");
             }
 
-            if (await IsServerAliveAsync())
+            _serverCertificate = certificate;
+            certificate = null;
+            _serverCertificate.ClearPassword();
+
+            _serverProcess.ErrorDataReceived += (_, _) => { };
+            _serverProcess.BeginErrorReadLine();
+            _serverProcess.OutputDataReceived += (_, _) => { };
+            _serverProcess.BeginOutputReadLine();
+
+            var stopwatch = Stopwatch.StartNew();
+            while (stopwatch.ElapsedMilliseconds < 60000)
             {
-                return;
+                if (_serverProcess.HasExited)
+                {
+                    var exitCode = _serverProcess.ExitCode;
+                    await StopServerAsync();
+                    throw new InvalidOperationException(
+                        $"Web.IdP test server exited prematurely with code {exitCode} " +
+                        $"while using database provider '{databaseProvider}'.");
+                }
+
+                if (await IsServerAliveAsync())
+                {
+                    return;
+                }
+
+                await Task.Delay(100);
             }
 
-            await Task.Delay(100);
+            await StopServerAsync();
+            throw new TimeoutException(
+                $"Web.IdP test server did not start within 60 seconds " +
+                $"while using database provider '{databaseProvider}'.");
         }
+        catch
+        {
+            if (_serverProcess != null)
+            {
+                await StopServerAsync();
+            }
 
-        await StopServerAsync();
-        throw new TimeoutException(
-            $"Web.IdP test server did not start within 60 seconds " +
-            $"while using database provider '{databaseProvider}'. Last error: {stderr}");
+            certificate?.Dispose();
+            throw;
+        }
     }
 
     private async Task StopServerAsync()
@@ -247,6 +287,7 @@ public class WebIdPServerFixture : IAsyncLifetime
         finally
         {
             process?.Dispose();
+            DisposeServerCertificate();
         }
         
         if (await IsServerAliveAsync())
@@ -354,6 +395,36 @@ public class WebIdPServerFixture : IAsyncLifetime
         return (connectionStringName, configuredValue.GetString()!);
     }
 
+    private static async Task<string?> ReadUserSecurityStampAsync(Guid userId)
+    {
+        var webIdpDirectory = GetWebIdPDirectory();
+        var databaseProvider = ResolveDatabaseProvider();
+        var (_, connectionString) = ResolveTestConnectionString(webIdpDirectory, databaseProvider);
+        var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+
+        if (databaseProvider == PostgreSqlProvider)
+        {
+            optionsBuilder.UseNpgsql(
+                connectionString,
+                options => options.MigrationsAssembly("Infrastructure.Migrations.Postgres"));
+        }
+        else
+        {
+            optionsBuilder.UseSqlServer(
+                connectionString,
+                options => options.MigrationsAssembly("Infrastructure.Migrations.SqlServer"));
+        }
+
+        optionsBuilder.UseOpenIddict<Guid>();
+
+        await using var dbContext = new ApplicationDbContext(optionsBuilder.Options);
+        return await dbContext.Users
+            .AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => user.SecurityStamp)
+            .SingleOrDefaultAsync();
+    }
+
     private async Task EnsureServerRunningUnderLockAsync()
     {
         if (IsRunning)
@@ -383,8 +454,109 @@ public class WebIdPServerFixture : IAsyncLifetime
                 catch
                 {
                 }
+                finally
+                {
+                    DisposeServerCertificate();
+                }
             };
             _processExitHandlerRegistered = true;
+        }
+    }
+
+    private static void DisposeServerCertificate()
+    {
+        var certificate = _serverCertificate;
+        _serverCertificate = null;
+        certificate?.Dispose();
+    }
+
+    private sealed class EphemeralHttpsCertificate : IDisposable
+    {
+        private readonly string _directory;
+        private string? _password;
+
+        private EphemeralHttpsCertificate(string directory, string path, string password)
+        {
+            _directory = directory;
+            Path = path;
+            _password = password;
+        }
+
+        public string Path { get; }
+
+        public string Password => _password ?? throw new InvalidOperationException(
+            "The ephemeral HTTPS certificate password is no longer available.");
+
+        public static EphemeralHttpsCertificate Create()
+        {
+            var directory = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                "HybridAuthIdP-SystemTests",
+                Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+
+            try
+            {
+                var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+                var path = System.IO.Path.Combine(directory, "https.pfx");
+                using var key = RSA.Create(2048);
+                var request = new CertificateRequest(
+                    "CN=localhost",
+                    key,
+                    HashAlgorithmName.SHA256,
+                    RSASignaturePadding.Pkcs1);
+                request.CertificateExtensions.Add(
+                    new X509BasicConstraintsExtension(false, false, 0, true));
+                request.CertificateExtensions.Add(
+                    new X509KeyUsageExtension(
+                        X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment,
+                        true));
+                request.CertificateExtensions.Add(
+                    new X509EnhancedKeyUsageExtension(
+                        new OidCollection { new("1.3.6.1.5.5.7.3.1") },
+                        true));
+                var subjectAlternativeNames = new SubjectAlternativeNameBuilder();
+                subjectAlternativeNames.AddDnsName("localhost");
+                subjectAlternativeNames.AddIpAddress(IPAddress.Loopback);
+                subjectAlternativeNames.AddIpAddress(IPAddress.IPv6Loopback);
+                request.CertificateExtensions.Add(subjectAlternativeNames.Build());
+                request.CertificateExtensions.Add(
+                    new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+
+                using var certificate = request.CreateSelfSigned(
+                    DateTimeOffset.UtcNow.AddMinutes(-5),
+                    DateTimeOffset.UtcNow.AddHours(2));
+                var pfx = certificate.Export(X509ContentType.Pfx, password);
+                try
+                {
+                    File.WriteAllBytes(path, pfx);
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(pfx);
+                }
+
+                return new EphemeralHttpsCertificate(directory, path, password);
+            }
+            catch
+            {
+                Directory.Delete(directory, recursive: true);
+                throw;
+            }
+        }
+
+        public void ClearPassword()
+        {
+            _password = null;
+        }
+
+        public void Dispose()
+        {
+            _password = null;
+            if (Directory.Exists(_directory))
+            {
+                Directory.Delete(_directory, recursive: true);
+            }
         }
     }
 }

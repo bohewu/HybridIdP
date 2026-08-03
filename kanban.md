@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-08-03T04:42:38Z._
+_Derived from `todo-ledger.json`; updated 2026-08-03T09:07:36Z._
 
 ## Done
 
@@ -108,3 +108,16 @@ _Derived from `todo-ledger.json`; updated 2026-08-03T04:42:38Z._
   - `.pipeline-output/pipeline-20260803T033054Z-person-hard-delete/tasks/T3/result.json`
   - `.pipeline-output/pipeline-20260803T033054Z-person-hard-delete/pipeline/test-report.json`
   - `.pipeline-output/pipeline-20260803T033054Z-person-hard-delete/pipeline/review-report.json`
+
+### SEC-20260803-lifecycle-cookie-invalidation — Lifecycle-cookie invalidation for ineligible users and Persons
+
+- Completed: 2026-08-03T09:07:36Z
+- Run: `pipeline-20260803T065639Z-lifecycle-cookie`
+- Priority: medium
+- Source: `pipeline`
+- Related tasks: `T1`, `T2`, `T3`
+- Notes: M18 / csf_31193ff88cb59c04e6ff7815 completed in run pipeline-20260803T065639Z-lifecycle-cookie. Evidence: full backend suite passed; post-repair review passed with no required followups; repository remediation entry fixed.
+- Artifacts:
+  - `.pipeline-output/pipeline-20260803T065639Z-lifecycle-cookie/pipeline/task-list.json`
+  - `.pipeline-output/pipeline-20260803T065639Z-lifecycle-cookie/pipeline/test-report.json`
+  - `.pipeline-output/pipeline-20260803T065639Z-lifecycle-cookie/pipeline/review-report-round-1.json`

@@ -299,6 +299,8 @@ public class UserManagementService : IUserManagementService
             return (false, new[] { "User not found" });
         }
 
+        var isActiveChanged = user.IsActive != updateDto.IsActive;
+
         // Phase 10.4: Update Person first (if exists), then ApplicationUser
         if (user.Person != null)
         {
@@ -351,6 +353,13 @@ public class UserManagementService : IUserManagementService
         user.ModifiedBy = modifiedBy;
         user.ModifiedAt = DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
+
+        // Keep the lifecycle change and its cookie invalidation in the same
+        // UserManager persistence operation.
+        if (isActiveChanged)
+        {
+            user.SecurityStamp = Guid.NewGuid().ToString();
+        }
 
         var result = await _userManager.UpdateAsync(user);
 
@@ -405,6 +414,7 @@ public class UserManagementService : IUserManagementService
         user.IsActive = false;
         user.ModifiedBy = modifiedBy;
         user.ModifiedAt = DateTime.UtcNow;
+        user.SecurityStamp = Guid.NewGuid().ToString();
 
         var result = await _userManager.UpdateAsync(user);
 

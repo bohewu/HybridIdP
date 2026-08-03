@@ -38,11 +38,15 @@ public partial class PersonLifecycleService : IPersonLifecycleService
             return false;
         }
 
+        var wasAuthenticationEligible = person.CanAuthenticate();
+
         // Set the end date and status
         person.EndDate = effectiveDate ?? DateTime.UtcNow;
         person.Status = PersonStatus.Resigned;
         person.ModifiedAt = DateTime.UtcNow;
         person.ModifiedBy = terminatedBy;
+
+        await RotateLinkedUserSecurityStampsIfEligibilityChangedAsync(wasAuthenticationEligible, person, personId);
 
         await _dbContext.SaveChangesAsync(default);
         LogPersonTerminated(personId, person.Status, terminatedBy);
@@ -66,10 +70,14 @@ public partial class PersonLifecycleService : IPersonLifecycleService
             return false;
         }
 
+        var wasAuthenticationEligible = person.CanAuthenticate();
+
         person.Status = PersonStatus.Active;
         person.StartDate = startDate ?? DateTime.UtcNow;
         person.ModifiedAt = DateTime.UtcNow;
         person.ModifiedBy = activatedBy;
+
+        await RotateLinkedUserSecurityStampsIfEligibilityChangedAsync(wasAuthenticationEligible, person, personId);
 
         await _dbContext.SaveChangesAsync(default);
         LogPersonActivated(personId, activatedBy);
@@ -87,9 +95,13 @@ public partial class PersonLifecycleService : IPersonLifecycleService
             return false;
         }
 
+        var wasAuthenticationEligible = person.CanAuthenticate();
+
         person.Status = PersonStatus.Suspended;
         person.ModifiedAt = DateTime.UtcNow;
         person.ModifiedBy = suspendedBy;
+
+        await RotateLinkedUserSecurityStampsIfEligibilityChangedAsync(wasAuthenticationEligible, person, personId);
 
         await _dbContext.SaveChangesAsync(default);
         LogPersonSuspended(personId, suspendedBy);
@@ -114,9 +126,12 @@ public partial class PersonLifecycleService : IPersonLifecycleService
         }
 
         var oldStatus = person.Status;
+        var wasAuthenticationEligible = person.CanAuthenticate();
         person.Status = newStatus;
         person.ModifiedAt = DateTime.UtcNow;
         person.ModifiedBy = changedBy;
+
+        await RotateLinkedUserSecurityStampsIfEligibilityChangedAsync(wasAuthenticationEligible, person, personId);
 
         await _dbContext.SaveChangesAsync(default);
         LogPersonStatusChanged(personId, oldStatus, newStatus, changedBy);
@@ -163,11 +178,15 @@ public partial class PersonLifecycleService : IPersonLifecycleService
             return false;
         }
 
+        var wasAuthenticationEligible = person.CanAuthenticate();
+
         person.IsDeleted = true;
         person.DeletedAt = DateTime.UtcNow;
         person.DeletedBy = deletedBy;
         person.ModifiedAt = DateTime.UtcNow;
         person.ModifiedBy = deletedBy;
+
+        await RotateLinkedUserSecurityStampsIfEligibilityChangedAsync(wasAuthenticationEligible, person, personId);
 
         await _dbContext.SaveChangesAsync(default);
         LogPersonSoftDeleted(personId, deletedBy);
@@ -186,6 +205,8 @@ public partial class PersonLifecycleService : IPersonLifecycleService
     {
         var now = DateTime.UtcNow.Date;
         var changedCount = 0;
+        var transitionedPersonIds = new List<Guid>();
+        var expiredPersonIds = new List<Guid>();
 
         // Auto-activate: Pending persons with StartDate <= now
         var pendingPersons = await _dbContext.Persons
@@ -200,6 +221,7 @@ public partial class PersonLifecycleService : IPersonLifecycleService
             person.Status = PersonStatus.Active;
             person.ModifiedAt = DateTime.UtcNow;
             LogAutoActivated(person.Id, person.StartDate!.Value);
+            transitionedPersonIds.Add(person.Id);
             changedCount++;
         }
 
@@ -216,22 +238,61 @@ public partial class PersonLifecycleService : IPersonLifecycleService
             person.Status = PersonStatus.Resigned;
             person.ModifiedAt = DateTime.UtcNow;
             LogAutoTerminated(person.Id, person.EndDate!.Value);
+            transitionedPersonIds.Add(person.Id);
+            expiredPersonIds.Add(person.Id);
             changedCount++;
-
-            // Revoke tokens for auto-terminated persons
-            var revokedTokens = await RevokeAllTokensForPersonAsync(person.Id);
-            if (revokedTokens > 0)
-            {
-                LogTokensRevoked(person.Id, revokedTokens);
-            }
         }
 
         if (changedCount > 0)
         {
+            await RotateLinkedUserSecurityStampsAsync(transitionedPersonIds);
             await _dbContext.SaveChangesAsync(default);
         }
 
+        foreach (var personId in expiredPersonIds)
+        {
+            var revokedTokens = await RevokeAllTokensForPersonAsync(personId);
+            if (revokedTokens > 0)
+            {
+                LogTokensRevoked(personId, revokedTokens);
+            }
+        }
+
         return changedCount;
+    }
+
+    private async Task RotateLinkedUserSecurityStampsIfEligibilityChangedAsync(
+        bool wasAuthenticationEligible,
+        Person person,
+        Guid personId)
+    {
+        if (wasAuthenticationEligible != person.CanAuthenticate())
+        {
+            await RotateLinkedUserSecurityStampsAsync(personId);
+        }
+    }
+
+    private async Task RotateLinkedUserSecurityStampsAsync(Guid personId)
+    {
+        await RotateLinkedUserSecurityStampsAsync([personId]);
+    }
+
+    private async Task RotateLinkedUserSecurityStampsAsync(IEnumerable<Guid> personIds)
+    {
+        var ids = personIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return;
+        }
+
+        var linkedUsers = await _dbContext.Users
+            .Where(user => user.PersonId.HasValue && ids.Contains(user.PersonId.Value))
+            .ToListAsync();
+
+        foreach (var linkedUser in linkedUsers)
+        {
+            linkedUser.SecurityStamp = Guid.NewGuid().ToString();
+        }
     }
 
     #region Logging

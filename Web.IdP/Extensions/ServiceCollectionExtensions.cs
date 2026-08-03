@@ -49,6 +49,7 @@ public static class ServiceCollectionExtensions
     {
         // Core Services
         services.AddHttpContextAccessor();
+        services.AddScoped<ApplicationCookieCurrentStateValidator>();
         services.AddScoped<ITurnstileService, TurnstileService>();
         services.AddScoped<IJitProvisioningService, JitProvisioningService>();
         services.AddScoped<ILegacyAuthService, LegacyAuthService>();
@@ -426,6 +427,9 @@ public static class ServiceCollectionExtensions
         
         services.ConfigureApplicationCookie(options =>
         {
+            var securityStampValidator = options.Events.OnValidatePrincipal;
+            options.Events.OnValidatePrincipal = ApplicationCookieCurrentStateValidator.Compose(securityStampValidator);
+
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax;

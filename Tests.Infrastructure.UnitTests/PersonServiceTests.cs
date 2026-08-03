@@ -186,6 +186,79 @@ public class PersonServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdatePersonAsync_ShouldRotateLinkedUserSecurityStamp_WhenAuthenticationEligibilityChanges()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var service = CreateService(context);
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Active",
+            LastName = "Person",
+            Status = Core.Domain.Enums.PersonStatus.Active
+        };
+        var linkedUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "person-linked@example.test",
+            NormalizedUserName = "PERSON-LINKED@EXAMPLE.TEST",
+            Email = "person-linked@example.test",
+            NormalizedEmail = "PERSON-LINKED@EXAMPLE.TEST",
+            PersonId = person.Id,
+            SecurityStamp = "original-stamp"
+        };
+        context.AddRange(person, linkedUser);
+        await context.SaveChangesAsync();
+
+        var result = await service.UpdatePersonAsync(person.Id, new Person
+        {
+            FirstName = person.FirstName,
+            LastName = person.LastName,
+            Status = Core.Domain.Enums.PersonStatus.Suspended
+        });
+
+        Assert.NotNull(result);
+        Assert.Equal(Core.Domain.Enums.PersonStatus.Suspended, result.Status);
+        Assert.NotEqual("original-stamp", linkedUser.SecurityStamp);
+    }
+
+    [Fact]
+    public async Task UpdatePersonAsync_ShouldKeepLinkedUserSecurityStamp_WhenAuthenticationEligibilityIsUnchanged()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var service = CreateService(context);
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Active",
+            LastName = "Person",
+            Status = Core.Domain.Enums.PersonStatus.Active
+        };
+        var linkedUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "eligible-linked@example.test",
+            NormalizedUserName = "ELIGIBLE-LINKED@EXAMPLE.TEST",
+            Email = "eligible-linked@example.test",
+            NormalizedEmail = "ELIGIBLE-LINKED@EXAMPLE.TEST",
+            PersonId = person.Id,
+            SecurityStamp = "eligible-stamp"
+        };
+        context.AddRange(person, linkedUser);
+        await context.SaveChangesAsync();
+
+        var result = await service.UpdatePersonAsync(person.Id, new Person
+        {
+            FirstName = "Still",
+            LastName = person.LastName,
+            Status = Core.Domain.Enums.PersonStatus.Active
+        });
+
+        Assert.NotNull(result);
+        Assert.Equal("eligible-stamp", linkedUser.SecurityStamp);
+    }
+
+    [Fact]
     public async Task UpdatePersonAsync_WithDuplicateEmployeeId_ShouldThrowException()
     {
         // Arrange

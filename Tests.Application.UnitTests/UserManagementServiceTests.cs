@@ -475,6 +475,7 @@ public class UserManagementServiceTests : IDisposable
         // Arrange - Create user and role in database
         var existingUser = new ApplicationUser { Email = "old@test.com", UserName = "olduser" };
         await _userManager.CreateAsync(existingUser);
+        var originalSecurityStamp = existingUser.SecurityStamp;
         
         await _roleManager.CreateAsync(new ApplicationRole { Name = "User" });
 
@@ -483,6 +484,7 @@ public class UserManagementServiceTests : IDisposable
             Email = "new@test.com",
             UserName = "newuser",
             FirstName = "Updated",
+            IsActive = false,
             Roles = new List<string> { "User" }
         };
 
@@ -495,6 +497,8 @@ public class UserManagementServiceTests : IDisposable
         
         var updatedUser = await _userManager.FindByIdAsync(existingUser.Id.ToString());
         Assert.Equal("new@test.com", updatedUser!.Email);
+        Assert.False(updatedUser.IsActive);
+        Assert.NotEqual(originalSecurityStamp, updatedUser.SecurityStamp);
         _mockEventPublisher.Verify(m => m.PublishAsync(It.IsAny<UserUpdatedEvent>()), Times.Once);
     }
 
@@ -641,6 +645,7 @@ public class UserManagementServiceTests : IDisposable
             IsActive = true 
         };
         await _userManager.CreateAsync(user);
+        var originalSecurityStamp = user.SecurityStamp;
 
         // Act
         var (success, errors) = await _service.DeactivateUserAsync(user.Id);
@@ -650,6 +655,7 @@ public class UserManagementServiceTests : IDisposable
         Assert.Empty(errors);
         var deactivatedUser = await _userManager.FindByIdAsync(user.Id.ToString());
         Assert.False(deactivatedUser!.IsActive);
+        Assert.NotEqual(originalSecurityStamp, deactivatedUser.SecurityStamp);
         _mockEventPublisher.Verify(m => m.PublishAsync(It.IsAny<UserAccountStatusChangedEvent>()), Times.Once);
     }
 

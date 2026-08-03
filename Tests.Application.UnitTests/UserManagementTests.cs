@@ -462,6 +462,43 @@ public class UserManagementTests
     }
 
     [Fact]
+    public async Task DeactivateUser_ShouldReturnFailureAndAvoidSuccessEvent_WhenPersistenceFails()
+    {
+        var userId = Guid.NewGuid();
+        var user = new ApplicationUser
+        {
+            Id = userId,
+            Email = "failed-deactivate@example.test",
+            UserName = "failed-deactivate",
+            IsActive = true,
+            SecurityStamp = "original-stamp"
+        };
+        _mockUserManager
+            .Setup(manager => manager.FindByIdAsync(userId.ToString()))
+            .ReturnsAsync(user);
+        _mockUserManager
+            .Setup(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError
+            {
+                Description = "Persistence failed"
+            }));
+        var sut = new UserManagementService(
+            _mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object);
+
+        var (success, errors) = await sut.DeactivateUserAsync(userId);
+
+        Assert.False(success);
+        Assert.Contains("Persistence failed", errors);
+        _mockEventPublisher.Verify(
+            publisher => publisher.PublishAsync(It.IsAny<UserAccountStatusChangedEvent>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task AssignRolesToUser_WithValidRoles_ShouldSucceed()
     {
         // Arrange

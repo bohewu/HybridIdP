@@ -45,6 +45,29 @@ All authentication and session cookies are configured with:
 - `Secure`: Transmitted only over HTTPS.
 - `SameSite`: Set to `Lax` or `Strict` for CSRF protection.
 
+### Lifecycle Cookie Validation
+
+Every ASP.NET Core Identity application-cookie validation checks the current
+`ApplicationUser` state, independently of the normal security-stamp validation
+cadence. A cookie is rejected when its user is inactive, soft-deleted, or
+currently locked out. When the user has a linked Person, validation also fails
+closed if that Person is missing or cannot authenticate: the Person is
+soft-deleted, not `Active`, has a future `StartDate`, or has an expired
+`EndDate`.
+
+Eligibility-changing mutations rotate linked user security stamps in the same
+EF Core save boundary: `DeactivateUserAsync` and `UpdateUserCoreAsync` when
+`IsActive` changes; `UpdatePersonAsync` when Person eligibility changes; and
+the Person lifecycle service's terminate, activate, suspend, status-change,
+soft-delete, and scheduled-transition paths when eligibility changes.
+
+The current-state check composes with the existing Identity security-stamp
+validator, so eligible cookies retain the established security-stamp refresh
+and impersonation behavior. It does not change the lifetime of already-issued
+self-contained OpenIddict access tokens; they may remain usable until expiry.
+This remediation adds no schema migration, UserSession redesign, endpoint, or
+production certificate behavior change.
+
 ### Client Administration Ownership
 
 Client-management permissions grant access to the administrative surface but
@@ -112,11 +135,11 @@ remain supported. The existing DELETE `204`/`404` behavior, post-commit audit
 placement, unrelated users, and soft-delete/status behavior are unchanged.
 There is no Person restore feature.
 
-Security-stamp cookie rejection occurs at the configured validation interval.
-Immediate broad lifecycle-cookie invalidation remains pending
-`csf_31193ff88cb59c04e6ff7815`. Already-issued self-contained access JWTs may
-remain usable until expiry, although terminal user state blocks new code,
-refresh, device, and password issuance.
+Application-cookie current-state validation rejects lifecycle-ineligible
+sessions on their next validation, independently of the configured
+security-stamp interval. Already-issued self-contained access JWTs may remain
+usable until expiry, although terminal user state blocks new code, refresh,
+device, and password issuance.
 
 ### External Login Email Binding
 

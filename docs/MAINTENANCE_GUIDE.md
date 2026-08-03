@@ -424,6 +424,14 @@ fi
 
 ## 常見維運任務
 
+### System-test HTTPS fixture
+
+The system-test host creates an ephemeral localhost HTTPS certificate because a
+local developer certificate cannot be assumed. It does not modify the
+certificate store; its temporary material is cleaned up when the fixture stops
+or the test process exits. This fixture behavior is test-only and does not
+change production certificate handling.
+
 ### Persistent Volumes and Local Data Ports
 
 Production compose retains named `mssql-data`, `postgres-data`, `redis-data`, and, where configured, `dataprotection-keys` volumes. These volumes persist database, Redis, and data-protection state across normal deployment updates.
