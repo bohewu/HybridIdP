@@ -101,6 +101,29 @@
       ],
       "completed_at": "2026-08-03T02:20:45Z",
       "notes": "Both scan findings csf_46561f9a0937502b347ee99a and csf_e91772f4aee2b360fc1d4610 are closed through provider-specific trusted email assurance. JIT email/Person binding and automatic callback email matching reject missing/false/unsupported assurance; durable provider-key sign-in, trusted matching, and explicit local-credential linking remain compatible. Evidence: post-review focused tests 16/16, Web unit tests 290/290, Application unit tests 591/591, solution build 0 warnings/errors, diff check pass, final review pass. System/live provider tests not run; no live VM or credentials touched."
+    },
+    {
+      "id": "SEC-20260803-external-link-xsrf-binding",
+      "summary": "External-account linking local-user XSRF binding validation",
+      "status": "done",
+      "priority": "medium",
+      "source": "pipeline",
+      "source_run_id": "pipeline-20260803T025013Z-external-link-xsrf",
+      "related_task_ids": [
+        "T1",
+        "T2"
+      ],
+      "artifact_paths": [
+        ".pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/pipeline/problem-spec.json",
+        ".pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/pipeline/task-list.json",
+        ".pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/tasks/T1/result.json",
+        ".pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/tasks/T2/result.json",
+        ".pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/pipeline/test-report.json",
+        ".pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/pipeline/review-report.json"
+      ],
+      "completed_at": "2026-08-03T03:23:21Z",
+      "updated_at": "2026-08-03T03:23:21Z",
+      "notes": "Scope/acceptance: Explicit external-account linking validates the expected local-user XSRF binding before provider-limit policy or AddLoginAsync, rejects missing/mismatched/unauthenticated contexts without linking side effects, and preserves same-user linking, status/error semantics, and external-cookie cleanup; remediation documentation and tracking were updated. Evidence: exact expectedXsrf enforcement before provider policy/AddLoginAsync; focused regression 3/3; full Web unit suite 292/292; HybridAuthIdP.sln build 0 warnings/errors; mandatory review passed with no required followups; no live VM, provider, or system test was run."
     }
   ]
 }

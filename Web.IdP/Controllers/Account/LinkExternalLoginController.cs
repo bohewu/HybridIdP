@@ -47,7 +47,8 @@ public partial class LinkExternalLoginController : Controller
             return Redirect("/"); // Should not happen due to [Authorize]
         }
 
-        var info = await _signInManager.GetExternalLoginInfoAsync(); // Modified: Removed user.Id.ToString()
+        var expectedXsrf = user.Id.ToString();
+        var info = await _signInManager.GetExternalLoginInfoAsync(expectedXsrf);
         if (info == null)
         {
             LogExternalLoginInfoNotFound(); // Modified: Removed user.Id

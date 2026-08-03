@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-08-03T02:20:45Z._
+_Derived from `todo-ledger.json`; updated 2026-08-03T03:23:21Z._
 
 ## Done
 
@@ -75,3 +75,19 @@ _Derived from `todo-ledger.json`; updated 2026-08-03T02:20:45Z._
   - `pipeline/task-list.json`
   - `pipeline/test-report.json`
   - `pipeline/review-report.json`
+
+### SEC-20260803-external-link-xsrf-binding — External-account linking local-user XSRF binding validation
+
+- Completed: 2026-08-03T03:23:21Z
+- Run: `pipeline-20260803T025013Z-external-link-xsrf`
+- Priority: medium
+- Source: `pipeline`
+- Related tasks: `T1`, `T2`
+- Notes: Scope/acceptance: Explicit external-account linking validates the expected local-user XSRF binding before provider-limit policy or AddLoginAsync, rejects missing/mismatched/unauthenticated contexts without linking side effects, and preserves same-user linking, status/error semantics, and external-cookie cleanup; remediation documentation and tracking were updated. Evidence: exact expectedXsrf enforcement before provider policy/AddLoginAsync; focused regression 3/3; full Web unit suite 292/292; HybridAuthIdP.sln build 0 warnings/errors; mandatory review passed with no required followups; no live VM, provider, or system test was run.
+- Artifacts:
+  - `.pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/pipeline/problem-spec.json`
+  - `.pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/pipeline/task-list.json`
+  - `.pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/tasks/T1/result.json`
+  - `.pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/tasks/T2/result.json`
+  - `.pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/pipeline/test-report.json`
+  - `.pipeline-output/pipeline-20260803T025013Z-external-link-xsrf/pipeline/review-report.json`

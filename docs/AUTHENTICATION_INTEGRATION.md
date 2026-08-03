@@ -472,6 +472,18 @@ Do not map an upstream self-asserted flag directly into
 `AuthConstants.Claims.ExternalEmailVerified` without first establishing the
 provider's email-verification semantics.
 
+### Callback binding for explicit external-account linking
+
+When an authenticated local user starts explicit external-account linking, the
+callback retrieves external login information through the framework-supported
+`expectedXsrf` validation using that current local user's identifier. This
+binds the callback to the user who started the external-login challenge before
+provider policy evaluation or `AddLoginAsync`.
+
+Missing or mismatched callback context is rejected without linking an external
+account. A callback whose binding matches the currently authenticated local
+user continues to support legitimate same-user linking.
+
 ---
 
 ## Key Differences

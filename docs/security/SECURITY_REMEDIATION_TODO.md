@@ -220,7 +220,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | --- | --- | --- |
 | `csf_46561f9a0937502b347ee99a` | fixed | Require trusted upstream email-verification evidence before JIT email binding. |
 | `csf_e91772f4aee2b360fc1d4610` | fixed | Require trusted upstream email-verification evidence before external auto-linking. |
-| `csf_1a0a04d1a20e4682fb094540` | pending | Validate the expected local-user XSRF binding in the external-link callback. |
+| `csf_1a0a04d1a20e4682fb094540` | fixed | Validate the expected local-user XSRF binding in the external-link callback. |
 | `csf_c6b4a71a14cc93e15be81b2c` | pending | Revoke or safely terminate linked accounts when a Person is hard-deleted. |
 | `csf_31193ff88cb59c04e6ff7815` | pending | Invalidate Identity cookies when user or Person lifecycle state becomes ineligible. |
 
@@ -597,6 +597,17 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 - Focused callback and explicit-link security tests passed 9/9, and the Web
   IdP unit-test project passed 289/289. `git diff --check` passed for the owned
   implementation and test files.
+
+### M16 Verification Evidence
+
+- `Web.IdP/Controllers/Account/LinkExternalLoginController.cs` resolves the
+  current local user and supplies that identifier to the framework-supported
+  `GetExternalLoginInfoAsync(expectedXsrf)` validation before provider policy
+  evaluation or `AddLoginAsync`.
+- Missing or mismatched callback context is rejected without provider-policy or
+  linking side effects; a matching current-user context continues to link.
+- Focused `LinkExternalLoginControllerSecurityTests` passed 3/3, and the
+  solution build passed with 0 warnings and 0 errors.
 
 ## P2 - Low Hardening
 
