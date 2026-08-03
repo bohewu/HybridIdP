@@ -47,6 +47,7 @@ public class JitProvisioningServiceTests : IDisposable
             Provider = "ActiveDirectory",
             ProviderKey = "john.doe@ad",
             Email = "john.doe@company.com",
+            EmailVerified = true,
             FirstName = "John",
             LastName = "Doe",
             EmployeeId = "EMP001",
@@ -73,6 +74,7 @@ public class JitProvisioningServiceTests : IDisposable
         // Assert
         Assert.NotNull(result);
         Assert.Equal("john.doe@company.com", result.Email);
+        Assert.True(result.EmailConfirmed);
         Assert.Equal("John", result.FirstName);
         Assert.Equal("Doe", result.LastName);
         Assert.NotNull(result.PersonId);
@@ -98,6 +100,7 @@ public class JitProvisioningServiceTests : IDisposable
             Provider = "Google",
             ProviderKey = "google-user-001",
             Email = "new.user@company.com",
+            EmailVerified = true,
             FirstName = "New",
             LastName = "User"
         };
@@ -139,6 +142,7 @@ public class JitProvisioningServiceTests : IDisposable
             Provider = "ActiveDirectory",
             ProviderKey = "john.doe@ad",
             Email = "john.doe@newdomain.com",
+            EmailVerified = true,
             FirstName = "John",
             LastName = "Doe",
             Department = "Engineering"
@@ -166,6 +170,50 @@ public class JitProvisioningServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProvisionExternalUser_ExistingLoginWithUnverifiedEmail_ShouldPreserveStoredEmail()
+    {
+        var personId = Guid.NewGuid();
+        var existingPerson = new Person
+        {
+            Id = personId,
+            Email = "trusted@company.com",
+            FirstName = "Existing",
+            CreatedAt = DateTime.UtcNow
+        };
+        await _context.Persons.AddAsync(existingPerson);
+        await _context.SaveChangesAsync();
+
+        var existingUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "trusted@company.com",
+            Email = "trusted@company.com",
+            EmailConfirmed = true,
+            PersonId = personId
+        };
+        var externalAuth = new ExternalAuthResult
+        {
+            Provider = "CustomProvider",
+            ProviderKey = "existing-provider-key",
+            Email = "unverified@attacker.example",
+            EmailVerified = false,
+            FirstName = "Updated"
+        };
+
+        _userManagerMock.Setup(um => um.FindByLoginAsync(externalAuth.Provider, externalAuth.ProviderKey))
+            .ReturnsAsync(existingUser);
+        _userManagerMock.Setup(um => um.UpdateAsync(existingUser))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var result = await _service.ProvisionExternalUserAsync(externalAuth);
+
+        Assert.Equal("trusted@company.com", result.Email);
+        Assert.True(result.EmailConfirmed);
+        Assert.Equal("trusted@company.com", existingPerson.Email);
+        Assert.Equal("Updated", result.FirstName);
+    }
+
+    [Fact]
     public async Task ProvisionExternalUser_SameEmailDifferentProvider_ShouldUseSamePerson()
     {
         // Arrange
@@ -185,6 +233,7 @@ public class JitProvisioningServiceTests : IDisposable
             Provider = "Google",
             ProviderKey = "google-id-123",
             Email = "john.doe@company.com",
+            EmailVerified = true,
             FirstName = "John",
             LastName = "Doe"
         };
@@ -217,6 +266,47 @@ public class JitProvisioningServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProvisionExternalUser_UnverifiedEmail_ShouldNotBindToExistingPerson()
+    {
+        var existingPerson = new Person
+        {
+            Id = Guid.NewGuid(),
+            Email = "victim@company.com",
+            FirstName = "Victim",
+            CreatedAt = DateTime.UtcNow
+        };
+        await _context.Persons.AddAsync(existingPerson);
+        await _context.SaveChangesAsync();
+
+        var externalAuth = new ExternalAuthResult
+        {
+            Provider = "CustomProvider",
+            ProviderKey = "attacker-provider-key",
+            Email = "victim@company.com",
+            FirstName = "Attacker"
+        };
+
+        _userManagerMock.Setup(um => um.FindByLoginAsync(externalAuth.Provider, externalAuth.ProviderKey))
+            .ReturnsAsync((ApplicationUser?)null);
+        _userManagerMock.Setup(um => um.FindByNameAsync(It.IsAny<string>()))
+            .ReturnsAsync((ApplicationUser?)null);
+        _userManagerMock.Setup(um => um.CreateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Success);
+        _userManagerMock.Setup(um => um.AddLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<UserLoginInfo>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var result = await _service.ProvisionExternalUserAsync(externalAuth);
+
+        Assert.NotEqual(existingPerson.Id, result.PersonId);
+        Assert.Equal("CustomProvider_attacker-provider-key", result.UserName);
+        Assert.False(result.EmailConfirmed);
+        Assert.Equal(2, await _context.Persons.CountAsync());
+        var isolatedPerson = await _context.Persons.SingleAsync(person => person.Id == result.PersonId);
+        Assert.Null(isolatedPerson.Email);
+        _userManagerMock.Verify(um => um.FindByNameAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
     public async Task ProvisionExternalUser_MatchByNationalId_ShouldUseSamePerson()
     {
         // Arrange
@@ -238,6 +328,7 @@ public class JitProvisioningServiceTests : IDisposable
             Provider = "ActiveDirectory",
             ProviderKey = "john.doe@ad",
             Email = "john.doe@company.com", // Different email
+            EmailVerified = true,
             FirstName = "John",
             LastName = "Doe",
             NationalId = "A123456789" // Same NationalId - should match!
@@ -290,6 +381,7 @@ public class JitProvisioningServiceTests : IDisposable
             Provider = "ActiveDirectory",
             ProviderKey = "john@ad",
             Email = "john@company.com",
+            EmailVerified = true,
             FirstName = "John",
             LastName = "Doe", // New data
             Department = "IT", // New data
@@ -340,6 +432,7 @@ public class JitProvisioningServiceTests : IDisposable
             Provider = "ActiveDirectory",
             ProviderKey = "john@ad",
             Email = "john@company.com",
+            EmailVerified = true,
             FirstName = "John",
             NationalId = "B987654321" // Different NationalId - should NOT overwrite!
         };

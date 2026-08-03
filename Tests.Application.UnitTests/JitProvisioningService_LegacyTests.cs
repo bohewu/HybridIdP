@@ -59,6 +59,7 @@ public class JitProvisioningService_LegacyTests : IDisposable
             Provider = Core.Domain.Constants.AuthConstants.Providers.Legacy,
             ProviderKey = "legacy_user",
             Email = "legacy@example.com",
+            EmailVerified = true,
             FirstName = "Legacy User",
             LastName = "", // Legacy often puts full name in first name
             NationalId = "A123456789"
@@ -114,6 +115,7 @@ public class JitProvisioningService_LegacyTests : IDisposable
             Provider = Core.Domain.Constants.AuthConstants.Providers.Legacy,
             ProviderKey = "user_123",
             Email = "user@example.com",
+            EmailVerified = true,
             FirstName = "NewName", // Name changed
             NationalId = "A123456789"
         };

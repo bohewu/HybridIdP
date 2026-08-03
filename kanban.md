@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-07-30T10:43:26Z._
+_Derived from `todo-ledger.json`; updated 2026-08-03T02:20:45Z._
 
 ## Done
 
@@ -61,3 +61,17 @@ _Derived from `todo-ledger.json`; updated 2026-07-30T10:43:26Z._
   - `.pipeline-output/pipeline-20260730T085128Z-h3-recovery-codes/pipeline/task-list.json`
   - `.pipeline-output/pipeline-20260730T085128Z-h3-recovery-codes/pipeline/test-report.json`
   - `.pipeline-output/pipeline-20260730T085128Z-h3-recovery-codes/pipeline/review-report.json`
+
+### SEC-20260803-external-email-assurance — Trusted external email assurance for JIT binding and callback auto-linking
+
+- Completed: 2026-08-03T02:20:45Z
+- Run: `pipeline-20260803T013155Z-external-autolink`
+- Priority: medium
+- Source: `pipeline`
+- Related tasks: `task-implement-trusted-email-auto-link`, `task-document-remediation-trust-boundary`
+- Notes: Both scan findings csf_46561f9a0937502b347ee99a and csf_e91772f4aee2b360fc1d4610 are closed through provider-specific trusted email assurance. JIT email/Person binding and automatic callback email matching reject missing/false/unsupported assurance; durable provider-key sign-in, trusted matching, and explicit local-credential linking remain compatible. Evidence: post-review focused tests 16/16, Web unit tests 290/290, Application unit tests 591/591, solution build 0 warnings/errors, diff check pass, final review pass. System/live provider tests not run; no live VM or credentials touched.
+- Artifacts:
+  - `pipeline/problem-spec.json`
+  - `pipeline/task-list.json`
+  - `pipeline/test-report.json`
+  - `pipeline/review-report.json`

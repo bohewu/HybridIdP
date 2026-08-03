@@ -162,6 +162,7 @@ public partial class LoginService : ILoginService
              Provider = Core.Domain.Constants.AuthConstants.Providers.Legacy,
              ProviderKey = legacyResult.ExternalId ?? login,
              Email = legacyResult.Email,
+             EmailVerified = true,
              DisplayName = legacyResult.FullName,
              // Legacy API typically only provides FullName, use it as FirstName for Person
              FirstName = legacyResult.FullName,

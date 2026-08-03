@@ -95,6 +95,32 @@ UI's documented profile paths, including the intentionally hashed
 `Person.NationalId`. Adding another source property requires an explicit policy
 and test change; adding a property to an entity does not make it token-visible.
 
+### External Login Email Binding
+
+External authentication proves control of the provider account, but an email
+claim is used for local identity binding only after the configured provider has
+established email assurance. Google contributes its `verified_email` result.
+The built-in Microsoft handler contributes assurance only for the email it maps
+from the authenticated Microsoft Graph user when that email equals the
+account's verified-domain `userPrincipalName`. A different Graph `mail` alias
+does not receive binding assurance. The assurance is carried as an internal
+external-cookie claim and is not accepted from unsupported providers.
+
+Without that assurance, JIT provisioning may still create an isolated external
+account, but it does not match an existing `Person` or `ApplicationUser` by
+email, does not copy the email to `Person`, and does not mark the account email
+confirmed. Future provider integrations must explicitly establish equivalent
+assurance before enabling email-based binding. Existing provider-key links do
+not depend on this matching step.
+
+`ExternalLoginCallback` signs in through an existing durable provider-key link
+before considering email-based matching; this established-link path does not
+depend on the current email assurance result. When no such link exists,
+automatic matching-email account selection or linking checks the applicable
+provider-specific assurance policy before any existing-account lookup. Explicit
+linking protected by local credentials remains a separate path and is
+independent of automatic email matching.
+
 ### Production Deployment Inputs and Network Boundary
 
 Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, certificate passwords, and a fixed public OIDC origin. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.

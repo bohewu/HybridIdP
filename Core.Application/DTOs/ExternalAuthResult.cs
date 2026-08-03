@@ -20,6 +20,12 @@ public class ExternalAuthResult
     /// Email (primarily used to determine if it's the same Person)
     /// </summary>
     public string? Email { get; set; }
+
+    /// <summary>
+    /// Whether the configured authentication provider supplied sufficient
+    /// assurance to use <see cref="Email"/> for local identity binding.
+    /// </summary>
+    public bool EmailVerified { get; set; }
     
     /// <summary>
     /// First name / Given name

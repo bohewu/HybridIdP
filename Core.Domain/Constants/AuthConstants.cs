@@ -77,6 +77,12 @@ public static class AuthConstants
         public const string PersonId = "person_id";
 
         /// <summary>
+        /// Internal external-cookie claim indicating that the configured provider
+        /// supplied an email that is trusted for local identity binding.
+        /// </summary>
+        public const string ExternalEmailVerified = "urn:hybridauth:external-email-verified";
+
+        /// <summary>
         /// Impersonator ID claim for identifying the admin who is impersonating a user.
         /// Used for persistence across security stamp refreshes.
         /// </summary>
@@ -96,6 +102,8 @@ public static class AuthConstants
     /// </summary>
     public static class Providers
     {
+        public const string Google = "Google";
+        public const string Microsoft = "Microsoft";
         public const string Legacy = "Legacy";
     }
 

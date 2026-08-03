@@ -218,8 +218,8 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 
 | Finding | Status | Summary |
 | --- | --- | --- |
-| `csf_46561f9a0937502b347ee99a` | pending | Require trusted upstream email-verification evidence before JIT email binding. |
-| `csf_e91772f4aee2b360fc1d4610` | pending | Require trusted upstream email-verification evidence before external auto-linking. |
+| `csf_46561f9a0937502b347ee99a` | fixed | Require trusted upstream email-verification evidence before JIT email binding. |
+| `csf_e91772f4aee2b360fc1d4610` | fixed | Require trusted upstream email-verification evidence before external auto-linking. |
 | `csf_1a0a04d1a20e4682fb094540` | pending | Validate the expected local-user XSRF binding in the external-link callback. |
 | `csf_c6b4a71a14cc93e15be81b2c` | pending | Revoke or safely terminate linked accounts when a Person is hard-deleted. |
 | `csf_31193ff88cb59c04e6ff7815` | pending | Invalidate Identity cookies when user or Person lifecycle state becomes ineligible. |
@@ -585,6 +585,18 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   suite passed 1,535 tests with 0 failed and 1 existing aggressive ZAP test
   skipped. No database migration, deployed configuration, live credential, or
   live VM change was made.
+
+### M15 Verification Evidence
+
+- Before the fix, four untrusted external-email variants reached the
+  existing-account email lookup in `ExternalLoginCallback`.
+- Automatic matching-email account selection or linking now requires the
+  existing provider-specific trusted email assurance policy before that lookup.
+  Durable provider-key sign-in remains earlier and independent of current email
+  assurance; explicit local-credential-protected linking remains independent.
+- Focused callback and explicit-link security tests passed 9/9, and the Web
+  IdP unit-test project passed 289/289. `git diff --check` passed for the owned
+  implementation and test files.
 
 ## P2 - Low Hardening
 

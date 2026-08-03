@@ -399,11 +399,13 @@ private async Task<IActionResult> AutoProvisionExternalUserAsync(
     string returnUrl)
 {
     var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+    var emailVerified = info.Principal.FindFirstValue(
+        AuthConstants.Claims.ExternalEmailVerified) == bool.TrueString;
     var user = new ApplicationUser
     {
         UserName = email,
         Email = email,
-        EmailConfirmed = true, // Trust external provider
+        EmailConfirmed = emailVerified,
         FirstName = info.Principal.FindFirstValue(ClaimTypes.GivenName),
         LastName = info.Principal.FindFirstValue(ClaimTypes.Surname),
     };
@@ -438,6 +440,37 @@ private async Task<IActionResult> AutoProvisionExternalUserAsync(
 | Facebook | `Microsoft.AspNetCore.Authentication.Facebook` | [Docs](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/facebook-logins) |
 | Twitter | `Microsoft.AspNetCore.Authentication.Twitter` | [Docs](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/twitter-logins) |
 | GitHub | `AspNet.Security.OAuth.GitHub` | [GitHub](https://github.com/aspnet-contrib/AspNet.Security.OAuth.Providers) |
+
+### Email assurance for JIT identity binding
+
+The repository currently configures Google and Microsoft external login
+handlers. Authentication by a provider does not by itself make every returned
+email suitable for matching a local identity:
+
+- Google maps the provider's `verified_email` value into an internal assurance
+  claim. Only a `true` value permits email-based matching.
+- Microsoft Graph does not return an `email_verified` claim. The built-in
+  Microsoft handler therefore creates the internal assurance claim only when
+  the mapped email equals the account's `userPrincipalName`, whose domain must
+  belong to the tenant's verified-domain collection. A different `mail` alias
+  uses the safe fallback.
+- A missing assurance claim, a false Google value, or an unsupported provider
+  uses the safe fallback: the account username is based on provider plus
+  provider key; the supplied email remains unconfirmed on the new account; and
+  no existing `Person` or `ApplicationUser` is selected by that email.
+
+`ExternalLoginCallback` first signs in through an existing durable
+provider-key link; that compatibility path occurs before email-based matching
+and does not depend on the current email assurance result. If no provider-key
+link exists, automatic matching-email account selection or linking requires
+the provider-specific trusted email assurance policy before any existing-account
+lookup. Explicit linking protected by local credentials is a separate flow and
+remains independent of this automatic matching rule.
+
+Adding another provider requires an explicit provider-specific assurance rule.
+Do not map an upstream self-asserted flag directly into
+`AuthConstants.Claims.ExternalEmailVerified` without first establishing the
+provider's email-verification semantics.
 
 ---
 

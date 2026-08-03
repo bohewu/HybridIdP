@@ -37,6 +37,10 @@ public class JitProvisioningService : IJitProvisioningService
         if (string.IsNullOrWhiteSpace(externalAuth.ProviderKey))
             throw new ArgumentException("ProviderKey is required", nameof(externalAuth));
 
+        var hasVerifiedEmail =
+            externalAuth.EmailVerified &&
+            !string.IsNullOrWhiteSpace(externalAuth.Email);
+
         // Step 1: Check if this external login already exists
         var existingUser = await _userManager.FindByLoginAsync(
             externalAuth.Provider,
@@ -46,7 +50,11 @@ public class JitProvisioningService : IJitProvisioningService
         if (existingUser != null)
         {
             // Already exists, update ApplicationUser information
-            existingUser.Email = externalAuth.Email ?? existingUser.Email;
+            if (hasVerifiedEmail)
+            {
+                existingUser.Email = externalAuth.Email;
+                existingUser.EmailConfirmed = true;
+            }
             existingUser.FirstName = externalAuth.FirstName ?? existingUser.FirstName;
             existingUser.LastName = externalAuth.LastName ?? existingUser.LastName;
             existingUser.MiddleName = externalAuth.MiddleName ?? existingUser.MiddleName;
@@ -65,7 +73,10 @@ public class JitProvisioningService : IJitProvisioningService
                 if (existingPerson != null)
                 {
                     // Update Person fields
-                    existingPerson.Email = externalAuth.Email ?? existingPerson.Email;
+                    if (hasVerifiedEmail)
+                    {
+                        existingPerson.Email = externalAuth.Email;
+                    }
                     existingPerson.PhoneNumber = externalAuth.PhoneNumber ?? existingPerson.PhoneNumber;
                     existingPerson.FirstName = externalAuth.FirstName ?? existingPerson.FirstName;
                     existingPerson.LastName = externalAuth.LastName ?? existingPerson.LastName;
@@ -107,7 +118,7 @@ public class JitProvisioningService : IJitProvisioningService
             person = new Person
             {
                 Id = Guid.NewGuid(),
-                Email = externalAuth.Email,
+                Email = hasVerifiedEmail ? externalAuth.Email : null,
                 PhoneNumber = externalAuth.PhoneNumber,
                 FirstName = externalAuth.FirstName,
                 LastName = externalAuth.LastName,
@@ -130,7 +141,10 @@ public class JitProvisioningService : IJitProvisioningService
         else
         {
             // Update existing Person with new data from auth provider (if provided)
-            person.Email = externalAuth.Email ?? person.Email;
+            if (hasVerifiedEmail)
+            {
+                person.Email = externalAuth.Email;
+            }
             person.PhoneNumber = externalAuth.PhoneNumber ?? person.PhoneNumber;
             person.FirstName = externalAuth.FirstName ?? person.FirstName;
             person.LastName = externalAuth.LastName ?? person.LastName;
@@ -167,10 +181,13 @@ public class JitProvisioningService : IJitProvisioningService
         }
 
         // Step 4: Create new ApplicationUser (linked to Person)
-        var username = externalAuth.Email ?? 
-                      $"{externalAuth.Provider}_{externalAuth.ProviderKey}";
+        var username = hasVerifiedEmail
+            ? externalAuth.Email!
+            : $"{externalAuth.Provider}_{externalAuth.ProviderKey}";
         
-        var newUser = await _userManager.FindByNameAsync(username);
+        var newUser = hasVerifiedEmail
+            ? await _userManager.FindByNameAsync(username)
+            : null;
         if (newUser == null)
         {
             newUser = new ApplicationUser
@@ -178,7 +195,7 @@ public class JitProvisioningService : IJitProvisioningService
                 Id = Guid.NewGuid(),
                 UserName = username,
                 Email = externalAuth.Email,
-                EmailConfirmed = !string.IsNullOrWhiteSpace(externalAuth.Email), // External auth is considered verified
+                EmailConfirmed = hasVerifiedEmail,
                 PersonId = person.Id,
                 FirstName = externalAuth.FirstName,
                 LastName = externalAuth.LastName,
@@ -307,7 +324,7 @@ public class JitProvisioningService : IJitProvisioningService
         }
 
         // Priority 2: Fallback to Email matching (if no identity documents or no match)
-        if (!string.IsNullOrWhiteSpace(externalAuth.Email))
+        if (externalAuth.EmailVerified && !string.IsNullOrWhiteSpace(externalAuth.Email))
         {
             // Check Person.Email first
             personId = await _context.Persons
@@ -342,6 +359,7 @@ public class JitProvisioningService : IJitProvisioningService
             Provider = Core.Domain.Constants.AuthConstants.Providers.Legacy,
             ProviderKey = dto.ExternalId ?? dto.Email ?? dto.NationalId ?? Guid.NewGuid().ToString(),
             Email = dto.Email,
+            EmailVerified = true,
             FirstName = dto.FullName, // Legacy only has FullName
             PhoneNumber = dto.Phone,
             Department = dto.Department,

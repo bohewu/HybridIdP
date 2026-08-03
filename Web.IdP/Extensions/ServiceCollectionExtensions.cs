@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using global::Infrastructure;
@@ -293,6 +294,10 @@ public static class ServiceCollectionExtensions
                 options.ClientId = externalLoginOptions.Google.ClientId;
                 options.ClientSecret = externalLoginOptions.Google.ClientSecret;
                 options.SaveTokens = true;
+                options.ClaimActions.MapJsonKey(
+                    AuthConstants.Claims.ExternalEmailVerified,
+                    "verified_email",
+                    ClaimValueTypes.Boolean);
 
                 // 2026-01-09: Force account selection & Hosted Domain support
                 options.Events.OnRedirectToAuthorizationEndpoint = context =>
@@ -322,6 +327,31 @@ public static class ServiceCollectionExtensions
                 options.ClientId = externalLoginOptions.Microsoft.ClientId;
                 options.ClientSecret = externalLoginOptions.Microsoft.ClientSecret;
                 options.SaveTokens = true;
+
+                // Microsoft Graph doesn't expose an email_verified claim. Treat the
+                // mapped email as binding-safe only when it is the account's UPN, whose
+                // domain must belong to the tenant's verified-domain collection.
+                options.Events.OnCreatingTicket = context =>
+                {
+                    var mappedEmail = context.Principal?.FindFirstValue(ClaimTypes.Email);
+                    var userPrincipalName =
+                        context.User.TryGetProperty("userPrincipalName", out var upnElement) &&
+                        upnElement.ValueKind == JsonValueKind.String
+                            ? upnElement.GetString()
+                            : null;
+
+                    if (context.Principal?.Identity is ClaimsIdentity identity &&
+                        !string.IsNullOrWhiteSpace(mappedEmail) &&
+                        string.Equals(mappedEmail, userPrincipalName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        identity.AddClaim(new Claim(
+                            AuthConstants.Claims.ExternalEmailVerified,
+                            bool.TrueString,
+                            ClaimValueTypes.Boolean));
+                    }
+
+                    return Task.CompletedTask;
+                };
 
                 // 2026-01-09: Force account selection for Microsoft
                 // 2026-01-09: Force account selection for Microsoft

@@ -207,6 +207,7 @@ public class ExternalLoginConfirmationModel : PageModel
             Provider = info.LoginProvider,
             ProviderKey = info.ProviderKey,
             Email = info.Principal.FindFirstValue(ClaimTypes.Email),
+            EmailVerified = ExternalEmailAssurance.IsVerified(info),
             DisplayName = info.Principal.Identity?.Name,       
             FirstName = info.Principal.FindFirstValue(ClaimTypes.GivenName),
             LastName = info.Principal.FindFirstValue(ClaimTypes.Surname),

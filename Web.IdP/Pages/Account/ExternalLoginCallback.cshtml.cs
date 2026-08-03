@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Core.Application.Options;
 using Microsoft.Extensions.Options;
 using Core.Domain;
+using Web.IdP.Infrastructure.Identity;
 using Web.IdP.Services;
 
 namespace Web.IdP.Pages.Account;
@@ -81,7 +82,7 @@ public partial class ExternalLoginCallbackModel : PageModel
 
         // If the user does not have an account, then ask the user to create an account.
         // CHECK AUTO-LINK: If configured AND email matches exactly.
-        if (_externalLoginOptions.AutoLinkMatchingEmail)
+        if (_externalLoginOptions.AutoLinkMatchingEmail && ExternalEmailAssurance.IsVerified(info))
         {
             var email = info.Principal.FindFirstValue(ClaimTypes.Email);
             if (!string.IsNullOrEmpty(email))
@@ -100,8 +101,6 @@ public partial class ExternalLoginCallbackModel : PageModel
 
                     if (canLink)
                     {
-                        // Confirm email is confirmed? (Optional security check, usually external email is trusted if email_verified claim is true)
-                        // For now, if config allows, we link.
                         var addLoginResult = await _userManager.AddLoginAsync(user, info);
                         if (addLoginResult.Succeeded)
                         {

@@ -81,6 +81,26 @@
       "completed_at": "2026-07-30T10:43:26Z",
       "updated_at": "2026-07-30T10:43:26Z",
       "notes": "Validated H3 fix: recovery-code regeneration requires an explicit Identity.Application session plus current password for password accounts or current policy-accepted TOTP for passwordless/SSO accounts; persistence succeeds before one-time disclosure and MfaRecoveryCodesRegenerated audit publication. Focused controller tests 8/8, MfaService tests 23/23, modal tests 15/15, bearer-denial/regeneration/disabled-MFA system flows 1/1 each, full frontend 93/93, full backend 1,328 passed and 1 skipped, solution build 0 warnings and 0 errors, review pass with no required followups, diff and sensitive-output checks passed. H2 TOTP enrollment remains done from commit ad6530f0; H4 and H5 remain untouched."
+    },
+    {
+      "id": "SEC-20260803-external-email-assurance",
+      "summary": "Trusted external email assurance for JIT binding and callback auto-linking",
+      "status": "done",
+      "priority": "medium",
+      "source": "pipeline",
+      "source_run_id": "pipeline-20260803T013155Z-external-autolink",
+      "related_task_ids": [
+        "task-implement-trusted-email-auto-link",
+        "task-document-remediation-trust-boundary"
+      ],
+      "artifact_paths": [
+        "pipeline/problem-spec.json",
+        "pipeline/task-list.json",
+        "pipeline/test-report.json",
+        "pipeline/review-report.json"
+      ],
+      "completed_at": "2026-08-03T02:20:45Z",
+      "notes": "Both scan findings csf_46561f9a0937502b347ee99a and csf_e91772f4aee2b360fc1d4610 are closed through provider-specific trusted email assurance. JIT email/Person binding and automatic callback email matching reject missing/false/unsupported assurance; durable provider-key sign-in, trusted matching, and explicit local-credential linking remain compatible. Evidence: post-review focused tests 16/16, Web unit tests 290/290, Application unit tests 591/591, solution build 0 warnings/errors, diff check pass, final review pass. System/live provider tests not run; no live VM or credentials touched."
     }
   ]
 }
