@@ -232,7 +232,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_e63c44630467bda5532dfbb8` | pending | Reject passkey login when the security policy disables passkeys. |
 | `csf_65f2561e219c2e3061ca2ec9` | pending | Do not label user-verification-preferred assertions as MFA without verified UV. |
 | `csf_6979042d4ed939d5baaf58aa` | pending | Prevent configured localization content from becoming anonymous stored XSS. |
-| `csf_46710f5179fa498ef6327608` | pending | Authenticate and authorize monitoring hub subscriptions and caller methods. |
+| `csf_46710f5179fa498ef6327608` | fixed | Require `monitoring.read` for hub subscriptions and remove caller-invokable broadcast methods. |
 | `csf_b3ba101b8e2c1014cda67044` | pending | Verify external database TLS peer identity in production setup guidance and generated configuration. |
 | `csf_5f4b4b4b513c35cbf65f0b09` | pending | Remove public monitoring-port defaults and repository-known Grafana fallback credentials from operational guidance. |
 
@@ -650,6 +650,28 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   passed: Application 595 passed; Infrastructure Unit 293 passed; Web.IdP Unit
   301 passed; Infrastructure Integration 86 passed; System 305 passed and 1
   skipped.
+
+### M19 Verification Evidence
+
+- Before the fix, anonymous and authenticated-without-permission SignalR
+  negotiation both returned HTTP 200. The Hub also exposed three public
+  methods that rebroadcast caller-supplied monitoring DTOs.
+- `/monitoringHub` now requires `monitoring.read` using the existing
+  Identity-cookie and OpenIddict bearer authentication schemes. Anonymous
+  negotiation returns HTTP 401 and an authenticated principal without the
+  permission receives HTTP 403 without an interactive login redirect.
+- The caller-invokable broadcast methods were removed. Authorized connections
+  retain the existing route, `monitoring` group, and client event names;
+  trusted background and monitoring services continue publishing through
+  `IHubContext<MonitoringHub>`.
+- Focused Hub security tests passed 1/1, MonitoringService tests passed 8/8,
+  and monitoring/admin system regressions passed 22/22. Both authorized
+  bearer and Identity-cookie negotiation controls return HTTP 200.
+- The solution build passed with 0 warnings and 0 errors. The full backend
+  suites passed: Application 595, Infrastructure Unit 295, Web.IdP Unit 301,
+  Infrastructure Integration 86, and System 310; one aggressive ZAP System
+  test remained skipped. No migration, frontend contract, live deployment,
+  database, credential, or ignored deployment override was changed.
 
 ## P2 - Low Hardening
 

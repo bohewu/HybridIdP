@@ -712,3 +712,11 @@ Person (1) ─────┬───→ ApplicationUser (AD Account)
 - **Security Alerts**: 異常登入行為檢測、暴力破壞攻擊預警。
 - **System Metrics**: 整合 Prometheus 指標。
 
+### 即時通道安全邊界
+
+`/monitoringHub` 的 negotiate 與 transport 端點要求既有的
+`monitoring.read` 權限，並同時支援管理介面使用的 Identity cookie 與
+OpenIddict bearer authentication。通過授權的連線才會加入 `monitoring`
+group；Hub 不提供用戶端可呼叫的廣播方法，監控事件只由後端服務透過
+`IHubContext<MonitoringHub>` 發布。
+

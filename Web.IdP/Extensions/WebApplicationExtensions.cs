@@ -1,11 +1,15 @@
 using System.Net;
+using Core.Domain.Constants;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
+using OpenIddict.Validation.AspNetCore;
 using Web.IdP.Middleware;
 using Web.IdP.Options;
 using Core.Application.Options;
@@ -119,7 +123,12 @@ public static class WebApplicationExtensions
         });
 
         app.MapControllers();
-        app.MapHub<global::Infrastructure.Hubs.MonitoringHub>("/monitoringHub");
+        app.MapHub<global::Infrastructure.Hubs.MonitoringHub>("/monitoringHub")
+            .RequireAuthorization(new AuthorizeAttribute
+            {
+                AuthenticationSchemes = $"{IdentityConstants.ApplicationScheme},{OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme}",
+                Policy = Permissions.Monitoring.Read
+            });
         app.MapRazorPages();
 
         return app;

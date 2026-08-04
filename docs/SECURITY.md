@@ -167,6 +167,19 @@ provider-specific assurance policy before any existing-account lookup. Explicit
 linking protected by local credentials remains a separate path and is
 independent of automatic email matching.
 
+### Real-Time Monitoring Authorization
+
+The `/monitoringHub` SignalR endpoint requires `monitoring.read` through the
+same Identity-cookie or OpenIddict bearer authentication paths supported by
+the monitoring HTTP APIs. Anonymous negotiation receives HTTP 401, while an
+authenticated principal without that permission receives HTTP 403; hub
+requests never redirect to the interactive login page.
+
+Authorized connections join the existing `monitoring` group and retain the
+current client event names. Clients cannot submit monitoring DTOs or invoke
+broadcast operations on the Hub. Only trusted server-side services publish
+updates through `IHubContext<MonitoringHub>`.
+
 ### Production Deployment Inputs and Network Boundary
 
 Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, certificate passwords, and a fixed public OIDC origin. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.

@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Core.Domain.Constants;
 using Xunit;
 
 namespace Tests.SystemTests;
@@ -10,7 +12,8 @@ namespace Tests.SystemTests;
 /// Tests for ApiResourcesController, AuditController, LocalizationController, 
 /// MonitoringController, and DashboardController endpoints.
 /// </summary>
-public class AdminApiMiscTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetime
+[Collection(IsolatedClientAdminHostCollection.Name)]
+public class AdminApiMiscTests : IAsyncLifetime
 {
     private readonly WebIdPServerFixture _serverFixture;
     private readonly HttpClient _httpClient;
@@ -273,6 +276,90 @@ public class AdminApiMiscTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task MonitoringHub_Negotiate_NoAuth_ReturnsUnauthorized()
+    {
+        // Arrange
+        using var httpClient = new HttpClient(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+            AllowAutoRedirect = false
+        })
+        { BaseAddress = new Uri(_serverFixture.BaseUrl) };
+
+        // Act
+        using var response = await httpClient.PostAsync(
+            "/monitoringHub/negotiate?negotiateVersion=1",
+            content: null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MonitoringHub_Negotiate_WithoutMonitoringPermission_ReturnsForbidden()
+    {
+        // Arrange
+        using var httpClient = new HttpClient(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+            AllowAutoRedirect = false
+        })
+        { BaseAddress = new Uri(_serverFixture.BaseUrl) };
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            await GetTokenWithoutMonitoringPermissionAsync());
+
+        // Act
+        using var response = await httpClient.PostAsync(
+            "/monitoringHub/negotiate?negotiateVersion=1",
+            content: null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MonitoringHub_Negotiate_WithMonitoringPermission_ReturnsNegotiationPayload()
+    {
+        // Act
+        using var response = await _httpClient.PostAsync(
+            "/monitoringHub/negotiate?negotiateVersion=1",
+            content: null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(payload.TryGetProperty("connectionId", out _));
+        Assert.True(payload.TryGetProperty("availableTransports", out _));
+    }
+
+    [Fact]
+    public async Task MonitoringHub_Negotiate_WithAuthorizedCookie_ReturnsNegotiationPayload()
+    {
+        // Arrange
+        using var httpClient = new HttpClient(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+            AllowAutoRedirect = false,
+            UseCookies = true,
+            CookieContainer = new CookieContainer()
+        })
+        { BaseAddress = new Uri(_serverFixture.BaseUrl) };
+        await SignInAsAdminAsync(httpClient);
+
+        // Act
+        using var response = await httpClient.PostAsync(
+            "/monitoringHub/negotiate?negotiateVersion=1",
+            content: null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+    }
+
     // ===== SecurityPolicy Tests =====
 
     [Fact]
@@ -343,5 +430,44 @@ public class AdminApiMiscTests : IClassFixture<WebIdPServerFixture>, IAsyncLifet
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
         return JsonSerializer.Deserialize<JsonElement>(content).GetProperty("access_token").GetString()!;
+    }
+
+    private async Task<string> GetTokenWithoutMonitoringPermissionAsync()
+    {
+        using var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = "testclient-m2m",
+            ["client_secret"] = "m2m-test-secret-2024",
+            ["scope"] = "api:company:read"
+        });
+
+        using var response = await _httpClient.PostAsync("/connect/token", tokenRequest);
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<JsonElement>(content).GetProperty("access_token").GetString()!;
+    }
+
+    private static async Task SignInAsAdminAsync(HttpClient httpClient)
+    {
+        using var loginPage = await httpClient.GetAsync("/Account/Login");
+        loginPage.EnsureSuccessStatusCode();
+        var page = await loginPage.Content.ReadAsStringAsync();
+        var match = Regex.Match(
+            page,
+            "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"",
+            RegexOptions.CultureInvariant);
+        Assert.True(match.Success);
+
+        using var login = await httpClient.PostAsync(
+            "/Account/Login",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Input.Login"] = AuthConstants.DefaultAdmin.Email,
+                ["Input.Password"] = AuthConstants.DefaultAdmin.Password,
+                ["__RequestVerificationToken"] = match.Groups[1].Value
+            }));
+
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
     }
 }

@@ -449,7 +449,8 @@ public static class ServiceCollectionExtensions
             options.Events.OnRedirectToLogin = context =>
             {
                 if (context.Request.Path.StartsWithSegments("/api") ||
-                    context.Request.Path.StartsWithSegments("/metrics"))
+                    context.Request.Path.StartsWithSegments("/metrics") ||
+                    context.Request.Path.StartsWithSegments("/monitoringHub"))
                 {
                     context.Response.StatusCode = 401;
                     return Task.CompletedTask;
@@ -460,7 +461,8 @@ public static class ServiceCollectionExtensions
             options.Events.OnRedirectToAccessDenied = context =>
             {
                 if (context.Request.Path.StartsWithSegments("/api") ||
-                    context.Request.Path.StartsWithSegments("/metrics"))
+                    context.Request.Path.StartsWithSegments("/metrics") ||
+                    context.Request.Path.StartsWithSegments("/monitoringHub"))
                 {
                     context.Response.StatusCode = 403;
                     return Task.CompletedTask;
