@@ -105,6 +105,13 @@ server-side consumers can still decrypt protected values. Replacing or
 clearing a setting continues to require `settings.update`, and submitting the
 mask marker preserves the existing secret rather than storing the marker.
 
+### Localized Login Notices
+
+Configured login-notice localization values are translated plain text, not
+HTML. The shared Razor partial encodes the resolved value at its final render
+boundary; localization storage, resolution, and administrative permissions are
+unchanged.
+
 ### Custom Claim Source Boundary
 
 Custom and standard scope-mapped claims can read only an explicit set of

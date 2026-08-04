@@ -231,7 +231,7 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_d27a8baae7afb246883faaee` | fixed | Generate email OTPs cryptographically and enforce a pending-code attempt limit. |
 | `csf_e63c44630467bda5532dfbb8` | fixed | Reject passkey login when the security policy disables passkeys before assertion verification, persistence, or successful sign-in side effects. |
 | `csf_65f2561e219c2e3061ca2ec9` | fixed | Label a permitted passkey assertion as MFA only when validated authenticator data confirms user verification. |
-| `csf_6979042d4ed939d5baaf58aa` | pending | Prevent configured localization content from becoming anonymous stored XSS. |
+| `csf_6979042d4ed939d5baaf58aa` | fixed | Encode configured localization content at the shared login-notice Razor boundary. |
 | `csf_46710f5179fa498ef6327608` | fixed | Require `monitoring.read` for hub subscriptions and remove caller-invokable broadcast methods. |
 | `csf_b3ba101b8e2c1014cda67044` | pending | Verify external database TLS peer identity in production setup guidance and generated configuration. |
 | `csf_5f4b4b4b513c35cbf65f0b09` | pending | Remove public monitoring-port defaults and repository-known Grafana fallback credentials from operational guidance. |
@@ -672,6 +672,27 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
   Infrastructure Integration 86, and System 310; one aggressive ZAP System
   test remained skipped. No migration, frontend contract, live deployment,
   database, credential, or ignored deployment override was changed.
+
+### Login-Notice Localization XSS Verification Evidence
+
+- `csf_6979042d4ed939d5baaf58aa` is fixed at the final Razor boundary: an
+  administrator-editable localization value flowed unchanged through the
+  resolver to `Html.Raw` in the anonymous Login and ExternalLoginConfirmation
+  shared partial. Repository evidence supports translated plain text, not
+  HTML, so storage, resolver behavior, and localization-admin authorization
+  remain unchanged.
+- The shared partial now uses normal Razor encoding for the resolved message.
+  Its three Login uses and two ExternalLoginConfirmation uses are protected by
+  that one boundary. The ExternalLoginConfirmation uses are covered by the
+  shared-partial change; no separate cookie-gated page response was executed.
+- The real Login Razor TDD passed 5/5 after its red step. Resolver tests passed
+  7/7, LocalizationService tests passed 5/5, LocalizationManagementService
+  tests passed 6/6, and authorized/unauthorized localization system tests
+  passed 2/2.
+- The solution build completed with 0 warnings and 0 errors. Diff-check and
+  teardown passed. No migration, localization storage or resolver change,
+  admin-authorization change, deployment action, live-environment action, or
+  response dump was included.
 
 ### Passkey Policy and User-Verification Verification Evidence
 

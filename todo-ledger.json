@@ -192,6 +192,28 @@
       "completed_at": "2026-08-04T03:05:51Z",
       "updated_at": "2026-08-04T03:05:51Z",
       "notes": "Both findings csf_e63c44630467bda5532dfbb8 and csf_65f2561e219c2e3061ca2ec9 are remediated: disabled passkey completion is rejected before assertion verification or success side effects, and MFA/AMR classification is set only from validated user-verification (UV) evidence while eligible passkey behavior remains compatible. Evidence: focused infrastructure 13/13, controller 11/11, PasskeyApi 8/8, full backend 1594 passed/1 skipped/0 failed, solution build 0 warnings/errors, review pass, exact 11-path scope, and teardown clean (0 dotnet-owned TCP listeners; no Web.IdP/TestHost process remained); git diff --check pass. Localization, deployment, the P3 documentation note, and unrelated findings remain out of scope."
+    },
+    {
+      "id": "SEC-20260804-loginnote-localization-xss",
+      "summary": "LoginNotice localization stored-XSS remediation",
+      "status": "done",
+      "priority": "medium",
+      "source": "pipeline",
+      "source_run_id": "localization-medium-20260804T031736Z-8da3ce62",
+      "related_task_ids": [
+        "remediate-loginnote-rendering-xss",
+        "document-loginnote-xss-remediation"
+      ],
+      "artifact_paths": [
+        ".pipeline-output/localization-medium-20260804T031736Z-8da3ce62/pipeline/task-list.json",
+        ".pipeline-output/localization-medium-20260804T031736Z-8da3ce62/pipeline/test-report.json",
+        ".pipeline-output/localization-medium-20260804T031736Z-8da3ce62/pipeline/review-report.json",
+        ".pipeline-output/localization-medium-20260804T031736Z-8da3ce62/status/tasks/remediate-loginnote-rendering-xss.json",
+        ".pipeline-output/localization-medium-20260804T031736Z-8da3ce62/status/tasks/document-loginnote-xss-remediation.json"
+      ],
+      "completed_at": "2026-08-04T04:03:30Z",
+      "updated_at": "2026-08-04T04:03:30Z",
+      "notes": "Finding csf_6979042d4ed939d5baaf58aa is remediated by HTML-encoding untrusted LoginNotice localization at the shared Razor rendering boundary while preserving resolver, storage, and authorization behavior. Evidence: real Razor 5/5, resolver 7/7, localization services 11/11, auth system 2/2, full backend 1,599 passed/1 skipped/0 failed, solution build 0 warnings/errors, review pass, exact four-path scope, git diff --check pass, temporary environment variables restored/unset, and no task-attributed dotnet/Web.IdP processes or listeners remained. Passkey, deployment, and unrelated findings remain out of scope."
     }
   ]
 }

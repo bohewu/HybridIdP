@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-08-04T03:05:51Z._
+_Derived from `todo-ledger.json`; updated 2026-08-04T04:03:30Z._
 
 ## Done
 
@@ -136,3 +136,18 @@ _Derived from `todo-ledger.json`; updated 2026-08-04T03:05:51Z._
   - `.pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/pipeline/review-report.json`
   - `.pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/status/tasks/passkey-policy-and-uv-remediation.json`
   - `.pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/status/tasks/passkey-remediation-documentation.json`
+
+### SEC-20260804-loginnote-localization-xss — LoginNotice localization stored-XSS remediation
+
+- Completed: 2026-08-04T04:03:30Z
+- Run: `localization-medium-20260804T031736Z-8da3ce62`
+- Priority: medium
+- Source: `pipeline`
+- Related tasks: `remediate-loginnote-rendering-xss`, `document-loginnote-xss-remediation`
+- Notes: Finding csf_6979042d4ed939d5baaf58aa is remediated by HTML-encoding untrusted LoginNotice localization at the shared Razor rendering boundary while preserving resolver, storage, and authorization behavior. Evidence: real Razor 5/5, resolver 7/7, localization services 11/11, auth system 2/2, full backend 1,599 passed/1 skipped/0 failed, solution build 0 warnings/errors, review pass, exact four-path scope, git diff --check pass, temporary environment variables restored/unset, and no task-attributed dotnet/Web.IdP processes or listeners remained. Passkey, deployment, and unrelated findings remain out of scope.
+- Artifacts:
+  - `.pipeline-output/localization-medium-20260804T031736Z-8da3ce62/pipeline/task-list.json`
+  - `.pipeline-output/localization-medium-20260804T031736Z-8da3ce62/pipeline/test-report.json`
+  - `.pipeline-output/localization-medium-20260804T031736Z-8da3ce62/pipeline/review-report.json`
+  - `.pipeline-output/localization-medium-20260804T031736Z-8da3ce62/status/tasks/remediate-loginnote-rendering-xss.json`
+  - `.pipeline-output/localization-medium-20260804T031736Z-8da3ce62/status/tasks/document-loginnote-xss-remediation.json`
