@@ -28,18 +28,17 @@ public partial class SecurityPolicyService : ISecurityPolicyService
             return policy!;
         }
 
-        policy = await _db.SecurityPolicies.OrderBy(p => p.Id).FirstOrDefaultAsync();
-
-        if (policy == null)
-        {
-            LogNoSecurityPolicyFound();
-            policy = new SecurityPolicy();
-            await _db.SecurityPolicies.AddAsync(policy);
-            await _db.SaveChangesAsync(default);
-        }
+        policy = await GetOrCreateCurrentPolicyAsync(
+            asNoTracking: false,
+            CancellationToken.None);
         
         _cache.Set(CurrentPolicyCacheKey, policy, TimeSpan.FromHours(1));
         return policy;
+    }
+
+    public Task<SecurityPolicy> GetCurrentPolicyForPasskeyAuthenticationAsync(CancellationToken ct = default)
+    {
+        return GetOrCreateCurrentPolicyAsync(asNoTracking: true, ct);
     }
 
     public async Task UpdatePolicyAsync(SecurityPolicyDto policyDto, string updatedBy)
@@ -95,6 +94,29 @@ public partial class SecurityPolicyService : ISecurityPolicyService
         // Invalidate cache
         _cache.Remove(CurrentPolicyCacheKey);
         LogSecurityPolicyUpdated(updatedBy);
+    }
+
+    private async Task<SecurityPolicy> GetOrCreateCurrentPolicyAsync(
+        bool asNoTracking,
+        CancellationToken ct)
+    {
+        IQueryable<SecurityPolicy> policies = _db.SecurityPolicies.OrderBy(p => p.Id);
+        if (asNoTracking)
+        {
+            policies = policies.AsNoTracking();
+        }
+
+        var policy = await policies.FirstOrDefaultAsync(ct);
+        if (policy != null)
+        {
+            return policy;
+        }
+
+        LogNoSecurityPolicyFound();
+        policy = new SecurityPolicy();
+        await _db.SecurityPolicies.AddAsync(policy, ct);
+        await _db.SaveChangesAsync(ct);
+        return policy;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "No security policy found in database, creating a default one.")]

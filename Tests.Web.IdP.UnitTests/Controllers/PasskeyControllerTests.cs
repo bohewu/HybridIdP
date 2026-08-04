@@ -57,6 +57,12 @@ public class PasskeyControllerTests
             .ReturnsAsync(true);
 
         _securityPolicyServiceMock = new Mock<ISecurityPolicyService>();
+        _securityPolicyServiceMock
+            .Setup(service => service.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicy { EnablePasskey = true });
+        _securityPolicyServiceMock
+            .Setup(service => service.GetCurrentPolicyForPasskeyAuthenticationAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SecurityPolicy { EnablePasskey = true });
         _userManagementServiceMock = new Mock<IUserManagementService>();
         
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -102,7 +108,7 @@ public class PasskeyControllerTests
         _session.SetString("fido2.assertionOptions", "{\"challenge\":\"123\"}");
 
         _passkeyServiceMock.Setup(x => x.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, user, (string?)null));
+            .ReturnsAsync((true, user, true, (string?)null));
 
         var clientResponse = System.Text.Json.JsonDocument.Parse("{}").RootElement;
 
@@ -141,7 +147,7 @@ public class PasskeyControllerTests
         _session.SetString("fido2.assertionOptions", "{\"challenge\":\"123\"}");
 
         _passkeyServiceMock.Setup(x => x.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, user, (string?)null));
+            .ReturnsAsync((true, user, true, (string?)null));
 
         var clientResponse = System.Text.Json.JsonDocument.Parse("{}").RootElement;
 
@@ -177,7 +183,7 @@ public class PasskeyControllerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, user, (string?)null));
+            .ReturnsAsync((true, user, true, (string?)null));
         var clientResponse = System.Text.Json.JsonDocument.Parse("{}").RootElement;
 
         var result = await _controller.MakeAssertion(
@@ -271,7 +277,7 @@ public class PasskeyControllerTests
     }
 
     [Fact]
-    public async Task MakeAssertion_ActivePersonAndUser_ReturnsOkAndSignsIn()
+    public async Task MakeAssertion_EnabledPasskeyWithUserVerification_ReturnsOkAndSignsInWithMfaAmr()
     {
         // Arrange
         var user = CreateEligibleUser("testuser");
@@ -279,7 +285,7 @@ public class PasskeyControllerTests
         _session.SetString("fido2.assertionOptions", "{\"challenge\":\"123\"}");
 
         _passkeyServiceMock.Setup(x => x.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, user, (string?)null));
+            .ReturnsAsync((true, user, true, (string?)null));
 
         var clientResponse = System.Text.Json.JsonDocument.Parse("{}").RootElement;
 
@@ -308,7 +314,60 @@ public class PasskeyControllerTests
             Times.Once);
     }
 
-    private void ArrangeVerifiedAssertion(ApplicationUser user)
+    [Fact]
+    public async Task MakeAssertion_PasskeyDisabled_ReturnsForbiddenWithoutVerifyingOrSigningIn()
+    {
+        _session.SetString("fido2.assertionOptions", "{\"challenge\":\"123\"}");
+        _securityPolicyServiceMock
+            .Setup(service => service.GetCurrentPolicyForPasskeyAuthenticationAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SecurityPolicy { EnablePasskey = false });
+
+        var result = await _controller.MakeAssertion(
+            EmptyClientResponse(),
+            CancellationToken.None);
+
+        var forbidden = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status403Forbidden, forbidden.StatusCode);
+        var error = (string?)forbidden.Value!.GetType().GetProperty("error")?.GetValue(forbidden.Value);
+        Assert.Equal("Passkey authentication is disabled", error);
+        _securityPolicyServiceMock.Verify(
+            service => service.GetCurrentPolicyForPasskeyAuthenticationAsync(CancellationToken.None),
+            Times.Once);
+        _securityPolicyServiceMock.Verify(
+            service => service.GetCurrentPolicyAsync(),
+            Times.Never);
+        _passkeyServiceMock.Verify(
+            service => service.VerifyAssertionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+        VerifyNoSuccessfulSignIn();
+        Assert.Empty(_auditServiceMock.Invocations);
+    }
+
+    [Fact]
+    public async Task MakeAssertion_EnabledPasskeyWithoutUserVerification_OmitsMfaAmr()
+    {
+        var user = CreateEligibleUser("user-presence-only");
+        ArrangeVerifiedAssertion(user, userVerified: false);
+
+        var result = await _controller.MakeAssertion(
+            EmptyClientResponse(),
+            CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        _signInManagerMock.Verify(manager => manager.SignInWithClaimsAsync(
+            user,
+            false,
+            It.Is<IEnumerable<Claim>>(claims =>
+                claims.Any(claim => claim.Type == "amr" && claim.Value == AuthConstants.Amr.HardwareKey) &&
+                claims.Any(claim => claim.Type == "amr" && claim.Value == AuthConstants.Amr.UserPresence) &&
+                !claims.Any(claim => claim.Type == "amr" && claim.Value == AuthConstants.Amr.Mfa))),
+            Times.Once);
+    }
+
+    private void ArrangeVerifiedAssertion(ApplicationUser user, bool userVerified = true)
     {
         _session.SetString("fido2.assertionOptions", "{\"challenge\":\"123\"}");
         _passkeyServiceMock
@@ -316,7 +375,7 @@ public class PasskeyControllerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, user, (string?)null));
+            .ReturnsAsync((true, user, userVerified, (string?)null));
     }
 
     private static ApplicationUser CreateEligibleUser(string userName)

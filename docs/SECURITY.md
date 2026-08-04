@@ -25,6 +25,8 @@ We support three primary MFA methods to ensure account security:
 - **Standards**: FIDO2 / WebAuthn.
 - **Authenticators**: Biometrics (Windows Hello, Touch ID, Face ID) and hardware keys (e.g., YubiKey).
 - **Security Policy**: Configurable "Strong MFA Prerequisite" (requires existing TOTP/Email MFA before registering a Passkey).
+- **Sign-in policy**: Passkey sign-in is rejected when the current security policy disables passkeys.
+- **Authentication assurance**: Passkey and user-presence AMR values are recorded for a successful passkey assertion; MFA is recorded only when validated authenticator data confirms user verification.
 
 ---
 

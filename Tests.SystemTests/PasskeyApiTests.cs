@@ -110,6 +110,57 @@ public class PasskeyApiTests : IAsyncLifetime
         Assert.NotEqual(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Login_PasskeyDisabled_ReturnsForbiddenJsonBeforeSessionValidation()
+    {
+        var policy = await GetSecurityPolicyAsync();
+        var originalEnablePasskey = policy.EnablePasskey;
+
+        try
+        {
+            policy.EnablePasskey = false;
+            await UpdateSecurityPolicyAsync(policy);
+
+            var response = await _httpClient.PostAsJsonAsync("/api/passkey/login", new { });
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+            var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal("Passkey authentication is disabled", payload.GetProperty("error").GetString());
+        }
+        finally
+        {
+            policy.EnablePasskey = originalEnablePasskey;
+            await UpdateSecurityPolicyAsync(policy);
+        }
+    }
+
+    [Fact]
+    public async Task Login_PasskeyEnabled_ReachesExistingSessionValidationPath()
+    {
+        var policy = await GetSecurityPolicyAsync();
+        var originalEnablePasskey = policy.EnablePasskey;
+
+        try
+        {
+            policy.EnablePasskey = true;
+            await UpdateSecurityPolicyAsync(policy);
+
+            var response = await _httpClient.PostAsJsonAsync("/api/passkey/login", new { });
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+            var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.False(payload.GetProperty("success").GetBoolean());
+            Assert.Equal("Session expired", payload.GetProperty("error").GetString());
+        }
+        finally
+        {
+            policy.EnablePasskey = originalEnablePasskey;
+            await UpdateSecurityPolicyAsync(policy);
+        }
+    }
+
     private async Task<string> GetUserTokenAsync(string username, string password)
     {
         var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -147,6 +198,22 @@ public class PasskeyApiTests : IAsyncLifetime
             var putResponse = await _httpClient.PutAsJsonAsync("/api/admin/security/policies", policy);
             putResponse.EnsureSuccessStatusCode();
         }
+    }
+
+    private async Task<SecurityPolicyDto> GetSecurityPolicyAsync()
+    {
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        var response = await _httpClient.GetAsync("/api/admin/security/policies");
+        response.EnsureSuccessStatusCode();
+
+        return (await response.Content.ReadFromJsonAsync<SecurityPolicyDto>())!;
+    }
+
+    private async Task UpdateSecurityPolicyAsync(SecurityPolicyDto policy)
+    {
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _userToken);
+        var response = await _httpClient.PutAsJsonAsync("/api/admin/security/policies", policy);
+        response.EnsureSuccessStatusCode();
     }
     
     [Fact]

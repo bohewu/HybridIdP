@@ -18,7 +18,7 @@ public interface IPasskeyService
         
     Task<AssertionOptions> GetAssertionOptionsAsync(string? username, CancellationToken ct = default);
     
-    Task<(bool Success, ApplicationUser? User, string? Error)> VerifyAssertionAsync(
+    Task<(bool Success, ApplicationUser? User, bool UserVerified, string? Error)> VerifyAssertionAsync(
         string jsonResponse, 
         string originalOptionsJson, 
         CancellationToken ct = default);

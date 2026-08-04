@@ -2,6 +2,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
 using Core.Domain.Entities;
+using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
@@ -147,6 +148,36 @@ public class SecurityPolicyServiceTests
 
         // Assert
         _mockDb.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCurrentPolicyForPasskeyAuthenticationAsync_CachedEnabledPolicyThenPersistedDisabled_ReturnsPersistedDisabled()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        await using var serviceDbContext = new ApplicationDbContext(options);
+        await using var updatingDbContext = new ApplicationDbContext(options);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var persistedPolicy = new SecurityPolicy { Id = Guid.NewGuid(), EnablePasskey = true };
+        serviceDbContext.SecurityPolicies.Add(persistedPolicy);
+        await serviceDbContext.SaveChangesAsync();
+
+        var service = new SecurityPolicyService(
+            serviceDbContext,
+            cache,
+            _mockLogger.Object);
+
+        var cachedPolicy = await service.GetCurrentPolicyAsync();
+        Assert.True(cachedPolicy.EnablePasskey);
+
+        var policyUpdatedByAnotherInstance = await updatingDbContext.SecurityPolicies.SingleAsync();
+        policyUpdatedByAnotherInstance.EnablePasskey = false;
+        await updatingDbContext.SaveChangesAsync();
+
+        var authoritativePolicy = await service.GetCurrentPolicyForPasskeyAuthenticationAsync(CancellationToken.None);
+
+        Assert.False(authoritativePolicy.EnablePasskey);
     }
 
     private void SetupDbSetMock()

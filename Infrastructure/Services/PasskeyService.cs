@@ -181,7 +181,7 @@ public class PasskeyService : IPasskeyService
         return options;
     }
 
-    public async Task<(bool Success, ApplicationUser? User, string? Error)> VerifyAssertionAsync(
+    public async Task<(bool Success, ApplicationUser? User, bool UserVerified, string? Error)> VerifyAssertionAsync(
         string jsonResponse, 
         string originalOptionsJson, 
         CancellationToken ct = default)
@@ -192,7 +192,7 @@ public class PasskeyService : IPasskeyService
             var assertionResponse = JsonSerializer.Deserialize<AuthenticatorAssertionRawResponse>(jsonResponse);
             if (assertionResponse == null)
             {
-                return (false, null, "Invalid assertion response");
+                return (false, null, false, "Invalid assertion response");
             }
             
             var options = AssertionOptions.FromJson(originalOptionsJson);
@@ -211,7 +211,7 @@ public class PasskeyService : IPasskeyService
             {
                 // Downgraded to Information as this is a common "user mismatch" scenario, not a system error
                 _logger.LogInformation("Passkey credential not found: {CredentialId}", assertionResponse.Id);
-                return (false, null, "mfa.errors.passkeyNotRegistered");
+                return (false, null, false, "mfa.errors.passkeyNotRegistered");
             }
             
             // 3. Verify the assertion using v4 API
@@ -231,6 +231,9 @@ public class PasskeyService : IPasskeyService
             var result = await _fido2.MakeAssertionAsync(makeAssertionParams, ct);
             
             // v4 API throws on failure, so if we get here it's successful
+            var userVerified = AuthenticatorData
+                .Parse(assertionResponse.Response.AuthenticatorData)
+                .UserVerified;
             
             // 4. Update signature counter (防止 replay attacks)
             credential.SignatureCounter = result.SignCount;
@@ -238,12 +241,12 @@ public class PasskeyService : IPasskeyService
             await _dbContext.SaveChangesAsync(ct);
             
             _logger.LogInformation("Passkey verification successful for user {UserId}", credential.UserId);
-            return (true, credential.User, null);
+            return (true, credential.User, userVerified, null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to verify passkey assertion");
-            return (false, null, "Verification failed");
+            return (false, null, false, "Verification failed");
         }
     }
 

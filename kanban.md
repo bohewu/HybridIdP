@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-08-03T09:07:36Z._
+_Derived from `todo-ledger.json`; updated 2026-08-04T03:05:51Z._
 
 ## Done
 
@@ -121,3 +121,18 @@ _Derived from `todo-ledger.json`; updated 2026-08-03T09:07:36Z._
   - `.pipeline-output/pipeline-20260803T065639Z-lifecycle-cookie/pipeline/task-list.json`
   - `.pipeline-output/pipeline-20260803T065639Z-lifecycle-cookie/pipeline/test-report.json`
   - `.pipeline-output/pipeline-20260803T065639Z-lifecycle-cookie/pipeline/review-report-round-1.json`
+
+### SEC-20260804-passkey-policy-uv — Passkey policy enforcement and UV-accurate MFA classification
+
+- Completed: 2026-08-04T03:05:51Z
+- Run: `passkey-medium-20260804T014744Z-2e82e9cb`
+- Priority: medium
+- Source: `pipeline`
+- Related tasks: `passkey-policy-and-uv-remediation`, `passkey-remediation-documentation`
+- Notes: Both findings csf_e63c44630467bda5532dfbb8 and csf_65f2561e219c2e3061ca2ec9 are remediated: disabled passkey completion is rejected before assertion verification or success side effects, and MFA/AMR classification is set only from validated user-verification (UV) evidence while eligible passkey behavior remains compatible. Evidence: focused infrastructure 13/13, controller 11/11, PasskeyApi 8/8, full backend 1594 passed/1 skipped/0 failed, solution build 0 warnings/errors, review pass, exact 11-path scope, and teardown clean (0 dotnet-owned TCP listeners; no Web.IdP/TestHost process remained); git diff --check pass. Localization, deployment, the P3 documentation note, and unrelated findings remain out of scope.
+- Artifacts:
+  - `.pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/pipeline/task-list.json`
+  - `.pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/pipeline/test-report-attempt2.json`
+  - `.pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/pipeline/review-report.json`
+  - `.pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/status/tasks/passkey-policy-and-uv-remediation.json`
+  - `.pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/status/tasks/passkey-remediation-documentation.json`

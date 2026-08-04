@@ -265,6 +265,13 @@ public partial class PasskeyController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> MakeAssertion([FromBody] System.Text.Json.JsonElement clientResponse, CancellationToken ct)
     {
+        var policy = await _securityPolicyService.GetCurrentPolicyForPasskeyAuthenticationAsync(ct);
+        if (!policy.EnablePasskey)
+        {
+            LogPasskeyLoginBlockedFeatureDisabled();
+            return StatusCode(403, new { error = "Passkey authentication is disabled" });
+        }
+
         var jsonOptions = HttpContext.Session.GetString("fido2.assertionOptions");
         if (string.IsNullOrEmpty(jsonOptions))
         {
@@ -303,11 +310,21 @@ public partial class PasskeyController : ControllerBase
                 return BadRequest(new { success = false, error = "Account not active" });
             }
             
-            AuthenticationMethodSession.Replace(
-                HttpContext.Session,
-                Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
-                Core.Domain.Constants.AuthConstants.Amr.UserPresence,
-                Core.Domain.Constants.AuthConstants.Amr.Mfa);
+            if (result.UserVerified)
+            {
+                AuthenticationMethodSession.Replace(
+                    HttpContext.Session,
+                    Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
+                    Core.Domain.Constants.AuthConstants.Amr.UserPresence,
+                    Core.Domain.Constants.AuthConstants.Amr.Mfa);
+            }
+            else
+            {
+                AuthenticationMethodSession.Replace(
+                    HttpContext.Session,
+                    Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
+                    Core.Domain.Constants.AuthConstants.Amr.UserPresence);
+            }
 
             // Issue cookie with amr claims
             var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
@@ -350,6 +367,9 @@ public partial class PasskeyController : ControllerBase
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked for deactivated user {UserId}")]
     partial void LogPasskeyLoginBlockedByDeactivation(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked: feature disabled")]
+    partial void LogPasskeyLoginBlockedFeatureDisabled();
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked because user {UserId} has no eligible Person record (PersonId: {PersonId})")]
     partial void LogPasskeyLoginBlockedByPersonEligibility(Guid userId, Guid? personId);

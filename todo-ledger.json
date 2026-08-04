@@ -170,6 +170,28 @@
       "completed_at": "2026-08-03T09:07:36Z",
       "updated_at": "2026-08-03T09:07:36Z",
       "notes": "M18 / csf_31193ff88cb59c04e6ff7815 completed in run pipeline-20260803T065639Z-lifecycle-cookie. Evidence: full backend suite passed; post-repair review passed with no required followups; repository remediation entry fixed."
+    },
+    {
+      "id": "SEC-20260804-passkey-policy-uv",
+      "summary": "Passkey policy enforcement and UV-accurate MFA classification",
+      "status": "done",
+      "priority": "medium",
+      "source": "pipeline",
+      "source_run_id": "passkey-medium-20260804T014744Z-2e82e9cb",
+      "related_task_ids": [
+        "passkey-policy-and-uv-remediation",
+        "passkey-remediation-documentation"
+      ],
+      "artifact_paths": [
+        ".pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/pipeline/task-list.json",
+        ".pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/pipeline/test-report-attempt2.json",
+        ".pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/pipeline/review-report.json",
+        ".pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/status/tasks/passkey-policy-and-uv-remediation.json",
+        ".pipeline-output/passkey-medium-20260804T014744Z-2e82e9cb/status/tasks/passkey-remediation-documentation.json"
+      ],
+      "completed_at": "2026-08-04T03:05:51Z",
+      "updated_at": "2026-08-04T03:05:51Z",
+      "notes": "Both findings csf_e63c44630467bda5532dfbb8 and csf_65f2561e219c2e3061ca2ec9 are remediated: disabled passkey completion is rejected before assertion verification or success side effects, and MFA/AMR classification is set only from validated user-verification (UV) evidence while eligible passkey behavior remains compatible. Evidence: focused infrastructure 13/13, controller 11/11, PasskeyApi 8/8, full backend 1594 passed/1 skipped/0 failed, solution build 0 warnings/errors, review pass, exact 11-path scope, and teardown clean (0 dotnet-owned TCP listeners; no Web.IdP/TestHost process remained); git diff --check pass. Localization, deployment, the P3 documentation note, and unrelated findings remain out of scope."
     }
   ]
 }

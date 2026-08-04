@@ -16,6 +16,7 @@ using Moq;
 using Xunit;
 using Core.Domain;
 using Infrastructure;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Tests.Infrastructure.UnitTests;
 
@@ -183,5 +184,115 @@ public class PasskeyServiceTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal(options.Challenge, result.Challenge);
+    }
+
+    [Fact]
+    public async Task VerifyAssertionAsync_ValidatedAuthenticatorDataWithUserVerification_ReturnsUserVerified()
+    {
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "passkey-user"
+        };
+        var credentialId = new byte[] { 1, 2, 3 };
+        _dbContext.Users.Add(user);
+        _dbContext.UserCredentials.Add(new UserCredential
+        {
+            UserId = user.Id,
+            CredentialId = credentialId,
+            PublicKey = new byte[] { 4, 5, 6 },
+            SignatureCounter = 1
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _fido2Mock
+            .Setup(fido2 => fido2.MakeAssertionAsync(
+                It.IsAny<MakeAssertionParams>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VerifyAssertionResult
+            {
+                CredentialId = credentialId,
+                SignCount = 2
+            });
+
+        var authenticatorData = new byte[37];
+        authenticatorData[32] = 0x05; // user present and user verified
+        authenticatorData[36] = 2;
+        var responseJson = $$"""
+            {
+              "id": "{{Base64UrlTextEncoder.Encode(credentialId)}}",
+              "rawId": "{{Base64UrlTextEncoder.Encode(credentialId)}}",
+              "type": "public-key",
+              "response": {
+                "authenticatorData": "{{Base64UrlTextEncoder.Encode(authenticatorData)}}",
+                "signature": "AQ",
+                "clientDataJSON": "e30"
+              }
+            }
+            """;
+
+        var result = await _sut.VerifyAssertionAsync(
+            responseJson,
+            "{\"challenge\":\"AQ\"}",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Same(user, result.User);
+        Assert.True(result.UserVerified);
+    }
+
+    [Fact]
+    public async Task VerifyAssertionAsync_ValidatedAuthenticatorDataWithoutUserVerification_ReturnsUserNotVerified()
+    {
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "passkey-user"
+        };
+        var credentialId = new byte[] { 1, 2, 3 };
+        _dbContext.Users.Add(user);
+        _dbContext.UserCredentials.Add(new UserCredential
+        {
+            UserId = user.Id,
+            CredentialId = credentialId,
+            PublicKey = new byte[] { 4, 5, 6 },
+            SignatureCounter = 1
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _fido2Mock
+            .Setup(fido2 => fido2.MakeAssertionAsync(
+                It.IsAny<MakeAssertionParams>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VerifyAssertionResult
+            {
+                CredentialId = credentialId,
+                SignCount = 2
+            });
+
+        var authenticatorData = new byte[37];
+        authenticatorData[32] = 0x01; // user present without user verification
+        authenticatorData[36] = 2;
+        var responseJson = $$"""
+            {
+              "id": "{{Base64UrlTextEncoder.Encode(credentialId)}}",
+              "rawId": "{{Base64UrlTextEncoder.Encode(credentialId)}}",
+              "type": "public-key",
+              "response": {
+                "authenticatorData": "{{Base64UrlTextEncoder.Encode(authenticatorData)}}",
+                "signature": "AQ",
+                "clientDataJSON": "e30"
+              }
+            }
+            """;
+
+        var result = await _sut.VerifyAssertionAsync(
+            responseJson,
+            "{\"challenge\":\"AQ\"}",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Same(user, result.User);
+        Assert.False(result.UserVerified);
     }
 }
