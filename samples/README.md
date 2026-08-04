@@ -11,7 +11,7 @@ This directory contains sample applications that demonstrate how to integrate wi
 1.  **TestClient**: A standard OIDC web application demonstrating the Authorization Code Flow with PKCE.
 2.  **TestClient.M2M**: A console application demonstrating the Client Credentials flow for machine-to-machine communication.
 3.  **TestClient.Device**: A console application demonstrating the Device Authorization Flow (for input-constrained devices).
-4.  **TestClient.Impersonation**: A sample demonstrating the Token Exchange / Impersonation flow.
+4.  **TestClient.Impersonation**: A development-only system client demonstrating the administrator cookie impersonation and revert APIs.
 
 ## Security Best Practices for Production
 
@@ -27,12 +27,22 @@ When moving from these samples to a production application:
 
 To run most samples, you need the HybridAuth IdP running locally at `https://localhost:7035`.
 
+The impersonation sample also requires the fixed privileged test administrator. That account is
+disabled by default; enable it only while running the IdP in `Development` or `Test`:
+
+```powershell
+$env:SeedData__PrivilegedTestAdminBootstrap__Enabled = "true"
+dotnet run --project Web.IdP
+```
+
+The setting is ignored outside `Development` and `Test`. Never enable or adapt this fixture for a
+production deployment. Production integrations must register their own clients, redirect URIs,
+and credentials instead of using the hardcoded localhost sample values.
+
 ```bash
 # Start the IdP
-cd Web.IdP
-dotnet run
+dotnet run --project Web.IdP
 
 # In another terminal, run a sample
-cd samples/TestClient
-dotnet run
+dotnet run --project samples/TestClient
 ```

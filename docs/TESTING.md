@@ -133,10 +133,10 @@ Development test host.
 6. Verify redirection to `https://localhost:7001/signin-oidc` with an authorization code.
 
 ### Verifying Device Flow
-1. Use the [Device Flow Console Client](file:///c:/repos/HybridIdP/HybridIdP.TestClient.Device/Program.cs).
+1. Use the [Device Flow Console Client](../samples/TestClient.Device/Program.cs).
 2. Run the client:
    ```powershell
-   dotnet run --project HybridIdP.TestClient.Device
+   dotnet run --project samples/TestClient.Device/TestClient.Device.csproj
    ```
 3. Follow the on-screen instructions to visit the verification URL and enter the user code.
 4. Verify token retrieval.
