@@ -328,11 +328,13 @@ namespace Web.IdP.Services
                 .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
                 .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
 
-             var amr = principal.GetClaim(AuthConstants.ClaimTypes.Amr);
-             if (!string.IsNullOrEmpty(amr))
-             {
-                 identity.AddClaim(AuthConstants.ClaimTypes.Amr, amr);
-             }
+            var amrValues = principal.GetClaims(AuthConstants.ClaimTypes.Amr)
+                .Distinct(StringComparer.Ordinal);
+
+            foreach (var amrValue in amrValues)
+            {
+                identity.AddClaim(AuthConstants.ClaimTypes.Amr, amrValue);
+            }
 
             await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId, cancellationToken);
             await _claimsEnricher.AddAppSpecificRolesAsync(identity, user, request.ClientId ?? string.Empty, cancellationToken);

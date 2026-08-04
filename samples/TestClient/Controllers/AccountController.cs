@@ -175,14 +175,13 @@ public class AccountController : Controller
         return View();
     }
 
-    [Authorize]
-    public async Task<IActionResult> InvalidScopes()
+    public IActionResult InvalidScopes()
     {
-        // This action triggers the OpenIdConnect redirect with an injected invalid scope.
-        var accessToken = await HttpContext.GetTokenAsync("access_token");
-        ViewData["AccessToken"] = accessToken;
-        // Reuse the profile view for simplicity.
-        return View("Profile");
+        // Always trigger a fresh OpenID Connect challenge so Program.cs can inject
+        // the intentionally invalid scope, including when a local session exists.
+        return Challenge(
+            new AuthenticationProperties { RedirectUri = "/" },
+            AuthenticationSchemes.OpenIdConnect);
     }
 
     public IActionResult LoginMfa()

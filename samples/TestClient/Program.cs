@@ -81,6 +81,18 @@ builder.Services.AddAuthentication(options =>
 
         return Task.CompletedTask;
     };
+
+    // Keep PAR enabled for normal sign-in, but use a front-channel request for the
+    // invalid-scope sample so its OAuth error returns through OnRemoteFailure.
+    options.Events.OnPushAuthorization = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/Account/InvalidScopes"))
+        {
+            context.SkipPush();
+        }
+
+        return Task.CompletedTask;
+    };
 });
 
 builder.Services.AddHttpClient();

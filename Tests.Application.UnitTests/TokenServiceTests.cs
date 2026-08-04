@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Threading;
 using Core.Application;
 using Core.Domain;
+using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
@@ -622,6 +623,32 @@ namespace Tests.Application.UnitTests
             Assert.Equal(
                 user.Id.ToString(),
                 signInResult.Principal!.GetClaim(Claims.Subject));
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_RefreshToken_MultipleAmrClaims_PreservesDistinctValues()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "refresh-user",
+                Email = "refresh-user@test.local",
+                IsActive = true
+            };
+            var principal = SetupRefreshGrant(user);
+            var identity = Assert.IsType<ClaimsIdentity>(principal.Identity);
+            identity.AddClaim(new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.Password));
+            identity.AddClaim(new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.Mfa));
+            identity.AddClaim(new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.Mfa));
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                principal);
+
+            var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            Assert.Equal(
+                [AuthConstants.Amr.Mfa, AuthConstants.Amr.Password],
+                signInResult.Principal!.GetClaims(AuthConstants.ClaimTypes.Amr).Order());
         }
 
         [Theory]
