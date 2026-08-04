@@ -90,6 +90,51 @@ prompt_choice() {
     eval $__resultvar="'$selected_value'"
 }
 
+validate_external_connection_part() {
+    local name="$1"
+    local value="$2"
+
+    if [[ -z "${value//[[:space:]]/}" || "$value" == *$'\n'* || "$value" == *$'\r'* || "$value" == *"'"* || "$value" == *';'* ]]; then
+        print_warn "Invalid external $name. It must be non-empty and cannot contain a semicolon, apostrophe, or line break."
+        exit 1
+    fi
+}
+
+select_postgresql_tls_trust() {
+    echo "" >&2
+    echo "Select how the PostgreSQL server certificate will be verified:" >&2
+    echo "  1. System trust store (the container image must trust the database CA)" >&2
+    echo "  2. CA certificate in deployment/certs (mounted read-only at /app/certs)" >&2
+
+    local selection
+    if ! IFS= read -r -p "Enter choice (1-2): " selection; then
+        print_warn "Select PostgreSQL TLS trust option 1 or 2. No external database configuration was written."
+        exit 1
+    fi
+
+    case "$selection" in
+        1)
+            postgresql_tls_parameters=""
+            ;;
+        2)
+            external_db_ca_file=$(prompt_with_default "PostgreSQL CA certificate filename (place it in deployment/certs first)" "")
+            if [[ ! "$external_db_ca_file" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*\.(crt|pem)$ ]]; then
+                print_warn "Invalid PostgreSQL CA certificate filename. No external database configuration was written."
+                exit 1
+            fi
+            if [[ ! -f "$SCRIPT_DIR/certs/$external_db_ca_file" ]]; then
+                print_warn "PostgreSQL CA certificate was not found in deployment/certs. No external database configuration was written."
+                exit 1
+            fi
+            postgresql_tls_parameters=";Root Certificate=/app/certs/$external_db_ca_file"
+            ;;
+        *)
+            print_warn "Select PostgreSQL TLS trust option 1 or 2. No external database configuration was written."
+            exit 1
+            ;;
+    esac
+}
+
 # Main script
 cat << 'EOF'
 
@@ -111,11 +156,13 @@ if [ -f "$ENV_PATH" ]; then
     print_warn "Existing .env file found at: $ENV_PATH"
     read -rp "Overwrite? (y/N): " overwrite
     if [[ ! "$overwrite" =~ ^[Yy]$ ]]; then
-        print_info "Creating backup and continuing..."
-        backup_path="$ENV_PATH.backup.$(date +%Y%m%d_%H%M%S)"
-        cp "$ENV_PATH" "$backup_path"
-        print_info "Backup created: $backup_path"
+        print_info "Existing .env left unchanged."
+        exit 0
     fi
+
+    backup_path="$ENV_PATH.backup.$(date +%Y%m%d_%H%M%S)"
+    cp "$ENV_PATH" "$backup_path"
+    print_info "Backup created: $backup_path"
 fi
 
 print_title "Deployment Mode"
@@ -169,6 +216,11 @@ if [ "$use_external_db" = true ]; then
             external_db_password=$(generate_password 24 true)
             print_info "Generated random password: $external_db_password"
         fi
+
+        validate_external_connection_part "SQL Server host" "$external_db_host"
+        validate_external_connection_part "database name" "$external_db_name"
+        validate_external_connection_part "database user" "$external_db_user"
+        validate_external_connection_part "database password" "$external_db_password"
     else
         external_db_host=$(prompt_with_default "PostgreSQL Host" "localhost")
         external_db_port=$(prompt_with_default "PostgreSQL Port" "5432")
@@ -180,6 +232,18 @@ if [ "$use_external_db" = true ]; then
             external_db_password=$(generate_password 24)
             print_info "Generated random password: $external_db_password"
         fi
+
+        validate_external_connection_part "PostgreSQL host" "$external_db_host"
+        validate_external_connection_part "PostgreSQL port" "$external_db_port"
+        validate_external_connection_part "database name" "$external_db_name"
+        validate_external_connection_part "database user" "$external_db_user"
+        validate_external_connection_part "database password" "$external_db_password"
+        if [[ ! "$external_db_port" =~ ^[0-9]+$ ]] || (( 10#$external_db_port < 1 || 10#$external_db_port > 65535 )); then
+            print_warn "Invalid external PostgreSQL port. No external database configuration was written."
+            exit 1
+        fi
+
+        select_postgresql_tls_trust
     fi
 fi
 
@@ -276,13 +340,13 @@ db_provider_value="SqlServer"
 if [ "$use_external_db" = true ]; then
     # External DB connection
     if [ "$use_sqlserver" = true ]; then
-        db_connection_content="# External database connection (user-provided)
-ConnectionStrings__SqlServerConnection='Server=$external_db_host;Database=$external_db_name;User Id=$external_db_user;Password=$external_db_password;Encrypt=True;TrustServerCertificate=True'
+        db_connection_content="# External database connection (user-provided, TLS peer verification required)
+ConnectionStrings__SqlServerConnection='Server=$external_db_host;Database=$external_db_name;User Id=$external_db_user;Password=$external_db_password;Encrypt=True;TrustServerCertificate=False'
 ConnectionStrings__PostgreSqlConnection='NotConfiguredForSelectedProvider'"
     else
-        db_connection_content="# External database connection (user-provided)
+        db_connection_content="# External database connection (user-provided, TLS peer verification required)
 ConnectionStrings__SqlServerConnection='NotConfiguredForSelectedProvider'
-ConnectionStrings__PostgreSqlConnection='Host=$external_db_host;Port=$external_db_port;Database=$external_db_name;Username=$external_db_user;Password=$external_db_password'"
+ConnectionStrings__PostgreSqlConnection='Host=$external_db_host;Port=$external_db_port;Database=$external_db_name;Username=$external_db_user;Password=$external_db_password;Ssl Mode=VerifyFull$postgresql_tls_parameters'"
     fi
     db_credentials_content=""
 else
@@ -437,7 +501,7 @@ else
             -password "pass:$signing_cert_password" 2>/dev/null
         
         # Cleanup key/crt files
-        rm -f *.key *.crt
+        rm -f encryption.key encryption.crt signing.key signing.crt
         
         popd > /dev/null
         print_info "Certificates generated successfully!"

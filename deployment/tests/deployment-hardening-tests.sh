@@ -31,6 +31,17 @@ for command_name in bash docker; do
         harness_error "required command unavailable: $command_name"
     fi
 done
+if command -v pwsh >/dev/null 2>&1; then
+    POWERSHELL_COMMAND=(pwsh -NoProfile)
+elif command -v pwsh.exe >/dev/null 2>&1; then
+    POWERSHELL_COMMAND=(pwsh.exe -NoProfile)
+elif command -v powershell.exe >/dev/null 2>&1; then
+    POWERSHELL_COMMAND=(powershell.exe -NoProfile)
+elif [[ -x /mnt/c/Program\ Files/PowerShell/7/pwsh.exe ]]; then
+    POWERSHELL_COMMAND=(/mnt/c/Program\ Files/PowerShell/7/pwsh.exe -NoProfile)
+else
+    harness_error "required command unavailable: PowerShell 7 (pwsh)"
+fi
 if command -v jq >/dev/null 2>&1; then
     JSON_READER="jq"
 elif command -v python3 >/dev/null 2>&1; then
@@ -47,8 +58,9 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/deployment-hardening.XXXXXX")" || exit 2
+WIZARD_TMP_DIR="$(mktemp -d "$DEPLOYMENT_DIR/.deployment-hardening-wizard.XXXXXX")" || exit 2
 cleanup() {
-    rm -rf -- "$TMP_DIR"
+    rm -rf -- "$TMP_DIR" "$WIZARD_TMP_DIR"
 }
 trap cleanup EXIT
 
@@ -82,6 +94,167 @@ ENV_EXAMPLE_EMPTY_FIELDS=(
     "ENCRYPTION_CERT_PASSWORD"
     "SIGNING_CERT_PASSWORD"
 )
+
+create_wizard_fixture() {
+    local name="$1"
+    WIZARD_FIXTURE="$WIZARD_TMP_DIR/$name"
+    mkdir -p "$WIZARD_FIXTURE/bin" "$WIZARD_FIXTURE/certs"
+    cp "$DEPLOYMENT_DIR/setup-env.sh" "$WIZARD_FIXTURE/setup-env.sh"
+    cp "$DEPLOYMENT_DIR/setup-env.ps1" "$WIZARD_FIXTURE/setup-env.ps1"
+    printf '%s\n' '#!/usr/bin/env bash' 'exit 0' >"$WIZARD_FIXTURE/bin/openssl"
+    chmod +x "$WIZARD_FIXTURE/bin/openssl"
+    printf '%s\n' 'fixture-only-certificate' >"$WIZARD_FIXTURE/certs/encryption.pfx"
+    printf '%s\n' 'fixture-only-certificate' >"$WIZARD_FIXTURE/certs/signing.pfx"
+    printf '%s\n' \
+        'param([string]$SetupScript, [string]$InputFile)' \
+        '$ErrorActionPreference = "Stop"' \
+        '$global:WizardAnswers = [System.Collections.Generic.Queue[string]]::new()' \
+        'foreach ($answer in [System.IO.File]::ReadAllLines($InputFile)) { [void]$global:WizardAnswers.Enqueue($answer) }' \
+        'function global:Read-Host {' \
+        '    param([string]$Prompt, [switch]$AsSecureString)' \
+        '    if ($global:WizardAnswers.Count -eq 0) { throw "Wizard fixture input exhausted." }' \
+        '    $answer = $global:WizardAnswers.Dequeue()' \
+        '    if ($AsSecureString) { return ConvertTo-SecureString $answer -AsPlainText -Force }' \
+        '    return $answer' \
+        '}' \
+        '& $SetupScript' >"$WIZARD_FIXTURE/run-wizard.ps1"
+}
+
+run_wizard() {
+    local shell_name="$1"
+    local fixture="$2"
+    local input="$3"
+    local script_name="setup-env.sh"
+    WIZARD_STATUS=0
+
+    if [[ "$shell_name" == "powershell" ]]; then
+        script_name="setup-env.ps1"
+        local script_path="$fixture/$script_name"
+        local wrapper_path="$fixture/run-wizard.ps1"
+        local input_path="$fixture/input.txt"
+        printf '%s\n' "$input" >"$input_path"
+        if command -v wslpath >/dev/null 2>&1 && [[ "$script_path" == /mnt/* ]]; then
+            script_path=$(wslpath -w "$script_path")
+            wrapper_path=$(wslpath -w "$wrapper_path")
+            input_path=$(wslpath -w "$input_path")
+        fi
+        if PATH="$fixture/bin:$PATH" "${POWERSHELL_COMMAND[@]}" -File "$wrapper_path" \
+            -SetupScript "$script_path" -InputFile "$input_path" \
+            >"$fixture/output.log" 2>&1 <<<"$input"; then
+            :
+        else
+            WIZARD_STATUS=$?
+        fi
+    elif PATH="$fixture/bin:$PATH" bash "$fixture/$script_name" >"$fixture/output.log" 2>&1 <<<"$input"; then
+        :
+    else
+        WIZARD_STATUS=$?
+    fi
+}
+
+assert_external_sql_output() {
+    local shell_name="$1"
+    local fixture="$2"
+    local env_file="$fixture/.env"
+
+    if (( WIZARD_STATUS != 0 )) || ! grep -Fq 'Encrypt=True;TrustServerCertificate=False' "$env_file" ||
+       grep -Fq 'TrustServerCertificate=True' "$env_file"; then
+        fail "wizard-external-sql-tls" "$shell_name"
+    fi
+}
+
+assert_external_postgres_ca_output() {
+    local shell_name="$1"
+    local fixture="$2"
+    local env_file="$fixture/.env"
+
+    if (( WIZARD_STATUS != 0 )) ||
+       ! grep -Fq 'Ssl Mode=VerifyFull;Root Certificate=/app/certs/fixture-ca.pem' "$env_file" ||
+       grep -Eq 'Root Certificate=[A-Za-z]:|Root Certificate=.*\\\\' "$env_file"; then
+        fail "wizard-external-postgres-tls" "$shell_name"
+    fi
+}
+
+assert_wizard_rejection() {
+    local shell_name="$1"
+    local fixture="$2"
+
+    if (( WIZARD_STATUS == 0 )) || [[ -e "$fixture/.env" ]]; then
+        fail "wizard-external-tls-rejection" "$shell_name"
+    fi
+}
+
+assert_wizard_decline_preserves_existing_env() {
+    local shell_name="$1"
+    local fixture="$2"
+    local sentinel="OPAQUE_EXISTING_ENV_SENTINEL"
+
+    printf 'existing=%s\r\nsecond=line\n' "$sentinel" >"$fixture/.env"
+    cp "$fixture/.env" "$fixture/original.env"
+    run_wizard "$shell_name" "$fixture" "n"
+    if (( WIZARD_STATUS != 0 )) || ! cmp -s "$fixture/original.env" "$fixture/.env" ||
+       grep -Fq "$sentinel" "$fixture/output.log"; then
+        fail "wizard-existing-env-preservation" "$shell_name"
+    fi
+}
+
+assert_wizard_confirmed_overwrite_backs_up() {
+    local shell_name="$1"
+    local fixture="$2"
+    local input="$3"
+    local backup_file
+
+    printf '%s\n' 'previous=BACKUP_SENTINEL' >"$fixture/.env"
+    cp "$fixture/.env" "$fixture/original.env"
+    run_wizard "$shell_name" "$fixture" $'y\n'"$input"
+    backup_file=$(find "$fixture" -maxdepth 1 -type f -name '.env.backup.*' -print -quit)
+    if (( WIZARD_STATUS != 0 )) || [[ -z "$backup_file" ]] || ! cmp -s "$fixture/original.env" "$backup_file"; then
+        fail "wizard-confirmed-overwrite-backup" "$shell_name"
+    fi
+}
+
+assert_internal_docker_output() {
+    local shell_name="$1"
+    local fixture="$2"
+    local env_file="$fixture/.env"
+
+    if (( WIZARD_STATUS != 0 )) ||
+       ! tr -d '\r' <"$env_file" | grep -Eq "^ConnectionStrings__SqlServerConnection='Server=mssql-service;Database=hybridauth_idp;User Id=sa;Password=[^;']+;Encrypt=True;TrustServerCertificate=True'$" ||
+       ! tr -d '\r' <"$env_file" | grep -Eq "^ConnectionStrings__PostgreSqlConnection='Host=postgres-service;Port=5432;Database=hybridauth_idp;Username=user;Password=[^;']+'$"; then
+        fail "wizard-internal-docker-compatibility" "$shell_name"
+    fi
+}
+
+wizard_sql_input=$'4\n\n\n1\nsql.fixture.invalid,1433\nfixture_db\nfixture_user\nfixture-password_123!\n1\n\n\n\n\n\n\n\n\nhttps://idp.fixture.invalid/'
+wizard_postgres_ca_input=$'4\n\n\n2\npostgres.fixture.invalid\n5432\nfixture_db\nfixture_user\nfixture-password_123!\n2\nfixture-ca.pem\n1\n\n\n\n\n\n\n\n\nhttps://idp.fixture.invalid/'
+wizard_postgres_invalid_ca_input=$'4\n\n\n2\npostgres.fixture.invalid\n5432\nfixture_db\nfixture_user\nfixture-password_123!\n2\n../unsafe.crt'
+wizard_internal_input=$'1\n1\n1\n\n\n\n\n\n\n\n\nhttps://idp.fixture.invalid/'
+
+for shell_name in bash powershell; do
+    create_wizard_fixture "$shell_name-external-sql"
+    run_wizard "$shell_name" "$WIZARD_FIXTURE" "$wizard_sql_input"
+    assert_external_sql_output "$shell_name" "$WIZARD_FIXTURE"
+
+    create_wizard_fixture "$shell_name-external-postgres-ca"
+    mkdir -p "$WIZARD_FIXTURE/certs"
+    printf '%s\n' 'fixture-only-ca-material' >"$WIZARD_FIXTURE/certs/fixture-ca.pem"
+    run_wizard "$shell_name" "$WIZARD_FIXTURE" "$wizard_postgres_ca_input"
+    assert_external_postgres_ca_output "$shell_name" "$WIZARD_FIXTURE"
+
+    create_wizard_fixture "$shell_name-external-postgres-invalid-ca"
+    run_wizard "$shell_name" "$WIZARD_FIXTURE" "$wizard_postgres_invalid_ca_input"
+    assert_wizard_rejection "$shell_name" "$WIZARD_FIXTURE"
+
+    create_wizard_fixture "$shell_name-decline-existing-env"
+    assert_wizard_decline_preserves_existing_env "$shell_name" "$WIZARD_FIXTURE"
+
+    create_wizard_fixture "$shell_name-confirmed-overwrite"
+    assert_wizard_confirmed_overwrite_backs_up "$shell_name" "$WIZARD_FIXTURE" "$wizard_sql_input"
+
+    create_wizard_fixture "$shell_name-internal-docker"
+    run_wizard "$shell_name" "$WIZARD_FIXTURE" "$wizard_internal_input"
+    assert_internal_docker_output "$shell_name" "$WIZARD_FIXTURE"
+done
 
 write_env() {
     local output="$1"

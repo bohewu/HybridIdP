@@ -172,7 +172,7 @@ services:
   loki:
     image: grafana/loki:2.9.0
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - loki-data:/loki
@@ -180,11 +180,11 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
-      - GF_USERS_ALLOW_SIGN_UP=false
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:?GRAFANA_PASSWORD must be set and non-empty before startup}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana-data:/var/lib/grafana
     depends_on:
@@ -249,12 +249,23 @@ scrape_configs:
 ### 啟動
 
 ```bash
+# Enter the password without placing it in a command line, shell history, or repository file.
+read -rsp "Grafana administrator password: " GRAFANA_PASSWORD
+printf '\n'
+export GRAFANA_PASSWORD
 docker compose -f docker-compose.logging.yml up -d
+unset GRAFANA_PASSWORD
 ```
+
+`GRAFANA_PASSWORD` is required and must be non-empty; Compose stops before startup if it is missing or empty. Store the value in the operator-approved secret manager, not in the Compose file or source control.
 
 ### 設定 Grafana
 
-1. 開啟 `http://your-host:3000`
+The default port mappings are loopback-only. From the monitoring host, open Grafana at `http://127.0.0.1:3000`; Loki is available to that same host at `http://127.0.0.1:3100`. Remote hosts cannot access either service through these default mappings.
+
+**Protected-network exposure:** If remote access is deliberate, use a separately reviewed reverse proxy or Compose override restricted to the protected management network, with TLS and access controls. Do not replace the loopback bindings with a broad `0.0.0.0` publication.
+
+1. 開啟 `http://127.0.0.1:3000`
 2. 登入 (admin / 你設定的密碼)
 3. **Connections** → **Data Sources** → **Add data source**
 4. 選擇 **Loki**
@@ -302,7 +313,7 @@ services:
   victorialogs:
     image: victoriametrics/victoria-logs:latest
     ports:
-      - "9428:9428"
+      - "127.0.0.1:9428:9428"
     volumes:
       - vlogs-data:/vlogs
     command:
@@ -321,11 +332,11 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
-      - GF_USERS_ALLOW_SIGN_UP=false
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:?GRAFANA_PASSWORD must be set and non-empty before startup}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana-data:/var/lib/grafana
     depends_on:
@@ -361,12 +372,23 @@ framing.method = "newline_delimited"
 ### 啟動
 
 ```bash
+# Enter the password without placing it in a command line, shell history, or repository file.
+read -rsp "Grafana administrator password: " GRAFANA_PASSWORD
+printf '\n'
+export GRAFANA_PASSWORD
 docker compose -f docker-compose.logging-victorialogs.yml up -d
+unset GRAFANA_PASSWORD
 ```
+
+`GRAFANA_PASSWORD` is required and must be non-empty; Compose stops before startup if it is missing or empty. Store the value in the operator-approved secret manager, not in the Compose file or source control.
 
 ### 設定 Grafana
 
-1. 開啟 `http://your-host:3000`
+The default port mappings are loopback-only. From the monitoring host, open Grafana at `http://127.0.0.1:3000`; VictoriaLogs is available to that same host at `http://127.0.0.1:9428`. Remote hosts cannot access either service through these default mappings.
+
+**Protected-network exposure:** If remote access is deliberate, use a separately reviewed reverse proxy or Compose override restricted to the protected management network, with TLS and access controls. Do not replace the loopback bindings with a broad `0.0.0.0` publication.
+
+1. 開啟 `http://127.0.0.1:3000`
 2. 安裝 VictoriaLogs 插件：
    ```bash
    docker exec -it grafana grafana-cli plugins install victoriametrics-logs-datasource

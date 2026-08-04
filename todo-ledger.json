@@ -214,6 +214,50 @@
       "completed_at": "2026-08-04T04:03:30Z",
       "updated_at": "2026-08-04T04:03:30Z",
       "notes": "Finding csf_6979042d4ed939d5baaf58aa is remediated by HTML-encoding untrusted LoginNotice localization at the shared Razor rendering boundary while preserving resolver, storage, and authorization behavior. Evidence: real Razor 5/5, resolver 7/7, localization services 11/11, auth system 2/2, full backend 1,599 passed/1 skipped/0 failed, solution build 0 warnings/errors, review pass, exact four-path scope, git diff --check pass, temporary environment variables restored/unset, and no task-attributed dotnet/Web.IdP processes or listeners remained. Passkey, deployment, and unrelated findings remain out of scope."
+    },
+    {
+      "id": "SEC-20260804-external-db-tls",
+      "summary": "Authenticated TLS for external database setup wizard output",
+      "status": "done",
+      "priority": "medium",
+      "source": "pipeline",
+      "source_run_id": "deployment-medium-20260804T041444Z-7f3c2d19",
+      "related_task_ids": [
+        "task-external-db-tls-wizards"
+      ],
+      "artifact_paths": [
+        ".pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/problem-spec.json",
+        ".pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/task-list.json",
+        ".pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/status/tasks/task-external-db-tls-wizards.json",
+        ".pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/test-report.json",
+        ".pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/review-report.json",
+        "docs/security/SECURITY_REMEDIATION_TODO.md"
+      ],
+      "completed_at": "2026-08-04T05:23:46Z",
+      "updated_at": "2026-08-04T05:23:46Z",
+      "notes": "Finding csf_b3ba101b8e2c1014cda67044 is fixed in both setup wizards: new external SQL Server output uses Encrypt=True;TrustServerCertificate=False and PostgreSQL uses SSL Mode=VerifyFull with system trust or /app/certs CA material; invalid TLS inputs fail closed. An existing operator-managed .env remains byte-for-byte preserved when replacement is declined, and internal Docker connection strings/networking remain unchanged. Deterministic deployment contracts, syntax/parser, diff/scope, and cleanup checks passed; test-report and strong review passed with required_followups empty. No live VM, ignored .env, credentials, migrations/data, or push action was used."
+    },
+    {
+      "id": "SEC-20260804-monitoring-private-defaults",
+      "summary": "Private-by-default monitoring examples with explicit Grafana credentials",
+      "status": "done",
+      "priority": "medium",
+      "source": "pipeline",
+      "source_run_id": "deployment-medium-20260804T041444Z-7f3c2d19",
+      "related_task_ids": [
+        "task-monitoring-markdown-contract"
+      ],
+      "artifact_paths": [
+        ".pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/problem-spec.json",
+        ".pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/task-list.json",
+        ".pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/status/tasks/task-monitoring-markdown-contract.json",
+        ".pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/test-report.json",
+        ".pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/review-report.json",
+        "docs/security/SECURITY_REMEDIATION_TODO.md"
+      ],
+      "completed_at": "2026-08-04T05:23:46Z",
+      "updated_at": "2026-08-04T05:23:46Z",
+      "notes": "Finding csf_5f4b4b4b513c35cbf65f0b09 is fixed in both MAINTENANCE_GUIDE compose examples: Grafana and log-store ports are loopback-only by default, a non-empty GRAFANA_PASSWORD is required, internal Docker connectivity remains compatible, and PowerShell rendering is corrected. Deterministic monitoring static validator, syntax/parser, diff/scope, and cleanup checks passed; test-report and strong review passed with required_followups empty. No live VM, ignored .env, credentials, migrations/data, or push action was used."
     }
   ]
 }

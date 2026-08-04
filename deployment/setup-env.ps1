@@ -110,6 +110,32 @@ function Read-Choice {
     return $Choices[$DefaultIndex]
 }
 
+# Reject values that could alter a quoted connection-string line in the generated .env file.
+function Assert-ExternalConnectionPart {
+    param(
+        [string]$Name,
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value) -or
+        $Value.IndexOfAny(@([char]0, [char]10, [char]13, [char]39, [char]59)) -ge 0) {
+        throw "Invalid external $Name. It must be non-empty and cannot contain a semicolon, apostrophe, or line break."
+    }
+}
+
+function Read-PostgreSqlTlsTrust {
+    Write-Host "`nSelect how the PostgreSQL server certificate will be verified:"
+    Write-Host "  1. System trust store (the container image must trust the database CA)"
+    Write-Host "  2. CA certificate in deployment/certs (mounted read-only at /app/certs)"
+
+    $selection = Read-Host -Prompt "Enter choice (1-2)"
+    switch ($selection) {
+        "1" { return "SystemTrust" }
+        "2" { return "CaFile" }
+        default { throw "Select PostgreSQL TLS trust option 1 or 2. No external database configuration was written." }
+    }
+}
+
 # Main script
 Write-Host @"
 
@@ -133,11 +159,13 @@ if (Test-Path $envPath) {
         Write-Warn "Existing .env file found at: $envPath"
         $overwrite = Read-Host "Overwrite? (y/N)"
         if ($overwrite -ne "y" -and $overwrite -ne "Y") {
-            Write-Info "Creating backup and continuing..."
-            $backupPath = "$envPath.backup.$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-            Copy-Item $envPath $backupPath
-            Write-Info "Backup created: $backupPath"
+            Write-Info "Existing .env left unchanged."
+            exit 0
         }
+
+        $backupPath = "$envPath.backup.$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+        Copy-Item $envPath $backupPath
+        Write-Info "Backup created: $backupPath"
     }
 }
 
@@ -184,6 +212,11 @@ if ($useExternalDb) {
             $externalDbPassword = New-SecurePassword -Length 24 -SqlSafe
             Write-Info "Generated random password: $externalDbPassword"
         }
+
+        Assert-ExternalConnectionPart -Name "SQL Server host" -Value $externalDbHost
+        Assert-ExternalConnectionPart -Name "database name" -Value $externalDbName
+        Assert-ExternalConnectionPart -Name "database user" -Value $externalDbUser
+        Assert-ExternalConnectionPart -Name "database password" -Value $externalDbPassword
     } else {
         $externalDbHost = Read-PromptWithDefault -Prompt "PostgreSQL Host" -Default "localhost"
         $externalDbPort = Read-PromptWithDefault -Prompt "PostgreSQL Port" -Default "5432"
@@ -193,6 +226,33 @@ if ($useExternalDb) {
         if ([string]::IsNullOrWhiteSpace($externalDbPassword)) {
             $externalDbPassword = New-SecurePassword -Length 24
             Write-Info "Generated random password: $externalDbPassword"
+        }
+
+        Assert-ExternalConnectionPart -Name "PostgreSQL host" -Value $externalDbHost
+        Assert-ExternalConnectionPart -Name "PostgreSQL port" -Value $externalDbPort
+        Assert-ExternalConnectionPart -Name "database name" -Value $externalDbName
+        Assert-ExternalConnectionPart -Name "database user" -Value $externalDbUser
+        Assert-ExternalConnectionPart -Name "database password" -Value $externalDbPassword
+
+        $parsedPort = 0
+        if (-not [int]::TryParse($externalDbPort, [ref]$parsedPort) -or $parsedPort -lt 1 -or $parsedPort -gt 65535) {
+            throw "Invalid external PostgreSQL port. No external database configuration was written."
+        }
+
+        $postgresTlsTrust = Read-PostgreSqlTlsTrust
+        $postgresTlsParameters = ""
+        if ($postgresTlsTrust -eq "CaFile") {
+            $externalDbCaFile = Read-PromptWithDefault -Prompt "PostgreSQL CA certificate filename (place it in deployment/certs first)" -Default ""
+            if ($externalDbCaFile -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*\.(crt|pem)$') {
+                throw "Invalid PostgreSQL CA certificate filename. No external database configuration was written."
+            }
+
+            $externalDbCaPath = Join-Path $ScriptDir "certs/$externalDbCaFile"
+            if (-not (Test-Path -LiteralPath $externalDbCaPath -PathType Leaf)) {
+                throw "PostgreSQL CA certificate was not found in deployment/certs. No external database configuration was written."
+            }
+
+            $postgresTlsParameters = ";Root Certificate=/app/certs/$externalDbCaFile"
         }
     }
 }
@@ -294,27 +354,36 @@ DATABASE_PROVIDER=$(if ($useSqlServer) { "SqlServer" } else { "PostgreSQL" })
 
 # Database Connection Strings
 $(if ($useExternalDb) {
-"# External database connection (user-provided)"
 if ($useSqlServer) {
-"ConnectionStrings__SqlServerConnection='Server=$externalDbHost;Database=$externalDbName;User Id=$externalDbUser;Password=$externalDbPassword;Encrypt=True;TrustServerCertificate=True'"
+@(
+"# External database connection (user-provided, TLS peer verification required)"
+"ConnectionStrings__SqlServerConnection='Server=$externalDbHost;Database=$externalDbName;User Id=$externalDbUser;Password=$externalDbPassword;Encrypt=True;TrustServerCertificate=False'"
 "ConnectionStrings__PostgreSqlConnection='NotConfiguredForSelectedProvider'"
+) -join [Environment]::NewLine
 } else {
+@(
+"# External database connection (user-provided, TLS peer verification required)"
 "ConnectionStrings__SqlServerConnection='NotConfiguredForSelectedProvider'"
-"ConnectionStrings__PostgreSqlConnection='Host=$externalDbHost;Port=$externalDbPort;Database=$externalDbName;Username=$externalDbUser;Password=$externalDbPassword'"
+"ConnectionStrings__PostgreSqlConnection='Host=$externalDbHost;Port=$externalDbPort;Database=$externalDbName;Username=$externalDbUser;Password=$externalDbPassword;Ssl Mode=VerifyFull$postgresTlsParameters'"
+) -join [Environment]::NewLine
 }
 } else {
+@(
 "# Docker internal database (mssql-service, postgres-service are Docker Compose service names)"
 "ConnectionStrings__SqlServerConnection='Server=mssql-service;Database=hybridauth_idp;User Id=sa;Password=$mssqlPassword;Encrypt=True;TrustServerCertificate=True'"
 "ConnectionStrings__PostgreSqlConnection='Host=postgres-service;Port=5432;Database=hybridauth_idp;Username=user;Password=$postgresPassword'"
+) -join [Environment]::NewLine
 })
 ConnectionStrings__RedisConnection='redis-service:6379'
 
 $(if (-not $useExternalDb) {
+@(
 "# Database Credentials (for Docker container initialization)"
 "MSSQL_SA_PASSWORD='$mssqlPassword'"
 "POSTGRES_USER='user'"
 "POSTGRES_PASSWORD='$postgresPassword'"
 "POSTGRES_DB='hybridauth_idp'"
+) -join [Environment]::NewLine
 })
 
 # Redis Configuration
@@ -446,7 +515,7 @@ if ((Test-Path $encryptionPfx) -and (Test-Path $signingPfx)) {
                 -password "pass:$signingCertPassword" 2>$null
             
             # Cleanup key/crt files (optional, keep only pfx)
-            Remove-Item -Path "*.key", "*.crt" -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path "encryption.key", "encryption.crt", "signing.key", "signing.crt" -Force -ErrorAction SilentlyContinue
             
             Write-Info "Certificates generated successfully!"
         } finally {

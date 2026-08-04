@@ -233,8 +233,21 @@ Status values: `in_progress`, `pending`, `deferred`, and `done`.
 | `csf_65f2561e219c2e3061ca2ec9` | fixed | Label a permitted passkey assertion as MFA only when validated authenticator data confirms user verification. |
 | `csf_6979042d4ed939d5baaf58aa` | fixed | Encode configured localization content at the shared login-notice Razor boundary. |
 | `csf_46710f5179fa498ef6327608` | fixed | Require `monitoring.read` for hub subscriptions and remove caller-invokable broadcast methods. |
-| `csf_b3ba101b8e2c1014cda67044` | pending | Verify external database TLS peer identity in production setup guidance and generated configuration. |
-| `csf_5f4b4b4b513c35cbf65f0b09` | pending | Remove public monitoring-port defaults and repository-known Grafana fallback credentials from operational guidance. |
+| `csf_b3ba101b8e2c1014cda67044` | fixed | Production setup now emits SQL Server `Encrypt=True;TrustServerCertificate=False` and PostgreSQL `SSL Mode=VerifyFull`, using system trust or `/app/certs` CA material; invalid TLS inputs fail closed and an existing `.env` remains preserved when replacement is declined. |
+| `csf_5f4b4b4b513c35cbf65f0b09` | fixed | Monitoring examples bind Grafana and log-store ports to loopback and require a non-empty `GRAFANA_PASSWORD`; internal Docker connectivity is retained and PowerShell secret-input newline rendering is corrected. |
+
+### Deployment and Monitoring Verification Evidence
+
+- `csf_b3ba101b8e2c1014cda67044`: independent syntax, parser, hardening,
+  diff, scope, and cleanup checks passed. Coverage confirms SQL Server emits
+  `Encrypt=True;TrustServerCertificate=False`; PostgreSQL uses `VerifyFull`
+  with system trust or `/app/certs` CA material; invalid inputs fail closed;
+  and declining replacement preserves an existing `.env`.
+- `csf_5f4b4b4b513c35cbf65f0b09`: independent monitoring, syntax, parser,
+  hardening, diff, scope, and cleanup checks passed. Coverage confirms
+  loopback-only monitoring publication, a required non-empty Grafana password,
+  retained internal Docker service compatibility, and corrected PowerShell
+  newline rendering for secret input.
 
 ### M1 Verification Evidence
 

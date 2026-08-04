@@ -48,6 +48,12 @@ The wizard will ask for:
 3.  **Security**: It will auto-generate strong passwords for DBs and Certs.
 4.  **Certificates**: It can generate self-signed certificates using OpenSSL automatically.
 
+#### New External Database TLS
+
+For a new external SQL Server configuration, the wizard emits `Encrypt=True` and `TrustServerCertificate=False`, so the server certificate and name must validate against the container trust store. For a new external PostgreSQL configuration, choose one verification source explicitly: use the container system trust store only when it already trusts the database CA, or place a CA file with a simple `.crt` or `.pem` filename in `deployment/certs` before running the wizard. The latter is emitted as `Ssl Mode=VerifyFull;Root Certificate=/app/certs/<filename>`; do not enter a Windows host path or a path outside that mounted directory.
+
+Invalid external TLS input stops the wizard before it writes a new `.env`. These requirements apply only to newly generated external connection strings. Internal Docker database connection strings retain their existing networking and certificate compatibility. If an existing `.env` is detected, answer anything other than `y` to leave it byte-for-byte unchanged; answering `y` creates a timestamped backup before replacement. Existing operator-managed connection strings are not parsed, normalized, or retroactively rejected by the wizard.
+
 ### 3. Start the Application
 The script will output the exact command to run based on your choices. Typically:
 
@@ -285,7 +291,7 @@ openssl pkcs12 -export -out signing.pfx -inkey signing.key -in signing.crt -pass
 
 ### Database & Redis Options
 -   **Redis**: Set `Redis__Enabled=false` to use In-Memory caching (not recommended for multi-instance production).
--   **External DB**: Update `ConnectionStrings__...` with your real server details.
+-   **External DB**: For a new SQL Server value, require `Encrypt=True;TrustServerCertificate=False`. For a new PostgreSQL value, require `Ssl Mode=VerifyFull` and either the container system trust store or `Root Certificate=/app/certs/<simple-ca-filename>`. Do not use host-specific paths in a container connection string.
 
 ### Troubleshooting Manual Setup
 **"Permission denied" when reading .env:**

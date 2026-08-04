@@ -193,6 +193,8 @@ updates through `IHubContext<MonitoringHub>`.
 
 Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, certificate passwords, and a fixed public OIDC origin. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.
 
+For newly generated external database settings, the setup scripts require authenticated TLS peer verification: SQL Server uses `Encrypt=True;TrustServerCertificate=False`, and PostgreSQL uses `Ssl Mode=VerifyFull` with an explicit system-trust or `deployment/certs` CA-file choice. A supplied PostgreSQL CA is referenced only as the mounted Linux-container path `/app/certs/<filename>`; unsafe or malformed external TLS input fails before a new configuration is written. This does not alter existing operator-managed connection strings or the internal Docker database trust behavior.
+
 The public origin is configured as `OpenIddict__Issuer` plus its matching `PUBLIC_AUTHORITY`. Production derives the ASP.NET Core Host allowlist from the issuer. Repository Nginx gateways overwrite the upstream Host with the configured authority and do not trust a request-supplied Host or `X-Forwarded-Host`. External reverse proxies must provide the same fixed Host and the effective HTTPS scheme.
 
 Validation rejects missing or empty required inputs before image pull, local build, or service startup. Its diagnostics name the missing variable but never print the configured value. Store and provide these values through the operator's approved secret-management process.

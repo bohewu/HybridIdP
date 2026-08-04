@@ -177,6 +177,12 @@ dotnet user-secrets set "ConnectionStrings:PostgreSqlConnection" "Host=localhost
 
 ## 🚢 Production 部署
 
+### 新 External DB 的 TLS 驗證
+
+部署 wizard 只對**新產生的外部資料庫**連線字串強制 TLS server 驗證。SQL Server 使用 `Encrypt=True;TrustServerCertificate=False`。PostgreSQL 使用 `Ssl Mode=VerifyFull`，並要求 operator 明確選擇已信任資料庫 CA 的 container system trust store，或在執行 wizard 前把 CA 檔放入 `deployment/certs`。後者只能使用簡單的 `.crt` 或 `.pem` 檔名，wizard 會輸出 Linux container 路徑 `Root Certificate=/app/certs/<filename>`；不要使用 Windows host path。
+
+這項檢查在寫入新的 `.env` 前失敗關閉，不會變更 internal Docker database 的 service name、networking 或既有 TLS 相容性。既有 deployment 的 operator-managed external connection string 保持不變，wizard 不會解析、正規化或追溯拒絕它；若重新執行時不確認 overwrite，原 `.env` 會保持 byte-for-byte 不變。
+
 ### 環境變數設定 (推薦)
 
 **原因:**

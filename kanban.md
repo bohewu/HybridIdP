@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-08-04T04:03:30Z._
+_Derived from `todo-ledger.json`; updated 2026-08-04T05:23:46Z._
 
 ## Done
 
@@ -151,3 +151,35 @@ _Derived from `todo-ledger.json`; updated 2026-08-04T04:03:30Z._
   - `.pipeline-output/localization-medium-20260804T031736Z-8da3ce62/pipeline/review-report.json`
   - `.pipeline-output/localization-medium-20260804T031736Z-8da3ce62/status/tasks/remediate-loginnote-rendering-xss.json`
   - `.pipeline-output/localization-medium-20260804T031736Z-8da3ce62/status/tasks/document-loginnote-xss-remediation.json`
+
+### SEC-20260804-external-db-tls — Authenticated TLS for external database setup wizard output
+
+- Completed: 2026-08-04T05:23:46Z
+- Run: `deployment-medium-20260804T041444Z-7f3c2d19`
+- Priority: medium
+- Source: `pipeline`
+- Related tasks: `task-external-db-tls-wizards`
+- Notes: Finding csf_b3ba101b8e2c1014cda67044 is fixed in both setup wizards: new external SQL Server output uses Encrypt=True;TrustServerCertificate=False and PostgreSQL uses SSL Mode=VerifyFull with system trust or /app/certs CA material; invalid TLS inputs fail closed. An existing operator-managed .env remains byte-for-byte preserved when replacement is declined, and internal Docker connection strings/networking remain unchanged. Deterministic deployment contracts, syntax/parser, diff/scope, and cleanup checks passed; test-report and strong review passed with required_followups empty. No live VM, ignored .env, credentials, migrations/data, or push action was used.
+- Artifacts:
+  - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/problem-spec.json`
+  - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/task-list.json`
+  - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/status/tasks/task-external-db-tls-wizards.json`
+  - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/test-report.json`
+  - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/review-report.json`
+  - `docs/security/SECURITY_REMEDIATION_TODO.md`
+
+### SEC-20260804-monitoring-private-defaults — Private-by-default monitoring examples with explicit Grafana credentials
+
+- Completed: 2026-08-04T05:23:46Z
+- Run: `deployment-medium-20260804T041444Z-7f3c2d19`
+- Priority: medium
+- Source: `pipeline`
+- Related tasks: `task-monitoring-markdown-contract`
+- Notes: Finding csf_5f4b4b4b513c35cbf65f0b09 is fixed in both MAINTENANCE_GUIDE compose examples: Grafana and log-store ports are loopback-only by default, a non-empty GRAFANA_PASSWORD is required, internal Docker connectivity remains compatible, and PowerShell rendering is corrected. Deterministic monitoring static validator, syntax/parser, diff/scope, and cleanup checks passed; test-report and strong review passed with required_followups empty. No live VM, ignored .env, credentials, migrations/data, or push action was used.
+- Artifacts:
+  - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/problem-spec.json`
+  - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/task-list.json`
+  - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/status/tasks/task-monitoring-markdown-contract.json`
+  - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/test-report.json`
+  - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/review-report.json`
+  - `docs/security/SECURITY_REMEDIATION_TODO.md`
