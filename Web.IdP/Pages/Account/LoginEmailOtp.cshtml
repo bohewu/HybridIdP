@@ -81,13 +81,15 @@
                                         data-text-resend="@Localizer["Resend"]"
                                         data-text-email-code-sent="@Localizer["EmailCodeSent"]"
                                         data-text-please-wait="@Localizer["PleaseWaitThenRetry"]"
+                                        data-text-sending="@Localizer["SendingEmailCode"]"
+                                        data-text-send-failed="@Localizer["SendEmailCodeFailed"]"
                                         data-send-code-url="@Url.Page("./LoginEmailOtp", "SendCode")">
                                     <span class="btn-text">@Localizer["SendCode"]</span>
                                     <span class="countdown hidden ml-1"></span>
                                 </button>
                             </div>
                             <span asp-validation-for="Input.EmailCode" class="text-red-600 text-xs mt-1 block"></span>
-                            <p id="emailCodeSentMsg" class="text-green-600 text-xs mt-1 hidden transition-opacity duration-500">
+                            <p id="emailCodeSentMsg" class="text-green-600 text-xs mt-1 hidden transition-opacity duration-500" role="status" aria-live="polite">
                                 <i class="bi bi-check-circle-fill mr-1"></i> @Localizer["EmailCodeSent"]
                             </p>
                         </div>

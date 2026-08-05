@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
         resend: btn.dataset.textResend,
         emailCodeSent: btn.dataset.textEmailCodeSent,
         pleaseWaitThenRetry: btn.dataset.textPleaseWait,
+        sending: btn.dataset.textSending,
+        sendFailed: btn.dataset.textSendFailed,
         sendCodeUrl: btn.dataset.sendCodeUrl
     };
 
@@ -16,20 +18,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const countdownSpan = btn.querySelector('.countdown');
     const msg = document.getElementById('emailCodeSentMsg');
     let countdownInterval;
+    let messageTimeout;
+
+    function showMessage(text, tone) {
+        if (messageTimeout) clearTimeout(messageTimeout);
+
+        msg.textContent = text;
+        msg.classList.remove('hidden', 'text-green-600', 'text-amber-600', 'text-red-600');
+        msg.classList.add(tone);
+        msg.setAttribute('role', tone === 'text-red-600' ? 'alert' : 'status');
+
+        messageTimeout = setTimeout(() => msg.classList.add('hidden'), 5000);
+    }
 
     async function sendCode() {
         if (btn.disabled) return;
         
         btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
         const originalText = btnText.textContent;
-        btnText.textContent = '...';
+        btnText.textContent = i18n.sending;
         
         try {
             const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
             const response = await fetch(i18n.sendCodeUrl, { 
                 method: 'POST',
                 headers: { 
-                    'RequestVerificationToken': token,
+                    'X-XSRF-TOKEN': token,
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }
             });
@@ -38,8 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 
                 // Show success message
-                msg.classList.remove('hidden');
-                setTimeout(() => msg.classList.add('hidden'), 5000);
+                showMessage(i18n.emailCodeSent, 'text-green-600');
                 
                 // Start countdown
                 startCountdown(data.remainingSeconds || 60);
@@ -48,23 +62,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 if (data.remainingSeconds) {
                     startCountdown(data.remainingSeconds);
-                    msg.classList.remove('hidden');
-                    msg.textContent = i18n.pleaseWaitThenRetry;
-                    msg.classList.replace('text-green-600', 'text-amber-600');
-                    setTimeout(() => {
-                        msg.classList.add('hidden');
-                        msg.textContent = i18n.emailCodeSent;
-                        msg.classList.replace('text-amber-600', 'text-green-600');
-                    }, 3000);
+                    showMessage(i18n.pleaseWaitThenRetry, 'text-amber-600');
                 } else {
                     btn.disabled = false;
                     btnText.textContent = originalText;
+                    showMessage(i18n.sendFailed, 'text-red-600');
                 }
             }
         } catch (e) { 
             console.error(e); 
             btn.disabled = false;
             btnText.textContent = originalText;
+            showMessage(i18n.sendFailed, 'text-red-600');
+        } finally {
+            btn.removeAttribute('aria-busy');
         }
     }
 

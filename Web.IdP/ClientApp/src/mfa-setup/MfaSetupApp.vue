@@ -184,8 +184,15 @@
             <button type="button" class="btn-cancel" @click="closeEmailMfaSetup" :disabled="emailLoading">
               {{ t('common.cancel') }}
             </button>
-            <button type="button" class="btn-cancel" @click="sendEmailMfaCode" :disabled="emailLoading">
-              {{ emailCodeSent ? t('mfa.resendCode') : t('mfa.sendCode') }}
+            <button
+              type="button"
+              class="btn-cancel"
+              data-testid="email-mfa-send"
+              @click="sendEmailMfaCode"
+              :disabled="emailLoading || emailCooldownSeconds > 0"
+              :aria-busy="emailLoading ? 'true' : 'false'"
+            >
+              {{ emailSendButtonText }}
             </button>
             <button
               type="submit"
@@ -221,6 +228,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWebAuthn } from '../composables/useWebAuthn'
+import { useEmailCodeCooldown } from '../composables/useEmailCodeCooldown'
 
 const { t } = useI18n()
 const { registerPasskey: webAuthnRegister } = useWebAuthn()
@@ -258,6 +266,18 @@ const emailCode = ref('')
 const emailCodeSent = ref(false)
 const emailError = ref('')
 const emailCodeInput = ref(null)
+const {
+  remainingSeconds: emailCooldownSeconds,
+  startCooldown: startEmailCooldown,
+  stopCooldown: stopEmailCooldown
+} = useEmailCodeCooldown()
+const emailSendButtonText = computed(() => {
+  if (emailLoading.value) return t('mfa.sendingCode')
+  if (emailCooldownSeconds.value > 0) {
+    return t('mfa.resendCodeIn', { seconds: emailCooldownSeconds.value })
+  }
+  return emailCodeSent.value ? t('mfa.resendCode') : t('mfa.sendCode')
+})
 
 // TOTP Modal
 const showTotpModal = ref(false)
@@ -367,23 +387,22 @@ function finishTotpSetup() {
   }, 1000)
 }
 
-async function startEmailMfaSetup() {
+function startEmailMfaSetup() {
   showEmailModal.value = true
   emailCode.value = ''
-  emailCodeSent.value = false
   emailError.value = ''
-  await sendEmailMfaCode()
 }
 
 function closeEmailMfaSetup() {
   if (emailLoading.value) return
   showEmailModal.value = false
   emailCode.value = ''
-  emailCodeSent.value = false
   emailError.value = ''
 }
 
 async function sendEmailMfaCode() {
+  if (emailLoading.value || emailCooldownSeconds.value > 0) return
+
   emailLoading.value = true
   emailError.value = ''
   
@@ -399,10 +418,14 @@ async function sendEmailMfaCode() {
     
     if (res.ok) {
       emailCodeSent.value = true
+      startEmailCooldown(result.remainingSeconds || 60)
       await nextTick()
       emailCodeInput.value?.focus()
+    } else if (result.remainingSeconds) {
+      emailCodeSent.value = true
+      startEmailCooldown(result.remainingSeconds)
     } else {
-      emailError.value = result.message || t('mfa.errors.sendCodeFailed')
+      emailError.value = t('mfa.errors.sendCodeFailed')
     }
   } catch (err) {
     emailError.value = t('mfa.errors.sendCodeFailed')
@@ -433,6 +456,7 @@ async function verifyEmailMfa() {
       showEmailModal.value = false
       emailCode.value = ''
       emailCodeSent.value = false
+      stopEmailCooldown()
       await loadData()
       successMessage.value = t('mfa.emailMfaEnabled')
       setTimeout(() => {
@@ -825,6 +849,14 @@ async function registerPasskey() {
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
   cursor: pointer;
+}
+
+.btn-cancel:disabled {
+  background: #f8f9fa;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .btn-primary {

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Encodings.Web;
 using Core.Application;
 using Core.Application.Interfaces;
 using Infrastructure.Resources;
@@ -25,38 +26,46 @@ public class EmailTemplateService : IEmailTemplateService
 
     public async Task<(string Subject, string Body)> RenderMfaCodeEmailAsync(string code, int expiryMinutes, string? culture = null)
     {
-        // Set culture if specified
-        if (!string.IsNullOrEmpty(culture))
+        var originalUiCulture = CultureInfo.CurrentUICulture;
+        try
         {
-            CultureInfo.CurrentUICulture = new CultureInfo(culture);
+            if (!string.IsNullOrWhiteSpace(culture))
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+            }
+
+            var productName = await _brandingService.GetProductNameAsync();
+            var copyright = await _brandingService.GetCopyrightAsync();
+            var encodedProductName = HtmlEncoder.Default.Encode(productName);
+            var encodedCopyright = HtmlEncoder.Default.Encode(copyright);
+            var encodedCode = HtmlEncoder.Default.Encode(code);
+
+            var subjectTemplate = _localizer["MfaCode_Subject"];
+            var subject = (subjectTemplate.ResourceNotFound ? "Your verification code - {ProductName}" : subjectTemplate.Value)
+                .Replace("{ProductName}", productName, StringComparison.Ordinal);
+
+            var footerTemplate = _localizer["Email_Footer"];
+            var footer = (footerTemplate.ResourceNotFound ? "" : footerTemplate.Value)
+                .Replace("{ProductName}", encodedProductName, StringComparison.Ordinal)
+                .Replace("{Copyright}", encodedCopyright, StringComparison.Ordinal);
+
+            var bodyTemplate = _localizer["MfaCode_Body"];
+            var rawBody = bodyTemplate.ResourceNotFound
+                ? "<p>Your verification code is: <strong>{Code}</strong></p>"
+                : bodyTemplate.Value;
+
+            var body = rawBody
+                .Replace("{ProductName}", encodedProductName, StringComparison.Ordinal)
+                .Replace("{Code}", encodedCode, StringComparison.Ordinal)
+                .Replace("{ExpiryMinutes}", expiryMinutes.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
+                .Replace("{Footer}", footer, StringComparison.Ordinal);
+
+            return (subject, body);
         }
-        
-        var productName = await _brandingService.GetProductNameAsync();
-        var copyright = await _brandingService.GetCopyrightAsync();
-        
-        // Get subject template
-        var subjectTemplate = _localizer["MfaCode_Subject"];
-        var subject = (subjectTemplate.ResourceNotFound ? "Your verification code - {ProductName}" : subjectTemplate.Value)
-            .Replace("{ProductName}", productName, StringComparison.Ordinal);
-
-        // Get footer template
-        var footerTemplate = _localizer["Email_Footer"];
-        var footer = (footerTemplate.ResourceNotFound ? "" : footerTemplate.Value)
-            .Replace("{ProductName}", productName, StringComparison.Ordinal)
-            .Replace("{Copyright}", copyright, StringComparison.Ordinal);
-
-        // Get body template
-        var bodyTemplate = _localizer["MfaCode_Body"];
-        var rawBody = bodyTemplate.ResourceNotFound 
-            ? $"<p>Your verification code is: <strong>{code}</strong></p>" 
-            : bodyTemplate.Value;
-        
-        var body = rawBody
-            .Replace("{Code}", code, StringComparison.Ordinal)
-            .Replace("{ExpiryMinutes}", expiryMinutes.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
-            .Replace("{Footer}", footer, StringComparison.Ordinal);
-
-        return (subject, body);
+        finally
+        {
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 }
 

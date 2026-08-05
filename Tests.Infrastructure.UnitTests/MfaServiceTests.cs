@@ -553,6 +553,11 @@ public class MfaServiceTests
         result.Should().BeTrue();
         user.EmailMfaCode.Should().BeNull();
         user.EmailMfaCodeExpiry.Should().BeNull();
+        distributedCacheMock.Verify(
+            x => x.RemoveAsync(
+                $"EmailMfa_Cooldown_{user.Id}",
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -677,6 +682,47 @@ public class MfaServiceTests
                 It.IsAny<CancellationToken>()),
             Times.Never);
         _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
+        distributedCacheMock.Verify(
+            x => x.RemoveAsync(
+                $"EmailMfa_Cooldown_{user.Id}",
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task VerifyAndEnableEmailMfaAsync_CooldownCleanupFailure_StillReturnsTrue()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        user.EmailMfaCode = "HASHED_CODE";
+        user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5);
+        var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
+        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "123456"))
+            .Returns(PasswordVerificationResult.Success);
+        _userManagerMock.Setup(x => x.UpdateAsync(user))
+            .ReturnsAsync(IdentityResult.Success);
+        var distributedCacheMock = new Mock<IDistributedCache>();
+        distributedCacheMock
+            .Setup(x => x.RemoveAsync(
+                $"EmailMfa_Cooldown_{user.Id}",
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Test-only cache failure"));
+        var sut = CreateMfaService(
+            passwordHasherMock: passwordHasherMock,
+            distributedCacheMock: distributedCacheMock);
+
+        // Act
+        var result = await sut.VerifyAndEnableEmailMfaAsync(user, "123456");
+
+        // Assert
+        result.Should().BeTrue();
+        user.EmailMfaEnabled.Should().BeTrue();
+        user.EmailMfaCode.Should().BeNull();
+        distributedCacheMock.Verify(
+            x => x.RemoveAsync(
+                $"EmailMfa_Cooldown_{user.Id}",
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -689,13 +735,19 @@ public class MfaServiceTests
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "000000"))
             .Returns(PasswordVerificationResult.Failed);
-        var sut = CreateMfaService(passwordHasherMock: passwordHasherMock);
+        var distributedCacheMock = new Mock<IDistributedCache>();
+        var sut = CreateMfaService(
+            passwordHasherMock: passwordHasherMock,
+            distributedCacheMock: distributedCacheMock);
 
         // Act
         var result = await sut.VerifyAndEnableEmailMfaAsync(user, "000000");
 
         // Assert
         result.Should().BeFalse();
+        distributedCacheMock.Verify(
+            x => x.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
         user.EmailMfaEnabled.Should().BeFalse();
         user.EmailMfaCode.Should().Be("HASHED_CODE");
         _userManagerMock.Verify(
@@ -748,7 +800,10 @@ public class MfaServiceTests
                 Code = "PersistenceFailed",
                 Description = "Test-only persistence failure"
             }));
-        var sut = CreateMfaService(passwordHasherMock: passwordHasherMock);
+        var distributedCacheMock = new Mock<IDistributedCache>();
+        var sut = CreateMfaService(
+            passwordHasherMock: passwordHasherMock,
+            distributedCacheMock: distributedCacheMock);
 
         // Act
         var result = await sut.VerifyAndEnableEmailMfaAsync(user, "123456");
@@ -759,6 +814,9 @@ public class MfaServiceTests
         user.EmailMfaCode.Should().Be("HASHED_CODE");
         user.EmailMfaCodeExpiry.Should().Be(pendingExpiry);
         user.EmailMfaVerificationAttempts.Should().Be(2);
+        distributedCacheMock.Verify(
+            x => x.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

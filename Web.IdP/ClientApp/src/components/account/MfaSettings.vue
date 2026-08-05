@@ -209,8 +209,15 @@
             <button type="button" class="btn-cancel" @click="closeEmailMfaSetup" :disabled="emailMfaLoading">
               {{ t('common.cancel') }}
             </button>
-            <button type="button" class="btn-secondary" @click="sendEmailMfaCode" :disabled="emailMfaLoading">
-              {{ emailCodeSent ? t('mfa.resendCode') : t('mfa.sendCode') }}
+            <button
+              type="button"
+              class="btn-secondary"
+              data-testid="email-mfa-send"
+              @click="sendEmailMfaCode"
+              :disabled="emailMfaLoading || emailCooldownSeconds > 0"
+              :aria-busy="emailMfaLoading ? 'true' : 'false'"
+            >
+              {{ emailSendButtonText }}
             </button>
             <button
               type="submit"
@@ -430,11 +437,13 @@
 import { ref, onMounted, computed, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWebAuthn } from '../../composables/useWebAuthn';
+import { useEmailCodeCooldown } from '../../composables/useEmailCodeCooldown';
 
 const { t } = useI18n();
 
 const props = defineProps<{
   profile?: any
+  csrfToken?: string
 }>();
 
 const emit = defineEmits<{
@@ -471,6 +480,18 @@ const emailMfaCode = ref('');
 const emailCodeSent = ref(false);
 const emailMfaModalError = ref('');
 const emailCodeInput = ref<HTMLInputElement | null>(null);
+const {
+  remainingSeconds: emailCooldownSeconds,
+  startCooldown: startEmailCooldown,
+  stopCooldown: stopEmailCooldown
+} = useEmailCodeCooldown();
+const emailSendButtonText = computed(() => {
+  if (emailMfaLoading.value) return t('mfa.sendingCode');
+  if (emailCooldownSeconds.value > 0) {
+    return t('mfa.resendCodeIn', { seconds: emailCooldownSeconds.value });
+  }
+  return emailCodeSent.value ? t('mfa.resendCode') : t('mfa.sendCode');
+});
 
 // Passkeys (Phase 20.4)
 const { registerPasskey } = useWebAuthn();
@@ -653,39 +674,43 @@ async function loadMfaStatus() {
   }
 }
 
-async function openEmailMfaSetup() {
+function openEmailMfaSetup() {
   showEmailMfaModal.value = true;
   emailMfaCode.value = '';
-  emailCodeSent.value = false;
   emailMfaModalError.value = '';
-  await sendEmailMfaCode();
 }
 
 function closeEmailMfaSetup() {
   if (emailMfaLoading.value) return;
   showEmailMfaModal.value = false;
   emailMfaCode.value = '';
-  emailCodeSent.value = false;
   emailMfaModalError.value = '';
 }
 
 async function sendEmailMfaCode() {
+  if (emailMfaLoading.value || emailCooldownSeconds.value > 0) return;
+
   emailMfaLoading.value = true;
   emailMfaModalError.value = '';
   
   try {
     const response = await fetch('/api/account/mfa/email/send', {
       method: 'POST',
+      headers: { 'X-XSRF-TOKEN': props.csrfToken || '' },
       credentials: 'include'
     });
     const result = await response.json().catch(() => ({}));
     
     if (response.ok) {
       emailCodeSent.value = true;
+      startEmailCooldown(result.remainingSeconds || 60);
       await nextTick();
       emailCodeInput.value?.focus();
+    } else if (result.remainingSeconds) {
+      emailCodeSent.value = true;
+      startEmailCooldown(result.remainingSeconds);
     } else {
-      emailMfaModalError.value = result.message || t('mfa.errors.sendCodeFailed');
+      emailMfaModalError.value = t('mfa.errors.sendCodeFailed');
     }
   } catch (err) {
     emailMfaModalError.value = t('mfa.errors.sendCodeFailed');
@@ -704,7 +729,10 @@ async function verifyEmailMfa() {
   try {
     const response = await fetch('/api/account/mfa/email/verify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-XSRF-TOKEN': props.csrfToken || ''
+      },
       credentials: 'include',
       body: JSON.stringify({ code: emailMfaCode.value })
     });
@@ -714,6 +742,7 @@ async function verifyEmailMfa() {
       showEmailMfaModal.value = false;
       emailMfaCode.value = '';
       emailCodeSent.value = false;
+      stopEmailCooldown();
       await loadMfaStatus();
       emailMfaSuccess.value = t('mfa.emailMfaEnabled');
       emit('status-changed');
@@ -1093,6 +1122,15 @@ function finishRegenerate() {
 
 .btn-secondary:hover {
   background: #f1f3f4;
+}
+
+.btn-secondary:disabled,
+.btn-secondary:disabled:hover {
+  background: #f8f9fa;
+  color: #9aa0a6;
+  border-color: #e4e7eb;
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .btn-danger {

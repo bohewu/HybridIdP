@@ -251,7 +251,7 @@ public class MfaService : IMfaService
         }
 
         // Rate Limiting Check
-        var cacheKey = $"EmailMfa_Cooldown_{user.Id}";
+        var cacheKey = GetEmailMfaCooldownKey(user.Id);
         var cachedValue = await _cache.GetStringAsync(cacheKey, ct);
         
         if (!string.IsNullOrEmpty(cachedValue) && long.TryParse(cachedValue, out long expireTicks))
@@ -366,6 +366,7 @@ public class MfaService : IMfaService
         var updateResult = await _userManager.UpdateAsync(user);
         if (updateResult.Succeeded)
         {
+            await ClearEmailMfaCooldownAsync(user.Id, ct);
             return true;
         }
 
@@ -374,6 +375,23 @@ public class MfaService : IMfaService
         user.EmailMfaVerificationAttempts = previousAttempts;
         user.EmailMfaEnabled = wasEmailMfaEnabled;
         return false;
+    }
+
+    private async Task ClearEmailMfaCooldownAsync(Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            await _cache.RemoveAsync(GetEmailMfaCooldownKey(userId), ct);
+        }
+        catch (Exception exception)
+        {
+            // The proof has already been consumed. A cache outage must not turn a
+            // successful MFA verification into a failed authentication attempt.
+            _logger.LogWarning(
+                exception,
+                "Could not clear the email MFA send cooldown for user {UserId}",
+                userId);
+        }
     }
 
     public async Task DisableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default)
@@ -412,6 +430,8 @@ public class MfaService : IMfaService
     #endregion
 
     #region Private Helpers
+
+    private static string GetEmailMfaCooldownKey(Guid userId) => $"EmailMfa_Cooldown_{userId}";
 
     private static string FormatKey(string unformattedKey)
     {

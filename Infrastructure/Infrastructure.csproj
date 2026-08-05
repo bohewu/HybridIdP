@@ -38,9 +38,10 @@
 
 
   <ItemGroup>
-    <Content Update="Resources\*.json">
+    <None Update="Resources\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

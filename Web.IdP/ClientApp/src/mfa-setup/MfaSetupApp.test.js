@@ -5,7 +5,7 @@ import { useWebAuthn } from '../composables/useWebAuthn'
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
-    t: (key) => key
+    t: (key, params) => params?.seconds === undefined ? key : `${key}:${params.seconds}`
   })
 }))
 
@@ -57,7 +57,7 @@ describe('MfaSetupApp Email MFA', () => {
         return Promise.resolve(jsonResponse([]))
       }
       if (url === '/api/account/mfa-setup/email/send') {
-        return Promise.resolve(jsonResponse({ success: true }))
+        return Promise.resolve(jsonResponse({ success: true, remainingSeconds: 60 }))
       }
       if (url === '/api/account/mfa-setup/email/verify') {
         return Promise.resolve(jsonResponse({ success: true }))
@@ -68,6 +68,12 @@ describe('MfaSetupApp Email MFA', () => {
     const wrapper = mount(MfaSetupApp)
     await flushPromises()
     await wrapper.vm.startEmailMfaSetup()
+    await flushPromises()
+
+    expect(fetch.mock.calls.some(
+      ([url]) => url === '/api/account/mfa-setup/email/send')).toBe(false)
+
+    await wrapper.get('[data-testid="email-mfa-send"]').trigger('click')
     await flushPromises()
 
     expect(fetch).toHaveBeenCalledWith('/api/account/mfa-setup/email/send', {
@@ -112,7 +118,7 @@ describe('MfaSetupApp Email MFA', () => {
         return Promise.resolve(jsonResponse([]))
       }
       if (url === '/api/account/mfa-setup/email/send') {
-        return Promise.resolve(jsonResponse({ success: true }))
+        return Promise.resolve(jsonResponse({ success: true, remainingSeconds: 60 }))
       }
       if (url === '/api/account/mfa-setup/email/verify') {
         return Promise.resolve(jsonResponse({
@@ -127,6 +133,8 @@ describe('MfaSetupApp Email MFA', () => {
     await flushPromises()
     await wrapper.vm.startEmailMfaSetup()
     await flushPromises()
+    await wrapper.get('[data-testid="email-mfa-send"]').trigger('click')
+    await flushPromises()
     await wrapper.get('#setup-email-mfa-code').setValue('000000')
     await wrapper.vm.verifyEmailMfa()
     await flushPromises()
@@ -134,6 +142,7 @@ describe('MfaSetupApp Email MFA', () => {
     expect(wrapper.get('[role="dialog"]').exists()).toBe(true)
     expect(wrapper.get('[role="alert"]').text())
       .toBe('mfa.errors.invalidOrExpiredCode')
+    wrapper.unmount()
   })
 
   it('hides grace-period messaging for voluntary MFA setup', async () => {

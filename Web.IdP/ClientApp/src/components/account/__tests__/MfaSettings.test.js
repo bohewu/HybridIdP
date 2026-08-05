@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import MfaSettings from '../MfaSettings.vue';
 import { useWebAuthn } from '../../../composables/useWebAuthn';
@@ -8,7 +8,7 @@ import zhMfa from '../../../i18n/locales/zh-TW/mfa.json';
 // Mock vue-i18n
 vi.mock('vue-i18n', () => ({
     useI18n: () => ({
-        t: (key) => key
+        t: (key, params) => params?.seconds === undefined ? key : `${key}:${params.seconds}`
     })
 }));
 
@@ -74,6 +74,7 @@ describe('MfaSettings.vue', () => {
     }
 
     beforeEach(() => {
+        vi.useRealTimers();
         vi.clearAllMocks();
         // Default mock for profile
         fetch.mockResolvedValue({
@@ -91,6 +92,10 @@ describe('MfaSettings.vue', () => {
             registerPasskey: mockRegisterPasskey,
             isSupported: () => true
         });
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     it('renders passkey section', async () => {
@@ -282,7 +287,7 @@ describe('MfaSettings.vue', () => {
                 return Promise.resolve(jsonResponse({ email: 'test@example.com' }));
             }
             if (url === '/api/account/mfa/email/send') {
-                return Promise.resolve(jsonResponse({ success: true }));
+                return Promise.resolve(jsonResponse({ success: true, remainingSeconds: 60 }));
             }
             if (url === '/api/account/mfa/email/verify') {
                 return Promise.resolve(jsonResponse({ success: true }));
@@ -296,14 +301,23 @@ describe('MfaSettings.vue', () => {
             return Promise.resolve(jsonResponse({}));
         });
 
-        const wrapper = mount(MfaSettings);
+        const wrapper = mount(MfaSettings, {
+            props: { csrfToken: 'test-csrf' }
+        });
         await flushPromises();
         await wrapper.vm.openEmailMfaSetup();
         await flushPromises();
 
         expect(wrapper.find('.email-mfa-modal').exists()).toBe(true);
+        expect(fetch.mock.calls.some(
+            ([url]) => url === '/api/account/mfa/email/send')).toBe(false);
+
+        await wrapper.get('[data-testid="email-mfa-send"]').trigger('click');
+        await flushPromises();
+
         expect(fetch).toHaveBeenCalledWith('/api/account/mfa/email/send', {
             method: 'POST',
+            headers: { 'X-XSRF-TOKEN': 'test-csrf' },
             credentials: 'include'
         });
 
@@ -314,10 +328,21 @@ describe('MfaSettings.vue', () => {
         const verifyRequest = fetch.mock.calls.find(
             ([url]) => url === '/api/account/mfa/email/verify');
         expect(verifyRequest).toBeTruthy();
+        expect(verifyRequest[1].headers).toEqual({
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': 'test-csrf'
+        });
         expect(JSON.parse(verifyRequest[1].body)).toEqual({ code: '123456' });
         expect(fetch.mock.calls.some(
             ([url]) => url === '/api/account/mfa/email/enable')).toBe(false);
         expect(wrapper.find('.email-mfa-modal').exists()).toBe(false);
+
+        wrapper.vm.openEmailMfaSetup();
+        await flushPromises();
+        const sendButton = wrapper.get('[data-testid="email-mfa-send"]');
+        expect(sendButton.attributes('disabled')).toBeUndefined();
+        expect(sendButton.text()).toBe('mfa.sendCode');
+        wrapper.unmount();
     });
 
     it('keeps Email MFA verification open when the code is invalid', async () => {
@@ -335,7 +360,7 @@ describe('MfaSettings.vue', () => {
                 return Promise.resolve(jsonResponse({ email: 'test@example.com' }));
             }
             if (url === '/api/account/mfa/email/send') {
-                return Promise.resolve(jsonResponse({ success: true }));
+                return Promise.resolve(jsonResponse({ success: true, remainingSeconds: 60 }));
             }
             if (url === '/api/account/mfa/email/verify') {
                 return Promise.resolve(jsonResponse({
@@ -350,6 +375,8 @@ describe('MfaSettings.vue', () => {
         await flushPromises();
         await wrapper.vm.openEmailMfaSetup();
         await flushPromises();
+        await wrapper.get('[data-testid="email-mfa-send"]').trigger('click');
+        await flushPromises();
         await wrapper.get('#email-mfa-code').setValue('000000');
         await wrapper.vm.verifyEmailMfa();
         await flushPromises();
@@ -357,6 +384,94 @@ describe('MfaSettings.vue', () => {
         expect(wrapper.find('.email-mfa-modal').exists()).toBe(true);
         expect(wrapper.get('.email-mfa-modal [role="alert"]').text())
             .toBe('mfa.errors.invalidOrExpiredCode');
+        wrapper.unmount();
+    });
+
+    it('starts a live resend countdown only after send is requested', async () => {
+        vi.useFakeTimers();
+        fetch.mockImplementation((url) => {
+            if (url === '/api/account/mfa/status') {
+                return Promise.resolve(jsonResponse({
+                    twoFactorEnabled: false,
+                    emailMfaEnabled: false,
+                    enableTotpMfa: true,
+                    enableEmailMfa: true,
+                    enablePasskey: false
+                }));
+            }
+            if (url === '/api/profile') {
+                return Promise.resolve(jsonResponse({ email: 'test@example.com' }));
+            }
+            if (url === '/api/account/mfa/email/send') {
+                return Promise.resolve(jsonResponse({ success: true, remainingSeconds: 60 }));
+            }
+            return Promise.resolve(jsonResponse({}));
+        });
+
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        wrapper.vm.openEmailMfaSetup();
+        await flushPromises();
+
+        const sendButton = wrapper.get('[data-testid="email-mfa-send"]');
+        expect(sendButton.text()).toBe('mfa.sendCode');
+        expect(sendButton.attributes('disabled')).toBeUndefined();
+
+        await sendButton.trigger('click');
+        await flushPromises();
+
+        expect(sendButton.text()).toBe('mfa.resendCodeIn:60');
+        expect(sendButton.attributes('disabled')).toBeDefined();
+
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(sendButton.text()).toBe('mfa.resendCodeIn:59');
+
+        wrapper.vm.closeEmailMfaSetup();
+        wrapper.vm.openEmailMfaSetup();
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(wrapper.get('[data-testid="email-mfa-send"]').text())
+            .toBe('mfa.resendCodeIn:58');
+        wrapper.unmount();
+    });
+
+    it('turns a server cooldown into a localized live countdown', async () => {
+        vi.useFakeTimers();
+        fetch.mockImplementation((url) => {
+            if (url === '/api/account/mfa/status') {
+                return Promise.resolve(jsonResponse({
+                    emailMfaEnabled: false,
+                    enableTotpMfa: true,
+                    enableEmailMfa: true,
+                    enablePasskey: false
+                }));
+            }
+            if (url === '/api/profile') {
+                return Promise.resolve(jsonResponse({ email: 'test@example.com' }));
+            }
+            if (url === '/api/account/mfa/email/send') {
+                return Promise.resolve(jsonResponse({
+                    remainingSeconds: 48,
+                    message: 'Please wait 48 seconds.'
+                }, false));
+            }
+            return Promise.resolve(jsonResponse({}));
+        });
+
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        wrapper.vm.openEmailMfaSetup();
+        await flushPromises();
+        await wrapper.get('[data-testid="email-mfa-send"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('.email-mfa-modal [role="alert"]').exists()).toBe(false);
+        expect(wrapper.get('[data-testid="email-mfa-send"]').text())
+            .toBe('mfa.resendCodeIn:48');
+
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(wrapper.get('[data-testid="email-mfa-send"]').text())
+            .toBe('mfa.resendCodeIn:47');
+        wrapper.unmount();
     });
 
     it('requires password proof and sends only the password contract property for password users', async () => {
@@ -552,7 +667,9 @@ describe('MfaSettings.vue', () => {
             'emailCodeLabel',
             'emailCodeHelp',
             'sendCode',
+            'sendingCode',
             'resendCode',
+            'resendCodeIn',
             'verifyAndEnable'
         ];
 
