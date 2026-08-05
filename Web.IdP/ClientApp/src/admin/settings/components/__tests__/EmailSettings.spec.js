@@ -134,5 +134,44 @@ describe('EmailSettings test email modal', () => {
 
     expect(wrapper.get('[role="status"]').text()).toBe('settings.testSuccess')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="email-test-modal"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="send-email-test"]').text()).toBe('settings.sendAgain')
+
+    await wrapper.get('[data-testid="cancel-email-test"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="email-test-modal"]').exists()).toBe(false)
+  })
+
+  it('locks the modal and shows progress while SMTP delivery is pending', async () => {
+    let completeRequest
+    const pendingResponse = new Promise(resolve => {
+      completeRequest = resolve
+    })
+    const wrapper = await mountComponent()
+    fetch.mockImplementationOnce(() => pendingResponse)
+
+    await wrapper.get('[data-testid="open-email-test"]').trigger('click')
+    await wrapper.get('[data-testid="test-smtp-username"]').setValue('')
+    await wrapper.get('[data-testid="test-recipient"]').setValue('recipient@example.test')
+    await wrapper.get('[data-testid="send-email-test"]').trigger('click')
+
+    expect(wrapper.get('[data-testid="send-email-test"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="send-email-test"]').attributes('aria-busy')).toBe('true')
+    expect(wrapper.find('[data-testid="send-email-spinner"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="cancel-email-test"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="test-smtp-host"]').attributes('disabled')).toBeDefined()
+
+    completeRequest({
+      ok: true,
+      json: () => Promise.resolve({ message: 'SMTP server accepted the test email' })
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="send-email-spinner"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="send-email-test"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="cancel-email-test"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="test-smtp-host"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="email-test-modal"]').exists()).toBe(true)
+    expect(wrapper.find('[role="status"]').exists()).toBe(true)
   })
 })

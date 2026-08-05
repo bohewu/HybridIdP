@@ -1,3 +1,4 @@
+using Core.Application;
 using Core.Domain;
 using Core.Domain.Entities;
 using Infrastructure.Seeding;
@@ -24,6 +25,7 @@ public static class DataSeeder
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var applicationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
         var scopeManager = scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
+        var settingsService = scope.ServiceProvider.GetRequiredService<ISettingsService>();
 
         // 1. Migrate Database
         await context.Database.MigrateAsync();
@@ -58,10 +60,13 @@ public static class DataSeeder
 
         // 7. Seed Default Settings
         var configuration = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
-        await SeedDefaultSettingsAsync(context, configuration);
+        await SeedDefaultSettingsAsync(context, configuration, settingsService);
     }
 
-    private static async Task SeedDefaultSettingsAsync(ApplicationDbContext context, Microsoft.Extensions.Configuration.IConfiguration config)
+    internal static async Task SeedDefaultSettingsAsync(
+        ApplicationDbContext context,
+        Microsoft.Extensions.Configuration.IConfiguration config,
+        ISettingsService settingsService)
     {
         var key = Core.Domain.Constants.SettingKeys.Security.RegistrationEnabled;
         if (!await context.Settings.AnyAsync(s => s.Key == key))
@@ -93,14 +98,36 @@ public static class DataSeeder
 
             foreach (var kvp in settingsToSeed)
             {
-                if (!await context.Settings.AnyAsync(s => s.Key == kvp.Key))
+                var existingSetting = await context.Settings
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(setting => setting.Key == kvp.Key);
+
+                if (existingSetting == null)
                 {
-                    context.Settings.Add(new Setting
+                    if (kvp.Key == Core.Domain.Constants.SettingKeys.Email.SmtpPassword)
                     {
-                        Id = Guid.NewGuid(),
-                        Key = kvp.Key,
-                        Value = kvp.Value
-                    });
+                        await settingsService.SetValueAsync(kvp.Key, kvp.Value, "System");
+                    }
+                    else
+                    {
+                        context.Settings.Add(new Setting
+                        {
+                            Id = Guid.NewGuid(),
+                            Key = kvp.Key,
+                            Value = kvp.Value
+                        });
+                    }
+                    continue;
+                }
+
+                // Older versions seeded the configured SMTP password directly into
+                // the database. Only migrate values that still exactly match the
+                // configured secret so existing database overrides are preserved.
+                if (kvp.Key == Core.Domain.Constants.SettingKeys.Email.SmtpPassword &&
+                    !string.IsNullOrEmpty(kvp.Value) &&
+                    string.Equals(existingSetting.Value, kvp.Value, StringComparison.Ordinal))
+                {
+                    await settingsService.SetValueAsync(kvp.Key, kvp.Value, "System");
                 }
             }
         }

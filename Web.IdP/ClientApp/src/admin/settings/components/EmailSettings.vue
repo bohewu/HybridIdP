@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -171,6 +171,13 @@ const isDevServer = computed(() => {
 
 const isTestValid = computed(() => Object.keys(testErrors.value).length === 0)
 
+watch([testSettings, testRecipient], () => {
+  if (!sendingTest.value) {
+    testError.value = null
+    testSuccess.value = false
+  }
+}, { deep: true })
+
 const errors = computed(() => {
   const errs = {}
   if (!host.value?.trim()) errs.host = t('settings.validation.required')
@@ -330,10 +337,6 @@ const sendTestEmail = async () => {
     }
     
     testSuccess.value = true
-    setTimeout(() => {
-      closeTestDialog()
-      testRecipient.value = ''
-    }, 2000)
   } catch (err) {
     testError.value = t('settings.testError', { message: err.message })
   } finally {
@@ -471,10 +474,9 @@ onMounted(loadSettings)
       :show="showTestDialog" 
       :title="t('settings.testEmailTitle')"
       size="lg"
-      :show-close-icon="true"
+      :show-close-icon="!sendingTest"
       :close-on-backdrop="false"
-      :close-on-esc="true"
-      :loading="sendingTest"
+      :close-on-esc="!sendingTest"
       @close="closeTestDialog"
     >
       <template #body>
@@ -622,21 +624,35 @@ onMounted(loadSettings)
 
       <template #footer>
         <button 
+          type="button"
           @click="sendTestEmail" 
           data-testid="send-email-test"
           :disabled="sendingTest"
-          class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+          :aria-busy="sendingTest"
+          class="w-full inline-flex items-center justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {{ sendingTest ? t('settings.sending') : t('settings.send') }}
+          <svg
+            v-if="sendingTest"
+            data-testid="send-email-spinner"
+            class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          {{ sendingTest ? t('settings.sending') : testSuccess ? t('settings.sendAgain') : t('settings.send') }}
         </button>
         <button 
           type="button"
           @click="closeTestDialog"
           data-testid="cancel-email-test"
           :disabled="sendingTest"
-          class="mt-2.5 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-google-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+          class="mt-2.5 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-google-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {{ t('common.cancel') }}
+          {{ t('common.close') }}
         </button>
       </template>
     </BaseModal>

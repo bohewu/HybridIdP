@@ -104,6 +104,10 @@ This response masking does not alter internal settings resolution: authorized
 server-side consumers can still decrypt protected values. Replacing or
 clearing a setting continues to require `settings.update`, and submitting the
 mask marker preserves the existing secret rather than storing the marker.
+Configuration-backed SMTP passwords are also routed through the protected
+settings writer when first seeded. On startup, a legacy database value is
+re-protected only when it still exactly matches the configured SMTP password;
+an independent database override is never replaced by configuration seeding.
 
 ### Localized Login Notices
 

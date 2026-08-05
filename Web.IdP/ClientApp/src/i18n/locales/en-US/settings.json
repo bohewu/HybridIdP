@@ -72,8 +72,9 @@
   "testPasswordHelp": "Saved passwords are never copied into this dialog. Enter one only when authentication is required.",
   "recipient": "Recipient Email",
   "send": "Send",
+  "sendAgain": "Send again",
   "sending": "Sending...",
-  "testSuccess": "The SMTP server accepted the test email.",
+  "testSuccess": "The SMTP server accepted the test email. You can close this dialog or send another test.",
   "testError": "Failed to send test email: {message}",
   "testErrors": {
     "rejected": "The SMTP server rejected the test email ({status}).",

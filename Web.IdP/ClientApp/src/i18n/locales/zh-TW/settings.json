@@ -72,8 +72,9 @@
   "testPasswordHelp": "已儲存的密碼不會帶入此視窗；只有需要驗證時才需重新輸入。",
   "recipient": "收件人電子郵件",
   "send": "發送",
+  "sendAgain": "再次發送",
   "sending": "發送中...",
-  "testSuccess": "SMTP 伺服器已接受測試郵件。",
+  "testSuccess": "SMTP 伺服器已接受測試郵件。你可以關閉視窗或再次發送。",
   "testError": "發送測試郵件失敗：{message}",
   "testErrors": {
     "rejected": "SMTP 伺服器拒絕測試郵件（狀態碼：{status}）。",
