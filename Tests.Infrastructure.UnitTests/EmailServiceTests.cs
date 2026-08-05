@@ -2,7 +2,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Core.Application;
 using Infrastructure.Services;
-using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Core.Domain.Models;
@@ -13,14 +12,14 @@ namespace Tests.Infrastructure.UnitTests;
 public class EmailServiceTests
 {
     private readonly Mock<IEmailQueue> _mockQueue;
-    private readonly Mock<ILogger<EmailService>> _mockLogger;
+    private readonly Mock<IEmailDispatcher> _mockDispatcher;
     private readonly EmailService _service;
 
     public EmailServiceTests()
     {
         _mockQueue = new Mock<IEmailQueue>();
-        _mockLogger = new Mock<ILogger<EmailService>>();
-        _service = new EmailService(_mockQueue.Object, _mockLogger.Object);
+        _mockDispatcher = new Mock<IEmailDispatcher>();
+        _service = new EmailService(_mockQueue.Object, _mockDispatcher.Object);
     }
 
     [Fact]
@@ -41,7 +40,7 @@ public class EmailServiceTests
     }
 
     [Fact]
-    public async Task SendTestEmailAsync_ShouldQueueMessage()
+    public async Task SendTestEmailAsync_ShouldDispatchImmediatelyWithProvidedSettings()
     {
         // Arrange
         var to = "test@example.com";
@@ -51,8 +50,13 @@ public class EmailServiceTests
         await _service.SendTestEmailAsync(settings, to);
 
         // Assert
-        _mockQueue.Verify(q => q.QueueEmailAsync(It.Is<EmailMessage>(
-            m => m.To == to && m.Subject == "Test Email from HybridIdP"
-        )), Times.Once);
+        _mockDispatcher.Verify(dispatcher => dispatcher.SendTestAsync(
+            It.Is<EmailMessage>(message =>
+                message.To == to && message.Subject == "Test Email from HybridIdP"),
+            settings,
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockQueue.Verify(
+            queue => queue.QueueEmailAsync(It.IsAny<EmailMessage>()),
+            Times.Never);
     }
 }

@@ -39,7 +39,14 @@ public partial class EmailQueueProcessor : BackgroundService
             while (!stoppingToken.IsCancellationRequested)
             {
                 var message = await _emailQueue.DequeueAsync(stoppingToken);
-                await ProcessEmailAsync(message, stoppingToken);
+                try
+                {
+                    await ProcessEmailAsync(message, stoppingToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    LogProcessingError(_logger, ex, message.To);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -100,21 +107,12 @@ public partial class EmailQueueProcessor : BackgroundService
 
     private async Task ProcessEmailAsync(Core.Domain.Models.EmailMessage message, CancellationToken ct)
     {
-        try
-        {
-            using var scope = _scopeFactory.CreateScope();
-            var dispatcher = scope.ServiceProvider.GetRequiredService<IEmailDispatcher>();
-            
-            await dispatcher.SendAsync(message, ct);
-            
-            LogEmailSent(_logger, message.To);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            LogProcessingError(_logger, ex, message.To);
-            // In a real system, we'd add retry logic or Dead Letter Queue here
-            throw; // Re-throw to let drain logic handle it
-        }
+        using var scope = _scopeFactory.CreateScope();
+        var dispatcher = scope.ServiceProvider.GetRequiredService<IEmailDispatcher>();
+
+        await dispatcher.SendAsync(message, ct);
+
+        LogEmailSent(_logger, message.To);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Email Queue Processor started.")]

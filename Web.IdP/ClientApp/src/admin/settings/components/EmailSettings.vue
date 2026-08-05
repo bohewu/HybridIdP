@@ -31,9 +31,19 @@ const fromName = ref('')
 // Test email state
 const showTestDialog = ref(false)
 const testRecipient = ref('')
+const testSettings = ref({
+  host: '',
+  port: 587,
+  username: '',
+  password: '',
+  enableSsl: true,
+  fromAddress: '',
+  fromName: ''
+})
 const sendingTest = ref(false)
 const testError = ref(null)
 const testSuccess = ref(false)
+const testValidationVisible = ref(false)
 
 // Track original values
 const originals = ref({})
@@ -56,13 +66,19 @@ const getSourceDisplay = (key) => {
 
 const isOverriding = computed(() => {
   // Check if any field that was originally NOT overridden is now changed
-  const fields = ['host', 'port', 'username', 'password', 'enableSsl', 'fromAddress', 'fromName']
-  return fields.some(f => {
-    const meta = originals.value[f]
-    const currentVal = f === 'port' ? port.value.toString() : 
-                      f === 'enableSsl' ? enableSsl.value.toString() : 
-                      eval(`${f}.value`) // lazy ref access
-    return !meta?.isOverridden && currentVal !== meta?.value
+  const currentValues = {
+    host: host.value,
+    port: port.value.toString(),
+    username: username.value,
+    password: password.value,
+    enableSsl: enableSsl.value.toString(),
+    fromAddress: fromAddress.value,
+    fromName: fromName.value
+  }
+
+  return Object.entries(currentValues).some(([field, currentValue]) => {
+    const meta = originals.value[field]
+    return !meta?.isOverridden && currentValue !== meta?.value
   })
 })
 
@@ -118,6 +134,42 @@ const loadSettings = async () => {
 const isEmailValid = (email) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
+
+const testErrors = computed(() => {
+  const errs = {}
+  const testPort = Number(testSettings.value.port)
+
+  if (!testSettings.value.host?.trim()) errs.host = t('settings.validation.required')
+  if (!Number.isInteger(testPort) || testPort < 1 || testPort > 65535) {
+    errs.port = t('settings.validation.invalidPort')
+  }
+  if (testSettings.value.username?.trim() && !testSettings.value.password) {
+    errs.password = t('settings.validation.passwordRequiredForUsername')
+  }
+  if (testSettings.value.password && !testSettings.value.username?.trim()) {
+    errs.username = t('settings.validation.usernameRequiredForPassword')
+  }
+  if (!testSettings.value.fromAddress?.trim()) {
+    errs.fromAddress = t('settings.validation.required')
+  } else if (!isEmailValid(testSettings.value.fromAddress)) {
+    errs.fromAddress = t('settings.validation.invalidEmail')
+  }
+  if (!testSettings.value.fromName?.trim()) errs.fromName = t('settings.validation.required')
+  if (!testRecipient.value?.trim()) {
+    errs.recipient = t('settings.validation.required')
+  } else if (!isEmailValid(testRecipient.value)) {
+    errs.recipient = t('settings.validation.invalidEmail')
+  }
+
+  return errs
+})
+
+const isDevServer = computed(() => {
+  const normalizedHost = host.value?.trim().toLowerCase()
+  return normalizedHost === 'localhost' || normalizedHost === '127.0.0.1'
+})
+
+const isTestValid = computed(() => Object.keys(testErrors.value).length === 0)
 
 const errors = computed(() => {
   const errs = {}
@@ -205,8 +257,49 @@ const cancelChanges = () => {
   fromName.value = originals.value.fromName?.value || ''
 }
 
+const openTestDialog = () => {
+  testSettings.value = {
+    host: host.value,
+    port: port.value,
+    username: username.value,
+    password: '',
+    enableSsl: enableSsl.value,
+    fromAddress: fromAddress.value,
+    fromName: fromName.value
+  }
+  testRecipient.value = ''
+  testError.value = null
+  testSuccess.value = false
+  testValidationVisible.value = false
+  showTestDialog.value = true
+}
+
+const closeTestDialog = () => {
+  if (sendingTest.value) return
+  showTestDialog.value = false
+  testError.value = null
+  testSuccess.value = false
+  testValidationVisible.value = false
+}
+
+const resolveTestError = (data) => {
+  if (data?.code === 'smtp_rejected') {
+    return t('settings.testErrors.rejected', {
+      status: data.smtpStatusCode || t('settings.testErrors.unknownStatus')
+    })
+  }
+  if (data?.code === 'smtp_not_configured') {
+    return t('settings.testErrors.notConfigured')
+  }
+  if (data?.code === 'smtp_delivery_failed') {
+    return t('settings.testErrors.deliveryFailed')
+  }
+  return data?.error || t('settings.testErrors.unknown')
+}
+
 const sendTestEmail = async () => {
-  if (!testRecipient.value) return
+  testValidationVisible.value = true
+  if (!isTestValid.value) return
   
   sendingTest.value = true
   testError.value = null
@@ -219,28 +312,27 @@ const sendTestEmail = async () => {
       credentials: 'include',
       body: JSON.stringify({
         settings: {
-          host: host.value,
-          port: port.value,
-          username: username.value,
-          password: password.value,
-          enableSsl: enableSsl.value,
-          fromAddress: fromAddress.value,
-          fromName: fromName.value
+          host: testSettings.value.host,
+          port: Number(testSettings.value.port),
+          username: testSettings.value.username,
+          password: testSettings.value.password,
+          enableSsl: testSettings.value.enableSsl,
+          fromAddress: testSettings.value.fromAddress,
+          fromName: testSettings.value.fromName
         },
-        to: testRecipient.value
+        to: testRecipient.value.trim()
       })
     })
     
     if (!response.ok) {
-      const data = await response.json()
-      throw new Error(data.error || 'Unknown error')
+      const data = await response.json().catch(() => ({}))
+      throw new Error(resolveTestError(data))
     }
     
     testSuccess.value = true
     setTimeout(() => {
-        showTestDialog.value = false
-        testSuccess.value = false
-        testRecipient.value = ''
+      closeTestDialog()
+      testRecipient.value = ''
     }, 2000)
   } catch (err) {
     testError.value = t('settings.testError', { message: err.message })
@@ -261,7 +353,9 @@ onMounted(loadSettings)
       </div>
       <button 
         v-if="canUpdate"
-        @click="showTestDialog = true"
+        type="button"
+        data-testid="open-email-test"
+        @click="openTestDialog"
         class="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100"
       >
         {{ t('settings.testEmail') }}
@@ -292,7 +386,7 @@ onMounted(loadSettings)
               {{ getSourceDisplay('host') }}
             </span>
           </div>
-          <input v-model="host" :disabled="!canUpdate" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="smtp.example.com" />
+          <input v-model="host" data-testid="email-settings-host" :disabled="!canUpdate" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" placeholder="smtp.example.com" />
         </div>
 
         <div class="sm:col-span-2">
@@ -376,40 +470,170 @@ onMounted(loadSettings)
     <BaseModal 
       :show="showTestDialog" 
       :title="t('settings.testEmailTitle')"
-      size="md"
+      size="lg"
       :show-close-icon="true"
       :close-on-backdrop="false"
       :close-on-esc="true"
       :loading="sendingTest"
-      @close="showTestDialog = false"
+      @close="closeTestDialog"
     >
       <template #body>
-        <div class="space-y-4">
-          <p class="text-sm text-gray-500">{{ t('settings.testEmailDesc') }}</p>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t('settings.recipient') }}</label>
-            <input 
-              v-model="testRecipient" 
-              type="email" 
-              class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
-              placeholder="user@example.com" 
-            />
+        <div class="space-y-5">
+          <div class="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+            {{ t('settings.testEmailDesc') }}
           </div>
-          <div v-if="testError" class="text-sm text-red-600 bg-red-50 p-2 rounded">{{ testError }}</div>
-          <div v-if="testSuccess" class="text-sm text-green-600 bg-green-50 p-2 rounded">{{ t('settings.testSuccess') }}</div>
+
+          <fieldset class="space-y-4">
+            <legend class="text-sm font-semibold text-gray-900">{{ t('settings.testConnectionSettings') }}</legend>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
+              <div class="sm:col-span-4">
+                <label for="test-smtp-host" class="block text-sm font-medium text-gray-700">{{ t('settings.host') }}</label>
+                <input
+                  id="test-smtp-host"
+                  v-model="testSettings.host"
+                  data-testid="test-smtp-host"
+                  type="text"
+                  :disabled="sendingTest"
+                  :aria-invalid="testValidationVisible && Boolean(testErrors.host)"
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  placeholder="smtp.example.com"
+                />
+                <p v-if="testValidationVisible && testErrors.host" class="mt-1 text-xs text-red-600">{{ testErrors.host }}</p>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label for="test-smtp-port" class="block text-sm font-medium text-gray-700">{{ t('settings.port') }}</label>
+                <input
+                  id="test-smtp-port"
+                  v-model.number="testSettings.port"
+                  data-testid="test-smtp-port"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  :disabled="sendingTest"
+                  :aria-invalid="testValidationVisible && Boolean(testErrors.port)"
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                />
+                <p v-if="testValidationVisible && testErrors.port" class="mt-1 text-xs text-red-600">{{ testErrors.port }}</p>
+              </div>
+
+              <div class="sm:col-span-3">
+                <label for="test-smtp-username" class="block text-sm font-medium text-gray-700">{{ t('settings.username') }}</label>
+                <input
+                  id="test-smtp-username"
+                  v-model="testSettings.username"
+                  data-testid="test-smtp-username"
+                  type="text"
+                  autocomplete="off"
+                  :disabled="sendingTest"
+                  :aria-invalid="testValidationVisible && Boolean(testErrors.username)"
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  placeholder="user@example.com"
+                />
+                <p v-if="testValidationVisible && testErrors.username" class="mt-1 text-xs text-red-600">{{ testErrors.username }}</p>
+              </div>
+
+              <div class="sm:col-span-3">
+                <label for="test-smtp-password" class="block text-sm font-medium text-gray-700">{{ t('settings.password') }}</label>
+                <input
+                  id="test-smtp-password"
+                  v-model="testSettings.password"
+                  data-testid="test-smtp-password"
+                  type="password"
+                  autocomplete="new-password"
+                  :disabled="sendingTest"
+                  :aria-invalid="testValidationVisible && Boolean(testErrors.password)"
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  placeholder="••••••••"
+                />
+                <p v-if="testValidationVisible && testErrors.password" class="mt-1 text-xs text-red-600">{{ testErrors.password }}</p>
+                <p v-else class="mt-1 text-xs text-gray-500">{{ t('settings.testPasswordHelp') }}</p>
+              </div>
+
+              <div class="sm:col-span-6">
+                <label class="inline-flex items-center gap-2 text-sm text-gray-900">
+                  <input
+                    v-model="testSettings.enableSsl"
+                    data-testid="test-smtp-enable-ssl"
+                    type="checkbox"
+                    :disabled="sendingTest"
+                    class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  {{ t('settings.enableSsl') }}
+                </label>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="space-y-4 border-t border-gray-200 pt-4">
+            <legend class="text-sm font-semibold text-gray-900">{{ t('settings.testMessageSettings') }}</legend>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
+              <div class="sm:col-span-3">
+                <label for="test-from-address" class="block text-sm font-medium text-gray-700">{{ t('settings.fromAddress') }}</label>
+                <input
+                  id="test-from-address"
+                  v-model="testSettings.fromAddress"
+                  data-testid="test-from-address"
+                  type="email"
+                  :disabled="sendingTest"
+                  :aria-invalid="testValidationVisible && Boolean(testErrors.fromAddress)"
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  placeholder="no-reply@example.com"
+                />
+                <p v-if="testValidationVisible && testErrors.fromAddress" class="mt-1 text-xs text-red-600">{{ testErrors.fromAddress }}</p>
+              </div>
+
+              <div class="sm:col-span-3">
+                <label for="test-from-name" class="block text-sm font-medium text-gray-700">{{ t('settings.fromName') }}</label>
+                <input
+                  id="test-from-name"
+                  v-model="testSettings.fromName"
+                  data-testid="test-from-name"
+                  type="text"
+                  :disabled="sendingTest"
+                  :aria-invalid="testValidationVisible && Boolean(testErrors.fromName)"
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  placeholder="HybridAuth IdP"
+                />
+                <p v-if="testValidationVisible && testErrors.fromName" class="mt-1 text-xs text-red-600">{{ testErrors.fromName }}</p>
+              </div>
+
+              <div class="sm:col-span-6">
+                <label for="test-recipient" class="block text-sm font-medium text-gray-700">{{ t('settings.recipient') }}</label>
+                <input
+                  id="test-recipient"
+                  v-model="testRecipient"
+                  data-testid="test-recipient"
+                  type="email"
+                  :disabled="sendingTest"
+                  :aria-invalid="testValidationVisible && Boolean(testErrors.recipient)"
+                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  placeholder="user@example.com"
+                />
+                <p v-if="testValidationVisible && testErrors.recipient" class="mt-1 text-xs text-red-600">{{ testErrors.recipient }}</p>
+              </div>
+            </div>
+          </fieldset>
+
+          <div v-if="testError" role="alert" class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ testError }}</div>
+          <div v-if="testSuccess" role="status" class="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700">{{ t('settings.testSuccess') }}</div>
         </div>
       </template>
 
       <template #footer>
         <button 
           @click="sendTestEmail" 
-          :disabled="!testRecipient || sendingTest" 
+          data-testid="send-email-test"
+          :disabled="sendingTest"
           class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
         >
           {{ sendingTest ? t('settings.sending') : t('settings.send') }}
         </button>
         <button 
-          @click="showTestDialog = false" 
+          type="button"
+          @click="closeTestDialog"
+          data-testid="cancel-email-test"
+          :disabled="sendingTest"
           class="mt-2.5 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-google-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
         >
           {{ t('common.cancel') }}

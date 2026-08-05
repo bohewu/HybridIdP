@@ -4,19 +4,20 @@ using System.Threading.Tasks;
 using Core.Application;
 using Core.Application.Interfaces;
 using Core.Domain.Models;
-using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services;
 
 public class EmailService : IEmailService
 {
     private readonly IEmailQueue _emailQueue;
-    private readonly ILogger<EmailService> _logger;
+    private readonly IEmailDispatcher _emailDispatcher;
 
-    public EmailService(IEmailQueue emailQueue, ILogger<EmailService> logger)
+    public EmailService(
+        IEmailQueue emailQueue,
+        IEmailDispatcher emailDispatcher)
     {
         _emailQueue = emailQueue;
-        _logger = logger;
+        _emailDispatcher = emailDispatcher;
     }
 
     public Task SendEmailAsync(string to, string subject, string body, bool isHtml = false, CancellationToken ct = default)
@@ -25,14 +26,12 @@ public class EmailService : IEmailService
         return _emailQueue.QueueEmailAsync(message);
     }
 
-    public Task SendTestEmailAsync(MailSettingsDto settings, string to, CancellationToken ct = default)
+    public Task SendTestEmailAsync(
+        MailSettingsDto settings,
+        string to,
+        CancellationToken ct = default)
     {
-        // For "Test Email" feature from Admin UI, we might want to bypass the queue 
-        // to give immediate feedback if settings are wrong.
-        // However, IEmailService interface doesn't expose Dispatcher directly.
-        // For now, let's keep it consistent: Queue it. 
-        // If we need synchronous feedback, we should expose ISmtpDispatcher to the Admin API directly.
         var message = new EmailMessage(to, "Test Email from HybridIdP", "This is a test email to verify settings.", false);
-        return _emailQueue.QueueEmailAsync(message);
+        return _emailDispatcher.SendTestAsync(message, settings, ct);
     }
 }

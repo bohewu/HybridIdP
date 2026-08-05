@@ -69,6 +69,54 @@ public class EmailQueueProcessorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ShouldContinueAfterIndividualDeliveryFailure()
+    {
+        var failedMessage = new EmailMessage { To = "failed@test.com" };
+        var succeedingMessage = new EmailMessage { To = "succeeding@test.com" };
+        using var cts = new CancellationTokenSource();
+        var succeedingDispatch = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        async Task<EmailMessage> WaitForCancellationAsync()
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cts.Token);
+            return null!;
+        }
+
+        _mockQueue.SetupSequence(queue => queue.DequeueAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(failedMessage)
+            .ReturnsAsync(succeedingMessage)
+            .Returns(new ValueTask<EmailMessage>(WaitForCancellationAsync()));
+        _mockDispatcher
+            .Setup(dispatcher => dispatcher.SendAsync(
+                failedMessage,
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("SMTP rejected the message"));
+        _mockDispatcher
+            .Setup(dispatcher => dispatcher.SendAsync(
+                succeedingMessage,
+                It.IsAny<CancellationToken>()))
+            .Callback(() => succeedingDispatch.TrySetResult())
+            .Returns(Task.CompletedTask);
+
+        var processor = new EmailQueueProcessor(
+            _mockQueue.Object,
+            _mockScopeFactory.Object,
+            _mockLogger.Object);
+
+        await processor.StartAsync(cts.Token);
+        await succeedingDispatch.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        cts.Cancel();
+        await processor.StopAsync(CancellationToken.None);
+
+        _mockDispatcher.Verify(dispatcher => dispatcher.SendAsync(
+            failedMessage,
+            It.IsAny<CancellationToken>()), Times.Once);
+        _mockDispatcher.Verify(dispatcher => dispatcher.SendAsync(
+            succeedingMessage,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_GracefulShutdown_DrainsRemainingEmails()
     {
         // Arrange

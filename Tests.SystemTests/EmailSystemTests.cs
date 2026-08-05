@@ -60,8 +60,13 @@ public class EmailSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
     }
 
     [Fact]
-    public async Task SendTestEmail_ShouldDeliveryToMailpit()
+    public async Task SendTestEmail_ShouldDeliverToMailpit()
     {
+        if (!_mailpitAvailable)
+        {
+            return;
+        }
+
         // Arrange
         var request = new 
         {
@@ -79,14 +84,13 @@ public class EmailSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         };
 
         // Act
-        // 1. Trigger Email via API
+        // The API returns only after Mailpit accepts the message over SMTP.
         var response = await _httpClient.PostAsJsonAsync("/api/admin/settings/email/test", request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        // 2. Wait for background processor to process the queue
-        // Retry a few times as it's async
+        // Allow Mailpit's HTTP index a short window to expose the accepted message.
         bool emailReceived = false;
-        int maxRetries = 60; // Wait up to 15 seconds (250ms * 60)
+        int maxRetries = 20;
         for (int i = 0; i < maxRetries; i++)
         {
             var messagesResponse = await _mailpitClient.GetAsync("/api/v1/messages");
@@ -115,14 +119,9 @@ public class EmailSystemTests : IClassFixture<WebIdPServerFixture>, IAsyncLifeti
         }
 
         // Assert
-        if (_mailpitAvailable)
-        {
-            Assert.True(emailReceived, $"Email was not received by Mailpit within the timeout period ({maxRetries * 0.5}s). Mailpit was reachable.");
-        }
-        else
-        {
-            Assert.True(true, "Skipped Mailpit verification because Mailpit is not reachable.");
-        }
+        Assert.True(
+            emailReceived,
+            $"Email was not visible in Mailpit within {maxRetries * 0.25}s after SMTP acceptance.");
     }
 
     private async Task<string> GetAdminTokenAsync()

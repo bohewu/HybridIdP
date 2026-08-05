@@ -16,6 +16,7 @@ namespace Tests.Web.IdP.UnitTests.Controllers;
 public class SettingsControllerTests
 {
     private readonly Mock<ISettingsService> _settings = new();
+    private readonly Mock<IEmailService> _emailService = new();
     private readonly SettingsController _controller;
 
     public SettingsControllerTests()
@@ -25,7 +26,7 @@ public class SettingsControllerTests
 
         _controller = new SettingsController(
             _settings.Object,
-            Mock.Of<IEmailService>(),
+            _emailService.Object,
             new ConfigurationBuilder().Build(),
             emailOptions.Object);
 
@@ -268,5 +269,72 @@ public class SettingsControllerTests
                 "TestUser",
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task TestEmail_WaitsForSmtpAcceptanceBeforeReturningSuccess()
+    {
+        var settings = new MailSettingsDto
+        {
+            Host = "smtp.example.test",
+            Port = 25,
+            FromAddress = "sender@example.test",
+            FromName = "Test Sender"
+        };
+        var request = new TestMailSettingsRequest
+        {
+            Settings = settings,
+            To = "recipient@example.test"
+        };
+        var smtpCompletion = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        _emailService
+            .Setup(service => service.SendTestEmailAsync(
+                settings,
+                request.To,
+                It.IsAny<CancellationToken>()))
+            .Returns(smtpCompletion.Task);
+
+        var actionTask = _controller.TestEmail(request);
+
+        Assert.False(actionTask.IsCompleted);
+        smtpCompletion.SetResult();
+        var result = await actionTask;
+
+        Assert.IsType<OkObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task TestEmail_SmtpRejection_ReturnsBadGatewayWithSafeStatus()
+    {
+        var request = new TestMailSettingsRequest
+        {
+            Settings = new MailSettingsDto
+            {
+                Host = "smtp.example.test",
+                Port = 25,
+                FromAddress = "sender@example.test",
+                FromName = "Test Sender"
+            },
+            To = "recipient@example.test"
+        };
+        _emailService
+            .Setup(service => service.SendTestEmailAsync(
+                request.Settings,
+                request.To,
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new EmailDeliveryException(
+                "smtp_rejected",
+                "The SMTP server rejected the test email.",
+                553));
+
+        var result = await _controller.TestEmail(request);
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status502BadGateway, objectResult.StatusCode);
+        var payload = JsonSerializer.SerializeToElement(objectResult.Value);
+        Assert.Equal("smtp_rejected", payload.GetProperty("code").GetString());
+        Assert.Equal(553, payload.GetProperty("smtpStatusCode").GetInt32());
+        Assert.DoesNotContain("sender@example.test", payload.ToString());
     }
 }

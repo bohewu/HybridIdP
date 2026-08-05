@@ -30,7 +30,10 @@
   },
   "validation": {
     "required": "This field is required",
-    "invalidEmail": "Please enter a valid email address"
+    "invalidEmail": "Please enter a valid email address",
+    "invalidPort": "Enter a port from 1 to 65535",
+    "passwordRequiredForUsername": "Enter the password for this username",
+    "usernameRequiredForPassword": "Enter a username or clear the password"
   },
   "monitoring": {
     "enable": "Enable Monitoring",
@@ -63,12 +66,22 @@
   "fromName": "From Name",
   "testEmail": "Test Email",
   "testEmailTitle": "Send Test Email",
-  "testEmailDesc": "Enter a recipient email address to send a test email using the current settings (saved or unsaved).",
+  "testEmailDesc": "These temporary values are used only for this test. They do not change or save the email settings above.",
+  "testConnectionSettings": "SMTP connection",
+  "testMessageSettings": "Test message",
+  "testPasswordHelp": "Saved passwords are never copied into this dialog. Enter one only when authentication is required.",
   "recipient": "Recipient Email",
   "send": "Send",
   "sending": "Sending...",
-  "testSuccess": "Test email sent successfully.",
+  "testSuccess": "The SMTP server accepted the test email.",
   "testError": "Failed to send test email: {message}",
+  "testErrors": {
+    "rejected": "The SMTP server rejected the test email ({status}).",
+    "notConfigured": "Enter an SMTP host before testing.",
+    "deliveryFailed": "The SMTP connection or delivery attempt could not be completed.",
+    "unknown": "The SMTP test failed.",
+    "unknownStatus": "unknown status"
+  },
   "saveButton": "Save Changes",
   "saving": "Saving...",
   "cancelButton": "Cancel",

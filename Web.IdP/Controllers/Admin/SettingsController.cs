@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Core.Application;
 using Core.Domain.Constants;
 using Core.Application.Options;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Options;
 using Web.IdP.Attributes;
 
@@ -192,12 +193,20 @@ public class SettingsController : ControllerBase
 
         try
         {
-            await _emailService.SendTestEmailAsync(request.Settings, request.To);
-            return Ok(new { message = "Test email sent successfully" });
+            await _emailService.SendTestEmailAsync(
+                request.Settings,
+                request.To,
+                HttpContext.RequestAborted);
+            return Ok(new { message = "SMTP server accepted the test email" });
         }
-        catch (Exception ex)
+        catch (EmailDeliveryException ex)
         {
-            return BadRequest(new { error = $"Failed to send email: {ex.Message}" });
+            return StatusCode(StatusCodes.Status502BadGateway, new
+            {
+                error = ex.Message,
+                code = ex.Code,
+                smtpStatusCode = ex.SmtpStatusCode
+            });
         }
     }
 
@@ -222,6 +231,10 @@ public record UpdateSettingRequest(string Value);
 public record InvalidateCacheRequest(string? Key);
 public record TestMailSettingsRequest
 {
+    [Required]
     public Core.Application.MailSettingsDto Settings { get; set; } = new();
+
+    [Required]
+    [EmailAddress]
     public string To { get; set; } = string.Empty;
 }
