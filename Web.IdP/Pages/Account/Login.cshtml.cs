@@ -94,6 +94,8 @@ public partial class LoginModel : PageModel
     public bool RegistrationEnabled { get; private set; } = true;
     public bool PasskeyEnabled { get; private set; } = true;
     public string? CustomForgotPasswordUrl { get; private set; }
+    public bool IsMfaEnrollmentReauthentication =>
+        MfaEnrollmentSession.HasPending(HttpContext.Session);
 
     /// <summary>
     /// Calculate if Turnstile should be enabled based on settings and key configuration

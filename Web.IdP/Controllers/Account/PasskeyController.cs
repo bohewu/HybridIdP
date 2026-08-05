@@ -247,11 +247,13 @@ public partial class PasskeyController : ControllerBase
     {
         try
         {
-            var options = await _passkeyService.GetAssertionOptionsAsync(request.Username, ct);
+            var stepUpUser = await GetApplicationCookieUserAsync();
+            var username = stepUpUser?.UserName ?? request.Username;
+            var options = await _passkeyService.GetAssertionOptionsAsync(username, ct);
             
             HttpContext.Session.SetString("fido2.assertionOptions", options.ToJson());
             
-            LogAssertionOptionsGenerated(request.Username);
+            LogAssertionOptionsGenerated(username);
             
             return Ok(options);
         }
@@ -278,10 +280,17 @@ public partial class PasskeyController : ControllerBase
             return BadRequest(new { success = false, error = "Session expired" });
         }
 
+        var stepUpUser = await GetApplicationCookieUserAsync();
         var result = await _passkeyService.VerifyAssertionAsync(clientResponse.ToString(), jsonOptions, ct);
 
         if (result.Success && result.User != null)
         {
+            if (stepUpUser != null && stepUpUser.Id != result.User.Id)
+            {
+                LogPasskeyStepUpUserMismatch(stepUpUser.Id, result.User.Id);
+                return BadRequest(new { success = false, error = "Authentication failed" });
+            }
+
             if (!result.User.IsActive || result.User.IsDeleted)
             {
                 LogPasskeyLoginBlockedByDeactivation(result.User.Id);
@@ -338,6 +347,23 @@ public partial class PasskeyController : ControllerBase
         return BadRequest(new { success = false, error = result.Error });
     }
 
+    private async Task<ApplicationUser?> GetApplicationCookieUserAsync()
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return null;
+        }
+
+        var authentication = await HttpContext.AuthenticateAsync(
+            IdentityConstants.ApplicationScheme);
+        if (authentication.Principal?.Identity?.IsAuthenticated != true)
+        {
+            return null;
+        }
+
+        return await _userManager.GetUserAsync(authentication.Principal);
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Generated FIDO2 registration options for user '{UserName}'.")]
     partial void LogRegistrationOptionsGenerated(string? userName);
 
@@ -379,5 +405,8 @@ public partial class PasskeyController : ControllerBase
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey login blocked because Identity policy does not allow user {UserId} to sign in")]
     partial void LogPasskeyLoginBlockedByIdentityPolicy(Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Passkey step-up rejected because session user {SessionUserId} did not match credential user {CredentialUserId}")]
+    partial void LogPasskeyStepUpUserMismatch(Guid sessionUserId, Guid credentialUserId);
 
 }

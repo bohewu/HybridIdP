@@ -39,7 +39,8 @@ const formData = ref({
   supportedRoles: [],
   requirePkce: true,
   disableExternalProviders: false,
-  enableTurnstile: false
+  enableTurnstile: false,
+  requireMfa: false
 })
 
 const generatedClientSecret = ref(null)
@@ -120,7 +121,8 @@ const resetForm = () => {
     supportedRoles: [],
     requirePkce: true,
     disableExternalProviders: false,
-    enableTurnstile: false
+    enableTurnstile: false,
+    requireMfa: false
   }
   error.value = null
   fieldErrors.value = {}
@@ -143,7 +145,8 @@ watch(() => props.client, async (newClient) => {
       supportedRoles: newClient.supportedRoles || [],
       requirePkce: resolveRequirePkce(newClient.type === 'confidential' ? 'confidential' : 'public', newClient.requirePkce),
       disableExternalProviders: newClient.disableExternalProviders === true,
-      enableTurnstile: newClient.enableTurnstile === true
+      enableTurnstile: newClient.enableTurnstile === true,
+      requireMfa: newClient.requireMfa === true
     }
     
     // Fetch required scopes (still separate table)
@@ -203,7 +206,8 @@ const handleSubmit = async () => {
       supportedRoles: formData.value.supportedRoles,
       requirePkce: resolveRequirePkce(formData.value.clientType, formData.value.requirePkce),
       disableExternalProviders: formData.value.disableExternalProviders,
-      enableTurnstile: formData.value.enableTurnstile
+      enableTurnstile: formData.value.enableTurnstile,
+      requireMfa: formData.value.requireMfa
     }
 
     const url = isEdit.value
@@ -505,6 +509,23 @@ const closeSecretModal = () => {
                         <span>{{ $t('clients.form.enableTurnstileToggle') }}</span>
                       </label>
                       <p class="mt-1 text-xs text-gray-500">{{ $t('clients.form.enableTurnstileHelp') }}</p>
+                    </div>
+
+                    <div class="mb-5">
+                      <label for="require-mfa" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        {{ $t('clients.form.requireMfa') }}
+                      </label>
+                      <label for="require-mfa" class="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          id="require-mfa"
+                          v-model="formData.requireMfa"
+                          type="checkbox"
+                          aria-describedby="require-mfa-help"
+                          class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500"
+                        />
+                        <span>{{ $t('clients.form.requireMfaToggle') }}</span>
+                      </label>
+                      <p id="require-mfa-help" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.requireMfaHelp') }}</p>
                     </div>
 
                     <!-- Consent Type -->

@@ -135,4 +135,26 @@ describe('MfaSetupApp Email MFA', () => {
     expect(wrapper.get('[role="alert"]').text())
       .toBe('mfa.errors.invalidOrExpiredCode')
   })
+
+  it('hides grace-period messaging for voluntary MFA setup', async () => {
+    fetch.mockResolvedValue(jsonResponse({}))
+
+    const wrapper = mount(MfaSetupApp)
+    await flushPromises()
+
+    expect(wrapper.find('.grace-info').exists()).toBe(false)
+    expect(wrapper.find('.grace-expired').exists()).toBe(false)
+  })
+
+  it('shows a positive grace period only when mandatory enrollment is active', async () => {
+    document.getElementById('mfa-setup-app').dataset.showGracePeriod = 'true'
+    document.getElementById('mfa-setup-app').dataset.remainingGraceDays = '1'
+    fetch.mockResolvedValue(jsonResponse({}))
+
+    const wrapper = mount(MfaSetupApp)
+    await flushPromises()
+
+    expect(wrapper.get('.grace-info').text()).toBe('mfa.gracePeriodMessage')
+    expect(wrapper.find('.grace-expired').exists()).toBe(false)
+  })
 })

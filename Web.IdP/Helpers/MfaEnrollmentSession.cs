@@ -26,6 +26,23 @@ public static class MfaEnrollmentSession
             JsonSerializer.Serialize(new PendingEnrollment(now.Add(Lifetime))));
     }
 
+    public static bool HasPending(
+        ISession session,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
+        var pending = Read<PendingEnrollment>(session, PendingKey);
+        if (pending == null || pending.ExpiresUtc <= now)
+        {
+            session.Remove(PendingKey);
+            return false;
+        }
+
+        return true;
+    }
+
     public static bool CompletePending(
         ISession session,
         ClaimsPrincipal principal,

@@ -19,9 +19,11 @@ using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System;
 using System.Net;
+using System.Text.Json;
 using OpenIddict.Server.AspNetCore;
 using System.Threading;
 using System.Collections.Immutable;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace Tests.Application.UnitTests
 {
@@ -65,6 +67,9 @@ namespace Tests.Application.UnitTests
             _mockClaimsEnricher = new Mock<IClaimsEnrichmentService>();
             _mockSecurityPolicyService = new Mock<ISecurityPolicyService>();
             _mockPasskeyService = new Mock<IPasskeyService>();
+            _mockPasskeyService
+                .Setup(service => service.GetUserPasskeysAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
 
             // Default setup
             _mockClaimsEnricher.Setup(x => x.AddScopeMappedClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
@@ -410,6 +415,152 @@ namespace Tests.Application.UnitTests
 
             // Assert
             var forbidResult = Assert.IsType<ForbidResult>(result);
+        }
+
+        [Theory]
+        [InlineData(true, false, false)]
+        [InlineData(false, true, false)]
+        [InlineData(false, false, true)]
+        public async Task HandleAuthorizeRequestAsync_WhenClientGlobalOrAcrRequiresMfa_RedirectsToMfaSetup(
+            bool clientRequiresMfa,
+            bool globallyRequiresMfa,
+            bool acrRequiresMfa)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid() };
+            SetupMockUsers(user);
+
+            var principal = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(OpenIddictConstants.Claims.Subject, user.Id.ToString())],
+                "Test"));
+            var request = new OpenIddictRequest
+            {
+                ClientId = "client",
+                ResponseType = OpenIddictConstants.ResponseTypes.Code,
+                Scope = "openid",
+                AcrValues = acrRequiresMfa ? "mfa" : null
+            };
+            var application = new object();
+            _mockApplicationManager
+                .Setup(manager => manager.FindByClientIdAsync("client", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(application);
+            _mockApplicationManager
+                .Setup(manager => manager.GetPropertiesAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateClientProperties(clientRequiresMfa));
+            _mockSecurityPolicyService
+                .Setup(service => service.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy
+                {
+                    EnforceMandatoryMfaEnrollment = globallyRequiresMfa
+                });
+
+            var context = new DefaultHttpContext();
+            context.Features.Set<ISessionFeature>(new TestSessionFeature
+            {
+                Session = new Mock<ISession>().Object
+            });
+            _mockHttpContextAccessor.Setup(accessor => accessor.HttpContext).Returns(context);
+
+            var result = await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null);
+
+            var redirect = Assert.IsType<RedirectResult>(result);
+            Assert.Contains("/Account/MfaSetup", redirect.Url);
+        }
+
+        [Fact]
+        public async Task HandleAuthorizeRequestAsync_WhenNoMfaPolicyApplies_PreservesBaselineAuthorizationPath()
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid() };
+            SetupMockUsers(user);
+
+            var principal = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(OpenIddictConstants.Claims.Subject, user.Id.ToString())],
+                "Test"));
+            var request = new OpenIddictRequest
+            {
+                ClientId = "client",
+                ResponseType = OpenIddictConstants.ResponseTypes.Code,
+                Scope = "openid"
+            };
+            var application = new object();
+            SetupAuthorizationClient(application, false);
+            _mockSecurityPolicyService
+                .Setup(service => service.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy());
+            _mockHttpContextAccessor
+                .Setup(accessor => accessor.HttpContext)
+                .Returns(new DefaultHttpContext());
+
+            var result = await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null);
+
+            Assert.IsType<ForbidResult>(result);
+        }
+
+        [Theory]
+        [InlineData(AuthConstants.Amr.Mfa)]
+        [InlineData(AuthConstants.Amr.HardwareKey)]
+        public async Task HandleAuthorizeRequestAsync_WhenClientRequiresMfaAndPrincipalHasEvidence_DoesNotRedirect(
+            string amrValue)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid() };
+            SetupMockUsers(user);
+
+            var principal = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(OpenIddictConstants.Claims.Subject, user.Id.ToString()),
+                    new Claim(AuthConstants.ClaimTypes.Amr, amrValue)
+                ],
+                "Test"));
+            var request = new OpenIddictRequest
+            {
+                ClientId = "client",
+                ResponseType = OpenIddictConstants.ResponseTypes.Code,
+                Scope = "openid"
+            };
+            var application = new object();
+            SetupAuthorizationClient(application, true);
+            _mockSecurityPolicyService
+                .Setup(service => service.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy());
+            _mockHttpContextAccessor
+                .Setup(accessor => accessor.HttpContext)
+                .Returns(new DefaultHttpContext());
+
+            var result = await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null);
+
+            Assert.IsType<ForbidResult>(result);
+        }
+
+        private void SetupAuthorizationClient(object application, bool requireMfa)
+        {
+            _mockApplicationManager
+                .Setup(manager => manager.FindByClientIdAsync("client", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(application);
+            _mockApplicationManager
+                .Setup(manager => manager.GetPropertiesAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateClientProperties(requireMfa));
+            _mockApplicationManager
+                .Setup(manager => manager.GetIdAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync("client-id-guid");
+            _mockApplicationManager
+                .Setup(manager => manager.GetDisplayNameAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync("Test client");
+            _mockApplicationManager
+                .Setup(manager => manager.GetPermissionsAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableArray<string>.Empty);
+        }
+
+        private static ImmutableDictionary<string, JsonElement> CreateClientProperties(bool requireMfa)
+        {
+            return requireMfa
+                ? ImmutableDictionary<string, JsonElement>.Empty.Add(
+                    AuthConstants.Properties.RequireMfa,
+                    JsonSerializer.SerializeToElement(true))
+                : ImmutableDictionary<string, JsonElement>.Empty;
+        }
+
+        private sealed class TestSessionFeature : ISessionFeature
+        {
+            public required ISession Session { get; set; }
         }
 
         private void SetupMockUsers(params ApplicationUser[] users)

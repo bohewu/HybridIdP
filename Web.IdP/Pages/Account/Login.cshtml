@@ -84,10 +84,19 @@
                 </div>
                 <h1 class="text-2xl font-normal text-gray-900 mb-2">@productName</h1>
                 <h2 class="text-lg text-gray-700 font-normal">@Localizer["Login"]</h2>
-                <p class="mt-1 text-sm text-gray-500">@Localizer["SignInToContinue"]</p>
+                 <p class="mt-1 text-sm text-gray-500">@Localizer["SignInToContinue"]</p>
             </div>
-            
+
             <div class="google-login-body">
+                @if (Model.IsMfaEnrollmentReauthentication)
+                {
+                    <div class="mb-6 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+                         role="status"
+                         data-test-id="mfa-reauthentication-notice">
+                        @Localizer["MfaEnrollmentReauthenticationNotice"]
+                    </div>
+                }
+
                 @if (Model.ExternalLogins?.Count > 0)
                 {
                     <div class="mb-6">

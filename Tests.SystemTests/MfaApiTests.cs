@@ -199,11 +199,28 @@ public partial class MfaApiTests : IAsyncLifetime
         var loginUrl = reauthenticationResult.GetProperty("loginUrl").GetString();
         Assert.False(string.IsNullOrWhiteSpace(loginUrl));
 
+        var reauthenticationPage = await _httpClient.GetAsync(loginUrl);
+        reauthenticationPage.EnsureSuccessStatusCode();
+        var reauthenticationHtml = await reauthenticationPage.Content.ReadAsStringAsync();
+        Assert.Contains(
+            "data-test-id=\"mfa-reauthentication-notice\"",
+            reauthenticationHtml,
+            StringComparison.Ordinal);
+
         await MfaEnrollmentTestClient.SignInAsync(
             _httpClient,
             TEST_USER_EMAIL,
             TEST_USER_PASSWORD,
             loginUrl!);
+
+        var voluntarySetupPage = await _httpClient.GetAsync("/Account/MfaSetup");
+        voluntarySetupPage.EnsureSuccessStatusCode();
+        var voluntarySetupHtml = await voluntarySetupPage.Content.ReadAsStringAsync();
+        Assert.Contains(
+            "data-show-grace-period=\"false\"",
+            voluntarySetupHtml,
+            StringComparison.Ordinal);
+
         await MfaEnrollmentTestClient.SetCsrfTokenAsync(_httpClient);
 
         var setupResponse =

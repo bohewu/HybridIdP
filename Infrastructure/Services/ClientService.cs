@@ -181,7 +181,8 @@ public class ClientService : IClientService
             SupportedRoles = GetSupportedRoles(properties),
             RequirePkce = clientType == ClientTypes.Public || descriptor.Requirements.Contains(Requirements.Features.ProofKeyForCodeExchange),
             DisableExternalProviders = GetDisableExternalProviders(properties),
-            EnableTurnstile = GetEnableTurnstile(properties)
+            EnableTurnstile = GetEnableTurnstile(properties),
+            RequireMfa = GetRequireMfa(properties)
         };
     }
 
@@ -260,6 +261,11 @@ public class ClientService : IClientService
         if (request.EnableTurnstile == true)
         {
             descriptor.Properties[AuthConstants.Properties.EnableTurnstile] = JsonSerializer.SerializeToElement(true);
+        }
+
+        if (request.RequireMfa == true)
+        {
+            descriptor.Properties[AuthConstants.Properties.RequireMfa] = JsonSerializer.SerializeToElement(true);
         }
 
         // Validate Native app constraints
@@ -539,6 +545,18 @@ public class ClientService : IClientService
             }
         }
 
+        if (request.RequireMfa != null)
+        {
+            if (request.RequireMfa == true)
+            {
+                descriptor.Properties[AuthConstants.Properties.RequireMfa] = JsonSerializer.SerializeToElement(true);
+            }
+            else
+            {
+                descriptor.Properties.Remove(AuthConstants.Properties.RequireMfa);
+            }
+        }
+
         // Validate Redirect URIs for interactive clients
         if ((descriptor.Permissions.Contains(Permissions.GrantTypes.AuthorizationCode) ||
              descriptor.Permissions.Contains(Permissions.GrantTypes.Implicit)) &&
@@ -678,6 +696,27 @@ public class ClientService : IClientService
         }
 
         if (!properties.TryGetValue(AuthConstants.Properties.EnableTurnstile, out var element))
+        {
+            return false;
+        }
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(element.GetString(), out var parsed) => parsed,
+            _ => false
+        };
+    }
+
+    private static bool GetRequireMfa(System.Collections.Immutable.ImmutableDictionary<string, JsonElement>? properties)
+    {
+        if (properties is null)
+        {
+            return false;
+        }
+
+        if (!properties.TryGetValue(AuthConstants.Properties.RequireMfa, out var element))
         {
             return false;
         }

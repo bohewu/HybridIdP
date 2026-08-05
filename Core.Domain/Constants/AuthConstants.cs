@@ -152,5 +152,11 @@ public static class AuthConstants
         /// When absent, Turnstile remains disabled for this client.
         /// </summary>
         public const string EnableTurnstile = "iodc:client:enable_turnstile";
+
+        /// <summary>
+        /// When true, multi-factor authentication is required for this client.
+        /// When absent, multi-factor authentication is not required by the client.
+        /// </summary>
+        public const string RequireMfa = "iodc:client:require_mfa";
     }
 }

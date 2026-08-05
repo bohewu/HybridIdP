@@ -23,6 +23,22 @@ public class MfaEnrollmentSessionTests
     }
 
     [Fact]
+    public void HasPending_ReturnsTrueOnlyWhileReauthenticationAttemptIsActive()
+    {
+        var session = new MemorySession();
+        var timeProvider = new MutableTimeProvider(
+            new DateTimeOffset(2026, 7, 30, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.False(MfaEnrollmentSession.HasPending(session, timeProvider));
+
+        MfaEnrollmentSession.Begin(session, timeProvider);
+        Assert.True(MfaEnrollmentSession.HasPending(session, timeProvider));
+
+        timeProvider.Advance(TimeSpan.FromMinutes(6));
+        Assert.False(MfaEnrollmentSession.HasPending(session, timeProvider));
+    }
+
+    [Fact]
     public void CompletePending_RejectsExpiredReauthenticationAttempt()
     {
         var session = new MemorySession();

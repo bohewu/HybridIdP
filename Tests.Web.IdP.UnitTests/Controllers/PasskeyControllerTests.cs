@@ -8,10 +8,12 @@ using Core.Application.Interfaces;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
 using Fido2NetLib;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Web.IdP.Controllers.Account;
@@ -367,6 +369,49 @@ public class PasskeyControllerTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task AssertionOptionsPost_AuthenticatedStepUp_UsesApplicationCookieUser()
+    {
+        var stepUpUser = CreateEligibleUser("step-up-user");
+        ArrangeApplicationCookieUser(stepUpUser);
+        _passkeyServiceMock
+            .Setup(service => service.GetAssertionOptionsAsync(
+                stepUpUser.UserName,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AssertionOptions.FromJson(
+                "{\"challenge\":\"MTIz\",\"timeout\":60000,\"rpId\":\"localhost\",\"allowCredentials\":[],\"userVerification\":\"preferred\"}"));
+
+        var result = await _controller.AssertionOptionsPost(
+            new LoginOptionsRequest("different-user"),
+            CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        _passkeyServiceMock.Verify(service => service.GetAssertionOptionsAsync(
+            stepUpUser.UserName,
+            CancellationToken.None), Times.Once);
+        _passkeyServiceMock.Verify(service => service.GetAssertionOptionsAsync(
+            "different-user",
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task MakeAssertion_AuthenticatedStepUpWithDifferentCredentialUser_IsRejected()
+    {
+        var stepUpUser = CreateEligibleUser("step-up-user");
+        var credentialUser = CreateEligibleUser("different-user");
+        ArrangeApplicationCookieUser(stepUpUser);
+        ArrangeVerifiedAssertion(credentialUser);
+
+        var result = await _controller.MakeAssertion(
+            EmptyClientResponse(),
+            CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = (string?)badRequest.Value!.GetType().GetProperty("error")?.GetValue(badRequest.Value);
+        Assert.Equal("Authentication failed", error);
+        VerifyNoSuccessfulSignIn();
+    }
+
     private void ArrangeVerifiedAssertion(ApplicationUser user, bool userVerified = true)
     {
         _session.SetString("fido2.assertionOptions", "{\"challenge\":\"123\"}");
@@ -393,6 +438,30 @@ public class PasskeyControllerTests
             Person = person,
             IsActive = true
         };
+    }
+
+    private void ArrangeApplicationCookieUser(ApplicationUser user)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
+            IdentityConstants.ApplicationScheme));
+        var authenticationService = new Mock<IAuthenticationService>();
+        authenticationService
+            .Setup(service => service.AuthenticateAsync(
+                It.IsAny<HttpContext>(),
+                IdentityConstants.ApplicationScheme))
+            .ReturnsAsync(AuthenticateResult.Success(
+                new AuthenticationTicket(
+                    principal,
+                    IdentityConstants.ApplicationScheme)));
+        _userManagerMock
+            .Setup(manager => manager.GetUserAsync(principal))
+            .ReturnsAsync(user);
+
+        _controller.HttpContext.User = principal;
+        _controller.HttpContext.RequestServices = new ServiceCollection()
+            .AddSingleton(authenticationService.Object)
+            .BuildServiceProvider();
     }
 
     private static System.Text.Json.JsonElement EmptyClientResponse() =>

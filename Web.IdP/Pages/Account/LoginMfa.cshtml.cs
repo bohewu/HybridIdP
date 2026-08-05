@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 using Core.Application;
+using Core.Application.Interfaces;
 using Core.Domain;
 using Core.Domain.Events;
 using System.ComponentModel.DataAnnotations;
@@ -17,6 +18,7 @@ public partial class LoginMfaModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMfaService _mfaService;
     private readonly IUserManagementService _userManagementService;
+    private readonly IPasskeyService _passkeyService;
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly ILogger<LoginMfaModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -26,6 +28,7 @@ public partial class LoginMfaModel : PageModel
         UserManager<ApplicationUser> userManager,
         IMfaService mfaService,
         IUserManagementService userManagementService,
+        IPasskeyService passkeyService,
         IDomainEventPublisher eventPublisher,
         ILogger<LoginMfaModel> logger,
         IStringLocalizer<SharedResource> localizer)
@@ -34,6 +37,7 @@ public partial class LoginMfaModel : PageModel
         _userManager = userManager;
         _mfaService = mfaService;
         _userManagementService = userManagementService;
+        _passkeyService = passkeyService;
         _eventPublisher = eventPublisher;
         _logger = logger;
         _localizer = localizer;
@@ -53,6 +57,12 @@ public partial class LoginMfaModel : PageModel
     /// </summary>
     public bool EmailMfaEnabled { get; set; }
 
+    public bool TotpMfaEnabled { get; private set; }
+
+    public bool PasskeyEnabled { get; private set; }
+
+    public string? PasskeyUserName { get; private set; }
+
     public class InputModel
     {
         [Display(Name = "VerificationCode")]
@@ -63,26 +73,30 @@ public partial class LoginMfaModel : PageModel
         public string? RecoveryCode { get; set; }
     }
 
-    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, bool rememberMe = false)
+    public async Task<IActionResult> OnGetAsync(
+        string? returnUrl = null,
+        bool rememberMe = false,
+        CancellationToken cancellationToken = default)
     {
-        var user = await GetTwoFactorUserAsync();
+        var user = await GetMfaUserAsync();
         if (user == null)
         {
-            return RedirectToPage("./Login");
+            return RedirectToPage("./Login", new { returnUrl });
         }
-        
-        // Router Logic:
-        // If TOTP (TwoFactorEnabled) is TRUE, show this page (default MFA).
-        // If TOTP is FALSE, check Email MFA.
-        if (!user.TwoFactorEnabled)
+
+        await LoadAvailableMethodsAsync(user, cancellationToken);
+
+        if (!TotpMfaEnabled)
         {
-            // If only Email MFA, redirect there
-            if (user.EmailMfaEnabled)
+            if (EmailMfaEnabled && !PasskeyEnabled)
             {
                 return RedirectToPage("./LoginEmailOtp", new { returnUrl, rememberMe });
             }
-            // If no MFA enabled, back to login (shouldn't be here)
-            return RedirectToPage("./Login");
+
+            if (!PasskeyEnabled)
+            {
+                return RedirectToPage("./Login", new { returnUrl });
+            }
         }
 
         ReturnUrl = returnUrl;
@@ -96,11 +110,13 @@ public partial class LoginMfaModel : PageModel
     {
         var returnUrl = ReturnUrl ?? Url.Content("~/");
 
-        var user = await GetTwoFactorUserAsync();
+        var user = await GetMfaUserAsync();
         if (user == null)
         {
-            return RedirectToPage("./Login");
+            return RedirectToPage("./Login", new { returnUrl });
         }
+
+        await LoadAvailableMethodsAsync(user, cancellationToken);
 
         // Check for lockout
         if (await _userManager.IsLockedOutAsync(user))
@@ -113,7 +129,6 @@ public partial class LoginMfaModel : PageModel
         if (string.IsNullOrWhiteSpace(Input.TotpCode) && string.IsNullOrWhiteSpace(Input.RecoveryCode))
         {
             ModelState.AddModelError(string.Empty, _localizer["EnterCodeOrRecoveryCode"]);
-            EmailMfaEnabled = user.EmailMfaEnabled;
             return Page();
         }
         
@@ -152,7 +167,6 @@ public partial class LoginMfaModel : PageModel
             }
 
             ModelState.AddModelError(nameof(Input.TotpCode), _localizer["InvalidMfaCode"]);
-            EmailMfaEnabled = user.EmailMfaEnabled;
             return Page();
         }
 
@@ -194,15 +208,32 @@ public partial class LoginMfaModel : PageModel
             return Page();
         }
 
-        EmailMfaEnabled = user.EmailMfaEnabled;
         return Page();
     }
-    
-    private async Task<ApplicationUser?> GetTwoFactorUserAsync()
+
+    private async Task LoadAvailableMethodsAsync(
+        ApplicationUser user,
+        CancellationToken cancellationToken)
+    {
+        TotpMfaEnabled = user.TwoFactorEnabled;
+        EmailMfaEnabled = user.EmailMfaEnabled;
+        PasskeyUserName = user.UserName;
+        PasskeyEnabled = !string.IsNullOrWhiteSpace(PasskeyUserName) &&
+            (await _passkeyService.GetUserPasskeysAsync(user.Id, cancellationToken)).Count > 0;
+    }
+
+    private async Task<ApplicationUser?> GetMfaUserAsync()
     {
         // Try standard Identity method first
         var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
-        
+
+        // Client-triggered step-up starts from an existing password-authenticated session,
+        // not Identity's temporary two-factor cookie.
+        if (user == null && User.Identity?.IsAuthenticated == true)
+        {
+            user = await _userManager.GetUserAsync(User);
+        }
+
         // Fallback: manually look up user from cookie if Identity method fails (Guid key issue)
         if (user == null)
         {

@@ -150,6 +150,58 @@ public class ClientCrudTests : IClassFixture<WebIdPServerFixture>, IAsyncLifetim
     }
 
     [Fact]
+    public async Task CreateAndUpdateClient_RequireMfa_ShouldRoundTripAndRemovePropertyWhenFalse()
+    {
+        var clientIdVal = $"{TEST_PREFIX}require_mfa_{Guid.NewGuid()}";
+        var createRequest = new CreateClientRequest(
+            ClientId: clientIdVal,
+            ClientSecret: "Secret1",
+            DisplayName: "Require MFA Client",
+            ApplicationType: "web",
+            Type: "confidential",
+            ConsentType: "explicit",
+            RedirectUris: new List<string>(),
+            PostLogoutRedirectUris: new List<string>(),
+            Permissions: new List<string>(),
+            SupportedRoles: null)
+        {
+            RequireMfa = true
+        };
+
+        var createResponse = await _httpClient.PostAsJsonAsync("/api/admin/clients", createRequest);
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<CreateClientResponse>(_jsonOptions);
+        _createdClientIds.Add(created!.Id);
+
+        var initialDetailResponse = await _httpClient.GetAsync($"/api/admin/clients/{created.Id}");
+        initialDetailResponse.EnsureSuccessStatusCode();
+        var initialDetail = await initialDetailResponse.Content.ReadFromJsonAsync<ClientDetail>(_jsonOptions);
+        Assert.True(initialDetail!.RequireMfa);
+
+        var updateRequest = new UpdateClientRequest(
+            ClientId: null,
+            ClientSecret: null,
+            DisplayName: null,
+            Type: null,
+            ConsentType: null,
+            RedirectUris: null,
+            PostLogoutRedirectUris: null,
+            Permissions: null,
+            SupportedRoles: null)
+        {
+            RequireMfa = false
+        };
+
+        var updateResponse = await _httpClient.PutAsJsonAsync($"/api/admin/clients/{created.Id}", updateRequest);
+        updateResponse.EnsureSuccessStatusCode();
+
+        var updatedDetailResponse = await _httpClient.GetAsync($"/api/admin/clients/{created.Id}");
+        updatedDetailResponse.EnsureSuccessStatusCode();
+        var updatedDetail = await updatedDetailResponse.Content.ReadFromJsonAsync<ClientDetail>(_jsonOptions);
+        Assert.False(updatedDetail!.RequireMfa);
+    }
+
+    [Fact]
     public async Task DeleteClient_ValidId_ReturnsOk()
     {
          var clientIdVal = $"{TEST_PREFIX}del_{Guid.NewGuid()}";

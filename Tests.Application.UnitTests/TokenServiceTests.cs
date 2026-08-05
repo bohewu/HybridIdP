@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Immutable;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading;
 using Core.Application;
 using Core.Domain;
@@ -113,7 +114,7 @@ namespace Tests.Application.UnitTests
         }
 
         [Fact]
-        public async Task HandleTokenRequestAsync_ClientCredentials_ReturnsSignInResult()
+        public async Task HandleTokenRequestAsync_ClientCredentials_RemainsIsolatedFromMfaPolicies()
         {
             // Arrange
             var request = CreateRequest(GrantTypes.ClientCredentials, clientId: "service-client", scope: "api:read");
@@ -129,6 +130,12 @@ namespace Tests.Application.UnitTests
             
             _mockApplicationManager.Setup(m => m.GetClientIdAsync(clientApp, default)).ReturnsAsync("service-client");
             _mockApplicationManager.Setup(m => m.GetDisplayNameAsync(clientApp, default)).ReturnsAsync("Service Client");
+            _mockApplicationManager
+                .Setup(m => m.GetPropertiesAsync(clientApp, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateClientProperties(requireMfa: true));
+            _mockSecurityPolicyService
+                .Setup(service => service.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy { EnforceMandatoryMfaEnrollment = true });
 
             // Act
             var result = await _service.HandleTokenRequestAsync(request, null);
@@ -138,6 +145,9 @@ namespace Tests.Application.UnitTests
             Assert.Equal(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, signInResult.AuthenticationScheme);
             Assert.NotNull(signInResult.Principal);
             Assert.True(signInResult.Principal.HasClaim(Claims.Subject, "service-client"));
+            _mockApplicationManager.Verify(
+                manager => manager.GetPropertiesAsync(clientApp, It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Fact]
@@ -651,6 +661,88 @@ namespace Tests.Application.UnitTests
                 signInResult.Principal!.GetClaims(AuthConstants.ClaimTypes.Amr).Order());
         }
 
+        [Fact]
+        public async Task HandleTokenRequestAsync_RefreshToken_ClientMfaPolicyEnabledAfterIssuanceWithoutMfa_ReturnsInvalidGrant()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "refresh-user",
+                IsActive = true
+            };
+            var principal = SetupRefreshGrant(user, clientRequiresMfa: true);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_RefreshToken_GlobalMfaPolicyEnabledForClientWithoutFlag_ReturnsInvalidGrant()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "refresh-user",
+                IsActive = true
+            };
+            var principal = SetupRefreshGrant(user);
+            _mockSecurityPolicyService
+                .Setup(service => service.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy { EnforceMandatoryMfaEnrollment = true });
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                principal);
+
+            AssertInvalidGrant(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_RefreshToken_WithoutMfaPolicy_PreservesBaselineSuccess()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "refresh-user",
+                Email = "refresh-user@test.local",
+                IsActive = true
+            };
+            var principal = SetupRefreshGrant(user);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                principal);
+
+            Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+        }
+
+        [Theory]
+        [InlineData(AuthConstants.Amr.Mfa)]
+        [InlineData(AuthConstants.Amr.HardwareKey)]
+        public async Task HandleTokenRequestAsync_RefreshToken_ClientMfaPolicyWithMfaEvidence_ReturnsSignInResult(
+            string amrValue)
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "refresh-user",
+                Email = "refresh-user@test.local",
+                IsActive = true
+            };
+            var principal = SetupRefreshGrant(user, clientRequiresMfa: true);
+            Assert.IsType<ClaimsIdentity>(principal.Identity)
+                .AddClaim(new Claim(AuthConstants.ClaimTypes.Amr, amrValue));
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                principal);
+
+            Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+        }
+
         [Theory]
         [InlineData(false, false, false)]
         [InlineData(true, true, false)]
@@ -936,7 +1028,10 @@ namespace Tests.Application.UnitTests
              };
         }
 
-        private ClaimsPrincipal SetupRefreshGrant(ApplicationUser user, bool isLockedOut = false)
+        private ClaimsPrincipal SetupRefreshGrant(
+            ApplicationUser user,
+            bool isLockedOut = false,
+            bool clientRequiresMfa = false)
         {
             var clientApp = new object();
             _mockApplicationManager
@@ -945,6 +1040,9 @@ namespace Tests.Application.UnitTests
             _mockApplicationManager
                 .Setup(m => m.GetPermissionsAsync(clientApp, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.GrantTypes.RefreshToken));
+            _mockApplicationManager
+                .Setup(m => m.GetPropertiesAsync(clientApp, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateClientProperties(clientRequiresMfa));
 
             _mockUserManager.Setup(m => m.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
             _mockUserManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(isLockedOut);
@@ -957,6 +1055,15 @@ namespace Tests.Application.UnitTests
             return new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(Claims.Subject, user.Id.ToString())],
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme));
+        }
+
+        private static ImmutableDictionary<string, JsonElement> CreateClientProperties(bool requireMfa)
+        {
+            return requireMfa
+                ? ImmutableDictionary<string, JsonElement>.Empty.Add(
+                    AuthConstants.Properties.RequireMfa,
+                    JsonSerializer.SerializeToElement(true))
+                : ImmutableDictionary<string, JsonElement>.Empty;
         }
 
         private ClaimsPrincipal SetupAuthorizationCodeGrant(

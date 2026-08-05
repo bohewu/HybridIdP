@@ -32,10 +32,11 @@
         <div class="status-text">
           <h3>{{ t('mfa.notEnabled') }}</h3>
           <p>{{ t('mfa.enableDescription') }}</p>
+          <p class="reauthentication-note">{{ t('mfa.reauthenticationNotice') }}</p>
           <p v-if="totpSetupError" class="error-message" role="alert">{{ totpSetupError }}</p>
         </div>
         <button class="btn-enable" @click="startSetup" :disabled="totpSetupLoading">
-          {{ totpSetupLoading ? '...' : t('mfa.enable') }}
+          {{ totpSetupLoading ? t('mfa.redirectingToSignIn') : t('mfa.startSetup') }}
         </button>
       </div>
 
@@ -1008,6 +1009,11 @@ function finishRegenerate() {
   margin: 0;
   font-size: 13px;
   color: #5f6368;
+}
+
+.status-text .reauthentication-note {
+  margin-top: 6px;
+  color: #3c4043;
 }
 
 .btn-enable {

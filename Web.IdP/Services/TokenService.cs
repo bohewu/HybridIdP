@@ -309,6 +309,40 @@ namespace Web.IdP.Services
                     }));
             }
 
+            var application = await _applicationManager.FindByClientIdAsync(
+                request.ClientId ?? string.Empty,
+                cancellationToken);
+            if (application is null)
+            {
+                return new ForbidResult(
+                    authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The refresh token is no longer valid."
+                    }));
+            }
+
+            var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+            var clientRequiresMfa = ClientMfaPolicy.RequiresMfa(
+                await _applicationManager.GetPropertiesAsync(application, cancellationToken));
+            var amrValues = principal.GetClaims(AuthConstants.ClaimTypes.Amr)
+                .Distinct(StringComparer.Ordinal);
+            var hasMfaEvidence = amrValues.Any(value =>
+                value.Equals(AuthConstants.Amr.Mfa, StringComparison.OrdinalIgnoreCase) ||
+                value.Equals(AuthConstants.Amr.HardwareKey, StringComparison.OrdinalIgnoreCase));
+
+            if ((policy.EnforceMandatoryMfaEnrollment || clientRequiresMfa) && !hasMfaEvidence)
+            {
+                return new ForbidResult(
+                    authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Multi-factor authentication is required for this token refresh."
+                    }));
+            }
+
             var requestScopes = request.GetScopes().ToImmutableArray();
             var effectiveScopes = requestScopes.IsDefaultOrEmpty
                 ? principal.GetScopes().ToImmutableArray()
@@ -327,9 +361,6 @@ namespace Web.IdP.Services
                 .SetClaim(Claims.Name, displayName)
                 .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
                 .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
-
-            var amrValues = principal.GetClaims(AuthConstants.ClaimTypes.Amr)
-                .Distinct(StringComparer.Ordinal);
 
             foreach (var amrValue in amrValues)
             {

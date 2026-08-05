@@ -14,12 +14,12 @@
       <div v-if="isMfaEnforced" class="grace-expired enforced">
         <p class="expired-text">{{ t('mfa.enforcedMessage') || 'MFA is strictly required for this session.' }}</p>
       </div>
-      <div v-else-if="!gracePeriodExpired" class="grace-info">
+      <div v-else-if="showGracePeriod && !gracePeriodExpired" class="grace-info">
         <p class="grace-text">
           {{ t('mfa.gracePeriodMessage', { days: remainingGraceDays }) }}
         </p>
       </div>
-      <div v-else class="grace-expired">
+      <div v-else-if="showGracePeriod" class="grace-expired">
         <p class="expired-text">{{ t('mfa.gracePeriodExpiredMessage') }}</p>
       </div>
     </div>
@@ -229,6 +229,7 @@ const { registerPasskey: webAuthnRegister } = useWebAuthn()
 const gracePeriodExpired = ref(false)
 const remainingGraceDays = ref(0)
 const isMfaEnforced = ref(false)
+const showGracePeriod = ref(false)
 const returnUrl = ref('/')
 const csrfToken = ref('')
 const skipActionUrl = ref('/Account/MfaSetup?handler=Skip')
@@ -280,6 +281,7 @@ onMounted(async () => {
     gracePeriodExpired.value = mountEl.dataset.gracePeriodExpired === 'true'
     remainingGraceDays.value = parseInt(mountEl.dataset.remainingGraceDays || '0', 10)
     isMfaEnforced.value = mountEl.dataset.isMfaEnforced === 'true'
+    showGracePeriod.value = mountEl.dataset.showGracePeriod === 'true'
     returnUrl.value = mountEl.dataset.returnUrl || '/'
     csrfToken.value = mountEl.dataset.csrfToken || ''
   }

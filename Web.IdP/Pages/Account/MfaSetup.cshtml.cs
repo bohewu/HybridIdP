@@ -38,6 +38,7 @@ public class MfaSetupModel : PageModel
 
     public int RemainingGraceDays { get; private set; }
     public bool IsMfaEnforced { get; private set; }
+    public bool ShowGracePeriod { get; private set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -53,22 +54,31 @@ public class MfaSetupModel : PageModel
         
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         
-        // Default to expired if policy enforces it, until we prove otherwise
         GracePeriodExpired = false;
 
         if (policy.EnforceMandatoryMfaEnrollment)
         {
-             if (user.MfaRequirementNotifiedAt != null)
-             {
+            if (user.MfaRequirementNotifiedAt != null)
+            {
+                var now = DateTime.UtcNow;
                 var expiry = user.MfaRequirementNotifiedAt.Value.AddDays(policy.MfaEnforcementGracePeriodDays);
-                RemainingGraceDays = (int)Math.Max(0, (expiry - DateTime.UtcNow).TotalDays);
-                
-                if (DateTime.UtcNow > expiry)
+                var remaining = expiry - now;
+
+                if (remaining <= TimeSpan.Zero)
                 {
                     GracePeriodExpired = true;
                 }
-             }
-             // If NotifiedAt is null, it means they just got flagged, so grace period starts now (not expired)
+                else
+                {
+                    RemainingGraceDays = Math.Max(1, (int)Math.Ceiling(remaining.TotalDays));
+                }
+            }
+            else
+            {
+                // The user was just flagged; show the configured grace period from its start.
+                RemainingGraceDays = Math.Max(0, policy.MfaEnforcementGracePeriodDays);
+                GracePeriodExpired = RemainingGraceDays == 0;
+            }
         }
 
         // UX Improvement: If acr_values=mfa was requested, MFA is enforced for this session.
@@ -80,6 +90,8 @@ public class MfaSetupModel : PageModel
         {
             GracePeriodExpired = true;
         }
+
+        ShowGracePeriod = policy.EnforceMandatoryMfaEnrollment && !IsMfaEnforced;
 
         return Page();
     }

@@ -355,6 +355,28 @@ public class ClientsControllerTests
         VerifyNoScopeReadServices();
     }
 
+    [Fact]
+    public async Task GetClient_WhenMfaIsRequired_MapsRequireMfaToDetailResponse()
+    {
+        var controller = CreateController(CallerKind.Admin, Guid.NewGuid());
+        _clientService
+            .Setup(service => service.GetClientByIdAsync(
+                TargetClientId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ClientDetail
+            {
+                Id = TargetClientId.ToString(),
+                ClientId = "target-client",
+                RequireMfa = true
+            });
+
+        var result = await controller.GetClient(TargetClientId.ToString());
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var payload = JsonSerializer.SerializeToElement(okResult.Value);
+        Assert.True(payload.GetProperty("requireMfa").GetBoolean());
+    }
+
     private ClientsController CreateController(
         CallerKind callerKind,
         Guid personId,

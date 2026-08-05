@@ -163,11 +163,18 @@ namespace Web.IdP.Services // Keep consistent namespace case
                  throw new InvalidOperationException("User not found.");
             }
 
+            // Resolve the target application before evaluating its interactive MFA policy.
+            var application = await _applicationManager.FindByClientIdAsync(request.ClientId!, cancellationToken) ??
+                throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
+            var clientRequiresMfa = ClientMfaPolicy.RequiresMfa(
+                await _applicationManager.GetPropertiesAsync(application, cancellationToken));
+
             // Phase: acr_values=mfa enforcement
             var acrValues = request.GetAcrValues().ToList();
             LogAuthorizeRequestDetails(string.Join(", ", acrValues), request.Prompt, request.MaxAge);
             
-            var mfaRequired = acrValues.Any(v => v.Equals("mfa", StringComparison.OrdinalIgnoreCase));
+            var mfaRequired = clientRequiresMfa ||
+                acrValues.Any(v => v.Equals("mfa", StringComparison.OrdinalIgnoreCase));
             
             // Also check Mandatory MFA Policy
             var policy = await _securityPolicyService.GetCurrentPolicyAsync();
@@ -225,9 +232,6 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 }
             }
 
-            // Retrieve the application details from the database
-            var application = await _applicationManager.FindByClientIdAsync(request.ClientId!, cancellationToken) ??
-                throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
             var applicationId = await _applicationManager.GetIdAsync(application, cancellationToken)
                 ?? throw new InvalidOperationException("The application identifier cannot be resolved.");
 

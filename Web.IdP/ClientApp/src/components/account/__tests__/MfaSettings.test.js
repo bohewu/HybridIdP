@@ -209,6 +209,25 @@ describe('MfaSettings.vue', () => {
         expect(wrapper.find('.btn-enable').attributes('disabled')).toBeUndefined();
     });
 
+    it('explains reauthentication before starting TOTP enrollment', async () => {
+        fetch.mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({
+                email: 'test@example.com',
+                twoFactorEnabled: false,
+                enableTotpMfa: true,
+                enableEmailMfa: false,
+                enablePasskey: false
+            })
+        });
+
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+
+        expect(wrapper.find('.reauthentication-note').text()).toBe('mfa.reauthenticationNotice');
+        expect(wrapper.find('.btn-enable').text()).toBe('mfa.startSetup');
+    });
+
     it('shows warning message when requireMfaForPasskey is enabled and user has no MFA but has passkeys', async () => {
         // Mock: user has passkeys, no MFA, and policy requires MFA for passkeys
         fetch.mockImplementation((url) => {

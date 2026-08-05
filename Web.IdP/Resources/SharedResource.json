@@ -67,6 +67,7 @@
   "EmailOrUsername": "Email or Username",
   "EmailOrUsernameLabel": "Email or Username",
   "SignInToContinue": "Sign in to continue",
+  "MfaEnrollmentReauthenticationNotice": "For your security, sign in again to continue setting up two-step verification.",
   "Password": "Password",
   "RememberMe": "Remember me?",
   "DontHaveAccountRegister": "Don't have an account? Register",

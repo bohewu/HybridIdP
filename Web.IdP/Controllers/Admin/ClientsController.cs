@@ -108,7 +108,8 @@ public class ClientsController : ControllerBase
             supportedRoles = client.SupportedRoles,
             requirePkce = client.RequirePkce,
             disableExternalProviders = client.DisableExternalProviders,
-            enableTurnstile = client.EnableTurnstile
+            enableTurnstile = client.EnableTurnstile,
+            requireMfa = client.RequireMfa
         });
     }
 

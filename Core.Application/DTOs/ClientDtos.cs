@@ -34,6 +34,7 @@ public record CreateClientRequest(
     public bool? RequirePkce { get; init; }
     public bool? DisableExternalProviders { get; init; }
     public bool? EnableTurnstile { get; init; }
+    public bool? RequireMfa { get; init; }
 }
 
 /// <summary>
@@ -54,6 +55,7 @@ public record UpdateClientRequest(
     public bool? RequirePkce { get; init; }
     public bool? DisableExternalProviders { get; init; }
     public bool? EnableTurnstile { get; init; }
+    public bool? RequireMfa { get; init; }
 }
 
 /// <summary>
@@ -74,6 +76,7 @@ public sealed class ClientDetail
     public bool RequirePkce { get; set; }
     public bool DisableExternalProviders { get; set; }
     public bool EnableTurnstile { get; set; }
+    public bool RequireMfa { get; set; }
 }
 
 /// <summary>

@@ -180,7 +180,23 @@ function initTurnstile() {
     renderTurnstile();
 }
 
-async function initPasskeyLogin() {
+export function getSafePasskeyReturnUrl(url) {
+    const defaultUrl = '/';
+    if (!url) return defaultUrl;
+
+    // Match RedirectHelper.IsSafeReturnUrl: only local paths are allowed, and
+    // browsers must not be able to normalize a slash variant into another host.
+    if (!url.startsWith('/') ||
+        url.startsWith('//') ||
+        url.startsWith('/\\') ||
+        /[\u0000-\u001F\u007F-\u009F]/.test(url)) {
+        return defaultUrl;
+    }
+
+    return url;
+}
+
+export async function initPasskeyLogin() {
     const passkeyBtn = document.getElementById('passkeyLoginBtn');
     if (!passkeyBtn) return;
 
@@ -192,34 +208,11 @@ async function initPasskeyLogin() {
         return;
     }
 
-    // Safe redirect - only allow relative URLs or same-origin
-    function safeRedirect(url) {
-        const defaultUrl = '/';
-        if (!url) return defaultUrl;
-        
-        // Only allow relative URLs starting with /
-        if (url.startsWith('/') && !url.startsWith('//')) {
-            return url;
-        }
-        
-        // Check if same origin
-        try {
-            const parsed = new URL(url, window.location.origin);
-            if (parsed.origin === window.location.origin) {
-                return url;
-            }
-        } catch {
-            // Invalid URL
-        }
-        
-        return defaultUrl;
-    }
-
     passkeyBtn.addEventListener('click', async () => {
         try {
             passkeyBtn.disabled = true; // Prevent double-click
-            const username = usernameInput.value;
-            const returnUrl = safeRedirect(passkeyBtn.getAttribute('data-return-url'));
+            const username = usernameInput?.value || passkeyBtn.getAttribute('data-username') || undefined;
+            const returnUrl = getSafePasskeyReturnUrl(passkeyBtn.getAttribute('data-return-url'));
             const result = await authenticateWithPasskey(username);
             if (result.success) {
                 window.location.href = returnUrl;
@@ -247,6 +240,8 @@ async function initPasskeyLogin() {
     });
 
     // Support Conditional UI (Auto-fill) if available
+    if (!usernameInput) return;
+
     try {
         if (window.PublicKeyCredential && PublicKeyCredential.isConditionalMediationAvailable) {
             const available = await PublicKeyCredential.isConditionalMediationAvailable();
@@ -257,7 +252,7 @@ async function initPasskeyLogin() {
                 authenticateWithPasskey(undefined, 'conditional')
                     .then(result => {
                         if (result.success) {
-                            const returnUrl = safeRedirect(passkeyBtn.getAttribute('data-return-url'));
+                            const returnUrl = getSafePasskeyReturnUrl(passkeyBtn.getAttribute('data-return-url'));
                             window.location.href = returnUrl;
                         }
                     })
