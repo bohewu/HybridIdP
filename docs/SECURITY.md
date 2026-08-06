@@ -120,6 +120,66 @@ revocation response; self-contained access tokens remain valid only to their
 documented expiry unless a separately approved revocation design changes that
 policy.
 
+### Future One-Time Credential Migration
+
+The following is a future, unimplemented, opt-in credential-migration
+ceremony. It does not add an AD/LDAP provider, migration configuration,
+directory operation, or test to the current product. It is a separate,
+deployment-controlled migration mode and request policy, not a login-name
+heuristic or an ordinary authentication fallback. A durable per-account
+one-time eligibility/completion marker or registry authorizes and records the
+ceremony; it is distinct from must-change-password, password-expiry, and local
+password-policy state. The global migration switch and legacy proof path must
+be disabled after the bounded migration window or an explicit operator cutoff.
+
+Before a password is submitted, the future ceremony must resolve exactly one
+eligible local account and one managed directory object through an assured
+mapping from a stable, namespaced legacy subject to that directory object's
+immutable key. Mutable login names, email, display names, directory
+distinguished names, unassured fields, and raw national identifiers are not
+substitutes. Each attempt explicitly selects exactly one legacy-proof provider
+and exactly one directory credential authority. Lookup, proof, reset,
+verification, provider, timeout, malformed, ambiguous, or denial failures
+must fail closed: they must not fall back to Local, LegacyAuth, AD/LDAP, or any
+other credential authority. Pre-proof and failure responses must be uniform
+enough to avoid revealing account, eligibility, mapping, marker, directory, or
+provider state.
+
+After successful legacy proof, the server must create a short-lived,
+server-side migration ticket whose stored representation is protected or
+hashed. The ticket must bind the selected provider, stable legacy subject,
+immutable directory object, local account, ceremony and browser context,
+expiry, and state. It must be atomically single-use and protected against
+replay; rate limiting and CSRF/browser binding are mandatory. No application
+principal, session, cookie, token, or grant continuation may be created before
+migration completion.
+
+The preferred future credential mutation is a least-privilege directory
+password-reset capability limited to eligible managed accounts. A separately
+configured generic credential-management capability is permitted only when a
+documented direct-directory capability gap prevents that operation; it follows
+the same explicit-selection and no-fallback rules. The directory remains
+authoritative for credential policy, history, expiry, lockout, and state. A
+submitted password exists in memory only for the minimum ceremony duration and
+must not be stored, derived, logged, audited, claimed, or passed to local
+password-policy enforcement.
+
+The completion marker may be recorded only after the reset has an independent
+directory bind verification and eligible-status check. The required future
+order is verified directory commitment, marker completion, local
+shadow-user/Person/JIT finalization subject to local lifecycle eligibility,
+local MFA, then session/cookie/token issuance. Interrupted, conflicting, or
+uncertain reset or marker states remain denied; they do not reuse a ticket or
+guess success and may proceed only through an idempotent, state-aware,
+fail-closed recovery/reconciliation path. Once completed, the account's next
+login uses only the explicitly selected AD/LDAP path, not legacy proof.
+
+Migration audit and security records must contain only sanitized reason
+categories and correlation data. They must exclude passwords, migration
+tickets, reset secrets, bind credentials, raw national identifiers,
+unnecessary profile values, and other secrets or personally identifiable
+information.
+
 ### Client Administration Ownership
 
 Client-management permissions grant access to the administrative surface but

@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-08-06T00:49:42Z._
+_Derived from `todo-ledger.json`; updated 2026-08-06T05:48:45Z._
 
 ## Done
 
@@ -206,6 +206,22 @@ _Derived from `todo-ledger.json`; updated 2026-08-06T00:49:42Z._
   - `docs/TODOS.md`
   - `docs/design_specs/phase-23-ad-integration-plan.md`
 
+### HIDP-20260806-4 — Generic OSS one-time legacy-proof-to-directory credential migration specification
+
+- Completed: 2026-08-06T05:46:23Z
+- Run: `flow-20260806T051710Z-hybrididp-credential-migration`
+- Related tasks: `HIDP-20260806-4-1`, `HIDP-20260806-4-2`, `HIDP-20260806-4-3`
+- Notes: Documentation-only generic OSS one-time legacy-proof-to-directory credential migration specification across AUTHENTICATION_INTEGRATION, Phase 23, SECURITY, and TODOS. The future/unimplemented ceremony is explicitly deployment/request-selected within a bounded migration mode/window and uses a durable per-account one-time eligibility/completion marker distinct from ordinary password-change state; assured stable-subject-to-immutable-directory-key mapping; exactly one hardened legacy proof provider and directory authority with fail-closed no-fallback routing; a protected short-lived browser-bound atomically single-use server-side ticket with replay, CSRF, and rate-limit controls; directory-owned password policy and independent bind/status verification establish commitment before the Required marker transitions to Completed, with state ordering Required -> ProofValidated -> DirectoryCredentialCommitted -> LocalFinalized; idempotent queryable recovery for uncertain outcomes; JIT/shadow/Person finalization and local lifecycle checks before MFA and any cookie/session/token issuance; an explicit direct-directory path for completed accounts and migration sunset; and a sanitized privacy boundary excluding credentials, tickets, secrets, raw national identifiers, and unnecessary PII. No product/configuration/package/schema/test implementation or connected AD/LDAP run occurred. The reviewed four-document diff and tracker synchronization are scoped to one focused local commit; no push occurred.
+- Artifacts:
+  - `.pipeline-output/flow-20260806T051710Z-hybrididp-credential-migration/flow/problem-spec.json`
+  - `.pipeline-output/flow-20260806T051710Z-hybrididp-credential-migration/flow/task-list.json`
+  - `.pipeline-output/flow-20260806T051710Z-hybrididp-credential-migration/flow/synthesis.md`
+  - `.pipeline-output/flow-20260806T051710Z-hybrididp-credential-migration/flow/review-report.json`
+  - `docs/AUTHENTICATION_INTEGRATION.md`
+  - `docs/design_specs/phase-23-ad-integration-plan.md`
+  - `docs/SECURITY.md`
+  - `docs/TODOS.md`
+
 ## Backlog
 
 ### HIDP-20260806-2 — Implement and test generic upstream-provider contract with configurable direct AD/LDAP adapter
@@ -213,7 +229,7 @@ _Derived from `todo-ledger.json`; updated 2026-08-06T00:49:42Z._
 - Status: backlog
 - Run: `flow-20260806T081830Z-hybrididp-ad-boundary`
 - Related tasks: `HIDP-20260806-1`
-- Notes: Pending implementation and tests for a generic upstream-provider contract plus a deployment-configurable direct AD/LDAP adapter, preserving OSS and non-institutional scope. A standardized provider-neutral API adapter remains conditional on a proven directory capability gap and is not automatic scope.
+- Notes: Pending implementation and focused tests for the generic upstream-provider contract, deployment-configurable direct AD/LDAP adapter, and the one-time legacy-proof-to-directory credential-migration state machine, preserving OSS and non-institutional scope. A standardized provider-neutral API adapter remains conditional on a proven directory capability gap and is not automatic scope.
 - Artifacts:
   - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/problem-spec.json`
   - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/task-list.json`
@@ -224,7 +240,7 @@ _Derived from `todo-ledger.json`; updated 2026-08-06T00:49:42Z._
 - Status: backlog
 - Run: `flow-20260806T081830Z-hybrididp-ad-boundary`
 - Related tasks: `HIDP-20260806-2`
-- Notes: Pending opt-in sanitized connected validation in a non-production directory environment, dependent on HIDP-20260806-2. Use no production credentials or data, and never perform an automatic writable retry.
+- Notes: Pending separately approved, opt-in sanitized connected non-production migration scenarios, dependent on HIDP-20260806-2: success, uniform denial, replay rejection, and uncertain commit/recovery. Use no production credentials or data, sanitize all evidence, and never perform an automatic writable retry.
 - Artifacts:
   - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/problem-spec.json`
   - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/task-list.json`

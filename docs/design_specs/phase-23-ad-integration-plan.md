@@ -35,6 +35,10 @@ This plan does not authorize packages, provider code, migrations, configuration
 parsing, runtime changes, test-code changes, connected AD/LDAP testing, or
 changes to Local or LegacyAuth behavior.
 
+It also does not implement the opt-in one-time migration contract below. That
+contract is documentation only and does not authorize product, configuration,
+package, migration, test, or connected-directory work.
+
 ## Current baseline
 
 `LoginService` currently authenticates a found local user locally; when no
@@ -161,6 +165,102 @@ come from secret configuration. Security and audit events are sanitized and
 exclude passwords, tokens, bind secrets, raw identifiers, and unnecessary
 profile values.
 
+## Future one-time legacy-proof-to-directory credential migration
+
+This authoritative future contract is a narrow, deployment-controlled ceremony
+that is separate from ordinary sign-in. It is not present in the current
+product: current password behavior remains Local plus the configurable
+LegacyAuth HTTP adapter, while direct configurable AD/LDAP remains future. It
+does not relabel current LegacyAuth as a directory provider or introduce a
+fallback route. The companion [Authentication Integration Guide](../AUTHENTICATION_INTEGRATION.md#future-one-time-legacy-proof-to-directory-credential-migration)
+contains the same integration contract.
+
+### Mode, durable authorization, and pre-proof resolution
+
+The ceremony is opt-in only through explicit deployment-controlled migration
+mode and request policy, bounded by a migration window and explicit operator
+cutoff. It must be selected before a password is requested or submitted, never
+by a login-name heuristic or ordinary-authentication fallback. If the mode is
+disabled or expired, cutoff has occurred, or an account lacks an eligible
+migration record, the request does not enter legacy proof or directory reset.
+
+Each eligible account needs a durable, queryable one-time migration record with
+distinct `Required` eligibility and `Completed` outcome. This record is not a
+must-change-password, password-expiry, or local password-policy state. Before
+password submission, it must resolve exactly one eligible local account and
+managed directory object through a pre-approved assured mapping from a stable,
+namespaced legacy subject to a namespaced immutable directory key or directory
+object GUID. Email, login name, display name, directory DN, unassured fields,
+or raw national identifiers cannot substitute for this mapping.
+
+Lookup ambiguity, absence, malformed data, unavailability, timeout, or
+ineligibility fails closed with a uniform response. It must neither submit the
+password nor route it to Local, LegacyAuth, AD/LDAP, or another authority.
+
+### Proof, ticket, and credential authority
+
+One ceremony attempt selects exactly one hardened legacy proof provider and one
+directory authority. The proof provider must use authenticated transport,
+bounded timeouts, cancellation propagation, safe explicit allow/deny results,
+and no credential logging. Its successful result supplies the assured,
+namespaced stable subject already approved for the immutable directory mapping.
+Any directory or proof failure, denial, ambiguity, malformed response,
+unavailability, or timeout ends the attempt; AD/LDAP failure must never become
+a LegacyAuth or Local fallback.
+
+After proof alone, the server may issue an opaque, short-lived, single-use
+migration ticket. A protected or hashed server-side ticket record binds the
+selected provider, legacy subject, immutable directory key/object, eligible
+local account, browser/session context, expiry, and state. Atomic consumption,
+replay protection, CSRF binding, and rate limits are mandatory. No principal,
+cookie (including a partial sign-in cookie), `UserSession`, OIDC/OAuth token, or
+grant continuation is allowed before completion.
+
+The preferred mutation is least-privilege LDAPS password reset, limited to the
+managed accounts recorded as eligible. A generic, standardized
+credential-management API may be selected only for a documented direct-
+directory capability gap; it is not a runtime fallback. The directory owns
+password policy, history, expiry, lockout, and credential state. Passwords
+remain in memory only and must not be stored, derived, logged, audited,
+claimed, or sent through local password-policy enforcement.
+
+### Durable state, verification, recovery, and issuance
+
+The recoverable, queryable state model is:
+
+`Required` -> `ProofValidated` -> `DirectoryCredentialCommitted` -> `LocalFinalized`
+
+`ProofValidated` represents the bound ticket after proof. A reset must be
+followed by an independent new-password directory bind and managed-account
+eligibility/status verification. Only after both establish the directory
+credential commitment may the state advance to
+`DirectoryCredentialCommitted` and the durable `Required` marker be cleared or
+transitioned to `Completed`. The marker is never cleared, transitioned, or
+written before the credential commit or its independent verification.
+
+Only then may local shadow-user, Person, and JIT finalization run, subject to
+existing local lifecycle and eligibility checks, advancing to `LocalFinalized`.
+Only after that finalization may local MFA run, and only a successful local MFA
+may precede cookie, session, claims, consent, token, or grant issuance.
+Directory or legacy MFA/AMR does not satisfy local MFA without a separately
+documented trust rule.
+
+Interrupted, conflicting, or uncertain reset, verification, or marker outcomes
+are denied and require an idempotent, state-aware recovery query or explicit
+action. Recovery must fail closed, must not guess success, issue a session,
+reuse a ticket, or automatically replay legacy proof. After completion, the
+next sign-in uses the explicitly selected direct AD/LDAP path, not legacy proof.
+Migration mode and legacy proof are disabled at the migration-window sunset or
+operator cutoff.
+
+All pre-proof and failure responses must be uniform enough to prevent account,
+eligibility, mapping, marker, directory, or provider enumeration. Audit and
+security records may contain only sanitized reason categories and correlation
+data; they exclude passwords, tickets, reset secrets, bind credentials, raw
+national identifiers, unnecessary profile values, and token-visible sensitive
+data. This remains a generic OSS contract with no organization-specific API,
+schema, identifier, directory layout, or data contract.
+
 ## Future implementation gates
 
 An implementation proposal must, before code is approved:
@@ -202,6 +302,22 @@ represented as completed by this plan.
 | REQ-14 | Data, claims, and MFA keeps MFA assurance local unless a verified provider-specific mapping exists. |
 | REQ-15 | Scope and Future implementation gates make this a documentation-only delivery. |
 
+## Credential-migration requirement traceability
+
+The following migration requirement labels are intentionally scoped to this
+ceremony and do not replace the upstream-boundary requirement labels above.
+
+| Migration requirement | Acceptance disposition |
+|---|---|
+| REQ-01 | Status, Scope, and the migration introduction distinguish current Local plus LegacyAuth from future AD/LDAP and the future ceremony. |
+| REQ-02 | Mode, durable authorization, and pre-proof resolution requires opt-in deployment/request selection and a one-time `Required`/`Completed` record distinct from ordinary password state. |
+| REQ-03 | Pre-proof resolution and Proof, ticket, and credential authority require lookup before submission, exactly one selected authority pair, and no fallback. |
+| REQ-04 | Pre-proof resolution and Proof require assured stable subject to immutable directory key/object mapping and prohibit mutable or raw-identifier substitutes. |
+| REQ-05 | Proof, ticket, and credential authority requires a protected/hashed server-side ticket with bound context, atomic single use, replay, CSRF, and rate-limit controls. |
+| REQ-06 | Proof, ticket, and credential authority assigns password policy to the directory, prefers constrained LDAPS reset, limits API selection to a proven gap, and keeps passwords memory-only. |
+| REQ-07 | Durable state, verification, recovery, and issuance requires independent bind/status verification, post-commit marker ordering, recoverable states, and fail-closed recovery. |
+| REQ-08 | Durable state, verification, recovery, and issuance preserves local finalization/MFA/issuance authority and directs post-completion sign-in and sunset behavior. |
+
 ## Scenario traceability
 
 | Scenario | Acceptance disposition |
@@ -214,3 +330,15 @@ represented as completed by this plan.
 | SCN-06 | Data, claims, and MFA permits only allowlisted values and prohibits sensitive or unapproved token/log/audit data. |
 | SCN-07 | Sessions, grants, and revalidation requires local checks and a bounded upstream response while preserving the expiry caveat. |
 | SCN-08 | Data, claims, and MFA rejects upstream MFA or assurance unless a verified provider-specific mapping is documented. |
+
+## Credential-migration scenario traceability
+
+| Migration scenario | Acceptance disposition |
+|---|---|
+| SCN-01 | Disabled, expired, cutoff, or ineligible migration requests never enter proof or reset. |
+| SCN-02 | A pre-proof lookup that cannot resolve one assured managed object returns a uniform denial without password submission. |
+| SCN-03 | Assured proof yields only the bound server-side ticket; replay, expiry, CSRF, and rate-limit failures deny. |
+| SCN-04 | Reset success requires independent directory bind/status verification before the completion marker, with no Local or Legacy fallback on directory failure. |
+| SCN-05 | Uncertain or interrupted commits remain denied and may use only queryable, idempotent, fail-closed recovery. |
+| SCN-06 | Verified marker completion precedes local finalization, then local MFA, then any cookie, session, or token. |
+| SCN-07 | Completed accounts use the selected direct directory path and sunset disables migration and legacy proof. |

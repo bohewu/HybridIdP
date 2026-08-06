@@ -1,7 +1,7 @@
 ---
 title: "TODOs & Backlog"
 owner: HybridIdP Team
-last-updated: 2026-01-14
+last-updated: 2026-08-06
 ---
 
 # TODOs & Technical Backlog
@@ -24,7 +24,7 @@ This file contains the roadmap for upcoming features and technical improvements.
   - [x] Update `ClientSeeder` for system test compatibility
   - [x] Verify permission isolation via JWT inspections
 
-## 📋 Planned Follow-ons: HIDP-20260806-1 Upstream Authentication Boundary
+## 📋 Planned Follow-ons: HIDP-20260806-1 to HIDP-20260806-4 Upstream Authentication and Credential Migration
 
 Current behavior remains Local plus configurable LegacyAuth HTTP authentication;
 direct AD/LDAP is not implemented. The future preferred credential authority is
@@ -33,17 +33,27 @@ authentication/profile API adapter may be selected only when direct directory
 access cannot supply a required capability. Provider selection must be explicit
 and fail closed, with no automatic credential-authority fallback.
 
-- [ ] **Implementation design and delivery**: Define and implement the generic
-  provider contract, direct AD/LDAP provider, and any explicitly justified API
-  adapter; preserve directory ownership of credentials, lockout, password
-  expiration/change, and password policy. Do not add an IdP-side directory
-  password-history or password-policy overlay.
-- [ ] **Implementation verification**: Add focused coverage for immutable
-  provider-key linking, assurance-gated matching, local lifecycle precedence,
-  MFA trust, claim allowlisting, and cookie/token/upstream revalidation.
-- [ ] **Connected AD validation**: Plan and execute separately against an
-  approved non-production directory environment after implementation; this
-  documentation task performs no connected validation.
+- [x] **HIDP-20260806-4 -- Documentation specification**: Document the future,
+  generic OSS, one-time legacy-proof-to-directory-credential ceremony and its
+  security invariants. This documentation-only item neither implements nor
+  validates a provider, configuration, package, migration, test, or connected
+  directory operation.
+- [ ] **HIDP-20260806-2 -- Future provider contract and migration state-machine
+  implementation/tests**: Define and implement the generic provider contract,
+  direct AD/LDAP provider, and any explicitly justified API adapter, together
+  with the one-time migration state machine and its focused tests. Preserve
+  directory ownership of credentials, lockout, password expiration/change, and
+  password policy; do not add an IdP-side directory password-history or
+  password-policy overlay. Cover immutable provider-key linking,
+  assurance-gated matching, local lifecycle precedence, MFA trust, claim
+  allowlisting, cookie/token/upstream revalidation, and migration completion
+  boundaries.
+- [ ] **HIDP-20260806-3 -- Opt-in sanitized connected non-production directory
+  validation**: After HIDP-20260806-2, plan and execute separately approved,
+  opt-in scenarios in a non-production directory environment. The future
+  scenarios must cover migration success, uniform denial, replay rejection,
+  and uncertain-commit/recovery boundaries using sanitized evidence. This
+  documentation item performs no connected validation.
 
 The boundary is generic OSS guidance: it must not depend on organization-
 specific source systems, APIs, schemas, identifiers, databases, or policy.
