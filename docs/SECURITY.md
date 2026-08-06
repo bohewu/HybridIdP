@@ -70,6 +70,56 @@ self-contained OpenIddict access tokens; they may remain usable until expiry.
 This remediation adds no schema migration, UserSession redesign, endpoint, or
 production certificate behavior change.
 
+### Upstream Credential and Assertion Boundary
+
+Current password authentication is Local plus the configurable LegacyAuth HTTP
+integration; it does not implement AD/LDAP. Direct, deployment-configured
+AD/LDAP is the preferred future credential source. A standardized,
+provider-neutral authentication/profile API adapter is an optional future
+integration only when a required directory capability cannot be supplied
+directly.
+
+Selection of an upstream provider must be explicit for every authentication
+attempt. A selected provider that is unavailable, rejects the request, returns
+malformed or ambiguous data, or times out fails closed. Submitted credentials
+must not silently fall through to Local, AD/LDAP, LegacyAuth, or another
+credential authority.
+
+For directory credentials, the directory owns validation, enabled/disabled
+state, lockout, password expiration and change, and password policy.
+HybridAuth IdP keeps authority over its local shadow users, durable account
+links and JIT provisioning, Person eligibility overlays, local MFA, cookies,
+`UserSession`, token issuance, claims, and consent. Local terminal, deleted,
+inactive, locked, or otherwise ineligible `ApplicationUser` or `Person` state
+takes precedence over upstream success and denies JIT mutation, principal
+generation, session continuation, and new token issuance.
+
+An upstream link requires a namespaced provider identifier plus an immutable,
+provider-scoped key; it must not use a mutable login, email, display name, or
+directory distinguished name as the durable key. Provider-key matching occurs
+before heuristic matching. Email and optional stable-person-key matching need
+explicit provider-specific assurance; without it, the result can create an
+isolated account but cannot bind an existing Person or `ApplicationUser`.
+
+Upstream authentication and profile assertions are untrusted except for
+contract-declared verified fields. A local claim allowlist is the only route
+for approved upstream values into local profile state or issued claims.
+Arbitrary upstream claims, credential metadata, secrets, raw identifiers, and
+internal directory attributes are neither token-visible nor recorded in logs or
+audit detail.
+
+Future providers require authenticated TLS with certificate and endpoint
+validation, secret-sourced credentials, bounded timeouts, cancellation
+propagation, and sanitized security/audit events. Upstream MFA or assurance
+does not meet local MFA, AMR, or ACR policy unless an explicit,
+provider-specific trust and mapping rule is documented and verified. Cookie
+validation and new authorization-code, refresh, device, password, and
+equivalent grant issuance continue to independently check current local state.
+The future implementation must define a bounded upstream revalidation or
+revocation response; self-contained access tokens remain valid only to their
+documented expiry unless a separately approved revocation design changes that
+policy.
+
 ### Client Administration Ownership
 
 Client-management permissions grant access to the administrative surface but

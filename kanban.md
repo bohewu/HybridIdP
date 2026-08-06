@@ -1,6 +1,6 @@
 # HybridAuth IdP Kanban
 
-_Derived from `todo-ledger.json`; updated 2026-08-04T05:23:46Z._
+_Derived from `todo-ledger.json`; updated 2026-08-06T00:49:42Z._
 
 ## Done
 
@@ -183,3 +183,49 @@ _Derived from `todo-ledger.json`; updated 2026-08-04T05:23:46Z._
   - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/test-report.json`
   - `.pipeline-output/deployment-medium-20260804T041444Z-7f3c2d19/pipeline/review-report.json`
   - `docs/security/SECURITY_REMEDIATION_TODO.md`
+
+### HIDP-20260806-1 — Generic OSS upstream-authentication boundary audit/spec
+
+- Completed: 2026-08-06T00:49:42Z
+- Run: `flow-20260806T081830Z-hybrididp-ad-boundary`
+- Related tasks: `HIDP-20260806-1-auth-contract`, `HIDP-20260806-1-doc-consistency`, `HIDP-20260806-1-static-doc-review`
+- Notes: Docs-only audit/spec defines preferred future direct configurable AD/LDAP, an optional provider-neutral authentication/profile API only for an explicitly documented directory capability gap, explicit fail-closed provider selection, directory versus HybridIdP authority, and assured linking, claims, lifecycle, and session boundaries. Evidence: six reviewed docs; normalized forbidden-term scan zero; JSON, diff, and changed-scope checks passed; final reviewer PASS with no findings/followups; no .NET or connected AD tests run by design; delivery uses one focused local commit; no push.
+- Artifacts:
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/problem-spec.json`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/task-list.json`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/synthesis.md`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/static-doc-review.md`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/review-report.json`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/status/tasks/HIDP-20260806-1-auth-contract.json`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/status/tasks/HIDP-20260806-1-doc-consistency.json`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/status/tasks/HIDP-20260806-1-static-doc-review.json`
+  - `README.md`
+  - `docs/ARCHITECTURE.md`
+  - `docs/AUTHENTICATION_INTEGRATION.md`
+  - `docs/SECURITY.md`
+  - `docs/TODOS.md`
+  - `docs/design_specs/phase-23-ad-integration-plan.md`
+
+## Backlog
+
+### HIDP-20260806-2 — Implement and test generic upstream-provider contract with configurable direct AD/LDAP adapter
+
+- Status: backlog
+- Run: `flow-20260806T081830Z-hybrididp-ad-boundary`
+- Related tasks: `HIDP-20260806-1`
+- Notes: Pending implementation and tests for a generic upstream-provider contract plus a deployment-configurable direct AD/LDAP adapter, preserving OSS and non-institutional scope. A standardized provider-neutral API adapter remains conditional on a proven directory capability gap and is not automatic scope.
+- Artifacts:
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/problem-spec.json`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/task-list.json`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/synthesis.md`
+
+### HIDP-20260806-3 — Opt-in sanitized connected non-production AD validation
+
+- Status: backlog
+- Run: `flow-20260806T081830Z-hybrididp-ad-boundary`
+- Related tasks: `HIDP-20260806-2`
+- Notes: Pending opt-in sanitized connected validation in a non-production directory environment, dependent on HIDP-20260806-2. Use no production credentials or data, and never perform an automatic writable retry.
+- Artifacts:
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/problem-spec.json`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/task-list.json`
+  - `.pipeline-output/flow-20260806T081830Z-hybrididp-ad-boundary/flow/synthesis.md`

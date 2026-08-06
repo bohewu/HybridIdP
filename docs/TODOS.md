@@ -24,14 +24,29 @@ This file contains the roadmap for upcoming features and technical improvements.
   - [x] Update `ClientSeeder` for system test compatibility
   - [x] Verify permission isolation via JWT inspections
 
-## 📋 Planned: Phase 23 - AD Integration & Policy Enforcement
-- See `docs/design_specs/phase-23-ad-integration-plan.md`
-- [ ] **Infrastructure**: LDAP Library, `AdOptions`
-- [ ] **Authentication**: `AdAuthenticationService`, Shadow Accounts
-- [ ] **Policy**:
-  - [ ] Password Expiration (via `pwdLastSet`)
-  - [ ] Password History (IdP-side enforcement)
-  - [ ] Force Password Change on First Login logic
+## 📋 Planned Follow-ons: HIDP-20260806-1 Upstream Authentication Boundary
+
+Current behavior remains Local plus configurable LegacyAuth HTTP authentication;
+direct AD/LDAP is not implemented. The future preferred credential authority is
+deployment-configured direct AD/LDAP. A standardized, provider-neutral
+authentication/profile API adapter may be selected only when direct directory
+access cannot supply a required capability. Provider selection must be explicit
+and fail closed, with no automatic credential-authority fallback.
+
+- [ ] **Implementation design and delivery**: Define and implement the generic
+  provider contract, direct AD/LDAP provider, and any explicitly justified API
+  adapter; preserve directory ownership of credentials, lockout, password
+  expiration/change, and password policy. Do not add an IdP-side directory
+  password-history or password-policy overlay.
+- [ ] **Implementation verification**: Add focused coverage for immutable
+  provider-key linking, assurance-gated matching, local lifecycle precedence,
+  MFA trust, claim allowlisting, and cookie/token/upstream revalidation.
+- [ ] **Connected AD validation**: Plan and execute separately against an
+  approved non-production directory environment after implementation; this
+  documentation task performs no connected validation.
+
+The boundary is generic OSS guidance: it must not depend on organization-
+specific source systems, APIs, schemas, identifiers, databases, or policy.
 
 ## 📋 Planned: Phase 24 - Enterprise Observability & Self-Service
 - See `docs/design_specs/phase-24-observability.md`
@@ -94,4 +109,4 @@ This file contains the roadmap for upcoming features and technical improvements.
 </details>
 
 ---
-_Last updated: 2026-01-14_
+_Last updated: 2026-08-06_

@@ -1,639 +1,164 @@
 # Authentication Integration Guide
 
-## Overview
-
-HybridAuthIdP supports multiple authentication methods through two primary integration patterns:
-
-1. **Password-based Authentication** - Direct credential validation (Local, Active Directory, Legacy Systems)
-2. **External Authentication** - OAuth/OIDC federation (Google, Azure AD, Facebook, etc.)
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Authentication Flow                      │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ├─ Password-based (LoginService)
-                            │   ├─ Local Password
-                            │   ├─ Active Directory (LDAP)
-                            │   └─ Legacy Systems
-                            │
-                            └─ External Login (OAuth/OIDC Middleware)
-                                ├─ Google
-                                ├─ Azure AD
-                                ├─ Facebook
-                                └─ Other OIDC Providers
-```
-
-## 1. Password-Based Authentication
-
-### Current Implementation
-
-Located in: `Infrastructure/Services/LoginService.cs`
-
-```csharp
-public async Task<LoginResult> AuthenticateAsync(string login, string password)
-{
-    // 1. Try local user
-    var user = await _userManager.FindByEmailAsync(login) 
-               ?? await _userManager.FindByNameAsync(login);
-    
-    if (user != null)
-        return await AuthenticateLocalUserAsync(user, password);
-    
-    // 2. Try external password-based auth (AD, Legacy)
-    return await AuthenticateLegacyUserAsync(login, password);
-}
-```
-
-### Adding Active Directory Integration
-
-**Step 1: Create IActiveDirectoryService**
-
-```csharp
-// Core.Application/IActiveDirectoryService.cs
-public interface IActiveDirectoryService
-{
-    Task<AdAuthResult> ValidateAsync(string login, string password);
-}
-
-public class AdAuthResult
-{
-    public bool IsAuthenticated { get; set; }
-    public string ObjectGuid { get; set; }  // AD unique identifier
-    public string UserPrincipalName { get; set; }
-    public string SamAccountName { get; set; }
-    public string Email { get; set; }
-    public string GivenName { get; set; }
-    public string Surname { get; set; }
-    public string DisplayName { get; set; }
-    public string Department { get; set; }
-    public string JobTitle { get; set; }
-}
-```
-
-**Step 2: Implement AD Service**
-
-```csharp
-// Infrastructure/Services/ActiveDirectoryService.cs
-using System.DirectoryServices;
-using System.DirectoryServices.AccountManagement;
-
-public class ActiveDirectoryService : IActiveDirectoryService
-{
-    private readonly string _ldapPath;
-    private readonly string _domain;
-
-    public ActiveDirectoryService(IConfiguration configuration)
-    {
-        _ldapPath = configuration["ActiveDirectory:LdapPath"];
-        _domain = configuration["ActiveDirectory:Domain"];
-    }
-
-    public async Task<AdAuthResult> ValidateAsync(string login, string password)
-    {
-        try
-        {
-            using var context = new PrincipalContext(
-                ContextType.Domain, 
-                _domain, 
-                login, 
-                password
-            );
-
-            if (!context.ValidateCredentials(login, password))
-            {
-                return new AdAuthResult { IsAuthenticated = false };
-            }
-
-            // Get user details from AD
-            using var searcher = new PrincipalSearcher(new UserPrincipal(context));
-            var user = UserPrincipal.FindByIdentity(context, login);
-
-            if (user == null)
-            {
-                return new AdAuthResult { IsAuthenticated = false };
-            }
-
-            return new AdAuthResult
-            {
-                IsAuthenticated = true,
-                ObjectGuid = user.Guid.ToString(),
-                UserPrincipalName = user.UserPrincipalName,
-                SamAccountName = user.SamAccountName,
-                Email = user.EmailAddress,
-                GivenName = user.GivenName,
-                Surname = user.Surname,
-                DisplayName = user.DisplayName,
-                // Can add more AD attributes as needed
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Active Directory authentication failed for {Login}", login);
-            return new AdAuthResult { IsAuthenticated = false };
-        }
-    }
-}
-```
-
-**Step 3: Update LoginService**
-
-```csharp
-// Infrastructure/Services/LoginService.cs
-public class LoginService : ILoginService
-{
-    private readonly IActiveDirectoryService _activeDirectoryService;
-    
-    public LoginService(
-        UserManager<ApplicationUser> userManager,
-        ISecurityPolicyService securityPolicyService,
-        ILegacyAuthService legacyAuthService,
-        IActiveDirectoryService activeDirectoryService,
-        IJitProvisioningService jitProvisioningService,
-        ILogger<LoginService> logger)
-    {
-        _userManager = userManager;
-        _securityPolicyService = securityPolicyService;
-        _legacyAuthService = legacyAuthService;
-        _activeDirectoryService = activeDirectoryService;
-        _jitProvisioningService = jitProvisioningService;
-        _logger = logger;
-    }
-
-    public async Task<LoginResult> AuthenticateAsync(string login, string password)
-    {
-        // 1. Try local user first
-        var user = await _userManager.FindByEmailAsync(login) 
-                   ?? await _userManager.FindByNameAsync(login);
-
-        if (user != null)
-        {
-            return await AuthenticateLocalUserAsync(user, password);
-        }
-
-        // 2. Try Active Directory (if login format matches)
-        if (IsActiveDirectoryLogin(login))
-        {
-            return await AuthenticateAdUserAsync(login, password);
-        }
-
-        // 3. Fallback to legacy authentication
-        return await AuthenticateLegacyUserAsync(login, password);
-    }
-
-    private async Task<LoginResult> AuthenticateAdUserAsync(string login, string password)
-    {
-        // Validate credentials against AD
-        var adResult = await _activeDirectoryService.ValidateAsync(login, password);
-        if (!adResult.IsAuthenticated)
-        {
-            return LoginResult.InvalidCredentials();
-        }
-
-        // Check if user already exists with AD login
-        var user = await _userManager.FindByLoginAsync("ActiveDirectory", adResult.ObjectGuid);
-        
-        if (user != null)
-        {
-            _logger.LogInformation("User '{Login}' authenticated via Active Directory.", login);
-            return LoginResult.Success(user);
-        }
-
-        // JIT Provisioning for new AD user
-        var provisionedUser = await _jitProvisioningService.ProvisionUserAsync(new LegacyAuthResult
-        {
-            IsAuthenticated = true,
-            Login = adResult.UserPrincipalName ?? login,
-            Email = adResult.Email ?? $"{adResult.SamAccountName}@yourdomain.com",
-            FirstName = adResult.GivenName,
-            LastName = adResult.Surname,
-        });
-
-        // Link AD login to the provisioned user
-        await _userManager.AddLoginAsync(provisionedUser, new UserLoginInfo(
-            loginProvider: "ActiveDirectory",
-            providerKey: adResult.ObjectGuid,
-            displayName: "Active Directory"
-        ));
-
-        _logger.LogInformation("User '{Login}' authenticated via AD and JIT provisioned.", login);
-        return LoginResult.Success(provisionedUser);
-    }
-
-    private bool IsActiveDirectoryLogin(string login)
-    {
-        // Detect AD login format:
-        // - domain\username
-        // - username@domain.com (if configured AD domain)
-        return login.Contains("\\") || 
-               login.EndsWith("@youraddomain.com", StringComparison.OrdinalIgnoreCase);
-    }
-}
-```
-
-**Step 4: Configuration**
-
-```json
-// appsettings.json
-{
-  "ActiveDirectory": {
-    "Enabled": true,
-    "Domain": "YOURDOMAIN",
-    "LdapPath": "LDAP://dc.yourdomain.com",
-    "DefaultDomain": "youraddomain.com"
-  }
-}
-```
-
-**Step 5: Register Services**
-
-```csharp
-// Program.cs or DI Configuration
-services.AddScoped<IActiveDirectoryService, ActiveDirectoryService>();
-```
-
-### Benefits of Password-Based AD Integration
-
-✅ **Direct authentication** - No redirect to external login page  
-✅ **Seamless UX** - Same login form as local users  
-✅ **JIT Provisioning** - Auto-create user on first login  
-✅ **Multiple accounts** - Same person can have both AD and local accounts  
-✅ **AspNetUserLogins tracking** - All external authentications recorded
-
----
-
-## 2. External Authentication (OAuth/OIDC)
-
-### Overview
-
-For OAuth/OIDC providers (Google, Azure AD, Facebook), use ASP.NET Core's **External Authentication** middleware. These providers require browser redirects and token exchange.
-
-### Implementation Flow
-
-```
-User clicks "Sign in with Google"
-    ↓
-Redirect to Google OAuth
-    ↓
-User authenticates at Google
-    ↓
-Google redirects back with authorization code
-    ↓
-Exchange code for tokens
-    ↓
-ExternalLoginCallback handler
-    ↓
-Check AspNetUserLogins for existing link
-    ↓
-If exists: Sign in
-If not: Show account linking UI or auto-provision
-```
-
-### Example: Google OAuth Integration
-
-**Step 1: Install Package**
-
-```bash
-dotnet add package Microsoft.AspNetCore.Authentication.Google
-```
-
-**Step 2: Configure in Program.cs**
-
-```csharp
-builder.Services.AddAuthentication()
-    .AddGoogle(options =>
-    {
-        options.ClientId = builder.Configuration["Google:ClientId"];
-        options.ClientSecret = builder.Configuration["Google:ClientSecret"];
-        options.CallbackPath = "/signin-google";
-        
-        // Request additional scopes
-        options.Scope.Add("profile");
-        options.Scope.Add("email");
-        
-        // Save tokens for API calls
-        options.SaveTokens = true;
-    });
-```
-
-**Step 3: Add External Login UI**
-
-```cshtml
-<!-- Pages/Account/Login.cshtml -->
-<form method="post" asp-page-handler="ExternalLogin">
-    <input type="hidden" name="provider" value="Google" />
-    <button type="submit" class="btn btn-google">
-        <i class="fab fa-google"></i> Sign in with Google
-    </button>
-</form>
-```
-
-**Step 4: Handle External Login Callback**
-
-```csharp
-// Pages/Account/Login.cshtml.cs
-public async Task<IActionResult> OnPostExternalLoginAsync(string provider, string returnUrl = null)
-{
-    var redirectUrl = Url.Page("./ExternalLogin", 
-        pageHandler: "Callback", 
-        values: new { returnUrl });
-    
-    var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
-    return new ChallengeResult(provider, properties);
-}
-
-public async Task<IActionResult> OnGetCallbackAsync(string returnUrl = null, string remoteError = null)
-{
-    if (remoteError != null)
-    {
-        return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
-    }
-
-    var info = await _signInManager.GetExternalLoginInfoAsync();
-    if (info == null)
-    {
-        return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
-    }
-
-    // Sign in with external login provider
-    var result = await _signInManager.ExternalLoginSignInAsync(
-        info.LoginProvider, 
-        info.ProviderKey, 
-        isPersistent: false, 
-        bypassTwoFactor: true
-    );
-
-    if (result.Succeeded)
-    {
-        _logger.LogInformation("{Name} logged in with {LoginProvider}.", 
-            info.Principal.Identity.Name, info.LoginProvider);
-        return LocalRedirect(returnUrl ?? "/");
-    }
-
-    // User doesn't exist, show account linking or auto-provision
-    if (result.IsNotAllowed || result.IsLockedOut)
-    {
-        return RedirectToPage("./Lockout");
-    }
-    else
-    {
-        // Store info for account linking/creation
-        ViewData["ReturnUrl"] = returnUrl;
-        ViewData["LoginProvider"] = info.LoginProvider;
-        
-        // Get email from external provider
-        var email = info.Principal.FindFirstValue(ClaimTypes.Email);
-        
-        // Option 1: Show account linking UI
-        return Page(); // Show form to link or create account
-        
-        // Option 2: Auto-provision (JIT)
-        // return await AutoProvisionExternalUserAsync(info, returnUrl);
-    }
-}
-
-private async Task<IActionResult> AutoProvisionExternalUserAsync(
-    ExternalLoginInfo info, 
-    string returnUrl)
-{
-    var email = info.Principal.FindFirstValue(ClaimTypes.Email);
-    var emailVerified = info.Principal.FindFirstValue(
-        AuthConstants.Claims.ExternalEmailVerified) == bool.TrueString;
-    var user = new ApplicationUser
-    {
-        UserName = email,
-        Email = email,
-        EmailConfirmed = emailVerified,
-        FirstName = info.Principal.FindFirstValue(ClaimTypes.GivenName),
-        LastName = info.Principal.FindFirstValue(ClaimTypes.Surname),
-    };
-
-    var result = await _userManager.CreateAsync(user);
-    if (result.Succeeded)
-    {
-        result = await _userManager.AddLoginAsync(user, info);
-        if (result.Succeeded)
-        {
-            await _signInManager.SignInAsync(user, isPersistent: false);
-            return LocalRedirect(returnUrl ?? "/");
-        }
-    }
-
-    // Handle errors
-    foreach (var error in result.Errors)
-    {
-        ModelState.AddModelError(string.Empty, error.Description);
-    }
-    return Page();
-}
-```
-
-### Supported External Providers
-
-| Provider | Package | Documentation |
-|----------|---------|---------------|
-| Google | `Microsoft.AspNetCore.Authentication.Google` | [Docs](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins) |
-| Microsoft | `Microsoft.AspNetCore.Authentication.MicrosoftAccount` | [Docs](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/microsoft-logins) |
-| Azure AD | `Microsoft.Identity.Web` | [Docs](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-v2-aspnet-core-webapp) |
-| Facebook | `Microsoft.AspNetCore.Authentication.Facebook` | [Docs](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/facebook-logins) |
-| Twitter | `Microsoft.AspNetCore.Authentication.Twitter` | [Docs](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/twitter-logins) |
-| GitHub | `AspNet.Security.OAuth.GitHub` | [GitHub](https://github.com/aspnet-contrib/AspNet.Security.OAuth.Providers) |
-
-### Email assurance for JIT identity binding
-
-The repository currently configures Google and Microsoft external login
-handlers. Authentication by a provider does not by itself make every returned
-email suitable for matching a local identity:
-
-- Google maps the provider's `verified_email` value into an internal assurance
-  claim. Only a `true` value permits email-based matching.
-- Microsoft Graph does not return an `email_verified` claim. The built-in
-  Microsoft handler therefore creates the internal assurance claim only when
-  the mapped email equals the account's `userPrincipalName`, whose domain must
-  belong to the tenant's verified-domain collection. A different `mail` alias
-  uses the safe fallback.
-- A missing assurance claim, a false Google value, or an unsupported provider
-  uses the safe fallback: the account username is based on provider plus
-  provider key; the supplied email remains unconfirmed on the new account; and
-  no existing `Person` or `ApplicationUser` is selected by that email.
-
-`ExternalLoginCallback` first signs in through an existing durable
-provider-key link; that compatibility path occurs before email-based matching
-and does not depend on the current email assurance result. If no provider-key
-link exists, automatic matching-email account selection or linking requires
-the provider-specific trusted email assurance policy before any existing-account
-lookup. Explicit linking protected by local credentials is a separate flow and
-remains independent of this automatic matching rule.
-
-Adding another provider requires an explicit provider-specific assurance rule.
-Do not map an upstream self-asserted flag directly into
-`AuthConstants.Claims.ExternalEmailVerified` without first establishing the
-provider's email-verification semantics.
-
-### Callback binding for explicit external-account linking
-
-When an authenticated local user starts explicit external-account linking, the
-callback retrieves external login information through the framework-supported
-`expectedXsrf` validation using that current local user's identifier. This
-binds the callback to the user who started the external-login challenge before
-provider policy evaluation or `AddLoginAsync`.
-
-Missing or mismatched callback context is rejected without linking an external
-account. A callback whose binding matches the currently authenticated local
-user continues to support legitimate same-user linking.
-
----
-
-## Key Differences
-
-| Aspect | Password-Based (AD/LDAP) | External Authentication (OAuth/OIDC) |
-|--------|-------------------------|-------------------------------------|
-| **Flow** | Direct credential validation | Browser redirect + token exchange |
-| **UI** | Same login form | External provider's login page |
-| **Implementation** | LoginService method | ASP.NET middleware + callback |
-| **Use Case** | Internal systems, AD, LDAP | Public OAuth providers (Google, etc.) |
-| **User Experience** | Seamless, same page | Redirect to external site |
-
----
-
-## Database Schema
-
-All external authentications (both password-based and OAuth) are tracked in `AspNetUserLogins`:
-
-```sql
-CREATE TABLE AspNetUserLogins (
-    LoginProvider VARCHAR(128) NOT NULL,    -- "ActiveDirectory", "Google", "AzureAD"
-    ProviderKey VARCHAR(128) NOT NULL,      -- Unique ID from provider
-    ProviderDisplayName VARCHAR(255),       -- Display name for UI
-    UserId UNIQUEIDENTIFIER NOT NULL,       -- FK to AspNetUsers
-    PRIMARY KEY (LoginProvider, ProviderKey)
-);
-```
-
-**Examples:**
-
-| LoginProvider | ProviderKey | ProviderDisplayName | UserId |
-|--------------|-------------|---------------------|---------|
-| ActiveDirectory | `{AD-ObjectGUID}` | Active Directory | user-guid-1 |
-| Google | `{Google-sub-claim}` | Google | user-guid-1 |
-| AzureAD | `{Azure-oid}` | Azure Active Directory | user-guid-2 |
-
----
-
-## Person-User Relationship
-
-```
-Person (Physical Identity)
-  └─ ApplicationUser #1 (john.doe@company.com)
-      ├─ AspNetUserLogins: LoginProvider="Local" (password)
-      └─ AspNetUserLogins: LoginProvider="ActiveDirectory", ProviderKey="{AD-GUID}"
-  └─ ApplicationUser #2 (john.personal@gmail.com)
-      └─ AspNetUserLogins: LoginProvider="Google", ProviderKey="{Google-sub}"
-```
-
-**Key Points:**
-- One Person can have multiple ApplicationUsers
-- Each ApplicationUser can have multiple external logins
-- Person represents real-world identity (verified by ID documents)
-- ApplicationUser represents authentication accounts
-
-### Person hard-delete disposition
-
-Hard-deleting a Person physically removes that Person but retains every linked
-ApplicationUser as an inactive and deleted terminal denial record. In one
-relational Serializable transaction, the service rotates each linked user's
-SecurityStamp, revokes active local UserSession records, and removes the
-Person. External-login and passkey bindings are retained as denial bindings;
-neither accounts nor credentials are physically deleted, and no migration is
-introduced.
-
-Terminal users are rejected before claims/base-principal generation and orphan
-auto-heal, and before JIT provisioning can create, mutate, or link a Person.
-Active eligible orphan auto-heal and legitimate JIT provisioning remain
-available. DELETE `204`/`404`, post-commit audit placement, unrelated users,
-and supported soft-delete/status behavior remain unchanged; there is no Person
-restore feature.
-
-Application cookies are also checked against current user and linked Person
-lifecycle eligibility on every validation, independently of the configured
-security-stamp interval. The current-state check composes with existing
-Identity security-stamp refresh and impersonation behavior for eligible
-cookies. Existing self-contained access JWTs may remain usable until expiry,
-but terminal user state blocks new code, refresh, device, and password
-issuance.
-
----
-
-## Testing
-
-### Test AD Authentication
-
-```bash
-# Local user
-POST /Account/Login
-{
-  "login": "admin@hybridauth.local",
-  "password": "Admin@123"
-}
-
-# AD user (domain\username)
-POST /Account/Login
-{
-  "login": "DOMAIN\\johndoe",
-  "password": "ADPassword123"
-}
-
-# AD user (UPN)
-POST /Account/Login
-{
-  "login": "johndoe@addomain.com",
-  "password": "ADPassword123"
-}
-```
-
-### Test External Login
-
-```bash
-# Navigate to login page
-GET /Account/Login
-
-# Click "Sign in with Google" button
-# This will redirect to Google OAuth
-# After authentication, callback to /signin-google
-```
-
----
-
-## Best Practices
-
-1. **Security**
-   - Always use HTTPS for external authentication
-   - Validate all claims from external providers
-   - Implement proper CSRF protection
-
-2. **User Experience**
-   - Show clear login options (Local, AD, Google, etc.)
-   - Handle account linking gracefully
-   - Provide fallback for failed external auth
-
-3. **Data Management**
-   - Store minimal data from external providers
-   - Keep Person data separate from auth data
-   - Use `AspNetUserLogins` for all external auth tracking
-
-4. **Monitoring**
-   - Log all authentication attempts
-   - Track JIT provisioning events
-   - Monitor external provider failures
-
----
-
-## Future Enhancements
-
-- [ ] Add Azure AD B2C support
-- [ ] Implement LINE Login (popular in Taiwan/Asia)
-- [ ] Add SAML 2.0 support for enterprise SSO
-- [ ] Multi-factor authentication with external providers
-- [ ] Admin UI for managing external provider configurations
+## Purpose and status
+
+This guide distinguishes the authentication integrations that exist today from
+the approved direction for a future upstream credential boundary.
+
+- Current password authentication is Local plus the configurable LegacyAuth
+  HTTP adapter. It does not implement AD, LDAP, or another directory provider.
+- Direct, deployment-configured AD/LDAP is the preferred future upstream
+  credential provider. It is a specification only; no provider, package,
+  configuration parser, migration, runtime behavior, or connected directory
+  test is delivered by this document.
+- A provider-neutral authentication/profile API adapter is optional and may be
+  selected only when direct AD/LDAP cannot provide a documented required
+  capability. It is not an automatic conversion of LegacyAuth.
+
+This boundary is generic OSS. It has no dependency on, or data contract for,
+organization-specific identity synchronization systems, organization-specific
+identity data stores, private APIs, schemas, identifiers, databases, or organizational
+policy.
+
+## Current behavior
+
+`LoginService` first finds a local user by email or username. If a local user
+is found, local credential and lifecycle checks determine the result. If no
+local user is found, it calls `ILegacyAuthService`; `LegacyAuthService` is the
+current configurable HTTP username/password compatibility adapter. Failed,
+malformed, and unsuccessful LegacyAuth responses are not authenticated.
+
+LegacyAuth is current compatibility behavior, not AD/LDAP support and not the
+future generic provider contract. In particular, it does not by itself declare
+the stable-key, matching-assurance, capability, or MFA-trust semantics required
+of a future upstream provider.
+
+For browser-based federation, the repository also has external-login flows
+separate from password authentication. Existing durable external-login links
+are considered before email matching. Google and Microsoft email handling use
+provider-specific assurance rules; a missing or untrusted assurance signal must
+not select an existing account or Person by email. Explicit external-account
+linking remains a locally protected flow.
+
+The current local seams include JIT provisioning and durable provider-key
+links, `ApplicationUser` and Person lifecycle validation, IdP MFA, cookies,
+`UserSession` lifecycle, claims, consent, and token issuance. They are the
+baseline for a future provider integration, not evidence that AD/LDAP is
+implemented.
+
+## Future upstream credential boundary
+
+### Provider selection and failure handling
+
+Every password authentication attempt must select exactly one credential
+authority explicitly. The selection is deployment and request-policy driven;
+it is not inferred from a login-name pattern and does not probe multiple
+authorities with the submitted password.
+
+When an explicitly selected provider is unavailable, rejects credentials,
+returns malformed or ambiguous data, or exceeds its timeout, the attempt is
+denied. It must never silently fall through to Local, AD/LDAP, LegacyAuth, or
+another provider. Local authentication is used only when Local was explicitly
+selected for that attempt.
+
+The preferred future provider is direct AD/LDAP, using deployment-configured
+directory endpoints, TLS settings, credentials, searches, and attribute
+mappings. An optional standardized authentication/profile API adapter may be
+configured only after a documented required capability is unavailable through
+the selected direct directory. The API adapter has a provider-neutral contract
+and a deployment shape comparable to LegacyAuth, but is independently selected
+and follows the same fail-closed rule.
+
+### Authority split
+
+For directory-sourced credentials, AD/LDAP owns credential validation,
+enabled/disabled state, lockout, password expiration, password change, and
+password policy. HybridIdP must not store, derive, or enforce directory
+password history, nor create another IdP-side password-policy overlay for
+directory credentials.
+
+HybridIdP remains authoritative for its shadow `ApplicationUser`, one
+Person-to-many-`ApplicationUser` relationship, durable account links, JIT
+provisioning, local eligibility overlays, MFA, cookies, `UserSession`
+lifecycle, OIDC/OAuth tokens, claims, and consent. Local policy may impose a
+stricter eligibility denial than an upstream provider.
+
+### Provider contract concepts
+
+Future providers must describe these concepts before they can be selected:
+
+| Concept | Required boundary meaning |
+|---|---|
+| Provider namespace | A stable, namespaced identifier that identifies the configured provider instance and its key space. |
+| Provider key | An immutable, provider-scoped stable account key returned on successful authentication and used with the namespace for durable linking. Login names, email addresses, display names, and directory DNs are not durable provider keys. |
+| Authentication result | An explicit allow or deny result, a reason category safe for local handling, and only contract-declared identity/profile fields. It must distinguish unavailable, malformed, timeout, and ambiguous conditions from success. |
+| Capability declaration | The provider's documented support for the required authentication and profile operations, declared assurance, and any bounded status-revalidation operation. It is used to justify optional API-adapter selection, not to enable fallback. |
+| Stable-person key | Optional. It may be used only when the provider explicitly assures that it is stable for the person, immutable, unique within that provider, and suitable for the configured matching purpose. No raw national identifier is required or implied. |
+| Field assurance | Provider-specific evidence that a profile or identity field is verified and fit for the specific local matching or mapping purpose. |
+
+Provider-key matching is always first. Email or stable-person-key matching may
+link to an existing `ApplicationUser` or Person only when its declared,
+provider-specific assurance is accepted by local policy. Unassured values may
+support isolated-account provisioning, but must not bind an existing account or
+Person. The provider key, email, stable-person key, login name, and display
+name have different roles and must not be substituted for one another.
+
+### Profile, claims, and assurance
+
+Upstream authentication and profile data is untrusted except for fields that
+the selected provider contract declares and local policy accepts. An explicit
+local allowlist is the only path for approved values to update local profile
+state or appear in issued claims. Arbitrary upstream claims, credential
+metadata, secrets, raw identifiers, and internal directory attributes must not
+be logged, placed in audit detail, or made token-visible.
+
+HybridIdP continues to enforce local MFA and assurance requirements. An
+upstream MFA, AMR, ACR, or similar assertion does not satisfy local policy
+unless a documented, provider-specific trust rule explicitly maps and verifies
+it.
+
+### Lifecycle, sessions, and tokens
+
+Local terminal, deleted, inactive, locked, or locally ineligible
+`ApplicationUser` and Person state overrides upstream success. It must deny the
+operation before JIT creation or mutation, orphan auto-heal, principal
+generation, token issuance, or session continuation. Upstream denial or
+disablement denies a new authentication.
+
+Current local state must continue to be checked on each Identity-cookie
+validation and before new authorization-code, refresh, device, password, or
+equivalent grant issuance. A future provider integration must define a bounded
+upstream account-status revalidation or revocation response. Self-contained
+access tokens already issued may remain valid until their expiry unless a
+separately approved revocation design changes that policy.
+
+### Operational security requirements
+
+Each provider operation must use a bounded timeout, propagate cancellation,
+and fail closed. Directory and API endpoints require authenticated TLS with
+certificate and endpoint validation. Bind, client, and other provider
+credentials come from secret configuration, never source or logs. Security and
+audit events must be sanitized: no passwords, tokens, bind secrets, raw
+identifiers, or unnecessary profile values.
+
+## External browser federation
+
+OAuth/OIDC browser federation remains a separate integration pattern from the
+future password-provider boundary. It uses a provider redirect and callback,
+then existing durable links before any assurance-gated automatic matching.
+Provider-specific email assurance remains required for automatic linking;
+explicit linking is protected by the local user session and callback binding.
+
+## Verification and follow-on work
+
+Future implementation must be separately approved and include provider
+contracts, configuration validation, package choices, migrations if needed,
+runtime behavior, tests, and any connected AD/LDAP validation. Relevant
+existing verification anchors are `LoginServiceTests`,
+`JitProvisioningServiceTests`, `ExternalSignInCoordinatorTests`,
+`ApplicationCookieCurrentStateValidatorTests`, `TokenServiceTests`, and
+`SessionServiceTests`.
+
+The replacement Phase 23 specification contains the requirements and scenario
+traceability for this boundary. It does not mark any directory integration as
+complete.

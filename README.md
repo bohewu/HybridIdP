@@ -11,6 +11,7 @@ A robust, enterprise-ready Identity Provider (IdP) built on .NET 10+ and OpenIdd
 
 - [Getting Started](docs/DEVELOPMENT_GUIDE.md)
 - [Architecture Guide](docs/ARCHITECTURE.md)
+- [Authentication Integration Boundary](docs/AUTHENTICATION_INTEGRATION.md)
 - [Testing & Seeding](docs/TESTING.md)
 - [Security Policy](docs/SECURITY.md)
 - [Feature Overview](docs/FEATURES.md)

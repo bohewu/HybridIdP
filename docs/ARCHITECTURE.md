@@ -660,11 +660,11 @@ PUT  /api/admin/clients/{id}/required-scopes → Set required scopes
 #### Person vs ApplicationUser
 
 ```
-Person (1) ─────┬───→ ApplicationUser (AD Account)
-                │         └── AspNetUserLogins (ActiveDirectory)
+Person (1) ─────┬───→ ApplicationUser (upstream-linked account)
+                │         └── durable provider namespace + provider key
                 │
-                ├───→ ApplicationUser (Google Account)
-                │         └── AspNetUserLogins (Google)
+                ├───→ ApplicationUser (external federation account)
+                │         └── external provider login
                 │
                 └───→ ApplicationUser (Local Password)
                           └── PasswordHash (in AspNetUsers table)
@@ -679,9 +679,41 @@ Person (1) ─────┬───→ ApplicationUser (AD Account)
    - 代表一個登入方式，一個 Person 可以有多個 ApplicationUser。
    - 透過 PersonId 連結到 PersonLock。
 
-### JIT Provisioning 流程
+### Upstream Authentication Boundary
 
-當使用者透過外部提供者（AD, Google）首次登入時，系統會自動建立 Person 與 ApplicationUser 的關聯。詳細實作請參考 `JitProvisioningService.cs`。
+Current password authentication is Local first and otherwise uses the
+configurable LegacyAuth HTTP integration. Direct AD/LDAP is not implemented.
+
+The preferred future upstream credential source is deployment-configured direct
+AD/LDAP. A separately configured, standardized, provider-neutral
+authentication/profile API adapter is permitted only when a required directory
+capability cannot be supplied directly. Provider selection must be explicit for
+each attempt: an unavailable, rejected, malformed, timed-out, or ambiguous
+selected provider denies the attempt and never falls through to another
+credential authority.
+
+The directory remains authoritative for its credentials, enabled/disabled
+state, lockout, password expiration and change, and password policy. HybridAuth
+IdP remains authoritative for shadow `ApplicationUser` records, the
+Person-to-multiple-ApplicationUser relationship, durable linking and JIT
+provisioning, local eligibility, MFA, cookies, `UserSession`, OIDC/OAuth
+tokens, claims, and consent. It must not add a directory password-history or
+other directory password-policy overlay.
+
+Durable linking starts with a namespaced provider identifier and immutable,
+provider-scoped key; mutable login names, email addresses, display names, and
+directory distinguished names are not durable keys. A stable-person key is
+optional and can be used only when the selected provider explicitly declares it
+stable, immutable, unique within that provider, and suitable for the configured
+matching purpose. Provider-key matching precedes heuristic matching. Email or
+stable-person-key linking to an existing local identity requires explicit
+provider-specific assurance; unassured data can support isolated-account
+provisioning only.
+
+See [Authentication Integration Guide](AUTHENTICATION_INTEGRATION.md) for the
+authoritative contract. This boundary is generic OSS guidance and does not
+introduce organization-specific source systems, schemas, identifiers,
+databases, or policies.
 
 ---
 
