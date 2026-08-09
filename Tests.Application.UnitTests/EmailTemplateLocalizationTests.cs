@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Encodings.Web;
 using Core.Application;
 using Core.Application.Interfaces;
 using Infrastructure.Services;
@@ -66,7 +67,7 @@ public class EmailTemplateLocalizationTests : IDisposable
         Assert.Contains(code, body);
         Assert.Contains("5", body);
         Assert.Contains("HybridIdP", body);
-        Assert.Contains("© 2025 Test Company", body);
+        Assert.Contains(HtmlEncoder.Default.Encode("© 2025 Test Company"), body);
     }
 
     [Fact]
