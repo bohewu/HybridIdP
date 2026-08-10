@@ -737,6 +737,10 @@ else
         fail "deploy-ghcr-order" "action-sequence"
     elif ! grep -Eq '(^| )up -d --no-build( |$)' "$DOCKER_LOG"; then
         fail "deploy-ghcr-order" "up-flags"
+    elif ! grep -Eq '(^| )up -d --no-build idp-service nginx-gateway$' "$DOCKER_LOG"; then
+        fail "deploy-gateway-reconcile" "up-services"
+    elif ! grep -Eq '(^| )ps idp-service nginx-gateway$' "$DOCKER_LOG"; then
+        fail "deploy-gateway-reconcile" "status-services"
     fi
 fi
 

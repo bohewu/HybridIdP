@@ -185,26 +185,35 @@ if ! docker compose "${COMPOSE_ARGS[@]}" config --quiet >/dev/null; then
     exit 1
 fi
 
+DEPLOY_SERVICES=( "$SERVICE" )
+if [[ "$SERVICE" == "idp-service" ]] &&
+   docker compose "${COMPOSE_ARGS[@]}" config --services | grep -Fxq "nginx-gateway"; then
+    # Reconcile the gateway as well as the application. This lets Compose replace
+    # containers created from an older mount/environment contract without forcing
+    # a restart when the current gateway configuration is already unchanged.
+    DEPLOY_SERVICES+=( "nginx-gateway" )
+fi
+
 if [[ "$SOURCE" == "ghcr" ]]; then
     info "Pulling service '$SERVICE' image..."
     docker compose "${COMPOSE_ARGS[@]}" pull "$SERVICE"
 
-    info "Starting service '$SERVICE' without build..."
-    docker compose "${COMPOSE_ARGS[@]}" up -d --no-build "$SERVICE"
+    info "Starting deployment services without build..."
+    docker compose "${COMPOSE_ARGS[@]}" up -d --no-build "${DEPLOY_SERVICES[@]}"
 else
     if [[ "$NO_CACHE" == true ]]; then
         info "Building service '$SERVICE' with --no-cache..."
         docker compose "${COMPOSE_ARGS[@]}" build --no-cache "$SERVICE"
-        info "Starting service '$SERVICE'..."
-        docker compose "${COMPOSE_ARGS[@]}" up -d "$SERVICE"
+        info "Starting deployment services..."
+        docker compose "${COMPOSE_ARGS[@]}" up -d "${DEPLOY_SERVICES[@]}"
     else
-        info "Building and starting service '$SERVICE'..."
-        docker compose "${COMPOSE_ARGS[@]}" up -d --build "$SERVICE"
+        info "Building and starting deployment services..."
+        docker compose "${COMPOSE_ARGS[@]}" up -d --build "${DEPLOY_SERVICES[@]}"
     fi
 fi
 
 info "Done. Current status:"
-docker compose "${COMPOSE_ARGS[@]}" ps "$SERVICE"
+docker compose "${COMPOSE_ARGS[@]}" ps "${DEPLOY_SERVICES[@]}"
 
 if [[ "$SOURCE" == "ghcr" ]]; then
     echo -e "${CYAN}Tip:${NC} use '--image' to pin an exact release tag."

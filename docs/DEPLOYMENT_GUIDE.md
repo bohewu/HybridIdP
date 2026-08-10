@@ -152,7 +152,7 @@ cd deployment
 ./deploy-idp.sh --source ghcr --image ghcr.io/<owner>/hybrididp-idp-service:main
 ```
 
-After validation, the script pulls the selected `idp-service` image and runs `up -d --no-build`, which recreates the service when the image changes. Update the host by rerunning this flow; do not reset the database or remove volumes to update an image. For local source, the same script retains its local build behavior: `--source local` runs `up -d --build`, while `--no-cache` performs the local no-cache build before startup.
+After validation, the script pulls the selected `idp-service` image and runs `up -d --no-build`. It reconciles both `idp-service` and `nginx-gateway` when the selected Compose mode contains the gateway, so hosts created with an older gateway mount or environment contract are safely recreated when needed; an unchanged gateway is left running by Compose. Update the host by rerunning this flow; do not reset the database or remove volumes to update an image. For local source, the same script retains its local build behavior: `--source local` runs `up -d --build`, while `--no-cache` performs the local no-cache build before startup.
 
 The IdP applies EF Core migrations during startup before normal seed processing. Back up the database before deploying an image that contains schema changes and allow the new container to complete startup before sending traffic. The Email MFA attempt-limit migration is additive: it adds a non-null counter with a default of `0`, preserves existing users and credentials, and does not require a database reset or volume replacement.
 
