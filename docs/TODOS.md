@@ -1,12 +1,39 @@
 ---
 title: "TODOs & Backlog"
 owner: HybridIdP Team
-last-updated: 2026-08-06
+last-updated: 2026-08-12
 ---
 
 # TODOs & Technical Backlog
 
 This file contains the roadmap for upcoming features and technical improvements.
+
+## 🔄 Active Maintenance: OpenIddict 7.6 and .NET 10 Servicing
+
+- [x] Align all OpenIddict package references from 7.2.0 to the latest stable
+  7.x release, 7.6.0.
+- [x] Align directly referenced ASP.NET Core, EF Core, and IdentityModel
+  packages required by the upgrade to compatible servicing releases.
+- [x] Restore and build the full solution without package downgrade warnings or
+  compilation errors.
+- [x] Run the complete backend test suite and the existing OAuth/OIDC system
+  coverage for authorization code with PKCE, client credentials, device,
+  refresh, userinfo, revocation, and logout behavior.
+- [x] Confirm that the package-only update produces no unexpected SQL Server or
+  PostgreSQL model changes or migrations.
+- [x] Verify the runtime patch in the released production image before rollout;
+  package validation does not replace checking the container's actual .NET
+  runtime.
+
+## ⏸️ Deferred: OpenBao External Secret Provider
+
+OpenBao remains a deferred external secret-source option, analogous to Azure
+Key Vault configuration integration. Any future implementation belongs at the
+application configuration boundary and must remain independent of OpenIddict's
+application, authorization, scope, and token stores. Do not add an OpenBao
+server, client package, Agent, deployment setting, or OpenIddict-specific
+adapter until the OpenBao infrastructure owner, machine-authentication method,
+secret inventory, availability policy, and reuse requirements are approved.
 
 ## 🔄 Active: Phase 22 - App-Specific Roles & Permission Isolation (Completed)
 - [x] **Data Model & Schema**
@@ -119,4 +146,4 @@ specific source systems, APIs, schemas, identifiers, databases, or policy.
 </details>
 
 ---
-_Last updated: 2026-08-06_
+_Last updated: 2026-08-12_

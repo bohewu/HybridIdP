@@ -6,7 +6,7 @@ This document provides a comprehensive guide to setting up the environment, runn
 
 Before running tests or the application, ensure you have the following installed:
 
-- **.NET 10.0 SDK** (Preview)
+- **.NET 10.0 SDK**
 - **SQL Server Express** (or LocalDB) or **PostgreSQL**
 - **PowerShell 7+** (Recommended)
 

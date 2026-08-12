@@ -1019,8 +1019,8 @@ Production、Staging、空白/預設、未知及其他所有環境不會因為�
 
 -   **Framework**: ASP.NET Core .NET 10+
 -   **Database**: PostgreSQL 17
--   **ORM**: Entity Framework Core 9
--   **Authentication**: OpenIddict 6.x
+-   **ORM**: Entity Framework Core 10
+-   **Authentication**: OpenIddict 7.x
 -   **Authorization**: Role-based (`Admin`, `User`)
 -   **Testing**: xUnit, Moq
 
