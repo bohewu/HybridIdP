@@ -9,6 +9,7 @@ using Core.Domain.Constants;
 using Core.Domain.Events;
 using System.ComponentModel.DataAnnotations;
 using Web.IdP.Helpers;
+using Web.IdP.Services;
 
 namespace Web.IdP.Pages.Account;
 
@@ -21,6 +22,8 @@ public partial class LoginEmailOtpModel : PageModel
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly ILogger<LoginEmailOtpModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
+    private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility;
 
     public LoginEmailOtpModel(
         SignInManager<ApplicationUser> signInManager,
@@ -29,7 +32,9 @@ public partial class LoginEmailOtpModel : PageModel
         IUserManagementService userManagementService,
         IDomainEventPublisher eventPublisher,
         ILogger<LoginEmailOtpModel> logger,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        IMigrationIssuanceGuard migrationIssuanceGuard,
+        ICurrentUserLifecycleEligibility lifecycleEligibility)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -38,6 +43,8 @@ public partial class LoginEmailOtpModel : PageModel
         _eventPublisher = eventPublisher;
         _logger = logger;
         _localizer = localizer;
+        _migrationIssuanceGuard = migrationIssuanceGuard;
+        _lifecycleEligibility = lifecycleEligibility;
     }
 
     [BindProperty]
@@ -147,6 +154,11 @@ public partial class LoginEmailOtpModel : PageModel
         
         if (isValid)
         {
+            if (!await CanIssueFullCookieAsync(user, cancellationToken))
+            {
+                return RedirectToPage("./Login");
+            }
+
             AuthenticationMethodSession.Add(
                 HttpContext.Session,
                 AuthConstants.Amr.Mfa,
@@ -232,5 +244,11 @@ public partial class LoginEmailOtpModel : PageModel
         
         return user;
     }
+
+    private async Task<bool> CanIssueFullCookieAsync(
+        ApplicationUser user,
+        CancellationToken cancellationToken) =>
+        await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken) &&
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
 
 }

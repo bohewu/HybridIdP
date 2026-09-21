@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Core.Application.Interfaces;
+using Core.Domain.Enums;
 
 namespace Infrastructure;
 
@@ -39,6 +40,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
     // Phase 22.1
     public DbSet<UserAppRole> UserAppRoles => Set<UserAppRole>();
+    public DbSet<ProviderSubjectDirectoryBinding> ProviderSubjectDirectoryBindings => Set<ProviderSubjectDirectoryBinding>();
+    public DbSet<ProviderMetadataSnapshot> ProviderMetadataSnapshots => Set<ProviderMetadataSnapshot>();
+    public DbSet<CredentialMigrationStateRecord> CredentialMigrationStateRecords => Set<CredentialMigrationStateRecord>();
+    public DbSet<CredentialMigrationContinuationRecord> CredentialMigrationContinuations => Set<CredentialMigrationContinuationRecord>();
+    public DbSet<RecoveryEmailRecord> RecoveryEmails => Set<RecoveryEmailRecord>();
+    public DbSet<RecoveryProofChallenge> RecoveryProofChallenges => Set<RecoveryProofChallenge>();
+    public DbSet<RecoveryResetApproval> RecoveryResetApprovals => Set<RecoveryResetApproval>();
+    public DbSet<NativeRecoveryResetApproval> NativeRecoveryResetApprovals => Set<NativeRecoveryResetApproval>();
+    public DbSet<NativeDirectoryRecoveryAttempt> NativeDirectoryRecoveryAttempts => Set<NativeDirectoryRecoveryAttempt>();
+    public DbSet<DirectorySettlementPreparation> DirectorySettlementPreparations => Set<DirectorySettlementPreparation>();
+    public DbSet<LegacyPasswordSyncAttempt> LegacyPasswordSyncAttempts => Set<LegacyPasswordSyncAttempt>();
+
+    public void Detach<TEntity>(TEntity entity) where TEntity : class
+    {
+        Entry(entity).State = EntityState.Detached;
+    }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -48,7 +65,316 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<ApplicationUser>(entity =>
+        {
+            entity.Property(user => user.RecoverySourceBootstrapRevokedAtUtc);
+        });
+
+        builder.Entity<SecurityPolicy>(entity =>
+        {
+            entity.Property(policy => policy.ForgotPasswordMode)
+                .HasDefaultValue(ForgotPasswordMode.External)
+                .ValueGeneratedNever()
+                .IsRequired();
+        });
         
+        // Configure UserCredential
+        builder.Entity<ProviderSubjectDirectoryBinding>(entity =>
+        {
+            entity.ToTable("ProviderSubjectDirectoryBindings");
+            entity.HasKey(binding => binding.Id);
+            entity.Property(binding => binding.ProviderNamespace).HasMaxLength(200).IsRequired();
+            entity.Property(binding => binding.StableSubject).HasMaxLength(256).IsRequired();
+            entity.Property(binding => binding.NormalizedCanonicalAccountAlias).HasMaxLength(256);
+            entity.Property(binding => binding.CreatedAtUtc).IsRequired();
+            entity.HasIndex(binding => new { binding.ProviderNamespace, binding.StableSubject }).IsUnique();
+            entity.HasIndex(binding => binding.DirectoryObjectId).IsUnique();
+            entity.HasIndex(binding => binding.LocalAccountId).IsUnique();
+            var aliasIndex = entity.HasIndex(binding => binding.NormalizedCanonicalAccountAlias).IsUnique();
+            if (Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+            {
+                aliasIndex.HasFilter("[NormalizedCanonicalAccountAlias] IS NOT NULL");
+            }
+            else if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                aliasIndex.HasFilter("\"NormalizedCanonicalAccountAlias\" IS NOT NULL");
+            }
+        });
+
+        builder.Entity<ProviderMetadataSnapshot>(entity =>
+        {
+            // The withdrawn draft cache is deliberately not mapped or imported.
+            entity.ToTable("ProviderEmailSnapshots");
+            entity.HasKey(snapshot => snapshot.Id);
+            entity.Property(snapshot => snapshot.EvidenceState)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+            entity.Property(snapshot => snapshot.Email).HasMaxLength(320);
+            entity.Property(snapshot => snapshot.EmailTrustOrigin)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+            entity.Property(snapshot => snapshot.RefreshedAtUtc).IsRequired();
+            entity.HasIndex(snapshot => snapshot.ProviderSubjectDirectoryBindingId).IsUnique();
+            entity.HasOne<ProviderSubjectDirectoryBinding>()
+                .WithOne()
+                .HasForeignKey<ProviderMetadataSnapshot>(snapshot => snapshot.ProviderSubjectDirectoryBindingId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CredentialMigrationStateRecord>(entity =>
+        {
+            entity.ToTable("CredentialMigrationStates");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.State).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(record => record.EffectiveEmailOtpRequirement)
+                .HasConversion<string>()
+                .HasMaxLength(32)
+                .HasDefaultValue(EffectiveEmailOtpRequirement.Unspecified)
+                .IsRequired();
+            entity.Property(record => record.CreatedAtUtc).IsRequired();
+            entity.Property(record => record.UpdatedAtUtc).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken().IsRequired();
+            entity.HasIndex(record => record.LocalAccountId).IsUnique();
+            entity.HasIndex(record => record.ProviderSubjectDirectoryBindingId).IsUnique();
+            entity.HasOne<ProviderSubjectDirectoryBinding>()
+                .WithOne()
+                .HasForeignKey<CredentialMigrationStateRecord>(record => record.ProviderSubjectDirectoryBindingId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CredentialMigrationContinuationRecord>(entity =>
+        {
+            entity.ToTable("CredentialMigrationContinuations");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(record => record.ContextHash).HasMaxLength(64).IsRequired();
+            entity.Property(record => record.CsrfHash).HasMaxLength(64).IsRequired();
+            entity.Property(record => record.CreatedAtUtc).IsRequired();
+            entity.Property(record => record.ExpiresAtUtc).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken().IsRequired();
+            entity.HasIndex(record => record.TokenHash).IsUnique();
+            entity.HasIndex(record => new { record.CredentialMigrationStateRecordId, record.ConsumedAtUtc });
+            entity.HasOne<CredentialMigrationStateRecord>()
+                .WithMany()
+                .HasForeignKey(record => record.CredentialMigrationStateRecordId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<RecoveryEmailRecord>(entity =>
+        {
+            entity.ToTable("RecoveryEmails");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.Address).HasMaxLength(320).IsRequired();
+            entity.Property(record => record.NormalizedAddress).HasMaxLength(320).IsRequired();
+            entity.Property(record => record.LastAdministrativeReason).HasMaxLength(500);
+            entity.Property(record => record.LastIdentityCheckEvidence).HasMaxLength(500);
+            entity.Property(record => record.CreatedAtUtc).IsRequired();
+            entity.Property(record => record.UpdatedAtUtc).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken().IsRequired();
+            entity.HasIndex(record => record.LocalAccountId).IsUnique();
+            entity.HasOne<ApplicationUser>()
+                .WithOne()
+                .HasForeignKey<RecoveryEmailRecord>(record => record.LocalAccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<RecoveryProofChallenge>(entity =>
+        {
+            entity.ToTable("RecoveryProofChallenges");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.Purpose).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(record => record.CodeHash).HasMaxLength(512).IsRequired();
+            entity.Property(record => record.ProofTokenHash).HasMaxLength(64);
+            entity.Property(record => record.NativeContextHash).HasMaxLength(256);
+            entity.Property(record => record.NativeCsrfHash).HasMaxLength(256);
+            entity.Property(record => record.NativeSecurityStamp).HasMaxLength(256);
+            entity.Property(record => record.CreatedAtUtc).IsRequired();
+            entity.Property(record => record.ExpiresAtUtc).IsRequired();
+            entity.Property(record => record.SentAtUtc).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken().IsRequired();
+            var proofTokenIndex = entity.HasIndex(record => record.ProofTokenHash).IsUnique();
+            if (Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+            {
+                proofTokenIndex.HasFilter("[ProofTokenHash] IS NOT NULL");
+            }
+            else if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                proofTokenIndex.HasFilter("\"ProofTokenHash\" IS NOT NULL");
+            }
+            entity.HasIndex(record => new
+            {
+                record.LocalAccountId,
+                record.Purpose,
+                record.CredentialMigrationContinuationId,
+                record.RevokedAtUtc,
+                record.ConsumedAtUtc
+            });
+            entity.HasOne<RecoveryEmailRecord>()
+                .WithMany()
+                .HasForeignKey(record => record.RecoveryEmailId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<CredentialMigrationContinuationRecord>()
+                .WithMany()
+                .HasForeignKey(record => record.CredentialMigrationContinuationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<NativeRecoveryResetApproval>(entity =>
+        {
+            entity.ToTable("NativeRecoveryResetApprovals");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.ContextHash).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.CsrfHash).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.SecurityStamp).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.Reason).HasMaxLength(500).IsRequired();
+            entity.Property(record => record.IdentityCheckEvidence).HasMaxLength(500).IsRequired();
+            entity.Property(record => record.CreatedAtUtc).IsRequired();
+            entity.Property(record => record.ExpiresAtUtc).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken().IsRequired();
+            entity.HasIndex(record => new
+            {
+                record.RecoveryProofChallengeId,
+                record.RevokedAtUtc,
+                record.ConsumedAtUtc
+            });
+            var activeChallengeIndex = entity.HasIndex(record => record.RecoveryProofChallengeId).IsUnique();
+            if (Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+            {
+                activeChallengeIndex.HasFilter("[RevokedAtUtc] IS NULL AND [ConsumedAtUtc] IS NULL");
+            }
+            else if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                activeChallengeIndex.HasFilter("\"RevokedAtUtc\" IS NULL AND \"ConsumedAtUtc\" IS NULL");
+            }
+            entity.HasOne<RecoveryProofChallenge>()
+                .WithMany()
+                .HasForeignKey(record => record.RecoveryProofChallengeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<RecoveryResetApproval>(entity =>
+        {
+            entity.ToTable("RecoveryResetApprovals");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.Reason).HasMaxLength(500).IsRequired();
+            entity.Property(record => record.IdentityCheckEvidence).HasMaxLength(500).IsRequired();
+            entity.Property(record => record.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(record => record.CreatedAtUtc).IsRequired();
+            entity.Property(record => record.ExpiresAtUtc).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken().IsRequired();
+            entity.HasIndex(record => record.TokenHash).IsUnique();
+            entity.HasIndex(record => new
+            {
+                record.CredentialMigrationContinuationId,
+                record.RevokedAtUtc,
+                record.ConsumedAtUtc
+            });
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(record => record.LocalAccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<CredentialMigrationContinuationRecord>()
+                .WithMany()
+                .HasForeignKey(record => record.CredentialMigrationContinuationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<NativeDirectoryRecoveryAttempt>(entity =>
+        {
+            entity.ToTable("NativeDirectoryRecoveryAttempts", table => table.HasCheckConstraint(
+                "CK_NativeDirectoryRecoveryAttempts_OperationProof",
+                Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer"
+                    ? "([OperationKind] = N'NativeReset' AND [RecoveryProofChallengeId] IS NOT NULL) OR ([OperationKind] IN (N'AdminTemporaryIssue', N'RequiredChange') AND [RecoveryProofChallengeId] IS NULL)"
+                    : "(\"OperationKind\" = 'NativeReset' AND \"RecoveryProofChallengeId\" IS NOT NULL) OR (\"OperationKind\" IN ('AdminTemporaryIssue', 'RequiredChange') AND \"RecoveryProofChallengeId\" IS NULL)"));
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.OperationKind).HasConversion<string>().HasMaxLength(40)
+                .HasDefaultValue(NativeDirectoryCredentialOperationKind.NativeReset).IsRequired();
+            entity.Property(record => record.Status).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(record => record.CreatedAtUtc).IsRequired();
+            entity.Property(record => record.UpdatedAtUtc).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken().IsRequired();
+            entity.HasIndex(record => record.RecoveryProofChallengeId).IsUnique();
+            var activeAccountIndex = entity.HasIndex(record => record.LocalAccountId).IsUnique();
+            if (Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+            {
+                activeAccountIndex.HasFilter("[Status] IN (N'Reserved', N'ReconciliationRequired')");
+            }
+            else
+            {
+                activeAccountIndex.HasFilter("\"Status\" IN ('Reserved', 'ReconciliationRequired')");
+            }
+            entity.HasOne<RecoveryProofChallenge>()
+                .WithOne()
+                .HasForeignKey<NativeDirectoryRecoveryAttempt>(record => record.RecoveryProofChallengeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<DirectorySettlementPreparation>(entity =>
+        {
+            entity.ToTable("DirectorySettlementPreparations");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.OperationKind).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(record => record.ExpectedAttemptStatus).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(record => record.Disposition).HasConversion<string>().HasMaxLength(48).IsRequired();
+            entity.Property(record => record.EvidenceCategory).HasConversion<string>().HasMaxLength(48).IsRequired();
+            entity.Property(record => record.EvidenceReference).HasMaxLength(200).IsRequired();
+            entity.Property(record => record.AccountSecurityStamp).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.OperatorSecurityStamp).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.ContinuationHash).HasMaxLength(64).IsRequired();
+            entity.Property(record => record.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+            entity.Property(record => record.ContextHash).HasMaxLength(256);
+            entity.Property(record => record.CsrfHash).HasMaxLength(256);
+            entity.Property(record => record.Version).IsConcurrencyToken().IsRequired();
+            entity.HasIndex(record => record.ContinuationHash).IsUnique();
+            var activeAttemptIndex = entity.HasIndex(record => record.AttemptId).IsUnique();
+            if (Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+            {
+                activeAttemptIndex.HasFilter("[Status] IN (N'Prepared', N'OwnershipPending', N'Verifying')");
+            }
+            else
+            {
+                activeAttemptIndex.HasFilter("\"Status\" IN ('Prepared', 'OwnershipPending', 'Verifying')");
+            }
+            entity.HasOne<NativeDirectoryRecoveryAttempt>()
+                .WithMany()
+                .HasForeignKey(record => record.AttemptId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<RecoveryProofChallenge>()
+                .WithMany()
+                .HasForeignKey(record => record.OwnershipChallengeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<LegacyPasswordSyncAttempt>(entity =>
+        {
+            entity.ToTable("LegacyPasswordSyncAttempts");
+            entity.HasKey(attempt => attempt.OperationId);
+            entity.Property(attempt => attempt.SourceKind).HasConversion<string>().HasMaxLength(32).IsRequired();
+            entity.Property(attempt => attempt.SourceCompletion).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(attempt => attempt.MappingVersion).HasMaxLength(128).IsRequired();
+            entity.Property(attempt => attempt.Status).HasConversion<string>().HasMaxLength(24).IsRequired();
+            entity.Property(attempt => attempt.SanitizedOutcome).HasMaxLength(200);
+            entity.Property(attempt => attempt.Version).IsConcurrencyToken().IsRequired();
+            entity.HasIndex(attempt => new { attempt.SourceKind, attempt.SourceAttemptId }).IsUnique();
+            entity.HasIndex(attempt => new { attempt.LocalAccountId, attempt.AccountIdentity, attempt.Generation }).IsUnique();
+            var barrierIndex = entity.HasIndex(attempt => new { attempt.LocalAccountId, attempt.AccountIdentity }).IsUnique();
+            if (Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+            {
+                barrierIndex.HasFilter("[Status] IN (N'Claimed', N'Unknown')");
+            }
+            else
+            {
+                barrierIndex.HasFilter("\"Status\" IN ('Claimed', 'Unknown')");
+            }
+            entity.HasOne<ProviderSubjectDirectoryBinding>()
+                .WithMany()
+                .HasForeignKey(attempt => attempt.ProviderSubjectDirectoryBindingId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // Configure UserCredential
         builder.Entity<UserCredential>(entity =>
         {
@@ -209,8 +535,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.Property(e => e.UserAgent).HasMaxLength(500);
             entity.Property(e => e.RevocationReason).HasMaxLength(500);
             
-            // Phase 11.1: Active role for session (required)
-            entity.Property(e => e.ActiveRoleId).IsRequired();
+            // Phase 11.1: Optional until the session has a resolved active role.
             entity.HasIndex(e => e.ActiveRoleId);
             
             // Configure FK relationship with ApplicationRole

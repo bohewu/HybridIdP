@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using Web.IdP.Services;
 
 namespace Tests.Web.IdP.UnitTests.Services;
@@ -43,7 +44,7 @@ public class ApplicationCookieCurrentStateValidatorTests
         await database.SaveChangesAsync();
         var cookieContext = CreateCookieContext(CreatePrincipal(user.Id));
 
-        await new ApplicationCookieCurrentStateValidator(database).ValidateAsync(cookieContext);
+        await new ApplicationCookieCurrentStateValidator(database, CreateMigrationIssuanceGuard()).ValidateAsync(cookieContext);
 
         Assert.Null(cookieContext.Principal);
     }
@@ -58,7 +59,7 @@ public class ApplicationCookieCurrentStateValidatorTests
         await database.SaveChangesAsync();
         var cookieContext = CreateCookieContext(CreatePrincipal(user.Id));
 
-        await new ApplicationCookieCurrentStateValidator(database).ValidateAsync(cookieContext);
+        await new ApplicationCookieCurrentStateValidator(database, CreateMigrationIssuanceGuard()).ValidateAsync(cookieContext);
 
         Assert.Null(cookieContext.Principal);
     }
@@ -77,7 +78,7 @@ public class ApplicationCookieCurrentStateValidatorTests
         await database.SaveChangesAsync();
         var cookieContext = CreateCookieContext(CreatePrincipal(user.Id));
 
-        await new ApplicationCookieCurrentStateValidator(database).ValidateAsync(cookieContext);
+        await new ApplicationCookieCurrentStateValidator(database, CreateMigrationIssuanceGuard()).ValidateAsync(cookieContext);
 
         Assert.Null(cookieContext.Principal);
     }
@@ -97,9 +98,26 @@ public class ApplicationCookieCurrentStateValidatorTests
         var principal = CreatePrincipal(user.Id);
         var cookieContext = CreateCookieContext(principal);
 
-        await new ApplicationCookieCurrentStateValidator(database).ValidateAsync(cookieContext);
+        await new ApplicationCookieCurrentStateValidator(database, CreateMigrationIssuanceGuard()).ValidateAsync(cookieContext);
 
         Assert.Same(principal, cookieContext.Principal);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ShouldRejectPrincipal_WhenMigrationIsIncomplete()
+    {
+        await using var database = CreateDatabase();
+        var user = CreateUser();
+        database.Users.Add(user);
+        await database.SaveChangesAsync();
+        var cookieContext = CreateCookieContext(CreatePrincipal(user.Id));
+
+        await new ApplicationCookieCurrentStateValidator(
+                database,
+                CreateMigrationIssuanceGuard(allowed: false))
+            .ValidateAsync(cookieContext);
+
+        Assert.Null(cookieContext.Principal);
     }
 
     [Fact]
@@ -131,6 +149,7 @@ public class ApplicationCookieCurrentStateValidatorTests
 
         using var services = new ServiceCollection()
             .AddSingleton<IApplicationDbContext>(database)
+            .AddSingleton(CreateMigrationIssuanceGuard())
             .AddSingleton<ApplicationCookieCurrentStateValidator>()
             .BuildServiceProvider();
         var cookieContext = CreateCookieContext(CreatePrincipal(user.Id), services);
@@ -156,6 +175,7 @@ public class ApplicationCookieCurrentStateValidatorTests
 
         using var services = new ServiceCollection()
             .AddSingleton<IApplicationDbContext>(database)
+            .AddSingleton(CreateMigrationIssuanceGuard())
             .AddSingleton<ApplicationCookieCurrentStateValidator>()
             .BuildServiceProvider();
         var impersonatorId = Guid.NewGuid().ToString();
@@ -204,6 +224,15 @@ public class ApplicationCookieCurrentStateValidatorTests
         new(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             IdentityConstants.ApplicationScheme));
+
+    private static IMigrationIssuanceGuard CreateMigrationIssuanceGuard(bool allowed = true)
+    {
+        var guard = new Mock<IMigrationIssuanceGuard>();
+        guard
+            .Setup(candidate => candidate.CanIssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(allowed);
+        return guard.Object;
+    }
 
     private static CookieValidatePrincipalContext CreateCookieContext(
         ClaimsPrincipal principal,

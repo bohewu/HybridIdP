@@ -166,6 +166,8 @@
       </div>
     </div>
 
+    <RecoveryEmailSettings v-if="!loading" :csrf-token="csrfToken" />
+
     <!-- Email MFA Verification Modal -->
     <div v-if="showEmailMfaModal" class="modal-overlay" @click.self="closeEmailMfaSetup">
       <div
@@ -438,6 +440,7 @@ import { ref, onMounted, computed, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWebAuthn } from '../../composables/useWebAuthn';
 import { useEmailCodeCooldown } from '../../composables/useEmailCodeCooldown';
+import RecoveryEmailSettings from './RecoveryEmailSettings.vue';
 
 const { t } = useI18n();
 

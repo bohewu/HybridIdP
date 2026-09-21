@@ -9,6 +9,20 @@ namespace Core.Application;
 public interface ISessionService
 {
     /// <summary>
+    /// Creates the local session ledger entry for a user authorization when it does not already exist.
+    /// Existing entries are never updated or reactivated.
+    /// </summary>
+    Task EnsureCreatedAsync(
+        Guid userId,
+        string authorizationId,
+        string clientId,
+        string? clientDisplayName,
+        Guid? activeRoleId,
+        string? ipAddress,
+        string? userAgent,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lists active authorizations (sessions) for a given user.
     /// </summary>
     /// <param name="userId">Application user ID (Guid)</param>

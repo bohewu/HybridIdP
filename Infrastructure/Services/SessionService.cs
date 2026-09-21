@@ -35,6 +35,48 @@ public class SessionService : ISessionService
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
+    public async Task EnsureCreatedAsync(
+        Guid userId,
+        string authorizationId,
+        string clientId,
+        string? clientDisplayName,
+        Guid? activeRoleId,
+        string? ipAddress,
+        string? userAgent,
+        CancellationToken cancellationToken = default)
+    {
+        var existing = await _db.UserSessions
+            .SingleOrDefaultAsync(session => session.AuthorizationId == authorizationId, cancellationToken);
+        if (existing is not null)
+        {
+            if (existing.UserId != userId ||
+                !string.Equals(existing.ClientId, clientId, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The authorization is already tracked by a different user or client.");
+            }
+
+            return;
+        }
+
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        _db.UserSessions.Add(new UserSession
+        {
+            UserId = userId,
+            AuthorizationId = authorizationId,
+            ClientId = clientId,
+            ClientDisplayName = Truncate(clientDisplayName, 200),
+            ActiveRoleId = activeRoleId,
+            CreatedUtc = now,
+            LastActivityUtc = now,
+            IpAddress = ipAddress,
+            UserAgent = Truncate(userAgent, 500)
+        });
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static string? Truncate(string? value, int maxLength) =>
+        value is not null && value.Length > maxLength ? value[..maxLength] : value;
+
     public async Task<IEnumerable<SessionDto>> ListSessionsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var items = new List<SessionDto>();

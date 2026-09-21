@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Core.Domain.Enums;
 
 namespace Core.Application.DTOs;
 
@@ -56,6 +57,9 @@ public class SecurityPolicyDto
     /// </summary>
     [MaxLength(500)]
     public string? CustomForgotPasswordUrl { get; set; }
+
+    [EnumDataType(typeof(ForgotPasswordMode))]
+    public ForgotPasswordMode? ForgotPasswordMode { get; set; }
     
     public DateTime UpdatedUtc { get; set; }
     public string? UpdatedBy { get; set; }

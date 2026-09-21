@@ -8,6 +8,7 @@ using Core.Application;
 using Core.Application.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using Web.IdP.Helpers;
+using Web.IdP.Services;
 
 namespace Web.IdP.Pages.Account;
 
@@ -17,17 +18,23 @@ public class MfaSetupModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ISecurityPolicyService _securityPolicyService;
+    private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
+    private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility;
 
     public MfaSetupModel(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IStringLocalizer<SharedResource> localizer,
-        ISecurityPolicyService securityPolicyService)
+        ISecurityPolicyService securityPolicyService,
+        IMigrationIssuanceGuard migrationIssuanceGuard,
+        ICurrentUserLifecycleEligibility lifecycleEligibility)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _localizer = localizer;
         _securityPolicyService = securityPolicyService;
+        _migrationIssuanceGuard = migrationIssuanceGuard;
+        _lifecycleEligibility = lifecycleEligibility;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -118,6 +125,11 @@ public class MfaSetupModel : PageModel
         }
 
         // Sign in user temporarily since they skipped MFA for now (within grace period)
+        if (!await CanIssueFullCookieAsync(user))
+        {
+            return RedirectToPage("./Login");
+        }
+
         await _signInManager.SignInAsync(user, isPersistent: false);
         return this.SafeRedirect(ReturnUrl, "~/");
     }
@@ -170,4 +182,8 @@ public class MfaSetupModel : PageModel
             HttpContext.User = partialPrincipal;
         }
     }
+
+    private async Task<bool> CanIssueFullCookieAsync(ApplicationUser user) =>
+        await _lifecycleEligibility.IsEligibleAsync(user.Id, HttpContext.RequestAborted) &&
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, HttpContext.RequestAborted);
 }

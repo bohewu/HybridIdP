@@ -23,6 +23,19 @@ public interface IApplicationDbContext
     DbSet<ScopeOwnership> ScopeOwnerships { get; }
     DbSet<UserCredential> UserCredentials { get; }
     DbSet<UserAppRole> UserAppRoles { get; }
+    DbSet<ProviderSubjectDirectoryBinding> ProviderSubjectDirectoryBindings { get; }
+    DbSet<ProviderMetadataSnapshot> ProviderMetadataSnapshots { get; }
+    DbSet<CredentialMigrationStateRecord> CredentialMigrationStateRecords { get; }
+    DbSet<CredentialMigrationContinuationRecord> CredentialMigrationContinuations { get; }
+    DbSet<RecoveryEmailRecord> RecoveryEmails { get; }
+    DbSet<RecoveryProofChallenge> RecoveryProofChallenges { get; }
+    DbSet<RecoveryResetApproval> RecoveryResetApprovals { get; }
+    DbSet<NativeRecoveryResetApproval> NativeRecoveryResetApprovals { get; }
+    DbSet<NativeDirectoryRecoveryAttempt> NativeDirectoryRecoveryAttempts { get; }
+    DbSet<DirectorySettlementPreparation> DirectorySettlementPreparations { get; }
+    DbSet<LegacyPasswordSyncAttempt> LegacyPasswordSyncAttempts { get; }
+
+    void Detach<TEntity>(TEntity entity) where TEntity : class;
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

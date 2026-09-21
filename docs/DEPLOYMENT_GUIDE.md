@@ -145,18 +145,79 @@ docker compose -f docker-compose.nginx.yml -f docker-compose.local-ports.yml --e
 
 ### Image and Local-Source Deployments
 
-For GHCR, `deployment/docker-compose.ghcr-image.yml` requires `IDP_IMAGE` and sets `pull_policy: always`. Use the existing deployment flow with a non-secret image placeholder or an approved image tag:
+For GHCR, `deployment/docker-compose.ghcr-image.yml` requires `IDP_IMAGE` and sets `pull_policy: always`. Use the existing deployment flow with the exact approved release image, pinned by release tag or digest:
 
 ```bash
 cd deployment
-./deploy-idp.sh --source ghcr --image ghcr.io/<owner>/hybrididp-idp-service:main
+release_image='ghcr.io/<owner>/hybrididp-idp-service@sha256:<approved-64-hex-digest>'
+./deploy-idp.sh --source ghcr --image "$release_image" --env-file .env
 ```
 
 After validation, the script pulls the selected `idp-service` image and runs `up -d --no-build`. It reconciles both `idp-service` and `nginx-gateway` when the selected Compose mode contains the gateway, so hosts created with an older gateway mount or environment contract are safely recreated when needed; an unchanged gateway is left running by Compose. Update the host by rerunning this flow; do not reset the database or remove volumes to update an image. For local source, the same script retains its local build behavior: `--source local` runs `up -d --build`, while `--no-cache` performs the local no-cache build before startup.
 
-The IdP applies EF Core migrations during startup before normal seed processing. Back up the database before deploying an image that contains schema changes and allow the new container to complete startup before sending traffic. The Email MFA attempt-limit migration is additive: it adds a non-null counter with a default of `0`, preserves existing users and credentials, and does not require a database reset or volume replacement.
+The development example applies EF Core migrations during startup before normal seed processing. Production defaults `DatabaseMigration__ApplyOnStartup=false`; use the controlled schema-migration sequence below before deploying an image that contains schema changes.
+
+### Operator-Controlled Schema Migration
+
+The same procedure applies to SQL Server and PostgreSQL. In `deployment/.env`, set `IDP_IMAGE` to the selected exact pinned release image and keep `DatabaseMigration__ApplyOnStartup=false`. A floating reference such as `main` or `latest` is not accepted by `migrate-db.sh`.
+
+1. Take and verify a restorable operator-managed database backup for the selected provider.
+2. Set `release_image` to the same exact value recorded as `IDP_IMAGE` in `deployment/.env`, then run the schema-only container:
+
+   ```bash
+   cd deployment
+   release_image='ghcr.io/<owner>/hybrididp-idp-service@sha256:<approved-64-hex-digest>'
+   ./migrate-db.sh --confirm-backup --source ghcr --image "$release_image" --env-file .env
+   ```
+
+3. Verify that the command exits successfully. `--migrate-only` performs schema migration only: it does not seed data, start an HTTP listener, or run AD, provider, or credential-migration workflows.
+4. Deploy that same unchanged image and wait for deployment readiness:
+
+   ```bash
+   ./deploy-idp.sh --source ghcr --image "$release_image" --env-file .env
+   ```
+
+   The deployment command waits for IdP readiness. Confirm the expected health endpoint and discovery response before sending traffic.
+5. Only after migration, deployment, and readiness succeed, enable a separately approved staged credential rollout. Stage 1 enables only `DirectoryIntegration__Enabled`; Stage 2 additionally enables `DirectoryIntegration__AuthenticationEnabled` and `CredentialMigration__Enabled` with bounded migration-window values. Leave all three flags disabled for the schema-release deployment.
+
+When `DatabaseMigration__ApplyOnStartup=false`, a normal application startup inspects pending migrations and fails before readiness if any remain. Do not work around that failure by enabling automatic startup migration on a production host; use the schema-only procedure instead.
+
+To roll back, roll back the application image separately. Do not automatically run EF Core `Down` migrations. Restore the database from the verified operator backup only when a schema rollback is genuinely required.
 
 ---
+
+### Optional Provider Contract Configuration
+
+Provider Proof 1.0, Provider Metadata 1.0 and Legacy Password Sync are three
+independent boundaries. Their checked-in settings are disabled or incomplete;
+copying the examples does not enable an integration. Read the public contracts
+before supplying any endpoint or secret:
+
+- [Provider Proof Contract 1.0](PROVIDER_PROOF_CONTRACT.md)
+- [Provider Metadata Contract 1.0](PROVIDER_METADATA_CONTRACT.md)
+- [Legacy Password Sync Contract](PASSWORD_SYNC_CONTRACT.md)
+
+Use fixed HTTPS endpoints and provision each `SharedSecret` through the approved
+secret-management path. Private-network HTTP requires the boundary's explicit
+`AllowPrivateNetworkHttp=true`; that setting does not prove the endpoint is
+private. Proof and Metadata deadlines default to five seconds; all three
+boundaries accept more than zero through thirty seconds. Restart after changing
+startup-bound options.
+
+Metadata requires the new provider-specific email snapshot migration before it
+is enabled. It imports no withdrawn draft affiliation rows. Existing draft rows
+remain unmapped and non-authoritative; do not drop them as part of activation or
+attempt to restore authority from them. A missing separate upstream affiliation
+owner remains unavailable and fails closed.
+
+Legacy Password Sync additionally requires the provider-specific
+`Hidp13LegacyPasswordSyncAttempts` migration, exact unique mappings, approved
+cohorts, a connected pilot and an explicit uncertain-write settlement
+procedure. The migration rewrite and model checks in this candidate were
+offline only; no live or production database migration was run. Never retry
+`PartialSuccess`, `CommitUnknown` or any request that may have been dispatched.
+These instructions do not claim external interoperability, a connected
+password write or production deployment has been verified.
 
 ## One-Time Operational First Administrator
 

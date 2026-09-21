@@ -23,6 +23,7 @@ using Core.Domain.Constants;
 using Infrastructure;
 using Tests.Web.IdP.UnitTests.TestSupport;
 using Web.IdP.Helpers;
+using Web.IdP.Services;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
 
@@ -36,6 +37,8 @@ public class PasskeyControllerTests
     private readonly ApplicationDbContext _dbContext;
     private readonly Mock<IAuditService> _auditServiceMock;
     private readonly Mock<ILogger<PasskeyController>> _loggerMock;
+    private readonly Mock<IMigrationIssuanceGuard> _migrationIssuanceGuardMock;
+    private readonly Mock<ICurrentUserLifecycleEligibility> _lifecycleEligibilityMock;
     private readonly MemorySession _session;
     private readonly PasskeyController _controller;
 
@@ -73,7 +76,24 @@ public class PasskeyControllerTests
         _dbContext = new ApplicationDbContext(options);
 
         _auditServiceMock = new Mock<IAuditService>();
+        _auditServiceMock
+            .Setup(service => service.LogEventAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _loggerMock = new Mock<ILogger<PasskeyController>>();
+        _migrationIssuanceGuardMock = new Mock<IMigrationIssuanceGuard>();
+        _migrationIssuanceGuardMock
+            .Setup(service => service.CanIssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _lifecycleEligibilityMock = new Mock<ICurrentUserLifecycleEligibility>();
+        _lifecycleEligibilityMock
+            .Setup(service => service.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
         
         _session = new MemorySession();
         var httpContext = new DefaultHttpContext();
@@ -87,7 +107,9 @@ public class PasskeyControllerTests
             _userManagementServiceMock.Object,
             _dbContext,
             _auditServiceMock.Object,
-            _loggerMock.Object
+            _loggerMock.Object,
+            _migrationIssuanceGuardMock.Object,
+            _lifecycleEligibilityMock.Object
         )
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
@@ -317,6 +339,89 @@ public class PasskeyControllerTests
     }
 
     [Fact]
+    public async Task MakeAssertion_WhenCurrentLifecycleIsIneligible_DeniesBeforeFullCookie()
+    {
+        var user = CreateEligibleUser("stale-lifecycle-user");
+        ArrangeVerifiedAssertion(user);
+        _lifecycleEligibilityMock
+            .Setup(service => service.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _controller.MakeAssertion(
+            EmptyClientResponse(),
+            CancellationToken.None);
+
+        var failure = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(
+            "Authentication failed",
+            failure.Value!.GetType().GetProperty("error")?.GetValue(failure.Value));
+        VerifyNoSuccessfulSignIn();
+    }
+
+    [Fact]
+    public async Task MakeCredential_WhenMigrationIsIncomplete_DeniesBeforeFullCookie()
+    {
+        var user = CreateEligibleUser("partial-registration-user");
+        ArrangeAuthenticatedUser(user);
+        ArrangeTwoFactorPartialAuthentication(user);
+        _session.SetString("fido2.attestationOptions", "{\"challenge\":\"123\"}");
+        _passkeyServiceMock
+            .Setup(service => service.RegisterCredentialsAsync(
+                user,
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, (string?)null));
+        _migrationIssuanceGuardMock
+            .Setup(service => service.CanIssueAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _controller.MakeCredential(
+            EmptyClientResponse(),
+            CancellationToken.None);
+
+        var failure = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(
+            "Authentication failed",
+            failure.Value!.GetType().GetProperty("error")?.GetValue(failure.Value));
+        VerifyNoSuccessfulSignIn();
+    }
+
+    [Fact]
+    public async Task MakeCredential_WithEligibleLifecycleAndFinalizedMigration_IssuesFullCookie()
+    {
+        var user = CreateEligibleUser("partial-registration-user");
+        ArrangeAuthenticatedUser(user);
+        ArrangeTwoFactorPartialAuthentication(user);
+        _session.SetString("fido2.attestationOptions", "{\"challenge\":\"123\"}");
+        _passkeyServiceMock
+            .Setup(service => service.RegisterCredentialsAsync(
+                user,
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, (string?)null));
+        _signInManagerMock
+            .Setup(manager => manager.SignInWithClaimsAsync(
+                user,
+                false,
+                It.IsAny<IEnumerable<Claim>>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.MakeCredential(
+            EmptyClientResponse(),
+            CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        _signInManagerMock.Verify(
+            manager => manager.SignInWithClaimsAsync(
+                user,
+                false,
+                It.IsAny<IEnumerable<Claim>>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task MakeAssertion_PasskeyDisabled_ReturnsForbiddenWithoutVerifyingOrSigningIn()
     {
         _session.SetString("fido2.assertionOptions", "{\"challenge\":\"123\"}");
@@ -421,6 +526,30 @@ public class PasskeyControllerTests
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, user, userVerified, (string?)null));
+    }
+
+    private void ArrangeAuthenticatedUser(ApplicationUser user)
+    {
+        _userManagerMock
+            .Setup(manager => manager.GetUserAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(user);
+    }
+
+    private void ArrangeTwoFactorPartialAuthentication(ApplicationUser user)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
+            IdentityConstants.TwoFactorUserIdScheme));
+        var authenticationService = new Mock<IAuthenticationService>();
+        authenticationService
+            .Setup(service => service.AuthenticateAsync(
+                It.IsAny<HttpContext>(),
+                IdentityConstants.TwoFactorUserIdScheme))
+            .ReturnsAsync(AuthenticateResult.Success(
+                new AuthenticationTicket(principal, IdentityConstants.TwoFactorUserIdScheme)));
+        _controller.HttpContext.RequestServices = new ServiceCollection()
+            .AddSingleton(authenticationService.Object)
+            .BuildServiceProvider();
     }
 
     private static ApplicationUser CreateEligibleUser(string userName)

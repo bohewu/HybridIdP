@@ -2,8 +2,10 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
 using Core.Domain.Entities;
+using Core.Domain.Enums;
 using Infrastructure;
 using Infrastructure.Services;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Caching.Memory;
@@ -151,6 +153,80 @@ public class SecurityPolicyServiceTests
     }
 
     [Fact]
+    public async Task UpdatePolicyAsync_OmittedForgotPasswordMode_PreservesPersistedMode()
+    {
+        var persistedPolicy = new SecurityPolicy
+        {
+            Id = Guid.NewGuid(),
+            ForgotPasswordMode = ForgotPasswordMode.Native
+        };
+        SetupDbSetMock(persistedPolicy);
+        var service = new SecurityPolicyService(_mockDb.Object, _mockCache.Object, _mockLogger.Object);
+
+        await service.UpdatePolicyAsync(new SecurityPolicyDto(), "TestUser");
+
+        Assert.Equal(ForgotPasswordMode.Native, persistedPolicy.ForgotPasswordMode);
+    }
+
+    [Fact]
+    public async Task UpdatePolicyAsync_ExplicitForgotPasswordMode_UpdatesPersistedMode()
+    {
+        var persistedPolicy = new SecurityPolicy
+        {
+            Id = Guid.NewGuid(),
+            ForgotPasswordMode = ForgotPasswordMode.External
+        };
+        SetupDbSetMock(persistedPolicy);
+        var service = new SecurityPolicyService(_mockDb.Object, _mockCache.Object, _mockLogger.Object);
+
+        await service.UpdatePolicyAsync(
+            new SecurityPolicyDto { ForgotPasswordMode = ForgotPasswordMode.Disabled },
+            "TestUser");
+
+        Assert.Equal(ForgotPasswordMode.Disabled, persistedPolicy.ForgotPasswordMode);
+    }
+
+    [Fact]
+    public async Task UpdatePolicyAsync_InvalidForgotPasswordMode_ThrowsBeforePersistence()
+    {
+        var service = new SecurityPolicyService(_mockDb.Object, _mockCache.Object, _mockLogger.Object);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.UpdatePolicyAsync(
+                new SecurityPolicyDto { ForgotPasswordMode = (ForgotPasswordMode)999 },
+                "TestUser"));
+
+        Assert.Contains("Forgot-password mode", exception.Message);
+        _mockDb.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task UpdatePolicyAsync_NoExistingPolicyAndExplicitDisabled_PersistsDisabled()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var service = new SecurityPolicyService(context, cache, _mockLogger.Object);
+
+        await service.UpdatePolicyAsync(
+            new SecurityPolicyDto
+            {
+                ForgotPasswordMode = ForgotPasswordMode.Disabled,
+                CustomForgotPasswordUrl = "https://recovery.example.test/forgot-password"
+            },
+            "TestUser");
+
+        context.ChangeTracker.Clear();
+        var persistedPolicy = await context.SecurityPolicies.SingleAsync();
+        Assert.Equal(ForgotPasswordMode.Disabled, persistedPolicy.ForgotPasswordMode);
+    }
+
+    [Fact]
     public async Task GetCurrentPolicyForPasskeyAuthenticationAsync_CachedEnabledPolicyThenPersistedDisabled_ReturnsPersistedDisabled()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -180,9 +256,9 @@ public class SecurityPolicyServiceTests
         Assert.False(authoritativePolicy.EnablePasskey);
     }
 
-    private void SetupDbSetMock()
+    private void SetupDbSetMock(SecurityPolicy? policy = null)
     {
-        var policies = new List<SecurityPolicy> { new() { Id = Guid.NewGuid() } };
+        var policies = new List<SecurityPolicy> { policy ?? new SecurityPolicy { Id = Guid.NewGuid() } };
         var mockDbSet = CreateMockDbSet(policies);
         _mockDb.Setup(x => x.SecurityPolicies).Returns(mockDbSet.Object);
         _mockDb.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);

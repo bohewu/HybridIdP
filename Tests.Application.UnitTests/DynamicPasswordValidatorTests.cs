@@ -206,7 +206,7 @@ namespace Tests.Application.UnitTests
         }
 
         [Fact]
-        public async Task ValidateAsync_PasswordExpired_ReturnsFailed()
+        public async Task ValidateAsync_PasswordExpired_AllowsReplacement()
         {
             // Arrange
             _mockSecurityPolicyService.Setup(s => s.GetCurrentPolicyAsync())
@@ -224,8 +224,7 @@ namespace Tests.Application.UnitTests
             var result = await validator.ValidateAsync(_mockUserManager.Object, user, password);
 
             // Assert
-            Assert.False(result.Succeeded);
-            Assert.Contains(result.Errors, e => e.Code == "PasswordExpired");
+            Assert.True(result.Succeeded);
         }
 
         [Fact]

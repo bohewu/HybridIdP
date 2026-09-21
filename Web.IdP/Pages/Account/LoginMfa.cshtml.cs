@@ -9,6 +9,7 @@ using Core.Domain;
 using Core.Domain.Events;
 using System.ComponentModel.DataAnnotations;
 using Web.IdP.Helpers;
+using Web.IdP.Services;
 
 namespace Web.IdP.Pages.Account;
 
@@ -22,6 +23,8 @@ public partial class LoginMfaModel : PageModel
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly ILogger<LoginMfaModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
+    private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility;
 
     public LoginMfaModel(
         SignInManager<ApplicationUser> signInManager,
@@ -31,7 +34,9 @@ public partial class LoginMfaModel : PageModel
         IPasskeyService passkeyService,
         IDomainEventPublisher eventPublisher,
         ILogger<LoginMfaModel> logger,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        IMigrationIssuanceGuard migrationIssuanceGuard,
+        ICurrentUserLifecycleEligibility lifecycleEligibility)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -41,6 +46,8 @@ public partial class LoginMfaModel : PageModel
         _eventPublisher = eventPublisher;
         _logger = logger;
         _localizer = localizer;
+        _migrationIssuanceGuard = migrationIssuanceGuard;
+        _lifecycleEligibility = lifecycleEligibility;
     }
 
     [BindProperty]
@@ -138,6 +145,11 @@ public partial class LoginMfaModel : PageModel
             var isValid = await _mfaService.ValidateTotpCodeAsync(user, Input.TotpCode);
             if (isValid)
             {
+                if (!await CanIssueFullCookieAsync(user, cancellationToken))
+                {
+                    return RedirectToPage("./Login", new { returnUrl });
+                }
+
                 AuthenticationMethodSession.Add(
                     HttpContext.Session,
                     Core.Domain.Constants.AuthConstants.Amr.Mfa,
@@ -179,6 +191,11 @@ public partial class LoginMfaModel : PageModel
             
             if (success)
             {
+                if (!await CanIssueFullCookieAsync(user, cancellationToken))
+                {
+                    return RedirectToPage("./Login", new { returnUrl });
+                }
+
                 AuthenticationMethodSession.Add(
                     HttpContext.Session,
                     Core.Domain.Constants.AuthConstants.Amr.Mfa);
@@ -250,6 +267,12 @@ public partial class LoginMfaModel : PageModel
         
         return user;
     }
+
+    private async Task<bool> CanIssueFullCookieAsync(
+        ApplicationUser user,
+        CancellationToken cancellationToken) =>
+        await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken) &&
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "User account locked out.")]
     static partial void LogAccountLocked(ILogger logger);

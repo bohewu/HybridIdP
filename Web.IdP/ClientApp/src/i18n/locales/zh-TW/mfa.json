@@ -92,5 +92,41 @@
   "whyRequiredTitle": "為什麼需要這樣做？",
   "whyRequiredDescription": "您的組織要求使用兩步驟驗證來保護您的帳戶和敏感資料。",
   "skipForNow": "稍後再設定",
-  "logout": "登出"
+  "logout": "登出",
+  "recoveryEmail": {
+    "title": "復原信箱",
+    "description": "僅用於帳號憑證復原，與個人資料信箱及永久電子郵件 MFA 分開管理。",
+    "notConfigured": "尚未設定已驗證的復原信箱。",
+    "maskedUnavailable": "無法顯示遮罩地址",
+    "verified": "已驗證",
+    "pending": "等待驗證",
+    "add": "新增",
+    "change": "變更",
+    "remove": "移除",
+    "retry": "重試",
+    "changeTitle": "設定復原信箱",
+    "changeHelp": "系統會將驗證碼寄至新地址。完成驗證前，該地址不能用於帳號復原。",
+    "addressLabel": "新的復原信箱",
+    "sendVerification": "寄送驗證碼",
+    "sending": "寄送中…",
+    "verifyTitle": "驗證復原信箱",
+    "verifyHelp": "請輸入寄送至新地址的驗證碼。完成地址驗證不會啟用電子郵件 MFA，也不會單獨授權密碼重設。",
+    "codeLabel": "驗證碼",
+    "verify": "驗證地址",
+    "verifying": "驗證中…",
+    "verifiedSuccess": "復原信箱已驗證。",
+    "removeConfirm": "要移除已驗證的復原信箱嗎？移除後將無法用於帳號憑證復原。",
+    "removedSuccess": "復原信箱已移除。",
+    "outcomes": {
+      "invalid": "無法完成要求。請檢查輸入內容後再試一次。",
+      "missing": "無法完成要求。請取得新驗證碼後再試一次。",
+      "expired": "無法完成要求。請取得新驗證碼後再試一次。",
+      "exhausted": "無法完成要求。請取得新驗證碼後再試一次。",
+      "replayed": "無法完成要求。請取得新驗證碼後再試一次。",
+      "cooldown": "請稍候再要求新的驗證碼。",
+      "highAssuranceRequired": "請先以 MFA 或硬體金鑰驗證，返回後再重試。",
+      "unauthorized": "請重新登入並完成 MFA 或硬體金鑰驗證，再重試。",
+      "unavailable": "目前無法使用復原信箱設定，請稍後再試。"
+    }
+  }
 }

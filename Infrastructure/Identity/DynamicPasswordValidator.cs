@@ -107,17 +107,13 @@ namespace HybridIdP.Infrastructure.Identity
                 }
             }
 
-            // Password Expiration Check (only if user has a last password change date)
-            if (policy.PasswordExpirationDays > 0 && user.LastPasswordChangeDate.HasValue)
-            {
-                if (user.LastPasswordChangeDate.Value.AddDays(policy.PasswordExpirationDays) < DateTime.UtcNow)
-                {
-                    errors.Add(new IdentityError { Code = "PasswordExpired", Description = $"Your password has expired. It must be changed every {policy.PasswordExpirationDays} days." });
-                }
-            }
+            var passwordExpired = policy.PasswordExpirationDays > 0 &&
+                user.LastPasswordChangeDate.HasValue &&
+                user.LastPasswordChangeDate.Value.AddDays(policy.PasswordExpirationDays) < DateTime.UtcNow;
 
             // Minimum Password Age Check
-            if (policy.MinPasswordAgeDays > 0 && user.LastPasswordChangeDate.HasValue)
+            if (!user.RequiresPasswordChange && !passwordExpired &&
+                policy.MinPasswordAgeDays > 0 && user.LastPasswordChangeDate.HasValue)
             {
                 if (user.LastPasswordChangeDate.Value.AddDays(policy.MinPasswordAgeDays) > DateTime.UtcNow)
                 {

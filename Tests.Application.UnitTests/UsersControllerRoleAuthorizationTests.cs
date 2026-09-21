@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Core.Application;
+using Core.Application.Ports;
 using Core.Application.DTOs;
 using Core.Application.Options;
 using Core.Domain;
@@ -457,7 +458,8 @@ public class UsersControllerRoleAuthorizationTests
             new Mock<IImpersonationService>().Object,
             authorizationService.Object,
             Options.Create(new PrivilegedRoleProtectionOptions()),
-            new Mock<ILogger<UsersController>>().Object);
+            new Mock<ILogger<UsersController>>().Object,
+            Mock.Of<IRecoveryAssistanceService>());
     }
 
     private static ClaimsPrincipal CreatePrincipal(params string[] permissions)

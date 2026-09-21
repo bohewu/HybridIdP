@@ -647,9 +647,9 @@ PUT  /api/admin/clients/{id}/required-scopes → Set required scopes
 
 ### Related Documentation
 
-- [SCOPE_AUTHORIZATION.md](./SCOPE_AUTHORIZATION.md) - Developer guide for using scope-based authorization
+- [SCOPE_AUTHORIZATION.md](./archive/SCOPE_AUTHORIZATION.md) - Archived developer guide for using scope-based authorization
 - [phase-9-scope-authorization.md](./archive/phases/phase-9-scope-authorization.md) - Implementation details and verification
-- [E2E Testing Guide](../e2e/README.md) - Testing scope authorization flows
+- [Testing Guide](./TESTING.md) - Current testing and verification guidance
 
 ---
 
@@ -715,6 +715,28 @@ authoritative contract. This boundary is generic OSS guidance and does not
 introduce organization-specific source systems, schemas, identifiers,
 databases, or policies.
 
+### Independent provider contracts
+
+The HTTP integration surface has three separately owned boundaries:
+
+- [Provider Proof Contract 1.0](PROVIDER_PROOF_CONTRACT.md) validates a
+  credential and returns an assured provider identity.
+- [Provider Metadata Contract 1.0](PROVIDER_METADATA_CONTRACT.md) is the first
+  formal public metadata version and carries only provider identity plus
+  optional email trust evidence.
+- [Legacy Password Sync](PASSWORD_SYNC_CONTRACT.md) is one default-off,
+  unversioned aggregate endpoint with a guarded uncertain-write barrier.
+
+Metadata does not carry affiliation, directory group/role or identity-linking
+authority. Those concerns require a separate upstream owner outside the
+metadata producer. When that owner is absent, affiliation is unavailable and
+policy fails closed. Legacy affiliation-bearing cache rows remain physically
+retained only for data preservation, are unmapped, are never imported into the
+new `ProviderEmailSnapshots` cache, and cannot regain authority without a new
+validated refresh. The withdrawn draft migration identifier remains a no-op so
+already-applied local migration history stays recognizable; rolling back the new
+cache does not reactivate the draft state.
+
 ---
 
 ## 🚪 SSO Entry Portal (SSO 入口導航)
@@ -751,4 +773,3 @@ databases, or policies.
 OpenIddict bearer authentication。通過授權的連線才會加入 `monitoring`
 group；Hub 不提供用戶端可呼叫的廣播方法，監控事件只由後端服務透過
 `IHubContext<MonitoringHub>` 發布。
-

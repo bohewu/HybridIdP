@@ -11,6 +11,7 @@ using Core.Application.Interfaces;
 using Core.Domain.Constants;
 using Web.IdP.Attributes;
 using Web.IdP.Helpers;
+using Web.IdP.Services;
 
 namespace Web.IdP.Controllers.Account;
 
@@ -32,6 +33,8 @@ public partial class MfaSetupApiController : ControllerBase
     private readonly IAuditService _auditService;
     private readonly IPasskeyService _passkeyService;
     private readonly ILogger<MfaSetupApiController> _logger;
+    private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
+    private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility;
 
     public MfaSetupApiController(
         IMfaService mfaService,
@@ -40,7 +43,9 @@ public partial class MfaSetupApiController : ControllerBase
         SignInManager<ApplicationUser> signInManager,
         IAuditService auditService,
         IPasskeyService passkeyService,
-        ILogger<MfaSetupApiController> logger)
+        ILogger<MfaSetupApiController> logger,
+        IMigrationIssuanceGuard migrationIssuanceGuard,
+        ICurrentUserLifecycleEligibility lifecycleEligibility)
     {
         _mfaService = mfaService;
         _securityPolicyService = securityPolicyService;
@@ -49,6 +54,8 @@ public partial class MfaSetupApiController : ControllerBase
         _auditService = auditService;
         _passkeyService = passkeyService;
         _logger = logger;
+        _migrationIssuanceGuard = migrationIssuanceGuard;
+        _lifecycleEligibility = lifecycleEligibility;
     }
 
     /// <summary>
@@ -158,6 +165,11 @@ public partial class MfaSetupApiController : ControllerBase
         {
             LogMfaEnabled(user.Id);
             await _auditService.LogEventAsync("MfaEnabled", user.Id.ToString(), null, null, null, ct);
+
+            if (!await CanIssueFullCookieAsync(user, ct))
+            {
+                return Unauthorized();
+            }
 
             // UX Improvement: Sign in user fully so they can access the app immediately
             // This prevents redirection back to Login page and ensures AMR claims are correct
@@ -286,6 +298,11 @@ public partial class MfaSetupApiController : ControllerBase
         LogEmailMfaEnabled(user.Id);
         await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null, ct);
 
+        if (!await CanIssueFullCookieAsync(user, ct))
+        {
+            return Unauthorized();
+        }
+
         AuthenticationMethodSession.Add(
             HttpContext.Session,
             AuthConstants.Amr.Mfa,
@@ -344,6 +361,12 @@ public partial class MfaSetupApiController : ControllerBase
 
         return null;
     }
+
+    private async Task<bool> CanIssueFullCookieAsync(
+        ApplicationUser user,
+        CancellationToken cancellationToken) =>
+        await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken) &&
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
 
     #region Logging
 

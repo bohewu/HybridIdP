@@ -69,7 +69,7 @@ public static class UserSeeder
                 CreatedAt = DateTime.UtcNow,
                 Status = PersonStatus.Active,
                 StartDate = DateTime.UtcNow,
-                EmployeeId = "A1001" // Assign EmployeeId for testing ncut_id claim
+                EmployeeId = "A1001" // Assign EmployeeId for testing a custom employee claim
             };
             
             context.Persons.Add(adminPerson);
@@ -1188,7 +1188,7 @@ public static class UserSeeder
                 CreatedAt = DateTime.UtcNow,
                 Status = PersonStatus.Active,
                 StartDate = DateTime.UtcNow,
-                EmployeeId = "U1001" // For ncut_id claim test
+                EmployeeId = "U1001" // For custom employee claim test
             };
             context.Persons.Add(person);
             await context.SaveChangesAsync();

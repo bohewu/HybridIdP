@@ -361,6 +361,57 @@ const loading = ref(true)
 
 **注意**：如果你發現現有代碼直接使用 `IConfiguration`，請將其重構為 Options Pattern。
 
+#### HIDP-13 Legacy Password Sync configuration
+
+The implemented configuration section is `LegacyPasswordSync`, bound to
+`Infrastructure.Options.LegacyPasswordSyncOptions`. Checked-in configuration
+keeps the endpoint and all three cohorts off:
+
+```json
+"LegacyPasswordSync": {
+  "Enabled": false,
+  "CompletedDirectoryRecoveryEnabled": false,
+  "CompletedDirectoryRequiredChangeEnabled": false,
+  "Stage2MigrationEnabled": false,
+  "AllowPrivateNetworkHttp": false,
+  "Timeout": "00:00:05",
+  "Mappings": []
+}
+```
+
+`Enabled=false` is the endpoint gate. Dormant endpoint, secret, namespace,
+version, cohort and mapping settings may be absent while it is off; the request
+factory still refuses to construct a dispatch. Enabling it requires at least
+one of the three cohort flags, an `Endpoint`, `SharedSecret`, exact
+`TrustedProviderNamespace`, exact `ActiveMappingVersion`, and at least one
+enabled `Mappings` entry. Each mapping contains `Enabled`,
+`ProviderNamespace`, `StableSubject`, `AccountIdentity`, and `MappingVersion`.
+Enabled source identities and account identities must both be unique, and
+mapping namespaces/versions must match the active exact values.
+
+The endpoint must use HTTPS unless `AllowPrivateNetworkHttp` is explicitly
+approved for a protected private-network HTTP endpoint. `Timeout` must be more
+than zero and no more than 30 seconds. Supply `SharedSecret` through the
+deployment secret mechanism; do not place it in checked-in configuration,
+diagnostics, logs, or an operator UI. The active request adds it only as the
+`X-Internal-Secret` header and sends exactly `operationId`, the opaque
+`accountIdentity`, and the active-request `password`. The response contains
+exactly the correlated `operationId` and aggregate `outcome`; internal target
+names, identifiers, counts, results and routing topology are not public.
+
+Configuration alone does not authorize activation. Directory/AD and the one
+Legacy Password Sync API endpoint are independently switchable. The destination
+matrix is Directory/Legacy off/on = 0/1 calls, on/off = 1/0, on/on = 1/1 with
+Directory first, and off/off = 0/0. A legacy-only dispatch must still come from
+an authorized required-change attempt, consumed native proof challenge, or
+consumed migration continuation; it is not a standalone reset authorization.
+Protected transport, secret storage/rotation, offline migration review, a
+connected pilot and exact external settlement evidence are separate gates.
+`operationId` provides correlation only, so `PartialSuccess`, `CommitUnknown`
+and any possible-send result remain quarantined and must not be automatically
+retried or cleared by timing, acknowledgement, login or generic settlement
+logic.
+
 ### Setting Keys Constants
 
 為了避免硬編碼字串並確保類型安全，所有系統設定鍵值必須定義為常數。

@@ -82,7 +82,7 @@ public class ConfigureFido2OptionsTests
         var options = new Fido2Configuration();
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            { "Fido2:Origins", "https://id.ncut.edu.tw" }
+            { "Fido2:Origins", "https://id.example.org" }
         }).Build();
         var sut = new ConfigureFido2Options(config);
 
@@ -92,7 +92,7 @@ public class ConfigureFido2OptionsTests
         // Assert
         Assert.NotNull(options.Origins);
         Assert.Single(options.Origins);
-        Assert.Contains("https://id.ncut.edu.tw", options.Origins);
+        Assert.Contains("https://id.example.org", options.Origins);
     }
 
     [Fact]

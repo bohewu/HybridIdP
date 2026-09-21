@@ -43,26 +43,29 @@ public class EmailQueueProcessorTests
     {
         // Arrange
         var message = new EmailMessage { To = "test@test.com" };
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
+        var messageDispatched = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
 
         _mockQueue.SetupSequence(q => q.DequeueAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(message) // First call returns message
             .Returns(async () => { // Second call waits indefinitely (simulating idle)
-                await Task.Delay(500, cts.Token); 
+                await Task.Delay(Timeout.InfiniteTimeSpan, cts.Token);
                 return null!; 
             });
+        _mockDispatcher
+            .Setup(dispatcher => dispatcher.SendAsync(message, It.IsAny<CancellationToken>()))
+            .Callback(() => messageDispatched.TrySetResult())
+            .Returns(Task.CompletedTask);
 
         var processor = new EmailQueueProcessor(_mockQueue.Object, _mockScopeFactory.Object, _mockLogger.Object);
 
         // Act
-        // We run the background service for a short time
-        var executeTask = processor.StartAsync(cts.Token);
-        
-        // Allow some time for processing
-        await Task.Delay(100);
-        cts.Cancel(); // Stop the service
-
-        try { await executeTask; } catch (OperationCanceledException) { }
+        await processor.StartAsync(cts.Token);
+        await messageDispatched.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await cts.CancelAsync();
+        using var stopCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        await processor.StopAsync(stopCts.Token);
 
         // Assert
         _mockDispatcher.Verify(d => d.SendAsync(message, It.IsAny<CancellationToken>()), Times.Once);
@@ -122,12 +125,15 @@ public class EmailQueueProcessorTests
         // Arrange
         var message1 = new EmailMessage { To = "first@test.com" };
         var message2 = new EmailMessage { To = "second@test.com" };
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
+        var dequeueStarted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         
         // Setup: First dequeue blocks, then TryDequeue returns messages during drain
         _mockQueue.Setup(q => q.DequeueAsync(It.IsAny<CancellationToken>()))
             .Returns(async (CancellationToken ct) => {
-                await Task.Delay(10000, ct); // Will be cancelled
+                dequeueStarted.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, ct);
                 return null!;
             });
         
@@ -145,12 +151,11 @@ public class EmailQueueProcessorTests
         var processor = new EmailQueueProcessor(_mockQueue.Object, _mockScopeFactory.Object, _mockLogger.Object);
 
         // Act
-        var executeTask = processor.StartAsync(cts.Token);
-        await Task.Delay(50); // Let it start
-        cts.Cancel(); // Trigger graceful shutdown
-        
-        try { await executeTask; } catch (OperationCanceledException) { }
-        await Task.Delay(200); // Allow drain to complete
+        await processor.StartAsync(cts.Token);
+        await dequeueStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await cts.CancelAsync();
+        using var stopCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        await processor.StopAsync(stopCts.Token);
 
         // Assert - Both messages should have been dispatched during drain
         _mockDispatcher.Verify(d => d.SendAsync(message1, It.IsAny<CancellationToken>()), Times.Once);

@@ -12,7 +12,9 @@ using global::Infrastructure.Identity;
 using Core.Domain.Constants;
 using global::Infrastructure.Services;
 using global::Infrastructure.Options;
+using global::Infrastructure.Directory;
 using Core.Application;
+using Core.Application.Ports;
 using Core.Application.Options;
 using Web.IdP.Services;
 using Web.IdP.Options;
@@ -49,10 +51,62 @@ public static class ServiceCollectionExtensions
     {
         // Core Services
         services.AddHttpContextAccessor();
-        services.AddScoped<ApplicationCookieCurrentStateValidator>();
+        services.AddScoped<IMigrationIssuanceGuard, MigrationIssuanceGuard>();
+        services.AddScoped<ICurrentUserLifecycleEligibility, CurrentUserLifecycleEligibility>();
+        services.AddScoped<ApplicationCookieCurrentStateValidator>(provider =>
+            new ApplicationCookieCurrentStateValidator(
+                provider.GetRequiredService<ICurrentUserLifecycleEligibility>(),
+                provider.GetRequiredService<IMigrationIssuanceGuard>()));
         services.AddScoped<ITurnstileService, TurnstileService>();
         services.AddScoped<IJitProvisioningService, JitProvisioningService>();
         services.AddScoped<ILegacyAuthService, LegacyAuthService>();
+        services.AddHttpClient<IProofProvider, ProviderProofProvider>();
+        services.AddHttpClient<IProviderMetadataRefreshService, ProviderMetadataRefreshService>();
+        services.AddHttpClient(LegacyPasswordSyncHttpClient.Name)
+            .ConfigurePrimaryHttpMessageHandler(LegacyPasswordSyncHttpClient.CreatePrimaryHandler);
+        services.AddSingleton<ILegacyPasswordSyncTargetResolver, ConfiguredLegacyPasswordSyncTargetResolver>();
+        services.AddSingleton<ILegacyPasswordSyncRequestFactory, LegacyPasswordSyncRequestFactory>();
+        services.AddScoped<ILegacyPasswordSyncTransport, LegacyPasswordSyncHttpTransport>();
+        services.AddScoped<ILegacyPasswordSyncCoordinator, LegacyPasswordSyncCoordinator>();
+        services.AddScoped<IRecoveryVerificationPolicyEvaluator, RecoveryVerificationPolicyEvaluator>();
+        services.AddScoped<IForgotPasswordRoutingEvaluator, ForgotPasswordRoutingEvaluator>();
+        services.AddScoped<INativePasswordRecoveryProofService, NativePasswordRecoveryProofService>();
+        services.AddScoped<INativeRecoveryAssistanceService, NativeRecoveryAssistanceService>();
+        services.AddScoped<NativePasswordRecoveryResetService>();
+        services.AddScoped<INativePasswordRecoveryResetService>(provider =>
+            provider.GetRequiredService<NativePasswordRecoveryResetService>());
+        services.AddScoped<INativeDirectoryRecoveryReconciliationService>(provider =>
+            provider.GetRequiredService<NativePasswordRecoveryResetService>());
+        services.AddScoped<IDirectoryCredentialOperatorResolutionService,
+            DirectoryCredentialOperatorResolutionService>();
+        services.AddScoped<INativeDirectoryRecoveryBarrier, NativeDirectoryRecoveryBarrier>();
+        services.AddSingleton<LdapProtectedDirectoryTransport>();
+        services.AddSingleton<IProtectedDirectoryIdentityTransport>(provider =>
+            provider.GetRequiredService<LdapProtectedDirectoryTransport>());
+        services.AddSingleton<IProtectedDirectoryCredentialTransport>(provider =>
+            provider.GetRequiredService<LdapProtectedDirectoryTransport>());
+        services.AddScoped<IDirectoryIdentityLookup, ProtectedDirectoryIdentityLookup>();
+        services.AddScoped<ProtectedDirectoryCredentialService>();
+        services.AddScoped<IDirectoryCredentialAuthenticator>(provider =>
+            provider.GetRequiredService<ProtectedDirectoryCredentialService>());
+        services.AddScoped<IDirectoryCredentialResetter>(provider =>
+            provider.GetRequiredService<ProtectedDirectoryCredentialService>());
+        services.AddScoped<IDirectoryCredentialVerifier>(provider =>
+            provider.GetRequiredService<ProtectedDirectoryCredentialService>());
+        services.AddScoped<IDirectoryTemporaryCredentialCapability>(provider =>
+            provider.GetRequiredService<ProtectedDirectoryCredentialService>());
+        services.AddScoped<IDirectoryRequiredCredentialChangeService, DirectoryRequiredCredentialChangeService>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<IStage1BindingRefreshService, Stage1BindingRefreshService>();
+        services.AddScoped<ICredentialMigrationPolicy, CredentialMigrationPolicy>();
+        services.AddScoped<ICredentialMigrationStateStore, CredentialMigrationStateStore>();
+        services.AddScoped<ILegacyPasswordSyncAttemptStore, LegacyPasswordSyncAttemptStore>();
+        services.AddScoped<IMigrationContinuationStore, MigrationContinuationStore>();
+        services.AddScoped<IMigrationRecoveryAuthorizer, HttpContextMigrationRecoveryAuthorizer>();
+        services.AddScoped<IMigrationRecoveryEvidenceReader, MigrationRecoveryEvidenceReader>();
+        services.AddScoped<ICredentialMigrationRecoveryService, CredentialMigrationRecoveryService>();
+        services.AddScoped<ISanitizedMigrationAudit, SanitizedMigrationAudit>();
+        services.AddScoped<IStage2CredentialMigrationService, Stage2CredentialMigrationService>();
         services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, MyUserClaimsPrincipalFactory>();
 
         // Identity Management
@@ -60,6 +114,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRoleManagementService, RoleManagementService>();
         services.AddScoped<IScopeService, ScopeService>();
         services.AddScoped<IPersonService, PersonService>();
+        services.AddScoped<IOpenIddictSubjectTokenRevoker, OpenIddictSubjectTokenRevoker>();
         services.AddScoped<IPersonLifecycleService, PersonLifecycleService>(); // Phase 18
         services.AddScoped<ILocalizationService, LocalizationService>();
         services.AddScoped<ILocalizationManagementService, LocalizationManagementService>();
@@ -73,6 +128,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEmailMfaAttemptStore, EmailMfaAttemptStore>();
         services.AddScoped<IMfaService, MfaService>(); // Phase 20: MFA
         services.AddScoped<Core.Application.Interfaces.IEmailTemplateService, EmailTemplateService>(); // Phase 20.3: Email MFA Templates
+        services.AddScoped<IRecoveryProofAuthorizer, HttpContextRecoveryProofAuthorizer>();
+        services.AddScoped<IRecoveryProofAudit, RecoveryProofAudit>();
+        services.AddScoped<RecoveryEmailService>();
+        services.AddScoped<IRecoveryEmailService>(provider => provider.GetRequiredService<RecoveryEmailService>());
+        services.AddScoped<MigrationOtpProofService>();
+        services.AddScoped<IMigrationOtpProofService>(provider => provider.GetRequiredService<MigrationOtpProofService>());
+        services.AddScoped<IRecoveryAssistanceService, RecoveryAssistanceService>();
+        services.AddScoped<IAdminTemporaryCredentialService, AdminTemporaryCredentialService>();
+        services.AddScoped<IRecoveryAssistanceContextService, RecoveryAssistanceContextService>();
 
         // Connect/OIDC Services
         services.AddScoped<IAuthorizationService, AuthorizationService>();
@@ -144,6 +208,40 @@ public static class ServiceCollectionExtensions
         services.Configure<CspExtensionOptions>(configuration.GetSection(CspExtensionOptions.Section));
         services.Configure<TurnstileOptions>(configuration.GetSection(TurnstileOptions.Section));
         services.Configure<RedirectUriSecurityPolicyOptions>(configuration.GetSection(RedirectUriSecurityPolicyOptions.Section));
+        services.AddSingleton<IValidateOptions<DirectoryIntegrationOptions>, DirectoryIntegrationOptionsValidator>();
+        services.AddSingleton<IValidateOptions<CredentialMigrationOptions>, CredentialMigrationOptionsValidator>();
+        services.AddSingleton<IValidateOptions<ProviderProofOptions>, ProviderProofOptionsValidator>();
+        services.AddSingleton<IValidateOptions<ProviderMetadataRefreshOptions>, ProviderMetadataRefreshOptionsValidator>();
+        services.AddSingleton<IValidateOptions<LegacyPasswordSyncOptions>, LegacyPasswordSyncOptionsValidator>();
+        services.AddSingleton<IValidateOptions<RecoveryVerificationPolicyOptions>, RecoveryVerificationPolicyOptionsValidator>();
+        services.AddSingleton<IValidateOptions<ForgotPasswordRecoveryOptions>, ForgotPasswordRecoveryOptionsValidator>();
+        services.AddSingleton<IValidateOptions<DirectoryLookupOptions>, DirectoryLookupOptionsValidator>();
+        services.AddOptions<DirectoryIntegrationOptions>()
+            .Bind(configuration.GetSection(DirectoryIntegrationOptions.Section))
+            .ValidateOnStart();
+        services.AddOptions<CredentialMigrationOptions>()
+            .Bind(configuration.GetSection(CredentialMigrationOptions.Section))
+            .ValidateOnStart();
+        services.AddOptions<ProviderProofOptions>()
+            .Bind(configuration.GetSection(ProviderProofOptions.Section))
+            .ValidateOnStart();
+        services.AddOptions<ProviderMetadataRefreshOptions>()
+            .Bind(configuration.GetSection(ProviderMetadataRefreshOptions.Section))
+            .ValidateOnStart();
+        services.AddOptions<LegacyPasswordSyncOptions>()
+            .Bind(configuration.GetSection(LegacyPasswordSyncOptions.Section))
+            .ValidateOnStart();
+        services.AddOptions<RecoveryVerificationPolicyOptions>()
+            .Bind(configuration.GetSection(RecoveryVerificationPolicyOptions.Section))
+            .ValidateOnStart();
+        services.AddOptions<ForgotPasswordRecoveryOptions>()
+            .Bind(configuration.GetSection(ForgotPasswordRecoveryOptions.Section))
+            .ValidateOnStart();
+        services.AddOptions<DirectoryLookupOptions>()
+            .Bind(configuration.GetSection(DirectoryLookupOptions.Section))
+            .ValidateOnStart();
+        services.Configure<DirectoryCredentialTransportOptions>(
+            configuration.GetSection(DirectoryCredentialTransportOptions.Section));
         services.Configure<ObservabilityOptions>(options =>
         {
             configuration.GetSection(ObservabilityOptions.MonitoringSection).Bind(options);
@@ -189,11 +287,7 @@ public static class ServiceCollectionExtensions
                 {
                     options.RecordException = true;
                 })
-                .AddEntityFrameworkCoreInstrumentation(options =>
-                {
-                    options.SetDbStatementForText = true;
-                    options.SetDbStatementForStoredProcedure = true;
-                })
+                .AddEntityFrameworkCoreInstrumentation()
                 .AddConsoleExporter())
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
@@ -701,6 +795,13 @@ public static class ServiceCollectionExtensions
     {
         var rateLimitingOptions = new RateLimitingOptions();
         configuration.GetSection(RateLimitingOptions.Section).Bind(rateLimitingOptions);
+        var nativeRecoveryEnabled = configuration.GetValue<bool>(
+            $"{ForgotPasswordRecoveryOptions.Section}:NativeRecoveryEnabled");
+        if (nativeRecoveryEnabled && !rateLimitingOptions.Enabled)
+        {
+            throw new InvalidOperationException(
+                "Native password recovery requires rate limiting to be enabled.");
+        }
 
         if (rateLimitingOptions.Enabled)
         {

@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Web.IdP;
 using Web.IdP.Pages.Account;
+using Web.IdP.Services;
 
 namespace Tests.Web.IdP.UnitTests.Pages.Account;
 
@@ -58,7 +59,9 @@ public sealed class LoginMfaModelPasskeyTests
             passkeyService.Object,
             Mock.Of<IDomainEventPublisher>(),
             Mock.Of<ILogger<LoginMfaModel>>(),
-            Mock.Of<IStringLocalizer<SharedResource>>());
+            Mock.Of<IStringLocalizer<SharedResource>>(),
+            Mock.Of<IMigrationIssuanceGuard>(),
+            Mock.Of<ICurrentUserLifecycleEligibility>());
         model.PageContext = new PageContext(
             new ActionContext(
                 new DefaultHttpContext { User = principal },

@@ -1,11 +1,13 @@
 .git
 .github
+.pipeline-output
 .vs
 .vscode
 
 **/bin
 **/obj
 **/TestResults
+**/artifacts
 
 **/node_modules
 Web.IdP/ClientApp/dist

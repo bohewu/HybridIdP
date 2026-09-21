@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Core.Application;
+using Core.Application.Ports;
 using Core.Domain;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
@@ -25,6 +26,7 @@ namespace Tests.Infrastructure.UnitTests
         private readonly Mock<IJitProvisioningService> _jitProvisioningServiceMock;
         private readonly Mock<ILogger<LoginService>> _loggerMock;
         private readonly Mock<IOptions<Core.Application.Options.ExternalLoginOptions>> _externalLoginOptionsMock;
+        private readonly Mock<ICredentialMigrationStateStore> _credentialMigrationStateStoreMock;
         private readonly ApplicationDbContext _dbContext;
         private LoginService _service;
 
@@ -43,6 +45,10 @@ namespace Tests.Infrastructure.UnitTests
             _jitProvisioningServiceMock = new Mock<IJitProvisioningService>();
             _loggerMock = new Mock<ILogger<LoginService>>();
             _externalLoginOptionsMock = new Mock<IOptions<Core.Application.Options.ExternalLoginOptions>>();
+            _credentialMigrationStateStoreMock = new Mock<ICredentialMigrationStateStore>();
+            _credentialMigrationStateStoreMock
+                .Setup(store => store.FindAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((CredentialMigrationRecord?)null);
 
             // Default Options
             _externalLoginOptionsMock.Setup(x => x.Value).Returns(new Core.Application.Options.ExternalLoginOptions());
@@ -58,7 +64,8 @@ namespace Tests.Infrastructure.UnitTests
                 _jitProvisioningServiceMock.Object,
                 _dbContext,
                 _loggerMock.Object,
-                _externalLoginOptionsMock.Object
+                _externalLoginOptionsMock.Object,
+                credentialMigrationStateStore: _credentialMigrationStateStoreMock.Object
             );
         }
 
@@ -217,7 +224,8 @@ namespace Tests.Infrastructure.UnitTests
                 _jitProvisioningServiceMock.Object,
                 _dbContext,
                 _loggerMock.Object,
-                _externalLoginOptionsMock.Object
+                _externalLoginOptionsMock.Object,
+                credentialMigrationStateStore: _credentialMigrationStateStoreMock.Object
             );
 
             // Act
@@ -243,7 +251,8 @@ namespace Tests.Infrastructure.UnitTests
                 _jitProvisioningServiceMock.Object,
                 _dbContext,
                 _loggerMock.Object,
-                _externalLoginOptionsMock.Object
+                _externalLoginOptionsMock.Object,
+                credentialMigrationStateStore: _credentialMigrationStateStoreMock.Object
             );
 
             var existingLogins = new List<UserLoginInfo>
@@ -275,7 +284,8 @@ namespace Tests.Infrastructure.UnitTests
                 _jitProvisioningServiceMock.Object,
                 _dbContext,
                 _loggerMock.Object,
-                _externalLoginOptionsMock.Object
+                _externalLoginOptionsMock.Object,
+                credentialMigrationStateStore: _credentialMigrationStateStoreMock.Object
             );
 
             var existingLogins = new List<UserLoginInfo>

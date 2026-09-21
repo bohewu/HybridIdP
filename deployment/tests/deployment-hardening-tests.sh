@@ -44,10 +44,12 @@ else
 fi
 if command -v jq >/dev/null 2>&1; then
     JSON_READER="jq"
-elif command -v python3 >/dev/null 2>&1; then
+elif command -v python3 >/dev/null 2>&1 && python3 -c 'import json' >/dev/null 2>&1; then
     JSON_READER="python3"
+elif command -v python >/dev/null 2>&1 && python -c 'import json' >/dev/null 2>&1; then
+    JSON_READER="python"
 else
-    harness_error "required JSON reader unavailable: install jq or python3"
+    harness_error "required JSON reader unavailable: install jq or Python"
 fi
 if (( HARNESS_ERRORS > 0 )); then
     exit 2
@@ -507,7 +509,7 @@ assert_render_contract() {
     fi
 
     local status=0
-    python3 -c '
+    "$JSON_READER" -c '
 import json, sys
 expected = sys.argv[1].split()
 model = json.load(sys.stdin)
@@ -617,7 +619,7 @@ else
                 local_status=$?
             fi
         else
-            python3 -c '
+            "$JSON_READER" -c '
 import json, sys
 services = json.load(sys.stdin).get("services", {})
 expected = {"mssql-service": 1433, "postgres-service": 5432, "redis-service": 6379}
@@ -660,7 +662,7 @@ if IDP_IMAGE="ghcr.invalid/hybrididp:test" render_compose \
             ghcr_status=$?
         fi
     else
-        python3 -c '
+        "$JSON_READER" -c '
 import json, sys
 service = json.load(sys.stdin)["services"]["idp-service"]
 if service.get("image") != "ghcr.invalid/hybrididp:test":
@@ -688,15 +690,120 @@ REAL_DOCKER="$(command -v docker)"
 export DOCKER_LOG REAL_DOCKER
 cat >"$STUB_BIN/docker" <<'STUB'
 #!/usr/bin/env bash
-printf '%s\n' "$*" >>"$DOCKER_LOG"
+printf 'IDP_IMAGE=%s DATABASE_PROVIDER=%s %s\n' "${IDP_IMAGE:-}" "${DATABASE_PROVIDER:-}" "$*" >>"$DOCKER_LOG"
 if [[ " $* " == *" config "* ]]; then
     exec "$REAL_DOCKER" "$@"
+fi
+if [[ " ${READINESS_SCENARIO:-ready} " == *" early-exit "* ]] &&
+   [[ " $* " == *" ps --status exited --services idp-service "* ]]; then
+    printf '%s\n' 'idp-service'
+elif [[ " ${READINESS_SCENARIO:-ready} " == *" unhealthy "* ]] &&
+     [[ " $* " == *" ps --format {{.Health}} idp-service "* ]]; then
+    printf '%s\n' 'unhealthy'
+elif [[ " $* " == *" exec -T nginx-gateway wget -q -O /dev/null http://idp-service/health "* ]]; then
+    if [[ "${READINESS_SCENARIO:-ready}" != "ready" ]]; then
+        exit 1
+    fi
+elif [[ " $* " == *" run "* ]]; then
+    exit "${MIGRATION_EXIT_CODE:-0}"
 fi
 exit 0
 STUB
 chmod +x "$STUB_BIN/docker"
 
+cat >"$STUB_BIN/curl" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${CURL_LOG:-/dev/null}"
+[[ "${READINESS_SCENARIO:-ready}" == "ready" ]]
+STUB
+chmod +x "$STUB_BIN/curl"
+
 missing_override="$TMP_DIR/no-override.yml"
+
+has_lifecycle_action() {
+    grep -Eq '(^| )(pull|build|up|create|run|start)( |$)' "$DOCKER_LOG"
+}
+
+run_migration_preflight_case() {
+    local name="$1"
+    shift
+    local status=0
+
+    : >"$DOCKER_LOG"
+    PATH="$STUB_BIN:$PATH" bash "$DEPLOYMENT_DIR/migrate-db.sh" "$@" \
+        >"$TMP_DIR/migrate-$name.out" 2>&1 || status=$?
+    if (( status == 0 )); then
+        fail "migrate-preflight" "$name/exit"
+    elif has_lifecycle_action; then
+        fail "migrate-preflight-order" "$name/lifecycle"
+    fi
+    if grep -Fq "$SENTINEL" "$TMP_DIR/migrate-$name.out"; then
+        fail "migrate-diagnostic-value-disclosure" "$name"
+    fi
+}
+
+migration_invalid_env="$TMP_DIR/migration-invalid.env"
+migration_unsupported_provider_env="$TMP_DIR/migration-unsupported-provider.env"
+write_env "$migration_invalid_env" "ENCRYPTION_CERT_PASSWORD" "empty"
+write_env "$migration_unsupported_provider_env"
+sed -i 's/^DATABASE_PROVIDER=.*/DATABASE_PROVIDER=Unsupported/' "$migration_unsupported_provider_env"
+run_migration_preflight_case "missing-confirmation" \
+    --source ghcr --image "ghcr.invalid/hybrididp:1.2.3" \
+    --compose "docker-compose.splithost-nginx-nodb.yml" --override "$missing_override" \
+    --env-file "$ghcr_env"
+run_migration_preflight_case "missing-env" \
+    --confirm-backup --source ghcr --image "ghcr.invalid/hybrididp:1.2.3" \
+    --env-file "$TMP_DIR/missing.env"
+run_migration_preflight_case "invalid-env" \
+    --confirm-backup --source ghcr --image "ghcr.invalid/hybrididp:1.2.3" \
+    --compose "docker-compose.splithost-nginx-nodb.yml" --override "$missing_override" \
+    --env-file "$migration_invalid_env"
+run_migration_preflight_case "unsupported-provider" \
+    --confirm-backup --source ghcr --image "ghcr.invalid/hybrididp:1.2.3" \
+    --env-file "$migration_unsupported_provider_env"
+run_migration_preflight_case "floating-image" \
+    --confirm-backup --source ghcr --image "ghcr.invalid/hybrididp:latest" \
+    --env-file "$ghcr_env"
+run_migration_preflight_case "missing-image" \
+    --confirm-backup --source ghcr --env-file "$ghcr_env"
+
+run_migration_provider_case() {
+    local case_name="$1"
+    local env_file="$2"
+    local expected_status="${3:-0}"
+    local provider="${4:-$case_name}"
+    local status=0
+
+    : >"$DOCKER_LOG"
+    PATH="$STUB_BIN:$PATH" MIGRATION_EXIT_CODE="$expected_status" \
+        bash "$DEPLOYMENT_DIR/migrate-db.sh" \
+        --confirm-backup --source ghcr --image "ghcr.invalid/hybrididp:1.2.3" \
+        --compose "docker-compose.splithost-nginx-nodb.yml" --override "$missing_override" \
+        --env-file "$env_file" >"$TMP_DIR/migrate-$case_name.out" 2>&1 || status=$?
+    if (( status != expected_status )); then
+        fail "migrate-exit-propagation" "$case_name/$status"
+    fi
+    if [[ $(grep -Ec '(^| )run --rm --no-deps idp-service --migrate-only$' "$DOCKER_LOG") -ne 1 ]]; then
+        fail "migrate-one-off-command" "$case_name/run-argv"
+    elif ! grep -Fq "IDP_IMAGE=ghcr.invalid/hybrididp:1.2.3 DATABASE_PROVIDER=$provider" "$DOCKER_LOG"; then
+        fail "migrate-image-provider-contract" "$case_name"
+    elif grep -Eq '(^| )(up|start)( |$)' "$DOCKER_LOG"; then
+        fail "migrate-no-normal-startup" "$case_name"
+    fi
+    if grep -Fq "$SENTINEL" "$TMP_DIR/migrate-$case_name.out"; then
+        fail "migrate-diagnostic-value-disclosure" "$case_name"
+    fi
+}
+
+migration_sql_env="$TMP_DIR/migration-sqlserver.env"
+migration_postgres_env="$TMP_DIR/migration-postgresql.env"
+write_env "$migration_sql_env"
+write_env "$migration_postgres_env"
+sed -i 's/^DATABASE_PROVIDER=.*/DATABASE_PROVIDER=PostgreSQL/' "$migration_postgres_env"
+run_migration_provider_case "SqlServer" "$migration_sql_env"
+run_migration_provider_case "PostgreSQL" "$migration_postgres_env"
+run_migration_provider_case "SqlServer-failure" "$migration_sql_env" 23 "SqlServer"
+
 for index in "${!COMPOSE_FILES[@]}"; do
     mode="${MODE_NAMES[$index]}"
     compose_file="${COMPOSE_FILES[$index]}"
@@ -733,7 +840,7 @@ else
     mapfile -t lifecycle < <(awk '
         { for (i = 1; i <= NF; i++) if ($i ~ /^(pull|build|up|create|run|ps)$/) print $i }
     ' "$DOCKER_LOG")
-    if [[ "${lifecycle[*]}" != "pull up ps" ]]; then
+    if [[ "${lifecycle[0]:-} ${lifecycle[1]:-} ${lifecycle[2]:-}" != "pull up ps" ]]; then
         fail "deploy-ghcr-order" "action-sequence"
     elif ! grep -Eq '(^| )up -d --no-build( |$)' "$DOCKER_LOG"; then
         fail "deploy-ghcr-order" "up-flags"
@@ -743,6 +850,103 @@ else
         fail "deploy-gateway-reconcile" "status-services"
     fi
 fi
+
+run_deploy_readiness_case() {
+    local scenario="$1"
+    local expected_category="$2"
+    local expected_status="$3"
+    local status=0
+
+    : >"$DOCKER_LOG"
+    CURL_LOG="$TMP_DIR/readiness-$scenario.curl.log"
+    : >"$CURL_LOG"
+    PATH="$STUB_BIN:$PATH" CURL_LOG="$CURL_LOG" READINESS_SCENARIO="$scenario" \
+        IDP_READINESS_ATTEMPTS=2 IDP_READINESS_DELAY_SECONDS=0 \
+        bash "$DEPLOYMENT_DIR/deploy-idp.sh" \
+        --source ghcr --image "ghcr.invalid/hybrididp:1.2.3" \
+        --compose "docker-compose.splithost-nginx-nodb.yml" \
+        --override "$missing_override" --env-file "$ghcr_env" \
+        >"$TMP_DIR/readiness-$scenario.out" 2>&1 || status=$?
+    if (( status != expected_status )); then
+        fail "deploy-readiness-$scenario" "exit-$status"
+    elif [[ "$expected_status" == "0" ]]; then
+        if [[ $(grep -Fc 'exec -T nginx-gateway wget -q -O /dev/null http://idp-service/health' "$DOCKER_LOG") -ne 1 ]] ||
+           [[ -s "$CURL_LOG" ]]; then
+            fail "deploy-readiness-success" "gateway-health-surface"
+        fi
+    elif ! grep -Fq "Category: $expected_category." "$TMP_DIR/readiness-$scenario.out"; then
+        fail "deploy-readiness-$scenario" "category"
+    fi
+    if grep -Fq "$SENTINEL" "$TMP_DIR/readiness-$scenario.out"; then
+        fail "deploy-readiness-secret-output" "$scenario"
+    fi
+}
+
+run_deploy_readiness_case "ready" "" 0
+run_deploy_readiness_case "timeout" "timeout" 1
+run_deploy_readiness_case "unhealthy" "unhealthy" 1
+run_deploy_readiness_case "early-exit" "service-exited" 1
+
+run_internal_readiness_case() {
+    local env_file="$TMP_DIR/internal-no-internal-ip.env"
+    local status=0
+
+    write_env "$env_file"
+    sed -i '/^INTERNAL_IP=/d' "$env_file"
+    : >"$DOCKER_LOG"
+    CURL_LOG="$TMP_DIR/readiness-internal.curl.log"
+    : >"$CURL_LOG"
+    PATH="$STUB_BIN:$PATH" CURL_LOG="$CURL_LOG" READINESS_SCENARIO="ready" \
+        IDP_READINESS_ATTEMPTS=2 IDP_READINESS_DELAY_SECONDS=0 \
+        bash "$DEPLOYMENT_DIR/deploy-idp.sh" \
+        --source ghcr --image "ghcr.invalid/hybrididp:1.2.3" \
+        --compose "docker-compose.internal.yml" --override "$missing_override" \
+        --env-file "$env_file" >"$TMP_DIR/readiness-internal.out" 2>&1 || status=$?
+    if (( status != 0 )); then
+        fail "deploy-readiness-internal" "exit-$status"
+    elif [[ $(wc -l <"$CURL_LOG") -ne 1 ]] ||
+         ! grep -Fq 'http://127.0.0.1:8080/health' "$CURL_LOG" ||
+         grep -Fq 'exec -T nginx-gateway' "$DOCKER_LOG"; then
+        fail "deploy-readiness-internal" "fallback-health-surface"
+    fi
+    if grep -Fq "$SENTINEL" "$TMP_DIR/readiness-internal.out"; then
+        fail "deploy-readiness-secret-output" "internal"
+    fi
+}
+
+run_internal_readiness_case
+
+run_split_host_direct_readiness_case() {
+    local env_file="$TMP_DIR/splithost-specific-internal-ip.env"
+    local selected_internal_ip="198.51.100.20"
+    local status=0
+
+    write_env "$env_file"
+    sed -i "s/^INTERNAL_IP=.*/INTERNAL_IP=$selected_internal_ip/" "$env_file"
+    : >"$DOCKER_LOG"
+    CURL_LOG="$TMP_DIR/readiness-splithost.curl.log"
+    : >"$CURL_LOG"
+    PATH="$STUB_BIN:$PATH" CURL_LOG="$CURL_LOG" READINESS_SCENARIO="ready" \
+        INTERNAL_IP="127.0.0.1" IDP_READINESS_ATTEMPTS=2 IDP_READINESS_DELAY_SECONDS=0 \
+        bash "$DEPLOYMENT_DIR/deploy-idp.sh" \
+        --source ghcr --image "ghcr.invalid/hybrididp:1.2.3" \
+        --compose "docker-compose.splithost.yml" --override "$missing_override" \
+        --env-file "$env_file" >"$TMP_DIR/readiness-splithost.out" 2>&1 || status=$?
+    if (( status != 0 )); then
+        fail "deploy-readiness-splithost" "exit-$status"
+    elif [[ $(wc -l <"$CURL_LOG") -ne 1 ]] ||
+         ! grep -Fq "http://$selected_internal_ip:8080/health" "$CURL_LOG" ||
+         grep -Fq 'http://127.0.0.1:8080/health' "$CURL_LOG" ||
+         grep -Fq 'exec -T nginx-gateway' "$DOCKER_LOG"; then
+        fail "deploy-readiness-splithost" "env-health-surface"
+    fi
+    if grep -Fq "$SENTINEL" "$TMP_DIR/readiness-splithost.out" ||
+       grep -Fq "$selected_internal_ip" "$TMP_DIR/readiness-splithost.out"; then
+        fail "deploy-readiness-output" "splithost"
+    fi
+}
+
+run_split_host_direct_readiness_case
 
 if (( HARNESS_ERRORS > 0 )); then
     exit 2

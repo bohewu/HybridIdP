@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Core.Application;
+using Core.Application.Ports;
 using Core.Application.DTOs;
 using Core.Application.Options;
 using Core.Domain;
@@ -68,7 +69,8 @@ public class UsersControllerSessionsTests
             impersonationMock.Object,
             new Mock<AspNetCoreAuthorizationService>().Object,
             Options.Create(new PrivilegedRoleProtectionOptions()),
-            new Mock<ILogger<UsersController>>().Object);
+            new Mock<ILogger<UsersController>>().Object,
+            Mock.Of<IRecoveryAssistanceService>());
     }
 
     [Fact]

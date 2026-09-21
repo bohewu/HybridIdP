@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
+using Core.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -43,6 +44,12 @@ public partial class SecurityPolicyService : ISecurityPolicyService
 
     public async Task UpdatePolicyAsync(SecurityPolicyDto policyDto, string updatedBy)
     {
+        if (policyDto.ForgotPasswordMode is { } forgotPasswordMode &&
+            !Enum.IsDefined(forgotPasswordMode))
+        {
+            throw new InvalidOperationException("Forgot-password mode is invalid.");
+        }
+
         // Business rule validation: Cannot enable mandatory MFA enrollment without at least one MFA method enabled
         // Passkeys count as MFA since Login.cshtml.cs checks for them as an alternative to TOTP/Email MFA
         if (policyDto.EnforceMandatoryMfaEnrollment && !policyDto.EnableTotpMfa && !policyDto.EnableEmailMfa && !policyDto.EnablePasskey)
@@ -84,6 +91,10 @@ public partial class SecurityPolicyService : ISecurityPolicyService
         policy.EnforceMandatoryMfaEnrollment = policyDto.EnforceMandatoryMfaEnrollment;
         policy.MfaEnforcementGracePeriodDays = policyDto.MfaEnforcementGracePeriodDays;
         policy.CustomForgotPasswordUrl = policyDto.CustomForgotPasswordUrl;
+        if (policyDto.ForgotPasswordMode is { } requestedForgotPasswordMode)
+        {
+            policy.ForgotPasswordMode = requestedForgotPasswordMode;
+        }
         
         // Update metadata
         policy.UpdatedUtc = DateTime.UtcNow;

@@ -1,8 +1,5 @@
 using System.Security.Claims;
-using Core.Application;
-using Core.Domain.Entities;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore;
 
 namespace Web.IdP.Services;
 
@@ -11,11 +8,22 @@ namespace Web.IdP.Services;
 /// </summary>
 public sealed class ApplicationCookieCurrentStateValidator
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility;
+    private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
 
-    public ApplicationCookieCurrentStateValidator(IApplicationDbContext context)
+    public ApplicationCookieCurrentStateValidator(
+        Core.Application.IApplicationDbContext context,
+        IMigrationIssuanceGuard migrationIssuanceGuard)
+        : this(new CurrentUserLifecycleEligibility(context), migrationIssuanceGuard)
     {
-        _context = context;
+    }
+
+    public ApplicationCookieCurrentStateValidator(
+        ICurrentUserLifecycleEligibility lifecycleEligibility,
+        IMigrationIssuanceGuard migrationIssuanceGuard)
+    {
+        _lifecycleEligibility = lifecycleEligibility;
+        _migrationIssuanceGuard = migrationIssuanceGuard;
     }
 
     public async Task ValidateAsync(CookieValidatePrincipalContext context)
@@ -28,48 +36,18 @@ public sealed class ApplicationCookieCurrentStateValidator
         }
 
         var cancellationToken = context.HttpContext.RequestAborted;
-        var user = await _context.Users
-            .AsNoTracking()
-            .Where(candidate => candidate.Id == userId)
-            .Select(candidate => new
-            {
-                candidate.IsActive,
-                candidate.IsDeleted,
-                candidate.LockoutEnd,
-                candidate.PersonId
-            })
-            .SingleOrDefaultAsync(cancellationToken);
-
-        if (user is null ||
-            !user.IsActive ||
-            user.IsDeleted ||
-            (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow))
+        if (!await _lifecycleEligibility.IsEligibleAsync(userId, cancellationToken))
         {
             context.RejectPrincipal();
             return;
         }
 
-        if (!user.PersonId.HasValue)
+        if (!await _migrationIssuanceGuard.CanIssueAsync(userId, cancellationToken))
         {
+            context.RejectPrincipal();
             return;
         }
 
-        var person = await _context.Persons
-            .AsNoTracking()
-            .Where(candidate => candidate.Id == user.PersonId.Value)
-            .Select(candidate => new Person
-            {
-                IsDeleted = candidate.IsDeleted,
-                Status = candidate.Status,
-                StartDate = candidate.StartDate,
-                EndDate = candidate.EndDate
-            })
-            .SingleOrDefaultAsync(cancellationToken);
-
-        if (person is null || !person.CanAuthenticate())
-        {
-            context.RejectPrincipal();
-        }
     }
 
     public static Func<CookieValidatePrincipalContext, Task> Compose(

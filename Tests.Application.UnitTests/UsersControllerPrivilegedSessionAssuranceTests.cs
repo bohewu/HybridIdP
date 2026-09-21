@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Core.Application;
+using Core.Application.Ports;
 using Core.Application.DTOs;
 using Core.Application.Options;
 using Core.Domain;
@@ -323,7 +324,8 @@ public class UsersControllerPrivilegedSessionAssuranceTests
             Mock.Of<IImpersonationService>(),
             authorizationService.Object,
             Options.Create(options),
-            Mock.Of<ILogger<UsersController>>());
+            Mock.Of<ILogger<UsersController>>(),
+            Mock.Of<IRecoveryAssistanceService>());
     }
 
     private static Mock<UserManager<ApplicationUser>> CreateUserManager() =>

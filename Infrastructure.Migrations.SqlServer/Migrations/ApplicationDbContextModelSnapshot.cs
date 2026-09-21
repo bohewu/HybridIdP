@@ -17,7 +17,7 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -205,6 +205,12 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
 
                     b.Property<string>("RecoveryCodes")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("RecoverySourceBootstrapRevokedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("RequiresPasswordChange")
+                        .HasColumnType("bit");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
@@ -460,6 +466,325 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.ToTable("ClientRequiredScopes");
                 });
 
+            modelBuilder.Entity("Core.Domain.Entities.CredentialMigrationContinuationRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ContextHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CredentialMigrationStateRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CsrfHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("CredentialMigrationStateRecordId", "ConsumedAtUtc");
+
+                    b.ToTable("CredentialMigrationContinuations", (string)null);
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.CredentialMigrationStateRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("EffectiveEmailOtpRequirement")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasDefaultValue("Unspecified");
+
+                    b.Property<Guid>("LocalAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProviderSubjectDirectoryBindingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocalAccountId")
+                        .IsUnique();
+
+                    b.HasIndex("ProviderSubjectDirectoryBindingId")
+                        .IsUnique();
+
+                    b.ToTable("CredentialMigrationStates", (string)null);
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.DirectorySettlementPreparation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AccountSecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("AuthorizationExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("AuthorizedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("BindingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("CancelledAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("ClaimedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ContextHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ContinuationHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CsrfHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("DirectoryObjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Disposition")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("nvarchar(48)");
+
+                    b.Property<string>("EvidenceCategory")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("nvarchar(48)");
+
+                    b.Property<string>("EvidenceReference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ExpectedAttemptStatus")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<long>("ExpectedAttemptVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("LocalAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("MfaAuthorized")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("MigrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("MigrationVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("OperationKind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("OperatorAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("OperatorSecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("OriginalWritersDrained")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("OwnershipChallengeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RecoveryEmailId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("RecoveryEmailVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<bool>("UsersUpdateAuthorized")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttemptId")
+                        .IsUnique()
+                        .HasFilter("[Status] IN (N'Prepared', N'OwnershipPending', N'Verifying')");
+
+                    b.HasIndex("ContinuationHash")
+                        .IsUnique();
+
+                    b.HasIndex("OwnershipChallengeId");
+
+                    b.ToTable("DirectorySettlementPreparations", (string)null);
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.LegacyPasswordSyncAttempt", b =>
+                {
+                    b.Property<Guid>("OperationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AccountIdentity")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ClaimedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("CompletedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<long>("Generation")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("LocalAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("MappingVersion")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<Guid>("ProviderSubjectDirectoryBindingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SanitizedOutcome")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("SourceAttemptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("SourceAttemptVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("SourceCompletedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("SourceCompletion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTimeOffset>("SourceCreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("SourceKind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("nvarchar(24)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("OperationId");
+
+                    b.HasIndex("ProviderSubjectDirectoryBindingId");
+
+                    b.HasIndex("LocalAccountId", "AccountIdentity")
+                        .IsUnique()
+                        .HasFilter("[Status] IN (N'Claimed', N'Unknown')");
+
+                    b.HasIndex("SourceKind", "SourceAttemptId")
+                        .IsUnique();
+
+                    b.HasIndex("LocalAccountId", "AccountIdentity", "Generation")
+                        .IsUnique();
+
+                    b.ToTable("LegacyPasswordSyncAttempts", (string)null);
+                });
+
             modelBuilder.Entity("Core.Domain.Entities.LoginHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -499,6 +824,138 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("LoginHistories");
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.NativeDirectoryRecoveryAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("DirectoryObjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LocalAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("OperationKind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasDefaultValue("NativeReset");
+
+                    b.Property<Guid?>("RecoveryProofChallengeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocalAccountId")
+                        .IsUnique()
+                        .HasFilter("[Status] IN (N'Reserved', N'ReconciliationRequired')");
+
+                    b.HasIndex("RecoveryProofChallengeId")
+                        .IsUnique()
+                        .HasFilter("[RecoveryProofChallengeId] IS NOT NULL");
+
+                    b.ToTable("NativeDirectoryRecoveryAttempts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_NativeDirectoryRecoveryAttempts_OperationProof", "([OperationKind] = N'NativeReset' AND [RecoveryProofChallengeId] IS NOT NULL) OR ([OperationKind] IN (N'AdminTemporaryIssue', N'RequiredChange') AND [RecoveryProofChallengeId] IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.NativeRecoveryResetApproval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ActorAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ContextHash")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CsrfHash")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("DirectoryAuthority")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("DirectoryObjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("IdentityCheckEvidence")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("LocalAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("RecoveryEmailId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("RecoveryEmailVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("RecoveryProofChallengeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecoveryProofChallengeId")
+                        .IsUnique()
+                        .HasFilter("[RevokedAtUtc] IS NULL AND [ConsumedAtUtc] IS NULL");
+
+                    b.HasIndex("RecoveryProofChallengeId", "RevokedAtUtc", "ConsumedAtUtc");
+
+                    b.ToTable("NativeRecoveryResetApprovals", (string)null);
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.Person", b =>
@@ -612,6 +1069,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<DateTime?>("ScheduledTokenRevocationPendingAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
 
@@ -651,6 +1111,295 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("Persons");
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.ProviderMetadataSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<string>("EmailTrustOrigin")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("EvidenceState")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("ProviderSubjectDirectoryBindingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("RefreshedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("VerifiedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderSubjectDirectoryBindingId")
+                        .IsUnique();
+
+                    b.ToTable("ProviderEmailSnapshots", (string)null);
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.ProviderSubjectDirectoryBinding", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DirectoryObjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LocalAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NormalizedCanonicalAccountAlias")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ProviderNamespace")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("StableSubject")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DirectoryObjectId")
+                        .IsUnique();
+
+                    b.HasIndex("LocalAccountId")
+                        .IsUnique();
+
+                    b.HasIndex("NormalizedCanonicalAccountAlias")
+                        .IsUnique()
+                        .HasFilter("[NormalizedCanonicalAccountAlias] IS NOT NULL");
+
+                    b.HasIndex("ProviderNamespace", "StableSubject")
+                        .IsUnique();
+
+                    b.ToTable("ProviderSubjectDirectoryBindings", (string)null);
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.RecoveryEmailRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("LastAdministrativeActorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("LastAdministrativeReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("LastIdentityCheckEvidence")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("LocalAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("NextSendAllowedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("NormalizedAddress")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("VerifiedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocalAccountId")
+                        .IsUnique();
+
+                    b.ToTable("RecoveryEmails", (string)null);
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.RecoveryProofChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("CredentialMigrationContinuationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("LocalAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NativeContextHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("NativeCsrfHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool?>("NativeDirectoryAuthority")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("NativeDirectoryObjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("NativeRecoveryChallengeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long?>("NativeRecoveryEmailVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("NativeSecurityStamp")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ProofTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("RecoveryEmailId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("SentAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("VerificationAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("VerifiedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CredentialMigrationContinuationId");
+
+                    b.HasIndex("ProofTokenHash")
+                        .IsUnique()
+                        .HasFilter("[ProofTokenHash] IS NOT NULL");
+
+                    b.HasIndex("RecoveryEmailId");
+
+                    b.HasIndex("LocalAccountId", "Purpose", "CredentialMigrationContinuationId", "RevokedAtUtc", "ConsumedAtUtc");
+
+                    b.ToTable("RecoveryProofChallenges", (string)null);
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.RecoveryResetApproval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ActorAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CredentialMigrationContinuationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("IdentityCheckEvidence")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("LocalAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocalAccountId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("CredentialMigrationContinuationId", "RevokedAtUtc", "ConsumedAtUtc");
+
+                    b.ToTable("RecoveryResetApprovals", (string)null);
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.Resource", b =>
@@ -837,6 +1586,10 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<bool>("EnforceMandatoryMfaEnrollment")
                         .HasColumnType("bit");
 
+                    b.Property<int>("ForgotPasswordMode")
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("LockoutDurationMinutes")
                         .HasColumnType("int");
 
@@ -1009,7 +1762,7 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<DateTime?>("AbsoluteExpiresUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("ActiveRoleId")
+                    b.Property<Guid?>("ActiveRoleId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("AuthorizationId")
@@ -1440,6 +2193,47 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Navigation("CreatedByPerson");
                 });
 
+            modelBuilder.Entity("Core.Domain.Entities.CredentialMigrationContinuationRecord", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.CredentialMigrationStateRecord", null)
+                        .WithMany()
+                        .HasForeignKey("CredentialMigrationStateRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.CredentialMigrationStateRecord", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.ProviderSubjectDirectoryBinding", null)
+                        .WithOne()
+                        .HasForeignKey("Core.Domain.Entities.CredentialMigrationStateRecord", "ProviderSubjectDirectoryBindingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.DirectorySettlementPreparation", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.NativeDirectoryRecoveryAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("AttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Core.Domain.Entities.RecoveryProofChallenge", null)
+                        .WithMany()
+                        .HasForeignKey("OwnershipChallengeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.LegacyPasswordSyncAttempt", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.ProviderSubjectDirectoryBinding", null)
+                        .WithMany()
+                        .HasForeignKey("ProviderSubjectDirectoryBindingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Core.Domain.Entities.LoginHistory", b =>
                 {
                     b.HasOne("Core.Domain.ApplicationUser", "User")
@@ -1449,6 +2243,70 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.NativeDirectoryRecoveryAttempt", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.RecoveryProofChallenge", null)
+                        .WithOne()
+                        .HasForeignKey("Core.Domain.Entities.NativeDirectoryRecoveryAttempt", "RecoveryProofChallengeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.NativeRecoveryResetApproval", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.RecoveryProofChallenge", null)
+                        .WithMany()
+                        .HasForeignKey("RecoveryProofChallengeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.ProviderMetadataSnapshot", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.ProviderSubjectDirectoryBinding", null)
+                        .WithOne()
+                        .HasForeignKey("Core.Domain.Entities.ProviderMetadataSnapshot", "ProviderSubjectDirectoryBindingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.RecoveryEmailRecord", b =>
+                {
+                    b.HasOne("Core.Domain.ApplicationUser", null)
+                        .WithOne()
+                        .HasForeignKey("Core.Domain.Entities.RecoveryEmailRecord", "LocalAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.RecoveryProofChallenge", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.CredentialMigrationContinuationRecord", null)
+                        .WithMany()
+                        .HasForeignKey("CredentialMigrationContinuationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Core.Domain.Entities.RecoveryEmailRecord", null)
+                        .WithMany()
+                        .HasForeignKey("RecoveryEmailId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Core.Domain.Entities.RecoveryResetApproval", b =>
+                {
+                    b.HasOne("Core.Domain.Entities.CredentialMigrationContinuationRecord", null)
+                        .WithMany()
+                        .HasForeignKey("CredentialMigrationContinuationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Core.Domain.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("LocalAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.ScopeClaim", b =>
@@ -1500,8 +2358,7 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.HasOne("Core.Domain.ApplicationRole", "ActiveRole")
                         .WithMany()
                         .HasForeignKey("ActiveRoleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ActiveRole");
                 });

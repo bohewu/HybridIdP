@@ -4,6 +4,15 @@
 
 ## 🎯 快速導航
 
+### 上游整合契約
+
+- [`PROVIDER_PROOF_CONTRACT.md`](./PROVIDER_PROOF_CONTRACT.md)：Provider Proof Contract 1.0 的端點、驗證、失敗與實作者要求。
+- [`PROVIDER_METADATA_CONTRACT.md`](./PROVIDER_METADATA_CONTRACT.md)：第一個正式公開、無 affiliation 欄位的 Provider Metadata Contract 1.0，含 JSON Schema 與合成 fixture。
+- [`PASSWORD_SYNC_CONTRACT.md`](./PASSWORD_SYNC_CONTRACT.md)：未版本化、預設停用且只回傳 aggregate outcome 的 Legacy Password Sync wire contract 與 uncertain-write 規則。
+- [`AUTHENTICATION_INTEGRATION.md`](./AUTHENTICATION_INTEGRATION.md)：三個獨立邊界在 HybridIdP 內的整合、所有權與啟用條件。
+
+這三個 wire boundary 各自設定與演進；啟用其中一個不會啟用或授權另外兩個。任何 affiliation、目錄群組/角色或組織關係都由獨立的上游 owner 提供，不屬於 metadata producer。
+
 ### 新 Session 開始時
 
 **第一步：閱讀 [`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md)**
@@ -22,7 +31,7 @@
 
 注意：專案已將大檔拆分以利維護與查閱。最新進度摘要請參見 `docs/PROJECT_PROGRESS.md`，各 Phase 的詳細說明已拆分至 `docs/phase-*.md`（例如 `docs/phase-5-security-i18n-consent.md`）。如需深入內容，請由 `PROJECT_PROGRESS.md` 點入對應 Phase 的檔案查閱。
 
-**第三步：參考 [`ARCHITECTURE_CONSOLIDATED.md`](./ARCHITECTURE_CONSOLIDATED.md)**
+**第三步：參考 [`ARCHITECTURE_CONSOLIDATED.md`](./archive/ARCHITECTURE_CONSOLIDATED.md)**
 - 📖 **用途：** 綜合架構指引與設計決策摘要
 - 🎯 **適合：** 實作 API、UI、理解系統設計時快速查閱
 - ⏱️ **閱讀時間：** 按需查閱（不需全部閱讀）
@@ -91,6 +100,9 @@
 | [`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md) | 開發工作流程、規範、測試指南 | 穩定 | ~2000 行 |
 | [`PROJECT_PROGRESS.md`](./PROJECT_PROGRESS.md) | 專案進度、待辦事項、已完成摘要 | 每 Phase 更新 | ~1000 行 |
 | [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) | 資料庫設定、Migration、部署 | 穩定 | ~600 行 |
+| [`PROVIDER_PROOF_CONTRACT.md`](./PROVIDER_PROOF_CONTRACT.md) | Provider Proof 1.0 公開契約 | 契約變更時 | 精簡 |
+| [`PROVIDER_METADATA_CONTRACT.md`](./PROVIDER_METADATA_CONTRACT.md) | Provider Metadata 1.0 公開契約、schema 與 fixture | 契約變更時 | 精簡 |
+| [`PASSWORD_SYNC_CONTRACT.md`](./PASSWORD_SYNC_CONTRACT.md) | 可選、未版本化 Legacy Password Sync 公開契約 | 契約變更時 | 精簡 |
 
 **總 Token 消耗（核心文件）：** ~3600 行
 - ✅ 按需查閱，減少 50-70% token 消耗
@@ -101,7 +113,7 @@
 |------|--------|----------|
 | [`idp_req_details.md`](./archive/historical/idp_req_details.md) | 完整需求文件 | 需要細節規格時 |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 架構決策與技術棧詳解 | 了解架構原因時 |
-| [`FEATURES_AND_CAPABILITIES.md`](./FEATURES_AND_CAPABILITIES.md) | 功能細節與未來增強 | 實作特定功能時 |
+| [`FEATURES_AND_CAPABILITIES.md`](./archive/FEATURES_AND_CAPABILITIES.md) | 歷史功能細節與未來增強 | 查閱歷史設計時 |
 | [`DATABASE_CONFIGURATION.md`](./DATABASE_CONFIGURATION.md) | 資料庫設定與部署 | 設定環境、切換資料庫、Production 部署時 |
 | [`PERMISSION_SYSTEM.md`](./PERMISSION_SYSTEM.md) | Permission 系統規範與防錯 | 實作權限檢查、troubleshooting Access Denied |
 | `docs/examples/` | 程式碼範例 | 實作時參考 |
@@ -188,7 +200,7 @@ git commit -m "docs: Update progress - Phase 4.5 completed"
 
 1. **首次接觸專案：** 按順序閱讀 `DEVELOPMENT_GUIDE.md` → `ARCHITECTURE.md` → `PROJECT_PROGRESS.md`
 2. **日常開發：** 只需查看 PROJECT_STATUS.md 和 DEVELOPMENT_GUIDE.md
-3. **需要細節：** 再查閱 `docs/archive/historical/idp_req_details.md` 或 `FEATURES_AND_CAPABILITIES.md` 相關 Phase
+3. **需要細節：** 再查閱 `docs/archive/historical/idp_req_details.md` 或 `docs/archive/FEATURES_AND_CAPABILITIES.md` 相關 Phase
 
 ---
 
@@ -342,7 +354,7 @@ Token 消耗: ~700 行 × 每次
 
 1. **[`DEVELOPMENT_GUIDE.md`](./DEVELOPMENT_GUIDE.md)** - 流程、實作、測試問題？
 2. **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** - 架構、技術棧問題？
-3. **[`FEATURES_AND_CAPABILITIES.md`](./FEATURES_AND_CAPABILITIES.md)** - 特定功能問題？
+3. **[`FEATURES_AND_CAPABILITIES.md`](./archive/FEATURES_AND_CAPABILITIES.md)** - 歷史功能問題？
 4. **[`idp_req_details.md`](./archive/historical/idp_req_details.md)** - 需求細節？
 
 ### 常見問題

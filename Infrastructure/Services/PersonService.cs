@@ -186,6 +186,12 @@ public partial class PersonService : IPersonService
             return null;
 
         var wasAuthenticationEligible = existingPerson.CanAuthenticate();
+        if (person.Status == Core.Domain.Enums.PersonStatus.Active &&
+            existingPerson.ScheduledTokenRevocationPendingAt.HasValue)
+        {
+            throw new InvalidOperationException(
+                "Authentication eligibility cannot be restored while scheduled token revocation is pending.");
+        }
 
         // Normalize empty strings to null (prevents unique index violations and improves data consistency)
         person.Email = string.IsNullOrWhiteSpace(person.Email) ? null : person.Email;

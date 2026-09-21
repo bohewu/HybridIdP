@@ -13,31 +13,32 @@
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
     <PackageReference Include="IdentityModel" Version="7.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+      <IncludeAssets>build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.10" />
-    <PackageReference Include="OpenIddict.AspNetCore" Version="7.6.0" />
-    <PackageReference Include="OpenIddict.Server.AspNetCore" Version="7.6.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.12" />
+    <PackageReference Include="OpenIddict.Server.AspNetCore" Version="7.7.1" />
+    <PackageReference Include="OpenIddict.Validation.AspNetCore" Version="7.7.1" />
+    <PackageReference Include="OpenIddict.Validation.ServerIntegration" Version="7.7.1" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
-    <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="Fido2.AspNet" Version="4.0.0" />
-    <PackageReference Include="Microsoft.Bcl.Memory" Version="9.0.14" />
+    <PackageReference Include="Fido2.AspNet" Version="4.0.1" />
+    <PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.12" />
     
     <!-- OpenTelemetry packages for observability -->
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.0.0-beta.12" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.16.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Process" Version="0.5.0-beta.6" />
-    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.16.0" />
-    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.9.0-beta.2" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.18.0-beta.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Process" Version="1.18.0-rc.1" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.18.0-beta.1" />
   </ItemGroup>
 
   <PropertyGroup>

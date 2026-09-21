@@ -20,6 +20,7 @@ using OpenIddict.Abstractions;
 using Web.IdP;
 using Web.IdP.Options;
 using Web.IdP.Pages.Account;
+using Web.IdP.Services;
 
 namespace Tests.Web.IdP.UnitTests.Pages.Account;
 
@@ -148,7 +149,11 @@ public class LoginModelTurnstileTests
             settingsMock.Object,
             Mock.Of<IPasskeyService>(),
             Mock.Of<IUserManagementService>(),
-            applicationManagerMock.Object);
+            applicationManagerMock.Object,
+            Mock.Of<IMigrationIssuanceGuard>(),
+            new global::Infrastructure.Services.ForgotPasswordRoutingEvaluator(
+                Microsoft.Extensions.Options.Options.Create(
+                    new global::Infrastructure.Options.ForgotPasswordRecoveryOptions())));
 
         var httpContext = new DefaultHttpContext();
         model.PageContext = new PageContext { HttpContext = httpContext };

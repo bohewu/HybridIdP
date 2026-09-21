@@ -50,7 +50,17 @@
     "AdminUserUpdated": "User Updated (Admin)",
     "AdminUserDeleted": "User Deleted (Admin)",
     "AdminRoleChanged": "Role Changed",
-    "SecurityPolicyUpdated": "Security Policy Updated"
+    "SecurityPolicyUpdated": "Security Policy Updated",
+    "RecoveryAddressChangeStarted": "Recovery address change started",
+    "RecoveryAddressVerified": "Recovery address verified",
+    "RecoveryAddressRevoked": "Recovery address removed",
+    "AdminRecoveryAddressReplaced": "Recovery address replaced by administrator",
+    "AdminMigrationOtpResent": "Migration code resent by administrator",
+    "AdminResetApprovalIssued": "Reset approval issued",
+    "AdminResetApprovalConsumed": "Reset approval consumed"
+  },
+  "recovery": {
+    "recordedOutcome": "Recorded"
   },
   "export": {
     "title": "Export Audit Logs",

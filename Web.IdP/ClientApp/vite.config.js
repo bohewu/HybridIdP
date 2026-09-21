@@ -25,6 +25,7 @@ export default defineConfig(({ command }) => ({
       input: {
         'style': './src/styles/main.css',
         'razor': './src/scripts/razor.js',
+        'pending-directory-settlement': './src/scripts/pendingDirectorySettlement.js',
         'admin-shared': './src/admin/shared/main.js',
         'admin-dashboard': './src/admin/dashboard/main.js',
         'admin-clients': './src/admin/clients/main.js',

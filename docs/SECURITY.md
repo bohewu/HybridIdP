@@ -108,6 +108,25 @@ Arbitrary upstream claims, credential metadata, secrets, raw identifiers, and
 internal directory attributes are neither token-visible nor recorded in logs or
 audit detail.
 
+The public provider boundaries remain independent. Provider Proof 1.0 may
+return only assured identity/profile data after credential validation. Provider
+Metadata 1.0 carries no credential and no affiliation, role, group, directory
+placement or linking authority. Legacy Password Sync is a separate,
+unversioned, default-disabled aggregate password-write endpoint. It exposes no
+internal targets or routing topology and never automatically resends an unknown
+or possibly dispatched write. See
+[Provider Proof](PROVIDER_PROOF_CONTRACT.md),
+[Provider Metadata](PROVIDER_METADATA_CONTRACT.md), and
+[Legacy Password Sync](PASSWORD_SYNC_CONTRACT.md).
+
+Affiliation requires an independent upstream owner. This implementation has no
+affiliation-owner decision surface, and missing owner evidence is not inferred
+from email, namespace, subject, extension members or retained legacy data;
+applicable policy fails closed. The fresh email snapshot cache imports no
+affiliation-bearing draft rows. Existing draft tables are retained unmapped for
+data preservation, not trusted, copied or reactivated. A new validated metadata
+refresh is the only entry into the current cache.
+
 Future providers require authenticated TLS with certificate and endpoint
 validation, secret-sourced credentials, bounded timeouts, cancellation
 propagation, and sanitized security/audit events. Upstream MFA or assurance
@@ -120,65 +139,56 @@ revocation response; self-contained access tokens remain valid only to their
 documented expiry unless a separately approved revocation design changes that
 policy.
 
-### Future One-Time Credential Migration
+### Deployment-Controlled One-Time Credential Migration
 
-The following is a future, unimplemented, opt-in credential-migration
-ceremony. It does not add an AD/LDAP provider, migration configuration,
-directory operation, or test to the current product. It is a separate,
-deployment-controlled migration mode and request policy, not a login-name
-heuristic or an ordinary authentication fallback. A durable per-account
-one-time eligibility/completion marker or registry authorizes and records the
-ceremony; it is distinct from must-change-password, password-expiry, and local
-password-policy state. The global migration switch and legacy proof path must
-be disabled after the bounded migration window or an explicit operator cutoff.
+The Stage 2 credential-migration ceremony and its recovery-proof gate are
+implemented but default disabled. They are a bounded deployment mode, not a
+login-name heuristic, ordinary password change, password-expiry handler,
+general forgot-password flow, per-client route, or organization-role policy. Enabling
+the feature still requires the approved operator-controlled database migration
+and connected-environment validation; local implementation evidence alone does
+not establish production readiness.
 
-Before a password is submitted, the future ceremony must resolve exactly one
-eligible local account and one managed directory object through an assured
-mapping from a stable, namespaced legacy subject to that directory object's
-immutable key. Mutable login names, email, display names, directory
-distinguished names, unassured fields, and raw national identifiers are not
-substitutes. Each attempt explicitly selects exactly one legacy-proof provider
-and exactly one directory credential authority. Lookup, proof, reset,
-verification, provider, timeout, malformed, ambiguous, or denial failures
-must fail closed: they must not fall back to Local, LegacyAuth, AD/LDAP, or any
-other credential authority. Pre-proof and failure responses must be uniform
-enough to avoid revealing account, eligibility, mapping, marker, directory, or
-provider state.
+The recovery email is a separate security record. It is never inferred from
+`ApplicationUser.Email`, `Person.Email`, or another profile/contact field, and
+it is distinct from permanent email MFA. Authenticated self-service change and
+revocation require the same account subject plus MFA or hardware-key AMR;
+password-only AMR is denied. The current authorizer does not independently
+enforce authentication age or freshness. A newly enrolled or replaced address
+cannot be used until a code sent to that destination verifies possession.
+Legacy credential proof plus a caller-supplied new address is never sufficient
+to authorize reset.
 
-After successful legacy proof, the server must create a short-lived,
-server-side migration ticket whose stored representation is protected or
-hashed. The ticket must bind the selected provider, stable legacy subject,
-immutable directory object, local account, ceremony and browser context,
-expiry, and state. It must be atomically single-use and protected against
-replay; rate limiting and CSRF/browser binding are mandatory. No application
-principal, session, cookie, token, or grant continuation may be created before
-migration completion.
+When effective policy requires migration email OTP, the code is sent only to a
+verified recovery destination. Codes are cryptographically generated, stored
+only as hashes, purpose-, continuation-, and browser/CSRF-context-bound,
+attempt/expiry/cooldown limited, and atomically single-use. Missing, invalid,
+expired, exhausted, replayed, unavailable, or mismatched proof is denied before
+the migration continuation is consumed or any directory reset is attempted.
 
-The preferred future credential mutation is a least-privilege directory
-password-reset capability limited to eligible managed accounts. A separately
-configured generic credential-management capability is permitted only when a
-documented direct-directory capability gap prevents that operation; it follows
-the same explicit-selection and no-fallback rules. The directory remains
-authoritative for credential policy, history, expiry, lockout, and state. A
-submitted password exists in memory only for the minimum ceremony duration and
-must not be stored, derived, logged, audited, claimed, or passed to local
-password-policy enforcement.
+Administrator assistance requires `Permissions.Users.Update`, the current
+actor identity, and MFA or hardware-key AMR. It permits only verified-address
+resend, identity-checked and reasoned address replacement followed by new
+destination verification, or a reasoned, short-lived, single-use reset approval
+bound to one active ceremony. The administrator does not receive or transfer an
+approval token and does not reset the credential on the user's behalf. Missing,
+expired, replayed, cross-ceremony, unavailable, or ambiguous state fails closed.
 
-The completion marker may be recorded only after the reset has an independent
-directory bind verification and eligible-status check. The required future
-order is verified directory commitment, marker completion, local
-shadow-user/Person/JIT finalization subject to local lifecycle eligibility,
-local MFA, then session/cookie/token issuance. Interrupted, conflicting, or
-uncertain reset or marker states remain denied; they do not reuse a ticket or
-guess success and may proceed only through an idempotent, state-aware,
-fail-closed recovery/reconciliation path. Once completed, the account's next
-login uses only the explicitly selected AD/LDAP path, not legacy proof.
+After OTP or approval consumption, the server atomically consumes the existing
+continuation, performs exactly one reset attempt, independently binds with the
+new password and verifies eligible managed status, records
+`DirectoryCredentialCommitted`, then completes local binding/profile and
+eligibility work before `LocalFinalized`. Existing local MFA and issuance guards
+remain afterward. A failed or uncertain reset, bind, status check, or marker
+write does not infer completion, retry the credential against another
+authority, or fall back to Local or legacy proof.
 
-Migration audit and security records must contain only sanitized reason
-categories and correlation data. They must exclude passwords, migration
-tickets, reset secrets, bind credentials, raw national identifiers,
-unnecessary profile values, and other secrets or personally identifiable
-information.
+OTP success and administrator assistance are ceremony-scoped only. Neither
+creates permanent proof, completes migration directly, satisfies local MFA, nor
+sets `EmailMfaEnabled`. Recovery audit records contain sanitized event category,
+correlation ID, target account ID, and actor account ID only; they exclude
+addresses, codes, credentials, proof/approval tokens, provider details, reason
+text, and identity-check evidence.
 
 ### Client Administration Ownership
 

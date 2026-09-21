@@ -106,7 +106,7 @@ namespace Tests.Infrastructure.UnitTests
         }
 
         [Fact]
-        public async Task ValidateAsync_WithExpiredPassword_ShouldFail()
+        public async Task ValidateAsync_WithExpiredPassword_AllowsReplacement()
         {
             // Arrange
             _defaultPolicy.PasswordExpirationDays = 30;
@@ -120,8 +120,7 @@ namespace Tests.Infrastructure.UnitTests
             var result = await _validator.ValidateAsync(null!, user, password);
 
             // Assert
-            Assert.False(result.Succeeded);
-            Assert.Contains(result.Errors, e => e.Code == "PasswordExpired");
+            Assert.True(result.Succeeded);
         }
 
         [Fact]
@@ -141,6 +140,21 @@ namespace Tests.Infrastructure.UnitTests
             // Assert
             Assert.False(result.Succeeded);
             Assert.Contains(result.Errors, e => e.Code == "PasswordChangeTooSoon");
+        }
+
+        [Fact]
+        public async Task ValidateAsync_WhenMustChange_IgnoresMinimumAge()
+        {
+            _defaultPolicy.MinPasswordAgeDays = 1;
+            var user = new ApplicationUser
+            {
+                RequiresPasswordChange = true,
+                LastPasswordChangeDate = DateTime.UtcNow.AddHours(-1)
+            };
+
+            var result = await _validator.ValidateAsync(null!, user, "NewValidPassword1!");
+
+            Assert.True(result.Succeeded);
         }
 
         [Fact]

@@ -12,6 +12,9 @@ SERVICE="idp-service"
 SOURCE="local"
 IMAGE_REF=""
 NO_CACHE=false
+READINESS_ATTEMPTS="${IDP_READINESS_ATTEMPTS:-30}"
+READINESS_DELAY_SECONDS="${IDP_READINESS_DELAY_SECONDS:-2}"
+HAS_NGINX_GATEWAY=false
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -32,14 +35,15 @@ resolve_path() {
     fi
 }
 
-extract_idp_image_from_env_file() {
-    local env_path="$1"
+extract_env_value_from_env_file() {
+    local key="$1"
+    local env_path="$2"
     if [[ ! -f "$env_path" ]]; then
         return
     fi
 
     local raw
-    raw="$(grep -E '^[[:space:]]*IDP_IMAGE=' "$env_path" | tail -n 1 | cut -d '=' -f 2- || true)"
+    raw="$(grep -E "^[[:space:]]*${key}=" "$env_path" | tail -n 1 | cut -d '=' -f 2- || true)"
     raw="${raw%%#*}"
     raw="$(echo "$raw" | xargs)"
     raw="${raw%\"}"
@@ -47,6 +51,47 @@ extract_idp_image_from_env_file() {
     raw="${raw%\'}"
     raw="${raw#\'}"
     echo "$raw"
+}
+
+wait_for_idp_readiness() {
+    local attempt
+
+    if ! [[ "$READINESS_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] ||
+       ! [[ "$READINESS_DELAY_SECONDS" =~ ^[0-9]+$ ]]; then
+        error "Readiness configuration is invalid."
+        return 1
+    fi
+
+    for ((attempt = 1; attempt <= READINESS_ATTEMPTS; attempt++)); do
+        if docker compose "${COMPOSE_ARGS[@]}" ps --status exited --services "$SERVICE" | grep -Fxq "$SERVICE"; then
+            error "Readiness failed. Category: service-exited."
+            return 1
+        fi
+
+        if docker compose "${COMPOSE_ARGS[@]}" ps --format '{{.Health}}' "$SERVICE" | grep -Fxqi 'unhealthy'; then
+            error "Readiness failed. Category: unhealthy."
+            return 1
+        fi
+
+        if [[ "$HAS_NGINX_GATEWAY" == true ]]; then
+            if docker compose "${COMPOSE_ARGS[@]}" exec -T nginx-gateway \
+                wget -q -O /dev/null http://idp-service/health; then
+                info "IDP readiness confirmed."
+                return 0
+            fi
+        elif curl --fail --silent --show-error --max-time 5 \
+            "http://${DIRECT_READINESS_HOST:-127.0.0.1}:8080/health" >/dev/null 2>&1; then
+            info "IDP readiness confirmed."
+            return 0
+        fi
+
+        if (( attempt < READINESS_ATTEMPTS )); then
+            sleep "$READINESS_DELAY_SECONDS"
+        fi
+    done
+
+    error "Readiness failed. Category: timeout."
+    return 1
 }
 
 usage() {
@@ -154,6 +199,7 @@ fi
 if [[ -f "$ENV_PATH" ]]; then
     COMPOSE_ARGS+=( --env-file "$ENV_PATH" )
     export IDP_ENV_FILE="$ENV_PATH"
+    DIRECT_READINESS_HOST="$(extract_env_value_from_env_file "INTERNAL_IP" "$ENV_PATH")"
 else
     error "Env file not found: $ENV_PATH"
     exit 1
@@ -164,7 +210,7 @@ if [[ -n "$IMAGE_REF" ]]; then
 fi
 
 if [[ "$SOURCE" == "ghcr" && -z "${IDP_IMAGE:-}" ]]; then
-    IDP_IMAGE="$(extract_idp_image_from_env_file "$ENV_PATH")"
+    IDP_IMAGE="$(extract_env_value_from_env_file "IDP_IMAGE" "$ENV_PATH")"
     if [[ -n "$IDP_IMAGE" ]]; then
         export IDP_IMAGE
     fi
@@ -185,9 +231,12 @@ if ! docker compose "${COMPOSE_ARGS[@]}" config --quiet >/dev/null; then
     exit 1
 fi
 
+if docker compose "${COMPOSE_ARGS[@]}" config --services | grep -Fxq "nginx-gateway"; then
+    HAS_NGINX_GATEWAY=true
+fi
+
 DEPLOY_SERVICES=( "$SERVICE" )
-if [[ "$SERVICE" == "idp-service" ]] &&
-   docker compose "${COMPOSE_ARGS[@]}" config --services | grep -Fxq "nginx-gateway"; then
+if [[ "$SERVICE" == "idp-service" && "$HAS_NGINX_GATEWAY" == true ]]; then
     # Reconcile the gateway as well as the application. This lets Compose replace
     # containers created from an older mount/environment contract without forcing
     # a restart when the current gateway configuration is already unchanged.
@@ -214,6 +263,9 @@ fi
 
 info "Done. Current status:"
 docker compose "${COMPOSE_ARGS[@]}" ps "${DEPLOY_SERVICES[@]}"
+
+info "Waiting for IDP readiness..."
+wait_for_idp_readiness
 
 if [[ "$SOURCE" == "ghcr" ]]; then
     echo -e "${CYAN}Tip:${NC} use '--image' to pin an exact release tag."

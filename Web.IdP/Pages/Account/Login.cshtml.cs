@@ -4,6 +4,7 @@ using Core.Application.DTOs;
 using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
+using Core.Domain.Enums;
 using Core.Domain.Events;
 using Core.Application.Options; // Added
 using Microsoft.AspNetCore.Authentication;
@@ -17,8 +18,10 @@ using Microsoft.Extensions.Options; // Added
 using Microsoft.AspNetCore.RateLimiting;
 using OpenIddict.Abstractions;
 using Core.Application.Interfaces;
+using Core.Application.Ports;
 using System.Text.Json;
 using Web.IdP.Helpers;
+using Web.IdP.Services;
 
 namespace Web.IdP.Pages.Account;
 
@@ -43,6 +46,8 @@ public partial class LoginModel : PageModel
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly ILocalizationService _localizationService;
     private readonly Web.IdP.Options.LoginNoticesOptions _loginNoticesOptions;
+    private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
+    private readonly IForgotPasswordRoutingEvaluator _forgotPasswordRoutingEvaluator;
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
@@ -62,7 +67,9 @@ public partial class LoginModel : PageModel
         ISettingsService settingsService,
         IPasskeyService passkeyService,
         IUserManagementService userManagementService,
-        IOpenIddictApplicationManager applicationManager) // Added
+        IOpenIddictApplicationManager applicationManager,
+        IMigrationIssuanceGuard migrationIssuanceGuard,
+        IForgotPasswordRoutingEvaluator forgotPasswordRoutingEvaluator) // Added
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -82,6 +89,8 @@ public partial class LoginModel : PageModel
         _passkeyService = passkeyService;
         _userManagementService = userManagementService;
         _applicationManager = applicationManager;
+        _migrationIssuanceGuard = migrationIssuanceGuard;
+        _forgotPasswordRoutingEvaluator = forgotPasswordRoutingEvaluator;
     }
 
     [BindProperty]
@@ -94,6 +103,7 @@ public partial class LoginModel : PageModel
     public bool RegistrationEnabled { get; private set; } = true;
     public bool PasskeyEnabled { get; private set; } = true;
     public string? CustomForgotPasswordUrl { get; private set; }
+    public bool NativeForgotPasswordAvailable { get; private set; }
     public bool IsMfaEnrollmentReauthentication =>
         MfaEnrollmentSession.HasPending(HttpContext.Session);
 
@@ -115,6 +125,15 @@ public partial class LoginModel : PageModel
         var hasSiteKey = !string.IsNullOrWhiteSpace(TurnstileSiteKey);
         
         TurnstileEnabled = globalTurnstileEnabled && clientTurnstileEnabled && hasSiteKey && hasSecretKey && _turnstileStateService.IsAvailable;
+    }
+
+    private void ApplyForgotPasswordRouting(SecurityPolicy policy)
+    {
+        var decision = _forgotPasswordRoutingEvaluator.Evaluate(
+            policy.ForgotPasswordMode,
+            policy.CustomForgotPasswordUrl);
+        CustomForgotPasswordUrl = decision.ExternalUrl;
+        NativeForgotPasswordAvailable = decision.AvailableMode == ForgotPasswordMode.Native;
     }
 
     public class InputModel
@@ -163,7 +182,7 @@ public partial class LoginModel : PageModel
         // Load Passkey enabled state
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         PasskeyEnabled = policy.EnablePasskey;
-        CustomForgotPasswordUrl = policy.CustomForgotPasswordUrl;
+        ApplyForgotPasswordRouting(policy);
 
         // Load Turnstile enabled state
         await LoadTurnstileStateAsync(returnUrl, cancellationToken);
@@ -183,7 +202,7 @@ public partial class LoginModel : PageModel
         RegistrationEnabled = await _settingsService.GetValueAsync<bool?>(SettingKeys.Security.RegistrationEnabled, cancellationToken) ?? true;
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         PasskeyEnabled = policy.EnablePasskey;
-        CustomForgotPasswordUrl = policy.CustomForgotPasswordUrl;
+        ApplyForgotPasswordRouting(policy);
         await LoadTurnstileStateAsync(returnUrl, cancellationToken);
 
         ExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl, cancellationToken);
@@ -210,8 +229,28 @@ public partial class LoginModel : PageModel
 
         switch (result.Status)
         {
+            case LoginStatus.PasswordChangeRequired:
+                var safeReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : null;
+                if (result.DirectoryObjectId is Guid directoryObjectId)
+                {
+                    RequiredPasswordChangeSession.BeginDirectory(
+                        HttpContext.Session, result.User!, directoryObjectId, safeReturnUrl, DateTimeOffset.UtcNow);
+                }
+                else
+                {
+                    RequiredPasswordChangeSession.Begin(
+                        HttpContext.Session, result.User!, safeReturnUrl, DateTimeOffset.UtcNow);
+                }
+                return RedirectToPage("./RequiredPasswordChange");
+
             case LoginStatus.Success:
             case LoginStatus.LegacySuccess:
+                if (!await _migrationIssuanceGuard.CanIssueAsync(result.User!.Id, cancellationToken))
+                {
+                    ModelState.AddModelError(string.Empty, _localizer["InvalidCredentials"]);
+                    return Page();
+                }
+
                 // Check for abnormal login
                 var loginHistory = new LoginHistory
                 {

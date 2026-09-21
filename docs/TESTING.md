@@ -77,6 +77,182 @@ When running in `Development` environment, the following additional data is seed
 
 ## 3. Automated Tests
 
+### Credential Migration Validation
+
+Run the bounded Stage 1 and Stage 2 credential-migration checks from the repository root:
+
+```powershell
+python .\tools\run_credential_migration_validation.py
+```
+
+The default run executes only the existing `Stage1BindingMigrationTests`,
+`Stage2CredentialMigrationTests`, `Stage2DirectoryCredentialTests`,
+`CredentialMigrationCeremonyTests`, and `MigrationIssuanceGuardTests`. It forces
+credential migration and directory-integration switches off in each child test
+process, emits phase progress and sanitized test counts, and never performs AD
+actions, password resets, deployment, commit, or push operations.
+
+The recovery-proof coverage added to Stage 2 is exercised by focused local
+tests rather than by a connected recovery environment:
+
+```powershell
+dotnet test Tests.Application.UnitTests/Tests.Application.UnitTests.csproj --filter "FullyQualifiedName~RecoveryProofContractTests|FullyQualifiedName~Stage2CredentialMigrationTests|FullyQualifiedName~UsersControllerCredentialRecoveryTests"
+dotnet test Tests.Infrastructure.UnitTests/Tests.Infrastructure.UnitTests.csproj --filter "FullyQualifiedName~RecoveryProofFoundationTests|FullyQualifiedName~HttpContextRecoveryProofAuthorizerTests"
+dotnet test Tests.Infrastructure.IntegrationTests/Tests.Infrastructure.IntegrationTests.csproj --filter "FullyQualifiedName~RecoveryProofPersistenceTests"
+dotnet test Tests.Web.IdP.UnitTests/Tests.Web.IdP.UnitTests.csproj --filter "FullyQualifiedName~RecoveryEmailControllerTests|FullyQualifiedName~CredentialMigrationCeremonyTests"
+dotnet test Tests.SystemTests/Tests.SystemTests.csproj --filter "FullyQualifiedName~CredentialRecoveryApiContractTests"
+```
+
+These tests cover recovery-address independence and authorization, destination
+verification, OTP attempts/expiry/replay and atomic consumption, administrator
+resend/replacement/approval constraints, sanitized failures and audit contracts,
+default-off configuration, no permanent email-MFA side effect, and preserved
+post-proof reset/bind/finalization ordering. The persistence tests verify the EF
+model through local test infrastructure; they are not deployment-database
+execution. The controller and system tests use local/mocked boundaries and do
+not constitute AD, provider, SMTP, browser, or production end-to-end evidence.
+
+Frontend verification for this feature belongs in `Web.IdP/ClientApp` and must
+cover the migration proof controls, Account/MFA recovery-email settings,
+administrator Users assistance, and sanitized audit presentation in both
+`en-US` and `zh-TW`:
+
+```powershell
+npm test -- --run
+npm run build
+```
+
+Browser evidence, when collected, must use non-sensitive fixtures and cover
+desktop and mobile states without claiming connected directory behavior. Read
+the final UI task result before recording exact screenshots, viewport results,
+or pass counts.
+
+#### HIDP-16 configurable recovery guidance (2026-09-16)
+
+Native recovery guidance is optional and OSS-neutral. All seven settings under
+`ForgotPasswordRecovery` default to an empty string; leaving a setting empty or
+whitespace-only, or clearing it later and restarting the application, hides that
+slot without rendering an empty guidance container.
+
+```json
+{
+  "ForgotPasswordRecovery": {
+    "TopNotice": "@Recovery.Guidance.Top",
+    "VerificationTip": "Check your junk mail folder if the code has not arrived.",
+    "ResetTip": "@Recovery.Guidance.Reset",
+    "SuccessReminder": "Use your new password the next time you sign in.",
+    "SupportText": "@Recovery.Guidance.Support",
+    "SupportLabel": "Recovery help",
+    "SupportUrl": "https://help.example.org/account-recovery"
+  }
+}
+```
+
+`TopNotice`, `VerificationTip`, `ResetTip`, `SuccessReminder`, `SupportText`,
+and `SupportLabel` accept either literal plain text or `@ResourceKey`. A literal
+is rendered unchanged as encoded text. For the resource form, whitespace around
+the key after `@` is trimmed and resolution is: enabled exact culture, then
+enabled `en-US`, then hidden. A disabled exact-culture row is skipped and may
+therefore fall back to enabled `en-US`; a missing exact-culture row behaves the
+same way. A blank setting, blank key, missing or disabled fallback, or resolved
+whitespace value hides the slot. If an enabled exact-culture row exists but its
+value is whitespace-only, that resolved slot is hidden rather than falling
+through to `en-US`.
+
+Resource rows are resolved on every request, so an enabled Resource value change
+is visible on the next request. The seven configuration values use the existing
+startup-bound `IOptions<ForgotPasswordRecoveryOptions>` lifecycle: restart after
+configuration changes, and do not rely on hot reload.
+
+`SupportUrl` is independent and is never treated as a Resource key. A support
+link renders only when the URL is absolute `http` or `https`, contains no
+UserInfo, and `SupportLabel` resolves to nonblank text. `SupportText` is
+independent and can render without an eligible link.
+
+Placement is stable across the start, awaiting-code, awaiting-password, and
+success phases. Core validation, sent, password-prompt, error, and success
+content remains first and visually authoritative. `TopNotice` follows applicable
+core status; `VerificationTip`, `ResetTip`, and `SuccessReminder` then appear
+only in their matching code, password, and confirmed-success phases, before the
+principal interaction. Support content appears near the bottom after the phase
+form or action. These slots use neutral secondary styling, preserve existing
+focus and ARIA behavior, and are Razor-encoded plain text; there is no
+`Html.Raw` path.
+
+Guidance does not vary by account existence, eligibility, configured recovery
+email, or source-cohort classification. This delivery did not change recovery
+routing or availability, OTP behavior, directory/AD writes, sessions, tokens,
+or `PasswordHash` rules.
+
+#### HIDP-17 Legacy Password Sync focused verification (2026-09-18)
+
+The isolated candidate was verified for exactly two configured password
+destinations: Directory/AD and one default-off Legacy Password Sync API. The
+12/12 destination matrix proves Directory/Legacy off/on = 0/1 calls, on/off =
+1/0, on/on = 1/1 with Directory before Legacy, and off/off = 0/0. Legacy-only
+dispatch remains bound to an authorized required-change attempt, consumed
+native proof challenge, or consumed migration continuation.
+
+The terminal non-connected checks were:
+
+```powershell
+dotnet test Tests.Infrastructure.UnitTests/Tests.Infrastructure.UnitTests.csproj --no-restore --filter "FullyQualifiedName~DirectoryRequiredCredentialChangeServiceTests.ChangeAsync_DestinationMatrix|FullyQualifiedName~Stage2CredentialMigrationServiceTests.CommitAsync_DestinationMatrix|FullyQualifiedName~NativePasswordRecoveryResetServiceTests.ResetAsync_DestinationMatrix"
+dotnet test Tests.Infrastructure.UnitTests/Tests.Infrastructure.UnitTests.csproj --no-restore --filter "FullyQualifiedName~DirectoryRequiredCredentialChangeServiceTests|FullyQualifiedName~Stage2CredentialMigrationServiceTests|FullyQualifiedName~NativePasswordRecoveryResetServiceTests|FullyQualifiedName~LegacyPasswordSyncCoordinatorTests|FullyQualifiedName~LegacyPasswordSyncAttemptStoreTests|FullyQualifiedName~RecoveryProofFoundationTests|FullyQualifiedName~CredentialMigrationOptionsTests"
+dotnet test Tests.Application.UnitTests/Tests.Application.UnitTests.csproj --no-restore --filter "FullyQualifiedName~Stage2CredentialMigrationTests"
+dotnet test Tests.Infrastructure.UnitTests/Tests.Infrastructure.UnitTests.csproj --no-restore --filter "FullyQualifiedName~LegacyPasswordSyncContractTests"
+dotnet test Tests.Application.UnitTests/Tests.Application.UnitTests.csproj --no-restore --filter "FullyQualifiedName~CredentialMigrationContractTests"
+dotnet build HybridAuthIdP.sln --no-restore -nodeReuse:false --verbosity:minimal
+```
+
+Post-review results were 12/12 for the three destination matrices, 89/89 for
+the affected HybridIdP caller/coordinator/durable-source/options slice, 23/23
+for the Stage 2 application slice, 38/38 for Legacy Password Sync
+contract/options/transport, and 3/3 for credential-migration contracts. The
+HybridIdP solution build passed with zero warnings and zero errors.
+
+The private endpoint separately rejected `Guid.Empty` before its coordinator
+or writers in the exact focused test (1/1). Its complete focused PasswordSync
+surface passed 57/57, and its solution build passed with zero warnings and zero
+errors. Its routing topology remains outside this public contract.
+
+The HIDP-16 Guidance TestServer limiter seam was corrected without changing
+product defaults. Its affected exact method passed 4/4, the other four exact
+methods passed 12/12, 1/1, 1/1 and 3/3, and the exact-five aggregate passed
+21/21 with terminal lifecycle and cleanup evidence. Discovery, startup output,
+timeout or process termination were not counted as PASS.
+
+These results are offline implementation evidence only. Deployment, production
+migration, external interoperability, connected database/provider checks, real
+Legacy Password Sync requests, live AD/directory writes, credential use, push,
+release and publication were **NOT RUN** and remain separate follow-up gates.
+
+
+### Database Migration Lifecycle Checks
+
+Run these bounded, non-connected checks from the repository root before an
+operator-controlled migration. They do not use a deployment database, start a
+normal IdP host, or invoke AD, provider, or credential workflows:
+
+```bash
+bash deployment/migrate-db.sh --help
+bash deployment/tests/deployment-hardening-tests.sh
+dotnet test Tests.Web.IdP.UnitTests/Tests.Web.IdP.UnitTests.csproj --filter "FullyQualifiedName~DatabaseMigrationLifecycleTests"
+python tools/run_credential_migration_validation.py --dry-run
+```
+
+The deployment hardening script uses local command stubs to verify the
+schema-only migration command contract for both SQL Server and PostgreSQL. The
+credential-migration runner's `--dry-run` mode only prints its selected test
+commands; its normal focused run keeps every Stage 1 and Stage 2 feature switch
+off and does not perform connected directory actions.
+
+Recovery proof adds the provider-specific migrations
+`20260905060135_AddCredentialRecoveryProofFoundation` for SQL Server and
+`20260905060159_AddCredentialRecoveryProofFoundation` for PostgreSQL. Apply the
+appropriate migration only through the existing operator-controlled migration
+procedure. No connected deployment database was migrated or verified as part
+of the credential-recovery delivery round documented here.
+
 ### Unit Tests
 Run unit tests to verify individual components.
 ```powershell
@@ -205,4 +381,3 @@ curl --location 'https://localhost:7035/connect/token' `
 
 ---
 **Last Updated**: 2025-12-19
-

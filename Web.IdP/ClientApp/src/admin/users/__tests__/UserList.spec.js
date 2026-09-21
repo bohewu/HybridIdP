@@ -20,7 +20,7 @@ const ActionMenuStub = {
   }
 }
 
-const createWrapper = (canManageRoles) => mount(UserList, {
+const createWrapper = (canManageRoles, canUpdate = true) => mount(UserList, {
   props: {
     users: [{
       id: 'user-1',
@@ -34,7 +34,7 @@ const createWrapper = (canManageRoles) => mount(UserList, {
     page: 1,
     pageSize: 10,
     totalCount: 1,
-    canUpdate: true,
+    canUpdate,
     canManageRoles,
     canDelete: false,
     canRead: true,
@@ -65,5 +65,10 @@ describe('UserList role-management authorization', () => {
     const wrapper = createWrapper(true)
 
     expect(wrapper.find('[data-testid="manage-roles-action"]').exists()).toBe(true)
+  })
+
+  it('shows credential recovery assistance only with users.update', () => {
+    expect(createWrapper(false, true).find('[data-testid="credential-recovery-action"]').exists()).toBe(true)
+    expect(createWrapper(false, false).find('[data-testid="credential-recovery-action"]').exists()).toBe(false)
   })
 })

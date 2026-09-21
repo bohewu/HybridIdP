@@ -27,13 +27,16 @@ public partial class PersonLifecycleJob : IJob
         _logger = logger;
     }
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(
+        IJobExecutionContext context,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         LogJobStarted();
 
         try
         {
-            var changedCount = await _lifecycleService.ProcessScheduledTransitionsAsync();
+            var changedCount = await _lifecycleService.ProcessScheduledTransitionsAsync(cancellationToken);
             
             if (changedCount > 0)
             {
@@ -43,6 +46,11 @@ public partial class PersonLifecycleJob : IJob
             {
                 LogNoChanges();
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            LogJobCanceled();
+            throw;
         }
         catch (Exception ex)
         {
@@ -61,6 +69,9 @@ public partial class PersonLifecycleJob : IJob
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "PersonLifecycleJob completed. No scheduled transitions to process.")]
     partial void LogNoChanges();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "PersonLifecycleJob canceled at a durable transition boundary.")]
+    partial void LogJobCanceled();
 
     [LoggerMessage(Level = LogLevel.Error, Message = "PersonLifecycleJob failed.")]
     partial void LogJobFailed(Exception ex);

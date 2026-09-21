@@ -27,16 +27,13 @@ public static class DataSeeder
         var scopeManager = scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
         var settingsService = scope.ServiceProvider.GetRequiredService<ISettingsService>();
 
-        // 1. Migrate Database
-        await context.Database.MigrateAsync();
-
-        // 2. Seed Roles
+        // 1. Seed Roles
         await RoleSeeder.SeedAsync(roleManager);
 
-        // 3. Seed Scopes & Claims
+        // 2. Seed Scopes & Claims
         await ScopeSeeder.SeedAsync(scopeManager, context);
 
-        // 4. Seed API Resources (Custom Entities & Scopes)
+        // 3. Seed API Resources (Custom Entities & Scopes)
         if (seedTestUsers) 
         {
             await ResourceSeeder.SeedAsync(context, scopeManager);
@@ -46,7 +43,7 @@ public static class DataSeeder
         // This ensures Scope descriptions and Login Notices are present in DB
         await LocalizationSeeder.SeedAsync(context);
 
-        // 5. Seed Users (optional privileged test admin + other test users)
+        // 4. Seed Users (optional privileged test admin + other test users)
         await UserSeeder.SeedAsync(
             userManager,
             roleManager,
@@ -55,10 +52,10 @@ public static class DataSeeder
             enablePrivilegedTestAdminBootstrap,
             environmentName);
 
-        // 6. Seed Clients (M2M, Device, Public, Demo)
+        // 5. Seed Clients (M2M, Device, Public, Demo)
         await ClientSeeder.SeedAsync(applicationManager, scopeManager, seedTestUsers);
 
-        // 7. Seed Default Settings
+        // 6. Seed Default Settings
         var configuration = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
         await SeedDefaultSettingsAsync(context, configuration, settingsService);
     }

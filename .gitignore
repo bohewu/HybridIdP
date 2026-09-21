@@ -43,6 +43,7 @@ Web.IdP/wwwroot/dist/
 
 # MCP Playwright screenshots
 .playwright-mcp/
+.playwright-cli/
 
 # Test scripts
 test-*.ps1
@@ -72,3 +73,7 @@ deployment/docker-compose.override.yml
 # Local agent/tooling state
 .codex/
 .codegraph/
+
+# Private local workflow trackers
+/kanban.md
+/todo-ledger.json

@@ -156,5 +156,175 @@
     "reset": "Reset MFA",
     "resetConfirm": "Are you sure you want to reset MFA for this user? They will need to set up 2FA again.",
     "resetSuccess": "MFA has been reset successfully."
+  },
+  "recoveryAssistance": {
+    "target": "Account: {name}",
+    "targetUnknown": "Selected account",
+    "loading": "Loading available assistance...",
+    "contextUnavailable": "Assistance availability could not be confirmed. Reload before taking action.",
+    "groupLabel": "Credential recovery purpose",
+    "groups": {
+      "ordinary": {
+        "title": "Password reset assistance",
+        "description": "Support an ordinary forgotten-password ceremony or issue a separately authorized temporary credential."
+      },
+      "migration": {
+        "title": "Account migration assistance",
+        "description": "Support only the exact active account-migration continuation. These actions do not start or silently complete migration."
+      },
+      "pending": {
+        "title": "AD uncertain-write handling",
+        "description": "Inspect and prepare a supported pending AD operation for the separate user settlement page. This does not retry or clear the directory write."
+      }
+    },
+    "families": {
+      "ordinary": "Ordinary password recovery",
+      "temporary": "Server-generated temporary credential",
+      "migration": "Active migration continuation",
+      "pending": "Pending AD operation"
+    },
+    "states": {
+      "available": "Available",
+      "disabled": "Disabled",
+      "unavailable": "Unavailable",
+      "confirmedFailure": "Confirmed failure",
+      "unknown": "Unknown"
+    },
+    "noAvailableActions": "No actions are currently authorized for this account.",
+    "backToActions": "Back to actions",
+    "retryContext": "Reload availability",
+    "menuAction": "Credential recovery assistance",
+    "title": "Credential recovery assistance",
+    "targetId": "Target ID: {id}",
+    "actionLabel": "Assistance action",
+    "noPermission": "You need Users.Update permission to assist with credential recovery.",
+    "actions": {
+      "ordinary-resend": "Resend reset code",
+      "ordinary-replace": "Replace recovery email",
+      "ordinary-approve": "Approve one reset",
+      "migration-resend": "Resend migration code",
+      "migration-replace": "Replace migration recovery email",
+      "migration-approve": "Approve migration recovery",
+      "resend": "Resend code",
+      "replace": "Replace address",
+      "approve": "Approve one reset",
+      "reconcile": "Resolve directory reset",
+      "temporary": "Issue temporary password",
+      "resolve": "Resolve pending operation"
+    },
+    "descriptions": {
+      "ordinary-resend": "Resend the ordinary recovery code only to the account's verified recovery destination.",
+      "ordinary-replace": "After an identity check, replace the ordinary recovery email. The user must verify the new address before using it.",
+      "ordinary-approve": "Issue one short-lived approval for the current ordinary reset ceremony. This does not reset a password.",
+      "migration-resend": "Resend the code only for the exact active migration continuation.",
+      "migration-replace": "After an identity check, replace the recovery email for the exact active migration continuation.",
+      "migration-approve": "Issue one short-lived approval only for the exact active migration recovery ceremony.",
+      "resend": "Resend the migration code only to the user's already verified recovery destination.",
+      "replace": "After completing an identity check, replace the recovery destination. The user must verify the new address by code before it can be used.",
+      "approve": "Issue one short-lived approval for the user's current reset ceremony. This does not reset the password or create a permanent bypass.",
+      "reconcile": "Verify the intended password against the exact bound directory identity and complete a blocked reset. This never repeats the password write.",
+      "temporary": "After completing an identity check, issue a random local temporary password that must be changed before access is granted.",
+      "resolve": "Administrator manual backoffice operation: resolve one exact pending temporary-issue or required-change operation after the original writers and directory operation are independently confirmed settled."
+    },
+    "addressLabel": "Replacement recovery email",
+    "addressHelp": "This address returns to an unverified state. Do not enter credentials, codes, or tokens.",
+    "evidenceLabel": "Identity-check evidence",
+    "evidenceHelp": "Record the completed identity-check reference only. Do not include credentials, codes, tokens, or provider details.",
+    "reasonLabel": "Reason",
+    "intendedPasswordLabel": "Password used for the blocked reset",
+    "intendedPasswordHelp": "Used once for independent directory verification. It is not stored, logged, or returned.",
+    "temporaryPasswordLabel": "Temporary password - shown once",
+    "temporaryPasswordHelp": "Deliver this through the verified channel. It cannot be retrieved after this dialog closes.",
+    "pending": {
+      "inspect": "Inspect pending operation",
+      "reload": "Inspect again",
+      "loading": "Loading the exact pending directory operation...",
+      "attemptId": "Attempt ID",
+      "version": "Version",
+      "operationKind": "Operation kind",
+      "status": "Status",
+      "operationKinds": {
+        "NativeReset": "Native directory password reset",
+        "AdminTemporaryIssue": "Administrator temporary issue",
+        "RequiredChange": "Required directory password change"
+      },
+      "statuses": {
+        "Reserved": "Reserved",
+        "ReconciliationRequired": "Reconciliation required"
+      },
+      "directoryObjectId": "Directory object ID",
+      "dispositionLegend": "Verified settlement outcome",
+      "dispositions": {
+        "OriginalOperationSettled": "The original directory operation was independently confirmed settled.",
+        "ApprovedOutOfBandRecoveryCompleted": "An approved out-of-band directory recovery was completed."
+      },
+      "originalWritersDrained": "I confirm every original writer and related user flow has stopped or drained, with no matching request still in flight.",
+      "evidenceReferenceLabel": "Approved evidence reference",
+      "evidenceReferencePlaceholder": "For example: CASE:20260912-001",
+      "evidenceReferenceHelp": "Enter only the approved ticket or operation reference. Use letters, numbers, colon, period, slash, hyphen, or underscore; do not include credentials or provider details.",
+      "prepare": "Prepare user settlement",
+      "confirmPrepare": "Prepare this exact pending operation for the separate user settlement page?",
+      "prepared": "User settlement is prepared. Deliver the separately generated continuation through the approved channel and direct the user to /Account/PendingDirectorySettlement.",
+      "cancelPreparation": "Cancel prepared settlement",
+      "confirmCancel": "Cancel this prepared user settlement?",
+      "cancelled": "The prepared user settlement was cancelled.",
+      "currentCredentialLabel": "Current AD password",
+      "currentCredentialPlaceholder": "Enter the current AD password confirmed to work",
+      "currentCredentialHelp": "Used once to verify this exact managed directory object. It is cleared after submission and is never returned or stored.",
+      "settlementLegend": "Required settlement confirmations",
+      "originalWritersSettled": "I confirm every original writer and related user flow has stopped or drained, with no matching request still in flight.",
+      "directoryOperationSettled": "I independently confirmed through the approved directory process that the original operation has settled.",
+      "evidencePlaceholder": "For example: service ticket number, verification method, and completion time",
+      "reasonPlaceholder": "Explain the reason for this manual operation",
+      "submit": "Verify and resolve operation",
+      "confirmation": "Resolve this exact pending operation using the displayed binding and recorded settlement confirmations?",
+      "resolved": "The exact pending directory operation was resolved. Existing sessions and grants were revoked, and the user must change the directory password at the next valid sign-in.",
+      "unavailable": "The pending directory operation is unavailable or could not be resolved. Verify the target and current operator evidence before trying again.",
+      "retry": "Reload pending operation"
+    },
+    "submitting": "Submitting...",
+    "resendIn": "Resend in {seconds}s",
+    "submit": {
+      "ordinary-resend": "Resend reset code",
+      "ordinary-replace": "Replace and require verification",
+      "ordinary-approve": "Approve one reset",
+      "migration-resend": "Resend migration code",
+      "migration-replace": "Replace and require verification",
+      "migration-approve": "Approve migration recovery",
+      "resend": "Resend code",
+      "replace": "Replace and require verification",
+      "approve": "Approve one reset",
+      "reconcile": "Verify and resolve",
+      "temporary": "Issue temporary password"
+    },
+    "confirmations": {
+      "ordinary-resend": "Resend the ordinary recovery code to the verified destination?",
+      "ordinary-replace": "Replace the ordinary recovery email and require destination verification?",
+      "ordinary-approve": "Issue a short-lived, single-use approval for this ordinary reset ceremony?",
+      "migration-resend": "Resend the code for the exact active migration continuation?",
+      "migration-replace": "Replace the recovery email for the exact active migration continuation?",
+      "migration-approve": "Issue a short-lived, single-use approval for this migration recovery ceremony?",
+      "resend": "Resend the code to the verified recovery destination?",
+      "replace": "Replace the recovery address and require destination verification?",
+      "approve": "Issue a short-lived, single-use approval for this reset ceremony?",
+      "reconcile": "Verify the intended password against the bound directory identity and resolve this blocked reset?",
+      "temporary": "Issue a temporary password after completing the recorded identity check?"
+    },
+    "outcomes": {
+      "ordinary-resendSuccess": "The ordinary recovery code was resent to the verified destination.",
+      "ordinary-replaceSuccess": "The ordinary recovery email was replaced and now requires destination verification.",
+      "ordinary-approveSuccess": "A short-lived, single-use approval was issued for the current ordinary reset ceremony.",
+      "migration-resendSuccess": "The migration code was resent to the verified destination.",
+      "migration-replaceSuccess": "The migration recovery email was replaced and now requires destination verification.",
+      "migration-approveSuccess": "A short-lived, single-use approval was issued for the active migration recovery ceremony.",
+      "resendSuccess": "The migration code was resent to the verified destination.",
+      "replaceSuccess": "The recovery address was replaced and now requires destination verification.",
+      "approveSuccess": "A short-lived, single-use approval was issued for the current reset ceremony.",
+      "reconcileSuccess": "The directory reset was independently verified and the blocked recovery was completed.",
+      "temporarySuccess": "A temporary password was issued and must be changed before the user receives access.",
+      "cooldown": "Please wait {seconds} seconds before resending.",
+      "highAssuranceRequired": "Verify with MFA or a hardware key, then retry this action.",
+      "unavailable": "The assistance request could not be completed. Verify the target and try again."
+    }
   }
 }

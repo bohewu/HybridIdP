@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Core.Application;
+using Core.Application.Ports;
 using Core.Application.Security;
 using Core.Domain; // Added for ApplicationUser
 using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Infrastructure;
+using Infrastructure.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -97,6 +99,15 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
         securityPolicyService
             .Setup(service => service.GetCurrentPolicyAsync())
             .ReturnsAsync(new SecurityPolicy());
+        var migrationIssuanceGuard = new Mock<IMigrationIssuanceGuard>();
+        migrationIssuanceGuard
+            .Setup(guard => guard.CanIssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        var migrationStateStore = new Mock<ICredentialMigrationStateStore>();
+        migrationStateStore
+            .Setup(store => store.FindAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CredentialMigrationRecord?)null);
+        var stage2CredentialMigrationService = new Mock<IStage2CredentialMigrationService>();
 
         // 5. Instantiate Real Services
         _claimsEnricher = new ClaimsEnrichmentService(
@@ -115,7 +126,12 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             _db,
             _mockAppManager.Object,
             _mockTokenLogger.Object,
-            _claimsEnricher);
+            _claimsEnricher,
+            Options.Create(new DirectoryIntegrationOptions()),
+            Options.Create(new CredentialMigrationOptions()),
+            migrationStateStore.Object,
+            stage2CredentialMigrationService.Object,
+            migrationIssuanceGuard.Object);
     }
 
     public void Dispose()

@@ -1,7 +1,10 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Ports;
 using Core.Domain;
+using Core.Domain.Entities;
 using Core.Domain.Enums;
+using Infrastructure.Options;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -22,6 +25,14 @@ public partial class LoginService : ILoginService
     private readonly ILogger<LoginService> _logger;
     private readonly TimeProvider _timeProvider;
     private readonly Core.Application.Options.ExternalLoginOptions _externalLoginOptions;
+    private readonly IProofProvider? _proofProvider;
+    private readonly IDirectoryIdentityLookup? _directoryIdentityLookup;
+    private readonly IStage1BindingRefreshService? _stage1BindingRefreshService;
+    private readonly IStage2CredentialMigrationService? _stage2CredentialMigrationService;
+    private readonly ICredentialMigrationStateStore? _credentialMigrationStateStore;
+    private readonly IProviderMetadataRefreshService? _providerMetadataRefreshService;
+    private readonly DirectoryIntegrationOptions _directoryIntegrationOptions;
+    private readonly CredentialMigrationOptions _credentialMigrationOptions;
 
     public LoginService(
         UserManager<ApplicationUser> userManager,
@@ -31,7 +42,15 @@ public partial class LoginService : ILoginService
         IApplicationDbContext dbContext,
         ILogger<LoginService> logger,
         Microsoft.Extensions.Options.IOptions<Core.Application.Options.ExternalLoginOptions> externalLoginOptions,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IProofProvider? proofProvider = null,
+        IDirectoryIdentityLookup? directoryIdentityLookup = null,
+        IStage1BindingRefreshService? stage1BindingRefreshService = null,
+        Microsoft.Extensions.Options.IOptions<DirectoryIntegrationOptions>? directoryIntegrationOptions = null,
+        IStage2CredentialMigrationService? stage2CredentialMigrationService = null,
+        Microsoft.Extensions.Options.IOptions<CredentialMigrationOptions>? credentialMigrationOptions = null,
+        ICredentialMigrationStateStore? credentialMigrationStateStore = null,
+        IProviderMetadataRefreshService? providerMetadataRefreshService = null)
     {
         _userManager = userManager;
         _securityPolicyService = securityPolicyService;
@@ -41,19 +60,103 @@ public partial class LoginService : ILoginService
         _logger = logger;
         _externalLoginOptions = externalLoginOptions.Value;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _proofProvider = proofProvider;
+        _directoryIdentityLookup = directoryIdentityLookup;
+        _stage1BindingRefreshService = stage1BindingRefreshService;
+        _directoryIntegrationOptions = directoryIntegrationOptions?.Value ?? new DirectoryIntegrationOptions();
+        _stage2CredentialMigrationService = stage2CredentialMigrationService;
+        _credentialMigrationOptions = credentialMigrationOptions?.Value ?? new CredentialMigrationOptions();
+        _credentialMigrationStateStore = credentialMigrationStateStore;
+        _providerMetadataRefreshService = providerMetadataRefreshService;
     }
 
     public async Task<LoginResult> AuthenticateAsync(string login, string password, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByEmailAsync(login) 
                    ?? await _userManager.FindByNameAsync(login);
+        var aliasResolution = CanonicalAliasResolution.NotFound;
+        if (user is null)
+        {
+            aliasResolution = await ResolveCanonicalAliasAsync(login, cancellationToken);
+            if (aliasResolution.Conflict)
+            {
+                return LoginResult.InvalidCredentials();
+            }
+
+            user = aliasResolution.User;
+        }
 
         if (user != null)
         {
+            // A durable migration record is an authority boundary independent of all rollout switches.
+            // If its store is unavailable, credential authority is uncertain and must fail closed.
+            if (_credentialMigrationStateStore is null)
+            {
+                return LoginResult.InvalidCredentials();
+            }
+
+            var migration = await _credentialMigrationStateStore.FindAsync(user.Id, cancellationToken);
+            if (migration is not null)
+            {
+                if (migration.State != CredentialMigrationState.LocalFinalized || !IsDirectoryAuthenticationEnabled())
+                {
+                    return LoginResult.InvalidCredentials();
+                }
+
+                return await AuthenticateCompletedDirectoryUserAsync(
+                    user,
+                    password,
+                    migration.Binding,
+                    cancellationToken);
+            }
+
+            if (aliasResolution.IsResolved)
+            {
+                return await AuthenticateWithoutLocalCredentialAuthorityAsync(
+                    login,
+                    password,
+                    aliasResolution.User,
+                    aliasResolution.Binding,
+                    cancellationToken);
+            }
+
+            if (IsStage2Enabled())
+            {
+                return LoginResult.InvalidCredentials();
+            }
+
             return await AuthenticateLocalUserAsync(user, password, cancellationToken);
         }
 
-        return await AuthenticateLegacyUserAsync(login, password, cancellationToken);
+        return await AuthenticateWithoutLocalCredentialAuthorityAsync(
+            login,
+            password,
+            existingAliasUser: null,
+            existingAliasBinding: null,
+            cancellationToken);
+    }
+
+    private async Task<LoginResult> AuthenticateWithoutLocalCredentialAuthorityAsync(
+        string login,
+        string password,
+        ApplicationUser? existingAliasUser,
+        ProviderSubjectDirectoryBinding? existingAliasBinding,
+        CancellationToken cancellationToken)
+    {
+        if (IsStage2Enabled())
+        {
+            // Stage 2 proof is only available through the bound migration ceremony.
+            return LoginResult.InvalidCredentials();
+        }
+
+        return _directoryIntegrationOptions.Enabled
+            ? await AuthenticateStage1ProviderUserAsync(
+                login,
+                password,
+                existingAliasUser,
+                existingAliasBinding,
+                cancellationToken)
+            : await AuthenticateLegacyUserAsync(login, password, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -123,6 +226,15 @@ public partial class LoginService : ILoginService
         if (await _userManager.CheckPasswordAsync(user, password))
         {
             await _userManager.ResetAccessFailedCountAsync(user);
+            var currentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
+            if (LocalPasswordSignInPolicy.RequiresChange(
+                    user,
+                    currentPolicy,
+                    _timeProvider.GetUtcNow().UtcDateTime))
+            {
+                return LoginResult.PasswordChangeRequired(user);
+            }
+
             LogUserAuthenticated(user.UserName);
             return LoginResult.Success(user);
         }
@@ -193,6 +305,245 @@ public partial class LoginService : ILoginService
 
         LogLegacyUserAuthenticated(login);
         return LoginResult.LegacySuccess(provisionedUser);
+    }
+
+    private async Task<LoginResult> AuthenticateStage1ProviderUserAsync(
+        string login,
+        string password,
+        ApplicationUser? existingAliasUser,
+        ProviderSubjectDirectoryBinding? existingAliasBinding,
+        CancellationToken cancellationToken)
+    {
+        if (_proofProvider is null || _directoryIdentityLookup is null || _stage1BindingRefreshService is null)
+        {
+            return LoginResult.InvalidCredentials();
+        }
+
+        ProofResult proof;
+        var hasDurableBinding = existingAliasBinding is not null;
+        try
+        {
+            proof = await _proofProvider.ProveAsync(
+                new ProofRequest { AccountName = login },
+                password,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return LoginResult.InvalidCredentials();
+        }
+
+        if (!proof.TryValidate(out _) || proof.Outcome != ProofOutcome.Authenticated)
+        {
+            return LoginResult.InvalidCredentials();
+        }
+
+        if (existingAliasBinding is not null &&
+            (existingAliasUser is null ||
+             existingAliasUser.Id != existingAliasBinding.LocalAccountId ||
+             !string.Equals(existingAliasBinding.ProviderNamespace, proof.ProviderNamespace, StringComparison.Ordinal) ||
+             !string.Equals(existingAliasBinding.StableSubject, proof.StableSubject, StringComparison.Ordinal)))
+        {
+            return LoginResult.InvalidCredentials();
+        }
+
+        var provisionedUser = existingAliasUser ?? await _jitProvisioningService.ProvisionExternalUserAsync(
+            new ExternalAuthResult
+            {
+                Provider = proof.ProviderNamespace!,
+                ProviderKey = proof.StableSubject!
+            },
+            cancellationToken);
+
+        if (!provisionedUser.IsActive)
+        {
+            LogUserDeactivated(provisionedUser.UserName);
+            return LoginResult.UserInactive();
+        }
+
+        var personCheckResult = await ValidatePersonStatusAsync(provisionedUser, cancellationToken);
+        if (personCheckResult is not null)
+        {
+            return personCheckResult;
+        }
+
+        try
+        {
+            var lookup = await _directoryIdentityLookup.FindManagedIdentityAsync(
+                proof.CanonicalAccount!,
+                cancellationToken);
+            if (lookup.Outcome == DirectoryLookupOutcome.Found && lookup.Identity is not null)
+            {
+                if (existingAliasBinding is not null &&
+                    existingAliasBinding.DirectoryObjectId != lookup.Identity.ObjectId)
+                {
+                    return LoginResult.InvalidCredentials();
+                }
+
+                var refresh = await _stage1BindingRefreshService.BindAndRefreshAsync(
+                    new Stage1BindingRefreshRequest(
+                        provisionedUser.Id,
+                        proof.ProviderNamespace!,
+                        proof.StableSubject!,
+                        lookup.Identity),
+                    cancellationToken);
+                if (existingAliasBinding is not null && refresh == Stage1BindingRefreshOutcome.Conflict)
+                {
+                    return LoginResult.InvalidCredentials();
+                }
+
+                hasDurableBinding = refresh is
+                    Stage1BindingRefreshOutcome.BoundAndRefreshed or
+                    Stage1BindingRefreshOutcome.ExistingBindingRefreshed;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            LogStage1DirectoryRefreshFailed();
+        }
+
+        if (hasDurableBinding)
+        {
+            await TryRefreshProviderMetadataAsync(
+                provisionedUser,
+                proof.ProviderNamespace!,
+                proof.StableSubject!,
+                cancellationToken);
+        }
+
+        return LoginResult.LegacySuccess(provisionedUser);
+    }
+
+    private async Task<LoginResult> AuthenticateCompletedDirectoryUserAsync(
+        ApplicationUser user,
+        string password,
+        DirectoryObjectBinding binding,
+        CancellationToken cancellationToken)
+    {
+        if (_stage2CredentialMigrationService is null)
+        {
+            return LoginResult.InvalidCredentials();
+        }
+
+        var directory = await _stage2CredentialMigrationService.AuthenticateCompletedAsync(
+            user.Id,
+            password,
+            cancellationToken);
+        if (directory.Outcome is DirectoryCredentialOutcome.Authenticated or
+                DirectoryCredentialOutcome.PasswordChangeRequired &&
+            user.RequiresPasswordChange &&
+            await ValidateExternalUserSignInAsync(user, cancellationToken) is { IsSuccess: true })
+        {
+            return LoginResult.DirectoryPasswordChangeRequired(user, binding.DirectoryObjectId);
+        }
+
+        if (directory.Outcome != DirectoryCredentialOutcome.Authenticated)
+        {
+            return LoginResult.InvalidCredentials();
+        }
+
+        // Keep the existing local lifecycle and local lockout rules after directory credential proof.
+        var result = await ValidateExternalUserSignInAsync(user, cancellationToken);
+        if (result.IsSuccess)
+        {
+            await TryRefreshProviderMetadataAsync(
+                user,
+                binding.ProviderNamespace,
+                binding.StableSubject,
+                cancellationToken);
+        }
+
+        return result;
+    }
+
+    private async Task TryRefreshProviderMetadataAsync(
+        ApplicationUser user,
+        string providerNamespace,
+        string stableSubject,
+        CancellationToken cancellationToken)
+    {
+        if (_providerMetadataRefreshService is null || !user.IsActive || user.IsDeleted)
+        {
+            return;
+        }
+
+        try
+        {
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                return;
+            }
+
+            await _providerMetadataRefreshService.RefreshAsync(
+                providerNamespace,
+                stableSubject,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            LogProviderMetadataRefreshFailed();
+        }
+    }
+
+    private bool IsDirectoryAuthenticationEnabled() =>
+        _directoryIntegrationOptions.Enabled &&
+        _directoryIntegrationOptions.AuthenticationEnabled;
+
+    private bool IsStage2Enabled() =>
+        IsDirectoryAuthenticationEnabled() &&
+        _credentialMigrationOptions.Enabled;
+
+    private async Task<CanonicalAliasResolution> ResolveCanonicalAliasAsync(
+        string accountName,
+        CancellationToken cancellationToken)
+    {
+        var normalizedAlias = ProviderSubjectDirectoryBinding.NormalizeCanonicalAccountAlias(accountName);
+        if (normalizedAlias is null)
+        {
+            return CanonicalAliasResolution.NotFound;
+        }
+
+        var bindings = await _dbContext.ProviderSubjectDirectoryBindings
+            .AsNoTracking()
+            .Where(binding => binding.NormalizedCanonicalAccountAlias == normalizedAlias)
+            .ToListAsync(cancellationToken);
+        if (bindings.Count == 0)
+        {
+            return CanonicalAliasResolution.NotFound;
+        }
+
+        if (bindings.Count != 1)
+        {
+            return CanonicalAliasResolution.Conflicting;
+        }
+
+        var user = await _dbContext.Users
+            .SingleOrDefaultAsync(candidate => candidate.Id == bindings[0].LocalAccountId, cancellationToken);
+        return user is null
+            ? CanonicalAliasResolution.Conflicting
+            : new CanonicalAliasResolution(user, bindings[0], false);
+    }
+
+    private sealed record CanonicalAliasResolution(
+        ApplicationUser? User,
+        ProviderSubjectDirectoryBinding? Binding,
+        bool Conflict)
+    {
+        public bool IsResolved => User is not null && Binding is not null;
+        public static CanonicalAliasResolution NotFound { get; } = new(null, null, false);
+        public static CanonicalAliasResolution Conflicting { get; } = new(null, null, true);
     }
 
     /// <summary>
@@ -281,5 +632,11 @@ public partial class LoginService : ILoginService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Login blocked for user '{UserName}': User account is deactivated.")]
     partial void LogUserDeactivated(string? userName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Stage 1 directory binding or profile refresh did not complete.")]
+    partial void LogStage1DirectoryRefreshFailed();
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Provider metadata refresh did not complete after successful authentication.")]
+    partial void LogProviderMetadataRefreshFailed();
 }
 

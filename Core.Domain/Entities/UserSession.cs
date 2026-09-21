@@ -61,10 +61,10 @@ public class UserSession
 
     /// <summary>
     /// Active role identifier for this session (Phase 11: Role Switching).
-    /// User must select a role on login; this determines their permissions for the session.
-    /// Required field - every session must have an active role.
+    /// When set, this determines the active role for the session.
+    /// NULL preserves aggregate-role behavior when no role has been selected.
     /// </summary>
-    public Guid ActiveRoleId { get; set; }
+    public Guid? ActiveRoleId { get; set; }
 
     /// <summary>
     /// Timestamp of the last role switch for this session.

@@ -52,8 +52,9 @@ public interface IPersonLifecycleService
     /// Revoke all OAuth tokens (access and refresh) for all users linked to a person.
     /// </summary>
     /// <param name="personId">The person's unique ID</param>
-    /// <returns>Number of tokens revoked</returns>
-    Task<int> RevokeAllTokensForPersonAsync(Guid personId);
+    /// <param name="cancellationToken">Token used to cancel database and token-store operations</param>
+    /// <returns>Number of tokens confirmed as revoked</returns>
+    Task<int> RevokeAllTokensForPersonAsync(Guid personId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Soft delete a person.
@@ -69,6 +70,7 @@ public interface IPersonLifecycleService
     /// - Auto-activate: Pending persons with StartDate <= now
     /// - Auto-terminate: Active persons with EndDate < now
     /// </summary>
+    /// <param name="cancellationToken">Token used to cancel work between durable transition boundaries</param>
     /// <returns>Number of persons whose status was changed</returns>
-    Task<int> ProcessScheduledTransitionsAsync();
+    Task<int> ProcessScheduledTransitionsAsync(CancellationToken cancellationToken = default);
 }

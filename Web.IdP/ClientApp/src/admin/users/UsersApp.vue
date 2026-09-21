@@ -6,6 +6,7 @@ import UserForm from './components/UserForm.vue'
 import RoleAssignment from './components/RoleAssignment.vue'
 import UserSessions from './components/UserSessions.vue'
 import LoginHistoryDialog from './components/LoginHistoryDialog.vue'
+import RecoveryAssistanceDialog from './components/RecoveryAssistanceDialog.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
@@ -22,6 +23,7 @@ const showForm = ref(false)
 const showRoleDialog = ref(false)
 const showSessionsDialog = ref(false)
 const showLoginHistoryDialog = ref(false)
+const showRecoveryAssistanceDialog = ref(false)
 const showAccessDenied = ref(false)
 const deniedMessage = ref('')
 const deniedPermission = ref('')
@@ -191,6 +193,17 @@ const handleViewLoginHistory = (user) => {
   }
   selectedUser.value = user
   showLoginHistoryDialog.value = true
+}
+
+const handleRecoveryAssistance = (user) => {
+  if (!canUpdate.value) {
+    showAccessDenied.value = true
+    deniedMessage.value = t('users.recoveryAssistance.noPermission')
+    deniedPermission.value = Permissions.Users.Update
+    return
+  }
+  selectedUser.value = user
+  showRecoveryAssistanceDialog.value = true
 }
 
 const handleDeactivate = async (user) => {
@@ -508,6 +521,7 @@ const handleImpersonate = async (user) => {
         @impersonate="handleImpersonate"
         @view-login-history="handleViewLoginHistory"
         @reset-mfa="handleResetMfa"
+        @credential-recovery="handleRecoveryAssistance"
         @unlock="handleUnlock"
         @deactivate="handleDeactivate"
         @delete="handleDelete"
@@ -556,6 +570,13 @@ const handleImpersonate = async (user) => {
         :user="selectedUser"
         :can-update="canUpdate"
         @close="handleLoginHistoryClose"
+      />
+
+      <RecoveryAssistanceDialog
+        v-if="showRecoveryAssistanceDialog && selectedUser"
+        :user="selectedUser"
+        :fetch-with-csrf="fetchWithCsrf"
+        @close="showRecoveryAssistanceDialog = false; selectedUser = null"
       />
     </div>
   </div>

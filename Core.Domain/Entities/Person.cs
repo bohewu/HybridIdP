@@ -151,6 +151,12 @@ public class Person
     /// Person becomes inactive the day after this date.
     /// </summary>
     public DateTime? EndDate { get; set; }
+
+    /// <summary>
+    /// Timestamp recorded when a scheduled termination has been committed but
+    /// its linked OpenIddict token revocation has not yet been durably completed.
+    /// </summary>
+    public DateTime? ScheduledTokenRevocationPendingAt { get; set; }
     
     // Soft Delete
     /// <summary>

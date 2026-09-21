@@ -33,6 +33,7 @@ const emit = defineEmits([
   'impersonate',
   'view-login-history',
   'reset-mfa',
+  'credential-recovery',
   'unlock',
   'deactivate',
   'delete',
@@ -307,6 +308,14 @@ const getSortIcon = (field) => {
                       class="text-left w-full block px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
                     >
                       {{ t('users.mfa.reset') }}
+                    </button>
+                    <button
+                      v-if="canUpdate"
+                      data-testid="credential-recovery-action"
+                      @click="emit('credential-recovery', user); close()"
+                      class="text-left w-full block px-4 py-2 text-sm text-blue-700 hover:bg-blue-50"
+                    >
+                      {{ t('users.recoveryAssistance.menuAction') }}
                     </button>
                     <button
                       v-if="canUpdate && user.isLockedOut"

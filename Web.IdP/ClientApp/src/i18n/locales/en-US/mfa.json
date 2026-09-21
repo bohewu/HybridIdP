@@ -92,5 +92,41 @@
   "whyRequiredTitle": "Why is this required?",
   "whyRequiredDescription": "Your organization requires two-step verification to protect your account and sensitive data.",
   "skipForNow": "Skip for now",
-  "logout": "Sign out"
+  "logout": "Sign out",
+  "recoveryEmail": {
+    "title": "Recovery email",
+    "description": "Used only for credential recovery. It is separate from your profile email and permanent Email MFA.",
+    "notConfigured": "No verified recovery email is configured.",
+    "maskedUnavailable": "Masked address unavailable",
+    "verified": "Verified",
+    "pending": "Verification pending",
+    "add": "Add",
+    "change": "Change",
+    "remove": "Remove",
+    "retry": "Retry",
+    "changeTitle": "Set recovery email",
+    "changeHelp": "A code will be sent to the new address. The address cannot be used for recovery until that code is verified.",
+    "addressLabel": "New recovery email",
+    "sendVerification": "Send verification code",
+    "sending": "Sending...",
+    "verifyTitle": "Verify recovery email",
+    "verifyHelp": "Enter the code sent to the new address. Verification does not enable Email MFA or authorize a password reset by itself.",
+    "codeLabel": "Verification code",
+    "verify": "Verify address",
+    "verifying": "Verifying...",
+    "verifiedSuccess": "Recovery email verified.",
+    "removeConfirm": "Remove the verified recovery email? It will no longer be available for credential recovery.",
+    "removedSuccess": "Recovery email removed.",
+    "outcomes": {
+      "invalid": "The request could not be completed. Check the input and try again.",
+      "missing": "The request could not be completed. Request a new code and try again.",
+      "expired": "The request could not be completed. Request a new code and try again.",
+      "exhausted": "The request could not be completed. Request a new code and try again.",
+      "replayed": "The request could not be completed. Request a new code and try again.",
+      "cooldown": "Please wait before requesting another code.",
+      "highAssuranceRequired": "Verify with MFA or a hardware key, then return and retry.",
+      "unauthorized": "Sign in again, complete MFA or hardware-key verification, and retry.",
+      "unavailable": "Recovery email settings are unavailable. Try again later."
+    }
+  }
 }

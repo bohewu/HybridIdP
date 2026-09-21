@@ -2,6 +2,7 @@ import '../styles/main.css';
 import '../styles/google-style.css';
 import '../utils/csrfInterceptor.js';  // Enable automatic CSRF token for all fetch requests
 import { useWebAuthn } from '../composables/useWebAuthn.js';
+import { initNativePasswordPolicy } from './nativePasswordRecovery.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Mobile Menu Toggle
@@ -134,7 +135,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Passkey Login Logic
     initPasskeyLogin();
+
+    // Credential migration resend cooldown
+    initCredentialMigrationCooldown();
+
+    initNativeRecoveryForm();
+    initNativePasswordPolicy();
 });
+
+export function initNativeRecoveryForm(root = document) {
+    const recoveryRoot = root.querySelector('[data-native-recovery]');
+    if (!recoveryRoot) return;
+
+    const codeInput = recoveryRoot.querySelector('[data-native-recovery-code]');
+    codeInput?.addEventListener('input', () => {
+        codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
+    });
+
+    const autofocusTarget = recoveryRoot.querySelector('[data-native-recovery-autofocus]');
+    autofocusTarget?.focus({ preventScroll: true });
+
+    recoveryRoot.querySelectorAll('[data-native-recovery-form]').forEach(form => {
+        form.addEventListener('submit', () => {
+            form.querySelectorAll('button[type="submit"]').forEach(button => {
+                button.disabled = true;
+            });
+        });
+    });
+}
+
+export function initCredentialMigrationCooldown(root = document) {
+    const button = root.querySelector('[data-credential-migration-resend]');
+    if (!button) return null;
+
+    const readyLabel = button.getAttribute('data-ready-label') || button.textContent.trim();
+    const cooldownLabel = button.getAttribute('data-cooldown-label') || 'Resend in {seconds}s';
+    let remaining = Number.parseInt(button.getAttribute('data-retry-after') || '0', 10);
+    if (!Number.isFinite(remaining) || remaining <= 0) {
+        button.disabled = false;
+        button.textContent = readyLabel;
+        return null;
+    }
+
+    const render = () => {
+        button.disabled = remaining > 0;
+        button.textContent = remaining > 0
+            ? cooldownLabel.replace('{seconds}', String(remaining))
+            : readyLabel;
+    };
+
+    render();
+    const timer = window.setInterval(() => {
+        remaining -= 1;
+        render();
+        if (remaining <= 0) window.clearInterval(timer);
+    }, 1000);
+    return timer;
+}
 
 // Turnstile initialization with explicit rendering
 function initTurnstile() {

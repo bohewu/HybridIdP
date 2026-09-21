@@ -56,6 +56,21 @@ public class ExternalSignInCoordinatorTests
     }
 
     [Fact]
+    public async Task CompleteAsync_IncompleteMigration_DoesNotCreateAnyCookie()
+    {
+        var user = CreateUser();
+        var harness = new CoordinatorHarness(user);
+        harness.MigrationIssuanceGuard
+            .Setup(guard => guard.CanIssueAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await harness.Coordinator.CompleteAsync(harness.HttpContext, user);
+
+        Assert.Equal(ExternalSignInCompletionStatus.Blocked, result.Status);
+        harness.VerifyNoCookieCreated();
+    }
+
+    [Fact]
     public async Task CompleteAsync_EligibleUser_IssuesOnlyTrustedExternalAmr()
     {
         var user = CreateUser();
@@ -243,6 +258,11 @@ public class ExternalSignInCoordinatorTests
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
 
+            MigrationIssuanceGuard = new Mock<IMigrationIssuanceGuard>();
+            MigrationIssuanceGuard
+                .Setup(guard => guard.CanIssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
             AuthenticationService = new Mock<IAuthenticationService>();
             AuthenticationService
                 .Setup(service => service.SignInAsync(
@@ -271,6 +291,7 @@ public class ExternalSignInCoordinatorTests
                 LoginService.Object,
                 securityPolicyService.Object,
                 passkeyService.Object,
+                MigrationIssuanceGuard.Object,
                 Mock.Of<ILogger<ExternalSignInCoordinator>>(),
                 new FixedTimeProvider(now ?? new DateTimeOffset(2026, 7, 30, 3, 0, 0, TimeSpan.Zero)));
         }
@@ -280,6 +301,8 @@ public class ExternalSignInCoordinatorTests
         public Mock<SignInManager<ApplicationUser>> SignInManager { get; }
 
         public Mock<ILoginService> LoginService { get; }
+
+        public Mock<IMigrationIssuanceGuard> MigrationIssuanceGuard { get; }
 
         public Mock<IAuthenticationService> AuthenticationService { get; }
 

@@ -4,7 +4,6 @@ using Core.Domain.Entities;
 using Core.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using OpenIddict.Abstractions;
 
 namespace Infrastructure.Services;
 
@@ -14,17 +13,19 @@ namespace Infrastructure.Services;
 /// </summary>
 public partial class PersonLifecycleService : IPersonLifecycleService
 {
+    private const int ScheduledTransitionBatchSize = 100;
+
     private readonly IApplicationDbContext _dbContext;
-    private readonly IOpenIddictTokenManager _tokenManager;
+    private readonly IOpenIddictSubjectTokenRevoker _tokenRevoker;
     private readonly ILogger<PersonLifecycleService> _logger;
 
     public PersonLifecycleService(
         IApplicationDbContext dbContext,
-        IOpenIddictTokenManager tokenManager,
+        IOpenIddictSubjectTokenRevoker tokenRevoker,
         ILogger<PersonLifecycleService> logger)
     {
         _dbContext = dbContext;
-        _tokenManager = tokenManager;
+        _tokenRevoker = tokenRevoker;
         _logger = logger;
     }
 
@@ -74,6 +75,9 @@ public partial class PersonLifecycleService : IPersonLifecycleService
 
         person.Status = PersonStatus.Active;
         person.StartDate = startDate ?? DateTime.UtcNow;
+        await CompletePendingScheduledTokenRevocationBeforeEligibilityRestorationAsync(
+            person,
+            personId);
         person.ModifiedAt = DateTime.UtcNow;
         person.ModifiedBy = activatedBy;
 
@@ -128,6 +132,12 @@ public partial class PersonLifecycleService : IPersonLifecycleService
         var oldStatus = person.Status;
         var wasAuthenticationEligible = person.CanAuthenticate();
         person.Status = newStatus;
+        if (newStatus == PersonStatus.Active)
+        {
+            await CompletePendingScheduledTokenRevocationBeforeEligibilityRestorationAsync(
+                person,
+                personId);
+        }
         person.ModifiedAt = DateTime.UtcNow;
         person.ModifiedBy = changedBy;
 
@@ -140,29 +150,30 @@ public partial class PersonLifecycleService : IPersonLifecycleService
     }
 
     /// <inheritdoc />
-    public async Task<int> RevokeAllTokensForPersonAsync(Guid personId)
+    public async Task<int> RevokeAllTokensForPersonAsync(
+        Guid personId,
+        CancellationToken cancellationToken = default)
     {
         // Get all user IDs linked to this person
         var userIds = await _dbContext.Users
+            .AsNoTracking()
             .Where(u => u.PersonId == personId)
             .Select(u => u.Id)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         if (userIds.Count == 0)
         {
             return 0;
         }
 
-        int revokedCount = 0;
+        var revokedCount = 0;
         foreach (var userId in userIds)
         {
-            // Find all tokens for this user
-            var userIdString = userId.ToString();
-            await foreach (var token in _tokenManager.FindBySubjectAsync(userIdString))
-            {
-                await _tokenManager.TryRevokeAsync(token);
-                revokedCount++;
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            var confirmedCount = await _tokenRevoker.RevokeBySubjectAsync(
+                userId.ToString(),
+                cancellationToken);
+            revokedCount = checked(revokedCount + confirmedCount);
         }
 
         return revokedCount;
@@ -201,64 +212,158 @@ public partial class PersonLifecycleService : IPersonLifecycleService
     }
 
     /// <inheritdoc />
-    public async Task<int> ProcessScheduledTransitionsAsync()
+    public async Task<int> ProcessScheduledTransitionsAsync(
+        CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow.Date;
-        var changedCount = 0;
-        var transitionedPersonIds = new List<Guid>();
-        var expiredPersonIds = new List<Guid>();
+        await CompletePendingScheduledTokenRevocationsAsync(cancellationToken);
 
-        // Auto-activate: Pending persons with StartDate <= now
-        var pendingPersons = await _dbContext.Persons
-            .Where(p => !p.IsDeleted 
-                     && p.Status == PersonStatus.Pending 
-                     && p.StartDate.HasValue 
-                     && p.StartDate.Value.Date <= now)
-            .ToListAsync();
+        var activatedCount = await ProcessScheduledActivationsAsync(now, cancellationToken);
+        var terminatedCount = await ProcessScheduledTerminationsAsync(now, cancellationToken);
+        return checked(activatedCount + terminatedCount);
+    }
 
-        foreach (var person in pendingPersons)
+    private async Task CompletePendingScheduledTokenRevocationsAsync(
+        CancellationToken cancellationToken)
+    {
+        while (true)
         {
-            person.Status = PersonStatus.Active;
-            person.ModifiedAt = DateTime.UtcNow;
-            LogAutoActivated(person.Id, person.StartDate!.Value);
-            transitionedPersonIds.Add(person.Id);
-            changedCount++;
-        }
+            var pendingPersons = await _dbContext.Persons
+                .Where(person => person.ScheduledTokenRevocationPendingAt.HasValue)
+                .OrderBy(person => person.Id)
+                .Take(ScheduledTransitionBatchSize)
+                .ToListAsync(cancellationToken);
 
-        // Auto-terminate: Active persons with EndDate < now (already passed)
-        var expiredPersons = await _dbContext.Persons
-            .Where(p => !p.IsDeleted 
-                     && p.Status == PersonStatus.Active 
-                     && p.EndDate.HasValue 
-                     && p.EndDate.Value.Date < now)
-            .ToListAsync();
-
-        foreach (var person in expiredPersons)
-        {
-            person.Status = PersonStatus.Resigned;
-            person.ModifiedAt = DateTime.UtcNow;
-            LogAutoTerminated(person.Id, person.EndDate!.Value);
-            transitionedPersonIds.Add(person.Id);
-            expiredPersonIds.Add(person.Id);
-            changedCount++;
-        }
-
-        if (changedCount > 0)
-        {
-            await RotateLinkedUserSecurityStampsAsync(transitionedPersonIds);
-            await _dbContext.SaveChangesAsync(default);
-        }
-
-        foreach (var personId in expiredPersonIds)
-        {
-            var revokedTokens = await RevokeAllTokensForPersonAsync(personId);
-            if (revokedTokens > 0)
+            if (pendingPersons.Count == 0)
             {
-                LogTokensRevoked(personId, revokedTokens);
+                return;
             }
+
+            foreach (var person in pendingPersons)
+            {
+                var revokedTokens = await RevokeAllTokensForPersonAsync(person.Id, cancellationToken);
+                if (revokedTokens > 0)
+                {
+                    LogTokensRevoked(person.Id, revokedTokens);
+                }
+
+                person.ScheduledTokenRevocationPendingAt = null;
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            DetachProcessedBatch(pendingPersons, []);
+        }
+    }
+
+    private async Task<int> ProcessScheduledActivationsAsync(
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var changedCount = 0;
+
+        while (true)
+        {
+            var pendingPersons = await _dbContext.Persons
+                .Where(person => !person.IsDeleted
+                    && person.Status == PersonStatus.Pending
+                    && person.StartDate.HasValue
+                    && person.StartDate.Value.Date <= now)
+                .OrderBy(person => person.Id)
+                .Take(ScheduledTransitionBatchSize)
+                .ToListAsync(cancellationToken);
+
+            if (pendingPersons.Count == 0)
+            {
+                return changedCount;
+            }
+
+            var modifiedAt = DateTime.UtcNow;
+            foreach (var person in pendingPersons)
+            {
+                person.Status = PersonStatus.Active;
+                person.ModifiedAt = modifiedAt;
+                person.ScheduledTokenRevocationPendingAt = null;
+                LogAutoActivated(person.Id, person.StartDate!.Value);
+            }
+
+            var linkedUsers = await RotateLinkedUserSecurityStampsAsync(
+                pendingPersons.Select(person => person.Id),
+                cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            changedCount = checked(changedCount + pendingPersons.Count);
+            DetachProcessedBatch(pendingPersons, linkedUsers);
+        }
+    }
+
+    private async Task<int> ProcessScheduledTerminationsAsync(
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var changedCount = 0;
+
+        while (true)
+        {
+            var expiredPersons = await _dbContext.Persons
+                .Where(person => !person.IsDeleted
+                    && person.Status == PersonStatus.Active
+                    && person.EndDate.HasValue
+                    && person.EndDate.Value.Date < now)
+                .OrderBy(person => person.Id)
+                .Take(ScheduledTransitionBatchSize)
+                .ToListAsync(cancellationToken);
+
+            if (expiredPersons.Count == 0)
+            {
+                return changedCount;
+            }
+
+            var modifiedAt = DateTime.UtcNow;
+            foreach (var person in expiredPersons)
+            {
+                person.Status = PersonStatus.Resigned;
+                person.ModifiedAt = modifiedAt;
+                person.ScheduledTokenRevocationPendingAt = modifiedAt;
+                LogAutoTerminated(person.Id, person.EndDate!.Value);
+            }
+
+            var linkedUsers = await RotateLinkedUserSecurityStampsAsync(
+                expiredPersons.Select(person => person.Id),
+                cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            changedCount = checked(changedCount + expiredPersons.Count);
+
+            foreach (var person in expiredPersons)
+            {
+                var revokedTokens = await RevokeAllTokensForPersonAsync(person.Id, cancellationToken);
+                if (revokedTokens > 0)
+                {
+                    LogTokensRevoked(person.Id, revokedTokens);
+                }
+
+                person.ScheduledTokenRevocationPendingAt = null;
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            DetachProcessedBatch(expiredPersons, linkedUsers);
+        }
+    }
+
+    private async Task CompletePendingScheduledTokenRevocationBeforeEligibilityRestorationAsync(
+        Person person,
+        Guid personId)
+    {
+        if (!person.ScheduledTokenRevocationPendingAt.HasValue)
+        {
+            return;
         }
 
-        return changedCount;
+        var revokedTokens = await RevokeAllTokensForPersonAsync(personId);
+        if (revokedTokens > 0)
+        {
+            LogTokensRevoked(personId, revokedTokens);
+        }
+
+        person.ScheduledTokenRevocationPendingAt = null;
     }
 
     private async Task RotateLinkedUserSecurityStampsIfEligibilityChangedAsync(
@@ -274,24 +379,43 @@ public partial class PersonLifecycleService : IPersonLifecycleService
 
     private async Task RotateLinkedUserSecurityStampsAsync(Guid personId)
     {
-        await RotateLinkedUserSecurityStampsAsync([personId]);
+        await RotateLinkedUserSecurityStampsAsync([personId], CancellationToken.None);
     }
 
-    private async Task RotateLinkedUserSecurityStampsAsync(IEnumerable<Guid> personIds)
+    private async Task<IReadOnlyList<ApplicationUser>> RotateLinkedUserSecurityStampsAsync(
+        IEnumerable<Guid> personIds,
+        CancellationToken cancellationToken)
     {
         var ids = personIds.Distinct().ToList();
         if (ids.Count == 0)
         {
-            return;
+            return [];
         }
 
         var linkedUsers = await _dbContext.Users
             .Where(user => user.PersonId.HasValue && ids.Contains(user.PersonId.Value))
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         foreach (var linkedUser in linkedUsers)
         {
             linkedUser.SecurityStamp = Guid.NewGuid().ToString();
+        }
+
+        return linkedUsers;
+    }
+
+    private void DetachProcessedBatch(
+        IEnumerable<Person> persons,
+        IEnumerable<ApplicationUser> linkedUsers)
+    {
+        foreach (var linkedUser in linkedUsers)
+        {
+            _dbContext.Detach(linkedUser);
+        }
+
+        foreach (var person in persons)
+        {
+            _dbContext.Detach(person);
         }
     }
 

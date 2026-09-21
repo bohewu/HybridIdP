@@ -21,9 +21,9 @@ public sealed class EmailTemplateLocalizationTests
     {
         var brandingService = new Mock<IBrandingService>();
         brandingService.Setup(service => service.GetProductNameAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync("NCUT IdP");
+            .ReturnsAsync("Example IdP");
         brandingService.Setup(service => service.GetCopyrightAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync("Copyright NCUT");
+            .ReturnsAsync("Copyright Example");
 
         var localizer = new JsonStringLocalizer<EmailTemplateResource>([ResourcesPath]);
         var service = new EmailTemplateService(brandingService.Object, localizer);
@@ -34,7 +34,7 @@ public sealed class EmailTemplateLocalizationTests
         Assert.Equal(originalCulture, CultureInfo.CurrentUICulture);
         Assert.Contains(expectedSubject, subject, StringComparison.Ordinal);
         Assert.Contains(expectedInstruction, body, StringComparison.Ordinal);
-        Assert.Contains("NCUT IdP", body, StringComparison.Ordinal);
+        Assert.Contains("Example IdP", body, StringComparison.Ordinal);
         Assert.Contains("372507", body, StringComparison.Ordinal);
         Assert.Contains("<table", body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("{ProductName}", body, StringComparison.Ordinal);
@@ -68,7 +68,7 @@ public sealed class EmailTemplateLocalizationTests
     [Fact]
     public async Task RenderMfaCodeEmailAsync_ShouldEncodeHtmlPlaceholderValues()
     {
-        const string productName = "<img src=x onerror=\"alert(1)\"> & NCUT";
+        const string productName = "<img src=x onerror=\"alert(1)\"> & Example";
         const string copyright = "<script>alert('copyright')</script>";
         const string code = "12<3&45";
         var brandingService = new Mock<IBrandingService>();

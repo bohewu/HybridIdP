@@ -6,6 +6,26 @@
 
 ---
 
+## 已交付：Stage 2 憑證遷移復原證明（預設停用）
+
+Stage 2 在既有的一次性憑證遷移程序中加入重設前的復原證明。復原信箱是獨立的安全資料，不會從使用者或 Person 的聯絡信箱推定，也不等同於永久 Email MFA。已驗證的目前使用者必須具有 MFA 或硬體金鑰 AMR，才能在 Account/MFA 設定中新增、變更、驗證或撤銷復原信箱；只有密碼 AMR 不足。現行檢查沒有另外驗證認證時間的新鮮度。新信箱在完成寄往該目的地的驗證前不可使用，舊密碼加上任意新信箱也不能成為重設證明。
+
+當有效政策要求遷移 OTP 時，系統只會寄送至已驗證的復原信箱。OTP 在資料庫中僅保存雜湊，並綁定用途、遷移程序及瀏覽器/CSRF 上下文，受有效期、嘗試次數、重寄冷卻與單次使用限制。缺少、錯誤、過期、耗盡、重播、不可用或不相符的證明都會在目錄密碼重設前拒絕。
+
+具有 `Permissions.Users.Update` 且目前認證具有 MFA 或硬體金鑰 AMR 的管理員，只能執行三項協助：重寄至既有已驗證目的地；在記錄身分查核證據與理由後更換信箱，並要求使用者驗證新目的地；或簽發綁定單一遷移程序、短效且只能使用一次的重設核准。管理員不會取得核准權杖，也不會代替使用者完成重設。OTP 或管理協助不會直接完成遷移、不會滿足本機 MFA，也不會自動設定 `EmailMfaEnabled`。
+
+三個新增開關位於 `CredentialMigration`，且預設皆為 `false`：
+
+- `RecoveryEmailEnabled`
+- `MigrationEmailOtpEnabled`
+- `RecoveryAdminAssistanceEnabled`
+
+`MigrationEmailOtpEnabled` 需要同時啟用 `CredentialMigration.Enabled` 與 `RecoveryEmailEnabled`；`RecoveryAdminAssistanceEnabled` 亦同。非 `Disabled` 的 `EmailOtpPolicyFloor` 需要啟用遷移 OTP；不合法組合會在啟動驗證失敗。完成證明後仍維持既有順序：消耗證明、消耗 continuation、單次重設、以新密碼獨立 bind 並確認受管理狀態、`DirectoryCredentialCommitted`、`LocalFinalized`，最後才進入既有 MFA 與核發流程。
+
+此功能不包含依用戶端路由、校務角色政策、一般密碼變更/到期或通用忘記密碼流程。這些是獨立的未來功能。SQL Server 與 PostgreSQL 的結構變更沿用既有受操作員控制的 migration 程序；本次交付沒有執行連線中的部署資料庫、AD、provider 或 SMTP 驗證。
+
+---
+
 ## 1. Cloudflare Turnstile 整合
 
 ### 概述

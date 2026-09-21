@@ -36,5 +36,12 @@ public static class AuditEventTypes
     public const string AdminUserDeleted = "AdminUserDeleted";
     public const string AdminRoleChanged = "AdminRoleChanged";
     public const string SecurityPolicyUpdated = "SecurityPolicyUpdated";
+    public const string RecoveryAddressChangeStarted = "RecoveryAddressChangeStarted";
+    public const string RecoveryAddressVerified = "RecoveryAddressVerified";
+    public const string RecoveryAddressRevoked = "RecoveryAddressRevoked";
+    public const string AdminRecoveryAddressReplaced = "AdminRecoveryAddressReplaced";
+    public const string AdminMigrationOtpResent = "AdminMigrationOtpResent";
+    public const string AdminResetApprovalIssued = "AdminResetApprovalIssued";
+    public const string AdminResetApprovalConsumed = "AdminResetApprovalConsumed";
 }
 

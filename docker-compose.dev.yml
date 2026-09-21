@@ -12,6 +12,31 @@ services:
       - ConnectionStrings__SqlServerConnection=${ConnectionStrings__SqlServerConnection:-Server=mssql-service;Database=HybridAuthIdP;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True}
       - ConnectionStrings__PostgreSqlConnection=${ConnectionStrings__PostgreSqlConnection:-Host=postgres-service;Database=hybridauth_idp;Username=user;Password=password}
       - ConnectionStrings__Redis=${ConnectionStrings__Redis:-redis-service:6379}
+      - DirectoryIntegration__Enabled=${DIRECTORYINTEGRATION__ENABLED:-false}
+      - DirectoryIntegration__AuthenticationEnabled=${DIRECTORYINTEGRATION__AUTHENTICATIONENABLED:-false}
+      - DirectoryIntegration__Transport=${DIRECTORYINTEGRATION__TRANSPORT:-WindowsNegotiate}
+      - CredentialMigration__Enabled=${CREDENTIALMIGRATION__ENABLED:-false}
+      - CredentialMigration__EmailOtpPolicyFloor=${CREDENTIALMIGRATION__EMAILOTPPOLICYFLOOR:-Disabled}
+      - CredentialMigration__OperatorCutoff=${CREDENTIALMIGRATION__OPERATORCUTOFF:-false}
+      - ProviderProof__Endpoint=${PROVIDERPROOF__ENDPOINT:-}
+      - ProviderProof__SharedSecret=${PROVIDERPROOF__SHAREDSECRET:-}
+      - ProviderProof__AllowPrivateNetworkHttp=${PROVIDERPROOF__ALLOWPRIVATENETWORKHTTP:-true}
+      - ProviderProof__Timeout=${PROVIDERPROOF__TIMEOUT:-00:00:05}
+      - ProviderMetadataRefresh__Enabled=${ProviderMetadataRefresh__Enabled:-false}
+      - ProviderMetadataRefresh__Endpoint=${ProviderMetadataRefresh__Endpoint:-}
+      - ProviderMetadataRefresh__SharedSecret=${ProviderMetadataRefresh__SharedSecret:-}
+      - ProviderMetadataRefresh__AllowPrivateNetworkHttp=${ProviderMetadataRefresh__AllowPrivateNetworkHttp:-false}
+      - ProviderMetadataRefresh__Timeout=${ProviderMetadataRefresh__Timeout:-00:00:05}
+      - DirectoryLookup__Timeout=${DIRECTORYLOOKUP__TIMEOUT:-00:00:05}
+      - DirectoryCredentialTransport__Host=${DIRECTORYCREDENTIALTRANSPORT__HOST:-}
+      - DirectoryCredentialTransport__Port=${DIRECTORYCREDENTIALTRANSPORT__PORT:-389}
+      - DirectoryCredentialTransport__BaseDistinguishedName=${DIRECTORYCREDENTIALTRANSPORT__BASEDISTINGUISHEDNAME:-}
+      - DirectoryCredentialTransport__ManagedSearchFilter=${DIRECTORYCREDENTIALTRANSPORT__MANAGEDSEARCHFILTER:-}
+      - DirectoryCredentialTransport__WindowsDomain=${DIRECTORYCREDENTIALTRANSPORT__WINDOWSDOMAIN:-}
+      - DirectoryCredentialTransport__ServiceAccountUserName=${DIRECTORYCREDENTIALTRANSPORT__SERVICEACCOUNTUSERNAME:-}
+      - DirectoryCredentialTransport__ServiceAccountDistinguishedName=${DIRECTORYCREDENTIALTRANSPORT__SERVICEACCOUNTDISTINGUISHEDNAME:-}
+      - DirectoryCredentialTransport__ServiceAccountSecret=${DIRECTORYCREDENTIALTRANSPORT__SERVICEACCOUNTSECRET:-}
+      - DirectoryCredentialTransport__Timeout=${DIRECTORYCREDENTIALTRANSPORT__TIMEOUT:-00:00:05}
     depends_on:
       mssql-service:
         condition: service_started

@@ -62,6 +62,126 @@ public class SessionServiceTests
     }
 
     [Fact]
+    public async Task EnsureCreatedAsync_CreatesLedgerWithAuthorizationOwnershipAndRole()
+    {
+        var userId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+
+        await _service.EnsureCreatedAsync(
+            userId,
+            "auth-issued",
+            "client-issued",
+            "Issued client",
+            roleId,
+            "192.0.2.10",
+            "test-agent");
+
+        var session = await _dbContext.UserSessions.SingleAsync();
+        Assert.Equal(userId, session.UserId);
+        Assert.Equal("auth-issued", session.AuthorizationId);
+        Assert.Equal("client-issued", session.ClientId);
+        Assert.Equal("Issued client", session.ClientDisplayName);
+        Assert.Equal(roleId, session.ActiveRoleId);
+        Assert.Equal("192.0.2.10", session.IpAddress);
+        Assert.Equal("test-agent", session.UserAgent);
+        Assert.Null(session.CurrentRefreshTokenHash);
+        Assert.Null(session.PreviousRefreshTokenHash);
+    }
+
+    [Fact]
+    public async Task EnsureCreatedAsync_CreatesLedgerWithoutResolvedActiveRole()
+    {
+        await _service.EnsureCreatedAsync(
+            Guid.NewGuid(),
+            "auth-no-role",
+            "client-no-role",
+            null,
+            null,
+            null,
+            null);
+
+        Assert.Null((await _dbContext.UserSessions.SingleAsync()).ActiveRoleId);
+    }
+
+    [Fact]
+    public async Task EnsureCreatedAsync_BoundsDescriptiveMetadataToLedgerSchema()
+    {
+        await _service.EnsureCreatedAsync(
+            Guid.NewGuid(),
+            "auth-bounded",
+            "client-bounded",
+            new string('d', 201),
+            Guid.NewGuid(),
+            null,
+            new string('u', 501));
+
+        var session = await _dbContext.UserSessions.SingleAsync();
+        Assert.Equal(200, session.ClientDisplayName!.Length);
+        Assert.Equal(500, session.UserAgent!.Length);
+    }
+
+    [Fact]
+    public async Task EnsureCreatedAsync_WhenAuthorizationAlreadyTracked_DoesNotDuplicateOrReactivate()
+    {
+        var userId = Guid.NewGuid();
+        var revokedUtc = DateTime.UtcNow.AddMinutes(-1);
+        var activeRoleId = Guid.NewGuid();
+        var existing = new Core.Domain.Entities.UserSession
+        {
+            UserId = userId,
+            AuthorizationId = "auth-existing",
+            ClientId = "client-existing",
+            ClientDisplayName = "Original client",
+            ActiveRoleId = activeRoleId,
+            RevokedUtc = revokedUtc,
+            RevocationReason = "credential-reset"
+        };
+        _dbContext.UserSessions.Add(existing);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.EnsureCreatedAsync(
+            userId,
+            existing.AuthorizationId,
+            existing.ClientId,
+            "Changed client",
+            Guid.NewGuid(),
+            "192.0.2.20",
+            "changed-agent");
+
+        var session = await _dbContext.UserSessions.SingleAsync();
+        Assert.Same(existing, session);
+        Assert.Equal(revokedUtc, session.RevokedUtc);
+        Assert.Equal("credential-reset", session.RevocationReason);
+        Assert.Equal("Original client", session.ClientDisplayName);
+        Assert.Equal(activeRoleId, session.ActiveRoleId);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task EnsureCreatedAsync_WhenAuthorizationOwnershipDiffers_Throws(bool differentUser)
+    {
+        var userId = Guid.NewGuid();
+        _dbContext.UserSessions.Add(new Core.Domain.Entities.UserSession
+        {
+            UserId = userId,
+            AuthorizationId = "auth-owned",
+            ClientId = "client-owned",
+            ActiveRoleId = Guid.NewGuid()
+        });
+        await _dbContext.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.EnsureCreatedAsync(
+            differentUser ? Guid.NewGuid() : userId,
+            "auth-owned",
+            differentUser ? "client-owned" : "different-client",
+            null,
+            Guid.NewGuid(),
+            null,
+            null));
+    }
+
+    [Fact]
     public async Task ListSessionsAsync_ReturnsMappedAuthorizations()
     {
         var userId = Guid.NewGuid();

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Security.Claims;
 using Core.Application;
+using Core.Application.Ports;
 using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Constants;
@@ -9,6 +10,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Infrastructure.Options;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -25,7 +28,12 @@ namespace Web.IdP.Services
         IApplicationDbContext db,
         IOpenIddictApplicationManager applicationManager,
         ILogger<TokenService> logger,
-        IClaimsEnrichmentService claimsEnricher) : ITokenService
+        IClaimsEnrichmentService claimsEnricher,
+        IOptions<DirectoryIntegrationOptions> directoryIntegrationOptions,
+        IOptions<CredentialMigrationOptions> credentialMigrationOptions,
+        ICredentialMigrationStateStore credentialMigrationStateStore,
+        IStage2CredentialMigrationService stage2CredentialMigrationService,
+        IMigrationIssuanceGuard migrationIssuanceGuard) : ITokenService
     {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
@@ -37,6 +45,11 @@ namespace Web.IdP.Services
         private readonly IOpenIddictApplicationManager _applicationManager = applicationManager;
         private readonly ILogger<TokenService> _logger = logger;
         private readonly IClaimsEnrichmentService _claimsEnricher = claimsEnricher;
+        private readonly DirectoryIntegrationOptions _directoryIntegrationOptions = directoryIntegrationOptions.Value;
+        private readonly CredentialMigrationOptions _credentialMigrationOptions = credentialMigrationOptions.Value;
+        private readonly ICredentialMigrationStateStore _credentialMigrationStateStore = credentialMigrationStateStore;
+        private readonly IStage2CredentialMigrationService _stage2CredentialMigrationService = stage2CredentialMigrationService;
+        private readonly IMigrationIssuanceGuard _migrationIssuanceGuard = migrationIssuanceGuard;
 
         public async Task<IActionResult> HandleTokenRequestAsync(OpenIddictRequest request, ClaimsPrincipal? schemePrincipal, CancellationToken cancellationToken = default)
         {
@@ -153,7 +166,59 @@ namespace Web.IdP.Services
                     }));
             }
 
-            if (!await _userManager.CheckPasswordAsync(user, request.Password!))
+            var directoryAuthenticationUsed = false;
+            CredentialMigrationRecord? migration;
+            try
+            {
+                migration = await _credentialMigrationStateStore.FindAsync(user.Id, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                return InvalidPasswordGrant();
+            }
+
+            if (migration is not null)
+            {
+                if (migration.State != CredentialMigrationState.LocalFinalized ||
+                    !_directoryIntegrationOptions.AuthenticationEnabled)
+                {
+                    return InvalidPasswordGrant();
+                }
+
+                DirectoryCredentialResult directory;
+                try
+                {
+                    directory = await _stage2CredentialMigrationService.AuthenticateCompletedAsync(
+                        user.Id,
+                        request.Password!,
+                        cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch
+                {
+                    return InvalidPasswordGrant();
+                }
+
+                if (directory.Outcome != DirectoryCredentialOutcome.Authenticated)
+                {
+                    return InvalidPasswordGrant();
+                }
+
+                directoryAuthenticationUsed = true;
+            }
+            else if (_credentialMigrationOptions.Enabled)
+            {
+                return InvalidPasswordGrant();
+            }
+
+            if (!directoryAuthenticationUsed && !await _userManager.CheckPasswordAsync(user, request.Password!))
             {
                 await RecordPasswordGrantFailureAsync(user);
 
@@ -169,6 +234,15 @@ namespace Web.IdP.Services
                         [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
                         [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The username/password couple is invalid."
                     }));
+            }
+
+            if (!directoryAuthenticationUsed)
+            {
+                var localPasswordPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
+                if (LocalPasswordSignInPolicy.RequiresChange(user, localPasswordPolicy, DateTime.UtcNow))
+                {
+                    return InvalidPasswordGrant();
+                }
             }
 
             await _userManager.ResetAccessFailedCountAsync(user);
@@ -392,17 +466,30 @@ namespace Web.IdP.Services
                 return false;
             }
 
-            if (user.PersonId is not Guid personId)
+            if (user.PersonId is Guid personId)
             {
-                return true;
+                var person = await _db.Persons
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(candidate => candidate.Id == personId, cancellationToken);
+
+                if (person?.CanAuthenticate() != true)
+                {
+                    return false;
+                }
             }
 
-            var person = await _db.Persons
-                .AsNoTracking()
-                .FirstOrDefaultAsync(candidate => candidate.Id == personId, cancellationToken);
-
-            return person?.CanAuthenticate() == true;
+            return await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
         }
+
+        private static ForbidResult InvalidPasswordGrant() =>
+            new(
+                authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme],
+                properties: new AuthenticationProperties(new Dictionary<string, string?>
+                {
+                    [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                    [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                        "The username/password couple is invalid."
+                }));
 
         private async Task<bool> CanCompletePasswordGrantAsync(
             ApplicationUser user,

@@ -16,6 +16,7 @@ using OpenIddict.Abstractions;
 using Web.IdP;
 using Web.IdP.Options;
 using Web.IdP.Pages.Account;
+using Web.IdP.Services;
 
 namespace Tests.Web.IdP.UnitTests.Pages.Account;
 
@@ -113,7 +114,11 @@ public class LoginModelClientIdParsingTests
             Mock.Of<ISettingsService>(),
             Mock.Of<IPasskeyService>(),
             Mock.Of<IUserManagementService>(),
-            Mock.Of<IOpenIddictApplicationManager>());
+            Mock.Of<IOpenIddictApplicationManager>(),
+            Mock.Of<IMigrationIssuanceGuard>(),
+            new global::Infrastructure.Services.ForgotPasswordRoutingEvaluator(
+                Microsoft.Extensions.Options.Options.Create(
+                    new global::Infrastructure.Options.ForgotPasswordRecoveryOptions())));
 
         var urlHelperMock = new Mock<IUrlHelper>();
         urlHelperMock

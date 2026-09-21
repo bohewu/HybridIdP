@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Threading;
 using Core.Application;
+using Core.Application.Ports;
 using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
@@ -14,6 +15,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Infrastructure.Options;
 using Moq;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
@@ -35,6 +38,11 @@ namespace Tests.Application.UnitTests
         private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
         private readonly Mock<ILogger<TokenService>> _mockLogger;
         private readonly Mock<IClaimsEnrichmentService> _mockClaimsEnricher;
+        private readonly Mock<ICredentialMigrationStateStore> _mockCredentialMigrationStateStore;
+        private readonly Mock<IStage2CredentialMigrationService> _mockStage2CredentialMigrationService;
+        private readonly Mock<IMigrationIssuanceGuard> _mockMigrationIssuanceGuard;
+        private readonly DirectoryIntegrationOptions _directoryIntegrationOptions;
+        private readonly CredentialMigrationOptions _credentialMigrationOptions;
         private readonly TokenService _service;
 
         public TokenServiceTests()
@@ -60,6 +68,15 @@ namespace Tests.Application.UnitTests
             _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
             _mockLogger = new Mock<ILogger<TokenService>>();
             _mockClaimsEnricher = new Mock<IClaimsEnrichmentService>();
+            _mockCredentialMigrationStateStore = new Mock<ICredentialMigrationStateStore>();
+            _mockCredentialMigrationStateStore
+                .Setup(store => store.FindAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((CredentialMigrationRecord?)null);
+            _mockStage2CredentialMigrationService = new Mock<IStage2CredentialMigrationService>();
+            _mockMigrationIssuanceGuard = new Mock<IMigrationIssuanceGuard>();
+            _mockMigrationIssuanceGuard
+                .Setup(guard => guard.CanIssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
             
             // Default setup for claims enricher to avoid null task exceptions
             _mockClaimsEnricher.Setup(x => x.AddScopeMappedClaimsAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
@@ -82,7 +99,12 @@ namespace Tests.Application.UnitTests
                 _mockDbContext.Object,
                 _mockApplicationManager.Object,
                 _mockLogger.Object,
-                _mockClaimsEnricher.Object);
+                _mockClaimsEnricher.Object,
+                Options.Create(_directoryIntegrationOptions = new DirectoryIntegrationOptions()),
+                Options.Create(_credentialMigrationOptions = new CredentialMigrationOptions()),
+                _mockCredentialMigrationStateStore.Object,
+                _mockStage2CredentialMigrationService.Object,
+                _mockMigrationIssuanceGuard.Object);
         }
 
         [Fact]
@@ -205,6 +227,29 @@ namespace Tests.Application.UnitTests
         }
 
         [Fact]
+        public async Task HandleTokenRequestAsync_Password_MustChangeLocalCredential_ReturnsInvalidGrant()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "must-change-user",
+                IsActive = true,
+                RequiresPasswordChange = true
+            };
+            SetupPasswordGrant(user);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+            _mockUserManager.Verify(manager => manager.ResetAccessFailedCountAsync(user), Times.Never);
+        }
+
+        [Fact]
         public async Task HandleTokenRequestAsync_Password_InvalidUser_ReturnsForbidResult()
         {
             // Arrange
@@ -252,6 +297,221 @@ namespace Tests.Application.UnitTests
                 null);
 
             AssertPasswordGrantRejected(result);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_IncompleteMigration_WhenAllMigrationSwitchesAreDisabled_ReturnsInvalidGrant()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "migration-user",
+                IsActive = true
+            };
+            SetupPasswordGrant(user, isLockedOut: false);
+            _mockCredentialMigrationStateStore
+                .Setup(store => store.FindAsync(user.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateMigrationRecord(user.Id, CredentialMigrationState.Required));
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+            _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, It.IsAny<string>()), Times.Never);
+            _mockStage2CredentialMigrationService.Verify(
+                service => service.AuthenticateCompletedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_FinalizedMigration_UsesDirectoryAuthentication()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "directory-user",
+                IsActive = true
+            };
+            SetupPasswordGrant(user, passwordIsValid: false);
+            EnableDirectoryAuthentication();
+            _mockCredentialMigrationStateStore
+                .Setup(store => store.FindAsync(user.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateMigrationRecord(user.Id, CredentialMigrationState.LocalFinalized));
+            _mockStage2CredentialMigrationService
+                .Setup(service => service.AuthenticateCompletedAsync(
+                    user.Id,
+                    "directory-password",
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DirectoryCredentialResult(DirectoryCredentialOutcome.Authenticated));
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "directory-password"),
+                null);
+
+            Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_FinalizedMigration_DeniesLocalPasswordOnly()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "directory-user",
+                IsActive = true
+            };
+            SetupPasswordGrant(user, passwordIsValid: true);
+            EnableDirectoryAuthentication();
+            _mockCredentialMigrationStateStore
+                .Setup(store => store.FindAsync(user.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateMigrationRecord(user.Id, CredentialMigrationState.LocalFinalized));
+            _mockStage2CredentialMigrationService
+                .Setup(service => service.AuthenticateCompletedAsync(
+                    user.Id,
+                    "valid-password",
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DirectoryCredentialResult(DirectoryCredentialOutcome.InvalidCredentials));
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+            _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_FinalizedMigration_WhenDirectoryAuthenticationDisabled_Denies()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "directory-user",
+                IsActive = true
+            };
+            SetupPasswordGrant(user, passwordIsValid: true);
+            _directoryIntegrationOptions.Enabled = true;
+            _mockCredentialMigrationStateStore
+                .Setup(store => store.FindAsync(user.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateMigrationRecord(user.Id, CredentialMigrationState.LocalFinalized));
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+            _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, It.IsAny<string>()), Times.Never);
+            _mockStage2CredentialMigrationService.Verify(
+                service => service.AuthenticateCompletedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_FinalizedMigration_WhenDirectoryAuthenticationFails_Denies()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "directory-user",
+                IsActive = true
+            };
+            SetupPasswordGrant(user, passwordIsValid: true);
+            EnableDirectoryAuthentication();
+            _mockCredentialMigrationStateStore
+                .Setup(store => store.FindAsync(user.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateMigrationRecord(user.Id, CredentialMigrationState.LocalFinalized));
+            _mockStage2CredentialMigrationService
+                .Setup(service => service.AuthenticateCompletedAsync(
+                    user.Id,
+                    "valid-password",
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException());
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+            _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_WhenAllMigrationSwitchesAreDisabled_UsesLocalPassword()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "local-user",
+                IsActive = true
+            };
+            SetupPasswordGrant(user, passwordIsValid: true);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, "valid-password"), Times.Once);
+            _mockCredentialMigrationStateStore.Verify(
+                store => store.FindAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_Password_FinalizedMigration_WhenAllMigrationSwitchesAreDisabled_Denies()
+        {
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = "directory-user",
+                IsActive = true
+            };
+            SetupPasswordGrant(user, passwordIsValid: true);
+            _mockCredentialMigrationStateStore
+                .Setup(store => store.FindAsync(user.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateMigrationRecord(user.Id, CredentialMigrationState.LocalFinalized));
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(
+                    GrantTypes.Password,
+                    username: user.UserName,
+                    password: "valid-password"),
+                null);
+
+            AssertPasswordGrantRejected(result);
+            _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, It.IsAny<string>()), Times.Never);
+            _mockStage2CredentialMigrationService.Verify(
+                service => service.AuthenticateCompletedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Theory]
@@ -1144,6 +1404,20 @@ namespace Tests.Application.UnitTests
             _mockUserManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync([]);
             _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
         }
+
+        private void EnableDirectoryAuthentication()
+        {
+            _directoryIntegrationOptions.Enabled = true;
+            _directoryIntegrationOptions.AuthenticationEnabled = true;
+        }
+
+        private static CredentialMigrationRecord CreateMigrationRecord(
+            Guid userId,
+            CredentialMigrationState state) =>
+            new(
+                userId,
+                new DirectoryObjectBinding("test", "subject", Guid.NewGuid()),
+                state);
 
         private void SetupMandatoryMfaPolicy(int gracePeriodDays)
         {

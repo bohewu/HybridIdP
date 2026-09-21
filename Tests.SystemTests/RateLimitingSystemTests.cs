@@ -13,6 +13,25 @@ namespace Tests.SystemTests;
 public sealed class RateLimitingSystemTests
 {
     [Fact]
+    public void NativeRecoveryEnabled_WithoutRateLimiting_FailsClosed()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = "Test"
+        });
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["RateLimiting:Enabled"] = "false",
+            ["ForgotPasswordRecovery:NativeRecoveryEnabled"] = "true"
+        });
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => builder.Services.AddCustomRateLimiting(builder.Configuration));
+
+        Assert.Contains("requires rate limiting", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TokenPolicy_ShouldShareLimitAcrossUnauthenticatedClientIdsFromSameSource()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

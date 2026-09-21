@@ -26,6 +26,24 @@ const totalPages = computed(() => {
   return Math.ceil(props.totalCount / props.pageSize)
 })
 
+const recoveryEventTypes = new Set([
+  'RecoveryAddressChangeStarted',
+  'RecoveryAddressVerified',
+  'RecoveryAddressRevoked',
+  'AdminRecoveryAddressReplaced',
+  'AdminMigrationOtpResent',
+  'AdminResetApprovalIssued',
+  'AdminResetApprovalConsumed'
+])
+
+const eventTypeLabel = (eventType) => recoveryEventTypes.has(eventType)
+  ? t(`audit.eventTypes.${eventType}`)
+  : eventType
+
+const eventDetails = (event) => recoveryEventTypes.has(event.eventType)
+  ? t('audit.recovery.recordedOutcome')
+  : event.details
+
 const formatDate = (dateString) => {
   if (!dateString) return t('audit.never')
 
@@ -175,14 +193,14 @@ const getSortIcon = (field) => {
                 <span
                   :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getEventTypeBadgeClass(event.eventType)]"
                 >
-                  {{ event.eventType }}
+                  {{ eventTypeLabel(event.eventType) }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {{ event.user || t('audit.system') }}
               </td>
-              <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" :title="event.details">
-                {{ event.details }}
+              <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" :title="eventDetails(event)">
+                {{ eventDetails(event) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ event.ipAddress || t('audit.unknown') }}

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/contracts/provider-metadata/1.0",
+  "title": "Provider Metadata Contract 1.0",
+  "description": "The root validates responses; #/$defs/request validates requests. Application validation also checks email syntax and timestamp calendar/offset validity. Unknown members are ignored, never authority.",
+  "$ref": "#/$defs/response",
+  "$defs": {
+    "namespace": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "\\S" },
+    "subject": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "\\S" },
+    "request": {
+      "type": "object",
+      "required": ["contractVersion", "providerNamespace", "stableSubject"],
+      "properties": {
+        "contractVersion": { "const": "1.0" },
+        "providerNamespace": { "$ref": "#/$defs/namespace" },
+        "stableSubject": { "$ref": "#/$defs/subject" }
+      },
+      "additionalProperties": true
+    },
+    "trustOrigin": {
+      "description": "Emit Unknown, SourceVerified or PolicyTrusted. The existing reader also accepts case variants, surrounding whitespace and defined numeric enum values (including numeric strings).",
+      "anyOf": [
+        { "type": "integer", "enum": [0, 1, 2] },
+        { "type": "string", "pattern": "^\\s*([Uu][Nn][Kk][Nn][Oo][Ww][Nn]|[Ss][Oo][Uu][Rr][Cc][Ee][Vv][Ee][Rr][Ii][Ff][Ii][Ee][Dd]|[Pp][Oo][Ll][Ii][Cc][Yy][Tt][Rr][Uu][Ss][Tt][Ee][Dd]|[012])\\s*$" }
+      ]
+    },
+    "sourceVerified": {
+      "anyOf": [
+        { "const": 1 },
+        { "type": "string", "pattern": "^\\s*([Ss][Oo][Uu][Rr][Cc][Ee][Vv][Ee][Rr][Ii][Ff][Ii][Ee][Dd]|1)\\s*$" }
+      ]
+    },
+    "unknown": {
+      "anyOf": [
+        { "const": 0 },
+        { "type": "string", "pattern": "^\\s*([Uu][Nn][Kk][Nn][Oo][Ww][Nn]|0)\\s*$" }
+      ]
+    },
+    "timestamp": {
+      "type": ["string", "null"],
+      "description": "Emit an ISO 8601 timestamp with Z or a numeric offset. The .NET reader also accepts date-only and offsetless ISO forms; these use the consumer's local offset. Calendar validity and the DateTimeOffset range are enforced by application parsing.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}(:[0-9]{2}(\\.[0-9]{1,16})?)?(Z|[+-][0-9]{2}:[0-9]{2})?)?$"
+    },
+    "response": {
+      "type": "object",
+      "required": ["contractVersion", "providerNamespace", "stableSubject"],
+      "properties": {
+        "contractVersion": { "const": "1.0" },
+        "providerNamespace": { "$ref": "#/$defs/namespace" },
+        "stableSubject": { "$ref": "#/$defs/subject" },
+        "email": { "type": ["string", "null"] },
+        "emailTrustOrigin": { "$ref": "#/$defs/trustOrigin", "default": "Unknown" },
+        "verifiedAt": { "$ref": "#/$defs/timestamp", "default": null }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["emailTrustOrigin"],
+            "properties": { "emailTrustOrigin": { "not": { "$ref": "#/$defs/unknown" } } }
+          },
+          "then": {
+            "required": ["email"],
+            "properties": { "email": { "type": "string", "minLength": 1, "pattern": "\\S" } }
+          }
+        },
+        {
+          "if": { "required": ["verifiedAt"], "properties": { "verifiedAt": { "type": "string" } } },
+          "then": {
+            "required": ["emailTrustOrigin"],
+            "properties": { "emailTrustOrigin": { "$ref": "#/$defs/sourceVerified" } }
+          }
+        }
+      ],
+      "additionalProperties": true
+    }
+  }
+}

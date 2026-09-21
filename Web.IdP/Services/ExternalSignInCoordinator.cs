@@ -17,6 +17,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
     private readonly ILoginService _loginService;
     private readonly ISecurityPolicyService _securityPolicyService;
     private readonly IPasskeyService _passkeyService;
+    private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
     private readonly ILogger<ExternalSignInCoordinator> _logger;
     private readonly TimeProvider _timeProvider;
 
@@ -26,6 +27,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         ILoginService loginService,
         ISecurityPolicyService securityPolicyService,
         IPasskeyService passkeyService,
+        IMigrationIssuanceGuard migrationIssuanceGuard,
         ILogger<ExternalSignInCoordinator> logger,
         TimeProvider? timeProvider = null)
     {
@@ -34,6 +36,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         _loginService = loginService;
         _securityPolicyService = securityPolicyService;
         _passkeyService = passkeyService;
+        _migrationIssuanceGuard = migrationIssuanceGuard;
         _logger = logger;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
@@ -55,6 +58,11 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         if (!await _signInManager.CanSignInAsync(user))
         {
             LogSignInNotAllowed(user.Id);
+            return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
+        }
+
+        if (!await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken))
+        {
             return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
         }
 

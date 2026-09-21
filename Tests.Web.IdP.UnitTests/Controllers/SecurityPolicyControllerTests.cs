@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
+using Core.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -36,7 +37,11 @@ public class SecurityPolicyControllerTests
     public async Task GetCurrentPolicy_ReturnsOkWithPolicy()
     {
         // Arrange
-        var policy = new SecurityPolicy { MinPasswordLength = 10 };
+        var policy = new SecurityPolicy
+        {
+            MinPasswordLength = 10,
+            ForgotPasswordMode = ForgotPasswordMode.Disabled
+        };
         _mockService.Setup(s => s.GetCurrentPolicyAsync()).ReturnsAsync(policy);
 
         // Act
@@ -46,6 +51,7 @@ public class SecurityPolicyControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var returnedPolicy = Assert.IsType<SecurityPolicyDto>(okResult.Value);
         Assert.Equal(10, returnedPolicy.MinPasswordLength);
+        Assert.Equal(ForgotPasswordMode.Disabled, returnedPolicy.ForgotPasswordMode);
     }
 
     [Fact]

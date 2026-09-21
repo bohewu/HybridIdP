@@ -156,5 +156,175 @@
     "reset": "重設 MFA",
     "resetConfirm": "確定要重設此使用者的 MFA 嗎？他們需要重新設定兩步驟驗證。",
     "resetSuccess": "MFA 已成功重設。"
+  },
+  "recoveryAssistance": {
+    "target": "帳號：{name}",
+    "targetUnknown": "已選取的帳號",
+    "loading": "正在載入可用的協助操作...",
+    "contextUnavailable": "無法確認協助操作的可用性。請重新載入後再執行。",
+    "groupLabel": "帳號憑證復原目的",
+    "groups": {
+      "ordinary": {
+        "title": "密碼重設協助",
+        "description": "協助一般忘記密碼流程，或依獨立授權核發伺服器產生的臨時憑證。"
+      },
+      "migration": {
+        "title": "帳號移轉協助",
+        "description": "僅協助確切且有效的帳號移轉接續流程；這些操作不會開始或暗中完成移轉。"
+      },
+      "pending": {
+        "title": "AD 不確定寫入處理",
+        "description": "檢視支援的待決 AD 操作，並為獨立的使用者處理頁面準備接續流程；此處不會重試或直接清除目錄寫入。"
+      }
+    },
+    "families": {
+      "ordinary": "一般密碼復原",
+      "temporary": "伺服器產生的臨時憑證",
+      "migration": "有效的移轉接續流程",
+      "pending": "待決 AD 操作"
+    },
+    "states": {
+      "available": "可用",
+      "disabled": "已停用",
+      "unavailable": "不可用",
+      "confirmedFailure": "已確認失敗",
+      "unknown": "未知"
+    },
+    "noAvailableActions": "目前沒有對此帳號授權的操作。",
+    "backToActions": "返回操作清單",
+    "retryContext": "重新載入可用性",
+    "menuAction": "帳號憑證復原協助",
+    "title": "帳號憑證復原協助",
+    "targetId": "目標 ID：{id}",
+    "actionLabel": "協助操作",
+    "noPermission": "您需要 Users.Update 權限才能協助帳號憑證復原。",
+    "actions": {
+      "ordinary-resend": "重新寄送重設驗證碼",
+      "ordinary-replace": "替換復原信箱",
+      "ordinary-approve": "核准單次重設",
+      "migration-resend": "重新寄送移轉驗證碼",
+      "migration-replace": "替換移轉復原信箱",
+      "migration-approve": "核准移轉復原",
+      "temporary": "\u6838\u767c\u81e8\u6642\u5bc6\u78bc",
+      "resend": "重新寄送",
+      "replace": "替換地址",
+      "approve": "核准單次重設",
+      "reconcile": "處理目錄重設",
+      "resolve": "處理待決目錄操作"
+    },
+    "descriptions": {
+      "ordinary-resend": "僅將一般復原驗證碼重新寄送至帳號已驗證的復原目的地。",
+      "ordinary-replace": "完成身分查核後替換一般復原信箱；使用者必須先驗證新地址。",
+      "ordinary-approve": "針對目前的一般重設流程核發一次短效核准；此操作不會重設密碼。",
+      "migration-resend": "僅為確切且有效的移轉接續流程重新寄送驗證碼。",
+      "migration-replace": "完成身分查核後，替換確切移轉接續流程使用的復原信箱。",
+      "migration-approve": "僅針對確切且有效的移轉復原流程核發一次短效核准。",
+      "temporary": "\u5b8c\u6210\u8eab\u5206\u67e5\u6838\u5f8c\uff0c\u6838\u767c\u96a8\u6a5f\u672c\u6a5f\u81e8\u6642\u5bc6\u78bc\uff1b\u4f7f\u7528\u8005\u5fc5\u9808\u5148\u8b8a\u66f4\u5bc6\u78bc\u624d\u80fd\u53d6\u5f97\u5b58\u53d6\u6b0a\u3002",
+      "resend": "僅將密碼移轉驗證碼重新寄送至使用者已驗證的復原目的地。",
+      "replace": "完成身分查核後替換復原目的地。新地址必須由使用者以驗證碼確認後才能使用。",
+      "approve": "針對使用者目前的重設流程核發一次短效核准。此操作不會重設密碼，也不會建立永久略過。",
+      "reconcile": "針對確切綁定的目錄身分驗證原重設密碼，並完成遭封鎖的重設；不會再次寫入密碼。",
+      "resolve": "管理者人工處理：確認原始寫入流程與目錄操作皆已各自完成後，處理一筆確切的待決臨時密碼核發或必要密碼變更操作。"
+    },
+    "addressLabel": "替換復原信箱",
+    "addressHelp": "此地址會回到未驗證狀態。請勿輸入憑證、驗證碼或 Token。",
+    "evidenceLabel": "身分查核證據",
+    "evidenceHelp": "僅記錄已完成查核的參考資訊。請勿包含憑證、驗證碼、Token 或提供者細節。",
+    "reasonLabel": "原因",
+    "intendedPasswordLabel": "遭封鎖重設所使用的密碼",
+    "intendedPasswordHelp": "只用於一次獨立目錄驗證，不會儲存、記錄或回傳。",
+    "submitting": "送出中…",
+    "resendIn": "{seconds} 秒後可重新寄送",
+    "temporaryPasswordLabel": "\u81e8\u6642\u5bc6\u78bc\uff08\u50c5\u986f\u793a\u4e00\u6b21\uff09",
+    "temporaryPasswordHelp": "\u8acb\u900f\u904e\u5df2\u9a57\u8b49\u7684\u7ba1\u9053\u4ea4\u4ed8\u3002\u95dc\u9589\u5c0d\u8a71\u6846\u5f8c\u7121\u6cd5\u518d\u6b21\u53d6\u5f97\u3002",
+    "pending": {
+      "inspect": "檢視待決操作",
+      "reload": "重新檢視",
+      "loading": "正在載入確切的待決目錄操作…",
+      "attemptId": "嘗試 ID",
+      "version": "版本",
+      "operationKind": "操作類型",
+      "status": "狀態",
+      "operationKinds": {
+        "NativeReset": "原生目錄密碼重設",
+        "AdminTemporaryIssue": "管理員臨時密碼核發",
+        "RequiredChange": "必要的目錄密碼變更"
+      },
+      "statuses": {
+        "Reserved": "已保留",
+        "ReconciliationRequired": "需要核對處理"
+      },
+      "directoryObjectId": "目錄物件 ID",
+      "dispositionLegend": "已驗證的處理結果",
+      "dispositions": {
+        "OriginalOperationSettled": "已透過獨立程序確認原始目錄操作完成。",
+        "ApprovedOutOfBandRecoveryCompleted": "已完成核准的目錄外部復原程序。"
+      },
+      "originalWritersDrained": "我確認所有原始寫入程序與相關使用者流程皆已停止或排空，沒有相符的要求仍在進行。",
+      "evidenceReferenceLabel": "核准的證據參考",
+      "evidenceReferencePlaceholder": "例如：CASE:20260912-001",
+      "evidenceReferenceHelp": "僅輸入核准的工單或操作參考。可使用英文字母、數字、冒號、句點、斜線、連字號或底線；請勿包含憑證或提供者細節。",
+      "prepare": "準備使用者處理流程",
+      "confirmPrepare": "要為此確切的待決操作準備獨立的使用者處理頁面嗎？",
+      "prepared": "使用者處理流程已準備完成。請透過核准的管道交付另行產生的接續資料，並引導使用者前往 /Account/PendingDirectorySettlement。",
+      "cancelPreparation": "取消已準備的處理流程",
+      "confirmCancel": "要取消這個已準備的使用者處理流程嗎？",
+      "cancelled": "已取消準備完成的使用者處理流程。",
+      "currentCredentialLabel": "目前 AD 密碼",
+      "currentCredentialPlaceholder": "輸入已確認可用的目前 AD 密碼",
+      "currentCredentialHelp": "僅用於驗證這個確切的受管理目錄物件。送出後會立即清除，且不會回傳或儲存。",
+      "settlementLegend": "必要的完成確認",
+      "originalWritersSettled": "我確認所有原始寫入程序及相關使用者流程皆已停止或排空，且沒有相符要求仍在執行中。",
+      "directoryOperationSettled": "我已透過核准的目錄作業程序，獨立確認原始操作已完成。",
+      "evidencePlaceholder": "例如：服務單編號、查核方式與完成時間",
+      "reasonPlaceholder": "說明本次人工處理的原因",
+      "submit": "驗證並處理操作",
+      "confirmation": "要使用畫面上的確切綁定與已記錄的完成確認，處理這筆待決操作嗎？",
+      "resolved": "已處理確切的待決目錄操作。既有工作階段與授權已撤銷；使用者下次有效登入時必須變更目錄密碼。",
+      "unavailable": "待決目錄操作無法使用或無法處理。請確認目標與目前的作業證據後再試一次。",
+      "retry": "重新載入待決操作"
+    },
+    "submit": {
+      "ordinary-resend": "重新寄送重設驗證碼",
+      "ordinary-replace": "替換並要求驗證",
+      "ordinary-approve": "核准單次重設",
+      "migration-resend": "重新寄送移轉驗證碼",
+      "migration-replace": "替換並要求驗證",
+      "migration-approve": "核准移轉復原",
+      "temporary": "\u6838\u767c\u81e8\u6642\u5bc6\u78bc",
+      "resend": "重新寄送驗證碼",
+      "replace": "替換並要求驗證",
+      "approve": "核准單次重設",
+      "reconcile": "驗證並處理"
+    },
+    "confirmations": {
+      "ordinary-resend": "要將一般復原驗證碼重新寄送至已驗證的目的地嗎？",
+      "ordinary-replace": "要替換一般復原信箱並要求驗證新目的地嗎？",
+      "ordinary-approve": "要針對這次一般重設流程核發短效且單次使用的核准嗎？",
+      "migration-resend": "要為確切且有效的移轉接續流程重新寄送驗證碼嗎？",
+      "migration-replace": "要替換確切移轉接續流程使用的復原信箱嗎？",
+      "migration-approve": "要針對這次移轉復原流程核發短效且單次使用的核准嗎？",
+      "temporary": "\u5b8c\u6210\u5df2\u8a18\u9304\u7684\u8eab\u5206\u67e5\u6838\u5f8c\uff0c\u662f\u5426\u6838\u767c\u81e8\u6642\u5bc6\u78bc\uff1f",
+      "resend": "要將驗證碼重新寄送至已驗證的復原目的地嗎？",
+      "replace": "要替換復原地址並要求目的地驗證嗎？",
+      "approve": "要針對此次重設流程核發短效且單次使用的核准嗎？",
+      "reconcile": "要針對綁定的目錄身分驗證原重設密碼並處理此遭封鎖的重設嗎？"
+    },
+    "outcomes": {
+      "ordinary-resendSuccess": "一般復原驗證碼已重新寄送至已驗證的目的地。",
+      "ordinary-replaceSuccess": "一般復原信箱已替換，現在必須驗證新目的地。",
+      "ordinary-approveSuccess": "已針對目前的一般重設流程核發短效且單次使用的核准。",
+      "migration-resendSuccess": "移轉驗證碼已重新寄送至已驗證的目的地。",
+      "migration-replaceSuccess": "移轉復原信箱已替換，現在必須驗證新目的地。",
+      "migration-approveSuccess": "已針對有效的移轉復原流程核發短效且單次使用的核准。",
+      "temporarySuccess": "\u5df2\u6838\u767c\u81e8\u6642\u5bc6\u78bc\uff1b\u4f7f\u7528\u8005\u5fc5\u9808\u5148\u8b8a\u66f4\u5bc6\u78bc\u624d\u80fd\u53d6\u5f97\u5b58\u53d6\u6b0a\u3002",
+      "resendSuccess": "密碼移轉驗證碼已重新寄送至已驗證的目的地。",
+      "replaceSuccess": "復原地址已替換，目前需要完成目的地驗證。",
+      "approveSuccess": "已針對目前的重設流程核發短效且單次使用的核准。",
+      "reconcileSuccess": "已獨立驗證目錄重設並完成遭封鎖的復原流程。",
+      "cooldown": "請等待 {seconds} 秒後再重新寄送。",
+      "highAssuranceRequired": "請先以 MFA 或硬體金鑰驗證，再重試此操作。",
+      "unavailable": "無法完成協助要求。請確認目標後再試一次。"
+    }
   }
 }

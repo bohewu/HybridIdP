@@ -8,17 +8,22 @@ public class LoginResult
     public LoginStatus Status { get; }
     public Domain.ApplicationUser? User { get; }
     public string? Message { get; }
+    public Guid? DirectoryObjectId { get; }
 
-    private LoginResult(LoginStatus status, Domain.ApplicationUser? user = null, string? message = null)
+    private LoginResult(LoginStatus status, Domain.ApplicationUser? user = null, string? message = null, Guid? directoryObjectId = null)
     {
         Status = status;
         User = user;
         Message = message;
+        DirectoryObjectId = directoryObjectId;
     }
 
     public bool IsSuccess => Status == LoginStatus.Success || Status == LoginStatus.LegacySuccess;
 
     public static LoginResult Success(Domain.ApplicationUser user) => new(LoginStatus.Success, user);
+    public static LoginResult PasswordChangeRequired(Domain.ApplicationUser user) => new(LoginStatus.PasswordChangeRequired, user);
+    public static LoginResult DirectoryPasswordChangeRequired(Domain.ApplicationUser user, Guid directoryObjectId) =>
+        new(LoginStatus.PasswordChangeRequired, user, directoryObjectId: directoryObjectId);
     public static LoginResult LegacySuccess(Domain.ApplicationUser user) => new(LoginStatus.LegacySuccess, user);
     public static LoginResult InvalidCredentials() => new(LoginStatus.InvalidCredentials);
     public static LoginResult LockedOut() => new(LoginStatus.LockedOut);
@@ -55,6 +60,10 @@ public enum LoginStatus
     /// <summary>
     /// The user account itself is deactivated (IsActive = false).
     /// </summary>
-    UserInactive
+    UserInactive,
+    /// <summary>
+    /// The local credential was valid, but ordinary sign-in is blocked until it is changed.
+    /// </summary>
+    PasswordChangeRequired
 }
 

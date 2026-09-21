@@ -1,0 +1,9 @@
+{
+  "contractVersion": "1.0",
+  "providerNamespace": "example.provider",
+  "stableSubject": "opaque-subject-7f2a",
+  "email": "person@example.org",
+  "emailTrustOrigin": "SourceVerified",
+  "verifiedAt": "2026-09-01T12:30:00+02:00",
+  "unrecognizedExtension": { "value": "ignored" }
+}

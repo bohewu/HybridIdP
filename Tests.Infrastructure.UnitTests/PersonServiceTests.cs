@@ -258,6 +258,59 @@ public class PersonServiceTests : IDisposable
         Assert.Equal("eligible-stamp", linkedUser.SecurityStamp);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdatePersonAsync_ShouldRejectActiveStatus_WhenScheduledTokenRevocationIsPending(
+        bool startsInFuture)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var service = CreateService(context);
+        var pendingAt = DateTime.UtcNow.AddMinutes(-1);
+        var endDate = DateTime.UtcNow.AddDays(-1);
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Pending",
+            LastName = "Revocation",
+            Status = Core.Domain.Enums.PersonStatus.Resigned,
+            EndDate = endDate,
+            ScheduledTokenRevocationPendingAt = pendingAt
+        };
+        var linkedUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "pending-revocation@example.test",
+            NormalizedUserName = "PENDING-REVOCATION@EXAMPLE.TEST",
+            Email = "pending-revocation@example.test",
+            NormalizedEmail = "PENDING-REVOCATION@EXAMPLE.TEST",
+            PersonId = person.Id,
+            SecurityStamp = "pending-stamp"
+        };
+        context.AddRange(person, linkedUser);
+        await context.SaveChangesAsync();
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.UpdatePersonAsync(person.Id, new Person
+            {
+                FirstName = person.FirstName,
+                LastName = person.LastName,
+                Status = Core.Domain.Enums.PersonStatus.Active,
+                StartDate = DateTime.UtcNow.AddDays(startsInFuture ? 1 : -1),
+                EndDate = null
+            }));
+
+        Assert.Contains("token revocation is pending", exception.Message);
+        context.ChangeTracker.Clear();
+        var persistedPerson = await context.Persons.SingleAsync(candidate => candidate.Id == person.Id);
+        var persistedUser = await context.Users.SingleAsync(candidate => candidate.Id == linkedUser.Id);
+        Assert.Equal(Core.Domain.Enums.PersonStatus.Resigned, persistedPerson.Status);
+        Assert.Equal(endDate.Date, persistedPerson.EndDate!.Value.Date);
+        Assert.Equal(pendingAt, persistedPerson.ScheduledTokenRevocationPendingAt);
+        Assert.Equal("pending-stamp", persistedUser.SecurityStamp);
+        Assert.False(persistedPerson.CanAuthenticate());
+    }
+
     [Fact]
     public async Task UpdatePersonAsync_WithDuplicateEmployeeId_ShouldThrowException()
     {

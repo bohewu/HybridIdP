@@ -17,6 +17,7 @@ using Infrastructure;
 
 using Web.IdP.Attributes;
 using Web.IdP.Helpers;
+using Web.IdP.Services;
 
 namespace Web.IdP.Controllers.Account;
 
@@ -34,6 +35,8 @@ public partial class PasskeyController : ControllerBase
     private readonly ApplicationDbContext _dbContext;
     private readonly IAuditService _auditService;
     private readonly ILogger<PasskeyController> _logger;
+    private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
+    private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility;
 
     public PasskeyController(
         IPasskeyService passkeyService,
@@ -43,7 +46,9 @@ public partial class PasskeyController : ControllerBase
         IUserManagementService userManagementService,
         ApplicationDbContext dbContext,
         IAuditService auditService,
-        ILogger<PasskeyController> logger)
+        ILogger<PasskeyController> logger,
+        IMigrationIssuanceGuard migrationIssuanceGuard,
+        ICurrentUserLifecycleEligibility lifecycleEligibility)
     {
         _passkeyService = passkeyService;
         _signInManager = signInManager;
@@ -53,6 +58,8 @@ public partial class PasskeyController : ControllerBase
         _dbContext = dbContext;
         _auditService = auditService;
         _logger = logger;
+        _migrationIssuanceGuard = migrationIssuanceGuard;
+        _lifecycleEligibility = lifecycleEligibility;
     }
 
     [HttpPost("register-options")]
@@ -154,6 +161,11 @@ public partial class PasskeyController : ControllerBase
                 IdentityConstants.TwoFactorUserIdScheme);
             if (partialAuthentication.Succeeded)
             {
+                if (!await CanIssueFullCookieAsync(user, ct))
+                {
+                    return BadRequest(new { success = false, error = "Authentication failed" });
+                }
+
                 AuthenticationMethodSession.Add(
                     HttpContext.Session,
                     Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
@@ -318,6 +330,11 @@ public partial class PasskeyController : ControllerBase
                 LogPasskeyLoginBlockedByIdentityPolicy(result.User.Id);
                 return BadRequest(new { success = false, error = "Account not active" });
             }
+
+            if (!await CanIssueFullCookieAsync(result.User, ct))
+            {
+                return BadRequest(new { success = false, error = "Authentication failed" });
+            }
             
             if (result.UserVerified)
             {
@@ -363,6 +380,12 @@ public partial class PasskeyController : ControllerBase
 
         return await _userManager.GetUserAsync(authentication.Principal);
     }
+
+    private async Task<bool> CanIssueFullCookieAsync(
+        ApplicationUser user,
+        CancellationToken cancellationToken) =>
+        await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken) &&
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Generated FIDO2 registration options for user '{UserName}'.")]
     partial void LogRegistrationOptionsGenerated(string? userName);

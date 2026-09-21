@@ -1129,9 +1129,9 @@ public class ScopeServiceTests : IDisposable
         var customClaim = new ClaimDefinition
         {
             Id = 2,
-            Name = "ncut_id",
-            DisplayName = "NCUT ID",
-            ClaimType = "ncut_id",
+            Name = "example_employee_id",
+            DisplayName = "Example Employee ID",
+            ClaimType = "example_employee_id",
             UserPropertyPath = "Person.EmployeeId",
             DataType = "String",
             IsStandard = false,
@@ -1184,9 +1184,9 @@ public class ScopeServiceTests : IDisposable
         var customClaim = new ClaimDefinition
         {
             Id = 2,
-            Name = "ncut_id",
-            DisplayName = "NCUT ID",
-            ClaimType = "ncut_id",
+            Name = "example_employee_id",
+            DisplayName = "Example Employee ID",
+            ClaimType = "example_employee_id",
             UserPropertyPath = "Person.EmployeeId",
             DataType = "String",
             IsStandard = false,

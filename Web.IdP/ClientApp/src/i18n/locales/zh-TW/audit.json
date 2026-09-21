@@ -50,7 +50,17 @@
     "AdminUserUpdated": "使用者已更新 (管理員)",
     "AdminUserDeleted": "使用者已刪除 (管理員)",
     "AdminRoleChanged": "角色已變更",
-    "SecurityPolicyUpdated": "安全性原則已更新"
+    "SecurityPolicyUpdated": "安全性原則已更新",
+    "RecoveryAddressChangeStarted": "已開始變更復原地址",
+    "RecoveryAddressVerified": "復原地址已驗證",
+    "RecoveryAddressRevoked": "復原地址已移除",
+    "AdminRecoveryAddressReplaced": "管理員已替換復原地址",
+    "AdminMigrationOtpResent": "管理員已重新寄送密碼移轉驗證碼",
+    "AdminResetApprovalIssued": "已核發重設核准",
+    "AdminResetApprovalConsumed": "重設核准已使用"
+  },
+  "recovery": {
+    "recordedOutcome": "已記錄"
   },
   "export": {
     "title": "匯出稽核日誌",

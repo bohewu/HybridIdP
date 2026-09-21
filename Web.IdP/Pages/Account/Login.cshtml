@@ -170,7 +170,15 @@
                             <span asp-validation-for="Input.Password" class="text-red-600 text-xs mt-1 block" data-test-id="login-password-error"></span>
                         </div>
                         
-                        @if (!string.IsNullOrEmpty(Model.CustomForgotPasswordUrl))
+                        @if (Model.NativeForgotPasswordAvailable)
+                        {
+                            <div class="text-right">
+                                <a asp-page="./ForgotPassword" class="text-sm link-google" data-test-id="forgot-password-link">
+                                    @Localizer["ForgotPassword"]
+                                </a>
+                            </div>
+                        }
+                        else if (!string.IsNullOrEmpty(Model.CustomForgotPasswordUrl))
                         {
                             <div class="text-right">
                                 <a href="@Model.CustomForgotPasswordUrl" target="_blank" rel="noopener noreferrer" class="text-sm link-google" data-test-id="forgot-password-link">

@@ -1,4 +1,5 @@
 using System;
+using Core.Domain.Enums;
 
 namespace Core.Domain.Entities
 {
@@ -67,6 +68,12 @@ namespace Core.Domain.Entities
         /// Example: https://legacy.example.com/forgot-password
         /// </summary>
         public string? CustomForgotPasswordUrl { get; set; }
+
+        /// <summary>
+        /// Selects the configured forgotten-password entry behavior.
+        /// Deployment configuration may further restrict this mode.
+        /// </summary>
+        public ForgotPasswordMode ForgotPasswordMode { get; set; } = ForgotPasswordMode.External;
         
         public DateTime UpdatedUtc { get; set; }
         public string? UpdatedBy { get; set; }

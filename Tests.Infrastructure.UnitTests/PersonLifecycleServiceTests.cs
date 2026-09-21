@@ -110,7 +110,7 @@ public sealed class PersonLifecycleServiceTests
         await using var fixture = await LifecycleFixture.CreateAsync(
             PersonStatus.Active,
             endDate: originalEndDate);
-        var tokenManager = new Mock<IOpenIddictTokenManager>();
+        var tokenRevoker = new Mock<IOpenIddictSubjectTokenRevoker>();
         var failureOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseSqlite(fixture.Connection)
             .AddInterceptors(new ThrowOnPersonUpdateInterceptor())
@@ -118,7 +118,7 @@ public sealed class PersonLifecycleServiceTests
 
         await using (var context = new ApplicationDbContext(failureOptions))
         {
-            var service = CreateService(context, tokenManager.Object);
+            var service = CreateService(context, tokenRevoker.Object);
 
             await Assert.ThrowsAsync<DbUpdateException>(() => service.ProcessScheduledTransitionsAsync());
         }
@@ -131,7 +131,244 @@ public sealed class PersonLifecycleServiceTests
         Assert.Equal(originalEndDate, person.EndDate);
         Assert.NotNull(linkedUser);
         Assert.Equal(fixture.OriginalSecurityStamp, linkedUser.SecurityStamp);
-        tokenManager.VerifyNoOtherCalls();
+        tokenRevoker.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task RevokeAllTokensForPersonAsync_ShouldCountOnlyConfirmedBulkRevocations()
+    {
+        await using var fixture = await LifecycleFixture.CreateAsync();
+        var tokenRevoker = new Mock<IOpenIddictSubjectTokenRevoker>();
+        tokenRevoker
+            .Setup(revoker => revoker.RevokeBySubjectAsync(
+                fixture.UserId.ToString(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(2);
+
+        await using var context = new ApplicationDbContext(fixture.Options);
+        var service = CreateService(context, tokenRevoker.Object);
+
+        var revokedCount = await service.RevokeAllTokensForPersonAsync(fixture.PersonId);
+
+        Assert.Equal(2, revokedCount);
+        tokenRevoker.Verify(
+            revoker => revoker.RevokeBySubjectAsync(
+                fixture.UserId.ToString(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        tokenRevoker.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task ProcessScheduledTransitionsAsync_ShouldPersistPendingRevocation_WhenRevocationFails()
+    {
+        await using var fixture = await LifecycleFixture.CreateAsync(
+            PersonStatus.Active,
+            endDate: DateTime.UtcNow.Date.AddDays(-1));
+        var tokenRevoker = new Mock<IOpenIddictSubjectTokenRevoker>();
+        tokenRevoker
+            .Setup(revoker => revoker.RevokeBySubjectAsync(
+                fixture.UserId.ToString(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Injected token-store failure."));
+
+        await using (var context = new ApplicationDbContext(fixture.Options))
+        {
+            var service = CreateService(context, tokenRevoker.Object);
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.ProcessScheduledTransitionsAsync());
+        }
+
+        await using var verificationContext = new ApplicationDbContext(fixture.Options);
+        var person = await verificationContext.Persons.FindAsync(fixture.PersonId);
+        var linkedUser = await verificationContext.Users.FindAsync(fixture.UserId);
+        Assert.NotNull(person);
+        Assert.Equal(PersonStatus.Resigned, person.Status);
+        Assert.NotNull(person.ScheduledTokenRevocationPendingAt);
+        Assert.NotNull(linkedUser);
+        Assert.NotEqual(fixture.OriginalSecurityStamp, linkedUser.SecurityStamp);
+    }
+
+    [Fact]
+    public async Task ProcessScheduledTransitionsAsync_ShouldRecoverPersistedPendingRevocation()
+    {
+        await using var fixture = await LifecycleFixture.CreateAsync(
+            PersonStatus.Resigned,
+            endDate: DateTime.UtcNow.Date.AddDays(-1));
+
+        await using (var setupContext = new ApplicationDbContext(fixture.Options))
+        {
+            var person = await setupContext.Persons.FindAsync(fixture.PersonId);
+            Assert.NotNull(person);
+            person.ScheduledTokenRevocationPendingAt = DateTime.UtcNow.AddMinutes(-1);
+            await setupContext.SaveChangesAsync();
+        }
+
+        var tokenRevoker = new Mock<IOpenIddictSubjectTokenRevoker>();
+        tokenRevoker
+            .Setup(revoker => revoker.RevokeBySubjectAsync(
+                fixture.UserId.ToString(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        await using (var context = new ApplicationDbContext(fixture.Options))
+        {
+            var service = CreateService(context, tokenRevoker.Object);
+            var changedCount = await service.ProcessScheduledTransitionsAsync();
+            Assert.Equal(0, changedCount);
+        }
+
+        await using var verificationContext = new ApplicationDbContext(fixture.Options);
+        var recoveredPerson = await verificationContext.Persons.FindAsync(fixture.PersonId);
+        Assert.NotNull(recoveredPerson);
+        Assert.Equal(PersonStatus.Resigned, recoveredPerson.Status);
+        Assert.Null(recoveredPerson.ScheduledTokenRevocationPendingAt);
+    }
+
+    [Fact]
+    public async Task ProcessScheduledTransitionsAsync_ShouldProcessMoreThanOneBoundedBatch()
+    {
+        await using var fixture = await LifecycleFixture.CreateAsync(
+            PersonStatus.Pending,
+            startDate: DateTime.UtcNow.Date.AddDays(-1));
+
+        await using (var setupContext = new ApplicationDbContext(fixture.Options))
+        {
+            setupContext.Persons.AddRange(Enumerable.Range(0, 100).Select(index => new Person
+            {
+                Id = Guid.NewGuid(),
+                FirstName = $"Batch{index}",
+                LastName = "Lifecycle",
+                Status = PersonStatus.Pending,
+                StartDate = DateTime.UtcNow.Date.AddDays(-1)
+            }));
+            await setupContext.SaveChangesAsync();
+        }
+
+        await using (var context = new ApplicationDbContext(fixture.Options))
+        {
+            var service = CreateService(context);
+            var changedCount = await service.ProcessScheduledTransitionsAsync();
+            Assert.Equal(101, changedCount);
+            Assert.Empty(context.ChangeTracker.Entries<Person>());
+            Assert.Empty(context.ChangeTracker.Entries<ApplicationUser>());
+        }
+
+        await using var verificationContext = new ApplicationDbContext(fixture.Options);
+        Assert.Equal(
+            102,
+            await verificationContext.Persons.CountAsync(person => person.Status == PersonStatus.Active));
+        Assert.False(await verificationContext.Persons.AnyAsync(
+            person => person.Status == PersonStatus.Pending));
+    }
+
+    [Fact]
+    public async Task ProcessScheduledTransitionsAsync_ShouldPropagateCancellationAfterDurableTermination()
+    {
+        await using var fixture = await LifecycleFixture.CreateAsync(
+            PersonStatus.Active,
+            endDate: DateTime.UtcNow.Date.AddDays(-1));
+        using var cancellation = new CancellationTokenSource();
+        var tokenRevoker = new Mock<IOpenIddictSubjectTokenRevoker>();
+        tokenRevoker
+            .Setup(revoker => revoker.RevokeBySubjectAsync(
+                fixture.UserId.ToString(),
+                cancellation.Token))
+            .Returns(() =>
+            {
+                cancellation.Cancel();
+                return Task.FromCanceled<int>(cancellation.Token);
+            });
+
+        await using (var context = new ApplicationDbContext(fixture.Options))
+        {
+            var service = CreateService(context, tokenRevoker.Object);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => service.ProcessScheduledTransitionsAsync(cancellation.Token));
+        }
+
+        await using (var verificationContext = new ApplicationDbContext(fixture.Options))
+        {
+            var person = await verificationContext.Persons.FindAsync(fixture.PersonId);
+            Assert.NotNull(person);
+            Assert.Equal(PersonStatus.Resigned, person.Status);
+            Assert.NotNull(person.ScheduledTokenRevocationPendingAt);
+        }
+
+        var recoveryRevoker = new Mock<IOpenIddictSubjectTokenRevoker>();
+        recoveryRevoker
+            .Setup(revoker => revoker.RevokeBySubjectAsync(
+                fixture.UserId.ToString(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        await using (var recoveryContext = new ApplicationDbContext(fixture.Options))
+        {
+            var service = CreateService(recoveryContext, recoveryRevoker.Object);
+            Assert.Equal(0, await service.ProcessScheduledTransitionsAsync());
+        }
+
+        await using var recoveredContext = new ApplicationDbContext(fixture.Options);
+        var recoveredPerson = await recoveredContext.Persons.FindAsync(fixture.PersonId);
+        Assert.NotNull(recoveredPerson);
+        Assert.Null(recoveredPerson.ScheduledTokenRevocationPendingAt);
+    }
+
+    [Fact]
+    public async Task ProcessScheduledTransitionsAsync_ShouldHonorPreCanceledTokenBeforeDatabaseWork()
+    {
+        await using var fixture = await LifecycleFixture.CreateAsync(
+            PersonStatus.Pending,
+            startDate: DateTime.UtcNow.Date.AddDays(-1));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await using (var context = new ApplicationDbContext(fixture.Options))
+        {
+            var service = CreateService(context);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => service.ProcessScheduledTransitionsAsync(cancellation.Token));
+        }
+
+        await using var verificationContext = new ApplicationDbContext(fixture.Options);
+        var person = await verificationContext.Persons.FindAsync(fixture.PersonId);
+        Assert.NotNull(person);
+        Assert.Equal(PersonStatus.Pending, person.Status);
+    }
+
+    [Fact]
+    public async Task ActivatePersonAsync_ShouldKeepPersonIneligible_WhenPendingRevocationFails()
+    {
+        await using var fixture = await LifecycleFixture.CreateAsync(PersonStatus.Resigned);
+        await using (var setupContext = new ApplicationDbContext(fixture.Options))
+        {
+            var person = await setupContext.Persons.FindAsync(fixture.PersonId);
+            Assert.NotNull(person);
+            person.ScheduledTokenRevocationPendingAt = DateTime.UtcNow.AddMinutes(-1);
+            await setupContext.SaveChangesAsync();
+        }
+
+        var tokenRevoker = new Mock<IOpenIddictSubjectTokenRevoker>();
+        tokenRevoker
+            .Setup(revoker => revoker.RevokeBySubjectAsync(
+                fixture.UserId.ToString(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Injected token-store failure."));
+
+        await using (var context = new ApplicationDbContext(fixture.Options))
+        {
+            var service = CreateService(context, tokenRevoker.Object);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.ActivatePersonAsync(
+                fixture.PersonId,
+                DateTime.UtcNow.Date,
+                Guid.NewGuid()));
+        }
+
+        await using var verificationContext = new ApplicationDbContext(fixture.Options);
+        var persistedPerson = await verificationContext.Persons.FindAsync(fixture.PersonId);
+        Assert.NotNull(persistedPerson);
+        Assert.Equal(PersonStatus.Resigned, persistedPerson.Status);
+        Assert.NotNull(persistedPerson.ScheduledTokenRevocationPendingAt);
     }
 
     [Fact]
@@ -164,9 +401,9 @@ public sealed class PersonLifecycleServiceTests
 
     private static PersonLifecycleService CreateService(
         ApplicationDbContext context,
-        IOpenIddictTokenManager? tokenManager = null) => new(
+        IOpenIddictSubjectTokenRevoker? tokenRevoker = null) => new(
         context,
-        tokenManager ?? new Mock<IOpenIddictTokenManager>().Object,
+        tokenRevoker ?? new Mock<IOpenIddictSubjectTokenRevoker>().Object,
         new Mock<ILogger<PersonLifecycleService>>().Object);
 
     private static async Task AssertLifecycleStampRotatedAsync(

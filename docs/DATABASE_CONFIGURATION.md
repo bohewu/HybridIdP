@@ -395,6 +395,27 @@ Do not reset, delete, or alter database data to reuse this capability, including
 
 ---
 
+### Production Operator-Controlled Schema Migration
+
+For both SQL Server and PostgreSQL production deployments, set
+`DatabaseMigration__ApplyOnStartup=false` in `deployment/.env`. Back up the
+selected database, run `deployment/migrate-db.sh --confirm-backup` with that
+environment file and the exact pinned release image, verify success, then
+deploy the same image and wait for readiness. The detailed command sequence is
+in [Deployment Guide: Operator-Controlled Schema Migration](DEPLOYMENT_GUIDE.md#operator-controlled-schema-migration).
+
+`--migrate-only` applies schema changes only. It does not seed data, start an
+HTTP listener, or run AD, provider, or credential-migration workflows. With
+startup migration disabled, a normal application instance finds pending
+migrations and fails before readiness; it must not be used as the migration
+runner.
+
+Application-image rollback and database rollback are separate operations. Do
+not run EF Core `Down` migrations automatically. Restore the operator backup
+only if a schema rollback is truly required.
+
+---
+
 ## 🔄 Migration 管理
 
 ### 新增 Migration

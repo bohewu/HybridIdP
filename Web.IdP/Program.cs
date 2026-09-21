@@ -27,6 +27,7 @@ using OpenTelemetry.Exporter.Prometheus;
 using Web.IdP.Middleware;
 using Web.IdP.Services;
 using Web.IdP.Extensions;
+using Web.IdP.Startup;
 using Web.IdP; // Added for SharedResource
 
 using Quartz;
@@ -76,6 +77,21 @@ builder.Services.AddCustomPlatformServices(builder.Configuration, redisEnabled, 
 var databaseProvider = Environment.GetEnvironmentVariable("DATABASE_PROVIDER")
     ?? builder.Configuration["DatabaseProvider"]
     ?? "SqlServer";
+var migrateOnly = DatabaseMigrationLifecycle.IsMigrateOnly(args);
+
+if (migrateOnly && !DatabaseMigrationLifecycle.IsSupportedProvider(databaseProvider))
+{
+    Console.Error.WriteLine("Database migration failed. Category: configuration.");
+    Environment.ExitCode = 1;
+    return;
+}
+
+if (migrateOnly && !DatabaseMigrationLifecycle.HasConfiguredConnectionString(builder.Configuration, databaseProvider))
+{
+    Console.Error.WriteLine("Database migration failed. Category: configuration.");
+    Environment.ExitCode = 1;
+    return;
+}
 
 var connectionString = databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase)
     ? builder.Configuration.GetConnectionString("PostgreSqlConnection") ?? throw new InvalidOperationException("Connection string 'PostgreSqlConnection' not found.")
@@ -83,6 +99,26 @@ var connectionString = databaseProvider.Equals("PostgreSQL", StringComparison.Or
 
 // Register Custom Identity and Access (DbContext, Identity, OpenIddict, Authorization)
 builder.Services.AddCustomIdentityAndAccess(builder.Configuration, builder.Environment, databaseProvider, connectionString);
+
+if (migrateOnly)
+{
+    using var migrationOnlyApp = builder.Build();
+    await using var migrationScope = migrationOnlyApp.Services.CreateAsyncScope();
+    var migrationContext = migrationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    try
+    {
+        await DatabaseMigrationLifecycle.ApplyMigrationsAsync(
+            migrationContext.Database.MigrateAsync,
+            migrationOnlyApp.Logger);
+    }
+    catch (InvalidOperationException)
+    {
+        Environment.ExitCode = 1;
+    }
+
+    return;
+}
 
 // Register Application Services and Options
 builder.Services.AddCustomApplicationServices(builder.Configuration);
@@ -116,6 +152,25 @@ builder.Services.AddCustomObservability(builder.Configuration, databaseProvider,
 builder.Services.AddScoped<Core.Application.Interfaces.IPasskeyService, Infrastructure.Services.PasskeyService>();
 
 var app = builder.Build();
+
+try
+{
+    await using var migrationScope = app.Services.CreateAsyncScope();
+    var migrationContext = migrationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    if (migrationContext.Database.IsRelational())
+    {
+        await DatabaseMigrationLifecycle.ApplyStartupPolicyAsync(
+            DatabaseMigrationLifecycle.IsAutoMigrationEnabled(builder.Configuration),
+            migrationContext.Database.MigrateAsync,
+            migrationContext.Database.GetPendingMigrationsAsync,
+            app.Logger);
+    }
+}
+catch (InvalidOperationException)
+{
+    Environment.ExitCode = 1;
+    return;
+}
 
 // Configure the HTTP request pipeline.
 app.UseCustomPipeline(builder.Configuration);

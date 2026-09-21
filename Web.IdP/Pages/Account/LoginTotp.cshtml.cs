@@ -9,6 +9,7 @@ using Core.Domain.Constants;
 using Core.Domain.Events;
 using System.ComponentModel.DataAnnotations;
 using Web.IdP.Helpers;
+using Web.IdP.Services;
 
 namespace Web.IdP.Pages.Account;
 
@@ -19,6 +20,8 @@ public partial class LoginTotpModel : PageModel
     private readonly IMfaService _mfaService;
     private readonly IUserManagementService _userManagementService;
     private readonly IDomainEventPublisher _eventPublisher;
+    private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
+    private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly ILogger<LoginTotpModel> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -29,7 +32,9 @@ public partial class LoginTotpModel : PageModel
         IUserManagementService userManagementService,
         IDomainEventPublisher eventPublisher,
         ILogger<LoginTotpModel> logger,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        IMigrationIssuanceGuard migrationIssuanceGuard,
+        ICurrentUserLifecycleEligibility lifecycleEligibility)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -38,6 +43,8 @@ public partial class LoginTotpModel : PageModel
         _eventPublisher = eventPublisher;
         _logger = logger;
         _localizer = localizer;
+        _migrationIssuanceGuard = migrationIssuanceGuard;
+        _lifecycleEligibility = lifecycleEligibility;
     }
 
     [BindProperty]
@@ -121,6 +128,11 @@ public partial class LoginTotpModel : PageModel
             var isValid = await _mfaService.ValidateTotpCodeAsync(user, Input.TotpCode);
             if (isValid)
             {
+                if (!await CanIssueFullCookieAsync(user, cancellationToken))
+                {
+                    return RedirectToPage("./Login");
+                }
+
                 AuthenticationMethodSession.Add(
                     HttpContext.Session,
                     AuthConstants.Amr.Mfa,
@@ -163,8 +175,14 @@ public partial class LoginTotpModel : PageModel
             
             if (result.Succeeded)
             {
+                if (!await CanIssueFullCookieAsync(user, cancellationToken))
+                {
+                    return RedirectToPage("./Login");
+                }
+
                 AuthenticationMethodSession.Add(HttpContext.Session, AuthConstants.Amr.Mfa);
                 var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 _logger.LogInformation("User logged in with recovery code.");
@@ -214,5 +232,11 @@ public partial class LoginTotpModel : PageModel
         
         return user;
     }
+
+    private async Task<bool> CanIssueFullCookieAsync(
+        ApplicationUser user,
+        CancellationToken cancellationToken) =>
+        await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken) &&
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
 
 }

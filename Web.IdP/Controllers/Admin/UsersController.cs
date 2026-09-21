@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.RateLimiting;
+using Core.Application.Ports;
 using Web.IdP;
 using Web.IdP.Services;
 
@@ -42,6 +44,8 @@ public class UsersController : ControllerBase
     private readonly AspNetCoreAuthorizationService _authorizationService;
     private readonly ILogger<UsersController> _logger;
     private readonly PrivilegedRoleProtectionOptions _privilegedRoleProtectionOptions;
+    private readonly IRecoveryAssistanceService _recoveryAssistanceService;
+    private readonly INativeRecoveryAssistanceService? _nativeRecoveryAssistanceService;
 
     public UsersController(
         IUserManagementService userManagementService,
@@ -54,7 +58,9 @@ public class UsersController : ControllerBase
         IImpersonationService impersonationService,
         AspNetCoreAuthorizationService authorizationService,
         IOptions<PrivilegedRoleProtectionOptions> privilegedRoleProtectionOptions,
-        ILogger<UsersController> logger)
+        ILogger<UsersController> logger,
+        IRecoveryAssistanceService recoveryAssistanceService,
+        INativeRecoveryAssistanceService? nativeRecoveryAssistanceService = null)
     {
         _userManagementService = userManagementService;
         _userManager = userManager;
@@ -67,6 +73,8 @@ public class UsersController : ControllerBase
         _authorizationService = authorizationService;
         _privilegedRoleProtectionOptions = privilegedRoleProtectionOptions.Value;
         _logger = logger;
+        _recoveryAssistanceService = recoveryAssistanceService;
+        _nativeRecoveryAssistanceService = nativeRecoveryAssistanceService;
     }
 
     /// <summary>
@@ -762,6 +770,175 @@ public class UsersController : ControllerBase
         }
     }
 
+    [HttpPost("{id}/password-recovery/resend-otp")]
+    [HasPermission(Permissions.Users.Update)]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> ResendNativeRecoveryOtp(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var actorAccountId = CurrentActorAccountId();
+        if (actorAccountId is null)
+        {
+            return Unauthorized(new { outcome = "unauthorized" });
+        }
+
+        var result = _nativeRecoveryAssistanceService is null
+            ? new NativeRecoveryAssistanceResult(RecoveryProofOutcome.Unavailable)
+            : await _nativeRecoveryAssistanceService.ResendAsync(
+                new AdminNativeRecoveryResendRequest(actorAccountId.Value, id),
+                cancellationToken);
+        return AdminRecoveryOutcome(result.Outcome, result.RetryAfterSeconds);
+    }
+
+    [HttpPost("{id}/password-recovery/replace-email")]
+    [HasPermission(Permissions.Users.Update)]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> ReplaceNativeRecoveryEmail(
+        Guid id,
+        [FromBody] AdminRecoveryEmailReplacementApiRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var actorAccountId = CurrentActorAccountId();
+        if (actorAccountId is null)
+        {
+            return Unauthorized(new { outcome = "unauthorized" });
+        }
+
+        var result = _nativeRecoveryAssistanceService is null
+            ? new RecoveryEmailChangeResult(RecoveryProofOutcome.Unavailable)
+            : await _nativeRecoveryAssistanceService.ReplaceEmailAsync(
+                new AdminNativeRecoveryEmailReplacementRequest(
+                    actorAccountId.Value,
+                    id,
+                    request.CandidateAddress,
+                    request.IdentityCheckEvidence,
+                    request.Reason),
+                cancellationToken);
+        return AdminRecoveryOutcome(result.Outcome);
+    }
+
+    [HttpPost("{id}/password-recovery/approve-reset")]
+    [HasPermission(Permissions.Users.Update)]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> ApproveNativeRecoveryReset(
+        Guid id,
+        [FromBody] AdminResetApprovalApiRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var actorAccountId = CurrentActorAccountId();
+        if (actorAccountId is null)
+        {
+            return Unauthorized(new { outcome = "unauthorized" });
+        }
+
+        var result = _nativeRecoveryAssistanceService is null
+            ? new ResetApprovalIssueResult(RecoveryProofOutcome.Unavailable)
+            : await _nativeRecoveryAssistanceService.ApproveResetAsync(
+                new AdminNativeRecoveryApprovalRequest(
+                    actorAccountId.Value,
+                    id,
+                    request.IdentityCheckEvidence,
+                    request.Reason),
+                cancellationToken);
+        return AdminRecoveryOutcome(result.Outcome);
+    }
+
+    [HttpPost("{id}/credential-recovery/resend-otp")]
+    [HasPermission(Permissions.Users.Update)]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> ResendCredentialMigrationOtp(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var actorAccountId = CurrentActorAccountId();
+        if (actorAccountId is null)
+        {
+            return Unauthorized(new { outcome = "unauthorized" });
+        }
+
+        var result = await _recoveryAssistanceService.ResendMigrationOtpAsync(
+            new AdminMigrationOtpResendRequest(actorAccountId.Value, id),
+            cancellationToken);
+        return AdminRecoveryOutcome(result.Outcome, result.RetryAfterSeconds);
+    }
+
+    [HttpPost("{id}/credential-recovery/replace-email")]
+    [HasPermission(Permissions.Users.Update)]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> ReplaceCredentialRecoveryEmail(
+        Guid id,
+        [FromBody] AdminRecoveryEmailReplacementApiRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var actorAccountId = CurrentActorAccountId();
+        if (actorAccountId is null)
+        {
+            return Unauthorized(new { outcome = "unauthorized" });
+        }
+
+        var result = await _recoveryAssistanceService.ReplaceRecoveryEmailAsync(
+            new AdminRecoveryEmailReplacementRequest(
+                actorAccountId.Value,
+                id,
+                request.CandidateAddress,
+                request.IdentityCheckEvidence,
+                request.Reason),
+            cancellationToken);
+        return AdminRecoveryOutcome(result.Outcome);
+    }
+
+    [HttpPost("{id}/credential-recovery/approve-reset")]
+    [HasPermission(Permissions.Users.Update)]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> ApproveCredentialRecoveryReset(
+        Guid id,
+        [FromBody] AdminResetApprovalApiRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var actorAccountId = CurrentActorAccountId();
+        if (actorAccountId is null)
+        {
+            return Unauthorized(new { outcome = "unauthorized" });
+        }
+
+        var result = await _recoveryAssistanceService.IssueResetApprovalAsync(
+            new AdminResetApprovalRequest(
+                actorAccountId.Value,
+                id,
+                request.IdentityCheckEvidence,
+                request.Reason),
+            cancellationToken);
+        return AdminRecoveryOutcome(result.Outcome);
+    }
+
+    private IActionResult AdminRecoveryOutcome(RecoveryProofOutcome outcome, int retryAfterSeconds = 0)
+    {
+        if (outcome == RecoveryProofOutcome.Success)
+        {
+            return Ok(new { outcome = "success", retryAfterSeconds });
+        }
+
+        if (outcome == RecoveryProofOutcome.Unauthorized)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { outcome = "highAssuranceRequired" });
+        }
+
+        if (outcome == RecoveryProofOutcome.Cooldown)
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, new { outcome = "cooldown", retryAfterSeconds });
+        }
+
+        return BadRequest(new { outcome = "unavailable" });
+    }
+
+    private Guid? CurrentActorAccountId()
+    {
+        var value = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+                    User.FindFirst(OpenIddictConstants.Claims.Subject)?.Value;
+        return Guid.TryParse(value, out var actorAccountId) ? actorAccountId : null;
+    }
+
     private async Task<IActionResult?> RequireRoleUpdatePermissionAsync()
     {
         var authorizationResult = await _authorizationService.AuthorizeAsync(
@@ -933,4 +1110,13 @@ public class UsersController : ControllerBase
 
         return await _dbContext.UserCredentials.AnyAsync(c => c.UserId == user.Id);
     }
-    }
+}
+
+public sealed record AdminRecoveryEmailReplacementApiRequest(
+    string CandidateAddress,
+    string IdentityCheckEvidence,
+    string Reason);
+
+public sealed record AdminResetApprovalApiRequest(
+    string IdentityCheckEvidence,
+    string Reason);

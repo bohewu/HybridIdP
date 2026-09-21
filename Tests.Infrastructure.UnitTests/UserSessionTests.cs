@@ -8,7 +8,7 @@ namespace Tests.Infrastructure.UnitTests;
 
 /// <summary>
 /// Unit tests for UserSession entity with ActiveRole support (Phase 11.1)
-/// Tests enforce that ActiveRoleId is required (NOT NULL) for all sessions
+/// ActiveRoleId is optional until a role is explicitly resolved for the session.
 /// </summary>
 public class UserSessionTests : IDisposable
 {
@@ -65,34 +65,28 @@ public class UserSessionTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateSession_WithoutActiveRole_ShouldFailValidation()
+    public async Task CreateSession_WithoutActiveRole_ShouldStoreNull()
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
         var userId = Guid.NewGuid();
         
-        // In-Memory database doesn't enforce required constraints like real SQL Server
-        // So we test that attempting to query sessions without ActiveRoleId will fail
-        // or we verify the property is set to default value (Guid.Empty)
         var session = new UserSession
         {
             UserId = userId,
             AuthorizationId = "auth_456",
-            // ActiveRoleId not set - defaults to Guid.Empty which is invalid
             LastRoleSwitchUtc = null
         };
         
         context.UserSessions.Add(session);
         await context.SaveChangesAsync();
         
-        // Assert - Verify that ActiveRoleId has the default invalid value
         var retrieved = await context.UserSessions
             .FirstOrDefaultAsync(s => s.Id == session.Id);
         Assert.NotNull(retrieved);
-        Assert.Equal(Guid.Empty, retrieved.ActiveRoleId); // Invalid - should not be empty in production
-        
-        // Note: Real SQL Server will enforce NOT NULL constraint and throw
-        // This test verifies the entity structure, actual DB constraint is tested in integration tests
+        Assert.Null(retrieved.ActiveRoleId);
+        Assert.True(context.Model.FindEntityType(typeof(UserSession))!
+            .FindProperty(nameof(UserSession.ActiveRoleId))!.IsNullable);
     }
 
     [Fact]

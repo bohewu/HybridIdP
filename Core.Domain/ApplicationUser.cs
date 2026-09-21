@@ -46,10 +46,16 @@ public class ApplicationUser : IdentityUser<Guid>
     public bool IsActive { get; set; } = true;
     public DateTime? LastLoginDate { get; set; }
     public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Records explicit revocation of source-backed recovery-email bootstrap for this account.
+    /// </summary>
+    public DateTimeOffset? RecoverySourceBootstrapRevokedAtUtc { get; set; }
     
     // Password Policy Fields
     public string PasswordHistory { get; set; } = "[]"; // Stores JSON array of hashed passwords
     public DateTime? LastPasswordChangeDate { get; set; }
+    public bool RequiresPasswordChange { get; set; }
     
     // TOTP Replay Attack Prevention (Phase 20.1)
     /// <summary>

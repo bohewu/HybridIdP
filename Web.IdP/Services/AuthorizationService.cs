@@ -48,6 +48,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
         private readonly IClaimsEnrichmentService _claimsEnricher;
         private readonly ISecurityPolicyService _securityPolicyService;
         private readonly IPasskeyService _passkeyService;
+        private readonly ISessionService _sessionService;
 
         public AuthorizationService(
             IOpenIddictApplicationManager applicationManager,
@@ -66,7 +67,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
             IHttpContextAccessor httpContextAccessor,
             IClaimsEnrichmentService claimsEnricher,
             ISecurityPolicyService securityPolicyService,
-            IPasskeyService passkeyService)
+            IPasskeyService passkeyService,
+            ISessionService sessionService)
         {
             _applicationManager = applicationManager;
             _authorizationManager = authorizationManager;
@@ -85,6 +87,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             _claimsEnricher = claimsEnricher;
             _securityPolicyService = securityPolicyService;
             _passkeyService = passkeyService;
+            _sessionService = sessionService;
         }
 
         private HttpContext HttpContext => _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("HttpContext is not available.");
@@ -370,8 +373,18 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 }
 
                 identity.SetScopes(existingAuthorizationScopes);
-                identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(existingAuthorization, cancellationToken));
+                var authorizationId = await _authorizationManager.GetIdAsync(existingAuthorization, cancellationToken)
+                    ?? throw new InvalidOperationException("The authorization identifier cannot be resolved.");
+                identity.SetAuthorizationId(authorizationId);
                 identity.SetDestinations(GetDestinations);
+
+                await TrackUserSessionAsync(
+                    userPrincipal,
+                    user!,
+                    authorizationId,
+                    request.ClientId!,
+                    ApplicationName,
+                    cancellationToken);
 
                 return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
             }
@@ -563,7 +576,17 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 scopes: effectiveScopes,
                 cancellationToken: cancellationToken);
 
-            identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization, cancellationToken));
+            var authorizationId = await _authorizationManager.GetIdAsync(authorization, cancellationToken)
+                ?? throw new InvalidOperationException("The authorization identifier cannot be resolved.");
+            identity.SetAuthorizationId(authorizationId);
+
+            await TrackUserSessionAsync(
+                userPrincipal,
+                user,
+                authorizationId,
+                request.ClientId!,
+                await _applicationManager.GetDisplayNameAsync(application, cancellationToken),
+                cancellationToken);
 
             // Structured audit log for full/partial grant
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -588,6 +611,39 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 cancellationToken);
 
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+        }
+
+        private async Task TrackUserSessionAsync(
+            ClaimsPrincipal userPrincipal,
+            ApplicationUser user,
+            string authorizationId,
+            string clientId,
+            string? clientDisplayName,
+            CancellationToken cancellationToken)
+        {
+            var assignedRoles = await _userManager.GetRolesAsync(user);
+            var activeRoleName = userPrincipal.FindFirst("active_role")?.Value;
+            if (string.IsNullOrWhiteSpace(activeRoleName))
+            {
+                activeRoleName = assignedRoles.Count == 1 ? assignedRoles[0] : null;
+            }
+
+            Guid? activeRoleId = null;
+            if (!string.IsNullOrWhiteSpace(activeRoleName) &&
+                assignedRoles.Contains(activeRoleName, StringComparer.OrdinalIgnoreCase))
+            {
+                activeRoleId = (await _roleManager.FindByNameAsync(activeRoleName))?.Id;
+            }
+
+            await _sessionService.EnsureCreatedAsync(
+                user.Id,
+                authorizationId,
+                clientId,
+                clientDisplayName,
+                activeRoleId,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                Request.Headers.UserAgent.ToString(),
+                cancellationToken);
         }
 
         // Helper methods copied and adapted from PageModel

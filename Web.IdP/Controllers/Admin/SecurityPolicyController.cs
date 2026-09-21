@@ -52,6 +52,7 @@ public class SecurityPolicyController : ControllerBase
             EnforceMandatoryMfaEnrollment = policy.EnforceMandatoryMfaEnrollment,
             MfaEnforcementGracePeriodDays = policy.MfaEnforcementGracePeriodDays,
             CustomForgotPasswordUrl = policy.CustomForgotPasswordUrl,
+            ForgotPasswordMode = policy.ForgotPasswordMode,
             UpdatedUtc = policy.UpdatedUtc,
             UpdatedBy = policy.UpdatedBy
         };
