@@ -1,0 +1,25 @@
+{
+  "id": "C11",
+  "case": "Unsupported version or scheme",
+  "owner": "both",
+  "scenario": "unsupported",
+  "requestJson": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+  "httpStatus": 400,
+  "contentType": "application/json",
+  "responseJson": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"outcome\":\"Unsupported\"}",
+  "consumerAcceptsEnvelope": true,
+  "consumerMayPrepareGrant": false,
+  "executionScope": "Pure wire checks only; producer source behavior requires producer tests. HTTP and durable ceremony remain separate consumer gates.",
+  "requestVariants": [
+    {
+      "name": "contractVersion",
+      "json": "{\"contractVersion\":\"unsupported\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "scheme",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"unsupported\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    }
+  ]
+}

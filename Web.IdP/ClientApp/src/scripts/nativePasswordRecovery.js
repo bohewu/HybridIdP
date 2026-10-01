@@ -34,6 +34,14 @@ function evaluateRule(name, requiredValue, password, confirmation) {
 
 export function initNativePasswordPolicy(root = document) {
   const recoveryRoot = root.querySelector('[data-native-recovery]')
+  const evidence = recoveryRoot?.querySelector('[data-native-recovery-evidence]')
+  if (evidence) {
+    // Do not retain supplemental identity evidence in browser history restoration.
+    const clearEvidence = () => { evidence.value = '' }
+    clearEvidence()
+    window.addEventListener('pageshow', clearEvidence)
+    window.addEventListener('pagehide', clearEvidence)
+  }
   const password = recoveryRoot?.querySelector('[data-native-password]')
   const confirmation = recoveryRoot?.querySelector('[data-native-password-confirm]')
   const policy = recoveryRoot?.querySelector('[data-native-password-policy]')

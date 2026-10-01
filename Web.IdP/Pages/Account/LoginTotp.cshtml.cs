@@ -139,6 +139,7 @@ public partial class LoginTotpModel : PageModel
                     AuthConstants.Amr.Otp);
                 var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
+                RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
                 await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 
@@ -183,6 +184,7 @@ public partial class LoginTotpModel : PageModel
                 AuthenticationMethodSession.Add(HttpContext.Session, AuthConstants.Amr.Mfa);
                 var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
+                RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 _logger.LogInformation("User logged in with recovery code.");

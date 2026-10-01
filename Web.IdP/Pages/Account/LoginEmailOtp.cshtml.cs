@@ -165,7 +165,8 @@ public partial class LoginEmailOtpModel : PageModel
                 AuthConstants.Amr.Otp);
             var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
-            await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
+            RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
+                await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
             await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
             _logger.LogInformation("User logged in with Email MFA.");
             

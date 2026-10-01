@@ -225,7 +225,8 @@ public partial class LoginModel : PageModel
             }
         }
 
-        var result = await _loginService.AuthenticateAsync(Input.Login, Input.Password, cancellationToken);
+        var result = await RecoveryReauthenticationSession.AuthenticatePasswordAsync(
+            HttpContext, Input.Login, Input.Password, _loginService, _userManager, cancellationToken);
 
         switch (result.Status)
         {
@@ -521,7 +522,7 @@ public partial class LoginModel : PageModel
         var providerAvailable = availableExternalLogins.Any(scheme =>
             string.Equals(scheme.Name, provider, StringComparison.Ordinal));
 
-        if (!providerAvailable)
+        if (!providerAvailable || RecoveryReauthenticationSession.HasPending(HttpContext))
         {
             return RedirectToPage("./Login", new { returnUrl, remoteError = "ProviderNotAvailable" });
         }

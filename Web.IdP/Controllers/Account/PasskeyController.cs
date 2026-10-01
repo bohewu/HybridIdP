@@ -355,6 +355,7 @@ public partial class PasskeyController : ControllerBase
             // Issue cookie with amr claims
             var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
+            RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, result.User.Id, hardware: true);
             await _signInManager.SignInWithClaimsAsync(result.User, isPersistent: false, claims);
             await _userManagementService.UpdateLastLoginAsync(result.User.Id, ct);
             LogPasskeyLogin(result.User.UserName);

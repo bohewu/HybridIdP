@@ -74,8 +74,10 @@ public interface IDirectoryRequiredCredentialChangeService
         CancellationToken cancellationToken = default);
 }
 
-public sealed record RecoveryEmailChangeRequest(Guid LocalAccountId, string CandidateAddress);
-public sealed record RecoveryEmailVerificationRequest(Guid LocalAccountId, string Code);
+public sealed record RecoveryEmailChangeRequest(Guid LocalAccountId, string CandidateAddress)
+{ public override string ToString() => nameof(RecoveryEmailChangeRequest); }
+public sealed record RecoveryEmailVerificationRequest(Guid LocalAccountId, string Code)
+{ public override string ToString() => nameof(RecoveryEmailVerificationRequest); }
 public sealed record MigrationRecoveryEmailVerificationRequest(
     string Continuation,
     MigrationContinuationContext Context,

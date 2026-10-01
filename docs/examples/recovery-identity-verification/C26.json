@@ -1,0 +1,45 @@
+{
+  "id": "C26",
+  "case": "Unicode scalar limits and malformed surrogates",
+  "owner": "both",
+  "scenario": "unicode",
+  "requestJson": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+  "httpStatus": null,
+  "contentType": "application/json",
+  "responseJson": "",
+  "consumerAcceptsEnvelope": false,
+  "consumerMayPrepareGrant": false,
+  "executionScope": "Pure wire checks only; producer source behavior requires producer tests. HTTP and durable ceremony remain separate consumer gates.",
+  "requestVariants": [
+    {
+      "name": "1-supplementary-scalars",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\\ud83d\\ude42\"}}",
+      "valid": true
+    },
+    {
+      "name": "128-supplementary-scalars",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\"}}",
+      "valid": true
+    },
+    {
+      "name": "129-supplementary-scalars",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\\ud83d\\ude42\"}}",
+      "valid": false
+    },
+    {
+      "name": "lone-high-surrogate",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\\uD800\"}}",
+      "valid": false
+    },
+    {
+      "name": "lone-low-surrogate",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\\uDC00\"}}",
+      "valid": false
+    },
+    {
+      "name": "invalid-surrogate-pair",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\\uD800A\"}}",
+      "valid": false
+    }
+  ]
+}

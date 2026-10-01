@@ -3,6 +3,10 @@ using Core.Application.Ports;
 using Core.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Identity;
+using Infrastructure.Options;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services;
 
@@ -10,13 +14,16 @@ public sealed class HttpContextRecoveryProofAuthorizer : IRecoveryProofAuthorize
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly Microsoft.AspNetCore.Authorization.IAuthorizationService _authorizationService;
+    private readonly RecoveryEmailSelectionOptions _selection;
 
     public HttpContextRecoveryProofAuthorizer(
         IHttpContextAccessor httpContextAccessor,
-        Microsoft.AspNetCore.Authorization.IAuthorizationService authorizationService)
+        Microsoft.AspNetCore.Authorization.IAuthorizationService authorizationService,
+        IOptions<RecoveryEmailSelectionOptions>? selection = null)
     {
         _httpContextAccessor = httpContextAccessor;
         _authorizationService = authorizationService;
+        _selection = selection?.Value ?? new RecoveryEmailSelectionOptions();
     }
 
     public Task<bool> IsSelfServiceAuthorizedAsync(
@@ -25,8 +32,13 @@ public sealed class HttpContextRecoveryProofAuthorizer : IRecoveryProofAuthorize
     {
         cancellationToken.ThrowIfCancellationRequested();
         var principal = _httpContextAccessor.HttpContext?.User;
+        var session = _httpContextAccessor.HttpContext?.Features.Get<ISessionFeature>()?.Session;
         return Task.FromResult(
-            PrincipalAccountId(principal) == localAccountId && HasCompletedMfa(principal));
+            (!_selection.Enabled || principal?.Identity?.AuthenticationType == IdentityConstants.ApplicationScheme) &&
+            PrincipalAccountId(principal) == localAccountId && HasCompletedMfa(principal) &&
+            session?.GetString("required-password-change.pending") is null &&
+            session?.GetString("credential-migration.continuation") is null &&
+            session?.GetString("credential-migration.recovery-continuation") is null);
     }
 
     public async Task<bool> IsAdministratorAuthorizedAsync(

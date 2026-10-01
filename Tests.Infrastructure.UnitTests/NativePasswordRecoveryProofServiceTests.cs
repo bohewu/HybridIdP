@@ -1,9 +1,12 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Interfaces;
+using Core.Application.Options;
 using Core.Application.Ports;
 using Core.Domain;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
+using Core.Domain.Models;
 using Infrastructure;
 using Infrastructure.Options;
 using Infrastructure.Services;
@@ -11,6 +14,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Tests.Infrastructure.UnitTests;
@@ -388,6 +392,103 @@ public sealed class NativePasswordRecoveryProofServiceTests
         {
             OrdinaryRecoveryApprovalLifetimeMinutes = 11
         }).Failed);
+    }
+
+    [Theory]
+    [InlineData("success")]
+    [InlineData("missing-smtp")]
+    [InlineData("failure")]
+    [InlineData("cancelled")]
+    public async Task PersistedSelection_ShouldRequireActualDeliveryBeforeProof(string outcome)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        await SeedRuntimeModeAsync(context, ForgotPasswordMode.Native);
+        var time = new FixedTimeProvider();
+        var hasher = new PasswordHasher<ApplicationUser>();
+        var user = await SeedEligibleUserAsync(context, hasher);
+        user.SecurityStamp = "persisted-selection-stamp";
+        var email = await SeedVerifiedRecoveryEmailAsync(context, user.Id, time);
+        var preference = new RecoveryEmailPreference(user.Id, time.GetUtcNow());
+        Assert.True(preference.TrySelect(RecoveryEmailSelectionMode.UseCustom, 1, time.GetUtcNow()));
+        context.RecoveryEmailPreferences.Add(preference);
+        await context.SaveChangesAsync();
+
+        var native = Options.Create(new ForgotPasswordRecoveryOptions
+        {
+            NativeRecoveryEnabled = true, DeploymentCeiling = ForgotPasswordMode.Native
+        });
+        // Persisted custom intent must remain usable after the new flags are disabled.
+        var selection = Options.Create(new RecoveryEmailSelectionOptions());
+        var identity = Options.Create(new RecoveryIdentityVerificationOptions());
+        var defaults = new Mock<IRecoveryDefaultDestinationEvaluator>(MockBehavior.Strict);
+        var resolver = new RecoveryDestinationResolver(context, defaults.Object, selection,
+            Options.Create(new RecoveryVerificationPolicyOptions { Enabled = true }), time);
+        var queuedMail = new CapturingEmailService();
+        var dispatcher = new Mock<IEmailDispatcher>(MockBehavior.Strict);
+        var settings = new Mock<IOptionsSnapshot<EmailOptions>>();
+        settings.SetupGet(s => s.Value).Returns(new EmailOptions
+        {
+            SmtpHost = outcome == "missing-smtp" ? string.Empty : "synthetic.test"
+        });
+        var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var complete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        EmailMessage? sent = null;
+        dispatcher.Setup(d => d.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+            .Returns<EmailMessage, CancellationToken>(async (message, ct) =>
+            {
+                sent = message;
+                reached.TrySetResult();
+                await complete.Task.WaitAsync(ct);
+                if (outcome == "failure") throw new InvalidOperationException("Synthetic SMTP failure");
+            });
+        var delivery = new RecoveryOtpDeliveryService(dispatcher.Object, settings.Object);
+        var routing = new ForgotPasswordRoutingEvaluator(native);
+        var precheck = new RecoveryPrecheckService(context, resolver,
+            new Mock<IRecoveryIdentityVerificationClient>(MockBehavior.Strict).Object,
+            new RecoveryThrottleService(context, Options.Create(new RecoveryThrottleOptions()), time),
+            delivery, hasher, new TestLookupNormalizer(), routing, identity, selection, native, time);
+        var service = new NativePasswordRecoveryProofService(context, queuedMail, hasher,
+            new TestLookupNormalizer(), new FixedPolicyEvaluator(email.Address), routing, native, time,
+            identity, selection, precheck, delivery);
+        var browser = new NativeRecoveryContext("browser-hash", "csrf-hash");
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var start = service.StartAsync(new(user.UserName!, browser), cancellation.Token);
+        try
+        {
+            if (outcome != "missing-smtp")
+            {
+                await reached.Task.WaitAsync(cancellation.Token);
+                var reserved = await context.RecoveryProofChallenges.AsNoTracking().SingleAsync();
+                Assert.Equal(RecoveryChallengeDeliveryState.Reserved, reserved.DeliveryState);
+                var pendingCode = System.Text.RegularExpressions.Regex.Match(sent!.Body, @"\b\d{6}\b").Value;
+                Assert.Equal(NativeRecoveryVerificationOutcome.Denied,
+                    (await service.VerifyAsync(new(reserved.Id, pendingCode, browser))).Outcome);
+                if (outcome == "cancelled") cancellation.Cancel();
+            }
+        }
+        finally { complete.TrySetResult(); }
+
+        NativeRecoveryStartResult? started = null;
+        if (outcome == "cancelled") await Assert.ThrowsAnyAsync<OperationCanceledException>(() => start);
+        else started = await start;
+        context.ChangeTracker.Clear();
+        var challenge = await context.RecoveryProofChallenges.AsNoTracking().SingleAsync();
+        Assert.Equal(outcome == "success" ? RecoveryChallengeDeliveryState.Delivered :
+            outcome == "cancelled" ? RecoveryChallengeDeliveryState.Reserved : RecoveryChallengeDeliveryState.Failed,
+            challenge.DeliveryState);
+        var code = sent is null ? "000000" : System.Text.RegularExpressions.Regex.Match(sent.Body, @"\b\d{6}\b").Value;
+        var verified = await service.VerifyAsync(new(challenge.Id, code, browser));
+        Assert.Equal(outcome == "success" ? NativeRecoveryVerificationOutcome.Verified : NativeRecoveryVerificationOutcome.Denied,
+            verified.Outcome);
+        Assert.Equal(outcome == "success", verified.Proof is not null);
+        if (started is not null) Assert.Equal(outcome == "success", started.RequestId == challenge.Id);
+        Assert.Equal(0, queuedMail.SendCount);
+        defaults.VerifyNoOtherCalls();
+        dispatcher.Verify(d => d.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()),
+            outcome == "missing-smtp" ? Times.Never() : Times.Once());
     }
 
     private static NativePasswordRecoveryProofService CreateService(

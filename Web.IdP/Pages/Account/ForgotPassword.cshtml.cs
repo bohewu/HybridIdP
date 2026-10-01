@@ -21,6 +21,9 @@ public sealed class ForgotPasswordModel : PageModel
     private const string RequestIdKey = "native-recovery.request-id";
     private const string ProofKey = "native-recovery.proof";
     private const string AdministrativeApprovalKey = "native-recovery.admin-approval";
+    private const string GrantKey = "native-recovery.grant";
+    private const string MaskedDestinationKey = "native-recovery.masked";
+    private const string BrowserBudgetKey = "native-recovery.browser-budget";
 
     private readonly INativePasswordRecoveryProofService _proofService;
     private readonly INativePasswordRecoveryResetService _resetService;
@@ -29,6 +32,7 @@ public sealed class ForgotPasswordModel : PageModel
     private readonly IDataProtector _proofProtector;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly INativeRecoveryAssistanceService? _assistanceService;
+    private readonly IRecoveryPrecheckService? _precheck;
 
     public ForgotPasswordModel(
         INativePasswordRecoveryProofService proofService,
@@ -37,7 +41,8 @@ public sealed class ForgotPasswordModel : PageModel
         IForgotPasswordRoutingEvaluator routingEvaluator,
         IDataProtectionProvider dataProtectionProvider,
         IStringLocalizer<SharedResource> localizer,
-        INativeRecoveryAssistanceService? assistanceService = null)
+        INativeRecoveryAssistanceService? assistanceService = null,
+        IRecoveryPrecheckService? precheck = null)
     {
         _proofService = proofService;
         _resetService = resetService;
@@ -47,6 +52,7 @@ public sealed class ForgotPasswordModel : PageModel
             "HybridIdP.NativePasswordRecovery.WebProof.v1");
         _localizer = localizer;
         _assistanceService = assistanceService;
+        _precheck = precheck;
     }
 
     [BindProperty]
@@ -61,6 +67,11 @@ public sealed class ForgotPasswordModel : PageModel
     public bool AwaitingCode { get; private set; }
     public bool AwaitingPassword { get; private set; }
     public bool RecoverySucceeded { get; private set; }
+    public bool ReadyToSend { get; private set; }
+    public string? MaskedDestination { get; private set; }
+    public bool IdentityInputEnabled => _precheck?.IdentityInputEnabled == true;
+    public string IdentityLabelResourceKey => _precheck?.LabelResourceKey ?? "Recovery.Identity.Identifier.Label";
+    public string IdentityHelpResourceKey => _precheck?.HelpResourceKey ?? "Recovery.Identity.Identifier.Help";
     public SecurityPolicy? CurrentPolicy { get; private set; }
     public IReadOnlyList<ClientPasswordRule> ClientPasswordRules { get; private set; } = [];
 
@@ -72,6 +83,8 @@ public sealed class ForgotPasswordModel : PageModel
     public sealed class IdentifierInput
     {
         public string? Value { get; set; }
+        public string? IdentityIdentifier { get; set; }
+        public override string ToString() => "IdentifierInput [redacted]";
     }
 
     public sealed class CodeInput
@@ -100,6 +113,10 @@ public sealed class ForgotPasswordModel : PageModel
 
     public async Task<IActionResult> OnPostStartAsync(CancellationToken cancellationToken)
     {
+        var identifier = Identifier.Value;
+        var evidence = Identifier.IdentityIdentifier;
+        Identifier = new IdentifierInput();
+        ModelState.Clear();
         await HttpContext.Session.LoadAsync(cancellationToken);
         if (!await IsNativeAvailableAsync())
         {
@@ -108,9 +125,6 @@ public sealed class ForgotPasswordModel : PageModel
         }
 
         ClearRecoveryState();
-        var identifier = Identifier.Value;
-        Identifier = new IdentifierInput();
-        ModelState.Clear();
         if (string.IsNullOrWhiteSpace(identifier) || identifier.Length > 256)
         {
             ModelState.AddModelError(string.Empty, _localizer["NativeRecovery.IdentifierRequired"]);
@@ -118,9 +132,38 @@ public sealed class ForgotPasswordModel : PageModel
         }
 
         var context = CreateContext();
+        if (_precheck?.Enabled == true)
+        {
+            var prepared = await _precheck.PrepareAsync(new RecoveryPrepareRequest(identifier, evidence ?? string.Empty,
+                context, HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"), cancellationToken);
+            if (prepared.GrantId is not { } grantId || string.IsNullOrWhiteSpace(prepared.MaskedDestination))
+                return ResetDenied();
+            HttpContext.Session.SetString(GrantKey, grantId.ToString("D"));
+            HttpContext.Session.SetString(MaskedDestinationKey, prepared.MaskedDestination);
+            ReadyToSend = true;
+            MaskedDestination = prepared.MaskedDestination;
+            return Page();
+        }
         var result = await _proofService.StartAsync(
             new NativeRecoveryStartRequest(identifier, context),
             cancellationToken);
+        HttpContext.Session.SetString(RequestIdKey, result.RequestId.ToString("D"));
+        AwaitingCode = true;
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostSendCodeAsync(CancellationToken cancellationToken)
+    {
+        Identifier = new IdentifierInput();
+        ModelState.Clear();
+        await HttpContext.Session.LoadAsync(cancellationToken);
+        if (!await IsNativeAvailableAsync() || _precheck?.Enabled != true ||
+            !Guid.TryParse(HttpContext.Session.GetString(GrantKey), out var grantId) ||
+            !TryGetContext(out var context)) return ResetDenied();
+        HttpContext.Session.Remove(GrantKey);
+        HttpContext.Session.Remove(MaskedDestinationKey);
+        var result = await _precheck.SendOtpAsync(new RecoverySendOtpRequest(grantId, context,
+            HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"), cancellationToken);
         HttpContext.Session.SetString(RequestIdKey, result.RequestId.ToString("D"));
         AwaitingCode = true;
         return Page();
@@ -381,23 +424,32 @@ public sealed class ForgotPasswordModel : PageModel
         var csrfContext = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         HttpContext.Session.SetString(ContextKey, browserContext);
         HttpContext.Session.SetString(CsrfKey, csrfContext);
-        return new NativeRecoveryContext(Hash(browserContext), Hash(csrfContext));
+        if (_precheck?.Enabled != true)
+            return new NativeRecoveryContext(Hash(browserContext), Hash(csrfContext));
+        var budget = HttpContext.Session.GetString(BrowserBudgetKey) ?? Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        HttpContext.Session.SetString(BrowserBudgetKey, budget);
+        return new NativeRecoveryContext(Hash(browserContext), Hash(csrfContext), Hash(budget));
     }
 
     private bool TryGetRequest(out Guid requestId, out NativeRecoveryContext context)
     {
         var requestValue = HttpContext.Session.GetString(RequestIdKey);
+        context = default!;
+        return Guid.TryParse(requestValue, out requestId) && TryGetContext(out context);
+    }
+
+    private bool TryGetContext(out NativeRecoveryContext context)
+    {
         var browserContext = HttpContext.Session.GetString(ContextKey);
         var csrfContext = HttpContext.Session.GetString(CsrfKey);
-        if (!Guid.TryParse(requestValue, out requestId) ||
-            string.IsNullOrWhiteSpace(browserContext) ||
-            string.IsNullOrWhiteSpace(csrfContext))
+        if (string.IsNullOrWhiteSpace(browserContext) || string.IsNullOrWhiteSpace(csrfContext))
         {
             context = default!;
             return false;
         }
 
-        context = new NativeRecoveryContext(Hash(browserContext), Hash(csrfContext));
+        var budget = HttpContext.Session.GetString(BrowserBudgetKey);
+        context = new NativeRecoveryContext(Hash(browserContext), Hash(csrfContext), budget is null ? null : Hash(budget));
         return true;
     }
 
@@ -423,6 +475,8 @@ public sealed class ForgotPasswordModel : PageModel
 
     private void RestorePhase()
     {
+        ReadyToSend = Guid.TryParse(HttpContext.Session.GetString(GrantKey), out _);
+        MaskedDestination = ReadyToSend ? HttpContext.Session.GetString(MaskedDestinationKey) : null;
         AwaitingPassword = TryGetProof(out _);
         AwaitingCode = !AwaitingPassword &&
             Guid.TryParse(HttpContext.Session.GetString(RequestIdKey), out _);
@@ -454,6 +508,10 @@ public sealed class ForgotPasswordModel : PageModel
         HttpContext.Session.Remove(RequestIdKey);
         HttpContext.Session.Remove(ProofKey);
         HttpContext.Session.Remove(AdministrativeApprovalKey);
+        HttpContext.Session.Remove(GrantKey);
+        HttpContext.Session.Remove(MaskedDestinationKey);
+        ReadyToSend = false;
+        MaskedDestination = null;
         AwaitingCode = false;
         AwaitingPassword = false;
     }

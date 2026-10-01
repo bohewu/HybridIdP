@@ -44,6 +44,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<ProviderMetadataSnapshot> ProviderMetadataSnapshots => Set<ProviderMetadataSnapshot>();
     public DbSet<CredentialMigrationStateRecord> CredentialMigrationStateRecords => Set<CredentialMigrationStateRecord>();
     public DbSet<CredentialMigrationContinuationRecord> CredentialMigrationContinuations => Set<CredentialMigrationContinuationRecord>();
+    public DbSet<RecoveryEmailPreference> RecoveryEmailPreferences => Set<RecoveryEmailPreference>();
+    public DbSet<RecoveryEmailPendingChange> RecoveryEmailChangeRequests => Set<RecoveryEmailPendingChange>();
+    public DbSet<RecoveryPrecheckGrant> RecoveryPrecheckGrants => Set<RecoveryPrecheckGrant>();
+    public DbSet<RecoveryStepUpGrant> RecoveryStepUpGrants => Set<RecoveryStepUpGrant>();
+    public DbSet<RecoveryNotification> RecoveryNotifications => Set<RecoveryNotification>();
+    public DbSet<RecoveryThrottleBucket> RecoveryThrottleBuckets => Set<RecoveryThrottleBucket>();
     public DbSet<RecoveryEmailRecord> RecoveryEmails => Set<RecoveryEmailRecord>();
     public DbSet<RecoveryProofChallenge> RecoveryProofChallenges => Set<RecoveryProofChallenge>();
     public DbSet<RecoveryResetApproval> RecoveryResetApprovals => Set<RecoveryResetApproval>();
@@ -163,9 +169,98 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        builder.Entity<RecoveryEmailPreference>(entity =>
+        {
+            entity.ToTable("RecoveryEmailPreferences");
+            entity.HasKey(record => record.LocalAccountId);
+            entity.Property(record => record.Mode).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken();
+            entity.Property(record => record.SelectionEpoch).IsConcurrencyToken();
+            entity.HasOne<ApplicationUser>().WithOne().HasForeignKey<RecoveryEmailPreference>(record => record.LocalAccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<RecoveryStepUpGrant>(entity =>
+        {
+            entity.ToTable("RecoveryStepUpGrants");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.SecurityStamp).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.ContextHash).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.CsrfHash).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.AuthorityBinding).HasMaxLength(64).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken();
+            entity.HasIndex(record => new { record.LocalAccountId, record.ExpiresAtUtc });
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(record => record.LocalAccountId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<RecoveryEmailPendingChange>(entity =>
+        {
+            entity.ToTable("RecoveryEmailChangeRequests");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.Address).HasMaxLength(320).IsRequired();
+            entity.Property(record => record.NormalizedAddress).HasMaxLength(320).IsRequired();
+            entity.Property(record => record.CodeHash).HasMaxLength(512).IsRequired();
+            entity.Property(record => record.SecurityStamp).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.ContextHash).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.CsrfHash).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken();
+            entity.HasIndex(record => record.ExpiresAtUtc);
+            var pendingIndex = entity.HasIndex(record => record.LocalAccountId).IsUnique();
+            pendingIndex.HasFilter(Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer"
+                ? "[ConsumedAtUtc] IS NULL AND [RevokedAtUtc] IS NULL"
+                : "\"ConsumedAtUtc\" IS NULL AND \"RevokedAtUtc\" IS NULL");
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(record => record.LocalAccountId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<RecoveryStepUpGrant>().WithMany().HasForeignKey(record => record.StepUpGrantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RecoveryPrecheckGrant>(entity =>
+        {
+            entity.ToTable("RecoveryPrecheckGrants");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.ProviderBindingVersion).HasMaxLength(64);
+            entity.Property(record => record.SecurityStamp).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.ContextHash).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.CsrfHash).HasMaxLength(256).IsRequired();
+            entity.Property(record => record.EffectivePolicyVersion).HasMaxLength(64).IsRequired();
+            entity.Property(record => record.DestinationKind).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(record => record.DestinationFingerprint).HasMaxLength(64).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken();
+            entity.HasIndex(record => new { record.LocalAccountId, record.ExpiresAtUtc });
+            var reservationIndex = entity.HasIndex(record => record.ReservedChallengeId).IsUnique();
+            reservationIndex.HasFilter(Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer"
+                ? "[ReservedChallengeId] IS NOT NULL" : "\"ReservedChallengeId\" IS NOT NULL");
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(record => record.LocalAccountId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ProviderSubjectDirectoryBinding>().WithMany().HasForeignKey(record => record.ProviderBindingId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<RecoveryProofChallenge>().WithOne().HasForeignKey<RecoveryPrecheckGrant>(record => record.ReservedChallengeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RecoveryNotification>(entity =>
+        {
+            entity.ToTable("RecoveryNotifications");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.Kind).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(record => record.Recipient).HasMaxLength(320).IsRequired();
+            entity.Property(record => record.Version).IsConcurrencyToken();
+            entity.HasIndex(record => new { record.LocalAccountId, record.SelectionEpoch, record.Kind }).IsUnique();
+            entity.HasIndex(record => new { record.DeliveredAtUtc, record.AbandonedAtUtc, record.NextAttemptAtUtc });
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(record => record.LocalAccountId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<RecoveryThrottleBucket>(entity =>
+        {
+            entity.ToTable("RecoveryThrottleBuckets");
+            entity.HasKey(record => record.PartitionHash);
+            entity.Property(record => record.PartitionHash).HasMaxLength(64);
+            entity.Property(record => record.Version).IsConcurrencyToken();
+            entity.HasIndex(record => record.ExpiresAtUtc);
+        });
+
         builder.Entity<RecoveryEmailRecord>(entity =>
         {
             entity.ToTable("RecoveryEmails");
+            entity.Property(record => record.Provenance).HasConversion<string>().HasMaxLength(32)
+                .HasDefaultValue(RecoveryEmailProvenance.LegacyUnknown).IsRequired();
             entity.HasKey(record => record.Id);
             entity.Property(record => record.Address).HasMaxLength(320).IsRequired();
             entity.Property(record => record.NormalizedAddress).HasMaxLength(320).IsRequired();
@@ -184,6 +279,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.Entity<RecoveryProofChallenge>(entity =>
         {
             entity.ToTable("RecoveryProofChallenges");
+            entity.Property(record => record.DeliveryState).HasConversion<string>().HasMaxLength(20);
+            entity.Property(record => record.DestinationKind).HasConversion<string>().HasMaxLength(20);
+            entity.Property(record => record.DestinationFingerprint).HasMaxLength(64);
             entity.HasKey(record => record.Id);
             entity.Property(record => record.Purpose).HasConversion<string>().HasMaxLength(40).IsRequired();
             entity.Property(record => record.CodeHash).HasMaxLength(512).IsRequired();
@@ -225,6 +323,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.Entity<NativeRecoveryResetApproval>(entity =>
         {
             entity.ToTable("NativeRecoveryResetApprovals");
+            entity.Property(record => record.DestinationKind).HasConversion<string>().HasMaxLength(20);
+            entity.Property(record => record.DestinationFingerprint).HasMaxLength(64);
             entity.HasKey(record => record.Id);
             entity.Property(record => record.ContextHash).HasMaxLength(256).IsRequired();
             entity.Property(record => record.CsrfHash).HasMaxLength(256).IsRequired();
@@ -258,6 +358,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.Entity<RecoveryResetApproval>(entity =>
         {
             entity.ToTable("RecoveryResetApprovals");
+            entity.Property(record => record.DestinationKind).HasConversion<string>().HasMaxLength(20);
+            entity.Property(record => record.DestinationFingerprint).HasMaxLength(64);
             entity.HasKey(record => record.Id);
             entity.Property(record => record.Reason).HasMaxLength(500).IsRequired();
             entity.Property(record => record.IdentityCheckEvidence).HasMaxLength(500).IsRequired();

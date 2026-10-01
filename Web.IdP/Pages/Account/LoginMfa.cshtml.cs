@@ -156,6 +156,7 @@ public partial class LoginMfaModel : PageModel
                     Core.Domain.Constants.AuthConstants.Amr.Otp);
                 var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
+                RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 LogLoginWithTotp(_logger);
@@ -201,6 +202,7 @@ public partial class LoginMfaModel : PageModel
                     Core.Domain.Constants.AuthConstants.Amr.Mfa);
                 var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
+                RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 LogLoginWithRecovery(_logger);
