@@ -52,7 +52,14 @@ public static class ServiceCollectionExtensions
         // Core Services
         services.AddHttpContextAccessor();
         services.AddScoped<IMigrationIssuanceGuard, MigrationIssuanceGuard>();
-        services.AddScoped<ICurrentUserLifecycleEligibility, CurrentUserLifecycleEligibility>();
+        services.AddSingleton<ProviderLifecycleClock>();
+        services.AddScoped<ICurrentUserLifecycleEligibility>(provider => new CurrentUserLifecycleEligibility(
+            provider.GetRequiredService<IApplicationDbContext>(),
+            provider.GetRequiredService<IOptions<ProviderLifecycleOptions>>(),
+            provider.GetRequiredService<IProviderLifecycleClient>(),
+            provider.GetRequiredService<ProviderLifecycleClock>()));
+        services.AddScoped<Core.Application.Interfaces.IAccountLifecycleEligibility>(provider =>
+            provider.GetRequiredService<ICurrentUserLifecycleEligibility>());
         services.AddScoped<ApplicationCookieCurrentStateValidator>(provider =>
             new ApplicationCookieCurrentStateValidator(
                 provider.GetRequiredService<ICurrentUserLifecycleEligibility>(),
@@ -62,6 +69,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILegacyAuthService, LegacyAuthService>();
         services.AddHttpClient<IProofProvider, ProviderProofProvider>();
         services.AddHttpClient<IProviderMetadataRefreshService, ProviderMetadataRefreshService>();
+        services.AddHttpClient<IProviderLifecycleClient, ProviderLifecycleClient>(client =>
+                client.Timeout = Timeout.InfiniteTimeSpan)
+            .ConfigurePrimaryHttpMessageHandler(ProviderLifecycleClient.CreatePrimaryHandler)
+            .RemoveAllLoggers();
         services.AddHttpClient<IRecoveryIdentityVerificationClient, RecoveryIdentityVerificationClient>(client =>
                 client.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(RecoveryIdentityVerificationClient.CreatePrimaryHandler)
@@ -241,6 +252,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IValidateOptions<RecoveryVerificationPolicyOptions>, RecoveryVerificationPolicyOptionsValidator>();
         services.AddSingleton<IValidateOptions<RecoveryEmailSelectionOptions>, RecoveryEmailSelectionOptionsValidator>();
         services.AddSingleton<IValidateOptions<RecoveryIdentityVerificationOptions>, RecoveryIdentityVerificationOptionsValidator>();
+        services.AddSingleton<IValidateOptions<ProviderLifecycleOptions>, ProviderLifecycleOptionsValidator>();
         services.AddSingleton<IValidateOptions<ForgotPasswordRecoveryOptions>, ForgotPasswordRecoveryOptionsValidator>();
         services.AddSingleton<IValidateOptions<DirectoryLookupOptions>, DirectoryLookupOptionsValidator>();
         services.AddOptions<DirectoryIntegrationOptions>()
@@ -266,6 +278,9 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
         services.AddOptions<RecoveryIdentityVerificationOptions>()
             .Bind(configuration.GetSection(RecoveryIdentityVerificationOptions.Section))
+            .ValidateOnStart();
+        services.AddOptions<ProviderLifecycleOptions>()
+            .Bind(configuration.GetSection(ProviderLifecycleOptions.Section))
             .ValidateOnStart();
         services.AddOptions<RecoveryThrottleOptions>()
             .Bind(configuration.GetSection(RecoveryThrottleOptions.Section))

@@ -50,6 +50,18 @@ public class ApplicationCookieCurrentStateValidatorTests
     }
 
     [Fact]
+    public async Task ValidateAsync_ShouldReject_WhenLifecycleChangesDuringMigrationCheck()
+    {
+        var userId = Guid.NewGuid();
+        var lifecycle = new Moq.Mock<ICurrentUserLifecycleEligibility>();
+        lifecycle.SetupSequence(policy => policy.IsEligibleAsync(userId, Moq.It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true).ReturnsAsync(false);
+        var context = CreateCookieContext(CreatePrincipal(userId));
+        await new ApplicationCookieCurrentStateValidator(lifecycle.Object, CreateMigrationIssuanceGuard()).ValidateAsync(context);
+        Assert.Null(context.Principal);
+    }
+
+    [Fact]
     public async Task ValidateAsync_ShouldRejectPrincipal_WhenLinkedPersonIsMissing()
     {
         await using var database = CreateDatabase();

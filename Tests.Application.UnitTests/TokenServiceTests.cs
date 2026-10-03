@@ -28,6 +28,8 @@ namespace Tests.Application.UnitTests
 {
     public class TokenServiceTests
     {
+    private readonly Mock<global::Web.IdP.Services.ICurrentUserLifecycleEligibility> _lifecycle = new();
+
         private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
         private readonly Mock<SignInManager<ApplicationUser>> _mockSignInManager;
         private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
@@ -47,6 +49,8 @@ namespace Tests.Application.UnitTests
 
         public TokenServiceTests()
         {
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
             var userStore = new Mock<IUserStore<ApplicationUser>>();
             _mockUserManager = new Mock<UserManager<ApplicationUser>>(userStore.Object, null, null, null, null, null, null, null, null);
 
@@ -90,6 +94,7 @@ namespace Tests.Application.UnitTests
                 .ReturnsAsync(new SecurityPolicy());
 
             _service = new TokenService(
+                _lifecycle.Object,
                 _mockUserManager.Object,
                 _mockSignInManager.Object,
                 _mockRoleManager.Object,
@@ -107,7 +112,39 @@ namespace Tests.Application.UnitTests
                 _mockMigrationIssuanceGuard.Object);
         }
 
-        [Fact]
+        [Theory]
+    [InlineData(GrantTypes.Password, false)]
+    [InlineData(GrantTypes.Password, true)]
+    [InlineData(GrantTypes.AuthorizationCode, false)]
+    [InlineData(GrantTypes.AuthorizationCode, true)]
+    [InlineData(GrantTypes.RefreshToken, false)]
+    [InlineData(GrantTypes.RefreshToken, true)]
+    [InlineData(GrantTypes.DeviceCode, false)]
+    [InlineData(GrantTypes.DeviceCode, true)]
+    public async Task UserGrants_ShouldDeny_WhenLifecycleFailsAtInitialOrFinalCheckpoint(string grant, bool initiallyEligible)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "lifecycle-user", IsActive = true };
+        ClaimsPrincipal? principal = null;
+        switch (grant)
+        {
+            case GrantTypes.Password: SetupPasswordGrant(user); break;
+            case GrantTypes.AuthorizationCode: principal = SetupAuthorizationCodeGrant(user); break;
+            case GrantTypes.RefreshToken: principal = SetupRefreshGrant(user); break;
+            case GrantTypes.DeviceCode: principal = SetupDeviceCodeGrant(user); break;
+        }
+        _lifecycle.SetupSequence(policy => policy.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(initiallyEligible).ReturnsAsync(false);
+        var result = await _service.HandleTokenRequestAsync(
+            CreateRequest(grant, username: user.UserName, password: "${TEST_FIXTURE_001}", refreshToken: "${TEST_FIXTURE_002}"), principal);
+        AssertInvalidGrant(result);
+        _lifecycle.Verify(policy => policy.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>()),
+            Times.Exactly(initiallyEligible ? 2 : 1));
+        _mockUserManager.Verify(manager => manager.UpdateSecurityStampAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _mockStage2CredentialMigrationService.VerifyNoOtherCalls();
+        Assert.True(user.IsActive);
+    }
+
+    [Fact]
         public async Task HandleTokenRequestAsync_NullRequest_ThrowsArgumentNullException()
         {
             await Assert.ThrowsAsync<ArgumentNullException>(() => _service.HandleTokenRequestAsync(null!, null));
@@ -176,7 +213,7 @@ namespace Tests.Application.UnitTests
         public async Task HandleTokenRequestAsync_Password_ValidCredentials_ReturnsSignInResult()
         {
             // Arrange
-            var request = CreateRequest(GrantTypes.Password, username: "user", password: "password", scope: "openid");
+            var request = CreateRequest(GrantTypes.Password, username: "user", password: "${TEST_FIXTURE_003}", scope: "openid");
             var userId = Guid.NewGuid();
             var user = new ApplicationUser { Id = userId, UserName = "user", Email = "user@test.com" };
             
@@ -187,7 +224,7 @@ namespace Tests.Application.UnitTests
             _mockUserManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(new List<string>());
             
             // Correctly mock CheckPasswordAsync instead of SignInManager
-            _mockUserManager.Setup(m => m.CheckPasswordAsync(user, "password")).ReturnsAsync(true);
+            _mockUserManager.Setup(m => m.CheckPasswordAsync(user, "${TEST_FIXTURE_003}")).ReturnsAsync(true);
             _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
 
             _mockApiResourceService.Setup(s => s.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>()))
@@ -242,7 +279,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -253,7 +290,7 @@ namespace Tests.Application.UnitTests
         public async Task HandleTokenRequestAsync_Password_InvalidUser_ReturnsForbidResult()
         {
             // Arrange
-            var request = CreateRequest(GrantTypes.Password, username: "unknown", password: "password");
+            var request = CreateRequest(GrantTypes.Password, username: "unknown", password: "${TEST_FIXTURE_003}");
             _mockUserManager.Setup(m => m.FindByNameAsync("unknown")).ReturnsAsync((ApplicationUser?)null);
 
             // Setup ApplicationManager for grant permission validation
@@ -293,7 +330,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -317,7 +354,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -347,7 +384,7 @@ namespace Tests.Application.UnitTests
             _mockStage2CredentialMigrationService
                 .Setup(service => service.AuthenticateCompletedAsync(
                     user.Id,
-                    "directory-password",
+                    "${TEST_FIXTURE_004}",
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DirectoryCredentialResult(DirectoryCredentialOutcome.Authenticated));
 
@@ -355,7 +392,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "directory-password"),
+                    password: "${TEST_FIXTURE_004}"),
                 null);
 
             Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
@@ -379,7 +416,7 @@ namespace Tests.Application.UnitTests
             _mockStage2CredentialMigrationService
                 .Setup(service => service.AuthenticateCompletedAsync(
                     user.Id,
-                    "valid-password",
+                    "${TEST_FIXTURE_001}",
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DirectoryCredentialResult(DirectoryCredentialOutcome.InvalidCredentials));
 
@@ -387,7 +424,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -413,7 +450,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -443,7 +480,7 @@ namespace Tests.Application.UnitTests
             _mockStage2CredentialMigrationService
                 .Setup(service => service.AuthenticateCompletedAsync(
                     user.Id,
-                    "valid-password",
+                    "${TEST_FIXTURE_001}",
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException());
 
@@ -451,7 +488,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -473,11 +510,11 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
-            _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, "valid-password"), Times.Once);
+            _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, "${TEST_FIXTURE_001}"), Times.Once);
             _mockCredentialMigrationStateStore.Verify(
                 store => store.FindAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
                 Times.Once);
@@ -501,7 +538,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -551,7 +588,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -574,7 +611,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -601,7 +638,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -625,7 +662,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -649,7 +686,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
@@ -675,7 +712,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
@@ -707,7 +744,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -731,7 +768,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
@@ -770,7 +807,7 @@ namespace Tests.Application.UnitTests
                 CreateRequest(
                     GrantTypes.Password,
                     username: user.UserName,
-                    password: "valid-password"),
+                    password: "${TEST_FIXTURE_001}"),
                 null);
 
             AssertPasswordGrantRejected(result);
@@ -799,7 +836,7 @@ namespace Tests.Application.UnitTests
             var principal = SetupRefreshGrant(user, isLockedOut);
 
             var result = await _service.HandleTokenRequestAsync(
-                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "${TEST_FIXTURE_005}"),
                 principal);
 
             AssertInvalidGrant(result);
@@ -840,7 +877,7 @@ namespace Tests.Application.UnitTests
             SetupMockPersons(person);
 
             var result = await _service.HandleTokenRequestAsync(
-                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "${TEST_FIXTURE_005}"),
                 principal);
 
             AssertInvalidGrant(result);
@@ -860,7 +897,7 @@ namespace Tests.Application.UnitTests
             SetupMockPersons();
 
             var result = await _service.HandleTokenRequestAsync(
-                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "${TEST_FIXTURE_005}"),
                 principal);
 
             AssertInvalidGrant(result);
@@ -886,7 +923,7 @@ namespace Tests.Application.UnitTests
             });
 
             var result = await _service.HandleTokenRequestAsync(
-                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "${TEST_FIXTURE_005}"),
                 principal);
 
             var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
@@ -912,7 +949,7 @@ namespace Tests.Application.UnitTests
             identity.AddClaim(new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.Mfa));
 
             var result = await _service.HandleTokenRequestAsync(
-                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "${TEST_FIXTURE_005}"),
                 principal);
 
             var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
@@ -933,7 +970,7 @@ namespace Tests.Application.UnitTests
             var principal = SetupRefreshGrant(user, clientRequiresMfa: true);
 
             var result = await _service.HandleTokenRequestAsync(
-                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "${TEST_FIXTURE_005}"),
                 principal);
 
             AssertInvalidGrant(result);
@@ -954,7 +991,7 @@ namespace Tests.Application.UnitTests
                 .ReturnsAsync(new SecurityPolicy { EnforceMandatoryMfaEnrollment = true });
 
             var result = await _service.HandleTokenRequestAsync(
-                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "${TEST_FIXTURE_005}"),
                 principal);
 
             AssertInvalidGrant(result);
@@ -973,7 +1010,7 @@ namespace Tests.Application.UnitTests
             var principal = SetupRefreshGrant(user);
 
             var result = await _service.HandleTokenRequestAsync(
-                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "${TEST_FIXTURE_005}"),
                 principal);
 
             Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
@@ -997,7 +1034,7 @@ namespace Tests.Application.UnitTests
                 .AddClaim(new Claim(AuthConstants.ClaimTypes.Amr, amrValue));
 
             var result = await _service.HandleTokenRequestAsync(
-                CreateRequest(GrantTypes.RefreshToken, refreshToken: "opaque-refresh-token"),
+                CreateRequest(GrantTypes.RefreshToken, refreshToken: "${TEST_FIXTURE_005}"),
                 principal);
 
             Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
@@ -1393,7 +1430,7 @@ namespace Tests.Application.UnitTests
             _mockUserManager.Setup(m => m.FindByNameAsync(user.UserName!)).ReturnsAsync(user);
             _mockUserManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(isLockedOut);
             _mockUserManager
-                .Setup(m => m.CheckPasswordAsync(user, "valid-password"))
+                .Setup(m => m.CheckPasswordAsync(user, "${TEST_FIXTURE_001}"))
                 .ReturnsAsync(passwordIsValid);
             _mockUserManager
                 .Setup(m => m.ResetAccessFailedCountAsync(user))

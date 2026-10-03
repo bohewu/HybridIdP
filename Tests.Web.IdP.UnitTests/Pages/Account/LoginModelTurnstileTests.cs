@@ -132,6 +132,7 @@ public class LoginModelTurnstileTests
         var turnstileStateMock = new Mock<ITurnstileStateService>();
 
         var model = new LoginModel(
+            Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             signInManagerMock.Object,
             userManagerMock.Object,
             Mock.Of<ILoginService>(),

@@ -117,6 +117,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             _mockClaimsLogger.Object);
 
         _tokenService = new TokenService(
+            Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             _userManager,
             _mockSignInManager.Object,
             _roleManager,
@@ -168,7 +169,8 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
         // Link navigation from Person side if needed or just add both
         user.Person = person;
 
-        await _userManager.CreateAsync(user, "P@ssword1");
+        var password = Guid.NewGuid().ToString("N") + "aA1!";
+        await _userManager.CreateAsync(user, password);
         // _db.Users.Add(user);
         // _db.Persons.Add(person); // Cascade or manual add. Add manually to be safe.
         // Wait, if I add user and user.Person is set, EF Core adds person too.
@@ -205,7 +207,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
         {
             GrantType = OpenIddictConstants.GrantTypes.Password,
             Username = "testuser", // Matches user.UserName
-            Password = "P@ssword1", // Ignored by mock
+            Password = "${TEST_PASSWORD_001}", // Ignored by mock
             Scope = "openid test_scope" // Request the test scope
         };
 
@@ -248,7 +250,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             EmailMfaCode = Convert.ToBase64String(
                 RandomNumberGenerator.GetBytes(32))
         };
-        var password = $"P@ssword1-{Convert.ToHexString(RandomNumberGenerator.GetBytes(8))}";
+        var password = Guid.NewGuid().ToString("N") + "aA1!";
         await _userManager.CreateAsync(user, password);
 
         const string claimType = "test_security_sensitive_source";
@@ -342,7 +344,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
                     RandomNumberGenerator.GetBytes(32))
             }
         };
-        var password = $"P@ssword1-{Convert.ToHexString(RandomNumberGenerator.GetBytes(8))}";
+        var password = Guid.NewGuid().ToString("N") + "aA1!";
         await _userManager.CreateAsync(user, password);
 
         const string scopeName = "test_approved_source_scope";

@@ -318,7 +318,7 @@ public class UsersControllerRoleAuthorizationTests
             {
                 Email = createdUser.Email,
                 UserName = "new-user",
-                Password = "test-only-password",
+                Password = "${TEST_PASSWORD_001}",
                 Roles = []
             });
 
@@ -357,7 +357,7 @@ public class UsersControllerRoleAuthorizationTests
             {
                 Email = "new@example.test",
                 UserName = "new-user",
-                Password = "test-only-password",
+                Password = "${TEST_PASSWORD_001}",
                 Roles = ["Auditor"]
             });
 
@@ -448,6 +448,7 @@ public class UsersControllerRoleAuthorizationTests
             new Mock<ILogger<RoleManager<ApplicationRole>>>().Object);
 
         return new UsersController(
+            Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             userManagementService.Object,
             userManager,
             roleManager,

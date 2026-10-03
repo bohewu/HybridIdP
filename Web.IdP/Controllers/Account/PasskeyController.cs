@@ -386,7 +386,8 @@ public partial class PasskeyController : ControllerBase
         ApplicationUser user,
         CancellationToken cancellationToken) =>
         await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken) &&
-        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken) &&
+        await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Generated FIDO2 registration options for user '{UserName}'.")]
     partial void LogRegistrationOptionsGenerated(string? userName);

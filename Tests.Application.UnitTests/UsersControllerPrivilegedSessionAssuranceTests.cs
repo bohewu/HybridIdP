@@ -225,7 +225,7 @@ public class UsersControllerPrivilegedSessionAssuranceTests
         {
             Email = "new-user@example.test",
             UserName = "new-user",
-            Password = "Test-only-password-1!",
+            Password = "${TEST_PASSWORD_001}",
             Roles = [AuthConstants.Roles.Admin]
         });
 
@@ -314,6 +314,7 @@ public class UsersControllerPrivilegedSessionAssuranceTests
             Mock.Of<ILogger<RoleManager<ApplicationRole>>>());
 
         return new UsersController(
+            Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             userManagementService.Object,
             userManager.Object,
             roleManager.Object,

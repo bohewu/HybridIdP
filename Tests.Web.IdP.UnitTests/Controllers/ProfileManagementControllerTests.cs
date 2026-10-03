@@ -26,6 +26,8 @@ namespace Tests.Web.IdP.UnitTests.Controllers;
 
 public class ProfileManagementControllerTests : IDisposable
 {
+    private readonly Mock<global::Web.IdP.Services.ICurrentUserLifecycleEligibility> _lifecycle = new();
+
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<SignInManager<ApplicationUser>> _mockSignInManager;
     private readonly ApplicationDbContext _dbContext;
@@ -38,6 +40,8 @@ public class ProfileManagementControllerTests : IDisposable
 
     public ProfileManagementControllerTests()
     {
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
         // Setup in-memory database
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -80,6 +84,7 @@ public class ProfileManagementControllerTests : IDisposable
         });
 
         _controller = new ProfileManagementController(
+            _lifecycle.Object,
             _mockUserManager.Object,
             _mockSignInManager.Object,
             _dbContext,
@@ -102,6 +107,17 @@ public class ProfileManagementControllerTests : IDisposable
     }
 
     #region GetProfile Tests
+
+    [Fact]
+    public async Task RemoveLogin_ShouldNotRenewCookie_WhenRemainingBindingIsIneligible()
+    {
+        _mockUserManager.Setup(manager => manager.GetUserAsync(It.IsAny<ClaimsPrincipal>())).ReturnsAsync(_testUser);
+        _mockUserManager.Setup(manager => manager.RemoveLoginAsync(_testUser, "Google", "google-id")).ReturnsAsync(IdentityResult.Success);
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(_testUser.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        Assert.IsType<UnauthorizedResult>(await _controller.RemoveLogin(new RemoveLoginRequest { LoginProvider = "Google", ProviderKey = "google-id" }));
+        _mockSignInManager.Verify(manager => manager.RefreshSignInAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _mockUserManager.Verify(manager => manager.RemoveLoginAsync(_testUser, "Google", "google-id"), Times.Once);
+    }
 
     [Fact]
     public async Task GetProfile_UserNotFound_ReturnsNotFound()
@@ -659,6 +675,7 @@ public class ProfileManagementControllerTests : IDisposable
         // Re-create dependencies locally to ensure clean state if needed, but reusing mocks is fine mostly
         // Just recreate controller
         var controller = new ProfileManagementController(
+            _lifecycle.Object,
             _mockUserManager.Object,
             _mockSignInManager.Object,
             _dbContext,

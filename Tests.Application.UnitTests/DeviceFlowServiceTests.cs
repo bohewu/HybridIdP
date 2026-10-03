@@ -17,6 +17,8 @@ namespace Tests.Application.UnitTests;
 
 public class DeviceFlowServiceTests
 {
+    private readonly Mock<global::Web.IdP.Services.ICurrentUserLifecycleEligibility> _lifecycle = new();
+
     private readonly Mock<IOpenIddictScopeManager> _mockScopeManager;
     private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
@@ -27,6 +29,8 @@ public class DeviceFlowServiceTests
 
     public DeviceFlowServiceTests()
     {
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
         _mockScopeManager = new Mock<IOpenIddictScopeManager>();
         _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
         _mockUserManager = MockUserManager<ApplicationUser>();
@@ -42,6 +46,7 @@ public class DeviceFlowServiceTests
             .Returns(Task.CompletedTask);
 
         _service = new DeviceFlowService(
+            _lifecycle.Object,
             _mockScopeManager.Object,
             _mockApplicationManager.Object,
             _mockUserManager.Object,
@@ -107,8 +112,10 @@ public class DeviceFlowServiceTests
         Assert.Equal(Errors.ServerError, vm.Error);
     }
 
-    [Fact]
-    public async Task ProcessVerificationAsync_ReturnsSignInResult_WhenValid()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ProcessVerificationAsync_ReturnsSignInOnlyWhenLifecycleAllows(bool allowed)
     {
         // Arrange
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "testuser", Email = "test@test.com" };
@@ -131,10 +138,15 @@ public class DeviceFlowServiceTests
         _mockScopeManager.Setup(m => m.ListResourcesAsync(It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()))
             .Returns(new List<string>().ToAsyncEnumerable());
 
-        // Act
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(allowed);
         var result = await _service.ProcessVerificationAsync(userPrincipal, authResult);
-
-        // Assert
+        _lifecycle.Verify(policy => policy.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>()), Times.Once);
+        if (!allowed)
+        {
+            var denied = Assert.IsType<ForbidResult>(result);
+            Assert.Equal(Errors.InvalidGrant, denied.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+            return;
+        }
         var signInResult = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
         Assert.Equal(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, signInResult.AuthenticationScheme);
         Assert.NotNull(signInResult.Principal);

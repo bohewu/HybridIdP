@@ -20,6 +20,20 @@ namespace Tests.Web.IdP.UnitTests.Services;
 
 public class ExternalSignInCoordinatorTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompleteAsync_ShouldDenyWithoutCookie_WhenCurrentLifecycleChanges(bool initiallyEligible)
+    {
+        var user = CreateUser();
+        var harness = new CoordinatorHarness(user);
+        harness.Lifecycle.SetupSequence(policy => policy.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(initiallyEligible).ReturnsAsync(false);
+        Assert.Equal(ExternalSignInCompletionStatus.Blocked, (await harness.Coordinator.CompleteAsync(harness.HttpContext, user)).Status);
+        harness.VerifyNoCookieCreated();
+        harness.UserManager.Verify(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+    }
+
     [Fact]
     public async Task CompleteAsync_LifecycleDenied_DoesNotCreateAnyCookie()
     {
@@ -285,7 +299,9 @@ public class ExternalSignInCoordinatorTests
                 Session = Session
             });
 
+            Lifecycle.Setup(policy => policy.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
             Coordinator = new ExternalSignInCoordinator(
+                Lifecycle.Object,
                 SignInManager.Object,
                 UserManager.Object,
                 LoginService.Object,
@@ -295,6 +311,8 @@ public class ExternalSignInCoordinatorTests
                 Mock.Of<ILogger<ExternalSignInCoordinator>>(),
                 new FixedTimeProvider(now ?? new DateTimeOffset(2026, 7, 30, 3, 0, 0, TimeSpan.Zero)));
         }
+
+        public Mock<ICurrentUserLifecycleEligibility> Lifecycle { get; } = new();
 
         public Mock<UserManager<ApplicationUser>> UserManager { get; }
 

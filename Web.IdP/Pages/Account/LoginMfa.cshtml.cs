@@ -274,7 +274,8 @@ public partial class LoginMfaModel : PageModel
         ApplicationUser user,
         CancellationToken cancellationToken) =>
         await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken) &&
-        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken) &&
+        await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "User account locked out.")]
     static partial void LogAccountLocked(ILogger logger);

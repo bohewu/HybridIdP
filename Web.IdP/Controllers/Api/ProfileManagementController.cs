@@ -23,6 +23,7 @@ namespace Web.IdP.Controllers.Api;
 [AutoValidateAntiforgeryToken]
 public class ProfileManagementController : ControllerBase
 {
+    private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ApplicationDbContext _dbContext;
@@ -33,6 +34,7 @@ public class ProfileManagementController : ControllerBase
     private readonly ExternalLoginOptions _externalLoginOptions; // Added
 
     public ProfileManagementController(
+        Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ApplicationDbContext dbContext,
@@ -42,6 +44,7 @@ public class ProfileManagementController : ControllerBase
         ILogger<ProfileManagementController> logger,
         IOptions<ExternalLoginOptions> externalLoginOptions) // Added
     {
+        _lifecycleEligibility = lifecycleEligibility;
         _userManager = userManager;
         _signInManager = signInManager;
         _dbContext = dbContext;
@@ -333,6 +336,10 @@ public class ProfileManagementController : ControllerBase
         }
 
         // Re-sign in the user to update the security stamp and cookies
+        if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+        {
+            return Unauthorized();
+        }
         await _signInManager.RefreshSignInAsync(user);
         
         // Audit log

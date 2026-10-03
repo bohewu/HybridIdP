@@ -11,16 +11,40 @@ namespace Tests.Application.UnitTests;
 
 public class ImpersonationServiceTests
 {
+    private readonly Mock<global::Web.IdP.Services.ICurrentUserLifecycleEligibility> _lifecycle = new();
+
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly Mock<IUserClaimsPrincipalFactory<ApplicationUser>> _claimsFactoryMock;
     private readonly ImpersonationService _sut; // System Under Test
 
     public ImpersonationServiceTests()
     {
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
         var store = new Mock<IUserStore<ApplicationUser>>();
         _userManagerMock = new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
         _claimsFactoryMock = new Mock<IUserClaimsPrincipalFactory<ApplicationUser>>();
-        _sut = new ImpersonationService(_userManagerMock.Object, _claimsFactoryMock.Object);
+        _sut = new ImpersonationService(_lifecycle.Object,
+_userManagerMock.Object, _claimsFactoryMock.Object);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Impersonation_ShouldNotBuildPrincipal_WhenReceivingAccountLifecycleDenies(bool restore)
+    {
+        var admin = new ApplicationUser { Id = Guid.NewGuid() };
+        var target = new ApplicationUser { Id = Guid.NewGuid() };
+        _userManagerMock.Setup(manager => manager.FindByIdAsync(admin.Id.ToString())).ReturnsAsync(admin);
+        _userManagerMock.Setup(manager => manager.FindByIdAsync(target.Id.ToString())).ReturnsAsync(target);
+        var receivingId = restore ? admin.Id : target.Id;
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(receivingId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var identity = new ClaimsIdentity("test") { Actor = new ClaimsIdentity([new Claim("sub", admin.Id.ToString())]) };
+        var result = restore ? await _sut.RevertImpersonationAsync(new ClaimsPrincipal(identity))
+            : await _sut.StartImpersonationAsync(admin.Id, target.Id);
+        Assert.False(result.Success);
+        _claimsFactoryMock.Verify(factory => factory.CreateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _lifecycle.Verify(policy => policy.IsEligibleAsync(receivingId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
