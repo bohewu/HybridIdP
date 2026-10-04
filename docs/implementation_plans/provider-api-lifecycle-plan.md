@@ -7,7 +7,7 @@ neutral contract definition for review. [Current capability inventory](../PROVID
 preserves Proof, Metadata, Recovery and unversioned Password Sync independently.
 
 This replaces no frozen contract. The read-only AuthProxy background handoff at
-`C:\repos\auth-proxy\handoff\provider-api-lifecycle-plan.md` informed scope;
+`handoff/provider-api-lifecycle-plan.md` informed scope;
 its proposed flags/fields/transition steps are background, not current settings
 or implementation authorization. No neighboring repository must be present to
 use this bundle, and AuthProxy is not assigned lifecycle/affiliation ownership.
