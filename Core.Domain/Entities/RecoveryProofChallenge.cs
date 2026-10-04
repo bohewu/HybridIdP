@@ -273,6 +273,16 @@ public sealed class RecoveryProofChallenge
             Version++;
         }
     }
+
+    public void RevokeAndDetachRecoveryEmail(DateTimeOffset now)
+    {
+        Revoke(now);
+        if (RecoveryEmailId is not null)
+        {
+            RecoveryEmailId = null;
+            Version++;
+        }
+    }
 }
 
 public enum RecoveryProofPurpose

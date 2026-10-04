@@ -111,6 +111,94 @@ public sealed class RecoveryProofFoundationTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task RevokeAuthenticatedAsync_ShouldPreserveReservedProofHistory_WhenIdentityIsEnabledWithoutSelection(
+        bool expired, bool rejectDelete)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var accountId = await SeedUserAsync(context);
+        var time = new FixedTimeProvider();
+        var email = new CapturingEmailService();
+        var audit = new CapturingAudit();
+        var recovery = new RecoveryEmailService(context,
+            new FixedAuthorizer(selfService: true, administrator: false), email,
+            new PasswordHasher<ApplicationUser>(), audit, EnabledOptions(), time);
+        await ConfigureVerifiedRecoveryEmailAsync(recovery, email, accountId, "recovery@example.test");
+        recovery = new RecoveryEmailService(context,
+            new FixedAuthorizer(selfService: true, administrator: false), email,
+            new PasswordHasher<ApplicationUser>(), audit, EnabledOptions(), time,
+            identityOptions: Options.Create(new RecoveryIdentityVerificationOptions { Enabled = true }));
+        var record = await context.RecoveryEmails.SingleAsync();
+        var user = await context.Users.SingleAsync();
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+        var now = time.GetUtcNow();
+        var contextHash = Hash("browser");
+        var csrfHash = Hash("csrf");
+        var fingerprint = new string('F', 64);
+        var challenge = new RecoveryProofChallenge(record.Id, accountId,
+            RecoveryProofPurpose.NativePasswordRecovery, Hash("synthetic-otp"), now, now.AddMinutes(5));
+        challenge.BindSelection(1, RecoveryDestinationKind.Legacy, fingerprint, record.Version);
+        challenge.BindNativeAssistance(contextHash, csrfHash, false, null, record.Version, user.SecurityStamp);
+        var grant = new RecoveryPrecheckGrant(accountId, null, null, user.SecurityStamp,
+            contextHash, csrfHash, "synthetic-policy", 1, RecoveryDestinationKind.Legacy,
+            fingerprint, record.Version, now, now.AddMinutes(5));
+        Assert.True(grant.TryReserveChallenge(challenge, now));
+        Assert.True(challenge.TryCompleteDelivery(now, true));
+        context.RecoveryProofChallenges.Add(challenge);
+        context.RecoveryPrecheckGrants.Add(grant);
+        await context.SaveChangesAsync();
+        Assert.Empty(await context.RecoveryEmailPreferences.ToListAsync());
+        if (expired) time.Advance(TimeSpan.FromMinutes(6));
+        if (rejectDelete)
+        {
+            await context.Database.ExecuteSqlRawAsync("""
+                CREATE TRIGGER RejectRecoveryEmailDelete BEFORE DELETE ON RecoveryEmails
+                BEGIN SELECT RAISE(ABORT, 'synthetic delete failure'); END;
+                """);
+        }
+        context.ChangeTracker.Clear();
+
+        if (rejectDelete)
+        {
+            await Assert.ThrowsAsync<DbUpdateException>(() => recovery.RevokeAuthenticatedAsync(accountId));
+        }
+        else
+        {
+            Assert.Equal(RecoveryProofOutcome.Success, await recovery.RevokeAuthenticatedAsync(accountId));
+        }
+
+        context.ChangeTracker.Clear();
+        var retainedChallenge = await context.RecoveryProofChallenges.SingleAsync(c => c.Id == challenge.Id);
+        var retainedGrant = await context.RecoveryPrecheckGrants.SingleAsync(g => g.Id == grant.Id);
+        Assert.Equal(challenge.Id, retainedGrant.ReservedChallengeId);
+        Assert.Equal(now, retainedGrant.ConsumedAtUtc);
+        Assert.Equal(fingerprint, retainedGrant.DestinationFingerprint);
+        var revokedAt = (await context.Users.SingleAsync()).RecoverySourceBootstrapRevokedAtUtc;
+        if (rejectDelete)
+        {
+            Assert.Equal(record.Id, retainedChallenge.RecoveryEmailId);
+            Assert.Null(retainedChallenge.RevokedAtUtc);
+            Assert.Single(await context.RecoveryEmails.ToListAsync());
+            Assert.Null(revokedAt);
+            Assert.DoesNotContain(audit.Events, e => e.Category == RecoveryProofAuditCategory.RecoveryAddressRevoked);
+        }
+        else
+        {
+            Assert.Null(retainedChallenge.RecoveryEmailId);
+            Assert.Equal(time.GetUtcNow(), retainedChallenge.RevokedAtUtc);
+            Assert.False(retainedChallenge.TryReserveAttempt(time.GetUtcNow(), 5));
+            Assert.Empty(await context.RecoveryEmails.ToListAsync());
+            Assert.Equal(time.GetUtcNow(), revokedAt);
+            Assert.Contains(audit.Events, e => e.Category == RecoveryProofAuditCategory.RecoveryAddressRevoked);
+        }
+    }
+
+    [Theory]
     [InlineData(false, true, true, RecoveryProofOutcome.Unavailable)]
     [InlineData(true, false, true, RecoveryProofOutcome.Unauthorized)]
     [InlineData(true, true, false, RecoveryProofOutcome.Missing)]

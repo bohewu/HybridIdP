@@ -721,23 +721,45 @@ public sealed class NativePasswordRecoveryResetServiceTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public async Task SelectionReplacement_KeepsAddressProofSeparateFromReset(bool useDefault, bool failDelivery)
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    public async Task SelectionReplacement_KeepsAddressProofSeparateFromReset(
+        bool useDefault, bool failDelivery, bool retainCustomRecord)
     {
         await using var f = await Fixture.CreateAsync(ordinaryRecoveryAssistanceEnabled: true, selectionEnabled: true);
         if (useDefault)
         {
-            f.Context.RecoveryEmails.Remove(f.RecoveryEmail); await f.Context.SaveChangesAsync();
+            if (retainCustomRecord)
+            {
+                var preference = new RecoveryEmailPreference(f.User.Id, f.Time.GetUtcNow());
+                Assert.True(preference.TrySelect(RecoveryEmailSelectionMode.UseDefault,
+                    preference.SelectionEpoch, f.Time.GetUtcNow()));
+                f.Context.RecoveryEmailPreferences.Add(preference);
+            }
+            else
+            {
+                f.Context.RecoveryEmails.Remove(f.RecoveryEmail);
+            }
+            await f.Context.SaveChangesAsync();
             f.DefaultDestination = new("default@example.test", new string('D', 64), 1, false);
         }
         var id = await f.SendSelectionAsync();
         f.ReconciliationAuthorized = true;
         f.FailSelectedDelivery = failDelivery;
+        if (retainCustomRecord) f.Context.ChangeTracker.Clear();
         Assert.Equal(failDelivery ? RecoveryProofOutcome.Unavailable : RecoveryProofOutcome.Success, (await f.Assistance.ReplaceEmailAsync(
             new(Guid.NewGuid(), f.User.Id, "replacement@example.test", "checked", "support"))).Outcome);
+        if (retainCustomRecord)
+        {
+            var reusedEmail = await f.Context.RecoveryEmails.AsNoTracking().SingleAsync();
+            Assert.Equal(f.RecoveryEmail.Id, reusedEmail.Id);
+            Assert.Equal("replacement@example.test", reusedEmail.Address);
+            Assert.Null(reusedEmail.VerifiedAtUtc);
+        }
         Assert.Equal("Verify recovery email", f.LastDeliveryMessage!.Subject);
         Assert.Equal("replacement@example.test", f.LastDeliveryMessage.To);
         Assert.False(f.LastDeliveryMessage.IsHtml);

@@ -67,6 +67,8 @@ Account A's change never modifies account B, even for a shared Person. Login ema
 
 ## Atomic transitions and purpose compatibility
 
+Administrative replacement reuses an existing account-scoped custom record even when a default-backed challenge has no recovery-email ID. Authorized legacy removal with RIV enabled retains consumed precheck grants and their reserved challenges: revoke the challenge and detach its email reference before deleting the address. These changes and the source-bootstrap revocation marker are saved atomically; retained challenge metadata never grants new recovery authority.
+
 Begin/replace pending records only the candidate. Resend preserves the maximum attempt budget and cannot indefinitely extend expiry. VerifyChange requires fresh trusted account authorization and candidate OTP, then atomically consumes pending, updates verified active custom, selects UseCustom, increments epoch and invalidates old grants/challenges/approvals exactly once. CancelPending affects only that account's pending record.
 
 UseDefault is a separate sensitive operation: fresh step-up, re-resolution of current eligible default and confirmation bound to its masked destination precede an atomic preference/epoch transition. Missing default cannot be reported as restored recovery. Revoke/disable remains a separate operation.

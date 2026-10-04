@@ -199,7 +199,8 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
             }
 
             resolved.Challenge.Revoke(now);
-            var replacementEmail = resolved.Email;
+            var replacementEmail = resolved.Email ?? await _dbContext.RecoveryEmails.SingleOrDefaultAsync(
+                candidate => candidate.LocalAccountId == resolved.User.Id, cancellationToken);
             if (replacementEmail is null)
             {
                 replacementEmail = new RecoveryEmailRecord(resolved.User.Id, address, normalizedAddress, now);

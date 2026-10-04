@@ -166,8 +166,19 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
 
         var user = await _dbContext.Users
             .SingleAsync(candidate => candidate.Id == localAccountId, cancellationToken);
+        var now = _store.UtcNow;
+        var reservedChallenges = await _dbContext.RecoveryProofChallenges
+            .Where(challenge => challenge.RecoveryEmailId == record.Id &&
+                _dbContext.RecoveryPrecheckGrants.Any(grant => grant.ReservedChallengeId == challenge.Id))
+            .ToListAsync(cancellationToken);
+        foreach (var challenge in reservedChallenges)
+        {
+            challenge.RevokeAndDetachRecoveryEmail(now);
+        }
+        // Apply FK changes before deletion triggers the email's challenge cascade.
+        _dbContext.ChangeTracker.DetectChanges();
         _dbContext.RecoveryEmails.Remove(record);
-        user.RecoverySourceBootstrapRevokedAtUtc = _store.UtcNow;
+        user.RecoverySourceBootstrapRevokedAtUtc = now;
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _audit.RecordAsync(
             new RecoveryProofAuditEvent(
