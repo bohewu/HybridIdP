@@ -10,11 +10,6 @@ on:
         description: "Optional image tag (example: 1.0.0)"
         required: false
         type: string
-      restore_publication:
-        description: "Restore the original v1.5.0 publication"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -26,7 +21,6 @@ env:
 
 jobs:
   build-and-push:
-    if: ${{ !inputs.restore_publication }}
     runs-on: ubuntu-latest
 
     steps:
@@ -71,90 +65,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  restore-publication:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.restore_publication && github.repository == 'bohewu/HybridIdP' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Restore latest and remove only the specified new manifests
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REPOSITORY" = 'bohewu/HybridIdP'
-          image='ghcr.io/bohewu/hybrididp-idp-service'
-          original='sha256:1009d7cd37442872dd8099ba838c74995ae67dcdc94bf9002d44d20433aaeedd'
-          unauthorized_latest='sha256:2d87cb1fa454da517995cbfbb8a92c2e3dca60861c09fe8d9e6cb7a1c040172a'
-          revision='63d75192560a75a5bf136a4b81eeb1cf680247e5'
-          old_children='["sha256:230dee55f42acd7c821afbe9f9b77ac44ce28d1496a404f44fba6595ad34d7bc","sha256:736b47b37336a42a94c37d51ddd37a9d5ebcf153dcb8573ad809dbd2c3181c40"]'
-          targets='["sha256:9a0a2c12fb9f9194f5a1e05c7e78e0448d8cbdf1e8d18eeaac5ccbf7852d6472","sha256:2d87cb1fa454da517995cbfbb8a92c2e3dca60861c09fe8d9e6cb7a1c040172a","sha256:9c3789868446e76abb2c55f2bf5cd8aeb0b61a6ed3c64289ac3e11738eb5fcb9","sha256:ecab10ba567369fb155d46921000539115d72fbced96c17a2af5740c8ab02735","sha256:b8d356f658c150e1feb772294aa7da0f34b82b9720af4382682aacc8a14c52e3","sha256:e4ef1231e6f9bc116e93703808428c134647f51791b395b05760df9115d60dd5"]'
-          versions_path='users/bohewu/packages/container/hybrididp-idp-service/versions'
-
-          digest() {
-            docker buildx imagetools inspect "$1" --format '{{.Manifest.Digest}}'
-          }
-          verify_original() {
-            test "$(digest "$image@$original")" = "$original"
-            for tag in 1.5.0 v1.5.0; do
-              test "$(digest "$image:$tag")" = "$original"
-            done
-            test "$(docker buildx imagetools inspect "$image@$original" --format '{{index .Image.Config.Labels "org.opencontainers.image.revision"}}')" = "$revision"
-            docker buildx imagetools inspect "$image@$original" --raw |
-              jq -e --argjson expected "$old_children" '([.manifests[].digest] | sort) == ($expected | sort)' > /dev/null
-            while IFS= read -r child; do
-              test "$(digest "$image@$child")" = "$child"
-            done < <(jq -r '.[]' <<< "$old_children")
-          }
-          list_versions() {
-            gh api --paginate --slurp "$versions_path?per_page=100" | jq 'add'
-          }
-
-          current_latest=$(digest "$image:latest")
-          case "$current_latest" in
-            "$unauthorized_latest"|"$original") ;;
-            *) printf 'Unexpected latest digest: %s\n' "$current_latest"; exit 1 ;;
-          esac
-          verify_original
-          printf 'Current latest digest: %s\n' "$current_latest"
-          if [ "$current_latest" != "$original" ]; then
-            # One existing image index is copied without rebuilding or adding annotations.
-            docker buildx imagetools create --tag "$image:latest" "$image@$original"
-          fi
-          test "$(digest "$image:latest")" = "$original"
-          verify_original
-
-          before=$(list_versions)
-          selected=$(jq --argjson targets "$targets" '[ $targets[] as $target | .[] | select(.name == $target) ]' <<< "$before")
-          # Validate every candidate before issuing any DELETE; absent versions are already restored.
-          jq -e --arg latest "$unauthorized_latest" 'all(.[]; .name as $name |
-            (.id | type == "number") and
-            (.metadata.container.tags | type == "array") and
-            all(.metadata.container.tags[]; . == "f21bbf1" or . == "660c31b" or (. == "main" and $name == $latest)))' <<< "$selected" > /dev/null
-          jq -c '.[] | {id, digest: .name, tags: .metadata.container.tags}' <<< "$selected"
-          test "$(digest "$image:latest")" = "$original"
-          while IFS= read -r version_id; do
-            gh api --method DELETE "$versions_path/$version_id"
-          done < <(jq -r '.[].id' <<< "$selected")
-
-          after=$(list_versions)
-          jq -e --argjson targets "$targets" 'all(.[]; .name as $name | ($targets | index($name)) == null)' <<< "$after" > /dev/null
-          jq -e --argjson after "$after" --argjson targets "$targets" '
-            all(.[]; . as $version |
-              ($targets | index($version.name)) != null or
-              any($after[]; .id == $version.id and .name == $version.name))' <<< "$before" > /dev/null
-          test "$(digest "$image:latest")" = "$original"
-          verify_original
-          printf 'Restored latest digest: %s\n' "$original"
-          jq -r '.[]' <<< "$old_children"
