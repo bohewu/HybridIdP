@@ -1,7 +1,7 @@
 const anyCodeUnit = (value, pattern) => value.split('').some(character => pattern.test(character))
-const hasUppercase = value => anyCodeUnit(value, /\p{Lu}/u)
-const hasLowercase = value => anyCodeUnit(value, /\p{Ll}/u)
-const hasDigit = value => anyCodeUnit(value, /\p{Nd}/u)
+const hasUppercase = value => anyCodeUnit(value, new RegExp("\\p{Lu}", "u"))
+const hasLowercase = value => anyCodeUnit(value, new RegExp("\\p{Ll}", "u"))
+const hasDigit = value => anyCodeUnit(value, new RegExp("\\p{Nd}", "u"))
 const hasSymbol = value => anyCodeUnit(value, /[^\p{L}\p{Nd}]/u)
 
 function evaluateRule(name, requiredValue, password, confirmation) {
@@ -34,14 +34,6 @@ function evaluateRule(name, requiredValue, password, confirmation) {
 
 export function initNativePasswordPolicy(root = document) {
   const recoveryRoot = root.querySelector('[data-native-recovery]')
-  const evidence = recoveryRoot?.querySelector('[data-native-recovery-evidence]')
-  if (evidence) {
-    // Do not retain supplemental identity evidence in browser history restoration.
-    const clearEvidence = () => { evidence.value = '' }
-    clearEvidence()
-    window.addEventListener('pageshow', clearEvidence)
-    window.addEventListener('pagehide', clearEvidence)
-  }
   const password = recoveryRoot?.querySelector('[data-native-password]')
   const confirmation = recoveryRoot?.querySelector('[data-native-password-confirm]')
   const policy = recoveryRoot?.querySelector('[data-native-password-policy]')

@@ -28,8 +28,7 @@ namespace Tests.Application.UnitTests;
 public class UsersControllerSessionsTests
 {
     private static UsersController CreateController(
-        out Mock<ISessionService> sessionServiceMock,
-        ICurrentUserLifecycleEligibility? lifecycle = null, IImpersonationService? impersonation = null)
+        out Mock<ISessionService> sessionServiceMock)
     {
         var userMgmt = new Mock<IUserManagementService>();
 
@@ -60,7 +59,6 @@ public class UsersControllerSessionsTests
         var impersonationMock = new Mock<IImpersonationService>();
 
         return new UsersController(
-            lifecycle ?? Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             userMgmt.Object, 
             userManager, 
             roleManager,
@@ -68,57 +66,11 @@ public class UsersControllerSessionsTests
             loginHistoryMock.Object,
             dbContextMock.Object,
             localizerMock.Object,
-            impersonation ?? impersonationMock.Object,
+            impersonationMock.Object,
             new Mock<AspNetCoreAuthorizationService>().Object,
             Options.Create(new PrivilegedRoleProtectionOptions()),
             new Mock<ILogger<UsersController>>().Object,
             Mock.Of<IRecoveryAssistanceService>());
-    }
-
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public async Task ImpersonationCookies_ShouldCheckReceivingAccountAfterPrincipalPreparation(bool restore, bool allowed)
-    {
-        var actorId = Guid.NewGuid();
-        var targetId = Guid.NewGuid();
-        var receivingId = restore ? actorId : targetId;
-        var issued = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
-            [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, receivingId.ToString())], "test"));
-        var impersonation = new Mock<IImpersonationService>();
-        impersonation.Setup(service => service.StartImpersonationAsync(actorId, targetId)).ReturnsAsync((true, issued, (string?)null));
-        impersonation.Setup(service => service.RevertImpersonationAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>())).ReturnsAsync((true, issued, (string?)null));
-        var lifecycle = new Mock<ICurrentUserLifecycleEligibility>();
-        lifecycle.Setup(policy => policy.IsEligibleAsync(receivingId, It.IsAny<CancellationToken>())).ReturnsAsync(allowed);
-        var authentication = new Mock<Microsoft.AspNetCore.Authentication.IAuthenticationService>();
-        var context = new DefaultHttpContext
-        {
-            RequestServices = new ServiceCollection().AddSingleton(authentication.Object).BuildServiceProvider(),
-            User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
-                [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
-        };
-        IActionResult result;
-        if (restore)
-        {
-            var controller = new ImpersonationController(lifecycle.Object, impersonation.Object, Mock.Of<ILogger<ImpersonationController>>())
-                { ControllerContext = new ControllerContext { HttpContext = context } };
-            result = await controller.Stop();
-        }
-        else
-        {
-            var controller = CreateController(out _, lifecycle.Object, impersonation.Object);
-            controller.ControllerContext = new ControllerContext { HttpContext = context };
-            result = await controller.StartImpersonation(targetId);
-        }
-        if (allowed) Assert.IsType<OkObjectResult>(result);
-        else Assert.IsType<BadRequestObjectResult>(result);
-        lifecycle.Verify(policy => policy.IsEligibleAsync(receivingId, It.IsAny<CancellationToken>()), Times.Once);
-        authentication.Verify(service => service.SignInAsync(context, IdentityConstants.ApplicationScheme, issued,
-            It.IsAny<Microsoft.AspNetCore.Authentication.AuthenticationProperties>()), allowed ? Times.Once() : Times.Never());
-        authentication.Verify(service => service.SignOutAsync(It.IsAny<HttpContext>(), It.IsAny<string>(),
-            It.IsAny<Microsoft.AspNetCore.Authentication.AuthenticationProperties>()), Times.Never);
     }
 
     [Fact]

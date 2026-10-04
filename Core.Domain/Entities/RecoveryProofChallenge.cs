@@ -45,48 +45,8 @@ public sealed class RecoveryProofChallenge
         Version = 1;
     }
 
-    public static RecoveryProofChallenge CreateForDefault(Guid localAccountId, string codeHash,
-        DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc, long selectionEpoch,
-        string destinationFingerprint, long destinationVersion,
-        RecoveryProofPurpose purpose = RecoveryProofPurpose.NativePasswordRecovery,
-        Guid? credentialMigrationContinuationId = null)
-    {
-        if (purpose is not (RecoveryProofPurpose.NativePasswordRecovery or RecoveryProofPurpose.MigrationOtp) ||
-            (purpose == RecoveryProofPurpose.MigrationOtp) != credentialMigrationContinuationId.HasValue ||
-            credentialMigrationContinuationId == Guid.Empty)
-            throw new ArgumentException("Default proof requires an explicit native or migration purpose.");
-        var challenge = new RecoveryProofChallenge(Guid.NewGuid(), localAccountId,
-            purpose, codeHash, createdAtUtc, expiresAtUtc, credentialMigrationContinuationId);
-        challenge.RecoveryEmailId = null;
-        challenge.BindSelection(selectionEpoch, RecoveryDestinationKind.TrustedDefault, destinationFingerprint, destinationVersion);
-        return challenge;
-    }
-
-    public RecoveryChallengeDeliveryState? DeliveryState { get; private set; }
-
-    public void ReserveDelivery()
-    {
-        if (Purpose != RecoveryProofPurpose.NativePasswordRecovery || SelectionEpoch is null ||
-            DeliveryState is not null || VerifiedAtUtc is not null || ConsumedAtUtc is not null || RevokedAtUtc is not null)
-            throw new InvalidOperationException("Only a new bound native challenge can reserve delivery.");
-        DeliveryState = RecoveryChallengeDeliveryState.Reserved;
-        Version++;
-    }
-
-    public bool TryCompleteDelivery(DateTimeOffset now, bool delivered)
-    {
-        if (DeliveryState != RecoveryChallengeDeliveryState.Reserved || ExpiresAtUtc <= now ||
-            RevokedAtUtc is not null || ConsumedAtUtc is not null) return false;
-        DeliveryState = delivered ? RecoveryChallengeDeliveryState.Delivered : RecoveryChallengeDeliveryState.Failed;
-        if (!delivered) RevokedAtUtc = now;
-        Version++;
-        return true;
-    }
-
-    private bool DeliveryPermitsProof => DeliveryState is null or RecoveryChallengeDeliveryState.Delivered;
-
     public Guid Id { get; private set; }
-    public Guid? RecoveryEmailId { get; private set; }
+    public Guid RecoveryEmailId { get; private set; }
     public Guid LocalAccountId { get; private set; }
     public Guid? CredentialMigrationContinuationId { get; private set; }
     public RecoveryProofPurpose Purpose { get; private set; }
@@ -100,26 +60,6 @@ public sealed class RecoveryProofChallenge
     public DateTimeOffset? ConsumedAtUtc { get; private set; }
     public DateTimeOffset? RevokedAtUtc { get; private set; }
     public long Version { get; private set; }
-    public long? SelectionEpoch { get; private set; }
-    public RecoveryDestinationKind? DestinationKind { get; private set; }
-    public string? DestinationFingerprint { get; private set; }
-    public long? DestinationVersion { get; private set; }
-
-    public void BindSelection(long selectionEpoch, RecoveryDestinationKind destinationKind,
-        string destinationFingerprint, long destinationVersion)
-    {
-        RecoveryStateGuard.Selection(selectionEpoch, destinationKind, destinationFingerprint, destinationVersion);
-        if (SelectionEpoch is not null) throw new InvalidOperationException("Recovery selection is immutable once bound.");
-        SelectionEpoch = selectionEpoch;
-        DestinationKind = destinationKind;
-        DestinationFingerprint = destinationFingerprint;
-        DestinationVersion = destinationVersion;
-        Version++;
-    }
-
-    public bool MatchesSelection(long epoch, RecoveryDestinationKind kind, string fingerprint, long version) =>
-        SelectionEpoch == epoch && DestinationKind == kind && DestinationFingerprint == fingerprint && DestinationVersion == version;
-
     public Guid? NativeRecoveryChallengeId { get; private set; }
     public string? NativeContextHash { get; private set; }
     public string? NativeCsrfHash { get; private set; }
@@ -172,7 +112,7 @@ public sealed class RecoveryProofChallenge
 
     public bool TryConsumeWithAdministrativeApproval(DateTimeOffset now)
     {
-        if (!DeliveryPermitsProof || Purpose != RecoveryProofPurpose.NativePasswordRecovery || VerifiedAtUtc is not null ||
+        if (Purpose != RecoveryProofPurpose.NativePasswordRecovery || VerifiedAtUtc is not null ||
             ConsumedAtUtc is not null || RevokedAtUtc is not null || ExpiresAtUtc <= now)
         {
             return false;
@@ -186,7 +126,7 @@ public sealed class RecoveryProofChallenge
 
     public bool TryReserveAttempt(DateTimeOffset now, int maxAttempts)
     {
-        if (!DeliveryPermitsProof || RevokedAtUtc is not null || ConsumedAtUtc is not null || VerifiedAtUtc is not null ||
+        if (RevokedAtUtc is not null || ConsumedAtUtc is not null || VerifiedAtUtc is not null ||
             ExpiresAtUtc <= now || VerificationAttempts >= maxAttempts)
         {
             return false;
@@ -199,7 +139,7 @@ public sealed class RecoveryProofChallenge
 
     public bool TryMarkAddressVerified(DateTimeOffset now)
     {
-        if (!DeliveryPermitsProof || RevokedAtUtc is not null || ConsumedAtUtc is not null || VerifiedAtUtc is not null || ExpiresAtUtc <= now)
+        if (RevokedAtUtc is not null || ConsumedAtUtc is not null || VerifiedAtUtc is not null || ExpiresAtUtc <= now)
         {
             return false;
         }
@@ -212,7 +152,7 @@ public sealed class RecoveryProofChallenge
 
     public bool TryMarkMigrationVerified(string proofTokenHash, DateTimeOffset now)
     {
-        if (!DeliveryPermitsProof || string.IsNullOrWhiteSpace(proofTokenHash) || RevokedAtUtc is not null || ConsumedAtUtc is not null ||
+        if (string.IsNullOrWhiteSpace(proofTokenHash) || RevokedAtUtc is not null || ConsumedAtUtc is not null ||
             VerifiedAtUtc is not null || ExpiresAtUtc <= now)
         {
             return false;
@@ -226,7 +166,7 @@ public sealed class RecoveryProofChallenge
 
     public bool TryMarkNativeRecoveryVerified(string proofTokenHash, DateTimeOffset now)
     {
-        if (!DeliveryPermitsProof || Purpose != RecoveryProofPurpose.NativePasswordRecovery ||
+        if (Purpose != RecoveryProofPurpose.NativePasswordRecovery ||
             string.IsNullOrWhiteSpace(proofTokenHash) || RevokedAtUtc is not null || ConsumedAtUtc is not null ||
             VerifiedAtUtc is not null || ExpiresAtUtc <= now)
         {
@@ -241,7 +181,7 @@ public sealed class RecoveryProofChallenge
 
     public bool TryConsumePendingSettlement(DateTimeOffset now)
     {
-        if (!DeliveryPermitsProof || Purpose != RecoveryProofPurpose.PendingDirectorySettlement ||
+        if (Purpose != RecoveryProofPurpose.PendingDirectorySettlement ||
             VerifiedAtUtc is not null || ConsumedAtUtc is not null || RevokedAtUtc is not null || ExpiresAtUtc <= now)
         {
             return false;
@@ -255,7 +195,7 @@ public sealed class RecoveryProofChallenge
 
     public bool TryConsume(DateTimeOffset now)
     {
-        if (!DeliveryPermitsProof || VerifiedAtUtc is null || ConsumedAtUtc is not null || RevokedAtUtc is not null || ExpiresAtUtc <= now)
+        if (VerifiedAtUtc is null || ConsumedAtUtc is not null || RevokedAtUtc is not null || ExpiresAtUtc <= now)
         {
             return false;
         }
@@ -282,5 +222,3 @@ public enum RecoveryProofPurpose
     NativePasswordRecovery,
     PendingDirectorySettlement
 }
-
-public enum RecoveryChallengeDeliveryState { Reserved, Delivered, Failed }

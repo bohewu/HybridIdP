@@ -11,9 +11,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Web.IdP.Extensions;
 using Moq;
 using Web.IdP;
 using Web.IdP.Pages.Account;
@@ -22,92 +19,6 @@ namespace Tests.Web.IdP.UnitTests.Pages.Account;
 
 public sealed class ForgotPasswordModelTests
 {
-    [Theory]
-    [InlineData(false, false, false, false)]
-    [InlineData(true, false, false, true)]
-    [InlineData(false, true, false, true)]
-    [InlineData(true, false, true, false)]
-    [InlineData(false, true, true, false)]
-    public void RecoveryConfiguration_ShouldRequireSharedKeyForEitherNewCeremony(bool identity, bool selection, bool key, bool rejected)
-    {
-        var values = new Dictionary<string, string?>
-        {
-            ["RecoveryIdentityVerification:Enabled"] = identity.ToString(),
-            ["RecoveryIdentityVerification:RequireForDirectoryAccounts"] = "true",
-            ["RecoveryIdentityVerification:Endpoint"] = "https://provider.example.invalid/verify",
-            ["RecoveryIdentityVerification:SharedSecret"] = Guid.NewGuid().ToString("N"),
-            ["RecoveryEmailSelection:Enabled"] = selection.ToString(),
-            ["RecoveryThrottle:HashKey"] = key ? Guid.NewGuid().ToString("N") : null
-        };
-        using var provider = new ServiceCollection().AddLogging().AddCustomApplicationServices(
-            new ConfigurationBuilder().AddInMemoryCollection(values).Build()).BuildServiceProvider();
-        var options = provider.GetRequiredService<IOptions<RecoveryThrottleOptions>>();
-        if (rejected) Assert.Throws<OptionsValidationException>(() => options.Value);
-        else Assert.NotNull(options.Value);
-    }
-
-    [Fact]
-    public void IdentityConfiguration_ShouldRequireExplicitAuthorityCohort()
-    {
-        var options = new RecoveryIdentityVerificationOptions { Enabled = true,
-            Endpoint = "https://provider.example.invalid/verify", SharedSecret = Guid.NewGuid().ToString("N") };
-        Assert.True(new RecoveryIdentityVerificationOptionsValidator().Validate(null, options).Failed);
-        options.RequireForDirectoryAccounts = true;
-        Assert.True(new RecoveryIdentityVerificationOptionsValidator().Validate(null, options).Succeeded);
-    }
-
-    [Fact]
-    public async Task PrepareThenSend_ShouldClearEvidenceAndRequireExplicitSendWithStableContext()
-    {
-        var precheck = new Mock<IRecoveryPrecheckService>();
-        precheck.SetupGet(p => p.Enabled).Returns(true);
-        var grant = Guid.NewGuid();
-        RecoveryPrepareRequest? prepare = null;
-        RecoverySendOtpRequest? send = null;
-        precheck.Setup(p => p.PrepareAsync(It.IsAny<RecoveryPrepareRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<RecoveryPrepareRequest, CancellationToken>((request, _) => prepare = request)
-            .ReturnsAsync(new RecoveryPrepareResult(grant, "c***@example.test"));
-        precheck.Setup(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<RecoverySendOtpRequest, CancellationToken>((request, _) => send = request)
-            .ReturnsAsync(new NativeRecoveryStartResult(Guid.NewGuid()));
-        var f = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object);
-        f.Model.Identifier.Value = "user";
-        f.Model.Identifier.IdentityIdentifier = "  synthetic-id  ";
-        f.Model.ModelState.SetModelValue("Identifier.IdentityIdentifier", "  synthetic-id  ", "  synthetic-id  ");
-        Assert.IsType<PageResult>(await f.Model.OnPostStartAsync(default));
-        Assert.True(f.Model.ReadyToSend);
-        Assert.False(f.Model.AwaitingCode);
-        Assert.False(f.Model.AwaitingPassword);
-        Assert.Equal("  synthetic-id  ", prepare!.IdentityIdentifier);
-        Assert.Null(f.Model.Identifier.IdentityIdentifier);
-        Assert.Empty(f.Model.ModelState);
-        Assert.DoesNotContain(f.Session.TextValues, value => value.Contains("synthetic-id"));
-        precheck.Verify(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()), Times.Never);
-        f.ProofService.VerifyNoOtherCalls();
-        Assert.IsType<PageResult>(await f.Model.OnPostSendCodeAsync(default));
-        Assert.Equal(grant, send!.GrantId);
-        Assert.Equal(prepare.Context, send.Context);
-        Assert.True(f.Model.AwaitingCode);
-        Assert.False(f.Model.AwaitingPassword);
-        Assert.False(f.Model.User.Identity?.IsAuthenticated ?? false);
-        await f.Model.OnPostSendCodeAsync(default);
-        precheck.Verify(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task BrowserClaimedVerificationWithoutServerGrant_ShouldNotSendOrReset()
-    {
-        var precheck = new Mock<IRecoveryPrecheckService>();
-        precheck.SetupGet(p => p.Enabled).Returns(true);
-        var f = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object);
-        f.Model.ModelState.SetModelValue("Verified", "true", "true");
-        f.Model.ModelState.SetModelValue("recipient", "attacker@example.test", "attacker@example.test");
-        await f.Model.OnPostSendCodeAsync(default);
-        await f.Model.OnPostResetAsync(default);
-        precheck.Verify(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()), Times.Never);
-        f.ResetService.VerifyNoOtherCalls();
-    }
-
     [Fact]
     public async Task OnGetAsync_ExternalRuntimeMode_ReturnsNotFound()
     {
@@ -284,7 +195,7 @@ public sealed class ForgotPasswordModelTests
         public TestSession Session { get; } = new();
         public ForgotPasswordModel Model { get; }
 
-        public Fixture(ForgotPasswordMode runtimeMode, SecurityPolicy? customPolicy = null, IRecoveryPrecheckService? precheck = null)
+        public Fixture(ForgotPasswordMode runtimeMode, SecurityPolicy? customPolicy = null)
         {
             var policy = customPolicy ?? new SecurityPolicy
             {
@@ -322,7 +233,7 @@ public sealed class ForgotPasswordModelTests
                 policyService.Object,
                 evaluator,
                 new EphemeralDataProtectionProvider(),
-                localizer.Object, precheck: precheck)
+                localizer.Object)
             {
                 PageContext = new PageContext
                 {

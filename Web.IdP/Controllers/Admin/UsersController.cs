@@ -33,7 +33,6 @@ namespace Web.IdP.Controllers.Admin;
 [ValidateCsrfForCookies]
 public class UsersController : ControllerBase
 {
-    private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly IUserManagementService _userManagementService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
@@ -49,7 +48,6 @@ public class UsersController : ControllerBase
     private readonly INativeRecoveryAssistanceService? _nativeRecoveryAssistanceService;
 
     public UsersController(
-        Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
         IUserManagementService userManagementService,
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
@@ -64,7 +62,6 @@ public class UsersController : ControllerBase
         IRecoveryAssistanceService recoveryAssistanceService,
         INativeRecoveryAssistanceService? nativeRecoveryAssistanceService = null)
     {
-        _lifecycleEligibility = lifecycleEligibility;
         _userManagementService = userManagementService;
         _userManager = userManager;
         _roleManager = roleManager;
@@ -713,11 +710,6 @@ public class UsersController : ControllerBase
                     return BadRequest(new { error = "系統管理員無法被模擬登入。" });
                 }
                 return BadRequest(new { error });
-            }
-
-            if (!await _lifecycleEligibility.IsEligibleAsync(id, HttpContext.RequestAborted))
-            {
-                return BadRequest(new { error = "User cannot sign in" });
             }
 
             // Issue the cookie

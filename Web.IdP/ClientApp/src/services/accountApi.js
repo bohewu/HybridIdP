@@ -92,26 +92,6 @@ export const accountApi = {
     return recoveryRequest('/verify', 'POST', { code }, csrfToken);
   },
 
-  async reauthenticateRecoveryEmail(csrfToken = '') {
-    return recoveryRequest('/reauthenticate', 'POST', null, csrfToken);
-  },
-
-  async resendRecoveryEmail(csrfToken = '') {
-    return recoveryRequest('/resend', 'POST', null, csrfToken);
-  },
-
-  async cancelRecoveryEmailPending(csrfToken = '') {
-    return recoveryRequest('/cancel', 'POST', null, csrfToken);
-  },
-
-  async prepareRecoveryEmailDefault(csrfToken = '') {
-    return recoveryRequest('/use-default/prepare', 'POST', null, csrfToken);
-  },
-
-  async useRecoveryEmailDefault(confirmation, csrfToken = '') {
-    return recoveryRequest('/use-default', 'POST', { confirmation }, csrfToken);
-  },
-
   async revokeRecoveryEmail(csrfToken = '') {
     return recoveryRequest('', 'DELETE', null, csrfToken);
   }

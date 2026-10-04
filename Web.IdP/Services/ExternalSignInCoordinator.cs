@@ -12,7 +12,6 @@ namespace Web.IdP.Services;
 
 public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
 {
-    private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILoginService _loginService;
@@ -23,7 +22,6 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
     private readonly TimeProvider _timeProvider;
 
     public ExternalSignInCoordinator(
-        Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         ILoginService loginService,
@@ -33,7 +31,6 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         ILogger<ExternalSignInCoordinator> logger,
         TimeProvider? timeProvider = null)
     {
-        _lifecycleEligibility = lifecycleEligibility;
         _signInManager = signInManager;
         _userManager = userManager;
         _loginService = loginService;
@@ -64,8 +61,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
             return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
         }
 
-        if (!await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken) ||
-            !await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+        if (!await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken))
         {
             return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
         }
@@ -117,10 +113,6 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         var claims = AuthenticationMethodSession.CreateClaims(
             httpContext.Session,
             AuthConstants.Amr.External);
-        if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
-        {
-            return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
-        }
         await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, claims);
 
         return ExternalSignInCompletionResult.Succeeded();

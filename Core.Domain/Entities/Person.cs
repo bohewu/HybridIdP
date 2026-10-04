@@ -205,15 +205,12 @@ public class Person
     /// <summary>
     /// Checks if the person is currently allowed to authenticate based on status and dates.
     /// </summary>
-    public bool CanAuthenticate() => CanAuthenticate(DateTime.UtcNow);
-
-    /// <summary>Evaluates the existing date policy at the caller's action-time UTC instant.</summary>
-    public bool CanAuthenticate(DateTime utcNow)
+    public bool CanAuthenticate()
     {
         if (IsDeleted) return false;
         if (Status != PersonStatus.Active) return false;
         
-        var now = utcNow.Date;
+        var now = DateTime.UtcNow.Date;
         if (StartDate.HasValue && StartDate.Value.Date > now) return false;
         if (EndDate.HasValue && EndDate.Value.Date < now) return false;
         

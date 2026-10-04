@@ -52,14 +52,7 @@ public static class ServiceCollectionExtensions
         // Core Services
         services.AddHttpContextAccessor();
         services.AddScoped<IMigrationIssuanceGuard, MigrationIssuanceGuard>();
-        services.AddSingleton<ProviderLifecycleClock>();
-        services.AddScoped<ICurrentUserLifecycleEligibility>(provider => new CurrentUserLifecycleEligibility(
-            provider.GetRequiredService<IApplicationDbContext>(),
-            provider.GetRequiredService<IOptions<ProviderLifecycleOptions>>(),
-            provider.GetRequiredService<IProviderLifecycleClient>(),
-            provider.GetRequiredService<ProviderLifecycleClock>()));
-        services.AddScoped<Core.Application.Interfaces.IAccountLifecycleEligibility>(provider =>
-            provider.GetRequiredService<ICurrentUserLifecycleEligibility>());
+        services.AddScoped<ICurrentUserLifecycleEligibility, CurrentUserLifecycleEligibility>();
         services.AddScoped<ApplicationCookieCurrentStateValidator>(provider =>
             new ApplicationCookieCurrentStateValidator(
                 provider.GetRequiredService<ICurrentUserLifecycleEligibility>(),
@@ -69,14 +62,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILegacyAuthService, LegacyAuthService>();
         services.AddHttpClient<IProofProvider, ProviderProofProvider>();
         services.AddHttpClient<IProviderMetadataRefreshService, ProviderMetadataRefreshService>();
-        services.AddHttpClient<IProviderLifecycleClient, ProviderLifecycleClient>(client =>
-                client.Timeout = Timeout.InfiniteTimeSpan)
-            .ConfigurePrimaryHttpMessageHandler(ProviderLifecycleClient.CreatePrimaryHandler)
-            .RemoveAllLoggers();
-        services.AddHttpClient<IRecoveryIdentityVerificationClient, RecoveryIdentityVerificationClient>(client =>
-                client.Timeout = Timeout.InfiniteTimeSpan)
-            .ConfigurePrimaryHttpMessageHandler(RecoveryIdentityVerificationClient.CreatePrimaryHandler)
-            .RemoveAllLoggers();
         services.AddHttpClient(LegacyPasswordSyncHttpClient.Name)
             .ConfigurePrimaryHttpMessageHandler(LegacyPasswordSyncHttpClient.CreatePrimaryHandler);
         services.AddSingleton<ILegacyPasswordSyncTargetResolver, ConfiguredLegacyPasswordSyncTargetResolver>();
@@ -84,17 +69,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILegacyPasswordSyncTransport, LegacyPasswordSyncHttpTransport>();
         services.AddScoped<ILegacyPasswordSyncCoordinator, LegacyPasswordSyncCoordinator>();
         services.AddScoped<IRecoveryVerificationPolicyEvaluator, RecoveryVerificationPolicyEvaluator>();
-        services.AddScoped<IRecoveryDefaultDestinationEvaluator, RecoveryVerificationPolicyEvaluator>();
-        services.AddScoped<IRecoveryDestinationResolver, RecoveryDestinationResolver>();
-        services.AddScoped<RecoveryThrottleService>();
-        services.AddScoped<RecoveryPrecheckService>();
-        services.AddScoped<IRecoveryPrecheckService>(provider => provider.GetRequiredService<RecoveryPrecheckService>());
-        services.AddScoped<RecoveryOtpDeliveryService>(provider =>
-        {
-            var mailOptions = provider.GetRequiredService<IOptionsSnapshot<EmailOptions>>();
-            return new RecoveryOtpDeliveryService(new SmtpDispatcher(mailOptions,
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<SmtpDispatcher>.Instance), mailOptions);
-        });
         services.AddScoped<IForgotPasswordRoutingEvaluator, ForgotPasswordRoutingEvaluator>();
         services.AddScoped<INativePasswordRecoveryProofService, NativePasswordRecoveryProofService>();
         services.AddScoped<INativeRecoveryAssistanceService, NativeRecoveryAssistanceService>();
@@ -156,16 +130,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Core.Application.Interfaces.IEmailTemplateService, EmailTemplateService>(); // Phase 20.3: Email MFA Templates
         services.AddScoped<IRecoveryProofAuthorizer, HttpContextRecoveryProofAuthorizer>();
         services.AddScoped<IRecoveryProofAudit, RecoveryProofAudit>();
-        services.AddScoped<RecoveryEmailStepUpService>();
-        services.AddScoped<IRecoveryEmailPreferenceService, RecoveryEmailPreferenceService>();
-        services.AddScoped<RecoveryNotificationService>(provider =>
-        {
-            var mailOptions = provider.GetRequiredService<IOptionsSnapshot<Core.Application.Options.EmailOptions>>();
-            return new RecoveryNotificationService(provider.GetRequiredService<ApplicationDbContext>(),
-                new SmtpDispatcher(mailOptions, Microsoft.Extensions.Logging.Abstractions.NullLogger<SmtpDispatcher>.Instance),
-                mailOptions, provider.GetService<TimeProvider>());
-        });
-        services.AddHostedService<global::Infrastructure.BackgroundServices.RecoveryNotificationProcessor>();
         services.AddScoped<RecoveryEmailService>();
         services.AddScoped<IRecoveryEmailService>(provider => provider.GetRequiredService<RecoveryEmailService>());
         services.AddScoped<MigrationOtpProofService>();
@@ -250,9 +214,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IValidateOptions<ProviderMetadataRefreshOptions>, ProviderMetadataRefreshOptionsValidator>();
         services.AddSingleton<IValidateOptions<LegacyPasswordSyncOptions>, LegacyPasswordSyncOptionsValidator>();
         services.AddSingleton<IValidateOptions<RecoveryVerificationPolicyOptions>, RecoveryVerificationPolicyOptionsValidator>();
-        services.AddSingleton<IValidateOptions<RecoveryEmailSelectionOptions>, RecoveryEmailSelectionOptionsValidator>();
-        services.AddSingleton<IValidateOptions<RecoveryIdentityVerificationOptions>, RecoveryIdentityVerificationOptionsValidator>();
-        services.AddSingleton<IValidateOptions<ProviderLifecycleOptions>, ProviderLifecycleOptionsValidator>();
         services.AddSingleton<IValidateOptions<ForgotPasswordRecoveryOptions>, ForgotPasswordRecoveryOptionsValidator>();
         services.AddSingleton<IValidateOptions<DirectoryLookupOptions>, DirectoryLookupOptionsValidator>();
         services.AddOptions<DirectoryIntegrationOptions>()
@@ -272,22 +233,6 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
         services.AddOptions<RecoveryVerificationPolicyOptions>()
             .Bind(configuration.GetSection(RecoveryVerificationPolicyOptions.Section))
-            .ValidateOnStart();
-        services.AddOptions<RecoveryEmailSelectionOptions>()
-            .Bind(configuration.GetSection(RecoveryEmailSelectionOptions.Section))
-            .ValidateOnStart();
-        services.AddOptions<RecoveryIdentityVerificationOptions>()
-            .Bind(configuration.GetSection(RecoveryIdentityVerificationOptions.Section))
-            .ValidateOnStart();
-        services.AddOptions<ProviderLifecycleOptions>()
-            .Bind(configuration.GetSection(ProviderLifecycleOptions.Section))
-            .ValidateOnStart();
-        services.AddOptions<RecoveryThrottleOptions>()
-            .Bind(configuration.GetSection(RecoveryThrottleOptions.Section))
-            .Validate<IOptions<RecoveryIdentityVerificationOptions>, IOptions<RecoveryEmailSelectionOptions>>(
-                (options, identity, selection) => !(identity.Value.Enabled || selection.Value.Enabled) ||
-                    !string.IsNullOrWhiteSpace(options.HashKey) && options.HashKey.Length >= 32,
-                "Recovery ceremony requires a shared throttle hash key of at least 32 characters from secure configuration.")
             .ValidateOnStart();
         services.AddOptions<ForgotPasswordRecoveryOptions>()
             .Bind(configuration.GetSection(ForgotPasswordRecoveryOptions.Section))
@@ -584,15 +529,16 @@ public static class ServiceCollectionExtensions
             options.Cookie.SameSite = SameSiteMode.Lax;
             options.Cookie.Name = cookieOptions.GetIdentityCookieName();
 
-            options.Events.OnSigningIn = async context =>
+            options.Events.OnSigningIn = context =>
             {
                 if (context.Principal != null)
                 {
                     MfaEnrollmentSession.CompletePending(
                         context.HttpContext.Session,
                         context.Principal);
-                    await RecoveryReauthenticationSession.CompleteAsync(context.HttpContext, context.Principal);
                 }
+
+                return Task.CompletedTask;
             };
             options.Events.OnRedirectToLogin = context =>
             {

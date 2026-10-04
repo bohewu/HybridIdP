@@ -185,6 +185,5 @@ public class MfaSetupModel : PageModel
 
     private async Task<bool> CanIssueFullCookieAsync(ApplicationUser user) =>
         await _lifecycleEligibility.IsEligibleAsync(user.Id, HttpContext.RequestAborted) &&
-        await _migrationIssuanceGuard.CanIssueAsync(user.Id, HttpContext.RequestAborted) &&
-        await _lifecycleEligibility.IsEligibleAsync(user.Id, HttpContext.RequestAborted);
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, HttpContext.RequestAborted);
 }

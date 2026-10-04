@@ -17,7 +17,6 @@ namespace Infrastructure.Services;
 
 public partial class AccountManagementService : IAccountManagementService
 {
-    private readonly Core.Application.Interfaces.IAccountLifecycleEligibility _lifecycleEligibility;
     private readonly IApplicationDbContext _db;
     private readonly ApplicationDbContext _dbContext; // Need concrete type for Roles/UserRoles
     private readonly UserManager<ApplicationUser> _userManager;
@@ -32,7 +31,6 @@ public partial class AccountManagementService : IAccountManagementService
     private readonly TimeProvider _timeProvider;
 
     public AccountManagementService(
-        Core.Application.Interfaces.IAccountLifecycleEligibility lifecycleEligibility,
         IApplicationDbContext db,
         ApplicationDbContext dbContext,
         UserManager<ApplicationUser> userManager,
@@ -46,7 +44,6 @@ public partial class AccountManagementService : IAccountManagementService
         ILogger<AccountManagementService>? logger = null,
         TimeProvider? timeProvider = null)
     {
-        _lifecycleEligibility = lifecycleEligibility;
         _db = db;
         _dbContext = dbContext;
         _userManager = userManager;
@@ -135,11 +132,6 @@ public partial class AccountManagementService : IAccountManagementService
                 return false;
             }
 
-            if (!await _lifecycleEligibility.IsEligibleAsync(targetUser.Id, cancellationToken))
-            {
-                return false;
-            }
-
             if (!await IsEligibleForAccountSwitchAsync(
                     currentUser,
                     targetUser,
@@ -149,14 +141,6 @@ public partial class AccountManagementService : IAccountManagementService
             }
 
             // Sign out current user and sign in as target user
-            if (!await _lifecycleEligibility.IsEligibleAsync(targetUser.Id, cancellationToken))
-            {
-                return false;
-            }
-            if (!await _lifecycleEligibility.IsEligibleAsync(targetUser.Id, cancellationToken))
-            {
-                return false;
-            }
             await _signInManager.SignOutAsync();
             await _signInManager.SignInAsync(targetUser, isPersistent: true);
 

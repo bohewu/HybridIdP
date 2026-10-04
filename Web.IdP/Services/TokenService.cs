@@ -19,7 +19,6 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 namespace Web.IdP.Services
 {
     public partial class TokenService(
-        ICurrentUserLifecycleEligibility lifecycleEligibility,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         RoleManager<ApplicationRole> roleManager,
@@ -36,7 +35,6 @@ namespace Web.IdP.Services
         IStage2CredentialMigrationService stage2CredentialMigrationService,
         IMigrationIssuanceGuard migrationIssuanceGuard) : ITokenService
     {
-        private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility = lifecycleEligibility;
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly RoleManager<ApplicationRole> _roleManager = roleManager;
@@ -308,14 +306,6 @@ namespace Web.IdP.Services
             var ua2 = "unknown";
             await _auditService.LogEventAsync("UserLogin", user.Id.ToString(), System.Text.Json.JsonSerializer.Serialize(new { Success = true }), ip2, ua2, cancellationToken);
 
-            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
-
-            {
-
-                return InvalidPasswordGrant();
-
-            }
-
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, principal);
         }
 
@@ -360,14 +350,6 @@ namespace Web.IdP.Services
             foreach (var claim in principal.Claims)
             {
                 claim.SetDestinations(GetDestinations(claim));
-            }
-
-            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
-
-            {
-
-                return InvalidPasswordGrant();
-
             }
 
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, principal);
@@ -466,14 +448,6 @@ namespace Web.IdP.Services
             identity.SetScopes(effectiveScopes);
             identity.SetDestinations(GetDestinations);
 
-            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
-
-            {
-
-                return InvalidPasswordGrant();
-
-            }
-
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
         }
 
@@ -504,8 +478,7 @@ namespace Web.IdP.Services
                 }
             }
 
-            return await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken) &&
-                await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken);
+            return await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
         }
 
         private static ForbidResult InvalidPasswordGrant() =>
@@ -654,10 +627,6 @@ namespace Web.IdP.Services
 
                 var claimsPrincipal = new ClaimsPrincipal(identity);
                 LogDeviceCodeGrantSuccess(claimsPrincipal.GetClaim(Claims.Subject));
-                if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
-                {
-                    return InvalidPasswordGrant();
-                }
                 return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, claimsPrincipal);
             }
             catch (Exception ex)

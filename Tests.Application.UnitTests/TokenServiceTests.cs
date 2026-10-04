@@ -28,8 +28,6 @@ namespace Tests.Application.UnitTests
 {
     public class TokenServiceTests
     {
-    private readonly Mock<global::Web.IdP.Services.ICurrentUserLifecycleEligibility> _lifecycle = new();
-
         private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
         private readonly Mock<SignInManager<ApplicationUser>> _mockSignInManager;
         private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
@@ -49,8 +47,6 @@ namespace Tests.Application.UnitTests
 
         public TokenServiceTests()
         {
-        _lifecycle.Setup(policy => policy.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-
             var userStore = new Mock<IUserStore<ApplicationUser>>();
             _mockUserManager = new Mock<UserManager<ApplicationUser>>(userStore.Object, null, null, null, null, null, null, null, null);
 
@@ -94,7 +90,6 @@ namespace Tests.Application.UnitTests
                 .ReturnsAsync(new SecurityPolicy());
 
             _service = new TokenService(
-                _lifecycle.Object,
                 _mockUserManager.Object,
                 _mockSignInManager.Object,
                 _mockRoleManager.Object,
@@ -112,39 +107,7 @@ namespace Tests.Application.UnitTests
                 _mockMigrationIssuanceGuard.Object);
         }
 
-        [Theory]
-    [InlineData(GrantTypes.Password, false)]
-    [InlineData(GrantTypes.Password, true)]
-    [InlineData(GrantTypes.AuthorizationCode, false)]
-    [InlineData(GrantTypes.AuthorizationCode, true)]
-    [InlineData(GrantTypes.RefreshToken, false)]
-    [InlineData(GrantTypes.RefreshToken, true)]
-    [InlineData(GrantTypes.DeviceCode, false)]
-    [InlineData(GrantTypes.DeviceCode, true)]
-    public async Task UserGrants_ShouldDeny_WhenLifecycleFailsAtInitialOrFinalCheckpoint(string grant, bool initiallyEligible)
-    {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "lifecycle-user", IsActive = true };
-        ClaimsPrincipal? principal = null;
-        switch (grant)
-        {
-            case GrantTypes.Password: SetupPasswordGrant(user); break;
-            case GrantTypes.AuthorizationCode: principal = SetupAuthorizationCodeGrant(user); break;
-            case GrantTypes.RefreshToken: principal = SetupRefreshGrant(user); break;
-            case GrantTypes.DeviceCode: principal = SetupDeviceCodeGrant(user); break;
-        }
-        _lifecycle.SetupSequence(policy => policy.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(initiallyEligible).ReturnsAsync(false);
-        var result = await _service.HandleTokenRequestAsync(
-            CreateRequest(grant, username: user.UserName, password: "${TEST_FIXTURE_001}", refreshToken: "${TEST_FIXTURE_002}"), principal);
-        AssertInvalidGrant(result);
-        _lifecycle.Verify(policy => policy.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>()),
-            Times.Exactly(initiallyEligible ? 2 : 1));
-        _mockUserManager.Verify(manager => manager.UpdateSecurityStampAsync(It.IsAny<ApplicationUser>()), Times.Never);
-        _mockStage2CredentialMigrationService.VerifyNoOtherCalls();
-        Assert.True(user.IsActive);
-    }
-
-    [Fact]
+        [Fact]
         public async Task HandleTokenRequestAsync_NullRequest_ThrowsArgumentNullException()
         {
             await Assert.ThrowsAsync<ArgumentNullException>(() => _service.HandleTokenRequestAsync(null!, null));

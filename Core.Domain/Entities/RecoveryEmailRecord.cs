@@ -39,23 +39,6 @@ public sealed class RecoveryEmailRecord
     public string? LastAdministrativeReason { get; private set; }
     public string? LastIdentityCheckEvidence { get; private set; }
     public long Version { get; private set; }
-    public RecoveryEmailProvenance Provenance { get; private set; } = RecoveryEmailProvenance.LegacyUnknown;
-
-    // Call only after pending OTP and fresh authorization pass; commit with preference CAS.
-    public void ActivateVerifiedCustom(string address, string normalizedAddress, DateTimeOffset now,
-        RecoveryEmailProvenance provenance)
-    {
-        if (provenance is not (RecoveryEmailProvenance.UserVerified or RecoveryEmailProvenance.AdminAssistedVerified))
-            throw new ArgumentException("Explicit verified custom provenance is required.", nameof(provenance));
-        SetAddress(address, normalizedAddress, now);
-        VerifiedAtUtc = now;
-        Provenance = provenance;
-        NextSendAllowedAtUtc = null;
-        LastAdministrativeActorId = null;
-        LastAdministrativeReason = null;
-        LastIdentityCheckEvidence = null;
-        Version++;
-    }
 
     public void ReplaceAddress(
         string address,
@@ -78,7 +61,6 @@ public sealed class RecoveryEmailRecord
 
         SetAddress(address, normalizedAddress, updatedAtUtc);
         VerifiedAtUtc = null;
-        Provenance = RecoveryEmailProvenance.LegacyUnknown;
         NextSendAllowedAtUtc = nextSendAllowedAtUtc;
         LastAdministrativeActorId = administrativeActorId;
         LastAdministrativeReason = administrativeReason;

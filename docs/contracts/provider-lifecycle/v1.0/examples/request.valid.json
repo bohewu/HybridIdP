@@ -1,7 +1,0 @@
-{
-  "contractType": "lifecycle-status",
-  "contractVersion": "1.0",
-  "requestId": "73aab4b5-2dfa-471a-8c2b-1d70d7540092",
-  "providerNamespace": "example.provider",
-  "stableSubject": "opaque-old-001"
-}

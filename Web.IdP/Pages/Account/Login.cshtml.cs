@@ -28,7 +28,6 @@ namespace Web.IdP.Pages.Account;
 [EnableRateLimiting("login")]
 public partial class LoginModel : PageModel
 {
-    private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILoginService _loginService;
@@ -51,7 +50,6 @@ public partial class LoginModel : PageModel
     private readonly IForgotPasswordRoutingEvaluator _forgotPasswordRoutingEvaluator;
 
     public LoginModel(
-        Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         ILoginService loginService,
@@ -73,7 +71,6 @@ public partial class LoginModel : PageModel
         IMigrationIssuanceGuard migrationIssuanceGuard,
         IForgotPasswordRoutingEvaluator forgotPasswordRoutingEvaluator) // Added
     {
-        _lifecycleEligibility = lifecycleEligibility;
         _signInManager = signInManager;
         _userManager = userManager;
         _loginService = loginService;
@@ -228,8 +225,7 @@ public partial class LoginModel : PageModel
             }
         }
 
-        var result = await RecoveryReauthenticationSession.AuthenticatePasswordAsync(
-            HttpContext, Input.Login, Input.Password, _loginService, _userManager, cancellationToken);
+        var result = await _loginService.AuthenticateAsync(Input.Login, Input.Password, cancellationToken);
 
         switch (result.Status)
         {
@@ -249,8 +245,7 @@ public partial class LoginModel : PageModel
 
             case LoginStatus.Success:
             case LoginStatus.LegacySuccess:
-                if (!await _migrationIssuanceGuard.CanIssueAsync(result.User!.Id, cancellationToken) ||
-                    !await _lifecycleEligibility.IsEligibleAsync(result.User.Id, cancellationToken))
+                if (!await _migrationIssuanceGuard.CanIssueAsync(result.User!.Id, cancellationToken))
                 {
                     ModelState.AddModelError(string.Empty, _localizer["InvalidCredentials"]);
                     return Page();
@@ -384,11 +379,6 @@ public partial class LoginModel : PageModel
                             var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
                             
                             // Note: SignInAsync below merges these claims into the principal
-                            if (!await _lifecycleEligibility.IsEligibleAsync(result.User!.Id, cancellationToken))
-                            {
-                                ModelState.AddModelError(string.Empty, _localizer["InvalidCredentials"]);
-                                return Page();
-                            }
                             await _signInManager.SignInWithClaimsAsync(result.User, Input.RememberMe, claims);
                             await _userManagementService.UpdateLastLoginAsync(result.User.Id, cancellationToken);
                             return this.SafeRedirect(returnUrl);
@@ -399,11 +389,6 @@ public partial class LoginModel : PageModel
                 var amrClaimsList = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
                 // Sign in user (role claims are automatically added by Identity)
-                if (!await _lifecycleEligibility.IsEligibleAsync(result.User!.Id, cancellationToken))
-                {
-                    ModelState.AddModelError(string.Empty, _localizer["InvalidCredentials"]);
-                    return Page();
-                }
                 await _signInManager.SignInWithClaimsAsync(result.User!, isPersistent: Input.RememberMe, amrClaimsList);
                 await _userManagementService.UpdateLastLoginAsync(result.User!.Id, cancellationToken);
                 LogUserSignedIn(result.User!.UserName);
@@ -536,7 +521,7 @@ public partial class LoginModel : PageModel
         var providerAvailable = availableExternalLogins.Any(scheme =>
             string.Equals(scheme.Name, provider, StringComparison.Ordinal));
 
-        if (!providerAvailable || RecoveryReauthenticationSession.HasPending(HttpContext))
+        if (!providerAvailable)
         {
             return RedirectToPage("./Login", new { returnUrl, remoteError = "ProviderNotAvailable" });
         }

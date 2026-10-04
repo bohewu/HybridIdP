@@ -114,7 +114,6 @@ public sealed class UsersControllerCredentialRecoveryTests
             null,
             null);
         var controller = new UsersController(
-            Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             Mock.Of<IUserManagementService>(),
             userManager.Object,
             roleManager.Object,

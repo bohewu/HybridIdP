@@ -53,7 +53,7 @@ public class DeviceController : Controller
             return View(expiredViewModel);
         }
 
-        var actionResult = await _deviceFlowService.ProcessVerificationAsync(User, result, HttpContext.RequestAborted);
+        var actionResult = await _deviceFlowService.ProcessVerificationAsync(User, result);
 
         if (actionResult is SignInResult)
         {

@@ -17,16 +17,13 @@ namespace Web.IdP.Controllers.Admin;
 [ValidateCsrfForCookies]
 public class ImpersonationController : ControllerBase
 {
-    private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly IImpersonationService _impersonationService;
     private readonly ILogger<ImpersonationController> _logger;
 
     public ImpersonationController(
-        Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
         IImpersonationService impersonationService,
         ILogger<ImpersonationController> logger)
     {
-        _lifecycleEligibility = lifecycleEligibility;
         _impersonationService = impersonationService;
         _logger = logger;
     }
@@ -57,14 +54,6 @@ public class ImpersonationController : ControllerBase
                     return Ok(new { message = "Original user not found, logged out." });
                 }
                 return BadRequest(new { error });
-            }
-
-            var restoredUserId = principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                ?? principal?.FindFirst("sub")?.Value;
-            if (!Guid.TryParse(restoredUserId, out var userId) ||
-                !await _lifecycleEligibility.IsEligibleAsync(userId, HttpContext.RequestAborted))
-            {
-                return BadRequest(new { error = "User cannot sign in" });
             }
 
             // Restore the cookie

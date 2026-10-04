@@ -901,17 +901,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<string>("DestinationFingerprint")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("DestinationKind")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<long?>("DestinationVersion")
-                        .HasColumnType("bigint");
-
                     b.Property<bool>("DirectoryAuthority")
                         .HasColumnType("boolean");
 
@@ -934,7 +923,7 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Guid?>("RecoveryEmailId")
+                    b.Property<Guid>("RecoveryEmailId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("RecoveryEmailVersion")
@@ -950,9 +939,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
-
-                    b.Property<long?>("SelectionEpoch")
-                        .HasColumnType("bigint");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -1208,124 +1194,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.ToTable("ProviderSubjectDirectoryBindings", (string)null);
                 });
 
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryEmailPendingChange", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
-
-                    b.Property<string>("CodeHash")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ContextHash")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CsrfHash")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<DateTimeOffset?>("DeliveredAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("ExpectedSelectionEpoch")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("LocalAccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("MaxAttempts")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("NextSendAllowedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("NormalizedAddress")
-                        .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
-
-                    b.Property<DateTimeOffset?>("RevokedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SecurityStamp")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<Guid>("StepUpGrantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("VerificationAttempts")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExpiresAtUtc");
-
-                    b.HasIndex("LocalAccountId")
-                        .IsUnique()
-                        .HasFilter("\"ConsumedAtUtc\" IS NULL AND \"RevokedAtUtc\" IS NULL");
-
-                    b.HasIndex("StepUpGrantId");
-
-                    b.ToTable("RecoveryEmailChangeRequests", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryEmailPreference", b =>
-                {
-                    b.Property<Guid>("LocalAccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("AdministrativeBlockedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Mode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<long>("SelectionEpoch")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("SourceDefaultOptOutAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint");
-
-                    b.HasKey("LocalAccountId");
-
-                    b.ToTable("RecoveryEmailPreferences", (string)null);
-                });
-
             modelBuilder.Entity("Core.Domain.Entities.RecoveryEmailRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1362,13 +1230,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
-                    b.Property<string>("Provenance")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasDefaultValue("LegacyUnknown");
-
                     b.Property<DateTimeOffset>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1385,153 +1246,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .IsUnique();
 
                     b.ToTable("RecoveryEmails", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryNotification", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("AbandonedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset?>("DeliveredAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<DateTimeOffset?>("LeaseExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("LeaseId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("LocalAccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("MaxAttempts")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("NextAttemptAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Recipient")
-                        .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
-
-                    b.Property<long>("SelectionEpoch")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DeliveredAtUtc", "AbandonedAtUtc", "NextAttemptAtUtc");
-
-                    b.HasIndex("LocalAccountId", "SelectionEpoch", "Kind")
-                        .IsUnique();
-
-                    b.ToTable("RecoveryNotifications", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryPrecheckGrant", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ContextHash")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CsrfHash")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("DestinationFingerprint")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("DestinationKind")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<long>("DestinationVersion")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("EffectivePolicyVersion")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("LocalAccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ProviderBindingId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ProviderBindingVersion")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<Guid?>("ReservedChallengeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("RevokedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SecurityStamp")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<long>("SelectionEpoch")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProviderBindingId");
-
-                    b.HasIndex("ReservedChallengeId")
-                        .IsUnique()
-                        .HasFilter("\"ReservedChallengeId\" IS NOT NULL");
-
-                    b.HasIndex("LocalAccountId", "ExpiresAtUtc");
-
-                    b.ToTable("RecoveryPrecheckGrants", (string)null);
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.RecoveryProofChallenge", b =>
@@ -1553,21 +1267,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
 
                     b.Property<Guid?>("CredentialMigrationContinuationId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("DeliveryState")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("DestinationFingerprint")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("DestinationKind")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<long?>("DestinationVersion")
-                        .HasColumnType("bigint");
 
                     b.Property<DateTimeOffset>("ExpiresAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -1608,14 +1307,11 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
-                    b.Property<Guid?>("RecoveryEmailId")
+                    b.Property<Guid>("RecoveryEmailId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset?>("RevokedAtUtc")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<long?>("SelectionEpoch")
-                        .HasColumnType("bigint");
 
                     b.Property<DateTimeOffset>("SentAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -1663,17 +1359,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Property<Guid>("CredentialMigrationContinuationId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("DestinationFingerprint")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("DestinationKind")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<long?>("DestinationVersion")
-                        .HasColumnType("bigint");
-
                     b.Property<DateTimeOffset>("ExpiresAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1692,9 +1377,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
 
                     b.Property<DateTimeOffset?>("RevokedAtUtc")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<long?>("SelectionEpoch")
-                        .HasColumnType("bigint");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
@@ -1715,84 +1397,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.HasIndex("CredentialMigrationContinuationId", "RevokedAtUtc", "ConsumedAtUtc");
 
                     b.ToTable("RecoveryResetApprovals", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryStepUpGrant", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("AuthenticatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("AuthorityBinding")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ContextHash")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("CsrfHash")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<DateTimeOffset>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("LocalAccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("RevokedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SecurityStamp")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LocalAccountId", "ExpiresAtUtc");
-
-                    b.ToTable("RecoveryStepUpGrants", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryThrottleBucket", b =>
-                {
-                    b.Property<string>("PartitionHash")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset>("WindowStartedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("PartitionHash");
-
-                    b.HasIndex("ExpiresAtUtc");
-
-                    b.ToTable("RecoveryThrottleBuckets", (string)null);
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.Resource", b =>
@@ -2661,30 +2265,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryEmailPendingChange", b =>
-                {
-                    b.HasOne("Core.Domain.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("LocalAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Core.Domain.Entities.RecoveryStepUpGrant", null)
-                        .WithMany()
-                        .HasForeignKey("StepUpGrantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryEmailPreference", b =>
-                {
-                    b.HasOne("Core.Domain.ApplicationUser", null)
-                        .WithOne()
-                        .HasForeignKey("Core.Domain.Entities.RecoveryEmailPreference", "LocalAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Core.Domain.Entities.RecoveryEmailRecord", b =>
                 {
                     b.HasOne("Core.Domain.ApplicationUser", null)
@@ -2692,34 +2272,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .HasForeignKey("Core.Domain.Entities.RecoveryEmailRecord", "LocalAccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryNotification", b =>
-                {
-                    b.HasOne("Core.Domain.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("LocalAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryPrecheckGrant", b =>
-                {
-                    b.HasOne("Core.Domain.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("LocalAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Core.Domain.Entities.ProviderSubjectDirectoryBinding", null)
-                        .WithMany()
-                        .HasForeignKey("ProviderBindingId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Core.Domain.Entities.RecoveryProofChallenge", null)
-                        .WithOne()
-                        .HasForeignKey("Core.Domain.Entities.RecoveryPrecheckGrant", "ReservedChallengeId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.RecoveryProofChallenge", b =>
@@ -2732,7 +2284,8 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.HasOne("Core.Domain.Entities.RecoveryEmailRecord", null)
                         .WithMany()
                         .HasForeignKey("RecoveryEmailId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Core.Domain.Entities.RecoveryResetApproval", b =>
@@ -2743,15 +2296,6 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Core.Domain.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("LocalAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Core.Domain.Entities.RecoveryStepUpGrant", b =>
-                {
                     b.HasOne("Core.Domain.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("LocalAccountId")

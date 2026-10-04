@@ -34,8 +34,6 @@ public sealed class NativePasswordRecoveryResetService :
     private readonly DirectoryIntegrationOptions _directoryOptions;
     private readonly LegacyPasswordSyncOptions _legacyOptions;
     private readonly TimeProvider _timeProvider;
-    private readonly RecoveryPrecheckService? _precheck;
-    private readonly bool _selectionEnabled;
 
     public NativePasswordRecoveryResetService(
         ApplicationDbContext dbContext,
@@ -51,10 +49,7 @@ public sealed class NativePasswordRecoveryResetService :
         IOptions<ForgotPasswordRecoveryOptions> options,
         IOptions<DirectoryIntegrationOptions> directoryOptions,
         IOptions<LegacyPasswordSyncOptions> legacyOptions,
-        TimeProvider? timeProvider = null,
-        RecoveryPrecheckService? precheck = null,
-        IOptions<RecoveryEmailSelectionOptions>? selectionOptions = null,
-        IOptions<RecoveryIdentityVerificationOptions>? identityOptions = null)
+        TimeProvider? timeProvider = null)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -70,8 +65,6 @@ public sealed class NativePasswordRecoveryResetService :
         _directoryOptions = directoryOptions.Value;
         _legacyOptions = legacyOptions.Value;
         _timeProvider = timeProvider ?? TimeProvider.System;
-        _precheck = precheck;
-        _selectionEnabled = selectionOptions?.Value.Enabled == true || identityOptions?.Value.Enabled == true;
     }
 
     public Task<NativeDirectoryRecoveryReconciliationOutcome> ReconcileAsync(
@@ -130,16 +123,9 @@ public sealed class NativePasswordRecoveryResetService :
             var authority = user is null
                 ? null
                 : await ResolveAuthorityAsync(user, cancellationToken);
-            var store = new RecoveryProofStore(_dbContext, _timeProvider);
-            var selection = challenge.SelectionEpoch is null ? null :
-                await store.ResolveNativeSelectionAsync(challenge, request.Context, _precheck, cancellationToken);
-            var bound = challenge.SelectionEpoch is not null;
-            if (user is null || authority is null ||
-                (bound ? selection is null : _selectionEnabled ||
-                    await store.HasSelectionIntentAsync(challenge.LocalAccountId, cancellationToken) ||
-                    recoveryEmail?.VerifiedAtUtc is null ||
-                    !HasCurrentNativeBinding(challenge, recoveryEmail, user, authority, request.Context)) ||
-                !request.UseAdministrativeApproval && !IsValidProof(challenge, recoveryEmail, request, selection?.Destination))
+            if (user is null || recoveryEmail?.VerifiedAtUtc is null || authority is null ||
+                !HasCurrentNativeBinding(challenge, recoveryEmail, user, authority, request.Context) ||
+                !request.UseAdministrativeApproval && !IsValidProof(challenge, recoveryEmail, request))
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return DeniedAfterRollback();
@@ -156,9 +142,9 @@ public sealed class NativePasswordRecoveryResetService :
                 return DeniedAfterRollback();
             }
 
-            var decision = bound ? null : await _policyEvaluator.EvaluateAsync(user.Id, cancellationToken);
-            if (!bound && (!IsVerifiedLocalDestination(decision!) ||
-                !string.Equals(recoveryEmail!.Address, decision!.RecoveryEmail.Address, StringComparison.OrdinalIgnoreCase)))
+            var decision = await _policyEvaluator.EvaluateAsync(user.Id, cancellationToken);
+            if (!IsVerifiedLocalDestination(decision) ||
+                !string.Equals(recoveryEmail.Address, decision.RecoveryEmail.Address, StringComparison.OrdinalIgnoreCase))
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return DeniedAfterRollback();
@@ -185,7 +171,7 @@ public sealed class NativePasswordRecoveryResetService :
                         candidate.RevokedAtUtc == null && candidate.ConsumedAtUtc == null)
                     .Take(2)
                     .ToListAsync(cancellationToken);
-                if (approvals.Count != 1 || !IsValidApproval(approvals[0], challenge, user, recoveryEmail, authority, request.Context, selection?.Destination))
+                if (approvals.Count != 1 || !IsValidApproval(approvals[0], challenge, user, recoveryEmail, authority, request.Context))
                 {
                     await transaction.RollbackAsync(cancellationToken);
                     return DeniedAfterRollback();
@@ -194,11 +180,6 @@ public sealed class NativePasswordRecoveryResetService :
             }
 
             var now = _timeProvider.GetUtcNow();
-            if (bound && await store.ResolveNativeSelectionAsync(challenge, request.Context, _precheck, cancellationToken) is null)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return DeniedAfterRollback();
-            }
             if (approval is not null && (!approval.TryConsume(now) ||
                     !challenge.TryConsumeWithAdministrativeApproval(now)) ||
                 approval is null && !challenge.TryConsume(now))
@@ -208,7 +189,7 @@ public sealed class NativePasswordRecoveryResetService :
             }
 
             var proofVerifiedAt = challenge.VerifiedAtUtc!.Value;
-            if (!bound && approval is null && recoveryEmail!.VerifiedAtUtc!.Value < proofVerifiedAt)
+            if (approval is null && recoveryEmail.VerifiedAtUtc!.Value < proofVerifiedAt)
             {
                 recoveryEmail.MarkVerified(proofVerifiedAt);
             }
@@ -719,9 +700,8 @@ public sealed class NativePasswordRecoveryResetService :
 
     private bool IsValidProof(
         RecoveryProofChallenge challenge,
-        RecoveryEmailRecord? recoveryEmail,
-        NativeRecoveryResetRequest request,
-        RecoveryDestination? destination = null)
+        RecoveryEmailRecord recoveryEmail,
+        NativeRecoveryResetRequest request)
     {
         var now = _timeProvider.GetUtcNow();
         if (challenge.VerifiedAtUtc is null || challenge.ConsumedAtUtc is not null ||
@@ -731,8 +711,8 @@ public sealed class NativePasswordRecoveryResetService :
             return false;
         }
 
-        var emailBinding = destination is not null ? RecoveryPrecheckService.OtpBinding(destination) :
-            $"{recoveryEmail!.Id:N}:{recoveryEmail.LocalAccountId:N}:{recoveryEmail.Version}:{recoveryEmail.NormalizedAddress}";
+        var emailBinding =
+            $"{recoveryEmail.Id:N}:{recoveryEmail.LocalAccountId:N}:{recoveryEmail.Version}:{recoveryEmail.NormalizedAddress}";
         var proofBinding = RecoveryProofSecurity.BindToContext(
             string.Empty,
             request.Context.ContextHash,
@@ -760,16 +740,13 @@ public sealed class NativePasswordRecoveryResetService :
         NativeRecoveryResetApproval approval,
         RecoveryProofChallenge challenge,
         ApplicationUser user,
-        RecoveryEmailRecord? recoveryEmail,
+        RecoveryEmailRecord recoveryEmail,
         RecoveryAuthority authority,
-        NativeRecoveryContext context,
-        RecoveryDestination? destination = null) =>
+        NativeRecoveryContext context) =>
         approval.ExpiresAtUtc > _timeProvider.GetUtcNow() &&
         approval.LocalAccountId == user.Id &&
-        approval.RecoveryProofChallengeId == challenge.Id &&
-        approval.RecoveryEmailId == challenge.RecoveryEmailId &&
-        (destination is null ? approval.SelectionEpoch is null && approval.RecoveryEmailVersion == recoveryEmail!.Version :
-            approval.MatchesSelection(destination.SelectionEpoch, destination.Kind, destination.Fingerprint, destination.Version)) &&
+        approval.RecoveryEmailId == recoveryEmail.Id &&
+        approval.RecoveryEmailVersion == recoveryEmail.Version &&
         approval.DirectoryAuthority == authority.IsDirectory &&
         approval.DirectoryObjectId == (authority.IsDirectory ? authority.DirectoryObjectId : null) &&
         string.Equals(approval.SecurityStamp, user.SecurityStamp, StringComparison.Ordinal) &&

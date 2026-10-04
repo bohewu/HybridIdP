@@ -117,7 +117,6 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             _mockClaimsLogger.Object);
 
         _tokenService = new TokenService(
-            Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             _userManager,
             _mockSignInManager.Object,
             _roleManager,
@@ -207,7 +206,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
         {
             GrantType = OpenIddictConstants.GrantTypes.Password,
             Username = "testuser", // Matches user.UserName
-            Password = "${TEST_PASSWORD_001}", // Ignored by mock
+            Password = password,
             Scope = "openid test_scope" // Request the test scope
         };
 
@@ -250,7 +249,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             EmailMfaCode = Convert.ToBase64String(
                 RandomNumberGenerator.GetBytes(32))
         };
-        var password = Guid.NewGuid().ToString("N") + "aA1!";
+        var password = $"P@ssword1-{Convert.ToHexString(RandomNumberGenerator.GetBytes(8))}";
         await _userManager.CreateAsync(user, password);
 
         const string claimType = "test_security_sensitive_source";
@@ -344,7 +343,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
                     RandomNumberGenerator.GetBytes(32))
             }
         };
-        var password = Guid.NewGuid().ToString("N") + "aA1!";
+        var password = $"P@ssword1-{Convert.ToHexString(RandomNumberGenerator.GetBytes(8))}";
         await _userManager.CreateAsync(user, password);
 
         const string scopeName = "test_approved_source_scope";

@@ -1,12 +1,9 @@
 using Core.Application;
 using Core.Application.DTOs;
-using Core.Application.Interfaces;
-using Core.Application.Options;
 using Core.Application.Ports;
 using Core.Domain;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
-using Core.Domain.Models;
 using HybridIdP.Infrastructure.Identity;
 using Infrastructure;
 using Infrastructure.Options;
@@ -585,224 +582,6 @@ public sealed class NativePasswordRecoveryResetServiceTests
             .HasIssuanceBarrierAsync(fixture.User.Id));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task SelectionOtp_ResetUsesCurrentDestinationWithoutPromotingDefault(bool useDefault)
-    {
-        await using var f = await Fixture.CreateAsync(selectionEnabled: true);
-        if (useDefault)
-        {
-            f.Context.RecoveryEmails.Remove(f.RecoveryEmail);
-            await f.Context.SaveChangesAsync();
-            f.DefaultDestination = new("default@example.test", new string('D', 64), 1, false);
-        }
-        await f.AddSessionAsync();
-        f.Authorizations.Add(new object()); f.Tokens.Add(new object());
-        var id = await f.SendSelectionAsync();
-        Assert.Equal(NativeRecoveryResetOutcome.Denied,
-            (await f.Service.ResetAsync(new(id, "provider-verified", "Changed!Password123", BrowserContext))).Outcome);
-        f.Time.SetUtcNow(f.Time.GetUtcNow().AddMinutes(6));
-        var proof = await f.VerifySelectionAsync(id);
-        Assert.Equal(NativeRecoveryVerificationOutcome.Verified, proof.Outcome);
-        Assert.Equal(NativeRecoveryResetOutcome.Succeeded,
-            (await f.Service.ResetAsync(new(id, proof.Proof!, "Changed!Password123", BrowserContext))).Outcome);
-        Assert.Equal(1, f.PasswordResetCalls);
-        Assert.Equal(1, f.AuthorizationRevocations); Assert.Equal(1, f.TokenRevocations);
-        Assert.Empty(await f.Context.RecoveryEmailPreferences.ToListAsync());
-        if (useDefault) Assert.Empty(await f.Context.RecoveryEmails.ToListAsync());
-        else { Assert.Equal(0, f.DefaultLookups); Assert.Equal(f.OriginalRecoveryVerification, f.RecoveryEmail.VerifiedAtUtc); }
-    }
-
-    [Theory]
-    [InlineData("destination", false)]
-    [InlineData("destination", true)]
-    [InlineData("epoch", false)]
-    [InlineData("epoch", true)]
-    [InlineData("stamp", false)]
-    [InlineData("stamp", true)]
-    [InlineData("policy", false)]
-    [InlineData("policy", true)]
-    [InlineData("inactive", false)]
-    [InlineData("inactive", true)]
-    [InlineData("pending", false)]
-    [InlineData("pending", true)]
-    [InlineData("grant", false)]
-    [InlineData("grant", true)]
-    public async Task SelectionOtp_RejectsChangedStateAtVerifyAndReset(string change, bool afterOtp)
-    {
-        await using var f = await Fixture.CreateAsync(selectionEnabled: true);
-        f.Context.RecoveryEmails.Remove(f.RecoveryEmail);
-        await f.Context.SaveChangesAsync();
-        f.DefaultDestination = new("default@example.test", new string('D', 64), 1, false);
-        var id = await f.SendSelectionAsync();
-        var proof = afterOtp ? (await f.VerifySelectionAsync(id)).Proof : null;
-        if (afterOtp) Assert.NotNull(proof);
-        switch (change)
-        {
-            case "destination": f.DefaultDestination = f.DefaultDestination with { Address = "changed@example.test", Version = 2 }; break;
-            case "epoch":
-                var preference = new RecoveryEmailPreference(f.User.Id, f.Time.GetUtcNow());
-                preference.TrySelect(RecoveryEmailSelectionMode.UseDefault, 1, f.Time.GetUtcNow());
-                f.Context.RecoveryEmailPreferences.Add(preference); break;
-            case "stamp": f.User.SecurityStamp = "changed"; break;
-            case "policy": f.VerificationOptions.CurrentPeriodId = "changed"; break;
-            case "inactive": f.User.IsActive = false; break;
-            case "pending": f.Context.NativeDirectoryRecoveryAttempts.Add(new(id, f.User.Id, Guid.NewGuid(), f.Time.GetUtcNow())); break;
-            case "grant":
-                var grant = await f.Context.RecoveryPrecheckGrants.SingleAsync();
-                f.Context.Entry(grant).Property(g => g.RevokedAtUtc).CurrentValue = f.Time.GetUtcNow(); break;
-        }
-        await f.Context.SaveChangesAsync();
-        if (afterOtp) Assert.Equal(NativeRecoveryResetOutcome.Denied,
-            (await f.Service.ResetAsync(new(id, proof!, "Changed!Password123", BrowserContext))).Outcome);
-        else Assert.Equal(NativeRecoveryVerificationOutcome.Denied, (await f.VerifySelectionAsync(id)).Outcome);
-        Assert.Equal(0, f.PasswordResetCalls); Assert.Equal(0, f.DirectoryResetCalls);
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task SelectionApproval_UsesOwnAdminAuthorizationAndRejectsChangedEpoch(bool changed)
-    {
-        await using var f = await Fixture.CreateAsync(ordinaryRecoveryAssistanceEnabled: true, selectionEnabled: true);
-        f.Context.RecoveryEmails.Remove(f.RecoveryEmail);
-        await f.Context.SaveChangesAsync();
-        f.DefaultDestination = new("default@example.test", new string('D', 64), 1, false);
-        var id = await f.SendSelectionAsync();
-        f.ReconciliationAuthorized = true;
-        Assert.Equal(RecoveryProofOutcome.Success, (await f.Assistance.ApproveResetAsync(new(Guid.NewGuid(), f.User.Id, "checked", "support"))).Outcome);
-        if (changed) f.DefaultDestination = f.DefaultDestination with { Version = 2 };
-        var result = await f.Service.ResetAsync(new(id, string.Empty, "Changed!Password123", BrowserContext, true));
-        Assert.Equal(changed ? NativeRecoveryResetOutcome.Denied : NativeRecoveryResetOutcome.Succeeded, result.Outcome);
-    }
-
-    [Fact]
-    public async Task SelectionRollback_CustomStillWorksAndOldNullBindingCannotBypassPersistedIntent()
-    {
-        await using var f = await Fixture.CreateAsync();
-        var old = await f.CreateProofAsync();
-        var preference = new RecoveryEmailPreference(f.User.Id, f.Time.GetUtcNow());
-        preference.TrySelect(RecoveryEmailSelectionMode.UseCustom, 1, f.Time.GetUtcNow());
-        f.Context.RecoveryEmailPreferences.Add(preference);
-        await f.Context.SaveChangesAsync();
-        Assert.Equal(NativeRecoveryResetOutcome.Denied,
-            (await f.Service.ResetAsync(new(old.RequestId, old.Proof, "Changed!Password123", BrowserContext))).Outcome);
-        f.Time.SetUtcNow(f.Time.GetUtcNow().AddSeconds(61));
-        var started = await f.SelectionProof.StartAsync(new(f.User.UserName!, BrowserContext));
-        var challenge = await f.Context.RecoveryProofChallenges.AsNoTracking().SingleAsync(c => c.Id == started.RequestId);
-        Assert.Equal(preference.SelectionEpoch, challenge.SelectionEpoch);
-        Assert.Equal(f.RecoveryEmail.Id, challenge.RecoveryEmailId);
-        Assert.Equal(0, f.DefaultLookups);
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task SelectionDirectory_RetainsWriterAndUnknownBarrier(bool timeout)
-    {
-        await using var f = await Fixture.CreateAsync(selectionEnabled: true);
-        await f.ConfigureCompletedDirectoryAsync();
-        if (timeout) f.DirectoryResetOutcome = DirectoryCredentialOperationOutcome.Timeout;
-        var id = await f.SendSelectionAsync();
-        var proof = await f.VerifySelectionAsync(id);
-        Assert.NotNull(proof.Proof);
-        var request = new NativeRecoveryResetRequest(id, proof.Proof!, "Changed!Password123", BrowserContext);
-        Assert.Equal(timeout ? NativeRecoveryResetOutcome.Denied : NativeRecoveryResetOutcome.Succeeded,
-            (await f.Service.ResetAsync(request)).Outcome);
-        Assert.Equal(1, f.DirectoryResetCalls); Assert.Equal(0, f.PasswordResetCalls);
-        Assert.Equal(f.OriginalPasswordHash, (await f.Context.Users.AsNoTracking().SingleAsync()).PasswordHash);
-        if (timeout)
-        {
-            Assert.Equal(NativeRecoveryResetOutcome.Denied, (await f.Service.ResetAsync(request)).Outcome);
-            Assert.Equal(1, f.DirectoryResetCalls);
-            Assert.True(await new NativeDirectoryRecoveryBarrier(f.Context).HasIssuanceBarrierAsync(f.User.Id));
-        }
-    }
-
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public async Task SelectionReplacement_KeepsAddressProofSeparateFromReset(bool useDefault, bool failDelivery)
-    {
-        await using var f = await Fixture.CreateAsync(ordinaryRecoveryAssistanceEnabled: true, selectionEnabled: true);
-        if (useDefault)
-        {
-            f.Context.RecoveryEmails.Remove(f.RecoveryEmail); await f.Context.SaveChangesAsync();
-            f.DefaultDestination = new("default@example.test", new string('D', 64), 1, false);
-        }
-        var id = await f.SendSelectionAsync();
-        f.ReconciliationAuthorized = true;
-        f.FailSelectedDelivery = failDelivery;
-        Assert.Equal(failDelivery ? RecoveryProofOutcome.Unavailable : RecoveryProofOutcome.Success, (await f.Assistance.ReplaceEmailAsync(
-            new(Guid.NewGuid(), f.User.Id, "replacement@example.test", "checked", "support"))).Outcome);
-        Assert.Equal("Verify recovery email", f.LastDeliveryMessage!.Subject);
-        Assert.Equal("replacement@example.test", f.LastDeliveryMessage.To);
-        Assert.False(f.LastDeliveryMessage.IsHtml);
-        f.GeneralQueue.Verify(q => q.QueueEmailAsync(It.IsAny<EmailMessage>()), Times.Never());
-        var auditText = System.Text.Json.JsonSerializer.Serialize(f.AuditEvents);
-        Assert.DoesNotContain("replacement@example.test", auditText);
-        Assert.DoesNotContain(f.AssistanceCode!, auditText);
-        Assert.Equal(NativeRecoveryVerificationOutcome.Denied, (await f.VerifySelectionAsync(id)).Outcome);
-        if (failDelivery)
-        {
-            Assert.NotEqual(RecoveryProofOutcome.Success,
-                await f.Assistance.VerifyReplacementAsync(new(id, f.AssistanceCode!, BrowserContext)));
-            Assert.Null((await f.Context.RecoveryEmails.AsNoTracking().SingleAsync()).VerifiedAtUtc);
-            Assert.NotNull((await f.Context.RecoveryProofChallenges.AsNoTracking().SingleAsync(c =>
-                c.Purpose == RecoveryProofPurpose.RecoveryAddressVerification)).RevokedAtUtc);
-            Assert.Equal(0, f.PasswordResetCalls);
-            return;
-        }
-        Assert.Equal(RecoveryProofOutcome.Success,
-            await f.Assistance.VerifyReplacementAsync(new(id, f.AssistanceCode!, BrowserContext)));
-        var change = await f.Context.RecoveryProofChallenges.SingleAsync(c => c.Purpose == RecoveryProofPurpose.RecoveryAddressVerification);
-        Assert.Equal(NativeRecoveryResetOutcome.Denied,
-            (await f.Service.ResetAsync(new(change.Id, f.AssistanceCode!, "Changed!Password123", BrowserContext))).Outcome);
-        var active = await f.Context.RecoveryEmails.AsNoTracking().SingleAsync();
-        Assert.Equal(RecoveryEmailProvenance.AdminAssistedVerified, active.Provenance);
-        Assert.Equal(RecoveryEmailSelectionMode.UseCustom, (await f.Context.RecoveryEmailPreferences.SingleAsync()).Mode);
-        Assert.Equal(0, f.PasswordResetCalls);
-    }
-
-    [Fact]
-    public async Task SelectionOtp_RejectsPersonSuspensionBeforeVerify()
-    {
-        await using var f = await Fixture.CreateAsync(selectionEnabled: true);
-        var person = new Person { Id = Guid.NewGuid(), Status = PersonStatus.Active };
-        f.Context.Persons.Add(person); f.User.PersonId = person.Id; await f.Context.SaveChangesAsync();
-        var id = await f.SendSelectionAsync();
-        person.Status = PersonStatus.Suspended; await f.Context.SaveChangesAsync();
-        Assert.Equal(NativeRecoveryVerificationOutcome.Denied, (await f.VerifySelectionAsync(id)).Outcome);
-    }
-
-    [Fact]
-    public async Task SelectionOtp_DoesNotShareProofsOrSelectionBetweenSamePersonAccounts()
-    {
-        await using var f = await Fixture.CreateAsync(selectionEnabled: true);
-        var person = new Person { Id = Guid.NewGuid(), Status = PersonStatus.Active };
-        var other = new ApplicationUser { Id = Guid.NewGuid(), UserName = "other", NormalizedUserName = "OTHER",
-            IsActive = true, SecurityStamp = "other-stamp", PasswordHash = "other-hash", PersonId = person.Id };
-        var otherEmail = new RecoveryEmailRecord(other.Id, "other@example.test", "OTHER@EXAMPLE.TEST", f.Time.GetUtcNow());
-        otherEmail.MarkVerified(f.Time.GetUtcNow());
-        f.Context.Persons.Add(person); f.Context.Users.Add(other); f.Context.RecoveryEmails.Add(otherEmail);
-        f.User.PersonId = person.Id; await f.Context.SaveChangesAsync();
-        var first = await f.SendSelectionAsync(); var proof = await f.VerifySelectionAsync(first);
-        var prepared = await f.Precheck.PrepareAsync(new(other.UserName, string.Empty, BrowserContext, "127.0.0.1"));
-        Assert.NotNull(prepared.GrantId);
-        var second = await f.Precheck.SendOtpAsync(new(prepared.GrantId!.Value, BrowserContext, "127.0.0.1"));
-        var preference = new RecoveryEmailPreference(f.User.Id, f.Time.GetUtcNow());
-        preference.TrySelect(RecoveryEmailSelectionMode.Disabled, 1, f.Time.GetUtcNow());
-        f.Context.RecoveryEmailPreferences.Add(preference); await f.Context.SaveChangesAsync();
-        Assert.Equal(NativeRecoveryVerificationOutcome.Verified, (await f.VerifySelectionAsync(second.RequestId)).Outcome);
-        Assert.Equal(NativeRecoveryResetOutcome.Denied,
-            (await f.Service.ResetAsync(new(second.RequestId, proof.Proof!, "Changed!Password123", BrowserContext))).Outcome);
-        Assert.Equal("other@example.test", (await f.Context.RecoveryEmails.AsNoTracking().SingleAsync(e => e.LocalAccountId == other.Id)).Address);
-        Assert.Equal(0, f.PasswordResetCalls);
-    }
-
     private sealed class Fixture : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;
@@ -846,29 +625,6 @@ public sealed class NativePasswordRecoveryResetServiceTests
         public FixedTimeProvider Time { get; }
         public PasswordHasher<ApplicationUser> Hasher { get; }
         public NativePasswordRecoveryResetService Service { get; }
-        public RecoveryPrecheckService Precheck { get; private set; } = null!;
-        public NativePasswordRecoveryProofService SelectionProof { get; private set; } = null!;
-        public NativeRecoveryAssistanceService Assistance { get; private set; } = null!;
-        public RecoveryEmailSelectionOptions SelectionOptions { get; private set; } = null!;
-        public RecoveryVerificationPolicyOptions VerificationOptions { get; private set; } = null!;
-        public RecoveryDefaultDestination? DefaultDestination { get; set; }
-        public string? SelectionCode { get; set; }
-        public int DefaultLookups { get; set; }
-        public string? AssistanceCode => SelectionCode;
-        public bool FailSelectedDelivery { get; set; }
-        public EmailMessage? LastDeliveryMessage { get; set; }
-        public Mock<IEmailQueue> GeneralQueue { get; } = new(MockBehavior.Strict);
-        public List<RecoveryProofAuditEvent> AuditEvents { get; } = [];
-        public async Task<Guid> SendSelectionAsync()
-        {
-            var prepared = await Precheck.PrepareAsync(new(User.UserName!, string.Empty, BrowserContext, "127.0.0.1"));
-            Assert.NotNull(prepared.GrantId);
-            var result = await Precheck.SendOtpAsync(new(prepared.GrantId!.Value, BrowserContext, "127.0.0.1"));
-            Assert.NotNull(SelectionCode);
-            return result.RequestId;
-        }
-        public Task<NativeRecoveryVerificationResult> VerifySelectionAsync(Guid requestId) =>
-            SelectionProof.VerifyAsync(new(requestId, SelectionCode!, BrowserContext));
         public string OriginalPasswordHash { get; }
         public DateTime? OriginalPasswordChangeDate { get; }
         public DateTimeOffset? OriginalRecoveryVerification { get; }
@@ -895,7 +651,7 @@ public sealed class NativePasswordRecoveryResetServiceTests
         public static async Task<Fixture> CreateAsync(
             bool ordinaryRecoveryAssistanceEnabled = false,
             bool directoryDestinationEnabled = true,
-            bool legacyDestinationEnabled = true, bool selectionEnabled = false)
+            bool legacyDestinationEnabled = true)
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
@@ -940,8 +696,8 @@ public sealed class NativePasswordRecoveryResetServiceTests
             var validator = new DynamicPasswordValidator(policyService.Object, NullLogger<DynamicPasswordValidator>.Instance);
             Fixture? fixture = null;
             var userManager = CreateUserManager();
-            userManager.Setup(manager => manager.GeneratePasswordResetTokenAsync(It.Is<ApplicationUser>(u => u.Id == user.Id))).ReturnsAsync("reset-token");
-            userManager.Setup(manager => manager.ResetPasswordAsync(It.Is<ApplicationUser>(u => u.Id == user.Id), "reset-token", It.IsAny<string>()))
+            userManager.Setup(manager => manager.GeneratePasswordResetTokenAsync(user)).ReturnsAsync("reset-token");
+            userManager.Setup(manager => manager.ResetPasswordAsync(user, "reset-token", It.IsAny<string>()))
                 .Returns(async (ApplicationUser target, string _, string password) =>
                 {
                     fixture!.PasswordResetCalls++;
@@ -1072,29 +828,6 @@ public sealed class NativePasswordRecoveryResetServiceTests
                     return fixture.SyncOperation?.Invoke(fixture.LastSync, cancellationToken) ??
                         Task.FromResult(new LegacyPasswordSyncResult(LegacyPasswordSyncResultOutcome.Succeeded));
                 });
-            var selection = Options.Create(new RecoveryEmailSelectionOptions { Enabled = selectionEnabled, TrustedDefaultFallbackEnabled = true });
-            var verification = Options.Create(new RecoveryVerificationPolicyOptions { Enabled = true, CurrentPeriodId = "period",
-                EffectiveAtUtc = time.GetUtcNow().AddHours(-1), GraceEndsAtUtc = time.GetUtcNow().AddHours(-1), AcceptSourceVerifiedEmails = true });
-            var defaults = new Mock<IRecoveryDefaultDestinationEvaluator>();
-            defaults.Setup(d => d.EvaluateDefaultAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => { fixture!.DefaultLookups++; return fixture.DefaultDestination; });
-            var resolver = new RecoveryDestinationResolver(context, defaults.Object, selection, verification, time);
-            var dispatcher = new Mock<IEmailDispatcher>();
-            dispatcher.Setup(d => d.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
-                .Returns<EmailMessage, CancellationToken>((message, _) =>
-                {
-                    fixture!.SelectionCode = System.Text.RegularExpressions.Regex.Match(message.Body, @"\b\d{6}\b").Value;
-                    fixture.LastDeliveryMessage = message;
-                    return fixture.FailSelectedDelivery ?
-                        Task.FromException(new InvalidOperationException(message.To + message.Body)) : Task.CompletedTask;
-                });
-            var mailSettings = new Mock<IOptionsSnapshot<EmailOptions>>();
-            mailSettings.SetupGet(m => m.Value).Returns(new EmailOptions { SmtpHost = "synthetic.test" });
-            var delivery = new RecoveryOtpDeliveryService(dispatcher.Object, mailSettings.Object);
-            var precheck = new RecoveryPrecheckService(context, resolver, new Mock<IRecoveryIdentityVerificationClient>().Object,
-                new RecoveryThrottleService(context, Options.Create(new RecoveryThrottleOptions { HashKey = Guid.NewGuid().ToString("N") }), time),
-                delivery, hasher, new TestLookupNormalizer(), routingEvaluator,
-                Options.Create(new RecoveryIdentityVerificationOptions()), selection, options, time);
             var service = new NativePasswordRecoveryResetService(
                 context,
                 userManager.Object,
@@ -1109,7 +842,7 @@ public sealed class NativePasswordRecoveryResetServiceTests
                 options,
                 Options.Create(directoryOptions),
                 Options.Create(legacyOptions),
-                time, precheck, selection);
+                time);
             fixture = new Fixture(
                 connection,
                 context,
@@ -1122,18 +855,6 @@ public sealed class NativePasswordRecoveryResetServiceTests
                 authorizations,
                 tokens,
                 service);
-            fixture.Precheck = precheck;
-            fixture.SelectionOptions = selection.Value;
-            fixture.VerificationOptions = verification.Value;
-            fixture.SelectionProof = new NativePasswordRecoveryProofService(context, new CapturingEmailService(), hasher,
-                new TestLookupNormalizer(), policyEvaluator, routingEvaluator, options, time, selectionOptions: selection, precheck: precheck, delivery: delivery);
-            var audit = new Mock<IRecoveryProofAudit>();
-            audit.Setup(a => a.RecordAsync(It.IsAny<RecoveryProofAuditEvent>(), It.IsAny<CancellationToken>()))
-                .Callback<RecoveryProofAuditEvent, CancellationToken>((item, _) => fixture.AuditEvents.Add(item))
-                .Returns(Task.CompletedTask);
-            fixture.Assistance = new NativeRecoveryAssistanceService(context, recoveryAuthorizer.Object, policyEvaluator,
-                routingEvaluator, new EmailService(fixture.GeneralQueue.Object, dispatcher.Object), hasher, audit.Object,
-                options, time, precheck, selection, delivery: delivery);
             return fixture;
         }
 

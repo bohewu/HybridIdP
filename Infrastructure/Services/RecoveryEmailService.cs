@@ -18,8 +18,6 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
     private readonly IRecoveryProofAudit _audit;
     private readonly CredentialMigrationOptions _options;
     private readonly RecoveryProofStore _store;
-    private readonly RecoveryEmailSelectionOptions _selection;
-    private readonly RecoveryOtpDeliveryService? _delivery;
 
     public RecoveryEmailService(
         ApplicationDbContext dbContext,
@@ -28,10 +26,7 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
         IPasswordHasher<ApplicationUser> passwordHasher,
         IRecoveryProofAudit audit,
         IOptions<CredentialMigrationOptions> options,
-        TimeProvider? timeProvider = null,
-        IOptions<RecoveryEmailSelectionOptions>? selection = null,
-        IOptions<RecoveryIdentityVerificationOptions>? identityOptions = null,
-        RecoveryOtpDeliveryService? delivery = null)
+        TimeProvider? timeProvider = null)
     {
         _dbContext = dbContext;
         _authorizer = authorizer;
@@ -39,10 +34,7 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
         _passwordHasher = passwordHasher;
         _audit = audit;
         _options = options.Value;
-        _store = new RecoveryProofStore(dbContext, timeProvider, selectionEnabled:
-            selection?.Value.Enabled == true || identityOptions?.Value.Enabled == true);
-        _selection = selection?.Value ?? new RecoveryEmailSelectionOptions();
-        _delivery = delivery;
+        _store = new RecoveryProofStore(dbContext, timeProvider);
     }
 
     public async Task<RecoveryEmailStatus> GetStatusAsync(
@@ -66,8 +58,6 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
         RecoveryEmailChangeRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (_selection.Enabled || await HasSelectionStateAsync(request.LocalAccountId, cancellationToken))
-            return new RecoveryEmailChangeResult(RecoveryProofOutcome.Unavailable);
         if (!_options.RecoveryEmailEnabled)
         {
             return new RecoveryEmailChangeResult(RecoveryProofOutcome.Unavailable);
@@ -104,8 +94,6 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
         RecoveryEmailVerificationRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (_selection.Enabled || await HasSelectionStateAsync(request.LocalAccountId, cancellationToken))
-            return RecoveryProofOutcome.Unavailable;
         if (!_options.RecoveryEmailEnabled)
         {
             return RecoveryProofOutcome.Unavailable;
@@ -145,8 +133,6 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
         Guid localAccountId,
         CancellationToken cancellationToken = default)
     {
-        if (_selection.Enabled || await HasSelectionStateAsync(localAccountId, cancellationToken))
-            return RecoveryProofOutcome.Unavailable;
         if (!_options.RecoveryEmailEnabled)
         {
             return RecoveryProofOutcome.Unavailable;
@@ -178,9 +164,6 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
             cancellationToken);
         return RecoveryProofOutcome.Success;
     }
-
-    private Task<bool> HasSelectionStateAsync(Guid accountId, CancellationToken ct) =>
-        _dbContext.RecoveryEmailPreferences.AsNoTracking().AnyAsync(p => p.LocalAccountId == accountId, ct);
 
     internal async Task<RecoveryEmailChangeResult> BeginAdministrativeReplacementAsync(
         ResolvedMigrationContinuation continuation,
@@ -226,10 +209,6 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
-            var selectionRequired = await _store.RequiresSelectionAsync(localAccountId, cancellationToken);
-            var preference = actorAccountId is not null && selectionRequired ?
-                await _store.BeginAdministrativeSelectionAsync(localAccountId, cancellationToken) : null;
-            if (selectionRequired && preference is null) return new(RecoveryProofOutcome.Unavailable);
             var record = await _dbContext.RecoveryEmails
                 .SingleOrDefaultAsync(candidate => candidate.LocalAccountId == localAccountId, cancellationToken);
             if (record is null)
@@ -275,14 +254,6 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
                 now,
                 now.AddMinutes(_options.RecoveryOtpLifetimeMinutes),
                 continuationId);
-            if (preference is not null)
-            {
-                var ticket = await _dbContext.CredentialMigrationContinuations.AsNoTracking().SingleAsync(t => t.Id == continuationId, cancellationToken);
-                var binding = await _dbContext.ProviderSubjectDirectoryBindings.AsNoTracking().SingleAsync(b => b.LocalAccountId == localAccountId, cancellationToken);
-                challenge.BindSelection(preference.SelectionEpoch, RecoveryDestinationKind.Custom,
-                    RecoveryProofStore.ReplacementFingerprint(record), record.Version);
-                challenge.BindNativeAssistance(ticket.ContextHash, ticket.CsrfHash, true, binding.DirectoryObjectId, record.Version, user.SecurityStamp!);
-            }
             _dbContext.RecoveryProofChallenges.Add(challenge);
             await _dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -295,30 +266,16 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
 
         try
         {
-            if (challenge.SelectionEpoch is not null)
-            {
-                if (_delivery is null || !await _delivery.SendAsync(address, "Verify recovery email", code,
-                    _options.RecoveryOtpLifetimeMinutes, cancellationToken))
-                {
-                    await _store.MarkChallengeRevokedAsync(challenge.Id, cancellationToken);
-                    return new(RecoveryProofOutcome.Unavailable);
-                }
-            }
-            else
-            {
-                await _emailService.SendEmailAsync(
-                    address,
-                    "Verify recovery email",
-                    $"Your verification code is {code}. It expires in {_options.RecoveryOtpLifetimeMinutes} minutes.",
-                    false,
-                    cancellationToken);
-            }
+            await _emailService.SendEmailAsync(
+                address,
+                "Verify recovery email",
+                $"Your verification code is {code}. It expires in {_options.RecoveryOtpLifetimeMinutes} minutes.",
+                false,
+                cancellationToken);
             return new RecoveryEmailChangeResult(RecoveryProofOutcome.Success);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            if (challenge.SelectionEpoch is not null)
-                await _store.MarkChallengeRevokedAsync(challenge.Id, CancellationToken.None);
             throw;
         }
         catch

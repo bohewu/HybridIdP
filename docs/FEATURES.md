@@ -6,43 +6,6 @@
 
 ---
 
-## Recovery identity verification and custom-first email selection (default disabled)
-
-Native recovery can require an account identifier plus deployment-approved
-identity-document evidence, then show a masked destination and wait for an
-explicit Send code action. A provider `Verified` response authorizes only a
-restricted server precheck grant; email OTP and the existing reset authority
-are still required. It does not authenticate the user or bypass MFA. Birthday
-is outside the fixed 1.0 scheme, and browser input cannot select a provider,
-recipient or verification scheme.
-
-An eligible verified custom recovery email has priority. A pending address
-does not replace the current custom or trusted default until verification
-succeeds. Default fallback requires separately enabled source trust/freshness
-policy and never occurs after a failed custom delivery or failed lookup.
-Historical verified addresses retain unknown provenance and existing
-precedence; explicit revocation and disabling are preserved. Recovery choices
-are per account and do not modify login email, Person contact email or MFA.
-
-The Account/MFA settings surface shows masked current/default/pending state,
-supports pending verification/cancellation and confirms an eligible default
-before switching. New mutations require fresh authority-correct step-up,
-existing MFA/hardware-key evidence and server-owned CSRF/context binding.
-Pending-mailbox OTP is not account reauthentication. When rollout flags are
-off, persisted selection remains accurately visible and read-only; legacy
-status/mutation behavior applies only where no selection policy/state exists.
-
-`RecoveryIdentityVerification.Enabled`, its Local/Directory requirement
-switches and all three `RecoveryEmailSelection` switches default to `false`.
-Existing Native routing, deployment ceiling, source policies and independent
-credential migration/directory/password-sync controls still apply. Synthetic
-implementation tests do not establish real producer/source mapping, database
-upgrade/down, connected mail/directory behavior or deployment readiness.
-Independent security review and remaining rendered UI checks are separate
-gates. See the [integration guide](RECOVERY_IDENTITY_VERIFICATION_INTEGRATION.md),
-[rollout and rollback](RECOVERY_EMAIL_ROLLOUT.md), and
-[offline verification](TESTING.md#recovery-identity-verification-and-email-selection-offline).
-
 ## 已交付：Stage 2 憑證遷移復原證明（預設停用）
 
 Stage 2 在既有的一次性憑證遷移程序中加入重設前的復原證明。復原信箱是獨立的安全資料，不會從使用者或 Person 的聯絡信箱推定，也不等同於永久 Email MFA。已驗證的目前使用者必須具有 MFA 或硬體金鑰 AMR，才能在 Account/MFA 設定中新增、變更、驗證或撤銷復原信箱；只有密碼 AMR 不足。現行檢查沒有另外驗證認證時間的新鮮度。新信箱在完成寄往該目的地的驗證前不可使用，舊密碼加上任意新信箱也不能成為重設證明。

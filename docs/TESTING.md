@@ -77,57 +77,6 @@ When running in `Development` environment, the following additional data is seed
 
 ## 3. Automated Tests
 
-### Recovery identity verification and email selection (offline)
-
-Read the [integration bundle](RECOVERY_IDENTITY_VERIFICATION_INTEGRATION.md)
-and [rollout limits](RECOVERY_EMAIL_ROLLOUT.md) before interpreting these checks.
-All fixtures are synthetic. The strict HTTP integration test starts only an
-owned PowerShell 7 loopback producer process, then terminates it and deletes
-its temporary fixture directory. It never calls a real producer or source.
-Razor `RivSynthetic_RazorPrecheck` tests use TestServer, an in-memory database
-and fake precheck/proof/reset boundaries; they are page-state evidence rather
-than credential-write or SMTP evidence.
-
-The system suite includes `WebIdPServerFixture`, database containers and
-explicit connected/local browser tests. Do not run it unfiltered on a machine
-with local database overrides or connected opt-ins. Inspect selected fixtures
-first, unset `RUN_*`, connected-E2E and test connection variables in the child
-process, keep directory/migration/provider/SMTP and rollout switches disabled,
-and replace inherited connection settings with unused values. The following
-class selection is the recovery-only solution check; it excludes real host,
-container, database and connected browser fixture classes:
-
-```powershell
-dotnet build HybridAuthIdP.sln --no-restore -m:1 -nodeReuse:false
-$offline = '(FullyQualifiedName~Tests.Infrastructure.UnitTests.Recovery|FullyQualifiedName~NativePasswordRecoveryResetServiceTests|FullyQualifiedName~HttpContextRecoveryProofAuthorizerTests|FullyQualifiedName~RecoverySelectionMigrationTests|FullyQualifiedName~RecoveryProofPersistenceTests|FullyQualifiedName~RecoveryIdentityVerificationHttpTests|FullyQualifiedName~RecoveryEmailControllerTests|FullyQualifiedName~ForgotPasswordModelTests|FullyQualifiedName~RecoveryReauthenticationSessionTests|FullyQualifiedName~RivSynthetic_RazorPrecheck|FullyQualifiedName~NativePasswordRecoveryRazorSystemTests.Guidance_|FullyQualifiedName~CredentialRecoveryApiContractTests|FullyQualifiedName~Tests.Application.UnitTests.RecoveryProofContractTests)&Category!=ExplicitLocalE2E&Category!=ExplicitConnectedE2E'
-dotnet test HybridAuthIdP.sln --no-build --no-restore -m:1 -nodeReuse:false --filter $offline
-```
-
-Run existing frontend commands from `Web.IdP/ClientApp`:
-
-```powershell
-npm test -- --run
-npm run build
-```
-
-Record actual totals, failures, skips, exit codes, exact filters and exclusions.
-A project with zero matching tests supplies no test coverage. A filtered
-solution pass does not mean the unfiltered suite passed. Reused prior evidence
-and freshly executed tests overlap and must not be added as unique totals.
-`RecoverySelectionMigrationTests` and `RecoveryProofPersistenceTests` inspect
-models/migration operations/generated SQL without opening a provider database.
-They do not prove SQL Server/PostgreSQL create, upgrade or Down execution.
-
-The optional `RivSynthetic_RenderedRazor` test is an explicitly selected local
-browser exercise with fake services; its ready/stop paths and opt-in belong
-only to that bounded task process. Desktop/mobile screenshots must be opened
-and inspected before claiming visual verification. The Vue source/component
-tests and build do not prove a rendered settings journey; a diagnostic mount
-failure must remain an explicit unverified gate. Real producer mapping,
-admission, source freshness, mail delivery and directory/database operations
-require separate authorized environment checks. See C01-C28 fixture ownership
-in the [fixture README](examples/recovery-identity-verification/README.md).
-
 ### Credential Migration Validation
 
 Run the bounded Stage 1 and Stage 2 credential-migration checks from the repository root:

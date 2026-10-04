@@ -26,15 +26,6 @@ function renderPolicy(rules) {
 }
 
 describe('native password recovery policy', () => {
-  it('clears identity evidence on initialization and history restoration', () => {
-    document.body.innerHTML = '<main data-native-recovery><input data-native-recovery-evidence value="synthetic"></main>'
-    initNativePasswordPolicy()
-    const input = document.querySelector('[data-native-recovery-evidence]')
-    expect(input.value).toBe('')
-    input.value = 'synthetic-again'
-    window.dispatchEvent(new Event('pageshow'))
-    expect(input.value).toBe('')
-  })
   beforeEach(() => {
     document.body.innerHTML = ''
   })
