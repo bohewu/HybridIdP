@@ -23,6 +23,8 @@ namespace Tests.Infrastructure.UnitTests;
 
 public class AccountManagementServiceTests
 {
+    private readonly Mock<Core.Application.Interfaces.IAccountLifecycleEligibility> _lifecycle = new();
+
     private readonly ApplicationDbContext _db;
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly Mock<RoleManager<ApplicationRole>> _roleManagerMock;
@@ -37,6 +39,8 @@ public class AccountManagementServiceTests
 
     public AccountManagementServiceTests()
     {
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
         // Setup in-memory database
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}")
@@ -99,6 +103,7 @@ public class AccountManagementServiceTests
         var logger = loggerFactory.CreateLogger<AccountManagementService>();
 
         _service = new AccountManagementService(
+            _lifecycle.Object,
             _db,
             _db, // Pass same instance as ApplicationDbContext
             _userManagerMock.Object,
@@ -110,6 +115,36 @@ public class AccountManagementServiceTests
             _securityPolicyServiceMock.Object,
             _passkeyServiceMock.Object,
             logger);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task Switch_ShouldDenyWithoutSideEffects_WhenTargetLifecycleFails(int deniedCheck)
+    {
+        var (current, target) = ArrangeSamePersonSwitch();
+        var currentPrincipal = _httpContext.User;
+        var lifecycleChecks = 0;
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(target.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ++lifecycleChecks != deniedCheck);
+        var result = await _service.SwitchToAccountAsync(current.Id, target.Id, "test");
+        Assert.False(result);
+        Assert.Equal(deniedCheck, lifecycleChecks);
+        Assert.Same(currentPrincipal, _httpContext.User);
+        VerifyNoSwitchSideEffects();
+        _userManagerMock.Verify(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _lifecycle.Verify(policy => policy.IsEligibleAsync(current.Id, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Switch_ShouldNotQueryLifecycle_WhenPersonOwnershipFails()
+    {
+        var (current, target) = ArrangeSamePersonSwitch();
+        target.PersonId = Guid.NewGuid();
+        Assert.False(await _service.SwitchToAccountAsync(current.Id, target.Id, "test"));
+        _lifecycle.VerifyNoOtherCalls();
+        VerifyNoSwitchSideEffects();
     }
 
     [Fact]
@@ -277,9 +312,18 @@ public class AccountManagementServiceTests
             .ReturnsAsync(currentUser);
         _userManagerMock.Setup(um => um.FindByIdAsync(targetUserId.ToString()))
             .ReturnsAsync(targetUser);
+        var switchOrder = new List<string>();
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(targetUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                switchOrder.Add("eligible");
+                return true;
+            });
         _signInManagerMock.Setup(sm => sm.SignOutAsync())
+            .Callback(() => switchOrder.Add("signout"))
             .Returns(Task.CompletedTask);
         _signInManagerMock.Setup(sm => sm.SignInAsync(targetUser, true, null))
+            .Callback(() => switchOrder.Add("signin"))
             .Returns(Task.CompletedTask);
 
         var reason = "Switching to staff account";
@@ -289,6 +333,7 @@ public class AccountManagementServiceTests
 
         // Assert
         Assert.True(result);
+        Assert.Equal(new[] { "eligible", "eligible", "eligible", "signout", "signin" }, switchOrder);
         _signInManagerMock.Verify(sm => sm.SignOutAsync(), Times.Once);
         _signInManagerMock.Verify(sm => sm.SignInAsync(targetUser, true, null), Times.Once);
         _auditServiceMock.Verify(a => a.LogAccountSwitchAsync(

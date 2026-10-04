@@ -17,6 +17,7 @@ namespace Web.IdP.Pages.Account;
 
 public class RegisterModel : PageModel
 {
+    private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ITurnstileService _turnstileService;
@@ -30,6 +31,7 @@ public class RegisterModel : PageModel
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public RegisterModel(
+        Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ITurnstileService turnstileService,
@@ -42,6 +44,7 @@ public class RegisterModel : PageModel
         ISecurityPolicyService securityPolicyService,
         IStringLocalizer<SharedResource> localizer)
     {
+        _lifecycleEligibility = lifecycleEligibility;
         _userManager = userManager;
         _signInManager = signInManager;
         _turnstileService = turnstileService;
@@ -227,6 +230,10 @@ public class RegisterModel : PageModel
                 await _userManager.AddToRoleAsync(user, "User");
 
                 // Automatically sign in the user after registration
+                if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+                {
+                    return RedirectToPage("./Login");
+                }
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 
                 return this.SafeRedirect(returnUrl);

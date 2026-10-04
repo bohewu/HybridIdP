@@ -7,13 +7,16 @@ namespace Web.IdP.Services;
 
 public class ImpersonationService : IImpersonationService
 {
+    private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IUserClaimsPrincipalFactory<ApplicationUser> _userClaimsPrincipalFactory;
 
     public ImpersonationService(
+        ICurrentUserLifecycleEligibility lifecycleEligibility,
         UserManager<ApplicationUser> userManager,
         IUserClaimsPrincipalFactory<ApplicationUser> userClaimsPrincipalFactory)
     {
+        _lifecycleEligibility = lifecycleEligibility;
         _userManager = userManager;
         _userClaimsPrincipalFactory = userClaimsPrincipalFactory;
     }
@@ -44,6 +47,11 @@ public class ImpersonationService : IImpersonationService
         if (await _userManager.IsInRoleAsync(targetUser, AuthConstants.Roles.Admin))
         {
             return (false, null, "Cannot impersonate another administrator");
+        }
+
+        if (!await _lifecycleEligibility.IsEligibleAsync(targetUser.Id))
+        {
+            return (false, null, "User cannot sign in");
         }
 
         // 5. Create principal for target user
@@ -101,6 +109,11 @@ public class ImpersonationService : IImpersonationService
              // Determine if we should treat this as a forced logout (Success but null principal?)
              // Pattern: fail, let controller handle signout
              return (false, null, "Original user not found");
+        }
+
+        if (!await _lifecycleEligibility.IsEligibleAsync(originalUser.Id))
+        {
+            return (false, null, "User cannot sign in");
         }
 
         // 3. Create principal for original user

@@ -14,6 +14,7 @@ namespace Web.IdP.Services;
 
 public partial class DeviceFlowService : IDeviceFlowService
 {
+    private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly UserManager<ApplicationUser> _userManager;
@@ -22,6 +23,7 @@ public partial class DeviceFlowService : IDeviceFlowService
     private readonly IClaimsEnrichmentService _claimsEnricher;
 
     public DeviceFlowService(
+        Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
         IOpenIddictScopeManager scopeManager,
         IOpenIddictApplicationManager applicationManager,
         UserManager<ApplicationUser> userManager,
@@ -29,6 +31,7 @@ public partial class DeviceFlowService : IDeviceFlowService
         ILogger<DeviceFlowService> logger,
         IClaimsEnrichmentService claimsEnricher)
     {
+        _lifecycleEligibility = lifecycleEligibility;
         _scopeManager = scopeManager;
         _applicationManager = applicationManager;
         _userManager = userManager;
@@ -72,7 +75,7 @@ public partial class DeviceFlowService : IDeviceFlowService
         return vm;
     }
 
-    public async Task<IActionResult> ProcessVerificationAsync(ClaimsPrincipal userPrincipal, AuthenticateResult authenticateResult)
+    public async Task<IActionResult> ProcessVerificationAsync(ClaimsPrincipal userPrincipal, AuthenticateResult authenticateResult, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.GetUserAsync(userPrincipal);
         if (user == null)
@@ -110,6 +113,15 @@ public partial class DeviceFlowService : IDeviceFlowService
                 RedirectUri = "/connect/verify/success"
             };
 
+            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+            {
+                return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The user is no longer allowed to sign in."
+                    }));
+            }
             LogDeviceFlowApproved(user.Id);
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity), properties);
         }

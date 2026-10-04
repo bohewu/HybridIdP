@@ -1,0 +1,13 @@
+{
+  "id": "C02",
+  "case": "Wrong identifier",
+  "owner": "both",
+  "scenario": "identifier-mismatch",
+  "requestJson": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-WRONG\"}}",
+  "httpStatus": 200,
+  "contentType": "application/json",
+  "responseJson": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"outcome\":\"Denied\"}",
+  "consumerAcceptsEnvelope": true,
+  "consumerMayPrepareGrant": false,
+  "executionScope": "Pure wire checks only; producer source behavior requires producer tests. HTTP and durable ceremony remain separate consumer gates."
+}

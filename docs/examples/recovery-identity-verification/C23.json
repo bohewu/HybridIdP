@@ -1,0 +1,23 @@
+{
+  "id": "C23",
+  "case": "Cross-browser grant reuse",
+  "owner": "consumer",
+  "scenario": "cross-context",
+  "requestJson": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+  "httpStatus": null,
+  "contentType": "application/json",
+  "responseJson": "",
+  "consumerAcceptsEnvelope": false,
+  "consumerMayPrepareGrant": false,
+  "executionScope": "Consumer durable ceremony only, deferred to H3/H5. Producer provides no browser grant and cannot certify these cases.",
+  "syntheticContext": {
+    "localAccountId": "synthetic-account-a",
+    "browserContext": "synthetic-browser-a",
+    "otherBrowserContext": "synthetic-browser-b",
+    "selectionEpoch": 1,
+    "nextSelectionEpoch": 2,
+    "securityStamp": "synthetic-stamp-a",
+    "nextSecurityStamp": "synthetic-stamp-b"
+  },
+  "assertion": "Reuse in other browser rejects before OTP."
+}

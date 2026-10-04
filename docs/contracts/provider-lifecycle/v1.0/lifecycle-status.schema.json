@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/contracts/provider-lifecycle/1.0",
+  "title": "Provider Lifecycle Status 1.0 review draft",
+  "description": "Root validates responses; #/$defs/request validates requests. Semantic/transport acceptance is separate. Not a deployed contract.",
+  "$ref": "#/$defs/response",
+  "$defs": {
+    "namespace": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "\\S", "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\ud800-\\udfff]" } },
+    "subject": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "\\S", "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\ud800-\\udfff]" } },
+    "revision": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S", "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\ud800-\\udfff]" } },
+    "requestId": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "not": { "const": "00000000-0000-0000-0000-000000000000" } },
+    "timestamp": { "type": "string", "format": "date-time", "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-5][0-9]\\.[0-9]{3}Z$" },
+    "binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["providerNamespace", "stableSubject"],
+      "properties": { "providerNamespace": { "$ref": "#/$defs/namespace" }, "stableSubject": { "$ref": "#/$defs/subject" } }
+    },
+    "request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contractType", "contractVersion", "requestId", "providerNamespace", "stableSubject"],
+      "properties": {
+        "contractType": { "const": "lifecycle-status" },
+        "contractVersion": { "const": "1.0" },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "providerNamespace": { "$ref": "#/$defs/namespace" },
+        "stableSubject": { "$ref": "#/$defs/subject" }
+      }
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sourceAuthority", "mappingVersion", "snapshotVersion", "observedAt", "effectiveFrom", "effectiveUntil"],
+      "properties": {
+        "sourceAuthority": { "$ref": "#/$defs/namespace" },
+        "mappingVersion": { "$ref": "#/$defs/revision" },
+        "snapshotVersion": { "$ref": "#/$defs/revision" },
+        "observedAt": { "$ref": "#/$defs/timestamp" },
+        "effectiveFrom": { "$ref": "#/$defs/timestamp" },
+        "effectiveUntil": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "response": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contractType", "contractVersion", "requestId", "outcome"],
+      "properties": {
+        "contractType": { "const": "lifecycle-status" },
+        "contractVersion": { "const": "1.0" },
+        "requestId": { "anyOf": [{ "$ref": "#/$defs/requestId" }, { "type": "null" }] },
+        "outcome": { "enum": ["Found", "NotFound", "Ambiguous", "Unavailable", "Unsupported", "Malformed"] },
+        "binding": { "$ref": "#/$defs/binding" },
+        "accountState": { "enum": ["Enabled", "Disabled", "Retired", "Superseded", "Unknown"] },
+        "evidence": { "$ref": "#/$defs/evidence" },
+        "successor": { "$ref": "#/$defs/binding" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "outcome": { "const": "Found" } } },
+          "then": { "required": ["binding", "accountState", "evidence"] },
+          "else": { "not": { "anyOf": [{ "required": ["binding"] }, { "required": ["accountState"] }, { "required": ["evidence"] }, { "required": ["successor"] }] } }
+        },
+        {
+          "if": { "properties": { "outcome": { "enum": ["Found", "NotFound", "Ambiguous", "Unavailable", "Unsupported"] } } },
+          "then": { "properties": { "requestId": { "$ref": "#/$defs/requestId" } } }
+        },
+        {
+          "if": { "required": ["successor"] },
+          "then": { "required": ["accountState"], "properties": { "accountState": { "enum": ["Retired", "Superseded"] } } }
+        }
+      ]
+    }
+  }
+}

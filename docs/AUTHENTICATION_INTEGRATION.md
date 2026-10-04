@@ -135,8 +135,12 @@ disablement denies a new authentication.
 
 Current local state must continue to be checked on each Identity-cookie
 validation and before new authorization-code, refresh, device, password, or
-equivalent grant issuance. A future provider integration must define a bounded
-upstream account-status revalidation or revocation response. Self-contained
+equivalent grant issuance. The implemented, default-disabled
+[Lifecycle Status consumer](implementation_plans/provider-api-lifecycle-plan.md)
+adds fresh bounded account-status checks for explicitly required local accounts,
+composing local eligibility AND accepted remote Enabled evidence. Disabled and
+uncovered accounts retain local behavior; no producer or runtime activation is
+established. Self-contained
 access tokens already issued may remain valid until their expiry unless a
 separately approved revocation design changes that policy.
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Core.Application;
 using Core.Application.Ports;
 using Core.Domain.Entities;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services;
 
-public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationPolicyEvaluator
+public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationPolicyEvaluator, IRecoveryDefaultDestinationEvaluator
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly RecoveryVerificationPolicyOptions _options;
@@ -79,6 +80,42 @@ public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationP
                 ? [ProviderMetadataEvidenceState.Missing]
                 : snapshots.Select(GetEvidenceState).Distinct().ToArray()
         };
+    }
+
+    // Selection deliberately bypasses retained custom rows here, e.g. an explicit UseDefault.
+    // EvaluateAsync remains the existing verification-period contract for its current consumers.
+    public async Task<RecoveryDefaultDestination?> EvaluateDefaultAsync(
+        Guid localAccountId,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_options.Enabled) return null;
+        var bindingIds = await _dbContext.ProviderSubjectDirectoryBindings.AsNoTracking()
+            .Where(binding => binding.LocalAccountId == localAccountId)
+            .Select(binding => binding.Id).ToListAsync(cancellationToken);
+        var snapshots = await _dbContext.ProviderMetadataSnapshots.AsNoTracking()
+            .Where(snapshot => bindingIds.Contains(snapshot.ProviderSubjectDirectoryBindingId))
+            .ToListAsync(cancellationToken);
+        var revoked = await _dbContext.Users.AsNoTracking().Where(user => user.Id == localAccountId)
+            .Select(user => user.RecoverySourceBootstrapRevokedAtUtc != null).SingleOrDefaultAsync(cancellationToken);
+        var decision = EvaluateRecoveryEmail(null, snapshots, revoked);
+        if (!decision.CanReceiveRecoveryOtp || decision.HasSourceConflict || decision.Address is null)
+            return null;
+
+        var evidence = snapshots.Where(snapshot => TryCreateSourceCandidate(snapshot) is not null)
+            .OrderBy(snapshot => snapshot.Id).ToArray();
+        var fields = new List<string?> { "recovery-default-v1", localAccountId.ToString("D"), decision.Address };
+        foreach (var snapshot in evidence)
+        {
+            fields.Add(snapshot.Id.ToString("D"));
+            fields.Add(snapshot.ProviderSubjectDirectoryBindingId.ToString("D"));
+            fields.Add(snapshot.Email);
+            fields.Add(snapshot.EmailTrustOrigin.ToString());
+            fields.Add(snapshot.RefreshedAtUtc.ToString("O", CultureInfo.InvariantCulture));
+            fields.Add(snapshot.VerifiedAt?.ToString("O", CultureInfo.InvariantCulture));
+        }
+        return new RecoveryDefaultDestination(decision.Address, RecoveryDestinationBinding.ComputeDigest(fields.ToArray()),
+            evidence.Max(snapshot => snapshot.RefreshedAtUtc.UtcTicks),
+            _options.BootstrapEnabled && _timeProvider.GetUtcNow() < _options.BootstrapUntilUtc);
     }
 
     private RecoveryEmailPolicyDecision EvaluateRecoveryEmail(

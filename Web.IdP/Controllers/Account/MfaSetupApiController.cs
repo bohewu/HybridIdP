@@ -366,7 +366,8 @@ public partial class MfaSetupApiController : ControllerBase
         ApplicationUser user,
         CancellationToken cancellationToken) =>
         await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken) &&
-        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken) &&
+        await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken);
 
     #region Logging
 

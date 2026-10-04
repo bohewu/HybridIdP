@@ -448,6 +448,7 @@ public class UsersControllerRoleAuthorizationTests
             new Mock<ILogger<RoleManager<ApplicationRole>>>().Object);
 
         return new UsersController(
+            Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             userManagementService.Object,
             userManager,
             roleManager,

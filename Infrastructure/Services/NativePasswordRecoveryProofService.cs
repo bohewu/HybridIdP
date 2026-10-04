@@ -20,6 +20,10 @@ public sealed class NativePasswordRecoveryProofService : INativePasswordRecovery
     private readonly IForgotPasswordRoutingEvaluator _routingEvaluator;
     private readonly ForgotPasswordRecoveryOptions _options;
     private readonly RecoveryProofStore _store;
+    private readonly RecoveryIdentityVerificationOptions _identityOptions;
+    private readonly RecoveryEmailSelectionOptions _selectionOptions;
+    private readonly RecoveryPrecheckService? _precheck;
+    private readonly RecoveryOtpDeliveryService? _delivery;
 
     public NativePasswordRecoveryProofService(
         ApplicationDbContext dbContext,
@@ -29,7 +33,11 @@ public sealed class NativePasswordRecoveryProofService : INativePasswordRecovery
         IRecoveryVerificationPolicyEvaluator policyEvaluator,
         IForgotPasswordRoutingEvaluator routingEvaluator,
         IOptions<ForgotPasswordRecoveryOptions> options,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IOptions<RecoveryIdentityVerificationOptions>? identityOptions = null,
+        IOptions<RecoveryEmailSelectionOptions>? selectionOptions = null,
+        RecoveryPrecheckService? precheck = null,
+        RecoveryOtpDeliveryService? delivery = null)
     {
         _dbContext = dbContext;
         _emailService = emailService;
@@ -39,6 +47,10 @@ public sealed class NativePasswordRecoveryProofService : INativePasswordRecovery
         _routingEvaluator = routingEvaluator;
         _options = options.Value;
         _store = new RecoveryProofStore(dbContext, timeProvider);
+        _identityOptions = identityOptions?.Value ?? new();
+        _selectionOptions = selectionOptions?.Value ?? new();
+        _precheck = precheck;
+        _delivery = delivery;
     }
 
     public async Task<NativeRecoveryStartResult> StartAsync(
@@ -46,6 +58,9 @@ public sealed class NativePasswordRecoveryProofService : INativePasswordRecovery
         CancellationToken cancellationToken = default)
     {
         var publicRequestId = Guid.NewGuid();
+        // New ceremonies must reserve through the durable Prepare/Send path; no old API bypass.
+        if (_identityOptions.Enabled || _selectionOptions.Enabled)
+            return new NativeRecoveryStartResult(publicRequestId);
         if (!IsNativeRecoveryPermitted() || !IsValidIdentifier(request.Identifier) || !IsValidContext(request.Context))
         {
             return new NativeRecoveryStartResult(publicRequestId);
@@ -63,6 +78,9 @@ public sealed class NativePasswordRecoveryProofService : INativePasswordRecovery
             {
                 return new NativeRecoveryStartResult(publicRequestId);
             }
+
+            if (await _store.HasSelectionIntentAsync(user.Id, cancellationToken))
+                return await StartPersistedSelectionAsync(user.Id, request.Context, publicRequestId, cancellationToken);
 
             var authority = await ResolveAuthorityAsync(user, cancellationToken);
             if (authority is null)
@@ -223,6 +241,28 @@ public sealed class NativePasswordRecoveryProofService : INativePasswordRecovery
             }
 
             var challenge = reservation.Challenge;
+            if (challenge.SelectionEpoch is not null)
+            {
+                var state = await _store.ResolveNativeSelectionAsync(challenge, request.Context, _precheck, cancellationToken);
+                if (state is null) return Denied();
+                var binding = RecoveryPrecheckService.OtpBinding(state.Destination);
+                var code = RecoveryProofSecurity.BindToContext(request.Code, request.Context.ContextHash,
+                    request.Context.CsrfHash, binding);
+                if (_passwordHasher.VerifyHashedPassword(state.User, challenge.CodeHash, code) == PasswordVerificationResult.Failed)
+                {
+                    if (challenge.VerificationAttempts >= _options.NativeOtpMaxAttempts)
+                        await _store.MarkChallengeRevokedAsync(challenge.Id, cancellationToken);
+                    return Denied();
+                }
+                // Re-resolve after proof work; possession of a default never promotes a custom record.
+                if (await _store.ResolveNativeSelectionAsync(challenge, request.Context, _precheck, cancellationToken) is null)
+                    return Denied();
+                return await _store.CompleteNativeRecoveryVerificationAsync(challenge,
+                    RecoveryProofSecurity.BindToContext(string.Empty, request.Context.ContextHash, request.Context.CsrfHash, binding),
+                    request.Context.ContextHash, request.Context.CsrfHash, false, cancellationToken);
+            }
+            if (_identityOptions.Enabled || _selectionOptions.Enabled ||
+                await _store.HasSelectionIntentAsync(challenge.LocalAccountId, cancellationToken)) return Denied();
             var user = await _dbContext.Users.AsNoTracking()
                 .SingleOrDefaultAsync(candidate => candidate.Id == challenge.LocalAccountId, cancellationToken);
             var recoveryEmail = await _dbContext.RecoveryEmails.AsNoTracking()
@@ -231,7 +271,8 @@ public sealed class NativePasswordRecoveryProofService : INativePasswordRecovery
                     candidate.LocalAccountId == challenge.LocalAccountId,
                     cancellationToken);
             if (user is null || recoveryEmail is null ||
-                !await IsStillEligibleAccountAsync(user, cancellationToken))
+                !await IsStillEligibleAccountAsync(user, cancellationToken) ||
+                challenge.NativeSecurityStamp != user.SecurityStamp)
             {
                 await _store.MarkChallengeRevokedAsync(challenge.Id, cancellationToken);
                 return Denied();
@@ -284,6 +325,58 @@ public sealed class NativePasswordRecoveryProofService : INativePasswordRecovery
         catch
         {
             return Denied();
+        }
+    }
+
+    private async Task<NativeRecoveryStartResult> StartPersistedSelectionAsync(
+        Guid accountId, NativeRecoveryContext context, Guid publicId, CancellationToken ct)
+    {
+        var state = _precheck is null ? null : await _precheck.ResolveStateAsync(accountId, ct);
+        if (state is null || state.IdentityRequired || state.Destination.RecoveryEmailId is not { } emailId)
+            return new(publicId);
+        RecoveryProofChallenge challenge;
+        string code;
+        await using (var transaction = await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct))
+        {
+            var current = await _precheck!.ResolveStateAsync(accountId, ct);
+            if (current is null || current.SecurityDigest != state.SecurityDigest || !state.Destination.Matches(current.Destination))
+                return new(publicId);
+            var email = await _dbContext.RecoveryEmails.SingleAsync(e => e.Id == emailId && e.LocalAccountId == accountId, ct);
+            var now = _store.UtcNow;
+            if (!email.TryReserveSend(now, now.AddSeconds(_options.NativeOtpResendCooldownSeconds))) return new(publicId);
+            code = RecoveryProofSecurity.GenerateNumericCode();
+            challenge = new(email.Id, accountId, RecoveryProofPurpose.NativePasswordRecovery,
+                _passwordHasher.HashPassword(state.User, RecoveryProofSecurity.BindToContext(code,
+                    context.ContextHash, context.CsrfHash, RecoveryPrecheckService.OtpBinding(state.Destination))),
+                now, now.AddMinutes(_options.NativeOtpLifetimeMinutes));
+            challenge.BindSelection(state.Destination.SelectionEpoch, state.Destination.Kind, state.Destination.Fingerprint, state.Destination.Version);
+            challenge.BindNativeAssistance(context.ContextHash, context.CsrfHash, state.IsDirectory,
+                state.IsDirectory ? state.Binding!.DirectoryObjectId : null, email.Version, state.User.SecurityStamp!);
+            var grant = new RecoveryPrecheckGrant(accountId, state.Binding?.Id, state.BindingDigest, state.User.SecurityStamp!,
+                context.ContextHash, context.CsrfHash, state.PolicyDigest, state.Destination.SelectionEpoch,
+                state.Destination.Kind, state.Destination.Fingerprint, state.Destination.Version, now,
+                now.AddMinutes(Math.Min(5, _options.NativeOtpLifetimeMinutes)));
+            if (!grant.TryReserveChallenge(challenge, now)) return new(publicId);
+            await _store.RevokeChallengesAsync(email.Id, RecoveryProofPurpose.NativePasswordRecovery, ct);
+            _dbContext.RecoveryPrecheckGrants.Add(grant);
+            _dbContext.RecoveryProofChallenges.Add(challenge);
+            await _dbContext.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+        }
+        try
+        {
+            var sent = _delivery is not null && await _delivery.SendAsync(
+                state.Destination.Address, code, _options.NativeOtpLifetimeMinutes, ct);
+            if (!challenge.TryCompleteDelivery(_store.UtcNow, sent)) return new(publicId);
+            await _dbContext.SaveChangesAsync(ct);
+            return sent ? new(challenge.Id) : new(publicId);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch
+        {
+            challenge.TryCompleteDelivery(_store.UtcNow, false);
+            await _dbContext.SaveChangesAsync(ct);
+            return new(publicId);
         }
     }
 

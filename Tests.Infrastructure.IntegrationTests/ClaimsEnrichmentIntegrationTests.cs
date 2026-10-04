@@ -117,6 +117,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             _mockClaimsLogger.Object);
 
         _tokenService = new TokenService(
+            Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             _userManager,
             _mockSignInManager.Object,
             _roleManager,
@@ -249,7 +250,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             EmailMfaCode = Convert.ToBase64String(
                 RandomNumberGenerator.GetBytes(32))
         };
-        var password = $"P@ssword1-{Convert.ToHexString(RandomNumberGenerator.GetBytes(8))}";
+        var password = Guid.NewGuid().ToString("N") + "aA1!";
         await _userManager.CreateAsync(user, password);
 
         const string claimType = "test_security_sensitive_source";
@@ -343,7 +344,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
                     RandomNumberGenerator.GetBytes(32))
             }
         };
-        var password = $"P@ssword1-{Convert.ToHexString(RandomNumberGenerator.GetBytes(8))}";
+        var password = Guid.NewGuid().ToString("N") + "aA1!";
         await _userManager.CreateAsync(user, password);
 
         const string scopeName = "test_approved_source_scope";

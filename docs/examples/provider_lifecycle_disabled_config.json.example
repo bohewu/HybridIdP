@@ -1,0 +1,10 @@
+{
+  "ProviderLifecycle": {
+    "Enabled": false,
+    "Endpoint": "",
+    "SharedSecret": "",
+    "TimeoutSeconds": 5,
+    "MaxAgeSeconds": 60,
+    "RequiredAccounts": []
+  }
+}
