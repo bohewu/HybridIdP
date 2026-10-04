@@ -1358,3 +1358,28 @@ Production、Staging、空白/預設、未知及其他所有環境不會因為�
 ---
 
 **記住：遵循這些範本和最佳實踐，可以確保程式碼品質和一致性！** 🚀
+
+## Branches and release publication
+
+- `dev` is the permanent integration branch for development, audits and tests.
+  Feature branches merge into `dev`; a normal branch push publishes no image.
+- `main` contains approved release content. Promote `dev` through a release PR
+  only after its required review and verification are complete.
+- `main` requires PRs, including administrator changes. Both permanent branches
+  prohibit force pushes and branch deletion. Direct normal pushes to `dev` remain
+  available for integration work.
+- Use `deployment/release-idp.sh` from a clean local `main` that matches the
+  freshly fetched `origin/main`. It rejects other branches and unpublished local
+  commits before creating or pushing a version tag.
+- The image workflow accepts manual publication only from `main`; both manual
+  and `v*` tag publication require the checked-out commit to equal the current
+  `origin/main` tip before registry login or build/push.
+- If `main` advances before a tag workflow starts, that older tag is rejected.
+  Review and release the current main commit; do not overwrite an existing tag.
+- Local configuration, secrets and generated test/agent output stay outside Git.
+  Preserve local commit backups before changing history; backups are not release
+  refs and must not be pushed.
+
+Publishing an image and deploying it are separate operator actions. Creating or
+pushing `dev`, merging a release PR, or changing branch protection performs no
+deployment and creates no release tag by itself.

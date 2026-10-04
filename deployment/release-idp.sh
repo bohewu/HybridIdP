@@ -153,6 +153,20 @@ if [[ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]]; then
     exit 1
 fi
 
+CURRENT_BRANCH="$(git -C "$REPO_ROOT" symbolic-ref --quiet --short HEAD || true)"
+if [[ "$CURRENT_BRANCH" != "main" ]]; then
+    error "Release tags must be created from main. Merge the dev release PR first."
+    exit 1
+fi
+
+git -C "$REPO_ROOT" fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+RELEASE_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
+MAIN_SHA="$(git -C "$REPO_ROOT" rev-parse refs/remotes/origin/main)"
+if [[ "$RELEASE_SHA" != "$MAIN_SHA" ]]; then
+    error "Local main must match origin/main before creating a release tag."
+    exit 1
+fi
+
 if git -C "$REPO_ROOT" rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
     error "Tag already exists locally: $TAG"
     exit 1
