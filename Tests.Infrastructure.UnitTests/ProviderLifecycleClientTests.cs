@@ -208,12 +208,72 @@ public sealed class ProviderLifecycleClientTests
     }
 
     [Fact]
+    public async Task LookupAsync_ShouldPreserveCorrelatedUnavailableResponseWithoutTransportFailure()
+    {
+        var settings = Settings();
+        var endpoint = Environment.GetEnvironmentVariable("LIFECYCLE_TEST_ENDPOINT");
+        var secret = Environment.GetEnvironmentVariable("LIFECYCLE_TEST_SECRET");
+        Assert.True((endpoint is null) == (secret is null), "Isolated endpoint and credential must be supplied together.");
+        if (endpoint is not null)
+        {
+            settings.Endpoint = endpoint;
+            settings.SharedSecret = secret;
+        }
+        settings.TimeoutSeconds = 5;
+        using var primary = ProviderLifecycleClient.CreatePrimaryHandler();
+        Assert.Null(primary.ServerCertificateCustomValidationCallback);
+        using var transport = new HttpMessageInvoker(primary, disposeHandler: false);
+        string? requestId = null;
+        using var handler = new Handler(async (message, token) =>
+        {
+            Assert.Equal(HttpMethod.Post, message.Method);
+            Assert.Equal(settings.Endpoint, message.RequestUri!.AbsoluteUri);
+            Assert.True(settings.SharedSecret == Assert.Single(message.Headers.GetValues("X-Internal-Secret")),
+                "The isolated credential must be sent exactly once.");
+            Assert.Equal("lifecycle-status/1.0", Assert.Single(message.Headers.GetValues("X-Provider-Contract")));
+            Assert.Equal("application/json", message.Content!.Headers.ContentType!.ToString());
+            Assert.Empty(message.Headers.AcceptEncoding);
+            Assert.Empty(message.Content.Headers.ContentEncoding);
+            using var body = JsonDocument.Parse(await message.Content.ReadAsByteArrayAsync(token));
+            Assert.Equal(5, body.RootElement.EnumerateObject().Count());
+            requestId = body.RootElement.GetProperty("requestId").GetString();
+            Assert.True(ProviderLifecycleContract.IsRequestId(requestId));
+            Assert.Equal(Binding.ProviderNamespace, body.RootElement.GetProperty("providerNamespace").GetString());
+            Assert.Equal(Binding.StableSubject, body.RootElement.GetProperty("stableSubject").GetString());
+            HttpResponseMessage response;
+            if (endpoint is not null) response = await transport.SendAsync(message, token);
+            else
+            {
+                response = Response(JsonSerializer.Serialize(new { contractType = "lifecycle-status", contractVersion = "1.0",
+                    requestId, outcome = "Unavailable" }), 503);
+                response.Headers.CacheControl = new() { NoStore = true };
+            }
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            Assert.True(response.Headers.CacheControl?.NoStore);
+            Assert.Equal("application/json", response.Content.Headers.ContentType!.ToString());
+            return response;
+        });
+        using var http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        var result = await new ProviderLifecycleClient(http, Options.Create(settings)).LookupAsync(Binding);
+        Assert.Equal(ProviderLifecycleFailure.None, result.Failure);
+        Assert.NotNull(result.Response);
+        Assert.Equal(ProviderLifecycleOutcome.Unavailable, result.Response.Outcome);
+        Assert.Equal(requestId, result.Response.RequestId);
+        Assert.Null(result.Response.Binding);
+        Assert.Null(result.Response.AccountState);
+        Assert.Null(result.Response.Evidence);
+        Assert.Null(result.Response.Successor);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
     public async Task LookupAsync_ShouldReturnUnavailableOnTransportFailureWithoutRetry()
     {
         using var handler = new Handler((_, _) => throw new HttpRequestException("Sensitive provider details"));
         using var http = new HttpClient(handler);
         var result = await new ProviderLifecycleClient(http, Options.Create(Settings())).LookupAsync(Binding);
         Assert.Equal(ProviderLifecycleFailure.Unavailable, result.Failure);
+        Assert.Null(result.Response);
         Assert.Equal("ProviderLifecycleLookupResult [redacted]", result.ToString());
         Assert.Equal(1, handler.Calls);
     }

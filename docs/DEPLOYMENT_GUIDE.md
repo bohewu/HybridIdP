@@ -7,6 +7,7 @@ This guide covers the deployment of HybridIdP using Docker Compose. The easiest 
 2. [Quick Start (Recommended)](#quick-start-interactive-wizard)
 3. [Deployment Modes](#deployment-modes)
 4. [Production Configuration Contract](#production-configuration-contract)
+   - [Optional Provider Lifecycle Status](#optional-provider-lifecycle-status)
 5. [One-Time Operational First Administrator](#one-time-operational-first-administrator)
 6. [Verification](#verification)
 7. [Advanced / Manual Configuration](#advanced--manual-configuration)
@@ -219,6 +220,146 @@ offline only; no live or production database migration was run. Never retry
 These instructions do not claim external interoperability, a connected
 password write or production deployment has been verified.
 
+### Optional Provider Lifecycle Status
+
+The [Lifecycle Status 1.0 contract](PROVIDER_LIFECYCLE_CONTRACT.md) has an
+implemented consumer that defaults to `ProviderLifecycle.Enabled=false` and
+makes zero lifecycle HTTP calls while disabled. Deploying it disabled is valid
+when no authoritative source or approved policy exists. Existing local
+ApplicationUser and Person eligibility checks remain in force. Enabling an
+explicit `RequiredAccounts` cohort against a producer that can only return
+`Unavailable` denies that cohort; connectivity alone is not readiness.
+
+Any HTTP producer conforming to the contract can supply this capability.
+AuthProxy is a deployment-local producer choice, not an OSS dependency or an
+assigned lifecycle authority. Each provider contract independently configures
+one complete fixed endpoint, credential and deadline; there is no shared
+`BaseUrl`, assumed producer host/path, SDK or shared database. The same literal
+URL can serve multiple contracts only with the contract's unambiguous canonical
+dispatch. Lifecycle sends `X-Provider-Contract: lifecycle-status/1.0` and body
+`contractType: "lifecycle-status"`; collisions must be rejected before source
+work. Per-namespace/multiple lifecycle endpoint routing remains backlog.
+
+Lifecycle requires HTTPS with normal certificate and hostname verification.
+The fixed URL has no userinfo, query or fragment. It has no
+`AllowPrivateNetworkHttp` option and does not inherit the older Proof, Metadata
+or Password Sync transport allowances. Redirects, automatic retries, cookies
+and response decompression are disabled; nonempty `Content-Encoding` is rejected.
+The monotonic deadline covers send, headers and the complete bounded body read;
+producer source work must fit a shorter budget. Caller cancellation propagates.
+
+#### Source and Policy Readiness
+
+An institution-wide unified lifecycle standard is not a prerequisite for a
+separately reviewed local policy scoped to one account type and exact namespace.
+That limited policy must establish the following decisions and evidence before
+enablement; this guide supplies no institutional state rules or mapping values:
+
+1. Identify accountable source and policy owners, the authoritative account
+   source, supported exact namespace, and an approved unique mapping from each
+   trusted binding to an immutable source account. Record exact
+   `sourceAuthority` and producer-managed `mappingVersion` and how changes are
+   reviewed. Credential/API-key or IP admission proves access, not source
+   authority or mapping approval.
+2. Have those owners define the account-state semantics for `Enabled`,
+   `Disabled`, `Retired`, `Superseded` and `Unknown` within that scope, including
+   what source evidence supports each state. Never infer Enabled/Retired or a
+   mapping from username prefixes, successful password proof, an AD enabled
+   flag, or an employment/enrollment facet alone. HR or teaching eligibility
+   must not be converted into `Person.Status`, roles or groups by this API.
+3. Establish the actual source `snapshotVersion` and `observedAt`, and how the
+   source guarantees the asserted state over finite `effectiveFrom` /
+   `effectiveUntil` bounds. A random revision, response-time observation or
+   guessed interval cannot manufacture freshness. Agree on finite local maxAge,
+   host UTC clock assurance, and source work within the transport budget.
+4. Approve a small explicit cohort of existing local ApplicationUsers and their
+   server-owned bindings, with exact authority/mapping acceptance. Record the
+   read-only validation evidence, enablement decision and containment/rollback
+   plan through the deployment's protected review process. Keep real tuples and
+   source identifiers out of public documentation and logs.
+
+Until these exist, retain the disabled consumer and an unavailable producer
+capability. A partially supported source adapter stays deployment-private;
+unsupported or unresolved scope does not broaden the HybridIdP contract or OSS
+dependencies. Missing/unverified mapping or unreadable source is `Unavailable`;
+multiple resolved matches are `Ambiguous`. `NotFound` requires a completed
+exact authoritative lookup with no match. `Found Unknown` requires a resolved
+account with valid canonical source evidence whose authoritative state cannot
+be classified; it is not a substitute for missing authority, mapping or
+freshness. Neither Unknown nor any failure authorizes an operation.
+
+#### Protected Consumer Configuration
+
+Start from the existing [disabled JSON example](examples/provider_lifecycle_disabled_config.json.example)
+and the [delivered configuration reference](implementation_plans/provider-api-lifecycle-plan.md#delivered-consumer-configuration).
+Use approved per-deployment values through the existing protected configuration
+path; no enabled synthetic configuration is a production example.
+
+| Option under `ProviderLifecycle` | Deployment meaning |
+| --- | --- |
+| `Enabled` | Default false; invalid enabled configuration fails startup validation. |
+| `Endpoint` | Independent complete fixed HTTPS lifecycle URL. |
+| `SharedSecret` | Nonempty header-safe secret supplied only through protected configuration. |
+| `TimeoutSeconds` | Integer 1-10, default 5; complete exchange deadline. |
+| `MaxAgeSeconds` | Integer 1-300, default 60; local freshness policy. |
+| `RequiredAccounts` | Nonempty when enabled; unique nonzero local ApplicationUser Guid per entry. |
+
+Each entry requires `LocalAccountId`, exact `BindingKind` (`DirectoryBinding` or
+`ExternalLogin`), `ProviderNamespace`, `SourceAuthority` and `MappingVersion`.
+`LocalAccountId` identifies a local ApplicationUser, not a Person or source
+account. Requiredness follows that ID even when its binding is missing.
+DirectoryBinding selects exactly one existing binding in the exact namespace;
+ExternalLogin selects exactly one stored login using exact
+`ExternalLoginProvider` with the approved namespace. `ExternalLoginProvider` is
+required only for ExternalLogin and must be omitted/null for DirectoryBinding.
+`StableSubject` comes only from the existing server-owned binding/login key; it
+is never configured or client supplied. Missing or ambiguous bindings deny.
+Namespace, provider, authority and mapping use exact ordinal comparisons.
+Producer `MappingVersion` is not a local binding ID or security stamp.
+
+Environment keys use `__`, for example `ProviderLifecycle__Enabled`,
+`ProviderLifecycle__Endpoint`, `ProviderLifecycle__SharedSecret`,
+`ProviderLifecycle__TimeoutSeconds` and `ProviderLifecycle__MaxAgeSeconds`.
+Indexed cohort keys use `ProviderLifecycle__RequiredAccounts__0__LocalAccountId`,
+with the same index for `BindingKind`, `ProviderNamespace`, `SourceAuthority`,
+`MappingVersion` and, only for ExternalLogin, `ExternalLoginProvider`. These are
+key names only; values must come from the approved scope, not copied identities.
+
+The five production Compose modes above pass the selected file into
+`idp-service` through `env_file: ${IDP_ENV_FILE:-.env}`; explicit Compose
+`environment` entries take precedence. A shell `.env` or Compose interpolation
+file alone is not application configuration outside that pass-through. Confirm
+the selected env_file and effective protected configuration without printing
+secrets or identity tuples. Environment array entries can override/merge lower
+precedence configuration: deliberately changing a cohort requires removing
+stale higher-precedence entries so the effective policy remains coherent, not
+silently weakening it. Options are startup-bound; restart the process after an
+approved change. An env_file edit may require container recreation to update
+the container environment; a restart alone may retain old values.
+
+#### Read-Only Validation and Rollout
+
+Before separately approved enablement, verify the selected image contains the
+consumer implementation; local binary tests do not verify a deployed image.
+Preserve a disabled baseline and distinguish synthetic fixture results from
+actual-source evidence. With a separately approved test cohort, validate actual
+read-only Found evidence and available deny cases, exact tuple/requestId
+correlation, canonical dispatch, HTTP/outcome pairs, JSON media/size limits,
+`Cache-Control: no-store`, normal TLS, credential/IP admission and deadlines.
+Establish operational UTC clock trust and verify authority/mapping, actual
+observation freshness and finite effective intervals at the final action time,
+with zero skew. Only Found Enabled AND current local User/Person eligibility
+can permit a required operation. Missing, stale, future, expired, Unknown and
+non-Enabled evidence deny without fallback or persistent lifecycle writes.
+
+Use existing verification paths and retain sanitized outcomes/correlation only;
+do not activate synthetic data for real accounts. Actual source Found evidence,
+clock/cohort approval and deployed-image validation remain separate gates from
+contract tests or a successful unavailable-response exchange. Enable only the
+reviewed cohort after those gates and the explicit operator/owner decision.
+See [Lifecycle Operations](MAINTENANCE_GUIDE.md#provider-lifecycle-operations)
+for outage handling, recovery and the security effect of policy rollback.
+
 ## One-Time Operational First Administrator
 
 This optional capability is disabled by default and is for a genuinely fresh deployment only. It is not a migration, reset, repair, or account-recovery mechanism. Existing deployments leave it disabled and need no migration, database reset, or marker removal. It is also distinct from the fixed privileged Development/Test fixture (`SeedData__PrivilegedTestAdminBootstrap__Enabled`), which remains test-only, and from normal post-login administrator management.
@@ -253,7 +394,7 @@ The JSON body contains operator-chosen, unique values and must be handled withou
 {
   "email": "<UNIQUE_ADMIN_EMAIL>",
   "name": "<UNIQUE_ADMIN_NAME>",
-  "password": "<OPERATOR_CHOSEN_ADMIN_PASSWORD>"
+  "password": "<password>"
 }
 ```
 

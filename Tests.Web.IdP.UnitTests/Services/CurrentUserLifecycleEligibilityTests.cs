@@ -92,6 +92,23 @@ public sealed class CurrentUserLifecycleEligibilityTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IsEligibleAsync_ShouldDenyRequiredAccount_WhenContractOrTransportUnavailable(bool contractResponse)
+    {
+        using var fixture = new Fixture();
+        fixture.Response = new ProviderLifecycleResponse
+        {
+            RequestId = Guid.NewGuid().ToString("D"), Outcome = ProviderLifecycleOutcome.Unavailable
+        };
+        fixture.Client.Failure = contractResponse ? ProviderLifecycleFailure.None : ProviderLifecycleFailure.Unavailable;
+        fixture.Client.SuppressResponse = !contractResponse;
+        Assert.False(await fixture.Service.IsEligibleAsync(fixture.User.Id));
+        Assert.Equal(1, fixture.Client.Calls);
+        Assert.All(fixture.Database.ChangeTracker.Entries(), entry => Assert.Equal(EntityState.Unchanged, entry.State));
+    }
+
+    [Theory]
     [InlineData(ProviderLifecycleAccountState.Disabled)]
     [InlineData(ProviderLifecycleAccountState.Retired)]
     [InlineData(ProviderLifecycleAccountState.Superseded)]
@@ -455,13 +472,14 @@ public sealed class CurrentUserLifecycleEligibilityTests
         public ProviderLifecycleBinding? LastBinding { get; private set; }
         public Func<Task>? BeforeReturn { get; set; }
         public ProviderLifecycleFailure Failure { get; set; }
+        public bool SuppressResponse { get; set; }
         public async Task<ProviderLifecycleLookupResult> LookupAsync(ProviderLifecycleBinding binding,
             CancellationToken cancellationToken = default)
         {
             Calls++;
             LastBinding = binding;
             if (BeforeReturn is not null) await BeforeReturn();
-            return new ProviderLifecycleLookupResult { Failure = Failure, Response = response() };
+            return new ProviderLifecycleLookupResult { Failure = Failure, Response = SuppressResponse ? null : response() };
         }
     }
 
