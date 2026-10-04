@@ -26,6 +26,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Require current main release commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Manual image publication is allowed only from main."
+            exit 1
+          fi
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          release_commit="$(git rev-parse HEAD)"
+          main_commit="$(git rev-parse refs/remotes/origin/main)"
+          if [[ "$release_commit" != "$main_commit" ]]; then
+            echo "::error::Image publication requires the current origin/main commit. Merge the release PR first."
+            exit 1
+          fi
 
       - name: Normalize image owner
         id: owner
