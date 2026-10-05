@@ -42,6 +42,7 @@
     "sendCodeFailed": "Failed to send the email verification code. Please try again.",
     "invalidOrExpiredCode": "The code is invalid, expired, or has reached its attempt limit. Request a new code and try again.",
     "registerPasskeyFailed": "Failed to register passkey",
+    "freshAuthenticationRequired": "For your account's security, sign in again and verify your identity before changing security settings.",
     "deletePasskeyFailed": "Failed to delete passkey",
     "loadPasskeysFailed": "Failed to load passkey list",
     "webAuthnNotSupported": "WebAuthn not supported by your browser",

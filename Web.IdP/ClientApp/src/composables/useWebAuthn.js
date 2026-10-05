@@ -32,7 +32,7 @@ export function useWebAuthn() {
         }
         const base64 = window.btoa(binary);
         // Convert to base64url
-        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        return base64.replace(/[+]/g, '-').replace(/[/]/g, '_').replace(/=/g, '');
     };
 
     // Generate device name automatically
@@ -75,6 +75,10 @@ export function useWebAuthn() {
         return null;
     };
 
+    const registrationErrorKey = (error, fallback) => error?.error === 'freshAuthenticationRequired'
+        ? 'mfa.errors.freshAuthenticationRequired'
+        : error?.error || fallback;
+
     const registerPasskey = async () => {
         if (!isSupported()) {
             throw new Error('mfa.errors.webAuthnNotSupported');
@@ -88,7 +92,7 @@ export function useWebAuthn() {
 
         if (!optionsResp.ok) {
             const err = await safeJson(optionsResp);
-            throw new Error((err && err.error) ? err.error : 'mfa.errors.registrationOptionsFailed');
+            throw new Error(registrationErrorKey(err, 'mfa.errors.registrationOptionsFailed'));
         }
 
         const options = await safeJson(optionsResp);
@@ -137,7 +141,7 @@ export function useWebAuthn() {
 
             if (!registerResp.ok) {
                 const error = await safeJson(registerResp);
-                throw new Error((error && error.error) ? error.error : 'Registration failed');
+                throw new Error(registrationErrorKey(error, 'mfa.errors.registerPasskeyFailed'));
             }
 
             return await registerResp.json();

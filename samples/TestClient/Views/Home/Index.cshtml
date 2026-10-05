@@ -1,8 +1,43 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@model DemoHomeViewModel
+@{
+    ViewData["Title"] = "Demo center";
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var authority = Model.Authority.TrimEnd('/');
 }
-
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<section class="demo-hero">
+    <div class="demo-eyebrow">HybridAuth IdP / Web sample</div>
+    <h1>See the complete sign-in flow.</h1>
+    <p>Choose a scenario, authenticate at the IdP, then inspect your session and call a protected endpoint.</p>
+    <div class="d-flex flex-wrap gap-2 mt-4">
+        <a class="btn btn-light" asp-controller="Account" asp-action="@(signedIn ? "Profile" : "Login")">@(signedIn ? "Open session" : "Start sign-in")</a>
+        <a class="btn btn-outline-light" href="#scenarios">Explore scenarios</a>
+    </div>
+    <ol class="demo-steps"><li>Sign in</li><li>Approve access</li><li>Inspect &amp; refresh</li></ol>
+</section>
+<div class="row g-4 mt-1">
+    <div class="col-lg-8">
+        <section id="scenarios" aria-labelledby="scenario-title">
+            <div class="section-heading"><div><h2 id="scenario-title">Sign-in scenarios</h2><p>Each request uses the same public client and PKCE.</p></div></div>
+            <div class="row g-3">
+                <div class="col-md-6"><article class="demo-card"><span class="demo-label">01 / Standard</span><h3>Sign in with SSO</h3><p>Use a password or a configured external provider. An existing IdP session can provide SSO.</p><a asp-controller="Account" asp-action="Login">Start standard sign-in</a></article></div>
+                <div class="col-md-6"><article class="demo-card"><span class="demo-label">02 / Passwordless</span><h3>Use a Passkey</h3><p>Open a fresh IdP sign-in page and choose Passkey. Register a key in your IdP account settings first.</p><a asp-controller="Account" asp-action="Login" asp-route-scenario="fresh">Start Passkey sign-in</a></article></div>
+                <div class="col-md-6"><article class="demo-card"><span class="demo-label">03 / Assurance</span><h3>Require MFA</h3><p>Request MFA, complete an available method at the IdP, and inspect the returned authentication methods.</p><a asp-controller="Account" asp-action="LoginMfa">Request MFA</a></article></div>
+                <div class="col-md-6"><article class="demo-card"><span class="demo-label">04 / Freshness</span><h3>Authenticate again</h3><p>Force a fresh sign-in even when an IdP session exists.</p><a asp-controller="Account" asp-action="Login" asp-route-scenario="fresh">Force reauthentication</a><a class="d-block mt-2" asp-controller="Account" asp-action="Login" asp-route-scenario="max-age">Try max_age=0</a></article></div>
+                <div class="col-md-6"><article class="demo-card"><span class="demo-label">05 / Consent</span><h3>Review requested access</h3><p>Show consent again. Approve selected scopes or decline to see the application's recovery page.</p><a asp-controller="Account" asp-action="Login" asp-route-scenario="consent">Review consent</a></article></div>
+                <div class="col-md-6"><article class="demo-card"><span class="demo-label">06 / Protocol errors</span><h3>Explore expected errors</h3><p>A silent request needs an existing session and consent. Send an unsupported scope to PAR to inspect its protocol error.</p><a asp-controller="Account" asp-action="Login" asp-route-scenario="silent">Try silent sign-in</a><a class="d-block mt-2" asp-controller="Account" asp-action="InvalidScopes">Request invalid scope</a></article></div>
+            </div>
+        </section>
+    </div>
+    <aside class="col-lg-4">
+        <div class="demo-panel mb-4"><h2>Connection</h2><dl class="demo-facts"><dt>Issuer</dt><dd class="text-break">@Model.Authority</dd><dt>Client</dt><dd><code>@Model.ClientId</code></dd><dt>Flow</dt><dd>Authorization code + PKCE</dd><dt>Session</dt><dd>@(signedIn ? "Signed in to this client" : "Not signed in to this client")</dd></dl><a href="@($"{authority}/.well-known/openid-configuration")" target="_blank" rel="noopener">Open discovery metadata</a><details class="mt-3"><summary>Requested scopes</summary><div class="d-flex flex-wrap gap-2 mt-2">@foreach (var scope in Model.Scopes) { <code class="scope-chip">@scope</code> }</div></details></div>
+        <div class="demo-panel"><h2>Your IdP account</h2><p>Manage your credentials and security at the IdP. Available methods follow its current policy.</p><ul class="demo-link-list"><li><a href="@($"{authority}/Account/Profile")" target="_blank" rel="noopener">Account settings &amp; Passkeys</a></li><li><a href="@($"{authority}/Account/Register")" target="_blank" rel="noopener">Create an account</a></li><li><a href="@($"{authority}/Account/ForgotPassword")" target="_blank" rel="noopener">Password recovery</a></li></ul></div>
+    </aside>
 </div>
+<section id="other-samples" class="mt-5" aria-labelledby="sample-title">
+    <div class="section-heading"><div><h2 id="sample-title">Other sample clients</h2><p>Run these from the repository root with the IdP available.</p></div></div>
+    <div class="row g-3">
+        <div class="col-md-4"><article class="demo-card"><h3>Device authorization</h3><p>Approve a console client's code in the browser.</p><pre class="sample-command">dotnet run --project samples/TestClient.Device -- --no-browser</pre></article></div>
+        <div class="col-md-4"><article class="demo-card"><h3>Machine to machine</h3><p>Request application tokens with the development service client.</p><pre class="sample-command">dotnet run --project samples/TestClient.M2M</pre></article></div>
+        <div class="col-md-4"><article class="demo-card"><h3>Administrator impersonation</h3><p>Demonstrate impersonation and revert with the separately enabled privileged development fixture.</p><pre class="sample-command">dotnet run --project samples/TestClient.Impersonation</pre></article></div>
+    </div>
+</section>

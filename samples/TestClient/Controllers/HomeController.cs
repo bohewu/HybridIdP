@@ -1,21 +1,23 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using TestClient.Models;
+using TestClient.Options;
+using Microsoft.Extensions.Options;
 
 namespace TestClient.Controllers;
 
 public class HomeController : Controller
 {
-    private readonly ILogger<HomeController> _logger;
+    private readonly OidcDemoOptions _options;
 
-    public HomeController(ILogger<HomeController> logger)
+    public HomeController(IOptions<OidcDemoOptions> options)
     {
-        _logger = logger;
+        _options = options.Value;
     }
 
     public IActionResult Index()
     {
-        return View();
+        return View(new DemoHomeViewModel(_options.Authority, _options.ClientId, _options.Scopes));
     }
 
     public IActionResult Privacy()

@@ -37,6 +37,20 @@ describe('useWebAuthn', () => {
     });
 
     describe('registerPasskey', () => {
+        it('returns a translation key when fresh authentication is required before enrollment', async () => {
+            vi.stubGlobal('window', { ...window, PublicKeyCredential: {} });
+            fetch.mockResolvedValueOnce({
+                ok: false,
+                headers: { get: () => 'application/json' },
+                json: () => Promise.resolve({ error: 'freshAuthenticationRequired' })
+            });
+
+            const { registerPasskey } = useWebAuthn();
+            await expect(registerPasskey()).rejects.toThrow('mfa.errors.freshAuthenticationRequired');
+            expect(navigator.credentials.create).not.toHaveBeenCalled();
+            expect(fetch).toHaveBeenCalledTimes(1);
+        });
+
         it('throws error if WebAuthn not supported', async () => {
             vi.stubGlobal('window', { ...window, PublicKeyCredential: undefined });
             const { registerPasskey } = useWebAuthn();

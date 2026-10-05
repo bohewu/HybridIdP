@@ -485,7 +485,7 @@ async function registerPasskey() {
       window.location.href = returnUrl.value
     }, 1000)
   } catch (err) {
-    errorMessage.value = err.message || t('mfa.errors.registerPasskeyFailed')
+    errorMessage.value = t(err.message || 'mfa.errors.registerPasskeyFailed')
   } finally {
     passkeyLoading.value = false
   }

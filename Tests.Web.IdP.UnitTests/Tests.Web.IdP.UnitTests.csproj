@@ -33,4 +33,10 @@
     <ProjectReference Include="..\Core.Application\Core.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\samples\TestClient\Services\OidcDemoService.cs" Link="Samples\Source\OidcDemoService.cs" />
+    <Compile Include="..\samples\TestClient\Options\OidcDemoOptions.cs" Link="Samples\Source\OidcDemoOptions.cs" />
+    <Compile Include="..\samples\TestClient\Models\DemoViewModels.cs" Link="Samples\Source\DemoViewModels.cs" />
+  </ItemGroup>
+
 </Project>

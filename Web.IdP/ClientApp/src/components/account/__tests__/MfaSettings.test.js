@@ -6,9 +6,15 @@ import enMfa from '../../../i18n/locales/en-US/mfa.json';
 import zhMfa from '../../../i18n/locales/zh-TW/mfa.json';
 
 // Mock vue-i18n
+const i18nState = vi.hoisted(() => ({ locale: 'en-US' }));
 vi.mock('vue-i18n', () => ({
     useI18n: () => ({
-        t: (key, params) => params?.seconds === undefined ? key : `${key}:${params.seconds}`
+        t: (key, params) => {
+            if (key === 'mfa.errors.freshAuthenticationRequired') {
+                return (i18nState.locale === 'zh-TW' ? zhMfa : enMfa).errors.freshAuthenticationRequired;
+            }
+            return params?.seconds === undefined ? key : `${key}:${params.seconds}`;
+        }
     })
 }));
 
@@ -74,6 +80,7 @@ describe('MfaSettings.vue', () => {
     }
 
     beforeEach(() => {
+        i18nState.locale = 'en-US';
         vi.useRealTimers();
         vi.clearAllMocks();
         // Default mock for profile
@@ -144,6 +151,20 @@ describe('MfaSettings.vue', () => {
         await flushPromises();
 
         expect(mockRegisterPasskey).toHaveBeenCalled();
+    });
+
+    it.each(['en-US', 'zh-TW'])('translates fresh authentication errors in %s', async (locale) => {
+        i18nState.locale = locale;
+        mockRegisterPasskey.mockRejectedValueOnce(new Error('mfa.errors.freshAuthenticationRequired'));
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+
+        await wrapper.vm.registerNewPasskey();
+        await flushPromises();
+
+        const message = (locale === 'zh-TW' ? zhMfa : enMfa).errors.freshAuthenticationRequired;
+        expect(wrapper.find('.passkey-section .error-message').text()).toBe(message);
+        expect(message).not.toContain('freshAuthenticationRequired');
     });
 
     it('shows delete confirmation modal when delete button clicked', async () => {

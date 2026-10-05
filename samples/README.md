@@ -8,7 +8,7 @@ This directory contains sample applications that demonstrate how to integrate wi
 
 ## Available Samples
 
-1.  **TestClient**: A standard OIDC web application demonstrating the Authorization Code Flow with PKCE.
+1.  **[TestClient](TestClient/README.md)**: A Web demo center for Authorization Code + PKCE, SSO, Passkey/MFA, fresh authentication, consent/error scenarios, claims/token status, UserInfo, refresh rotation and logout. Account links use the IdP's existing security pages; other console samples have launch instructions on the demo home page.
 2.  **TestClient.M2M**: A console application demonstrating the Client Credentials flow for machine-to-machine communication.
 3.  **TestClient.Device**: A console application demonstrating the Device Authorization Flow (for input-constrained devices).
 4.  **TestClient.Impersonation**: A development-only system client demonstrating the administrator cookie impersonation and revert APIs.

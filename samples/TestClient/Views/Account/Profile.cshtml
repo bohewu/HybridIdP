@@ -1,86 +1,14 @@
+@model ProfileViewModel
 @{
-    ViewData["Title"] = "User Profile";
+    ViewData["Title"] = "Session";
+    var hasMfa = Model.AuthenticationMethods.Contains("mfa");
+    var hasRefresh = Model.Tokens.Any(token => token.Name == "refresh_token" && token.Present);
 }
-
-<div class="container mt-5">
-    <h2>User Profile</h2>
-    
-    <div class="card mt-3">
-        <div class="card-header">
-            <h5>User Claims</h5>
-        </div>
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Claim Type</th>
-                        <th>Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var claim in User.Claims)
-                    {
-                        <tr>
-                            <td>@claim.Type</td>
-                            <td>@claim.Value</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+<div class="section-heading mt-4"><div><div class="demo-eyebrow">Authenticated session</div><h1>Your session, explained.</h1><p class="text-break">@Model.DisplayName</p></div><span class="status-chip @(hasMfa ? "status-good" : "")">@(hasMfa ? "MFA verified" : "MFA not performed")</span></div>
+<div class="row g-4">
+    <div class="col-lg-8">
+        <section class="demo-panel mb-4" aria-labelledby="token-title"><h2 id="token-title">Token status</h2><p>Token values stay in the protected client session. This page displays their presence and expiry.</p><div class="row g-3">@foreach (var token in Model.Tokens) { <div class="col-md-4"><div class="token-status"><code>@token.Name</code><strong class="d-block mt-2">@(token.Present ? "Available" : "Not issued")</strong></div></div> }</div><dl class="demo-facts mt-4"><dt>Access token expires</dt><dd>@(Model.AccessTokenExpiresAt?.ToString("yyyy-MM-dd HH:mm:ss 'UTC'") ?? "Not reported")</dd><dt>Successful refreshes</dt><dd data-testid="refresh-count">@Model.RefreshCount</dd><dt>Authenticated at</dt><dd>@(Model.AuthenticatedAt?.ToString("yyyy-MM-dd HH:mm:ss 'UTC'") ?? "Not reported")</dd><dt>Authentication methods</dt><dd>@(Model.AuthenticationMethods.Count > 0 ? string.Join(", ", Model.AuthenticationMethods) : "Not reported")</dd></dl></section>
+        <section class="demo-panel" aria-labelledby="claims-title"><h2 id="claims-title">Validated identity claims</h2><p>These claims came from the validated sign-in identity. API responses can differ according to granted scopes.</p><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th scope="col">Claim</th><th scope="col">Value</th></tr></thead><tbody>@foreach (var claim in Model.Claims.OrderBy(claim => claim.Type)) { <tr><th scope="row"><code>@claim.Type</code></th><td class="text-break">@claim.Value</td></tr> }</tbody></table></div></section>
     </div>
-
-    @if (ViewData["AccessToken"] != null)
-    {
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5>Access Token</h5>
-            </div>
-            <div class="card-body">
-                <textarea id="accessToken" class="form-control" rows="5" readonly>@ViewData["AccessToken"]</textarea>
-                <button class="btn btn-sm btn-secondary mt-2" onclick="copyToClipboard('accessToken')">Copy</button>
-            </div>
-        </div>
-    }
-
-    @if (ViewData["RefreshToken"] != null)
-    {
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5>Refresh Token</h5>
-            </div>
-            <div class="card-body">
-                <textarea id="refreshToken" class="form-control" rows="3" readonly>@ViewData["RefreshToken"]</textarea>
-                <button class="btn btn-sm btn-secondary mt-2" onclick="copyToClipboard('refreshToken')">Copy</button>
-            </div>
-        </div>
-    }
-
-    @if (ViewData["IdToken"] != null)
-    {
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5>ID Token</h5>
-            </div>
-            <div class="card-body">
-                <textarea id="idToken" class="form-control" rows="5" readonly>@ViewData["IdToken"]</textarea>
-                <button class="btn btn-sm btn-secondary mt-2" onclick="copyToClipboard('idToken')">Copy</button>
-            </div>
-        </div>
-    }
-
-    <div class="mt-4">
-        <a href="/Account/TestApiCall" class="btn btn-primary">Test API Call (Verify Session)</a>
-        <a href="/Account/RefreshUserInfo" class="btn btn-outline-primary">Refresh Token + UserInfo</a>
-        <a href="/Account/Logout" class="btn btn-danger">Logout</a>
-    </div>
+    <aside class="col-lg-4"><div class="demo-panel mb-4"><h2>Continue the demo</h2><div class="d-grid gap-3"><a class="btn btn-primary" asp-action="TestApiCall">Call UserInfo</a><form asp-action="RefreshUserInfo" method="post"><button class="btn btn-outline-primary w-100" type="submit" disabled="@(!hasRefresh)">Refresh tokens + UserInfo</button></form><a class="btn btn-outline-secondary" asp-action="LoginMfa">Request MFA</a><a class="btn btn-outline-secondary" asp-action="Login" asp-route-scenario="fresh">Authenticate again</a><a class="btn btn-outline-secondary" href="@($"{Model.Authority.TrimEnd('/')}/Account/Profile")" target="_blank" rel="noopener">Manage IdP account</a><form asp-action="Logout" method="post"><button class="btn btn-outline-danger w-100" type="submit">End session</button></form></div></div><div class="demo-panel"><h2>Client request</h2><p><code>@Model.ClientId</code></p><p class="text-break">@Model.Authority</p><div class="d-flex flex-wrap gap-2">@foreach (var scope in Model.RequestedScopes) { <code class="scope-chip">@scope</code> }</div><p class="small text-secondary mt-3 mb-0">Requested scopes are shown here. Inspect UserInfo to see the data actually returned.</p></div></aside>
 </div>
-
-<script>
-function copyToClipboard(elementId) {
-    const textarea = document.getElementById(elementId) || document.querySelector('textarea');
-    textarea.select();
-    document.execCommand('copy');
-    alert('Token copied to clipboard!');
-}
-</script>
