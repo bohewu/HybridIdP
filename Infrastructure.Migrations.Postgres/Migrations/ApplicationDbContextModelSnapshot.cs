@@ -410,6 +410,9 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ApplicationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("ClientId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -423,8 +426,10 @@ namespace Infrastructure.Migrations.Postgres.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ClientId")
+                    b.HasIndex("ApplicationId")
                         .IsUnique();
+
+                    b.HasIndex("ClientId");
 
                     b.HasIndex("CreatedByPersonId");
 
@@ -2122,6 +2127,10 @@ namespace Infrastructure.Migrations.Postgres.Migrations
 
                     b.Property<string>("DeviceName")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("DisabledAtUtc")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("LastUsedAt")
                         .HasColumnType("timestamp with time zone");

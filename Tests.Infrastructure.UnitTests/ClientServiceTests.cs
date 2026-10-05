@@ -773,7 +773,7 @@ public class ClientServiceTests
 
         var ownerships = new List<ClientOwnership>
         {
-            new() { ClientId = clientId, CreatedByPersonId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow },
+            new() { ApplicationId = clientKey, ClientId = clientId, CreatedByPersonId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow },
             new() { ClientId = "other-client", CreatedByPersonId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow }
         };
 

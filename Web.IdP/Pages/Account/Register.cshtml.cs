@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using System.Security.Claims;
 using Core.Application;
 using Core.Domain;
 using Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Options; // Added
@@ -104,7 +106,7 @@ public class RegisterModel : PageModel
         
         var hasSiteKey = !string.IsNullOrWhiteSpace(TurnstileSiteKey);
         
-        TurnstileEnabled = isEnabledFlag && hasSiteKey && hasSecretKey && _turnstileStateService.IsAvailable;
+        TurnstileEnabled = isEnabledFlag;
     }
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
@@ -234,7 +236,26 @@ public class RegisterModel : PageModel
                 {
                     return RedirectToPage("./Login");
                 }
-                await _signInManager.SignInAsync(user, isPersistent: false);
+                AuthenticationMethodSession.Replace(HttpContext.Session, AuthConstants.Amr.Password);
+                if (CurrentPolicy?.EnforceMandatoryMfaEnrollment == true)
+                {
+                    var now = DateTime.UtcNow;
+                    user.MfaRequirementNotifiedAt ??= now;
+                    if (!(await _userManager.UpdateAsync(user)).Succeeded)
+                    {
+                        return RedirectToPage("./Login");
+                    }
+                    if (now >= user.MfaRequirementNotifiedAt.Value.AddDays(CurrentPolicy.MfaEnforcementGracePeriodDays))
+                    {
+                        var identity = new ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
+                        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+                        identity.AddClaim(MfaEnrollmentSession.BeginInitial(HttpContext.Session, user.Id));
+                        await HttpContext.SignInAsync(IdentityConstants.TwoFactorUserIdScheme, new ClaimsPrincipal(identity));
+                        return RedirectToPage("./MfaSetup", new { returnUrl });
+                    }
+                }
+                await _signInManager.SignInWithClaimsAsync(user, isPersistent: false,
+                    AuthenticationMethodSession.CreateClaims(HttpContext.Session));
                 
                 return this.SafeRedirect(returnUrl);
             }

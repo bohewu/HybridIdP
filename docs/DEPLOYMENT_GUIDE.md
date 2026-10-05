@@ -104,6 +104,26 @@ For Split-Host deployments, you need to configure the Nginx IP allowlist:
 
 ## Production Configuration Contract
 
+### Secret files and internal readiness
+
+The setup wizards write generated passwords only to `.env`. The Bash wizard uses
+owner-only secret files (0600) and certificate directories (0700). The Windows
+wizard restricts `.env`, overwrite backups, and certificate files to the current
+Windows owner, including existing files. Run the wizard under the deployment
+account. If the service runs under a different identity, grant that exact service
+identity read access explicitly; do not restore access for Everyone or Users.
+
+`/health` is a shallow liveness endpoint and performs no dependency queries.
+Dependency checks are at `/health/ready`, restricted to loopback or configured
+trusted proxy addresses, with at most two concurrent checks. Public Nginx routes
+reject this path. Use the internal container/gateway path for readiness checks.
+
+Both split-host Nginx compose modes forward two hops. Set `Proxy__KnownProxies`
+to the actual Host A address and the local gateway address/subnet in `.env`;
+the compose modes require this setting and use `Proxy__ForwardLimit=2`. Keep the
+trusted set limited to those proxies so rate limiting sees the originating
+client address. Verify the address chain in the deployed network before release.
+
 Use the setup scripts to create the operator-managed values in `deployment/.env`, or start from `.env.example` and supply the values through an approved secret-management process. Production compose does not provide a database-password fallback.
 
 All modes require non-empty `DATABASE_PROVIDER`, `ConnectionStrings__SqlServerConnection`, `ConnectionStrings__PostgreSqlConnection`, `ENCRYPTION_CERT_PASSWORD`, `SIGNING_CERT_PASSWORD`, `OpenIddict__Issuer`, and `PUBLIC_AUTHORITY`. `DATABASE_PROVIDER` selects the provider used by the IdP, but both database connection-string variables are required by the compose contract because both are passed into the container.

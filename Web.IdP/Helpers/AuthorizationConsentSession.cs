@@ -102,7 +102,7 @@ public static class AuthorizationConsentSession
             expectedFingerprint);
     }
 
-    private static string ComputeRequestFingerprint(OpenIddictRequest request)
+    internal static string ComputeRequestFingerprint(OpenIddictRequest request)
     {
         using var buffer = new MemoryStream();
         using (var writer = new Utf8JsonWriter(buffer))

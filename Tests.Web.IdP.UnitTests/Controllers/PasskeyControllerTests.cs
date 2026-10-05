@@ -29,6 +29,153 @@ namespace Tests.Web.IdP.UnitTests.Controllers;
 
 public class PasskeyControllerTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MakeCredentialOptions_ShouldAllowReplacementOnlyWhenExistingCredentialIsRetired(bool disabled)
+    {
+        var user = CreateEligibleUser("rebind-passkey-user");
+        ArrangeAuthenticatedUser(user);
+        ArrangeApplicationCookieUser(user);
+        _dbContext.UserCredentials.Add(new UserCredential
+        {
+            UserId = user.Id,
+            CredentialId = new byte[] { 1 },
+            PublicKey = new byte[] { 2 },
+            DisabledAtUtc = disabled ? DateTime.UtcNow : null
+        });
+        await _dbContext.SaveChangesAsync();
+        _securityPolicyServiceMock.Setup(s => s.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicy { EnablePasskey = true, MaxPasskeysPerUser = 1 });
+        _passkeyServiceMock.Setup(s => s.GetRegistrationOptionsAsync(user, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CredentialCreateOptions
+            {
+                Challenge = new byte[] { 1 },
+                Rp = new PublicKeyCredentialRpEntity("localhost", "HybridIdP"),
+                User = new Fido2User { Id = user.Id.ToByteArray(), Name = user.UserName, DisplayName = user.UserName },
+                PubKeyCredParams = new List<PubKeyCredParam>(),
+                AuthenticatorSelection = new AuthenticatorSelection()
+            });
+
+        var result = await _controller.MakeCredentialOptions(default);
+
+        if (disabled)
+        {
+            var options = Assert.IsType<CredentialCreateOptions>(Assert.IsType<OkObjectResult>(result).Value);
+            Assert.Equal(Fido2NetLib.Objects.UserVerificationRequirement.Required, options.AuthenticatorSelection.UserVerification);
+        }
+        else
+        {
+            Assert.IsType<BadRequestObjectResult>(result);
+            _passkeyServiceMock.Verify(s => s.GetRegistrationOptionsAsync(It.IsAny<ApplicationUser>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+        Assert.Single(_dbContext.UserCredentials);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task DeletePasskey_ShouldProtectLastActiveFactor_WhenRetiredCredentialRemains(int credentialId)
+    {
+        var user = CreateEligibleUser("last-active-passkey-user");
+        ArrangeAuthenticatedUser(user);
+        ArrangeApplicationCookieUser(user);
+        ((ClaimsIdentity)_controller.HttpContext.User.Identity!).AddClaim(new Claim("amr", "mfa"));
+        _passkeyServiceMock.Setup(s => s.GetUserPasskeysAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new UserCredentialDto { Id = 1 }]);
+        _dbContext.UserCredentials.AddRange(
+            new UserCredential { Id = 1, UserId = user.Id, CredentialId = new byte[] { 1 }, PublicKey = new byte[] { 2 } },
+            new UserCredential { Id = 2, UserId = user.Id, CredentialId = new byte[] { 3 }, PublicKey = new byte[] { 4 }, DisabledAtUtc = DateTime.UtcNow });
+        await _dbContext.SaveChangesAsync();
+        _securityPolicyServiceMock.Setup(s => s.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicy { EnablePasskey = true, EnforceMandatoryMfaEnrollment = true });
+        _passkeyServiceMock.Setup(s => s.DeletePasskeyAsync(user.Id, credentialId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var result = await _controller.DeletePasskey(credentialId, default);
+
+        if (credentialId == 1)
+        {
+            Assert.IsType<BadRequestObjectResult>(result);
+            _passkeyServiceMock.Verify(s => s.DeletePasskeyAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+        else
+        {
+            Assert.IsType<OkObjectResult>(result);
+            _passkeyServiceMock.Verify(s => s.DeletePasskeyAsync(user.Id, credentialId, It.IsAny<CancellationToken>()), Times.Once);
+        }
+    }
+
+    [Fact]
+    public async Task MakeCredential_ShouldRefreshVerifiedFirstEnrollmentForPasswordCookieAndAllowListing()
+    {
+        var user = CreateEligibleUser("first-passkey-cookie-user");
+        ArrangeAuthenticatedUser(user);
+        var cookie = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim("amr", "pwd")], IdentityConstants.ApplicationScheme));
+        var auth = new Mock<IAuthenticationService>();
+        auth.Setup(s => s.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
+            .ReturnsAsync(() => AuthenticateResult.Success(new AuthenticationTicket(cookie, IdentityConstants.ApplicationScheme)));
+        auth.Setup(s => s.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme))
+            .ReturnsAsync(AuthenticateResult.NoResult());
+        _controller.HttpContext.RequestServices = new ServiceCollection().AddSingleton(auth.Object).BuildServiceProvider();
+        _session.SetString("fido2.attestationOptions", "{}");
+        _passkeyServiceMock.Setup(s => s.RegisterCredentialsAsync(user, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback(() => _passkeyServiceMock.Setup(s => s.GetUserPasskeysAsync(user.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([new UserCredentialDto { Id = 1, DeviceName = "key" }]))
+            .ReturnsAsync((true, (string?)null, true));
+        _signInManagerMock.Setup(s => s.SignInWithClaimsAsync(user, false, It.IsAny<IEnumerable<Claim>>()))
+            .Callback<ApplicationUser, bool, IEnumerable<Claim>>((_, _, claims) =>
+            {
+                cookie = new ClaimsPrincipal(new ClaimsIdentity(
+                    new[] { new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()) }.Concat(claims), IdentityConstants.ApplicationScheme));
+            }).Returns(Task.CompletedTask);
+        Assert.IsType<OkObjectResult>(await _controller.MakeCredential(EmptyClientResponse(), default));
+        Assert.True(MfaEnrollmentSession.HasMfa(cookie));
+        Assert.IsType<OkObjectResult>(await _controller.ListPasskeys(default));
+    }
+
+    [Fact]
+    public async Task MakeCredential_ShouldDenyChallengeCookieBeforePersistingCredential()
+    {
+        var user = CreateEligibleUser("challenge-user");
+        ArrangeAuthenticatedUser(user);
+        ArrangeTwoFactorPartialAuthentication(user);
+        user.TwoFactorEnabled = true;
+        _session.SetString("fido2.attestationOptions", "{}");
+        var result = await _controller.MakeCredential(EmptyClientResponse(), default);
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
+        _passkeyServiceMock.Verify(s => s.RegisterCredentialsAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        VerifyNoSuccessfulSignIn();
+    }
+
+    [Fact]
+    public async Task PasskeyManagement_ShouldRejectExistingFactorChallengeForListDeleteAndOptions()
+    {
+        var user = CreateEligibleUser("challenge-user");
+        ArrangeAuthenticatedUser(user);
+        ArrangeTwoFactorPartialAuthentication(user);
+        user.EmailMfaEnabled = true;
+        Assert.Equal(403, Assert.IsType<ObjectResult>(await _controller.ListPasskeys(default)).StatusCode);
+        Assert.Equal(403, Assert.IsType<ObjectResult>(await _controller.DeletePasskey(1, default)).StatusCode);
+        Assert.Equal(403, Assert.IsType<ObjectResult>(await _controller.MakeCredentialOptions(default)).StatusCode);
+        _passkeyServiceMock.Verify(s => s.DeletePasskeyAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _passkeyServiceMock.Verify(s => s.GetRegistrationOptionsAsync(It.IsAny<ApplicationUser>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task MakeCredential_ShouldNotClaimMfaWithoutVerifiedRegistration()
+    {
+        var user = CreateEligibleUser("initial-user");
+        ArrangeAuthenticatedUser(user);
+        ArrangeTwoFactorPartialAuthentication(user);
+        _session.SetString("fido2.attestationOptions", "{}");
+        _passkeyServiceMock.Setup(s => s.RegisterCredentialsAsync(user, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, (string?)null, false));
+        Assert.IsType<BadRequestObjectResult>(await _controller.MakeCredential(EmptyClientResponse(), default));
+        Assert.False(MfaEnrollmentSession.HasInitial(_session, user.Id));
+        VerifyNoSuccessfulSignIn();
+    }
+
     private readonly Mock<IPasskeyService> _passkeyServiceMock;
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly Mock<SignInManager<ApplicationUser>> _signInManagerMock;
@@ -45,6 +192,7 @@ public class PasskeyControllerTests
     public PasskeyControllerTests()
     {
         _passkeyServiceMock = new Mock<IPasskeyService>();
+        _passkeyServiceMock.Setup(service => service.GetUserPasskeysAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         
         var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
         _userManagerMock = new Mock<UserManager<ApplicationUser>>(
@@ -98,6 +246,12 @@ public class PasskeyControllerTests
         _session = new MemorySession();
         var httpContext = new DefaultHttpContext();
         httpContext.Session = _session;
+        var authenticationService = new Mock<IAuthenticationService>();
+        authenticationService.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthenticateResult.NoResult());
+        httpContext.RequestServices = new ServiceCollection()
+            .AddSingleton(authenticationService.Object)
+            .BuildServiceProvider();
 
         _controller = new PasskeyController(
             _passkeyServiceMock.Object,
@@ -371,7 +525,7 @@ public class PasskeyControllerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, (string?)null));
+            .ReturnsAsync((true, (string?)null, true));
         _migrationIssuanceGuardMock
             .Setup(service => service.CanIssueAsync(user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -400,7 +554,7 @@ public class PasskeyControllerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, (string?)null));
+            .ReturnsAsync((true, (string?)null, true));
         _signInManagerMock
             .Setup(manager => manager.SignInWithClaimsAsync(
                 user,
@@ -481,7 +635,7 @@ public class PasskeyControllerTests
         ArrangeApplicationCookieUser(stepUpUser);
         _passkeyServiceMock
             .Setup(service => service.GetAssertionOptionsAsync(
-                stepUpUser.UserName,
+                stepUpUser.Id,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(AssertionOptions.FromJson(
                 "{\"challenge\":\"MTIz\",\"timeout\":60000,\"rpId\":\"localhost\",\"allowCredentials\":[],\"userVerification\":\"preferred\"}"));
@@ -492,11 +646,102 @@ public class PasskeyControllerTests
 
         Assert.IsType<OkObjectResult>(result);
         _passkeyServiceMock.Verify(service => service.GetAssertionOptionsAsync(
-            stepUpUser.UserName,
+            stepUpUser.Id,
             CancellationToken.None), Times.Once);
         _passkeyServiceMock.Verify(service => service.GetAssertionOptionsAsync(
-            "different-user",
+            It.Is<Guid?>(id => id != stepUpUser.Id),
             It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("known-user")]
+    [InlineData("unknown-user")]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task AssertionOptionsPost_AnonymousRequest_ShouldIgnoreSubmittedUsername(string? username)
+    {
+        _passkeyServiceMock.Setup(service => service.GetAssertionOptionsAsync(
+                It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AssertionOptions.FromJson("{\"challenge\":\"AQ\",\"allowCredentials\":[]}"));
+
+        var result = await _controller.AssertionOptionsPost(new LoginOptionsRequest(username), default);
+
+        Assert.IsType<OkObjectResult>(result);
+        _passkeyServiceMock.Verify(service => service.GetAssertionOptionsAsync(null, default), Times.Once);
+        Assert.DoesNotContain("fido2.assertionUserId", _session.Keys);
+    }
+
+    [Fact]
+    public async Task AssertionOptionsPost_PartialCookie_ShouldUseProtectedSubjectForHistoricalKeys()
+    {
+        var user = CreateEligibleUser("first-factor-user");
+        ArrangeTwoFactorPartialAuthentication(user);
+        _passkeyServiceMock.Setup(service => service.GetAssertionOptionsAsync(user.Id, default))
+            .ReturnsAsync(AssertionOptions.FromJson("{\"challenge\":\"AQ\",\"allowCredentials\":[]}"));
+
+        Assert.IsType<OkObjectResult>(await _controller.AssertionOptionsPost(new LoginOptionsRequest("other-user"), default));
+        _passkeyServiceMock.Verify(service => service.GetAssertionOptionsAsync(user.Id, default), Times.Once);
+        Assert.Equal(user.Id.ToString(), _session.GetString("fido2.assertionUserId"));
+    }
+
+    [Fact]
+    public async Task AssertionOptionsPost_UnrelatedBearer_ShouldNotResolveSubmittedOrClaimedAccount()
+    {
+        _controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "Bearer"));
+        _passkeyServiceMock.Setup(service => service.GetAssertionOptionsAsync(null, default))
+            .ReturnsAsync(AssertionOptions.FromJson("{\"challenge\":\"AQ\",\"allowCredentials\":[]}"));
+
+        Assert.IsType<OkObjectResult>(await _controller.AssertionOptionsPost(new LoginOptionsRequest("known-user"), default));
+        _passkeyServiceMock.Verify(service => service.GetAssertionOptionsAsync(null, default), Times.Once);
+        _userManagerMock.Verify(manager => manager.FindByNameAsync(It.IsAny<string>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.FindByIdAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task MakeAssertion_PartialCookieWithDifferentCredentialUser_ShouldDeny()
+    {
+        ArrangeTwoFactorPartialAuthentication(CreateEligibleUser("first-factor-user"));
+        ArrangeVerifiedAssertion(CreateEligibleUser("other-user"));
+        Assert.IsType<BadRequestObjectResult>(await _controller.MakeAssertion(EmptyClientResponse(), default));
+        VerifyNoSuccessfulSignIn();
+    }
+
+    [Fact]
+    public async Task MakeAssertion_PartialCookieWithMatchingCredentialUser_ShouldCompleteLogin()
+    {
+        var user = CreateEligibleUser("first-factor-user");
+        ArrangeTwoFactorPartialAuthentication(user);
+        ArrangeVerifiedAssertion(user);
+        Assert.IsType<OkObjectResult>(await _controller.MakeAssertion(EmptyClientResponse(), default));
+        _signInManagerMock.Verify(manager => manager.SignInWithClaimsAsync(user, false, It.IsAny<IEnumerable<Claim>>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task MakeAssertion_ProtectedOptionsAfterCookieExpires_ShouldDenyBeforeVerification()
+    {
+        var user = CreateEligibleUser("expired-first-factor");
+        ArrangeVerifiedAssertion(user);
+        _session.SetString("fido2.assertionUserId", user.Id.ToString());
+        Assert.IsType<BadRequestObjectResult>(await _controller.MakeAssertion(EmptyClientResponse(), default));
+        _passkeyServiceMock.Verify(service => service.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        VerifyNoSuccessfulSignIn();
+    }
+
+    [Theory]
+    [InlineData("mfa.errors.passkeyNotRegistered")]
+    [InlineData("Invalid assertion response")]
+    public async Task MakeAssertion_UnverifiedResponse_ShouldReturnUniformFailureAndConsumeOptions(string internalError)
+    {
+        _session.SetString("fido2.assertionOptions", "{\"challenge\":\"AQ\"}");
+        _passkeyServiceMock.Setup(service => service.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), default))
+            .ReturnsAsync((false, (ApplicationUser?)null, false, internalError));
+        var result = Assert.IsType<BadRequestObjectResult>(await _controller.MakeAssertion(EmptyClientResponse(), default));
+        Assert.Equal("Authentication failed", result.Value!.GetType().GetProperty("error")!.GetValue(result.Value));
+        Assert.DoesNotContain("fido2.assertionOptions", _session.Keys);
+        Assert.IsType<BadRequestObjectResult>(await _controller.MakeAssertion(EmptyClientResponse(), default));
+        _passkeyServiceMock.Verify(service => service.VerifyAssertionAsync(It.IsAny<string>(), It.IsAny<string>(), default), Times.Once);
+        VerifyNoSuccessfulSignIn();
     }
 
     [Fact]
@@ -537,10 +782,13 @@ public class PasskeyControllerTests
 
     private void ArrangeTwoFactorPartialAuthentication(ApplicationUser user)
     {
+        _userManagerMock.Setup(manager => manager.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
+            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), MfaEnrollmentSession.BeginInitial(_session, user.Id)],
             IdentityConstants.TwoFactorUserIdScheme));
         var authenticationService = new Mock<IAuthenticationService>();
+        authenticationService.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
+            .ReturnsAsync(AuthenticateResult.NoResult());
         authenticationService
             .Setup(service => service.AuthenticateAsync(
                 It.IsAny<HttpContext>(),

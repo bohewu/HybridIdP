@@ -68,7 +68,9 @@ public partial class MfaController : ControllerBase
         }
 
         await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-        MfaEnrollmentSession.Begin(HttpContext.Session);
+        var hasFactors = user.TwoFactorEnabled || user.EmailMfaEnabled ||
+            (await _passkeyService.GetUserPasskeysAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
+        MfaEnrollmentSession.Begin(HttpContext.Session, user.Id, hasFactors);
 
         var setupUrl = QueryHelpers.AddQueryString(
             "/Account/MfaSetup",
@@ -142,7 +144,7 @@ public partial class MfaController : ControllerBase
             return Unauthorized();
         }
 
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user.Id))
+        if (user.TwoFactorEnabled || !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct))
         {
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
@@ -176,7 +178,7 @@ public partial class MfaController : ControllerBase
             return Unauthorized();
         }
 
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user.Id))
+        if (user.TwoFactorEnabled || !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct))
         {
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }

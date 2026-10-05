@@ -78,8 +78,8 @@ MODE_REQUIRED=(
     "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD OpenIddict__Issuer PUBLIC_AUTHORITY"
     "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD OpenIddict__Issuer PUBLIC_AUTHORITY"
     "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD INTERNAL_IP PROXY_HOST_IP OpenIddict__Issuer PUBLIC_AUTHORITY"
-    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD INTERNAL_IP OpenIddict__Issuer PUBLIC_AUTHORITY"
-    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD INTERNAL_IP OpenIddict__Issuer PUBLIC_AUTHORITY"
+    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD INTERNAL_IP Proxy__KnownProxies OpenIddict__Issuer PUBLIC_AUTHORITY"
+    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD INTERNAL_IP Proxy__KnownProxies OpenIddict__Issuer PUBLIC_AUTHORITY"
 )
 MODE_VOLUMES=(
     "mssql-service:mssql-data postgres-service:postgres-data redis-service:redis-data"
@@ -119,7 +119,17 @@ create_wizard_fixture() {
         '    if ($AsSecureString) { return ConvertTo-SecureString $answer -AsPlainText -Force }' \
         '    return $answer' \
         '}' \
-        '& $SetupScript' >"$WIZARD_FIXTURE/run-wizard.ps1"
+        '& $SetupScript' \
+        'if ([System.IO.File]::ReadAllLines($InputFile)[0] -eq "n") { return }' \
+        '$fixtureRoot = Split-Path -Parent $SetupScript' \
+        '$owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value' \
+        '$secretFiles = @((Join-Path $fixtureRoot ".env")) + @((Get-ChildItem -LiteralPath $fixtureRoot -Filter ".env.backup.*" -Force).FullName) + @((Get-ChildItem -LiteralPath (Join-Path $fixtureRoot "certs") -File -Force).FullName)' \
+        'foreach ($secretFile in @($secretFiles | Where-Object { $_ })) {' \
+        '    $acl = Get-Acl -LiteralPath $secretFile' \
+        '    foreach ($rule in $acl.Access) {' \
+        '        if ($rule.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value -ne $owner) { throw "Secret file retained an unauthorized access rule." }' \
+        '    }' \
+        '}' >"$WIZARD_FIXTURE/run-wizard.ps1"
 }
 
 run_wizard() {
@@ -279,6 +289,7 @@ write_env() {
         "INTERNAL_IP=127.0.0.1"
         "PROXY_HOST_IP=127.0.0.2"
         "ALLOWED_PROXY_IPS=127.0.0.2"
+        "Proxy__KnownProxies=127.0.0.2;172.18.0.1"
         "OpenIddict__Issuer=https://idp.synthetic.invalid/"
         "PUBLIC_AUTHORITY=idp.synthetic.invalid"
     )
@@ -700,7 +711,7 @@ if [[ " ${READINESS_SCENARIO:-ready} " == *" early-exit "* ]] &&
 elif [[ " ${READINESS_SCENARIO:-ready} " == *" unhealthy "* ]] &&
      [[ " $* " == *" ps --format {{.Health}} idp-service "* ]]; then
     printf '%s\n' 'unhealthy'
-elif [[ " $* " == *" exec -T nginx-gateway wget -q -O /dev/null http://idp-service/health "* ]]; then
+elif [[ " $* " == *" exec -T nginx-gateway wget -q -O /dev/null http://idp-service/health/ready "* ]]; then
     if [[ "${READINESS_SCENARIO:-ready}" != "ready" ]]; then
         exit 1
     fi
@@ -870,7 +881,7 @@ run_deploy_readiness_case() {
     if (( status != expected_status )); then
         fail "deploy-readiness-$scenario" "exit-$status"
     elif [[ "$expected_status" == "0" ]]; then
-        if [[ $(grep -Fc 'exec -T nginx-gateway wget -q -O /dev/null http://idp-service/health' "$DOCKER_LOG") -ne 1 ]] ||
+        if [[ $(grep -Fc 'exec -T nginx-gateway wget -q -O /dev/null http://idp-service/health/ready' "$DOCKER_LOG") -ne 1 ]] ||
            [[ -s "$CURL_LOG" ]]; then
             fail "deploy-readiness-success" "gateway-health-surface"
         fi
@@ -905,7 +916,7 @@ run_internal_readiness_case() {
     if (( status != 0 )); then
         fail "deploy-readiness-internal" "exit-$status"
     elif [[ $(wc -l <"$CURL_LOG") -ne 1 ]] ||
-         ! grep -Fq 'http://127.0.0.1:8080/health' "$CURL_LOG" ||
+         ! grep -Fq 'http://127.0.0.1:8080/health/ready' "$CURL_LOG" ||
          grep -Fq 'exec -T nginx-gateway' "$DOCKER_LOG"; then
         fail "deploy-readiness-internal" "fallback-health-surface"
     fi
@@ -935,8 +946,8 @@ run_split_host_direct_readiness_case() {
     if (( status != 0 )); then
         fail "deploy-readiness-splithost" "exit-$status"
     elif [[ $(wc -l <"$CURL_LOG") -ne 1 ]] ||
-         ! grep -Fq "http://$selected_internal_ip:8080/health" "$CURL_LOG" ||
-         grep -Fq 'http://127.0.0.1:8080/health' "$CURL_LOG" ||
+         ! grep -Fq "http://$selected_internal_ip:8080/health/ready" "$CURL_LOG" ||
+         grep -Fq 'http://127.0.0.1:8080/health/ready' "$CURL_LOG" ||
          grep -Fq 'exec -T nginx-gateway' "$DOCKER_LOG"; then
         fail "deploy-readiness-splithost" "env-health-surface"
     fi

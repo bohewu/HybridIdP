@@ -270,6 +270,7 @@
   "EnterEmailCodeDescription": "請先將驗證碼寄送到您的電子郵件，再於下方輸入",
   "InvalidMfaCode": "驗證碼無效",
   "LoginWithPasskey": "使用 Passkey 登入",
+  "OtherVerificationMethods": "其他驗證方式",
   "ForgotPassword": "忘記密碼？",
   "NativeRecovery.Title": "重設密碼",
   "NativeRecovery.Description": "使用已驗證的復原信箱，復原符合條件的本地帳號。",

@@ -412,6 +412,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("ClientId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -425,8 +428,11 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ClientId")
-                        .IsUnique();
+                    b.HasIndex("ApplicationId")
+                        .IsUnique()
+                        .HasFilter("[ApplicationId] IS NOT NULL");
+
+                    b.HasIndex("ClientId");
 
                     b.HasIndex("CreatedByPersonId");
 
@@ -2125,6 +2131,10 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
 
                     b.Property<string>("DeviceName")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DisabledAtUtc")
+                        .IsConcurrencyToken()
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("LastUsedAt")
                         .HasColumnType("datetime2");

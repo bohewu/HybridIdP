@@ -727,7 +727,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.Entity<ClientOwnership>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.ClientId).IsUnique(); // One client can only have one owner
+            entity.HasIndex(e => e.ClientId);
+            entity.HasIndex(e => e.ApplicationId).IsUnique();
             entity.Property(e => e.ClientId).HasMaxLength(200).IsRequired();
             entity.Property(e => e.CreatedByPersonId).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();

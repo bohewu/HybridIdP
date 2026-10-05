@@ -1,5 +1,7 @@
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Constants;
+using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -37,6 +39,7 @@ public class DashboardController : ControllerBase
     /// </summary>
     /// <returns>DashboardStatsDto</returns>
     [HttpGet("stats")]
+    [HasPermission(Permissions.Monitoring.Read)]
     public async Task<ActionResult<DashboardStatsDto>> GetStats()
     {
         var totalClients = 0;

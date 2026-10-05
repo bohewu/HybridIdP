@@ -1,4 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using Tests.Web.IdP.UnitTests.TestSupport;
 using Web.IdP.Helpers;
 
@@ -6,6 +11,95 @@ namespace Tests.Web.IdP.UnitTests.Helpers;
 
 public class MfaEnrollmentSessionTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IsAuthorizedAsync_ShouldRequireVerifiedMfaForExistingFactor(bool userVerified)
+    {
+        var userId = Guid.NewGuid();
+        var principal = CreatePrincipal(userId);
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("amr", "hwk"));
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("amr", "user"));
+        if (userVerified) ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("amr", "mfa"));
+        var auth = new Mock<IAuthenticationService>();
+        auth.Setup(s => s.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
+            .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(principal, IdentityConstants.ApplicationScheme)));
+        var context = new DefaultHttpContext { Session = new MemorySession(),
+            RequestServices = new ServiceCollection().AddSingleton(auth.Object).BuildServiceProvider() };
+
+        Assert.Equal(userVerified, await MfaEnrollmentSession.IsAuthorizedAsync(context, userId,
+            hasExistingFactor: true, requireFreshProof: false));
+        MfaEnrollmentSession.Begin(context.Session, userId, requiresMfa: true);
+        Assert.Equal(userVerified, MfaEnrollmentSession.CompletePending(context.Session, principal));
+    }
+
+    [Fact]
+    public async Task IsAuthorizedAsync_ShouldBindInitialEnrollmentToPurposeUserExpiryAndConsumption()
+    {
+        var userId = Guid.NewGuid();
+        var session = new MemorySession();
+        var time = new MutableTimeProvider(DateTimeOffset.UtcNow);
+        var purpose = MfaEnrollmentSession.BeginInitial(session, userId, time);
+        var principal = CreatePrincipal(userId);
+        ((ClaimsIdentity)principal.Identity!).AddClaim(purpose);
+        var auth = new Mock<IAuthenticationService>();
+        auth.Setup(s => s.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
+            .ReturnsAsync(AuthenticateResult.NoResult());
+        auth.Setup(s => s.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme))
+            .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(principal, IdentityConstants.TwoFactorUserIdScheme)));
+        var context = new DefaultHttpContext { Session = session,
+            RequestServices = new ServiceCollection().AddSingleton(auth.Object).BuildServiceProvider() };
+
+        Assert.True(await MfaEnrollmentSession.IsAuthorizedAsync(context, userId, time));
+        Assert.False(await MfaEnrollmentSession.IsAuthorizedAsync(context, Guid.NewGuid(), time));
+        Assert.False(await MfaEnrollmentSession.IsAuthorizedAsync(context, userId, time, hasExistingFactor: true));
+        time.Advance(TimeSpan.FromMinutes(5));
+        Assert.False(await MfaEnrollmentSession.IsAuthorizedAsync(context, userId, time));
+        ((ClaimsIdentity)principal.Identity!).RemoveClaim(principal.FindFirst(MfaEnrollmentSession.InitialPurposeClaim)!);
+        ((ClaimsIdentity)principal.Identity!).AddClaim(MfaEnrollmentSession.BeginInitial(session, userId, time));
+        MfaEnrollmentSession.Consume(session);
+        Assert.False(await MfaEnrollmentSession.IsAuthorizedAsync(context, userId, time));
+    }
+
+    [Fact]
+    public void CompletePending_ShouldRequireIntendedUserAndCompletedMfa()
+    {
+        var session = new MemorySession();
+        var userId = Guid.NewGuid();
+        MfaEnrollmentSession.Begin(session, userId, requiresMfa: true);
+        Assert.False(MfaEnrollmentSession.CompletePending(session, CreatePrincipal(Guid.NewGuid())));
+        MfaEnrollmentSession.Begin(session, userId, requiresMfa: true);
+        Assert.False(MfaEnrollmentSession.CompletePending(session, CreatePrincipal(userId)));
+        var principal = CreatePrincipal(userId);
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("amr", "mfa"));
+        MfaEnrollmentSession.Begin(session, userId, requiresMfa: true);
+        Assert.True(MfaEnrollmentSession.CompletePending(session, principal));
+        Assert.True(MfaEnrollmentSession.HasFreshProof(session, userId));
+    }
+
+    [Fact]
+    public async Task IsAuthorizedAsync_ShouldRejectGenericFactorChallengeCookie()
+    {
+        var userId = Guid.NewGuid();
+        var principal = CreatePrincipal(userId);
+        var authentication = new Mock<IAuthenticationService>();
+        authentication.Setup(service => service.AuthenticateAsync(
+            It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme))
+            .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(
+                principal, IdentityConstants.TwoFactorUserIdScheme)));
+        authentication.Setup(service => service.AuthenticateAsync(
+            It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
+            .ReturnsAsync(AuthenticateResult.NoResult());
+        var context = new DefaultHttpContext
+        {
+            Session = new MemorySession(),
+            RequestServices = new ServiceCollection().AddSingleton(authentication.Object)
+                .BuildServiceProvider()
+        };
+
+        Assert.False(await MfaEnrollmentSession.IsAuthorizedAsync(context, userId));
+    }
+
     [Fact]
     public void CompletePending_BindsFreshProofToAuthenticatedUser()
     {
@@ -15,7 +109,7 @@ public class MfaEnrollmentSessionTests
             new DateTimeOffset(2026, 7, 30, 0, 0, 0, TimeSpan.Zero));
         var principal = CreatePrincipal(userId);
 
-        MfaEnrollmentSession.Begin(session, timeProvider);
+        MfaEnrollmentSession.Begin(session, userId, timeProvider: timeProvider);
 
         Assert.True(MfaEnrollmentSession.CompletePending(session, principal, timeProvider));
         Assert.True(MfaEnrollmentSession.HasFreshProof(session, userId, timeProvider));
@@ -26,12 +120,13 @@ public class MfaEnrollmentSessionTests
     public void HasPending_ReturnsTrueOnlyWhileReauthenticationAttemptIsActive()
     {
         var session = new MemorySession();
+        var userId = Guid.NewGuid();
         var timeProvider = new MutableTimeProvider(
             new DateTimeOffset(2026, 7, 30, 0, 0, 0, TimeSpan.Zero));
 
         Assert.False(MfaEnrollmentSession.HasPending(session, timeProvider));
 
-        MfaEnrollmentSession.Begin(session, timeProvider);
+        MfaEnrollmentSession.Begin(session, userId, timeProvider: timeProvider);
         Assert.True(MfaEnrollmentSession.HasPending(session, timeProvider));
 
         timeProvider.Advance(TimeSpan.FromMinutes(6));
@@ -46,7 +141,7 @@ public class MfaEnrollmentSessionTests
         var timeProvider = new MutableTimeProvider(
             new DateTimeOffset(2026, 7, 30, 0, 0, 0, TimeSpan.Zero));
 
-        MfaEnrollmentSession.Begin(session, timeProvider);
+        MfaEnrollmentSession.Begin(session, userId, timeProvider: timeProvider);
         timeProvider.Advance(TimeSpan.FromMinutes(6));
 
         Assert.False(
@@ -65,7 +160,7 @@ public class MfaEnrollmentSessionTests
         var timeProvider = new MutableTimeProvider(
             new DateTimeOffset(2026, 7, 30, 0, 0, 0, TimeSpan.Zero));
 
-        MfaEnrollmentSession.Begin(session, timeProvider);
+        MfaEnrollmentSession.Begin(session, userId, timeProvider: timeProvider);
         Assert.True(
             MfaEnrollmentSession.CompletePending(
                 session,
@@ -75,7 +170,7 @@ public class MfaEnrollmentSessionTests
         MfaEnrollmentSession.Consume(session);
         Assert.False(MfaEnrollmentSession.HasFreshProof(session, userId, timeProvider));
 
-        MfaEnrollmentSession.Begin(session, timeProvider);
+        MfaEnrollmentSession.Begin(session, userId, timeProvider: timeProvider);
         Assert.True(
             MfaEnrollmentSession.CompletePending(
                 session,

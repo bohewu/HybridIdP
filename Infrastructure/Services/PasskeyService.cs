@@ -47,9 +47,9 @@ public class PasskeyService : IPasskeyService
             Id = Encoding.UTF8.GetBytes(user.Id.ToString()) // Use user ID for proper identification
         };
 
-        // Get existing credentials to exclude
+        // Retired credentials do not prevent registering a new key on the same device.
         var existingCredentials = await _dbContext.UserCredentials
-            .Where(c => c.UserId == user.Id)
+            .Where(c => c.UserId == user.Id && c.DisabledAtUtc == null)
             .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
             .ToListAsync(ct);
 
@@ -74,7 +74,7 @@ public class PasskeyService : IPasskeyService
         return options;
     }
 
-    public async Task<(bool Success, string? Error)> RegisterCredentialsAsync(
+    public async Task<(bool Success, string? Error, bool UserVerified)> RegisterCredentialsAsync(
         ApplicationUser user, 
         string jsonResponse, 
         string originalOptionsJson, 
@@ -86,10 +86,14 @@ public class PasskeyService : IPasskeyService
             var attestationResponse = JsonSerializer.Deserialize<AuthenticatorAttestationRawResponse>(jsonResponse);
             if (attestationResponse == null)
             {
-                return (false, "Invalid attestation response");
+                return (false, "Invalid attestation response", false);
             }
             
             var options = CredentialCreateOptions.FromJson(originalOptionsJson);
+            if (!options.User.Id.AsSpan().SequenceEqual(Encoding.UTF8.GetBytes(user.Id.ToString())))
+            {
+                return (false, "Registration user mismatch", false);
+            }
             
             // 2. Verify with Fido2 using v4 API
             var makeCredentialParams = new MakeNewCredentialParams
@@ -140,33 +144,28 @@ public class PasskeyService : IPasskeyService
             await _dbContext.SaveChangesAsync(ct);
             
             _logger.LogInformation("Passkey registered successfully for user {UserId}", user.Id);
-            return (true, null);
+            var userVerified = AuthenticatorAttestationResponse.Parse(attestationResponse)
+                .AttestationObject.AuthData.UserVerified;
+            return (true, null, userVerified);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to register passkey for user {UserId}", user.Id);
-            return (false, "Registration failed");
+            return (false, "Registration failed", false);
         }
     }
 
-    public async Task<AssertionOptions> GetAssertionOptionsAsync(string? username, CancellationToken ct = default)
+    public async Task<AssertionOptions> GetAssertionOptionsAsync(Guid? authenticatedUserId, CancellationToken ct = default)
     {
         var allowedCredentials = new List<PublicKeyCredentialDescriptor>();
         
-        // If username is provided, get credentials for that user
-        if (!string.IsNullOrEmpty(username))
+        // Only a server-authenticated subject may receive account-specific descriptors.
+        if (authenticatedUserId.HasValue)
         {
-            var user = await _userManager.FindByNameAsync(username);
-            if (user != null)
-            {
-                allowedCredentials = await _dbContext.UserCredentials
-                    .Where(c => c.UserId == user.Id)
-                    .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
-                    .ToListAsync(ct);
-                
-                // Removed early failure to follow WebAuthn standards and support system tests.
-                // UI will handle the case where no credentials are returned.
-            }
+            allowedCredentials = await _dbContext.UserCredentials
+                .Where(c => c.UserId == authenticatedUserId.Value && c.DisabledAtUtc == null)
+                .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
+                .ToListAsync(ct);
         }
         
         // Fido2 v4 GetAssertionOptions 
@@ -205,7 +204,7 @@ public class PasskeyService : IPasskeyService
             var credential = await _dbContext.UserCredentials
                 .Include(c => c.User)
                     .ThenInclude(u => u.Person) // Important for Person.Status check
-                .FirstOrDefaultAsync(c => c.CredentialId == credentialIdBytes, ct);
+                .FirstOrDefaultAsync(c => c.CredentialId == credentialIdBytes && c.DisabledAtUtc == null, ct);
             
             if (credential == null)
             {
@@ -253,7 +252,7 @@ public class PasskeyService : IPasskeyService
     public async Task<List<UserCredentialDto>> GetUserPasskeysAsync(Guid userId, CancellationToken ct = default)
     {
         var credentials = await _dbContext.UserCredentials
-            .Where(c => c.UserId == userId)
+            .Where(c => c.UserId == userId && c.DisabledAtUtc == null)
             .OrderByDescending(c => c.RegDate)
             .Select(c => new UserCredentialDto
             {

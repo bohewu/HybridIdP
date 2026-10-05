@@ -10,13 +10,13 @@ public interface IPasskeyService
 {
     Task<CredentialCreateOptions> GetRegistrationOptionsAsync(ApplicationUser user, CancellationToken ct = default);
     
-    Task<(bool Success, string? Error)> RegisterCredentialsAsync(
+    Task<(bool Success, string? Error, bool UserVerified)> RegisterCredentialsAsync(
         ApplicationUser user, 
         string jsonResponse, 
         string originalOptionsJson, 
         CancellationToken ct = default);
         
-    Task<AssertionOptions> GetAssertionOptionsAsync(string? username, CancellationToken ct = default);
+    Task<AssertionOptions> GetAssertionOptionsAsync(Guid? authenticatedUserId, CancellationToken ct = default);
     
     Task<(bool Success, ApplicationUser? User, bool UserVerified, string? Error)> VerifyAssertionAsync(
         string jsonResponse, 

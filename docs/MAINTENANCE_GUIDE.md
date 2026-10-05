@@ -30,6 +30,13 @@
 
 ### 使用 backup.sh
 
+The backup script restricts the backup directory and staging directories to
+0700, and archive/secret files to 0600, including an existing backup directory.
+An unsuccessful run removes its own staging directory and partial archive.
+The timestamped `.tar.gz` layout remains compatible with the restore steps below.
+Extract into a private directory and retain owner-only permissions on `.env`
+and certificates; explicitly grant read access only to the deployment identity.
+
 ```bash
 cd deployment
 chmod +x backup.sh

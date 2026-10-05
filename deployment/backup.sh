@@ -6,12 +6,12 @@
 # Example: ./backup.sh /backups/hybrididp
 
 set -e
+umask 077
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_BASE="${1:-/backups/hybrididp}"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_DIR="${BACKUP_BASE}/${TIMESTAMP}"
 RETENTION_DAYS=30
 
 # Colors for output
@@ -25,7 +25,28 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Create backup directory
-mkdir -p "${BACKUP_DIR}"
+mkdir -p -- "${BACKUP_BASE}"
+BACKUP_BASE="$(cd -- "$BACKUP_BASE" && pwd -P)"
+chmod 700 -- "$BACKUP_BASE"
+BACKUP_DIR="${BACKUP_BASE}/${TIMESTAMP}"
+ARCHIVE_NAME="hybrididp_backup_${TIMESTAMP}.tar.gz"
+ARCHIVE_PATH="${BACKUP_BASE}/${ARCHIVE_NAME}"
+if [ -e "$ARCHIVE_PATH" ]; then
+    log_error "Backup archive already exists."
+    exit 1
+fi
+mkdir -m 700 -- "$BACKUP_DIR"
+backup_completed=false
+cleanup_backup() {
+    # These exact paths belong to this invocation, under the resolved backup base.
+    if [ "$BACKUP_DIR" = "$BACKUP_BASE/$TIMESTAMP" ] && [[ "$TIMESTAMP" =~ ^[0-9]{8}_[0-9]{6}$ ]]; then
+        rm -rf -- "$BACKUP_DIR"
+        if [ "$backup_completed" != true ]; then
+            rm -f -- "$ARCHIVE_PATH"
+        fi
+    fi
+}
+trap cleanup_backup EXIT
 log_info "Backup directory: ${BACKUP_DIR}"
 
 # 1. Backup certificates (CRITICAL)
@@ -70,15 +91,18 @@ done
 
 # 5. Create compressed archive
 log_info "Creating compressed archive..."
-ARCHIVE_NAME="hybrididp_backup_${TIMESTAMP}.tar.gz"
+find "$BACKUP_DIR" -type d -exec chmod 700 {} +
+find "$BACKUP_DIR" -type f -exec chmod 600 {} +
 cd "${BACKUP_BASE}"
-tar -czf "${ARCHIVE_NAME}" "${TIMESTAMP}"
-rm -rf "${TIMESTAMP}"
+tar -czf "${ARCHIVE_PATH}" "${TIMESTAMP}"
+chmod 600 -- "$ARCHIVE_PATH"
+backup_completed=true
+cleanup_backup
 log_info "  ✓ Archive created: ${BACKUP_BASE}/${ARCHIVE_NAME}"
 
 # 6. Cleanup old backups
 log_info "Cleaning up old backups (older than ${RETENTION_DAYS} days)..."
-find "${BACKUP_BASE}" -name "hybrididp_backup_*.tar.gz" -mtime +${RETENTION_DAYS} -delete 2>/dev/null || true
+find "${BACKUP_BASE}" -maxdepth 1 -type f -name "hybrididp_backup_*.tar.gz" -mtime +${RETENTION_DAYS} -delete 2>/dev/null || true
 log_info "  ✓ Cleanup complete"
 
 # 7. Summary

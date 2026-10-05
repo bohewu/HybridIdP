@@ -108,7 +108,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
                     .AddDays(policy.MfaEnforcementGracePeriodDays);
                 if (now >= enforcementTime)
                 {
-                    await IssuePartialSignInAsync(httpContext, user);
+                    await IssuePartialSignInAsync(httpContext, user, initialEnrollment: true);
                     return ExternalSignInCompletionResult.MfaEnrollmentRequired();
                 }
             }
@@ -126,10 +126,14 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         return ExternalSignInCompletionResult.Succeeded();
     }
 
-    private static Task IssuePartialSignInAsync(HttpContext httpContext, ApplicationUser user)
+    private static Task IssuePartialSignInAsync(HttpContext httpContext, ApplicationUser user, bool initialEnrollment = false)
     {
         var identity = new ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
         identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+        if (initialEnrollment)
+        {
+            identity.AddClaim(MfaEnrollmentSession.BeginInitial(httpContext.Session, user.Id));
+        }
 
         return httpContext.SignInAsync(
             IdentityConstants.TwoFactorUserIdScheme,

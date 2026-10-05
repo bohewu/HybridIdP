@@ -47,6 +47,7 @@ public class UserManagementService : IUserManagementService
 
         // Get all user IDs that have passkeys (for HasPasskey flag)
         var usersWithPasskeys = await _context.UserCredentials
+            .Where(c => c.DisabledAtUtc == null)
             .Select(c => c.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);

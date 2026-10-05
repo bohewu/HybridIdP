@@ -57,7 +57,8 @@ services:
       - Redis__Enabled=${Redis__Enabled:-true}
       # Trust the local nginx-gateway
       - Proxy__Enabled=true
-      - Proxy__KnownProxies=172.16.0.0/12;192.168.0.0/16;10.0.0.0/8
+      - Proxy__KnownProxies=${Proxy__KnownProxies:?Configure the trusted Host A and local gateway addresses}
+      - Proxy__ForwardLimit=2
       - Certificates__EncryptionCertificatePath=/app/certs/encryption.pfx
       - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD:?ENCRYPTION_CERT_PASSWORD is required}
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx

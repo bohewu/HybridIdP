@@ -50,7 +50,7 @@ public sealed class RecoveryReauthenticationSessionTests
         if (scenario == "mfaWithoutPrimary") RecoveryReauthenticationSession.MarkFullCompletion(f.Http, f.User.Id);
         if (scenario is "wrongAccount" or "stamp" or "passwordOnly") RecoveryReauthenticationSession.MarkFullCompletion(f.Http, f.User.Id, hardware: true);
         if (scenario == "stamp") { f.User.SecurityStamp = "changed"; await f.Db.SaveChangesAsync(); }
-        if (scenario == "enrollment") { MfaEnrollmentSession.Begin(f.Http.Session); MfaEnrollmentSession.CompletePending(f.Http.Session, Principal(f.User.Id)); }
+        if (scenario == "enrollment") { MfaEnrollmentSession.Begin(f.Http.Session, f.User.Id); MfaEnrollmentSession.CompletePending(f.Http.Session, Principal(f.User.Id)); }
         await RecoveryReauthenticationSession.CompleteAsync(f.Http,
             Principal(scenario == "wrongAccount" ? Guid.NewGuid() : f.User.Id, scenario != "passwordOnly"));
         Assert.Empty(await f.Db.RecoveryStepUpGrants.ToListAsync());

@@ -25,11 +25,79 @@ using OpenIddict.Server.AspNetCore;
 using System.Threading;
 using System.Collections.Immutable;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Tests.Application.UnitTests
 {
     public class AuthorizationServiceTests
     {
+        [Theory]
+        [InlineData("login", null)]
+        [InlineData(null, 0L)]
+        public async Task AnonymousAuthorize_ShouldBeginCeremonyBeforeInitialForcedLogin(string? prompt, long? maxAge)
+        {
+            var session = new Mock<ISession>();
+            var context = new DefaultHttpContext { Session = session.Object };
+            _mockHttpContextAccessor.Setup(accessor => accessor.HttpContext).Returns(context);
+            Assert.IsType<ChallengeResult>(await _authorizationService.HandleAuthorizeRequestAsync(null,
+                new OpenIddictRequest { ClientId = "client", Prompt = prompt, MaxAge = maxAge }, prompt));
+            session.Verify(value => value.Set("Authorization:FreshAuthentication", It.IsAny<byte[]>()), Times.Once());
+        }
+
+        [Theory]
+        [InlineData("login", null)]
+        [InlineData("login consent", null)]
+        [InlineData(null, 0L)]
+        [InlineData(null, 60L)]
+        [InlineData("none", 60L)]
+        public async Task HandleAuthorizeRequestAsync_ShouldRequireActualFreshAuthentication(string? prompt, long? maxAge)
+        {
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim("sub", Guid.NewGuid().ToString()),
+                new Claim("auth_time", DateTimeOffset.UtcNow.AddHours(-1).ToUnixTimeSeconds().ToString())
+            ], IdentityConstants.ApplicationScheme));
+            var authentication = new Mock<IAuthenticationService>();
+            authentication.Setup(a => a.SignOutAsync(It.IsAny<HttpContext>(), It.IsAny<string>(), It.IsAny<AuthenticationProperties>()))
+                .Returns(Task.CompletedTask);
+            var context = new DefaultHttpContext { Session = new Mock<ISession>().Object,
+                RequestServices = new Microsoft.Extensions.DependencyInjection.ServiceCollection()
+                    .AddSingleton(authentication.Object).BuildServiceProvider() };
+            _mockHttpContextAccessor.Setup(a => a.HttpContext).Returns(context);
+
+            var result = await _authorizationService.HandleAuthorizeRequestAsync(principal,
+                new OpenIddictRequest { ClientId = "client", Prompt = prompt, MaxAge = maxAge }, prompt);
+
+            if (prompt == "none")
+            {
+                Assert.Equal(OpenIddictConstants.Errors.LoginRequired, Assert.IsType<ForbidResult>(result)
+                    .Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+                authentication.Verify(a => a.SignOutAsync(It.IsAny<HttpContext>(), It.IsAny<string>(), It.IsAny<AuthenticationProperties>()), Times.Never());
+            }
+            else
+            {
+                Assert.IsType<ChallengeResult>(result);
+                authentication.Verify(a => a.SignOutAsync(context, IdentityConstants.ApplicationScheme, It.IsAny<AuthenticationProperties>()), Times.Once());
+            }
+        }
+
+        [Theory]
+        [InlineData(true, null, "pwd")]
+        [InlineData(true, null, "hwk")]
+        [InlineData(false, "mfa", "pwd")]
+        public async Task HandleAuthorizeSubmitAsync_ShouldRejectDirectConsentWithoutRequiredMfa(bool clientRequiresMfa, string? acr, string amr)
+        {
+            var client = new object();
+            _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>())).ReturnsAsync(client);
+            _mockApplicationManager.Setup(m => m.GetIdAsync(client, It.IsAny<CancellationToken>())).ReturnsAsync(Guid.NewGuid().ToString());
+            _mockApplicationManager.Setup(m => m.GetPropertiesAsync(client, It.IsAny<CancellationToken>())).ReturnsAsync(
+                ImmutableDictionary<string, JsonElement>.Empty.Add(AuthConstants.Properties.RequireMfa, JsonSerializer.SerializeToElement(clientRequiresMfa)));
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("amr", amr)], IdentityConstants.ApplicationScheme));
+            var result = await _authorizationService.HandleAuthorizeSubmitAsync(principal,
+                new OpenIddictRequest { ClientId = "test-client", AcrValues = acr }, "accept", []);
+            var denied = Assert.IsType<ForbidResult>(result);
+            Assert.Equal("unmet_authentication_requirements", denied.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+        }
+
     private readonly Mock<global::Web.IdP.Services.ICurrentUserLifecycleEligibility> _lifecycle = new();
 
         private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
@@ -72,6 +140,7 @@ namespace Tests.Application.UnitTests
             _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
             _mockClaimsEnricher = new Mock<IClaimsEnrichmentService>();
             _mockSecurityPolicyService = new Mock<ISecurityPolicyService>();
+            _mockSecurityPolicyService.Setup(s => s.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy());
             _mockPasskeyService = new Mock<IPasskeyService>();
             _mockSessionService = new Mock<ISessionService>();
             _mockPasskeyService
@@ -145,7 +214,10 @@ namespace Tests.Application.UnitTests
             var authorizationType = consentType == OpenIddictConstants.ConsentTypes.Explicit
                 ? OpenIddictConstants.AuthorizationTypes.AdHoc
                 : OpenIddictConstants.AuthorizationTypes.Permanent;
-            var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(OpenIddictConstants.Claims.Subject, user.Id.ToString())], "test"));
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim(OpenIddictConstants.Claims.Subject, user.Id.ToString()),
+                new Claim(OpenIddictConstants.Claims.AuthenticationTime, "1700000000")
+            ], "test"));
             _mockHttpContextAccessor.Setup(value => value.HttpContext).Returns(new DefaultHttpContext());
             _mockApplicationManager.Setup(value => value.FindByClientIdAsync("client", It.IsAny<CancellationToken>())).ReturnsAsync(application);
             _mockApplicationManager.Setup(value => value.GetIdAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(applicationId);
@@ -171,6 +243,9 @@ namespace Tests.Application.UnitTests
             {
                 var signIn = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
                 Assert.Equal("consent-authorization", signIn.Principal.GetAuthorizationId());
+                var authenticationTime = Assert.Single(signIn.Principal.FindAll(OpenIddictConstants.Claims.AuthenticationTime));
+                Assert.Equal("1700000000", authenticationTime.Value);
+                Assert.Equal(ClaimValueTypes.Integer64, authenticationTime.ValueType);
                 Assert.Equal(4, checksAtGrantCreation);
             }
             else
@@ -611,7 +686,8 @@ namespace Tests.Application.UnitTests
             var retainedSnapshot = JsonSerializer.Serialize(retainedSession);
             var principalClaims = new List<Claim>
             {
-                new(OpenIddictConstants.Claims.Subject, user.Id.ToString())
+                new(OpenIddictConstants.Claims.Subject, user.Id.ToString()),
+                new(OpenIddictConstants.Claims.AuthenticationTime, "1700000000")
             };
             if (claimedActiveRole is not null)
             {
@@ -688,6 +764,9 @@ namespace Tests.Application.UnitTests
             {
                 var signIn = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
                 Assert.Equal("auth-existing", signIn.Principal.GetAuthorizationId());
+                var authenticationTime = Assert.Single(signIn.Principal.FindAll(OpenIddictConstants.Claims.AuthenticationTime));
+                Assert.Equal("1700000000", authenticationTime.Value);
+                Assert.Equal(ClaimValueTypes.Integer64, authenticationTime.ValueType);
             }
             else
             {
@@ -773,7 +852,7 @@ namespace Tests.Application.UnitTests
                     It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()))
                 .Returns(ToAsyncEnumerable(authorization));
             _mockAuthorizationManager.Setup(m => m.GetScopesAsync(authorization, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(ImmutableArray.Create("openid"));
+                .ReturnsAsync(ImmutableArray.Create("openid", "profile", "email"));
             _mockAuthorizationManager.Setup(m => m.GetIdAsync(authorization, It.IsAny<CancellationToken>()))
                 .ReturnsAsync("auth-existing");
             _mockUserManager.Setup(m => m.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
@@ -805,7 +884,10 @@ namespace Tests.Application.UnitTests
 
             var result = await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null);
 
-            Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+            Assert.Equal(new[] { "openid" }, issued.GetScopes());
+            Assert.Null(issued.GetClaim(OpenIddictConstants.Claims.Name));
+            Assert.Null(issued.GetClaim(OpenIddictConstants.Claims.Email));
             _mockSessionService.Verify(service => service.EnsureCreatedAsync(
                 user.Id,
                 "auth-existing",
@@ -818,12 +900,12 @@ namespace Tests.Application.UnitTests
         }
 
         [Theory]
-        [InlineData(AuthConstants.Amr.Mfa)]
-        [InlineData(AuthConstants.Amr.HardwareKey)]
+        [InlineData(AuthConstants.Amr.Mfa, false)]
+        [InlineData(AuthConstants.Amr.HardwareKey, true)]
         public async Task HandleAuthorizeRequestAsync_WhenClientRequiresMfaAndPrincipalHasEvidence_DoesNotRedirect(
-            string amrValue)
+            string amrValue, bool requiresStepUp)
         {
-            var user = new ApplicationUser { Id = Guid.NewGuid() };
+            var user = new ApplicationUser { Id = Guid.NewGuid(), TwoFactorEnabled = true };
             SetupMockUsers(user);
 
             var principal = new ClaimsPrincipal(new ClaimsIdentity(
@@ -849,7 +931,8 @@ namespace Tests.Application.UnitTests
 
             var result = await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null);
 
-            Assert.IsType<ForbidResult>(result);
+            if (requiresStepUp) Assert.IsType<RedirectResult>(result);
+            else Assert.IsType<ForbidResult>(result);
         }
 
         private void SetupAuthorizationClient(object application, bool requireMfa)

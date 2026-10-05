@@ -45,7 +45,7 @@ public partial class TurnstileService : ITurnstileService
         if (!_stateService.IsAvailable)
         {
             LogTurnstileCircuitBreaker(_logger);
-            return true; // Bypass validation
+            return false;
         }
 
         var secretKey = await _settingsService.GetValueAsync<string?>(Core.Domain.Constants.SettingKeys.Turnstile.SecretKey);
@@ -116,7 +116,7 @@ public partial class TurnstileService : ITurnstileService
     [LoggerMessage(Level = LogLevel.Information, Message = "Turnstile is disabled via configuration. Skipping validation.")]
     static partial void LogTurnstileDisabled(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Turnstile is temporarily disabled due to connectivity issues (Circuit Breaker). Skipping validation.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Turnstile is unavailable due to connectivity issues. Rejecting validation while protection is enabled.")]
     static partial void LogTurnstileCircuitBreaker(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Turnstile SecretKey is not configured. Validation will fail.")]

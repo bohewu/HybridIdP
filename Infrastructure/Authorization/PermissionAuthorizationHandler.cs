@@ -13,38 +13,28 @@ namespace Infrastructure.Authorization;
 public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
 {
     private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly IAdministrativeAuthorizationBoundary _boundary;
 
-    public PermissionAuthorizationHandler(RoleManager<ApplicationRole> roleManager)
+    public PermissionAuthorizationHandler(RoleManager<ApplicationRole> roleManager, IAdministrativeAuthorizationBoundary boundary)
     {
         _roleManager = roleManager;
+        _boundary = boundary;
     }
 
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
-        // 1) Scopes for M2M/client-credentials principals.
-        var scopeClaim = context.User.FindFirst("scope");
-        if (scopeClaim != null && !string.IsNullOrWhiteSpace(scopeClaim.Value))
+        var authority = await _boundary.ResolveAsync();
+        if (authority == null || authority.Principal.Identity?.IsAuthenticated != true) return;
+        if (authority.IsBearer)
         {
-            var scopes = scopeClaim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (scopes.Contains(requirement.Permission, StringComparer.OrdinalIgnoreCase))
-            {
-                context.Succeed(requirement);
-                return;
-            }
+            if (authority.Permissions.Contains(requirement.Permission)) context.Succeed(requirement);
+            return;
         }
-
-        // 2) "scp" claims (Azure AD style).
-        var scpClaims = context.User.FindAll("scp");
-        if (scpClaims.Any(c => string.Equals(c.Value, requirement.Permission, StringComparison.OrdinalIgnoreCase)))
-        {
-             context.Succeed(requirement);
-             return;
-        }
-
+        var principal = authority.Principal;
         // 3) Direct permission claims for cookie-authenticated interactive users.
-        var permissionClaims = context.User.FindAll("permission");
+        var permissionClaims = principal.FindAll("permission");
         if (permissionClaims.Any(c => string.Equals(c.Value, requirement.Permission, StringComparison.OrdinalIgnoreCase)))
         {
             context.Succeed(requirement);
@@ -52,7 +42,7 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
         }
 
         // 4) Prefer active role when present.
-        var activeRoleName = context.User.Claims.FirstOrDefault(c => c.Type == "active_role")?.Value;
+        var activeRoleName = principal.Claims.FirstOrDefault(c => c.Type == "active_role")?.Value;
         if (!string.IsNullOrWhiteSpace(activeRoleName))
         {
             if (await RoleHasPermissionAsync(activeRoleName, requirement.Permission))
@@ -63,7 +53,7 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
         }
 
         // 5) Fallback for sessions without active_role: evaluate IdP roles only.
-        var roleNames = AuthorizationRoleClaimResolver.GetIdpRoleNames(context.User);
+        var roleNames = AuthorizationRoleClaimResolver.GetIdpRoleNames(principal);
 
         if (roleNames.Count == 0)
         {

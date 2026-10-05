@@ -127,7 +127,7 @@ public partial class LoginModel : PageModel
         
         var hasSiteKey = !string.IsNullOrWhiteSpace(TurnstileSiteKey);
         
-        TurnstileEnabled = globalTurnstileEnabled && clientTurnstileEnabled && hasSiteKey && hasSecretKey && _turnstileStateService.IsAvailable;
+        TurnstileEnabled = globalTurnstileEnabled && clientTurnstileEnabled;
     }
 
     private void ApplyForgotPasswordRouting(SecurityPolicy policy)
@@ -373,6 +373,7 @@ public partial class LoginModel : PageModel
                                     // Store user ID for 2FA setup access using partial authentication
                                     var identity = new System.Security.Claims.ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
                                     identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, result.User.Id.ToString()));
+                                    identity.AddClaim(MfaEnrollmentSession.BeginInitial(HttpContext.Session, result.User.Id));
                                     await HttpContext.SignInAsync(IdentityConstants.TwoFactorUserIdScheme, new System.Security.Claims.ClaimsPrincipal(identity));
 
                                     return RedirectToPage("./MfaSetup", new { returnUrl });
@@ -450,7 +451,7 @@ public partial class LoginModel : PageModel
                 ));
                 
                 
-                ModelState.AddModelError(string.Empty, _localizer["UserAccountLockedOut"]);
+                ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
                 return Page();
 
             case LoginStatus.UserInactive:
@@ -466,7 +467,7 @@ public partial class LoginModel : PageModel
                 ));
                 
                 
-                ModelState.AddModelError(string.Empty, _localizer["UserAccountDeactivated"]);
+                ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
                 return Page();
 
             case LoginStatus.PersonInactive:
@@ -482,7 +483,7 @@ public partial class LoginModel : PageModel
                 ));
                 
                 
-                ModelState.AddModelError(string.Empty, _localizer["PersonNotActive"]);
+                ModelState.AddModelError(string.Empty, _localizer["InvalidLoginAttempt"]);
                 return Page();
 
             case LoginStatus.InvalidCredentials:

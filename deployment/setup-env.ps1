@@ -17,6 +17,26 @@ param(
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
+function Protect-SecretPath {
+    param([Parameter(Mandatory)][string]$Path)
+    $item = Get-Item -LiteralPath $Path -Force
+    $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+    $acl = Get-Acl -LiteralPath $Path
+    if ($item.PSIsContainer) {
+        $inheritance = [System.Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit'
+    } else {
+        $inheritance = [System.Security.AccessControl.InheritanceFlags]::None
+    }
+    $acl.SetAccessRuleProtection($true, $false)
+    foreach ($rule in @($acl.Access)) {
+        [void]$acl.RemoveAccessRuleSpecific($rule)
+    }
+    $acl.SetOwner($owner)
+    $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new(
+        $owner, 'FullControl', $inheritance, 'None', 'Allow'))
+    [System.IO.FileSystemAclExtensions]::SetAccessControl($item, $acl)
+}
+
 # Colors for output
 function Write-Title { param($msg) Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 function Write-Info { param($msg) Write-Host "[INFO] $msg" -ForegroundColor Green }
@@ -164,6 +184,9 @@ if (Test-Path $envPath) {
         }
 
         $backupPath = "$envPath.backup.$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+        Protect-SecretPath -Path $envPath
+        New-Item -ItemType File -Path $backupPath -ErrorAction Stop | Out-Null
+        Protect-SecretPath -Path $backupPath
         Copy-Item $envPath $backupPath
         Write-Info "Backup created: $backupPath"
     }
@@ -210,7 +233,7 @@ if ($useExternalDb) {
         $externalDbPassword = Read-PromptWithDefault -Prompt "Database Password" -Default "" -Secret
         if ([string]::IsNullOrWhiteSpace($externalDbPassword)) {
             $externalDbPassword = New-SecurePassword -Length 24 -SqlSafe
-            Write-Info "Generated random password: $externalDbPassword"
+            Write-Info "Generated a random database password; it will be stored in .env."
         }
 
         Assert-ExternalConnectionPart -Name "SQL Server host" -Value $externalDbHost
@@ -225,7 +248,7 @@ if ($useExternalDb) {
         $externalDbPassword = Read-PromptWithDefault -Prompt "Database Password" -Default "" -Secret
         if ([string]::IsNullOrWhiteSpace($externalDbPassword)) {
             $externalDbPassword = New-SecurePassword -Length 24
-            Write-Info "Generated random password: $externalDbPassword"
+            Write-Info "Generated a random database password; it will be stored in .env."
         }
 
         Assert-ExternalConnectionPart -Name "PostgreSQL host" -Value $externalDbHost
@@ -469,7 +492,11 @@ RateLimiting__LoginWindowSeconds=60
 "@
 
 # Write the file
-$envContent | Set-Content -Path $envPath -Encoding UTF8 -NoNewline
+if (-not (Test-Path -LiteralPath $envPath)) {
+    New-Item -ItemType File -Path $envPath | Out-Null
+}
+Protect-SecretPath -Path $envPath
+$envContent | Set-Content -LiteralPath $envPath -Encoding UTF8 -NoNewline
 Write-Info ".env file created at: $envPath"
 
 Write-Title "Certificate Generation"
@@ -480,6 +507,10 @@ if (-not (Test-Path $certsDir)) {
 }
 
 # Check for existing certificates
+Protect-SecretPath -Path $certsDir
+Get-ChildItem -LiteralPath $certsDir -Recurse -Force | ForEach-Object {
+    Protect-SecretPath -Path $_.FullName
+}
 $encryptionPfx = Join-Path $certsDir "encryption.pfx"
 $signingPfx = Join-Path $certsDir "signing.pfx"
 

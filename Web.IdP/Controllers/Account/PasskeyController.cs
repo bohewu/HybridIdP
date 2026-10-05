@@ -27,6 +27,8 @@ public record LoginOptionsRequest(string? Username);
 [ApiController]
 public partial class PasskeyController : ControllerBase
 {
+    private const string AssertionOptionsSessionKey = "fido2.assertionOptions";
+    private const string AssertionUserSessionKey = "fido2.assertionUserId";
     private readonly IPasskeyService _passkeyService;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
@@ -73,6 +75,11 @@ public partial class PasskeyController : ControllerBase
             return Unauthorized();
         }
 
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+        {
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
+        }
+
         // 1. Get security policy
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         
@@ -101,7 +108,7 @@ public partial class PasskeyController : ControllerBase
         
         // 4. Count existing passkeys
         var existingCount = await _dbContext.UserCredentials
-            .CountAsync(c => c.UserId == user.Id, ct);
+            .CountAsync(c => c.UserId == user.Id && c.DisabledAtUtc == null, ct);
         
         if (existingCount >= policy.MaxPasskeysPerUser)
         {
@@ -112,6 +119,10 @@ public partial class PasskeyController : ControllerBase
         }
 
         var options = await _passkeyService.GetRegistrationOptionsAsync(user, ct);
+        if (!user.TwoFactorEnabled && !user.EmailMfaEnabled && existingCount == 0)
+        {
+            options.AuthenticatorSelection.UserVerification = Fido2NetLib.Objects.UserVerificationRequirement.Required;
+        }
 
         // Store options in session for verification
         HttpContext.Session.SetString("fido2.attestationOptions", options.ToJson());
@@ -131,6 +142,18 @@ public partial class PasskeyController : ControllerBase
             return Unauthorized();
         }
 
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+        {
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
+        }
+
+        var completesInitialEnrollment = !user.TwoFactorEnabled && !user.EmailMfaEnabled &&
+            (await _passkeyService.GetUserPasskeysAsync(user.Id, ct)).Count == 0;
+        if (completesInitialEnrollment && !await CanIssueFullCookieAsync(user, ct))
+        {
+            return BadRequest(new { success = false, error = "Authentication failed" });
+        }
+
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnablePasskey)
         {
@@ -145,6 +168,7 @@ public partial class PasskeyController : ControllerBase
         }
 
         var result = await _passkeyService.RegisterCredentialsAsync(user, attestationResponse.ToString(), jsonOptions, ct);
+        HttpContext.Session.Remove("fido2.attestationOptions");
 
         if (result.Success)
         {
@@ -157,11 +181,10 @@ public partial class PasskeyController : ControllerBase
                 Request.Headers["User-Agent"].FirstOrDefault(),
                 ct);
 
-            var partialAuthentication = await HttpContext.AuthenticateAsync(
-                IdentityConstants.TwoFactorUserIdScheme);
-            if (partialAuthentication.Succeeded)
+            if (completesInitialEnrollment)
             {
-                if (!await CanIssueFullCookieAsync(user, ct))
+                MfaEnrollmentSession.Consume(HttpContext.Session);
+                if (!result.UserVerified || !await CanIssueFullCookieAsync(user, ct))
                 {
                     return BadRequest(new { success = false, error = "Authentication failed" });
                 }
@@ -189,6 +212,8 @@ public partial class PasskeyController : ControllerBase
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null) return Unauthorized();
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
         
         var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, ct);
         return Ok(passkeys);
@@ -200,13 +225,17 @@ public partial class PasskeyController : ControllerBase
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null) return Unauthorized();
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
         
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (policy.EnforceMandatoryMfaEnrollment)
         {
             // Check if this (passkeys) is the last MFA factor
-            var existingCount = await _dbContext.UserCredentials.CountAsync(c => c.UserId == user.Id, ct);
-            if (existingCount == 1)
+            var existingCount = await _dbContext.UserCredentials
+                .CountAsync(c => c.UserId == user.Id && c.DisabledAtUtc == null, ct);
+            if (existingCount == 1 && await _dbContext.UserCredentials
+                .AnyAsync(c => c.UserId == user.Id && c.Id == id && c.DisabledAtUtc == null, ct))
             {
                 // Last passkey - check other factors
                 var otherFactors = 0;
@@ -255,30 +284,41 @@ public partial class PasskeyController : ControllerBase
     }
 
     [HttpPost("login-options")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> AssertionOptionsPost([FromBody] LoginOptionsRequest request, CancellationToken ct)
     {
+        HttpContext.Session.Remove(AssertionOptionsSessionKey);
+        HttpContext.Session.Remove(AssertionUserSessionKey);
         try
         {
-            var stepUpUser = await GetApplicationCookieUserAsync();
-            var username = stepUpUser?.UserName ?? request.Username;
-            var options = await _passkeyService.GetAssertionOptionsAsync(username, ct);
+            var authenticatedUser = await GetProtectedPasskeyUserAsync();
+            var options = await _passkeyService.GetAssertionOptionsAsync(authenticatedUser?.Id, ct);
             
-            HttpContext.Session.SetString("fido2.assertionOptions", options.ToJson());
+            HttpContext.Session.SetString(AssertionOptionsSessionKey, options.ToJson());
+            if (authenticatedUser != null)
+            {
+                HttpContext.Session.SetString(AssertionUserSessionKey, authenticatedUser.Id.ToString());
+            }
             
-            LogAssertionOptionsGenerated(username);
+            LogAssertionOptionsGenerated(authenticatedUser?.UserName);
             
             return Ok(options);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Failed to generate assertion options: {Message}", ex.Message);
-            return BadRequest(new { error = ex.Message });
+            _logger.LogWarning("Failed to generate assertion options ({ErrorType})", ex.GetType().Name);
+            return BadRequest(new { error = "Authentication failed" });
         }
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> MakeAssertion([FromBody] System.Text.Json.JsonElement clientResponse, CancellationToken ct)
     {
+        var jsonOptions = HttpContext.Session.GetString(AssertionOptionsSessionKey);
+        var boundUserId = HttpContext.Session.GetString(AssertionUserSessionKey);
+        HttpContext.Session.Remove(AssertionOptionsSessionKey);
+        HttpContext.Session.Remove(AssertionUserSessionKey);
         var policy = await _securityPolicyService.GetCurrentPolicyForPasskeyAuthenticationAsync(ct);
         if (!policy.EnablePasskey)
         {
@@ -286,13 +326,17 @@ public partial class PasskeyController : ControllerBase
             return StatusCode(403, new { error = "Passkey authentication is disabled" });
         }
 
-        var jsonOptions = HttpContext.Session.GetString("fido2.assertionOptions");
         if (string.IsNullOrEmpty(jsonOptions))
         {
             return BadRequest(new { success = false, error = "Session expired" });
         }
 
-        var stepUpUser = await GetApplicationCookieUserAsync();
+        var stepUpUser = await GetProtectedPasskeyUserAsync();
+        if (boundUserId != null &&
+            (!Guid.TryParse(boundUserId, out var expectedUserId) || stepUpUser?.Id != expectedUserId))
+        {
+            return BadRequest(new { success = false, error = "Authentication failed" });
+        }
         var result = await _passkeyService.VerifyAssertionAsync(clientResponse.ToString(), jsonOptions, ct);
 
         if (result.Success && result.User != null)
@@ -362,7 +406,27 @@ public partial class PasskeyController : ControllerBase
             return Ok(new { success = true, username = result.User.UserName });
         }
 
-        return BadRequest(new { success = false, error = result.Error });
+        return BadRequest(new { success = false, error = "Authentication failed" });
+    }
+
+    private async Task<ApplicationUser?> GetProtectedPasskeyUserAsync()
+    {
+        var user = await GetApplicationCookieUserAsync();
+        if (user != null)
+        {
+            return user;
+        }
+
+        var partial = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+        if (!partial.Succeeded || partial.Principal?.Identity?.IsAuthenticated != true)
+        {
+            return null;
+        }
+
+        var subject = partial.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(subject, out var userId)
+            ? await _userManager.FindByIdAsync(userId.ToString())
+            : null;
     }
 
     private async Task<ApplicationUser?> GetApplicationCookieUserAsync()

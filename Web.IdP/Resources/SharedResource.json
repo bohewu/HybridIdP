@@ -271,6 +271,7 @@
   "EnterEmailCodeDescription": "Send a verification code to your email, then enter it below",
   "InvalidMfaCode": "Invalid verification code",
   "LoginWithPasskey": "Sign in with a Passkey",
+  "OtherVerificationMethods": "Other verification methods",
   "ForgotPassword": "Forgot password?",
   "NativeRecovery.Title": "Reset your password",
   "NativeRecovery.Description": "Recover an eligible local account using its verified recovery email.",

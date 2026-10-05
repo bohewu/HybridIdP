@@ -340,6 +340,7 @@ public class ProfileManagementController : ControllerBase
         {
             return Unauthorized();
         }
+        Web.IdP.Helpers.AuthorizationAuthenticationSession.PreserveTime(HttpContext, User);
         await _signInManager.RefreshSignInAsync(user);
         
         // Audit log

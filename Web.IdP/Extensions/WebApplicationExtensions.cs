@@ -92,6 +92,11 @@ public static class WebApplicationExtensions
         {
             app.UseRateLimiter();
         }
+        else
+        {
+            app.UseWhen(context => context.Request.Path == "/health/ready",
+                branch => branch.UseRateLimiter());
+        }
 
         app.UseStaticFiles();
 
@@ -118,9 +123,14 @@ public static class WebApplicationExtensions
         // Map Health Checks Endpoints
         app.MapHealthChecks("/health", new HealthCheckOptions
         {
-            Predicate = _ => true,
+            Predicate = _ => false,
             ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
         });
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        {
+            Predicate = _ => true,
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        }).RequireAuthorization("DependencyReadiness").RequireRateLimiting("dependency-readiness");
 
         app.MapControllers();
         app.MapHub<global::Infrastructure.Hubs.MonitoringHub>("/monitoringHub")

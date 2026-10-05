@@ -115,7 +115,7 @@ public partial class MfaSetupApiController : ControllerBase
             return Unauthorized();
         }
 
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user.Id))
+        if (user.TwoFactorEnabled || !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct))
         {
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
@@ -148,7 +148,7 @@ public partial class MfaSetupApiController : ControllerBase
             return Unauthorized();
         }
 
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user.Id))
+        if (user.TwoFactorEnabled || !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct))
         {
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
@@ -210,6 +210,11 @@ public partial class MfaSetupApiController : ControllerBase
         if (user == null)
         {
             return Unauthorized();
+        }
+
+        if (user.EmailMfaEnabled || !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct))
+        {
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
 
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
@@ -278,6 +283,11 @@ public partial class MfaSetupApiController : ControllerBase
             return Unauthorized();
         }
 
+        if (user.EmailMfaEnabled || !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct))
+        {
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
+        }
+
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableEmailMfa)
         {
@@ -326,6 +336,11 @@ public partial class MfaSetupApiController : ControllerBase
         if (user == null)
         {
             return Unauthorized();
+        }
+
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+        {
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
 
         var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, ct);

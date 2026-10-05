@@ -1116,7 +1116,7 @@ public class UsersController : ControllerBase
             return false;
         }
 
-        return await _dbContext.UserCredentials.AnyAsync(c => c.UserId == user.Id);
+        return await _dbContext.UserCredentials.AnyAsync(c => c.UserId == user.Id && c.DisabledAtUtc == null);
     }
 }
 

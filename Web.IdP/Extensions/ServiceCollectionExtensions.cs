@@ -539,6 +539,8 @@ public static class ServiceCollectionExtensions
                 if (context.CurrentPrincipal?.Identity is ClaimsIdentity currentIdentity &&
                     context.NewPrincipal?.Identity is ClaimsIdentity newIdentity)
                 {
+                    foreach (var claim in currentIdentity.FindAll("auth_time"))
+                        newIdentity.AddClaim(claim);
                     // 1. Restore Actor Identity
                     if (currentIdentity.Actor != null && newIdentity.Actor == null)
                     {
@@ -588,6 +590,7 @@ public static class ServiceCollectionExtensions
             {
                 if (context.Principal != null)
                 {
+                    AuthorizationAuthenticationSession.OnSigningIn(context);
                     MfaEnrollmentSession.CompletePending(
                         context.HttpContext.Session,
                         context.Principal);
@@ -741,10 +744,18 @@ public static class ServiceCollectionExtensions
             {
                 policy.Requirements.Add(new global::Infrastructure.Authorization.IpWhitelistRequirement());
             });
+            options.AddPolicy("DependencyReadiness", policy => policy.RequireAssertion(context =>
+            {
+                if (context.Resource is not HttpContext httpContext) return false;
+                return global::Infrastructure.Configuration.ForwardedHeadersHelper.IsTrustedReadinessAddress(
+                    httpContext.Connection.RemoteIpAddress,
+                    httpContext.RequestServices.GetRequiredService<IOptions<ProxyOptions>>().Value);
+            }));
         });
 
         // Register Authorization Handlers
         services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, global::Infrastructure.Authorization.PermissionAuthorizationHandler>();
+        services.AddScoped<global::Infrastructure.Authorization.IAdministrativeAuthorizationBoundary, global::Infrastructure.Authorization.AdministrativeAuthorizationBoundary>();
         services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, global::Infrastructure.Authorization.HasAnyPermissionAuthorizationHandler>();
         services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, global::Infrastructure.Authorization.IpWhitelistAuthorizationHandler>();
         services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, global::Infrastructure.Authorization.ScopeAuthorizationHandler>();
@@ -847,6 +858,11 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddCustomRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddRateLimiter(options => options.AddConcurrencyLimiter("dependency-readiness", limiter =>
+        {
+            limiter.PermitLimit = 2;
+            limiter.QueueLimit = 0;
+        }));
         var rateLimitingOptions = new RateLimitingOptions();
         configuration.GetSection(RateLimitingOptions.Section).Bind(rateLimitingOptions);
         var nativeRecoveryEnabled = configuration.GetValue<bool>(
