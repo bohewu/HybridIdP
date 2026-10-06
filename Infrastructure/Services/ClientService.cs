@@ -54,14 +54,14 @@ public class ClientService : IClientService
         var summaries = new List<ClientSummary>();
 
         // Get owned client IDs if filtering by owner
-        HashSet<string>? ownedClientIds = null;
+        HashSet<Guid>? ownedClientIds = null;
         if (ownerPersonId.HasValue)
         {
             ownedClientIds = (await _context.ClientOwnerships
-                .Where(co => co.CreatedByPersonId == ownerPersonId.Value)
-                .Select(co => co.ClientId)
+                .Where(co => co.CreatedByPersonId == ownerPersonId.Value && co.ApplicationId != null)
+                .Select(co => co.ApplicationId!.Value)
                 .ToListAsync(cancellationToken))
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                .ToHashSet();
         }
 
         await foreach (var application in _applicationManager.ListAsync().WithCancellation(cancellationToken))
@@ -70,7 +70,7 @@ public class ClientService : IClientService
             var clientId = await _applicationManager.GetClientIdAsync(application);
             
             // Skip if filtering by owner and this client is not owned
-            if (ownedClientIds != null && !ownedClientIds.Contains(clientId!))
+            if (ownedClientIds != null && (!Guid.TryParse(id, out var applicationId) || !ownedClientIds.Contains(applicationId)))
             {
                 continue;
             }
@@ -350,21 +350,7 @@ public class ClientService : IClientService
             throw new ArgumentException("Redirect URIs are required for interactive clients (Authorization Code or Implicit flow).");
         }
 
-        var application = await _applicationManager.CreateAsync(descriptor, cancellationToken);
-        var id = await _applicationManager.GetIdAsync(application, cancellationToken);
-
-        // Create ownership record if creator info provided
-        if (creatorPersonId.HasValue)
-        {
-            var ownership = new ClientOwnership
-            {
-                ClientId = request.ClientId,
-                CreatedByPersonId = creatorPersonId.Value,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.ClientOwnerships.Add(ownership);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
+        var id = await CreateApplicationWithOwnershipAsync(descriptor, creatorPersonId, cancellationToken);
 
         // Publish domain event
         await _eventPublisher.PublishAsync(new ClientCreatedEvent(id!, request.ClientId));
@@ -593,7 +579,7 @@ public class ClientService : IClientService
         if (!string.IsNullOrWhiteSpace(clientId))
         {
             var ownerships = _context.ClientOwnerships
-                .Where(co => co.ClientId == clientId);
+                .Where(co => co.ApplicationId == id);
 
             _context.ClientOwnerships.RemoveRange(ownerships);
             await _context.SaveChangesAsync(cancellationToken);
@@ -642,15 +628,69 @@ public class ClientService : IClientService
             return false;
         }
 
-        var clientIdStr = await _applicationManager.GetClientIdAsync(application, cancellationToken);
-        if (string.IsNullOrEmpty(clientIdStr))
-        {
+        if (Infrastructure.Authorization.AdministrativeClientGrant.ReadPermissions(
+            await _applicationManager.GetPropertiesAsync(application, cancellationToken)).Count > 0)
             return false;
-        }
 
         return await _context.ClientOwnerships
-            .AnyAsync(co => co.ClientId == clientIdStr && co.CreatedByPersonId == personId, cancellationToken);
+            .AnyAsync(co => co.ApplicationId == clientId && co.CreatedByPersonId == personId, cancellationToken);
     }
+
+    private async Task<string?> CreateApplicationWithOwnershipAsync(
+        OpenIddictApplicationDescriptor descriptor, Guid? creatorPersonId, CancellationToken cancellationToken)
+    {
+        var dbContext = _context as DbContext;
+        if (creatorPersonId.HasValue && dbContext?.Database.IsRelational() == true)
+        {
+            return await dbContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+                object? application = null;
+                ClientOwnership? ownership = null;
+                try
+                {
+                    application = await _applicationManager.CreateAsync(descriptor, cancellationToken);
+                    var id = await _applicationManager.GetIdAsync(application, cancellationToken);
+                    ownership = CreateOwnership(id, descriptor.ClientId!, creatorPersonId.Value);
+                    _context.ClientOwnerships.Add(ownership);
+                    await _context.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                    return id;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                    if (ownership != null) _context.Detach(ownership);
+                    if (application != null)
+                    {
+                        // DeleteAsync removes the OpenIddict cache entry before deleting the rolled-back row.
+                        try { await _applicationManager.DeleteAsync(application, CancellationToken.None); }
+                        catch (OpenIddictExceptions.ConcurrencyException) { }
+                        catch (DbUpdateConcurrencyException) { }
+                        finally { _context.Detach(application); }
+                    }
+                    throw;
+                }
+            });
+        }
+
+        var created = await _applicationManager.CreateAsync(descriptor, cancellationToken);
+        var createdId = await _applicationManager.GetIdAsync(created, cancellationToken);
+        if (creatorPersonId.HasValue)
+        {
+            _context.ClientOwnerships.Add(CreateOwnership(createdId, descriptor.ClientId!, creatorPersonId.Value));
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        return createdId;
+    }
+
+    private static ClientOwnership CreateOwnership(string? id, string clientId, Guid personId) => new()
+    {
+        ApplicationId = Guid.Parse(id ?? throw new InvalidOperationException("Application key is missing.")),
+        ClientId = clientId,
+        CreatedByPersonId = personId,
+        CreatedAt = DateTime.UtcNow
+    };
 
     private static List<string> GetSupportedRoles(System.Collections.Immutable.ImmutableDictionary<string, JsonElement>? properties)
     {

@@ -23,11 +23,177 @@ using OpenIddict.Server.AspNetCore;
 using Web.IdP.Services;
 using Xunit;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using OidcPermissions = OpenIddict.Abstractions.OpenIddictConstants.Permissions;
 
 namespace Tests.Application.UnitTests
 {
     public class TokenServiceTests
     {
+        [Theory]
+        [InlineData(GrantTypes.AuthorizationCode, false)]
+        [InlineData(GrantTypes.AuthorizationCode, true)]
+        [InlineData(GrantTypes.DeviceCode, false)]
+        [InlineData(GrantTypes.DeviceCode, true)]
+        public async Task OutstandingCode_ShouldRejectRemovedScopeAndKeepAuthorizedGrant(string grant, bool removed)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true, UserName = "code-user" };
+            var principal = grant == GrantTypes.DeviceCode ? SetupDeviceCodeGrant(user) : SetupAuthorizationCodeGrant(user);
+            principal.SetClaim(Claims.AuthenticationTime, 1700000000L);
+            principal.SetScopes(Scopes.OpenId, Scopes.Profile);
+            _mockApplicationManager.Setup(manager => manager.GetPermissionsAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(removed ? ImmutableArray.Create(OidcPermissions.Prefixes.GrantType + grant, OidcPermissions.Prefixes.Scope + Scopes.OpenId)
+                    : ImmutableArray.Create(OidcPermissions.Prefixes.GrantType + grant, OidcPermissions.Prefixes.Scope + Scopes.OpenId, OidcPermissions.Prefixes.Scope + Scopes.Profile));
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(grant), principal);
+            if (removed) AssertInvalidGrant(result);
+            else
+            {
+                var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal;
+                var authenticationTime = Assert.Single(issued.FindAll(Claims.AuthenticationTime));
+                Assert.Equal("1700000000", authenticationTime.Value);
+                Assert.Equal(ClaimValueTypes.Integer64, authenticationTime.ValueType);
+            }
+        }
+
+        [Fact]
+        public async Task OutstandingCode_ShouldRemoveUnscopedHistoricalProfileClaims()
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true };
+            var principal = SetupAuthorizationCodeGrant(user);
+            principal.SetScopes(Scopes.OpenId);
+            principal.SetClaim(Claims.Name, "historical-name");
+            principal.SetClaim(Claims.Email, "historical@example.test");
+            _mockApplicationManager.Setup(manager => manager.GetPermissionsAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableArray.Create(OidcPermissions.GrantTypes.AuthorizationCode, OidcPermissions.Prefixes.Scope + Scopes.OpenId));
+            var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(await _service.HandleTokenRequestAsync(CreateRequest(GrantTypes.AuthorizationCode), principal)).Principal!;
+            Assert.Null(issued.GetClaim(Claims.Name));
+            Assert.Null(issued.GetClaim(Claims.Email));
+            Assert.NotNull(issued.GetClaim(Claims.Subject));
+        }
+
+        [Theory]
+        [InlineData(null, false)]
+        [InlineData("openid", false)]
+        [InlineData("extra", true)]
+        public async Task Refresh_ShouldIntersectOriginalGrantWithCurrentPermissions(string? requested, bool invalid)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "refresh-user", Email = "user@example.test", IsActive = true };
+            var principal = SetupRefreshGrant(user);
+            principal.SetClaim(Claims.AuthenticationTime, 1700000000L);
+            principal.SetScopes("openid", "profile", "email", "removed");
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                    OpenIddictConstants.Permissions.Prefixes.Scope + "openid", OpenIddictConstants.Permissions.Prefixes.Scope + "email"));
+            var request = CreateRequest(GrantTypes.RefreshToken, refreshToken: "dummy");
+            request.Scope = requested;
+            var result = await _service.HandleTokenRequestAsync(request, principal);
+            if (invalid)
+                Assert.Equal(Errors.InvalidScope, Assert.IsType<ForbidResult>(result).Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+            else
+            {
+                var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+                Assert.Equal(requested == null ? new[] { "email", "openid" } : new[] { "openid" }, issued.GetScopes().Order());
+                Assert.Null(issued.GetClaim(Claims.Name));
+                Assert.Equal(requested == null ? user.Email : null, issued.GetClaim(Claims.Email));
+                var authenticationTime = Assert.Single(issued.FindAll(Claims.AuthenticationTime));
+                Assert.Equal("1700000000", authenticationTime.Value);
+                Assert.Equal(ClaimValueTypes.Integer64, authenticationTime.ValueType);
+            }
+        }
+
+        [Theory]
+        [InlineData("openid", false, false)]
+        [InlineData("openid profile", true, false)]
+        [InlineData("openid email", false, true)]
+        public async Task Password_ShouldIssueOnlyScopeAuthorizedProfileClaims(string scopes, bool profile, bool email)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "profile-user", Email = "user@example.test", IsActive = true };
+            SetupPasswordGrant(user);
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(GrantTypes.Password,
+                username: user.UserName, password: "${TEST_FIXTURE_001}", scope: scopes), null);
+            var principal = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+            Assert.Equal(profile ? user.UserName : null, principal.GetClaim(Claims.Name));
+            Assert.Equal(profile ? user.UserName : null, principal.GetClaim(Claims.PreferredUsername));
+            Assert.Equal(email ? user.Email : null, principal.GetClaim(Claims.Email));
+            Assert.Equal(user.Id.ToString(), principal.GetClaim(Claims.Subject));
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_ShouldRejectPasswordForClientRequiringMfaWithoutEnrolledFactors()
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "factor-free", IsActive = true };
+            SetupPasswordGrant(user);
+            _mockApplicationManager.Setup(m => m.GetPropertiesAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateClientProperties(requireMfa: true));
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.Password, username: user.UserName, password: "${TEST_FIXTURE_001}"), null);
+            AssertInvalidGrant(result);
+        }
+
+        [Theory]
+        [InlineData(GrantTypes.AuthorizationCode, false, "pwd")]
+        [InlineData(GrantTypes.AuthorizationCode, false, "hwk")]
+        [InlineData(GrantTypes.AuthorizationCode, true, "hwk")]
+        [InlineData(GrantTypes.DeviceCode, false, "pwd")]
+        [InlineData(GrantTypes.DeviceCode, false, "hwk")]
+        [InlineData(GrantTypes.DeviceCode, true, "hwk")]
+        public async Task HandleTokenRequestAsync_ShouldRecheckClientMfaAtRedemptionAndPreserveProof(string grant, bool hasMfa, string primaryAmr)
+        {
+            var person = new Person { Id = Guid.NewGuid(), Status = PersonStatus.Active };
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "device-or-code-user", IsActive = true, PersonId = person.Id };
+            var principal = grant == GrantTypes.DeviceCode ? SetupDeviceCodeGrant(user) : SetupAuthorizationCodeGrant(user);
+            SetupMockPersons(person);
+            principal.SetClaims("amr", hasMfa ? ImmutableArray.Create(primaryAmr, "mfa") : ImmutableArray.Create(primaryAmr, "user"));
+            _mockApplicationManager.Setup(m => m.GetPropertiesAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateClientProperties(requireMfa: true));
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(grant, code: "code"), principal);
+            if (hasMfa)
+                Assert.Contains("mfa", Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!.GetClaims("amr"));
+            else AssertInvalidGrant(result);
+        }
+
+        [Theory]
+        [InlineData(GrantTypes.Password)]
+        [InlineData(GrantTypes.AuthorizationCode)]
+        public async Task HandleTokenRequestAsync_ShouldExcludeGlobalIdpAuthorityFromUserTokens(string grant)
+        {
+            var person = new Person { Id = Guid.NewGuid(), Status = PersonStatus.Active };
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "admin-user", IsActive = true, PersonId = person.Id };
+            ClaimsPrincipal? principal = null;
+            if (grant == GrantTypes.Password) SetupPasswordGrant(user);
+            else
+            {
+                principal = SetupAuthorizationCodeGrant(user);
+                principal.SetClaim("role", "Admin").SetClaim("permission", "users.delete")
+                    .SetClaim("active_role", "Admin");
+                SetupMockPersons(person);
+            }
+            _mockUserManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(["Admin"]);
+            SetupMockPersons(person);
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(grant, username: user.UserName, password: "${TEST_FIXTURE_001}", code: "test-code"), principal);
+            var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+            Assert.DoesNotContain(issued.Claims, c => c.Type is "role" or "permission" or "active_role" || c.Type == ClaimTypes.Role);
+        }
+
+        [Fact]
+        public async Task HandleTokenRequestAsync_ShouldIssueAdministrativeApprovalBoundToApplicationRecordOnlyForM2m()
+        {
+            var application = new object();
+            _mockApplicationManager.Setup(m => m.FindByClientIdAsync("service-client", It.IsAny<CancellationToken>())).ReturnsAsync(application);
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableArray.Create(OpenIddictConstants.Permissions.GrantTypes.ClientCredentials));
+            _mockApplicationManager.Setup(m => m.GetClientIdAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync("service-client");
+            _mockApplicationManager.Setup(m => m.GetIdAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync("immutable-record");
+            _mockApplicationManager.Setup(m => m.GetPropertiesAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(
+                ImmutableDictionary<string, JsonElement>.Empty.Add(global::Infrastructure.Authorization.AdministrativeClientGrant.PermissionsProperty,
+                    JsonSerializer.SerializeToElement(new[] { "users.read" })));
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(GrantTypes.ClientCredentials, clientId: "service-client", scope: "users.read"), null);
+            var principal = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+            Assert.Equal("immutable-record", principal.GetClaim(global::Infrastructure.Authorization.AdministrativeClientGrant.ApplicationClaim));
+        }
+
+    private readonly Mock<global::Web.IdP.Services.ICurrentUserLifecycleEligibility> _lifecycle = new();
+
         private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
         private readonly Mock<SignInManager<ApplicationUser>> _mockSignInManager;
         private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
@@ -47,6 +213,8 @@ namespace Tests.Application.UnitTests
 
         public TokenServiceTests()
         {
+        _lifecycle.Setup(policy => policy.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
             var userStore = new Mock<IUserStore<ApplicationUser>>();
             _mockUserManager = new Mock<UserManager<ApplicationUser>>(userStore.Object, null, null, null, null, null, null, null, null);
 
@@ -90,6 +258,7 @@ namespace Tests.Application.UnitTests
                 .ReturnsAsync(new SecurityPolicy());
 
             _service = new TokenService(
+                _lifecycle.Object,
                 _mockUserManager.Object,
                 _mockSignInManager.Object,
                 _mockRoleManager.Object,
@@ -107,7 +276,39 @@ namespace Tests.Application.UnitTests
                 _mockMigrationIssuanceGuard.Object);
         }
 
-        [Fact]
+        [Theory]
+    [InlineData(GrantTypes.Password, false)]
+    [InlineData(GrantTypes.Password, true)]
+    [InlineData(GrantTypes.AuthorizationCode, false)]
+    [InlineData(GrantTypes.AuthorizationCode, true)]
+    [InlineData(GrantTypes.RefreshToken, false)]
+    [InlineData(GrantTypes.RefreshToken, true)]
+    [InlineData(GrantTypes.DeviceCode, false)]
+    [InlineData(GrantTypes.DeviceCode, true)]
+    public async Task UserGrants_ShouldDeny_WhenLifecycleFailsAtInitialOrFinalCheckpoint(string grant, bool initiallyEligible)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "lifecycle-user", IsActive = true };
+        ClaimsPrincipal? principal = null;
+        switch (grant)
+        {
+            case GrantTypes.Password: SetupPasswordGrant(user); break;
+            case GrantTypes.AuthorizationCode: principal = SetupAuthorizationCodeGrant(user); break;
+            case GrantTypes.RefreshToken: principal = SetupRefreshGrant(user); break;
+            case GrantTypes.DeviceCode: principal = SetupDeviceCodeGrant(user); break;
+        }
+        _lifecycle.SetupSequence(policy => policy.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(initiallyEligible).ReturnsAsync(false);
+        var result = await _service.HandleTokenRequestAsync(
+            CreateRequest(grant, username: user.UserName, password: "${TEST_FIXTURE_001}", refreshToken: "${TEST_FIXTURE_002}"), principal);
+        AssertInvalidGrant(result);
+        _lifecycle.Verify(policy => policy.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>()),
+            Times.Exactly(initiallyEligible ? 2 : 1));
+        _mockUserManager.Verify(manager => manager.UpdateSecurityStampAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _mockStage2CredentialMigrationService.VerifyNoOtherCalls();
+        Assert.True(user.IsActive);
+    }
+
+    [Fact]
         public async Task HandleTokenRequestAsync_NullRequest_ThrowsArgumentNullException()
         {
             await Assert.ThrowsAsync<ArgumentNullException>(() => _service.HandleTokenRequestAsync(null!, null));
@@ -169,7 +370,8 @@ namespace Tests.Application.UnitTests
             Assert.True(signInResult.Principal.HasClaim(Claims.Subject, "service-client"));
             _mockApplicationManager.Verify(
                 manager => manager.GetPropertiesAsync(clientApp, It.IsAny<CancellationToken>()),
-                Times.Never);
+                Times.Once);
+            Assert.False(signInResult.Principal.HasClaim(c => c.Type == global::Infrastructure.Authorization.AdministrativeClientGrant.ApplicationClaim));
         }
 
         [Fact]
@@ -713,8 +915,10 @@ namespace Tests.Application.UnitTests
             AssertPasswordGrantRejected(result);
         }
 
-        [Fact]
-        public async Task HandleTokenRequestAsync_Password_MandatoryMfaWithPasskey_ReturnsSignInResult()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task HandleTokenRequestAsync_Password_MandatoryMfaWithPasskey_ShouldCountOnlyActiveCredentials(bool disabled)
         {
             var user = new ApplicationUser
             {
@@ -724,7 +928,7 @@ namespace Tests.Application.UnitTests
                 MfaRequirementNotifiedAt = DateTime.UtcNow.AddDays(-30)
             };
             SetupPasswordGrant(user);
-            SetupMockUserCredentials(new UserCredential { UserId = user.Id });
+            SetupMockUserCredentials(new UserCredential { UserId = user.Id, DisabledAtUtc = disabled ? DateTime.UtcNow : null });
             SetupMandatoryMfaPolicy(gracePeriodDays: 3);
 
             var result = await _service.HandleTokenRequestAsync(
@@ -734,7 +938,14 @@ namespace Tests.Application.UnitTests
                     password: "${TEST_FIXTURE_001}"),
                 null);
 
-            Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            if (disabled)
+            {
+                AssertPasswordGrantRejected(result);
+            }
+            else
+            {
+                Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            }
         }
 
         [Fact]
@@ -980,10 +1191,10 @@ namespace Tests.Application.UnitTests
         }
 
         [Theory]
-        [InlineData(AuthConstants.Amr.Mfa)]
-        [InlineData(AuthConstants.Amr.HardwareKey)]
+        [InlineData(AuthConstants.Amr.Mfa, true)]
+        [InlineData(AuthConstants.Amr.HardwareKey, false)]
         public async Task HandleTokenRequestAsync_RefreshToken_ClientMfaPolicyWithMfaEvidence_ReturnsSignInResult(
-            string amrValue)
+            string amrValue, bool satisfiesMfa)
         {
             var user = new ApplicationUser
             {
@@ -1000,7 +1211,8 @@ namespace Tests.Application.UnitTests
                 CreateRequest(GrantTypes.RefreshToken, refreshToken: "${TEST_FIXTURE_005}"),
                 principal);
 
-            Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            if (satisfiesMfa) Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            else AssertInvalidGrant(result);
         }
 
         [Theory]
@@ -1359,7 +1571,9 @@ namespace Tests.Application.UnitTests
             _mockApplicationManager
                 .Setup(m => m.GetPermissionsAsync(clientApp, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ImmutableArray.Create(
-                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode));
+                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
+                    OpenIddictConstants.Permissions.Prefixes.Scope + Scopes.OpenId,
+                    OpenIddictConstants.Permissions.Prefixes.Scope + Scopes.Profile));
 
             SetupMockUsers(user);
             _mockUserManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(isLockedOut);

@@ -1,8 +1,5 @@
 namespace Web.IdP.Services;
 
-public interface ICurrentUserLifecycleEligibility
+public interface ICurrentUserLifecycleEligibility : Core.Application.Interfaces.IAccountLifecycleEligibility
 {
-    Task<bool> IsEligibleAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
 }

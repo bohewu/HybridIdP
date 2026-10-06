@@ -23,7 +23,10 @@ public sealed class RecoveryAssistanceService : IRecoveryAssistanceService
         MigrationOtpProofService migrationOtpProofService,
         IRecoveryProofAudit audit,
         IOptions<CredentialMigrationOptions> options,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IRecoveryDestinationResolver? resolver = null,
+        IOptions<RecoveryEmailSelectionOptions>? selectionOptions = null,
+        IOptions<RecoveryIdentityVerificationOptions>? identityOptions = null)
     {
         _dbContext = dbContext;
         _authorizer = authorizer;
@@ -31,7 +34,8 @@ public sealed class RecoveryAssistanceService : IRecoveryAssistanceService
         _migrationOtpProofService = migrationOtpProofService;
         _audit = audit;
         _options = options.Value;
-        _store = new RecoveryProofStore(dbContext, timeProvider);
+        _store = new RecoveryProofStore(dbContext, timeProvider, resolver,
+            selectionOptions?.Value.Enabled == true || identityOptions?.Value.Enabled == true);
     }
 
     public async Task<MigrationOtpSendResult> ResendMigrationOtpAsync(
@@ -118,6 +122,10 @@ public sealed class RecoveryAssistanceService : IRecoveryAssistanceService
         }
 
         var resolved = continuation.Continuation!;
+        var selectionRequired = await _store.RequiresSelectionAsync(resolved.LocalAccountId, cancellationToken);
+        var destination = selectionRequired ? await _store.ResolveDestinationAsync(resolved.LocalAccountId, cancellationToken) : null;
+        var binding = destination is null ? null : await _store.MigrationBindingAsync(resolved.LocalAccountId, resolved.Id, destination, cancellationToken);
+        if (selectionRequired && binding is null) return new(RecoveryProofOutcome.Unavailable);
         var now = _store.UtcNow;
         var authorizationBinding = RecoveryProofSecurity.GenerateOpaqueValue();
         var expiry = now.AddMinutes(_options.RecoveryApprovalLifetimeMinutes);
@@ -137,7 +145,7 @@ public sealed class RecoveryAssistanceService : IRecoveryAssistanceService
             activeApproval.Revoke(now);
         }
 
-        _dbContext.RecoveryResetApprovals.Add(new RecoveryResetApproval(
+        var approval = new RecoveryResetApproval(
             resolved.LocalAccountId,
             resolved.Id,
             request.ActorAccountId,
@@ -145,7 +153,13 @@ public sealed class RecoveryAssistanceService : IRecoveryAssistanceService
             request.IdentityCheckEvidence.Trim(),
             RecoveryProofSecurity.Hash(authorizationBinding),
             now,
-            expiry));
+            expiry);
+        if (binding is not null)
+            _dbContext.Entry(approval).Property(candidate => candidate.TokenHash).CurrentValue =
+                HashApprovalBinding(binding, approval.Id);
+        if (destination is not null)
+            approval.BindSelection(destination.SelectionEpoch, destination.Kind, destination.Fingerprint, destination.Version);
+        _dbContext.RecoveryResetApprovals.Add(approval);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await RecordAuditAsync(
             RecoveryProofAuditCategory.AdminResetApprovalIssued,
@@ -198,6 +212,7 @@ public sealed class RecoveryAssistanceService : IRecoveryAssistanceService
         }
 
         var existing = activeApprovals[0];
+        if (!await IsCurrentApprovalAsync(existing, cancellationToken)) return RecoveryProofOutcome.Invalid;
         if (existing.ExpiresAtUtc <= now)
         {
             return RecoveryProofOutcome.Expired;
@@ -266,10 +281,24 @@ public sealed class RecoveryAssistanceService : IRecoveryAssistanceService
             return priorApprovalExists ? RecoveryProofOutcome.Replayed : RecoveryProofOutcome.Missing;
         }
 
+        if (!await IsCurrentApprovalAsync(activeApprovals[0], cancellationToken)) return RecoveryProofOutcome.Invalid;
         return activeApprovals[0].ExpiresAtUtc <= _store.UtcNow
             ? RecoveryProofOutcome.Expired
             : RecoveryProofOutcome.Success;
     }
+
+    private async Task<bool> IsCurrentApprovalAsync(RecoveryResetApproval approval, CancellationToken ct)
+    {
+        if (approval.SelectionEpoch is null) return !await _store.RequiresSelectionAsync(approval.LocalAccountId, ct);
+        var destination = await _store.ResolveDestinationAsync(approval.LocalAccountId, ct);
+        if (destination is null || !approval.MatchesSelection(destination.SelectionEpoch, destination.Kind, destination.Fingerprint, destination.Version)) return false;
+        var binding = await _store.MigrationBindingAsync(approval.LocalAccountId, approval.CredentialMigrationContinuationId, destination, ct);
+        return binding is not null && approval.TokenHash == HashApprovalBinding(binding, approval.Id);
+    }
+
+    private static string HashApprovalBinding(string binding, Guid approvalId) =>
+        RecoveryProofSecurity.Hash(RecoveryDestinationBinding.ComputeDigest(
+            "recovery-migration-reset-approval-v1", binding, approvalId.ToString("D")));
 
     private async Task<AuthorizationResolution> AuthorizeAndResolveAsync(
         Guid actorAccountId,

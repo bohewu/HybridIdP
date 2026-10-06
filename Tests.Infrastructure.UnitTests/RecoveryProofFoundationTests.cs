@@ -2,9 +2,12 @@ using System.Security.Cryptography;
 using System.Text;
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Interfaces;
+using Core.Application.Options;
 using Core.Application.Ports;
 using Core.Domain;
 using Core.Domain.Entities;
+using Core.Domain.Models;
 using Infrastructure;
 using Infrastructure.Options;
 using Infrastructure.Services;
@@ -13,6 +16,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Tests.Infrastructure.UnitTests;
@@ -104,6 +108,94 @@ public sealed class RecoveryProofFoundationTests
             (await context.Users.AsNoTracking().SingleAsync(user => user.Id == accountId))
                 .RecoverySourceBootstrapRevokedAtUtc);
         Assert.Contains(audit.Events, item => item.Category == RecoveryProofAuditCategory.RecoveryAddressRevoked);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task RevokeAuthenticatedAsync_ShouldPreserveReservedProofHistory_WhenIdentityIsEnabledWithoutSelection(
+        bool expired, bool rejectDelete)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var accountId = await SeedUserAsync(context);
+        var time = new FixedTimeProvider();
+        var email = new CapturingEmailService();
+        var audit = new CapturingAudit();
+        var recovery = new RecoveryEmailService(context,
+            new FixedAuthorizer(selfService: true, administrator: false), email,
+            new PasswordHasher<ApplicationUser>(), audit, EnabledOptions(), time);
+        await ConfigureVerifiedRecoveryEmailAsync(recovery, email, accountId, "recovery@example.test");
+        recovery = new RecoveryEmailService(context,
+            new FixedAuthorizer(selfService: true, administrator: false), email,
+            new PasswordHasher<ApplicationUser>(), audit, EnabledOptions(), time,
+            identityOptions: Options.Create(new RecoveryIdentityVerificationOptions { Enabled = true }));
+        var record = await context.RecoveryEmails.SingleAsync();
+        var user = await context.Users.SingleAsync();
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+        var now = time.GetUtcNow();
+        var contextHash = Hash("browser");
+        var csrfHash = Hash("csrf");
+        var fingerprint = new string('F', 64);
+        var challenge = new RecoveryProofChallenge(record.Id, accountId,
+            RecoveryProofPurpose.NativePasswordRecovery, Hash("synthetic-otp"), now, now.AddMinutes(5));
+        challenge.BindSelection(1, RecoveryDestinationKind.Legacy, fingerprint, record.Version);
+        challenge.BindNativeAssistance(contextHash, csrfHash, false, null, record.Version, user.SecurityStamp);
+        var grant = new RecoveryPrecheckGrant(accountId, null, null, user.SecurityStamp,
+            contextHash, csrfHash, "synthetic-policy", 1, RecoveryDestinationKind.Legacy,
+            fingerprint, record.Version, now, now.AddMinutes(5));
+        Assert.True(grant.TryReserveChallenge(challenge, now));
+        Assert.True(challenge.TryCompleteDelivery(now, true));
+        context.RecoveryProofChallenges.Add(challenge);
+        context.RecoveryPrecheckGrants.Add(grant);
+        await context.SaveChangesAsync();
+        Assert.Empty(await context.RecoveryEmailPreferences.ToListAsync());
+        if (expired) time.Advance(TimeSpan.FromMinutes(6));
+        if (rejectDelete)
+        {
+            await context.Database.ExecuteSqlRawAsync("""
+                CREATE TRIGGER RejectRecoveryEmailDelete BEFORE DELETE ON RecoveryEmails
+                BEGIN SELECT RAISE(ABORT, 'synthetic delete failure'); END;
+                """);
+        }
+        context.ChangeTracker.Clear();
+
+        if (rejectDelete)
+        {
+            await Assert.ThrowsAsync<DbUpdateException>(() => recovery.RevokeAuthenticatedAsync(accountId));
+        }
+        else
+        {
+            Assert.Equal(RecoveryProofOutcome.Success, await recovery.RevokeAuthenticatedAsync(accountId));
+        }
+
+        context.ChangeTracker.Clear();
+        var retainedChallenge = await context.RecoveryProofChallenges.SingleAsync(c => c.Id == challenge.Id);
+        var retainedGrant = await context.RecoveryPrecheckGrants.SingleAsync(g => g.Id == grant.Id);
+        Assert.Equal(challenge.Id, retainedGrant.ReservedChallengeId);
+        Assert.Equal(now, retainedGrant.ConsumedAtUtc);
+        Assert.Equal(fingerprint, retainedGrant.DestinationFingerprint);
+        var revokedAt = (await context.Users.SingleAsync()).RecoverySourceBootstrapRevokedAtUtc;
+        if (rejectDelete)
+        {
+            Assert.Equal(record.Id, retainedChallenge.RecoveryEmailId);
+            Assert.Null(retainedChallenge.RevokedAtUtc);
+            Assert.Single(await context.RecoveryEmails.ToListAsync());
+            Assert.Null(revokedAt);
+            Assert.DoesNotContain(audit.Events, e => e.Category == RecoveryProofAuditCategory.RecoveryAddressRevoked);
+        }
+        else
+        {
+            Assert.Null(retainedChallenge.RecoveryEmailId);
+            Assert.Equal(time.GetUtcNow(), retainedChallenge.RevokedAtUtc);
+            Assert.False(retainedChallenge.TryReserveAttempt(time.GetUtcNow(), 5));
+            Assert.Empty(await context.RecoveryEmails.ToListAsync());
+            Assert.Equal(time.GetUtcNow(), revokedAt);
+            Assert.Contains(audit.Events, e => e.Category == RecoveryProofAuditCategory.RecoveryAddressRevoked);
+        }
     }
 
     [Theory]
@@ -533,6 +625,211 @@ public sealed class RecoveryProofFoundationTests
             MigrationEmailOtpEnabled = true
         });
         Assert.True(invalid.Failed);
+    }
+
+    [Theory]
+    [InlineData(false, "none")]
+    [InlineData(true, "none")]
+    [InlineData(false, "stamp")]
+    [InlineData(true, "stamp")]
+    [InlineData(false, "destination")]
+    [InlineData(true, "destination")]
+    [InlineData(false, "epoch")]
+    [InlineData(true, "epoch")]
+    public async Task MigrationSelection_RequiresCurrentDestinationAtVerifyAndConsume(bool afterOtp, string change)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var id = await SeedUserAsync(context);
+        var user = await context.Users.SingleAsync(u => u.Id == id);
+        user.IsActive = true; user.SecurityStamp = "stamp";
+        await context.SaveChangesAsync();
+        var time = new FixedTimeProvider();
+        var (token, browser) = await SeedRequiredContinuationAsync(context, id, time);
+        var selection = Options.Create(new RecoveryEmailSelectionOptions { Enabled = true, TrustedDefaultFallbackEnabled = true });
+        var defaults = new SelectionDefault();
+        var policy = Options.Create(new RecoveryVerificationPolicyOptions { Enabled = true, CurrentPeriodId = "period" });
+        var resolver = new RecoveryDestinationResolver(context, defaults, selection, policy, time);
+        var mail = new CapturingEmailService();
+        var service = new MigrationOtpProofService(context, mail, new PasswordHasher<ApplicationUser>(), EnabledOptions(), time, resolver, selection);
+        Assert.Equal(RecoveryProofOutcome.Success, (await service.SendAsync(new(token, browser))).Outcome);
+        var code = mail.LastCode!;
+        var proof = afterOtp ? (await service.VerifyAsync(new(token, browser, code))).Proof : null;
+        if (afterOtp) Assert.NotNull(proof);
+        if (change == "stamp") user.SecurityStamp = "changed";
+        if (change == "destination") defaults.Version++;
+        if (change == "epoch")
+        {
+            var preference = new RecoveryEmailPreference(id, time.GetUtcNow());
+            preference.TrySelect(RecoveryEmailSelectionMode.UseDefault, 1, time.GetUtcNow());
+            context.RecoveryEmailPreferences.Add(preference);
+        }
+        await context.SaveChangesAsync();
+        if (afterOtp)
+        {
+            var result = await service.ConsumeAsync(new(token, browser, proof!));
+            Assert.Equal(change == "none", result == RecoveryProofOutcome.Success);
+        }
+        else
+        {
+            var result = await service.VerifyAsync(new(token, browser, code));
+            Assert.Equal(change == "none", result.Outcome == RecoveryProofOutcome.Success);
+        }
+        Assert.Empty(await context.RecoveryEmails.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task MigrationApproval_SelectionAndSecurityStateRemainBound(bool changed, bool reissue)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var id = await SeedUserAsync(context);
+        var user = await context.Users.SingleAsync(u => u.Id == id);
+        user.IsActive = true; user.SecurityStamp = "stamp";
+        await context.SaveChangesAsync();
+        var time = new FixedTimeProvider();
+        var (token, browser) = await SeedRequiredContinuationAsync(context, id, time);
+        var selection = Options.Create(new RecoveryEmailSelectionOptions { Enabled = true, TrustedDefaultFallbackEnabled = true });
+        var resolver = new RecoveryDestinationResolver(context, new SelectionDefault(), selection,
+            Options.Create(new RecoveryVerificationPolicyOptions { Enabled = true }), time);
+        var options = EnabledOptions(); var mail = new CapturingEmailService(); var hasher = new PasswordHasher<ApplicationUser>();
+        var audit = new CapturingAudit(); var authorizer = new FixedAuthorizer(false, true);
+        var email = new RecoveryEmailService(context, authorizer, mail, hasher, audit, options, time, selection);
+        var migration = new MigrationOtpProofService(context, mail, hasher, options, time, resolver, selection);
+        var assistance = new RecoveryAssistanceService(context, authorizer, email, migration, audit, options, time, resolver, selection);
+        Assert.Equal(RecoveryProofOutcome.Success, (await assistance.IssueResetApprovalAsync(new(Guid.NewGuid(), id, "checked", "support"))).Outcome);
+        if (reissue)
+            Assert.Equal(RecoveryProofOutcome.Success, (await assistance.IssueResetApprovalAsync(new(Guid.NewGuid(), id, "rechecked", "support again"))).Outcome);
+        if (changed) { user.SecurityStamp = "changed"; await context.SaveChangesAsync(); }
+        var result = await assistance.ConsumeResetApprovalAsync(new(token, browser));
+        Assert.Equal(changed ? RecoveryProofOutcome.Invalid : RecoveryProofOutcome.Success, result);
+    }
+
+    [Fact]
+    public async Task MigrationSelection_ShouldReserveFirstSendAcrossIndependentContexts()
+    {
+        var connectionString = $"Data Source=file:migration-default-cooldown-{Guid.NewGuid():N}?mode=memory&cache=shared;Default Timeout=5";
+        await using var keeper = new SqliteConnection(connectionString);
+        await keeper.OpenAsync();
+        await using var anchor = CreateContext(keeper);
+        await anchor.Database.EnsureCreatedAsync();
+        var accountId = await SeedUserAsync(anchor);
+        var user = await anchor.Users.SingleAsync();
+        user.IsActive = true;
+        user.SecurityStamp = "migration-cooldown-stamp";
+        await anchor.SaveChangesAsync();
+        var time = new FixedTimeProvider();
+        var (token, browser) = await SeedRequiredContinuationAsync(anchor, accountId, time);
+        var selection = Options.Create(new RecoveryEmailSelectionOptions { Enabled = true, TrustedDefaultFallbackEnabled = true });
+        using var gate = new Barrier(2);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        async Task<(RecoveryProofOutcome Outcome, string? Address)> SendAsync()
+        {
+            await using var contender = CreateContext(connectionString);
+            var mail = new CapturingEmailService();
+            var resolver = new RecoveryDestinationResolver(contender, new SelectionDefault(), selection,
+                Options.Create(new RecoveryVerificationPolicyOptions { Enabled = true }), time);
+            var sender = new MigrationOtpProofService(contender, mail, new ConcurrentSendHasher(gate),
+                EnabledOptions(), time, resolver, selection);
+            var result = await sender.SendAsync(new(token, browser), timeout.Token);
+            return (result.Outcome, mail.LastAddress);
+        }
+
+        var sends = await Task.WhenAll(Task.Run(SendAsync), Task.Run(SendAsync));
+        Assert.Single(sends, s => s.Outcome == RecoveryProofOutcome.Success);
+        Assert.Single(sends, s => s.Outcome == RecoveryProofOutcome.Cooldown);
+        Assert.Single(sends, s => s.Address == "default@example.test");
+        var challenge = await anchor.RecoveryProofChallenges.AsNoTracking().SingleAsync();
+        Assert.Equal(accountId, challenge.LocalAccountId);
+        Assert.Equal(RecoveryProofPurpose.MigrationOtp, challenge.Purpose);
+        Assert.Equal((await anchor.CredentialMigrationContinuations.AsNoTracking().SingleAsync()).Id,
+            challenge.CredentialMigrationContinuationId);
+        Assert.Empty(await anchor.RecoveryEmails.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MigrationSelectionReplacement_ShouldUseQuietActualDelivery(bool failDelivery)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var accountId = await SeedUserAsync(context);
+        var user = await context.Users.SingleAsync();
+        user.IsActive = true;
+        user.SecurityStamp = "replacement-stamp";
+        await context.SaveChangesAsync();
+        var time = new FixedTimeProvider();
+        var (token, browser) = await SeedRequiredContinuationAsync(context, accountId, time);
+        var selection = Options.Create(new RecoveryEmailSelectionOptions { Enabled = true, TrustedDefaultFallbackEnabled = true });
+        var resolver = new RecoveryDestinationResolver(context, new SelectionDefault(), selection,
+            Options.Create(new RecoveryVerificationPolicyOptions { Enabled = true }), time);
+        var queue = new Mock<IEmailQueue>(MockBehavior.Strict);
+        var dispatcher = new Mock<IEmailDispatcher>(MockBehavior.Strict);
+        EmailMessage? sent = null;
+        dispatcher.Setup(d => d.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+            .Returns<EmailMessage, CancellationToken>((message, _) =>
+            {
+                sent = message;
+                return failDelivery ? Task.FromException(new InvalidOperationException(message.To + message.Body)) : Task.CompletedTask;
+            });
+        var settings = new Mock<IOptionsSnapshot<EmailOptions>>();
+        settings.SetupGet(s => s.Value).Returns(new EmailOptions { SmtpHost = "synthetic.test" });
+        var delivery = new RecoveryOtpDeliveryService(dispatcher.Object, settings.Object);
+        var mail = new EmailService(queue.Object, dispatcher.Object);
+        var audit = new CapturingAudit();
+        var authorizer = new FixedAuthorizer(false, true);
+        var hasher = new PasswordHasher<ApplicationUser>();
+        var options = EnabledOptions();
+        var recovery = new RecoveryEmailService(context, authorizer, mail, hasher, audit, options, time, selection, delivery: delivery);
+        var migration = new MigrationOtpProofService(context, mail, hasher, options, time, resolver, selection);
+        var assistance = new RecoveryAssistanceService(context, authorizer, recovery, migration, audit, options, time, resolver, selection);
+        const string candidate = "selected-candidate@example.test";
+        var result = await assistance.ReplaceRecoveryEmailAsync(new(Guid.NewGuid(), accountId, candidate, "checked", "support"));
+        Assert.Equal(failDelivery ? RecoveryProofOutcome.Unavailable : RecoveryProofOutcome.Success, result.Outcome);
+        Assert.NotNull(sent);
+        Assert.Equal(candidate, sent.To);
+        Assert.Equal("Verify recovery email", sent.Subject);
+        Assert.False(sent.IsHtml);
+        var code = System.Text.RegularExpressions.Regex.Match(sent.Body, @"\b\d{6}\b").Value;
+        var challenge = await context.RecoveryProofChallenges.AsNoTracking().SingleAsync();
+        Assert.Equal(RecoveryProofPurpose.RecoveryAddressVerification, challenge.Purpose);
+        Assert.Equal(failDelivery, challenge.RevokedAtUtc is not null);
+        var verified = await recovery.VerifyForMigrationAsync(new(token, browser, code));
+        Assert.Equal(!failDelivery, verified == RecoveryProofOutcome.Success);
+        Assert.NotEqual(RecoveryProofOutcome.Success, (await migration.VerifyAsync(new(token, browser, code))).Outcome);
+        queue.Verify(q => q.QueueEmailAsync(It.IsAny<EmailMessage>()), Times.Never());
+        var auditText = System.Text.Json.JsonSerializer.Serialize(audit.Events);
+        Assert.DoesNotContain(candidate, auditText);
+        Assert.DoesNotContain(code, auditText);
+    }
+
+    private sealed class ConcurrentSendHasher(Barrier gate) : IPasswordHasher<ApplicationUser>
+    {
+        private readonly PasswordHasher<ApplicationUser> _hasher = new();
+        public string HashPassword(ApplicationUser user, string password)
+        {
+            if (!gate.SignalAndWait(TimeSpan.FromSeconds(10))) throw new TimeoutException("Concurrent send rendezvous failed.");
+            return _hasher.HashPassword(user, password);
+        }
+        public PasswordVerificationResult VerifyHashedPassword(ApplicationUser user, string hash, string provided) =>
+            _hasher.VerifyHashedPassword(user, hash, provided);
+    }
+
+    private sealed class SelectionDefault : IRecoveryDefaultDestinationEvaluator
+    {
+        public long Version { get; set; } = 1;
+        public Task<RecoveryDefaultDestination?> EvaluateDefaultAsync(Guid accountId, CancellationToken ct = default) =>
+            Task.FromResult<RecoveryDefaultDestination?>(new("default@example.test", new string('D', 64), Version, false));
     }
 
     private static RecoveryAssistanceService CreateAssistance(

@@ -42,7 +42,8 @@ public sealed class ApplicationCookieCurrentStateValidator
             return;
         }
 
-        if (!await _migrationIssuanceGuard.CanIssueAsync(userId, cancellationToken))
+        if (!await _migrationIssuanceGuard.CanIssueAsync(userId, cancellationToken) ||
+            !await _lifecycleEligibility.IsEligibleAsync(userId, cancellationToken))
         {
             context.RejectPrincipal();
             return;

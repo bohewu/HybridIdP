@@ -1,199 +1,90 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.Extensions.Options;
 using TestClient.Constants;
-using System.Net.Http.Headers;
-using System.Text.Json;
+using TestClient.Models;
+using TestClient.Options;
+using TestClient.Services;
 
 namespace TestClient.Controllers;
 
-public class AccountController : Controller
+[ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+public class AccountController(OidcDemoService demo, IOptions<OidcDemoOptions> options) : Controller
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    private const string ClientId = "testclient-public";
-    private const string IdpBaseUrl = "https://localhost:7035";
-
-    public AccountController(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
-
     [Authorize]
     public async Task<IActionResult> Profile()
     {
-        // Get the access token and id_token
-        var accessToken = await HttpContext.GetTokenAsync("access_token");
-        var idToken = await HttpContext.GetTokenAsync("id_token");
-        var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
-        
-        ViewData["AccessToken"] = accessToken;
-        ViewData["IdToken"] = idToken;
-        ViewData["RefreshToken"] = refreshToken;
-        
-        return View();
+        var session = await HttpContext.AuthenticateAsync(AuthenticationSchemes.Cookies);
+        var properties = session.Properties ?? new AuthenticationProperties();
+        var configured = options.Value;
+        DateTimeOffset.TryParse(properties.GetTokenValue("expires_at"), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var expiresAt);
+        var authTime = long.TryParse(User.FindFirst("auth_time")?.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds) &&
+            seconds is >= 0 and <= 253402300799 ? DateTimeOffset.FromUnixTimeSeconds(seconds) : (DateTimeOffset?)null;
+        properties.Items.TryGetValue("demo_refresh_count", out var refreshCountText);
+        var count = int.TryParse(refreshCountText, out var refreshCount) ? refreshCount : 0;
+        return View(new ProfileViewModel(configured.Authority, configured.ClientId, User.Identity?.Name,
+            configured.Scopes, User.Claims.Where(claim => claim.Type is not ("nonce" or "at_hash" or "c_hash"))
+                .Select(claim => new ClaimDisplayViewModel(claim.Type, claim.Value)).ToList(),
+            User.FindAll("amr").Select(claim => claim.Value).Distinct().ToList(), authTime,
+            expiresAt == default ? null : expiresAt,
+            new[] { "access_token", "id_token", "refresh_token" }.Select(name =>
+                new TokenStatusViewModel(name, !string.IsNullOrEmpty(properties.GetTokenValue(name)))).ToList(), count));
     }
 
     [Authorize]
-    public async Task<IActionResult> TestApiCall()
-    {
-        var accessToken = await HttpContext.GetTokenAsync("access_token");
-        
-        if (string.IsNullOrEmpty(accessToken))
-        {
-            ViewData["ErrorMessage"] = "No access token found";
-            ViewData["Success"] = false;
-            return View();
-        }
+    public async Task<IActionResult> TestApiCall(CancellationToken cancellationToken) =>
+        View(await demo.ReadUserInfoAsync(await HttpContext.GetTokenAsync("access_token"), cancellationToken));
 
-        try
+    [Authorize, HttpPost]
+    public async Task<IActionResult> RefreshUserInfo(CancellationToken cancellationToken)
+    {
+        var session = await HttpContext.AuthenticateAsync(AuthenticationSchemes.Cookies);
+        if (!session.Succeeded || session.Principal is null || session.Properties is null)
+            return Challenge(AuthenticationSchemes.OpenIdConnect);
+        var result = await demo.RefreshAsync(session.Properties, cancellationToken);
+        if (!result.Success)
+            return View("TestApiCall", new ApiDemoViewModel("Refresh + UserInfo", false, result.Message, result.StatusCode));
+        // Save the rotated refresh token even if the following UserInfo call fails.
+        await HttpContext.SignInAsync(AuthenticationSchemes.Cookies, session.Principal, session.Properties);
+        var userInfo = await demo.ReadUserInfoAsync(session.Properties.GetTokenValue("access_token"), cancellationToken);
+        return View("TestApiCall", userInfo with
         {
-            var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-            
-            // Call IdP's /connect/userinfo endpoint
-            var response = await client.GetAsync($"{IdpBaseUrl}/connect/userinfo");
-            
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                var userInfo = JsonSerializer.Deserialize<JsonElement>(content);
-                
-                ViewData["Success"] = true;
-                ViewData["UserInfo"] = userInfo.GetRawText();
-                ViewData["AccessToken"] = accessToken;
-            }
-            else
-            {
-                ViewData["Success"] = false;
-                ViewData["ErrorMessage"] = $"API call failed: {response.StatusCode} - {await response.Content.ReadAsStringAsync()}";
-            }
-        }
-        catch (Exception ex)
-        {
-            ViewData["Success"] = false;
-            ViewData["ErrorMessage"] = $"Exception: {ex.Message}";
-        }
-        
-        return View();
+            Operation = "Refresh + UserInfo",
+            Message = result.Message + " " + userInfo.Message,
+            RefreshTokenRotated = result.RefreshTokenRotated
+        });
     }
 
-    [Authorize]
-    public async Task<IActionResult> RefreshUserInfo()
+    public IActionResult Login(string scenario = "standard")
     {
-        var accessToken = await HttpContext.GetTokenAsync("access_token");
-        var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
-
-        if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(refreshToken))
-        {
-            ViewData["Success"] = false;
-            ViewData["ErrorMessage"] = "Missing access token or refresh token. Ensure offline_access scope is granted.";
-            return View("TestApiCall");
-        }
-
-        try
-        {
-            var client = _httpClientFactory.CreateClient();
-
-            var refreshRequest = new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                ["grant_type"] = "refresh_token",
-                ["client_id"] = ClientId,
-                ["refresh_token"] = refreshToken
-            });
-
-            var refreshResponse = await client.PostAsync($"{IdpBaseUrl}/connect/token", refreshRequest);
-            var refreshContent = await refreshResponse.Content.ReadAsStringAsync();
-
-            if (!refreshResponse.IsSuccessStatusCode)
-            {
-                ViewData["Success"] = false;
-                ViewData["ErrorMessage"] = $"Refresh token request failed: {refreshResponse.StatusCode} - {refreshContent}";
-                return View("TestApiCall");
-            }
-
-            var refreshJson = JsonSerializer.Deserialize<JsonElement>(refreshContent);
-            if (!refreshJson.TryGetProperty("access_token", out var refreshedTokenElement))
-            {
-                ViewData["Success"] = false;
-                ViewData["ErrorMessage"] = "Refresh token response missing access_token.";
-                return View("TestApiCall");
-            }
-
-            var refreshedAccessToken = refreshedTokenElement.GetString();
-            if (string.IsNullOrEmpty(refreshedAccessToken))
-            {
-                ViewData["Success"] = false;
-                ViewData["ErrorMessage"] = "Refresh token response contained empty access_token.";
-                return View("TestApiCall");
-            }
-
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", refreshedAccessToken);
-            var userInfoResponse = await client.GetAsync($"{IdpBaseUrl}/connect/userinfo");
-
-            if (userInfoResponse.IsSuccessStatusCode)
-            {
-                var userInfoContent = await userInfoResponse.Content.ReadAsStringAsync();
-                var userInfo = JsonSerializer.Deserialize<JsonElement>(userInfoContent);
-
-                ViewData["Success"] = true;
-                ViewData["UserInfo"] = userInfo.GetRawText();
-                ViewData["AccessToken"] = refreshedAccessToken;
-                ViewData["RefreshTokenFlow"] = true;
-            }
-            else
-            {
-                ViewData["Success"] = false;
-                ViewData["ErrorMessage"] = $"UserInfo call failed: {userInfoResponse.StatusCode} - {await userInfoResponse.Content.ReadAsStringAsync()}";
-            }
-        }
-        catch (Exception ex)
-        {
-            ViewData["Success"] = false;
-            ViewData["ErrorMessage"] = $"Exception: {ex.Message}";
-        }
-
-        return View("TestApiCall");
-    }
-
-    public IActionResult Logout()
-    {
-        return SignOut(new AuthenticationProperties
-        {
-            RedirectUri = "/"
-        }, AuthenticationSchemes.Cookies, AuthenticationSchemes.OpenIdConnect);
-    }
-
-    public IActionResult AccessDenied()
-    {
-        return View();
-    }
-
-    public IActionResult AuthError(string? error)
-    {
-        ViewData["ErrorMessage"] = error ?? "An authentication error occurred.";
-        return View();
-    }
-
-    public IActionResult InvalidScopes()
-    {
-        // Always trigger a fresh OpenID Connect challenge so Program.cs can inject
-        // the intentionally invalid scope, including when a local session exists.
-        return Challenge(
-            new AuthenticationProperties { RedirectUri = "/" },
-            AuthenticationSchemes.OpenIdConnect);
-    }
-
-    public IActionResult LoginMfa()
-    {
-        // Challenge with acr_values=mfa
+        if (scenario is not ("standard" or "mfa" or "fresh" or "max-age" or "consent" or "silent" or "invalid-scope"))
+            return BadRequest();
+        if (scenario == "invalid-scope") return RedirectToAction(nameof(InvalidScopes));
         return Challenge(new AuthenticationProperties
         {
             RedirectUri = "/Account/Profile",
-            Items =
-            {
-                { "acr_values", "mfa" }
-            }
+            Items = { ["demo_scenario"] = scenario }
         }, AuthenticationSchemes.OpenIdConnect);
+    }
+
+    public IActionResult LoginMfa() => Login("mfa");
+    public async Task<IActionResult> InvalidScopes(CancellationToken cancellationToken) =>
+        View("TestApiCall", await demo.ProbeInvalidScopeAsync(
+            UriHelper.BuildAbsolute(Request.Scheme, Request.Host, Request.PathBase, "/signin-oidc"), cancellationToken));
+
+    [HttpPost]
+    public IActionResult Logout() => SignOut(new AuthenticationProperties { RedirectUri = "/" },
+        AuthenticationSchemes.Cookies, AuthenticationSchemes.OpenIdConnect);
+
+    public IActionResult AccessDenied() => View();
+
+    public IActionResult AuthError(string? error)
+    {
+        ViewData["ErrorMessage"] = error is "invalid_scope" or "invalid_request" or "login_required" or
+            "consent_required" or "interaction_required" or "server_error" ? error : "authentication_failed";
+        return View();
     }
 }

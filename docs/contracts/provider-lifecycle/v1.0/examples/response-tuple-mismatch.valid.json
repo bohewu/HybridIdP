@@ -1,0 +1,19 @@
+{
+  "contractType": "lifecycle-status",
+  "contractVersion": "1.0",
+  "requestId": "73aab4b5-2dfa-471a-8c2b-1d70d7540092",
+  "outcome": "Found",
+  "binding": {
+    "providerNamespace": "example.provider",
+    "stableSubject": "opaque-other-003"
+  },
+  "accountState": "Enabled",
+  "evidence": {
+    "sourceAuthority": "synthetic.lifecycle.authority",
+    "mappingVersion": "managed-map-1",
+    "snapshotVersion": "source-revision-7",
+    "observedAt": "2026-10-03T00:00:00.000Z",
+    "effectiveFrom": "2026-10-03T00:00:00.000Z",
+    "effectiveUntil": "2026-10-03T00:05:00.000Z"
+  }
+}

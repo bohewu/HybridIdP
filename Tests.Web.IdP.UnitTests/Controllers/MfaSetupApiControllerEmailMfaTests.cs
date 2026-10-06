@@ -21,6 +21,34 @@ namespace Tests.Web.IdP.UnitTests.Controllers;
 public class MfaSetupApiControllerEmailMfaTests
 {
     [Fact]
+    public async Task GetTotpSetup_ShouldNotReadEnabledSeedEvenWithEnrollmentProof()
+    {
+        var fixture = CreateFixture();
+        ArrangeTwoFactorPartialAuthentication(fixture);
+        fixture.User.TwoFactorEnabled = true;
+        var result = await fixture.Controller.GetTotpSetup(default);
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
+        fixture.MfaService.Verify(s => s.GetTotpSetupInfoAsync(It.IsAny<ApplicationUser>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("totp")]
+    [InlineData("email")]
+    public async Task Setup_ShouldDenyConsumedPartialAuthorityBeforeReadingOrWritingFactors(string factor)
+    {
+        var fixture = CreateFixture();
+        ArrangeTwoFactorPartialAuthentication(fixture);
+        MfaEnrollmentSession.Consume(fixture.Session);
+        if (factor == "totp")
+            Assert.Equal(403, Assert.IsType<ObjectResult>((await fixture.Controller.GetTotpSetup(default)).Result).StatusCode);
+        else
+            Assert.Equal(403, Assert.IsType<ObjectResult>(await fixture.Controller.VerifyEmailMfaCode(new MfaSetupVerifyRequest { Code = "123456" }, default)).StatusCode);
+        fixture.MfaService.Verify(s => s.GetTotpSetupInfoAsync(It.IsAny<ApplicationUser>(), It.IsAny<CancellationToken>()), Times.Never);
+        fixture.MfaService.Verify(s => s.VerifyAndEnableEmailMfaAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        fixture.SignInManager.Verify(s => s.SignInWithClaimsAsync(It.IsAny<ApplicationUser>(), It.IsAny<bool>(), It.IsAny<IEnumerable<Claim>>()), Times.Never);
+    }
+
+    [Fact]
     public async Task EnableEmailMfa_WithoutOtpProof_ShouldRejectBeforeStateOrSessionPromotion()
     {
         var fixture = CreateFixture();
@@ -288,7 +316,7 @@ public class MfaSetupApiControllerEmailMfaTests
             userManager.Object,
             signInManager.Object,
             auditService.Object,
-            Mock.Of<IPasskeyService>(),
+            CreatePasskeyService(),
             Mock.Of<ILogger<MfaSetupApiController>>(),
             migrationIssuanceGuard.Object,
             lifecycleEligibility.Object);
@@ -303,10 +331,16 @@ public class MfaSetupApiControllerEmailMfaTests
         {
             Session = new MemorySession()
         });
+        MfaEnrollmentSession.BeginInitial(httpContext.Session, user.Id);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = httpContext
         };
+
+        var authentication = new Mock<IAuthenticationService>();
+        authentication.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme)).ReturnsAsync(AuthenticateResult.NoResult());
+        authentication.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme)).ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(httpContext.User, IdentityConstants.ApplicationScheme)));
+        httpContext.RequestServices = new ServiceCollection().AddSingleton(authentication.Object).BuildServiceProvider();
 
         return new ControllerFixture(
             controller,
@@ -322,9 +356,12 @@ public class MfaSetupApiControllerEmailMfaTests
     private static void ArrangeTwoFactorPartialAuthentication(ControllerFixture fixture)
     {
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, fixture.User.Id.ToString())],
+            [new Claim(ClaimTypes.NameIdentifier, fixture.User.Id.ToString()), MfaEnrollmentSession.BeginInitial(fixture.Session, fixture.User.Id)],
             IdentityConstants.TwoFactorUserIdScheme));
         var authentication = new Mock<IAuthenticationService>();
+        authentication
+            .Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
+            .ReturnsAsync(AuthenticateResult.NoResult());
         authentication
             .Setup(service => service.AuthenticateAsync(
                 It.IsAny<HttpContext>(),
@@ -334,6 +371,13 @@ public class MfaSetupApiControllerEmailMfaTests
         fixture.Controller.HttpContext.RequestServices = new ServiceCollection()
             .AddSingleton(authentication.Object)
             .BuildServiceProvider();
+    }
+
+    private static IPasskeyService CreatePasskeyService()
+    {
+        var service = new Mock<IPasskeyService>();
+        service.Setup(s => s.GetUserPasskeysAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        return service.Object;
     }
 
     private sealed record ControllerFixture(

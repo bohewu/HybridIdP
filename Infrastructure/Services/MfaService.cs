@@ -66,6 +66,7 @@ public class MfaService : IMfaService
 
     public async Task<MfaSetupInfo> GetTotpSetupInfoAsync(ApplicationUser user, CancellationToken ct = default)
     {
+        if (user.TwoFactorEnabled) throw new InvalidOperationException("An enabled authenticator cannot be disclosed.");
         // Get or create authenticator key
         var unformattedKey = await _userManager.GetAuthenticatorKeyAsync(user);
         
@@ -96,6 +97,7 @@ public class MfaService : IMfaService
 
     public async Task<bool> VerifyAndEnableTotpAsync(ApplicationUser user, string code, CancellationToken ct = default)
     {
+        if (user.TwoFactorEnabled) return false;
         // Verify the TOTP code
         var isValid = await _userManager.VerifyTwoFactorTokenAsync(
             user,

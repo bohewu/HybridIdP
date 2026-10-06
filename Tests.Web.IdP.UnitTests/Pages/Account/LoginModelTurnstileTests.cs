@@ -26,8 +26,10 @@ namespace Tests.Web.IdP.UnitTests.Pages.Account;
 
 public class LoginModelTurnstileTests
 {
-    [Fact]
-    public async Task LoadTurnstileStateAsync_GlobalOnAndClientOn_ShouldEnableTurnstile()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task LoadTurnstileStateAsync_GlobalOnAndClientOn_ShouldEnableTurnstile(bool probeAvailable)
     {
         var application = new object();
         var properties = ImmutableDictionary<string, JsonElement>.Empty
@@ -35,7 +37,7 @@ public class LoginModelTurnstileTests
 
         var (model, settingsMock, applicationManagerMock, turnstileStateMock) = CreateModel();
         SetupTurnstileSettings(settingsMock, globalEnabled: true);
-        turnstileStateMock.SetupGet(x => x.IsAvailable).Returns(true);
+        turnstileStateMock.SetupGet(x => x.IsAvailable).Returns(probeAvailable);
         applicationManagerMock.Setup(x => x.FindByClientIdAsync("client-a", It.IsAny<CancellationToken>()))
             .ReturnsAsync(application);
         applicationManagerMock.Setup(x => x.GetPropertiesAsync(application, It.IsAny<CancellationToken>()))
@@ -132,6 +134,7 @@ public class LoginModelTurnstileTests
         var turnstileStateMock = new Mock<ITurnstileStateService>();
 
         var model = new LoginModel(
+            Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             signInManagerMock.Object,
             userManagerMock.Object,
             Mock.Of<ILoginService>(),

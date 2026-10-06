@@ -54,6 +54,76 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
     private const string PublicClientId = "testclient-public";
     private const string PublicClientRedirectUri = "https://localhost:7001/signin-oidc";
 
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("zh-TW")]
+    public async Task RivSynthetic_RazorPrecheck_RequiresExplicitSendAndClearsEvidence(string culture)
+    {
+        await using var factory = await NativeRecoveryKestrelFactory.CreateRivSyntheticAsync(testServer: true);
+        factory.ResetService.Outcome = NativeRecoveryResetOutcome.Succeeded;
+        var path = $"/Account/ForgotPassword?culture={culture}&ui-culture={culture}";
+        var html = await factory.Client.GetStringAsync(path);
+        Assert.Contains("native-recovery-evidence", html);
+        using (var missingCsrf = await factory.Client.PostAsync(path + "&handler=Start",
+                   new FormUrlEncodedContent(new Dictionary<string, string> { ["Identifier.Value"] = SyntheticIdentifier })))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        async Task PostAsync(string handler, params (string Name, string Value)[] fields)
+        {
+            using var response = await factory.Client.PostAsync(path + "&handler=" + handler,
+                CreateForm(ExtractAntiforgeryToken(html), fields));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            html = await response.Content.ReadAsStringAsync();
+        }
+
+        await PostAsync("SendCode", ("Verified", "true"), ("recipient", "attacker@example.invalid"));
+        Assert.Contains("native-recovery-error", html);
+        Assert.Equal(0, factory.RivPrecheck.SendCount);
+        await PostAsync("Start", ("Identifier.Value", SyntheticIdentifier), ("Identifier.IdentityIdentifier", "wrong"));
+        Assert.Contains("native-recovery-error", html);
+        await PostAsync("Start", ("Identifier.Value", SyntheticIdentifier), ("Identifier.IdentityIdentifier", "TEST-ID-0001"));
+        Assert.Contains("native-recovery-send", html);
+        Assert.DoesNotContain("TEST-ID-0001", html);
+        Assert.DoesNotContain(SyntheticIdentifier, html);
+        Assert.Equal(0, factory.ProofService.StartCount);
+        Assert.Equal(0, factory.RivPrecheck.SendCount);
+        // Identity verification alone cannot reach reset, and browser-submitted recipient has no authority.
+        await PostAsync("Reset", ("Password.NewPassword", "New!Password123"), ("Password.ConfirmPassword", "New!Password123"));
+        Assert.Equal(0, factory.ResetService.ResetCount);
+        await PostAsync("Start", ("Identifier.Value", SyntheticIdentifier), ("Identifier.IdentityIdentifier", "TEST-ID-0001"));
+        await PostAsync("SendCode", ("recipient", "attacker@example.invalid"));
+        Assert.Contains("native-recovery-code", html);
+        Assert.Equal(1, factory.RivPrecheck.SendCount);
+        await PostAsync("Verify", ("Verification.Code", "000000"));
+        Assert.Contains("native-recovery-error", html);
+        await PostAsync("Verify", ("Verification.Code", SyntheticCode));
+        Assert.Contains("data-test-id=\"native-recovery-password\"", html);
+        await PostAsync("Reset", ("Password.NewPassword", "New!Password123"), ("Password.ConfirmPassword", "New!Password123"));
+        Assert.Contains("native-recovery-success", html);
+        Assert.Equal(1, factory.ResetService.ResetCount);
+    }
+
+    [Fact]
+    [Trait("Category", "ExplicitLocalE2E")]
+    public async Task RivSynthetic_RenderedRazor_OfflineBrowserJourney()
+    {
+        if (Environment.GetEnvironmentVariable("RUN_RIV_SYNTHETIC_RENDER") != "1") return;
+        var ready = RequireEnvironmentPath("RIV_SYNTHETIC_READY_FILE");
+        var stop = RequireEnvironmentPath("RIV_SYNTHETIC_STOP_FILE");
+        await using var factory = await NativeRecoveryKestrelFactory.CreateRivSyntheticAsync(testServer: false);
+        factory.ResetService.Outcome = NativeRecoveryResetOutcome.Succeeded;
+        try
+        {
+            await File.WriteAllTextAsync(ready, new Uri(factory.Client.BaseAddress!, "/Account/ForgotPassword").AbsoluteUri);
+            Assert.True(await WaitForFileAsync(stop, TimeSpan.FromMinutes(5)));
+            Assert.Equal(0, factory.ProofService.StartCount);
+            Assert.True(factory.RivPrecheck.SendCount >= 1);
+            Assert.True(factory.ProofService.VerifyCount >= 1);
+            Assert.True(factory.ResetService.ResetCount >= 1);
+        }
+        finally { TryDelete(ready); TryDelete(stop); }
+    }
+
     [Fact]
     [Trait("Category", "ExplicitLocalE2E")]
     public async Task NativeRecovery_RealRazorSyntheticProof_ReachesResetForm()
@@ -916,6 +986,7 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
         private readonly bool _settlementServices;
         private readonly bool _connectedDirectoryServices;
         private readonly bool _guidanceTestServer;
+        private readonly bool _rivSynthetic;
         private readonly Guid? _connectedSettlementDirectoryObjectId;
         private readonly string? _connectedSettlementTargetIdentifier;
         private PostgreSqlContainer? _postgresContainer;
@@ -925,6 +996,7 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
         public HttpClient Client { get; private set; } = null!;
         public FakeNativeProofService ProofService { get; } = new();
         public FakeNativeResetService ResetService { get; } = new();
+        public FakeRivPrecheckService RivPrecheck { get; } = new();
         public Guid UserId { get; private set; }
         public Guid ActiveRoleId { get; private set; }
         public string RecoveryAddress { get; } = $"native-recovery-{Guid.NewGuid():N}@example.invalid";
@@ -952,7 +1024,8 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
             bool connectedDirectoryServices = false,
             Guid? connectedSettlementDirectoryObjectId = null,
             string? connectedSettlementTargetIdentifier = null,
-            bool guidanceTestServer = false)
+            bool guidanceTestServer = false,
+            bool rivSynthetic = false)
         {
             _realServices = realServices;
             _mailpitSmtpPort = mailpitSmtpPort;
@@ -960,6 +1033,7 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
             _settlementServices = settlementServices;
             _connectedDirectoryServices = connectedDirectoryServices;
             _guidanceTestServer = guidanceTestServer;
+            _rivSynthetic = rivSynthetic;
             _connectedSettlementDirectoryObjectId = connectedSettlementDirectoryObjectId;
             _connectedSettlementTargetIdentifier = connectedSettlementTargetIdentifier;
             ConnectedDirectoryVerifier.ExpectedObjectId = connectedSettlementDirectoryObjectId ?? Guid.Empty;
@@ -968,6 +1042,9 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
 
         public static Task<NativeRecoveryKestrelFactory> CreateAsync() =>
             CreateAsync(realServices: false, mailpitSmtpPort: 0);
+
+        public static Task<NativeRecoveryKestrelFactory> CreateRivSyntheticAsync(bool testServer) =>
+            CreateAsync(realServices: false, mailpitSmtpPort: 0, guidanceTestServer: testServer, rivSynthetic: true);
 
         public static Task<NativeRecoveryKestrelFactory> CreateGuidanceAsync(
             Action<ForgotPasswordRecoveryOptions> configureGuidance) =>
@@ -1035,7 +1112,8 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
             Guid? connectedSettlementDirectoryObjectId = null,
             string? connectedSettlementTargetIdentifier = null,
             Action<ForgotPasswordRecoveryOptions>? configureGuidance = null,
-            bool guidanceTestServer = false)
+            bool guidanceTestServer = false,
+            bool rivSynthetic = false)
         {
             var factory = new NativeRecoveryKestrelFactory(
                 realServices,
@@ -1045,7 +1123,8 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
                 connectedDirectoryServices,
                 connectedSettlementDirectoryObjectId,
                 connectedSettlementTargetIdentifier,
-                guidanceTestServer);
+                guidanceTestServer,
+                rivSynthetic);
             factory._configureGuidance = configureGuidance;
             try
             {
@@ -1186,9 +1265,19 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
                         : "Ldaps",
                     ["CredentialMigration:RecoveryEmailEnabled"] = _realServices.ToString()
                 };
-                if (_guidanceTestServer)
+                if (_guidanceTestServer || _rivSynthetic)
                 {
                     values["OpenIddict:UseEphemeralKeysForTesting"] = "true";
+                }
+                if (_rivSynthetic)
+                {
+                    values["CredentialMigration:Enabled"] = "false";
+                    values["LegacyPasswordSync:Enabled"] = "false";
+                    values["ProviderMetadata:Enabled"] = "false";
+                    values["RecoveryIdentityVerification:Enabled"] = "false";
+                    values["RecoveryEmailSelection:Enabled"] = "false";
+                    values["RecoveryEmailSelection:SelfServiceEnabled"] = "false";
+                    values["RecoveryEmailSelection:TrustedDefaultFallbackEnabled"] = "false";
                 }
                 if (_settlementServices)
                 {
@@ -1225,10 +1314,13 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
             });
             builder.ConfigureServices((context, services) =>
             {
-                if (_guidanceTestServer)
+                if (_guidanceTestServer || _rivSynthetic)
                 {
                     services.RemoveAll<IConfigureOptions<RateLimiterOptions>>();
                     services.AddCustomRateLimiting(context.Configuration);
+                }
+                if (_guidanceTestServer)
+                {
                     services.AddDataProtection().UseEphemeralDataProtectionProvider();
                 }
                 if (_configureGuidance is not null)
@@ -1285,6 +1377,11 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
                 services.AddSingleton<INativePasswordRecoveryProofService>(ProofService);
                 services.RemoveAll<INativePasswordRecoveryResetService>();
                 services.AddSingleton<INativePasswordRecoveryResetService>(ResetService);
+                if (_rivSynthetic)
+                {
+                    services.RemoveAll<IRecoveryPrecheckService>();
+                    services.AddSingleton<IRecoveryPrecheckService>(RivPrecheck);
+                }
             });
         }
 
@@ -1667,6 +1764,33 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
 
         public Task UpdatePolicyAsync(SecurityPolicyDto policyDto, string updatedBy) =>
             throw new NotSupportedException();
+    }
+
+    private sealed class FakeRivPrecheckService : IRecoveryPrecheckService
+    {
+        private Guid? _grant;
+        private NativeRecoveryContext? _context;
+        public bool Enabled => true;
+        public bool IdentityInputEnabled => true;
+        public string LabelResourceKey => "Recovery.Identity.Identifier.Label";
+        public string HelpResourceKey => "Recovery.Identity.Identifier.Help";
+        public int SendCount { get; private set; }
+
+        public Task<RecoveryPrepareResult> PrepareAsync(RecoveryPrepareRequest request, CancellationToken cancellationToken = default)
+        {
+            _context = request.Context;
+            _grant = request.Identifier == SyntheticIdentifier && request.IdentityIdentifier == "TEST-ID-0001" ? Guid.NewGuid() : null;
+            return Task.FromResult(new RecoveryPrepareResult(_grant, _grant.HasValue ? "s***c@example.invalid" : null));
+        }
+
+        public Task<NativeRecoveryStartResult> SendOtpAsync(RecoverySendOtpRequest request, CancellationToken cancellationToken = default)
+        {
+            Assert.Equal(_grant, request.GrantId);
+            Assert.Equal(_context, request.Context);
+            _grant = null;
+            SendCount++; // In-memory fake delivery only. This fixture never resolves a SMTP/provider adapter.
+            return Task.FromResult(new NativeRecoveryStartResult(Guid.NewGuid()));
+        }
     }
 
     private sealed class FakeNativeProofService : INativePasswordRecoveryProofService

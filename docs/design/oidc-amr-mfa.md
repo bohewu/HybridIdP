@@ -24,39 +24,39 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 
 ### Core Domain
 
-#### [MODIFY] [AuthConstants.cs](file:///c:/repos/HybridIdP/Core.Domain/Constants/AuthConstants.cs)
+#### [MODIFY] [AuthConstants.cs](../../Core.Domain/Constants/AuthConstants.cs)
 - Add constants for `amr` values: `pwd`, `otp`, `mfa`, `hwk`.
 
-#### [MODIFY] [SecurityPolicy.cs](file:///c:/repos/HybridIdP/Core.Domain/Entities/SecurityPolicy.cs)
+#### [MODIFY] [SecurityPolicy.cs](../../Core.Domain/Entities/SecurityPolicy.cs)
 - Add `EnforceMandatoryMfaEnrollment` (Boolean) property.
 - Add `MfaEnforcementGracePeriodDays` (Integer) property.
 - Add `FirstLoginAt` or `MfaRequirementNotifiedAt` to `ApplicationUser` for grace period tracking.
 
 ### Web IdP
 
-#### [MODIFY] [Login.cshtml.cs](file:///c:/repos/HybridIdP/Web.IdP/Pages/Account/Login.cshtml.cs)
+#### [MODIFY] [Login.cshtml.cs](../../Web.IdP/Pages/Account/Login.cshtml.cs)
 - Add `amr: pwd` claim to the identity when a user signs in with password.
 - Check `EnforceMandatoryMfaEnrollment`. If true and user has no MFA, redirect to `MfaSetup`.
 
-#### [MODIFY] [LoginTotp.cshtml.cs](file:///c:/repos/HybridIdP/Web.IdP/Pages/Account/LoginTotp.cshtml.cs)
+#### [MODIFY] [LoginTotp.cshtml.cs](../../Web.IdP/Pages/Account/LoginTotp.cshtml.cs)
 - Add `amr: ["pwd", "mfa", "otp"]` claims upon success.
 
-#### [NEW] [MfaSetup.cshtml](file:///c:/repos/HybridIdP/Web.IdP/Pages/Account/MfaSetup.cshtml)
+#### [NEW] [MfaSetup.cshtml](../../Web.IdP/Pages/Account/MfaSetup.cshtml)
 - **Interactive Selection**: Display enabled MFA options (TOTP, Email) or Passkey registration based on `SecurityPolicy`.
 - **Session Update**: Call `_signInManager.SignInAsync` after setup to update claims.
 - **Redirect**: Directly back to `returnUrl` (OIDC authorize endpoint) or Home.
 
-#### [MODIFY] [MfaController.cs](file:///c:/repos/HybridIdP/Web.IdP/Controllers/Account/MfaController.cs)
+#### [MODIFY] [MfaController.cs](../../Web.IdP/Controllers/Account/MfaController.cs)
 - **API Enforcement**: In `/disable` and `/email/disable` endpoints, check if `EnforceMandatoryMfaEnrollment` is active.
 - If the method being disabled is the only one left, return `BadRequest` with error code `lastMfaExclusionRequired`.
 
-#### [MODIFY] [PasskeyController.cs](file:///c:/repos/HybridIdP/Web.IdP/Controllers/Account/PasskeyController.cs)
+#### [MODIFY] [PasskeyController.cs](../../Web.IdP/Controllers/Account/PasskeyController.cs)
 - **API Enforcement**: If deleting a passkey, check if it's the last one and no other MFA (TOTP/Email) is active under the mandatory policy.
 
-#### [MODIFY] [AuthorizationService.cs](file:///c:/repos/HybridIdP/Web.IdP/Services/AuthorizationService.cs)
+#### [MODIFY] [AuthorizationService.cs](../../Web.IdP/Services/AuthorizationService.cs)
 - Check `acr_values=mfa`.
 - **Validation**:
-    - Match if `amr` contains `mfa` OR `hwk`.
+    - Match only if `amr` contains `mfa`; passkey MFA requires validated user verification.
     - If no match:
         - If MFA disabled globally -> Return `unmet_authentication_requirements`.
         - Else If user has no MFA setup -> Redirect to `MfaSetup`.
@@ -74,7 +74,8 @@ Implement the `amr` (Authentication Methods References) claim and support forcin
 | :--- | :--- | :--- |
 | Password | `["pwd"]` | No |
 | TOTP / Email OTP | `["pwd", "mfa", "otp"]` | Yes |
-| Passkey (WebAuthn) | `["hwk", "user"]` | Yes (Per NIST/modern OIDC) |
+| Passkey with user verification | `["hwk", "user", "mfa"]` | Yes |
+| Passkey without user verification | `["hwk", "user"]` | No |
 | Recovery Code | `["pwd", "mfa"]` | Yes |
 | Recovery Code | `["pwd", "mfa"]` | Yes |
 
@@ -97,13 +98,13 @@ If `acr_values=mfa` is requested but cannot be fulfilled, return:
 
 1. **Entry**: Redirected from `AuthorizationService` or `Login` with `returnUrl`.
 2. **Action**: User selects and completes setup for TOTP, Email MFA, or Passkey.
-3. **Internal Refresh**: System calls `SignInAsync` to update the user's session cookie with the new `mfa` or `hwk` claim.
+3. **Internal Refresh**: System calls `SignInAsync` to update the user's session cookie with performed `mfa` evidence (passkey enrollment requires user verification).
 4. **Exit**: Redirect back to `returnUrl`, where `AuthorizationService` will now detect the claim and proceed.
 
 ## Verification Plan
 
 ### Automated Tests
 - System test: Request `acr_values=mfa` with a password-only user -> Verify redirect to `MfaSetup`.
-- System test: Request `acr_values=mfa` with a Passkey user -> Verify direct token issuance with `hwk` claim.
+- System test: Request `acr_values=mfa` with a user-verified Passkey user -> Verify direct token issuance with `hwk` and `mfa` claims.
 - System test: Enable `EnforceMandatoryMfaEnrollment` -> Verify all non-compliant users are forced to `MfaSetup` upon login.
 - **Enforcement Test**: Attempt to call API to disable the only MFA method when policy is active -> Verify 400 error.

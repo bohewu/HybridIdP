@@ -30,7 +30,7 @@ internal sealed class MemorySession : ISession
             return true;
         }
 
-        value = [];
+        value = null!;
         return false;
     }
 }

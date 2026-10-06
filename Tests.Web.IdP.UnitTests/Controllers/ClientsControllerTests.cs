@@ -1,3 +1,4 @@
+using Infrastructure.Authorization;
 using System.Security.Claims;
 using System.Text.Json;
 using Core.Application;
@@ -428,7 +429,8 @@ public class ClientsControllerTests
 
         var identity = new ClaimsIdentity(
             claims,
-            authenticationType: "test",
+            authenticationType: callerKind is CallerKind.Admin or CallerKind.SameOwner or CallerKind.CrossOwner or CallerKind.Unowned or CallerKind.AppRoleAdmin or CallerKind.NoPerson
+                ? Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme : "Bearer",
             nameType: ClaimTypes.Name,
             roleType: ClaimTypes.Role);
         var hostEnvironment = new Mock<IHostEnvironment>();
@@ -459,6 +461,9 @@ public class ClientsControllerTests
             }
         };
 
+        if (callerKind == CallerKind.TrustedAutomation)
+            controller.HttpContext.Items[AdministrativeAuthorizationBoundary.AuthorityKey] = new AdministrativeAuthority(
+                controller.User, true, Core.Domain.Constants.Permissions.GetAll().ToHashSet());
         return controller;
     }
 

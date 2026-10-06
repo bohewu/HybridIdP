@@ -3,11 +3,37 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Net;
 using Xunit;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Tests.Infrastructure.UnitTests.Configuration;
 
 public class ForwardedHeadersHelperTests
 {
+    [Theory]
+    [InlineData("203.0.113.1, 192.0.2.10", "10.1.0.2", 2, "203.0.113.1")]
+    [InlineData("203.0.113.2, 192.0.2.10", "10.1.0.2", 2, "203.0.113.2")]
+    [InlineData("198.51.100.9, 203.0.113.1, 192.0.2.10", "10.1.0.2", 2, "203.0.113.1")]
+    [InlineData("127.0.0.1, 192.0.2.10", "198.51.100.20", 2, "198.51.100.20")]
+    [InlineData("203.0.113.1", "10.1.0.2", 1, "203.0.113.1")]
+    public async Task ForwardedChain_ShouldResolveOnlyTrustedHops(string header, string peer, int limit, string expected)
+    {
+        var options = CreateOptions();
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.ForwardLimit = limit;
+        ForwardedHeadersHelper.ConfigureKnownNetworks(options, "10.1.0.2;192.0.2.10");
+        var context = new DefaultHttpContext();
+        context.Connection.RemoteIpAddress = IPAddress.Parse(peer);
+        context.Request.Headers["X-Forwarded-For"] = header;
+        context.Request.Headers["X-Forwarded-Proto"] = "https";
+        var middleware = new ForwardedHeadersMiddleware(_ => Task.CompletedTask, NullLoggerFactory.Instance, Options.Create(options));
+
+        await middleware.Invoke(context);
+
+        Assert.Equal(IPAddress.Parse(expected), context.Connection.RemoteIpAddress);
+    }
+
     public ForwardedHeadersHelperTests()
     {
     }

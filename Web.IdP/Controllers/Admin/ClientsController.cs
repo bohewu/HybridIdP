@@ -506,11 +506,8 @@ public class ClientsController : ControllerBase
             return false;
         }
 
-        var subject = User.FindFirst(OpenIddictConstants.Claims.Subject)?.Value;
-        return string.Equals(
-            subject,
-            TrustedAdministrationAutomationClientId,
-            StringComparison.Ordinal);
+        return HttpContext.Items[AdministrativeAuthorizationBoundary.AuthorityKey] is
+            AdministrativeAuthority { IsBearer: true };
     }
 
     private IActionResult? EnforceClientWriteHardening()

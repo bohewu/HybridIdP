@@ -1,0 +1,27 @@
+{
+  "id": "C15",
+  "case": "Response correlation or binding mismatch",
+  "owner": "both",
+  "scenario": "binding-mismatch",
+  "requestJson": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+  "httpStatus": 200,
+  "contentType": "application/json",
+  "responseJson": "{\"contractVersion\":\"1.0\",\"requestId\":\"aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb\",\"outcome\":\"Verified\",\"binding\":{\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\"}}",
+  "consumerAcceptsEnvelope": false,
+  "consumerMayPrepareGrant": false,
+  "executionScope": "Pure wire checks only; producer source behavior requires producer tests. HTTP and durable ceremony remain separate consumer gates.",
+  "responseVariants": [
+    {
+      "name": "providerNamespace",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"outcome\":\"Verified\",\"binding\":{\"providerNamespace\":\"MISMATCH\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\"}}"
+    },
+    {
+      "name": "stableSubject",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"outcome\":\"Verified\",\"binding\":{\"providerNamespace\":\"example.provider\",\"stableSubject\":\"MISMATCH\",\"scheme\":\"identity-identifier\"}}"
+    },
+    {
+      "name": "scheme",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"outcome\":\"Verified\",\"binding\":{\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"MISMATCH\"}}"
+    }
+  ]
+}

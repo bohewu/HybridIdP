@@ -34,51 +34,11 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
         _logger = logger;
     }
 
-    public async Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user, string? clientId = null, CancellationToken cancellationToken = default)
+    public Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user, string? clientId = null, CancellationToken cancellationToken = default)
     {
-        // Define privileged clients that are allowed to receive IdP-internal permissions from Roles.
-        var privilegedClients = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
-        { 
-            "testclient-admin", 
-            "hybrid-idp-admin", 
-            "admin-portal"
-        };
-
-        // If clientId is provided and NOT in the privileged list, skip adding these permissions.
-        if (!string.IsNullOrEmpty(clientId) && !privilegedClients.Contains(clientId))
-        {
-            LogClientNotPrivileged(clientId);
-            return;
-        }
-
-        var userRoles = await _userManager.GetRolesAsync(user);
-        var permissions = new HashSet<string>();
-
-        foreach (var roleName in userRoles)
-        {
-            var role = await _roleManager.FindByNameAsync(roleName);
-            if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
-            {
-                // Parse permissions from the role's Permissions property (comma-separated string)
-                var rolePermissions = role.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(p => p.Trim())
-                    .Where(p => !string.IsNullOrEmpty(p));
-                
-                foreach (var permission in rolePermissions)
-                {
-                    permissions.Add(permission);
-                }
-            }
-        }
-
-        // Add permission claims to identity
-        foreach (var permission in permissions)
-        {
-            if (!identity.HasClaim(c => c.Type == "permission" && c.Value == permission))
-            {
-                identity.AddClaim(new Claim("permission", permission));
-            }
-        }
+        // User tokens carry application roles. IdP administration is cookie-only;
+        // approved M2M capabilities are issued separately by the token service.
+        return Task.CompletedTask;
     }
 
     public async Task AddScopeMappedClaimsAsync(ClaimsIdentity identity, ApplicationUser user, IEnumerable<string> grantedScopes, CancellationToken cancellationToken = default)
@@ -103,6 +63,9 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
         {
             var def = map.ClaimDefinition;
             if (def == null) continue;
+            if (def.ClaimType is "permission" or "active_role" or "role" or "app_role" or
+                "idp_admin_application" or "sub" or "scope" or "scp" or "client_id" or "azp" or "amr" or "acr" or "auth_time" ||
+                def.ClaimType == ClaimTypes.Role) continue;
 
             if (!ClaimSourcePropertyPolicy.TryResolve(
                     user,

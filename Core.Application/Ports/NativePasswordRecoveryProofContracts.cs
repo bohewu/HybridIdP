@@ -11,7 +11,7 @@ public interface INativePasswordRecoveryProofService
         CancellationToken cancellationToken = default);
 }
 
-public sealed record NativeRecoveryContext(string ContextHash, string CsrfHash);
+public sealed record NativeRecoveryContext(string ContextHash, string CsrfHash, string? BrowserHash = null);
 
 public sealed record NativeRecoveryStartRequest(
     string Identifier,

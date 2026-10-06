@@ -21,6 +21,20 @@ namespace Tests.Application.UnitTests;
 
 public class ClientServiceTests
 {
+    [Fact]
+    public async Task IsClientOwnedByPersonAsync_ShouldDenyDelegatedControlOfAdministrativeClient()
+    {
+        var id = Guid.NewGuid();
+        var application = new object();
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(id.ToString(), It.IsAny<CancellationToken>())).ReturnsAsync(application);
+        _mockApplicationManager.Setup(m => m.GetPropertiesAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(
+            ImmutableDictionary<string, System.Text.Json.JsonElement>.Empty.Add(
+                Infrastructure.Authorization.AdministrativeClientGrant.PermissionsProperty,
+                System.Text.Json.JsonSerializer.SerializeToElement(new[] { "users.read" })));
+        Assert.False(await _clientService.IsClientOwnedByPersonAsync(id, Guid.NewGuid()));
+        _mockContext.VerifyGet(c => c.ClientOwnerships, Times.Never);
+    }
+
     private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
     private readonly Mock<IOpenIddictScopeManager> _mockScopeManager;
     private readonly Mock<IDomainEventPublisher> _mockEventPublisher;

@@ -35,4 +35,9 @@ public class UserCredential
     
     // Track when the passkey was last used for login
     public DateTime? LastUsedAt { get; set; }
+
+    // Null means active. Retired credentials cannot authenticate or satisfy MFA.
+    // Prevent a verification in progress from saving after an operator disables it.
+    [ConcurrencyCheck]
+    public DateTime? DisabledAtUtc { get; set; }
 }

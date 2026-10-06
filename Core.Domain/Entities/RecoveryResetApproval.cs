@@ -63,6 +63,26 @@ public sealed class RecoveryResetApproval
     public DateTimeOffset? ConsumedAtUtc { get; private set; }
     public DateTimeOffset? RevokedAtUtc { get; private set; }
     public long Version { get; private set; }
+    public long? SelectionEpoch { get; private set; }
+    public RecoveryDestinationKind? DestinationKind { get; private set; }
+    public string? DestinationFingerprint { get; private set; }
+    public long? DestinationVersion { get; private set; }
+
+    public void BindSelection(long selectionEpoch, RecoveryDestinationKind destinationKind,
+        string destinationFingerprint, long destinationVersion)
+    {
+        RecoveryStateGuard.Selection(selectionEpoch, destinationKind, destinationFingerprint, destinationVersion);
+        if (SelectionEpoch is not null) throw new InvalidOperationException("Recovery selection is immutable once bound.");
+        SelectionEpoch = selectionEpoch;
+        DestinationKind = destinationKind;
+        DestinationFingerprint = destinationFingerprint;
+        DestinationVersion = destinationVersion;
+        Version++;
+    }
+
+    public bool MatchesSelection(long epoch, RecoveryDestinationKind kind, string fingerprint, long version) =>
+        SelectionEpoch == epoch && DestinationKind == kind && DestinationFingerprint == fingerprint && DestinationVersion == version;
+
 
     public bool TryConsume(DateTimeOffset now)
     {

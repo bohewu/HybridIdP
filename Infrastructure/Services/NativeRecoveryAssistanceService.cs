@@ -21,6 +21,9 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
     private readonly IRecoveryProofAudit _audit;
     private readonly ForgotPasswordRecoveryOptions _options;
     private readonly RecoveryProofStore _store;
+    private readonly RecoveryPrecheckService? _precheck;
+    private readonly bool _selectionEnabled;
+    private readonly RecoveryOtpDeliveryService? _delivery;
 
     public NativeRecoveryAssistanceService(
         ApplicationDbContext dbContext,
@@ -31,7 +34,11 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
         IPasswordHasher<ApplicationUser> passwordHasher,
         IRecoveryProofAudit audit,
         IOptions<ForgotPasswordRecoveryOptions> options,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        RecoveryPrecheckService? precheck = null,
+        IOptions<RecoveryEmailSelectionOptions>? selectionOptions = null,
+        IOptions<RecoveryIdentityVerificationOptions>? identityOptions = null,
+        RecoveryOtpDeliveryService? delivery = null)
     {
         _dbContext = dbContext;
         _authorizer = authorizer;
@@ -42,6 +49,9 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
         _audit = audit;
         _options = options.Value;
         _store = new RecoveryProofStore(dbContext, timeProvider);
+        _precheck = precheck;
+        _selectionEnabled = selectionOptions?.Value.Enabled == true || identityOptions?.Value.Enabled == true;
+        _delivery = delivery;
     }
 
     public async Task<NativeRecoveryAssistanceResult> ResendAsync(
@@ -68,16 +78,17 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
             }
 
             var now = _store.UtcNow;
-            if (!resolved.Email.TryReserveSend(now, now.AddSeconds(_options.NativeOtpResendCooldownSeconds)))
+            if (resolved.Email is null ? resolved.Challenge.SentAtUtc.AddSeconds(_options.NativeOtpResendCooldownSeconds) > now :
+                !resolved.Email.TryReserveSend(now, now.AddSeconds(_options.NativeOtpResendCooldownSeconds)))
             {
                 await transaction.RollbackAsync(cancellationToken);
                 var retryAfter = Math.Max(1, (int)Math.Ceiling(
-                    ((resolved.Email.NextSendAllowedAtUtc ?? now) - now).TotalSeconds));
+                    ((resolved.Email?.NextSendAllowedAtUtc ?? resolved.Challenge.SentAtUtc.AddSeconds(_options.NativeOtpResendCooldownSeconds)) - now).TotalSeconds));
                 return new NativeRecoveryAssistanceResult(RecoveryProofOutcome.Cooldown, retryAfter);
             }
 
             code = RecoveryProofSecurity.GenerateNumericCode();
-            var emailBinding = CreateEmailBinding(resolved.Email);
+            var emailBinding = resolved.Destination is null ? CreateEmailBinding(resolved.Email!) : RecoveryPrecheckService.OtpBinding(resolved.Destination);
             var codeHash = _passwordHasher.HashPassword(
                 resolved.User,
                 RecoveryProofSecurity.BindToContext(
@@ -90,7 +101,7 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
                 resolved.Challenge.NativeCsrfHash!,
                 resolved.Authority.IsDirectory,
                 resolved.Authority.IsDirectory ? resolved.Authority.DirectoryObjectId : null,
-                resolved.Email.Version,
+                resolved.Email?.Version ?? resolved.Destination!.Version,
                 resolved.User.SecurityStamp!);
             if (!resolved.Challenge.TrySupersedeCode(codeHash, now))
             {
@@ -101,7 +112,7 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
             await _dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             challenge = resolved.Challenge;
-            address = resolved.Email.Address;
+            address = resolved.Destination?.Address ?? resolved.Email!.Address;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -188,7 +199,17 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
             }
 
             resolved.Challenge.Revoke(now);
-            resolved.Email.ReplaceAddress(
+            var replacementEmail = resolved.Email ?? await _dbContext.RecoveryEmails.SingleOrDefaultAsync(
+                candidate => candidate.LocalAccountId == resolved.User.Id, cancellationToken);
+            if (replacementEmail is null)
+            {
+                replacementEmail = new RecoveryEmailRecord(resolved.User.Id, address, normalizedAddress, now);
+                _dbContext.RecoveryEmails.Add(replacementEmail);
+            }
+            var preference = resolved.Destination is null ? null :
+                await _store.BeginAdministrativeSelectionAsync(resolved.User.Id, cancellationToken);
+            if (resolved.Destination is not null && preference is null) return new(RecoveryProofOutcome.Unavailable);
+            replacementEmail.ReplaceAddress(
                 address,
                 normalizedAddress,
                 now,
@@ -198,7 +219,7 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
                 request.IdentityCheckEvidence.Trim());
 
             code = RecoveryProofSecurity.GenerateNumericCode();
-            var emailBinding = CreateEmailBinding(resolved.Email);
+            var emailBinding = CreateEmailBinding(replacementEmail);
             var codeHash = _passwordHasher.HashPassword(
                 resolved.User,
                 RecoveryProofSecurity.BindToContext(
@@ -207,7 +228,7 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
                     resolved.Challenge.NativeCsrfHash!,
                     emailBinding));
             verificationChallenge = new RecoveryProofChallenge(
-                resolved.Email.Id,
+                replacementEmail.Id,
                 resolved.User.Id,
                 RecoveryProofPurpose.RecoveryAddressVerification,
                 codeHash,
@@ -218,9 +239,12 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
                 resolved.Challenge.NativeCsrfHash!,
                 resolved.Authority.IsDirectory,
                 resolved.Authority.IsDirectory ? resolved.Authority.DirectoryObjectId : null,
-                resolved.Email.Version,
+                replacementEmail.Version,
                 resolved.User.SecurityStamp!,
                 resolved.Challenge.Id);
+            if (preference is not null)
+                verificationChallenge.BindSelection(preference.SelectionEpoch, RecoveryDestinationKind.Custom,
+                    RecoveryProofStore.ReplacementFingerprint(replacementEmail), replacementEmail.Version);
             _dbContext.RecoveryProofChallenges.Add(verificationChallenge);
             await _dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -237,12 +261,24 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
 
         try
         {
-            await _emailService.SendEmailAsync(
-                address,
-                "Verify recovery email",
-                $"Your verification code is {code}. It expires in {_options.NativeOtpLifetimeMinutes} minutes.",
-                false,
-                cancellationToken);
+            if (verificationChallenge!.SelectionEpoch is not null)
+            {
+                if (_delivery is null || !await _delivery.SendAsync(address, "Verify recovery email", code!,
+                    _options.NativeOtpLifetimeMinutes, cancellationToken))
+                {
+                    await _store.MarkChallengeRevokedAsync(verificationChallenge.Id, cancellationToken);
+                    return new(RecoveryProofOutcome.Unavailable);
+                }
+            }
+            else
+            {
+                await _emailService.SendEmailAsync(
+                    address,
+                    "Verify recovery email",
+                    $"Your verification code is {code}. It expires in {_options.NativeOtpLifetimeMinutes} minutes.",
+                    false,
+                    cancellationToken);
+            }
             await RecordAuditAsync(
                 RecoveryProofAuditCategory.AdminNativeRecoveryAddressReplaced,
                 request.TargetAccountId,
@@ -252,6 +288,8 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            if (verificationChallenge!.SelectionEpoch is not null)
+                await _store.MarkChallengeRevokedAsync(verificationChallenge.Id, CancellationToken.None);
             throw;
         }
         catch
@@ -302,7 +340,8 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
                 expiry = resolved.Challenge.ExpiresAtUtc;
             }
 
-            _dbContext.NativeRecoveryResetApprovals.Add(new NativeRecoveryResetApproval(
+            var issued = resolved.Email is null ? NativeRecoveryResetApproval.CreateForDefault(resolved.Challenge,
+                request.ActorAccountId, request.Reason.Trim(), request.IdentityCheckEvidence.Trim(), now, expiry) : new NativeRecoveryResetApproval(
                 resolved.Challenge.Id,
                 resolved.User.Id,
                 resolved.Email.Id,
@@ -316,7 +355,10 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
                 request.Reason.Trim(),
                 request.IdentityCheckEvidence.Trim(),
                 now,
-                expiry));
+                expiry);
+            if (resolved.Email is not null && resolved.Destination is { } destination)
+                issued.BindSelection(destination.SelectionEpoch, destination.Kind, destination.Fingerprint, destination.Version);
+            _dbContext.NativeRecoveryResetApprovals.Add(issued);
             await _dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             await RecordAuditAsync(
@@ -390,7 +432,7 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
                 request.Code,
                 request.Context.ContextHash,
                 request.Context.CsrfHash,
-                CreateEmailBinding(resolved.Email));
+                CreateEmailBinding(resolved.Email!));
             if (_passwordHasher.VerifyHashedPassword(
                     resolved.User,
                     reservation.Challenge.CodeHash,
@@ -515,12 +557,23 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
                 candidate.LocalAccountId == challenge.LocalAccountId,
             cancellationToken);
         var authority = user is null ? null : await ResolveAuthorityAsync(user, cancellationToken);
+        if (challenge.SelectionEpoch is not null && challenge.Purpose == RecoveryProofPurpose.NativePasswordRecovery)
+        {
+            var state = await _store.ResolveNativeSelectionAsync(challenge,
+                new(challenge.NativeContextHash!, challenge.NativeCsrfHash!), _precheck, cancellationToken);
+            return state is not null && user is not null && authority is not null
+                ? new(challenge, user, email, authority, state.Destination) : null;
+        }
+        if (challenge.SelectionEpoch is null && (_selectionEnabled ||
+            await _store.HasSelectionIntentAsync(challenge.LocalAccountId, cancellationToken))) return null;
         if (user is null || email is null || authority is null ||
             requireVerifiedEmail && email.VerifiedAtUtc is null ||
             !HasCurrentBinding(challenge, user, email, authority))
         {
             return null;
         }
+        if (challenge.SelectionEpoch is not null &&
+            !await _store.IsCurrentReplacementAsync(challenge, email, cancellationToken)) return null;
 
         if (requireVerifiedEmail)
         {
@@ -597,6 +650,9 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
         NativeRecoveryResetApproval approval,
         RecoveryProofChallenge challenge) =>
         approval.LocalAccountId == challenge.LocalAccountId &&
+        approval.RecoveryProofChallengeId == challenge.Id &&
+        approval.SelectionEpoch == challenge.SelectionEpoch && approval.DestinationKind == challenge.DestinationKind &&
+        approval.DestinationFingerprint == challenge.DestinationFingerprint && approval.DestinationVersion == challenge.DestinationVersion &&
         approval.RecoveryEmailId == challenge.RecoveryEmailId &&
         approval.RecoveryEmailVersion == challenge.NativeRecoveryEmailVersion &&
         approval.DirectoryAuthority == challenge.NativeDirectoryAuthority &&
@@ -657,6 +713,7 @@ public sealed class NativeRecoveryAssistanceService : INativeRecoveryAssistanceS
     private sealed record ResolvedNativeChallenge(
         RecoveryProofChallenge Challenge,
         ApplicationUser User,
-        RecoveryEmailRecord Email,
-        RecoveryAuthority Authority);
+        RecoveryEmailRecord? Email,
+        RecoveryAuthority Authority,
+        RecoveryDestination? Destination = null);
 }

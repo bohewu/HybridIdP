@@ -1,0 +1,105 @@
+{
+  "id": "C08",
+  "case": "Missing null blank or control request fields",
+  "owner": "both",
+  "scenario": "malformed",
+  "requestJson": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+  "httpStatus": 400,
+  "contentType": "application/json",
+  "responseJson": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"outcome\":\"Malformed\"}",
+  "consumerAcceptsEnvelope": true,
+  "consumerMayPrepareGrant": false,
+  "executionScope": "Pure wire checks only; producer source behavior requires producer tests. HTTP and durable ceremony remain separate consumer gates.",
+  "requestVariants": [
+    {
+      "name": "missing-contractVersion",
+      "json": "{\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "null-contractVersion",
+      "json": "{\"contractVersion\":null,\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "missing-requestId",
+      "json": "{\"contractVersion\":\"1.0\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "null-requestId",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":null,\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "missing-providerNamespace",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "null-providerNamespace",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":null,\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "missing-stableSubject",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "null-stableSubject",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":null,\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "missing-scheme",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "null-scheme",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":null,\"evidence\":{\"identityIdentifier\":\"TEST-ID-0001\"}}",
+      "valid": false
+    },
+    {
+      "name": "missing-evidence",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\"}",
+      "valid": false
+    },
+    {
+      "name": "null-evidence",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":null}",
+      "valid": false
+    },
+    {
+      "name": "invalid-evidence-12",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\"}}",
+      "valid": false
+    },
+    {
+      "name": "invalid-evidence-13",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"   \"}}",
+      "valid": false
+    },
+    {
+      "name": "invalid-evidence-14",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\\u0000\"}}",
+      "valid": false
+    },
+    {
+      "name": "invalid-evidence-15",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\\u001f\"}}",
+      "valid": false
+    },
+    {
+      "name": "invalid-evidence-16",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\\u007f\"}}",
+      "valid": false
+    },
+    {
+      "name": "invalid-evidence-17",
+      "json": "{\"contractVersion\":\"1.0\",\"requestId\":\"73aab4b5-2dfa-471a-8c2b-1d70d7540092\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"synthetic-subject-001\",\"scheme\":\"identity-identifier\",\"evidence\":{\"identityIdentifier\":\"\\u0085\"}}",
+      "valid": false
+    }
+  ]
+}

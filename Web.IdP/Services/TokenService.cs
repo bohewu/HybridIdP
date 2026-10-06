@@ -19,6 +19,7 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 namespace Web.IdP.Services
 {
     public partial class TokenService(
+        ICurrentUserLifecycleEligibility lifecycleEligibility,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         RoleManager<ApplicationRole> roleManager,
@@ -35,6 +36,7 @@ namespace Web.IdP.Services
         IStage2CredentialMigrationService stage2CredentialMigrationService,
         IMigrationIssuanceGuard migrationIssuanceGuard) : ITokenService
     {
+        private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility = lifecycleEligibility;
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly RoleManager<ApplicationRole> _roleManager = roleManager;
@@ -142,6 +144,7 @@ namespace Web.IdP.Services
 
         private async Task<IActionResult> HandlePasswordGrantAsync(OpenIddictRequest request, CancellationToken cancellationToken)
         {
+            if (!await SatisfiesClientMfaAsync(request, null, cancellationToken)) return InvalidPasswordGrant();
             var user = await _userManager.FindByNameAsync(request.Username!);
             if (user == null)
             {
@@ -283,8 +286,7 @@ namespace Web.IdP.Services
             identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
                 .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
                 .SetClaim(Claims.Name, displayName)
-                .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
+                .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user));
 
             // Add Permissions
             await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId, cancellationToken);
@@ -297,6 +299,7 @@ namespace Web.IdP.Services
             identity.AddClaim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.Password);
 
             identity.SetScopes(request.GetScopes());
+            Web.IdP.Helpers.UserTokenClaimScopes.Apply(identity);
             identity.SetDestinations(GetDestinations);
 
             var principal = new ClaimsPrincipal(identity);
@@ -306,7 +309,23 @@ namespace Web.IdP.Services
             var ua2 = "unknown";
             await _auditService.LogEventAsync("UserLogin", user.Id.ToString(), System.Text.Json.JsonSerializer.Serialize(new { Success = true }), ip2, ua2, cancellationToken);
 
+            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+
+            {
+
+                return InvalidPasswordGrant();
+
+            }
+
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, principal);
+        }
+
+        private async Task<bool> SatisfiesClientMfaAsync(OpenIddictRequest request, ClaimsPrincipal? principal, CancellationToken cancellationToken)
+        {
+            var application = await _applicationManager.FindByClientIdAsync(request.ClientId!, cancellationToken);
+            if (application == null) return false;
+            return !ClientMfaPolicy.RequiresMfa(await _applicationManager.GetPropertiesAsync(application, cancellationToken)) ||
+                (principal != null && Web.IdP.Helpers.MfaEnrollmentSession.HasMfa(principal));
         }
 
         private async Task<IActionResult> HandleAuthorizationCodeGrantAsync(OpenIddictRequest request, ClaimsPrincipal? principal, CancellationToken cancellationToken)
@@ -321,6 +340,9 @@ namespace Web.IdP.Services
                         [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The authorization code is invalid."
                     }));
              }
+
+            if (!await SatisfiesClientMfaAsync(request, principal, cancellationToken)) return InvalidPasswordGrant();
+            if (!await HasCurrentScopePermissionsAsync(request, principal, cancellationToken)) return InvalidPasswordGrant();
 
             // Ensure that the user happens to represent a valid user in our DB
             var userId = principal.GetClaim(Claims.Subject);
@@ -347,9 +369,26 @@ namespace Web.IdP.Services
                     }));
             }
             
+            foreach (var identity in principal.Identities)
+            {
+                foreach (var claim in identity.Claims.Where(c => c.Type is "role" or "app_role" or "permission" or "active_role" ||
+                    c.Type == ClaimTypes.Role || c.Type == global::Infrastructure.Authorization.AdministrativeClientGrant.ApplicationClaim).ToList())
+                    identity.RemoveClaim(claim);
+                await _claimsEnricher.AddAppSpecificRolesAsync(identity, user, request.ClientId ?? string.Empty, cancellationToken);
+                Web.IdP.Helpers.UserTokenClaimScopes.Apply(identity);
+            }
+
             foreach (var claim in principal.Claims)
             {
                 claim.SetDestinations(GetDestinations(claim));
+            }
+
+            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+
+            {
+
+                return InvalidPasswordGrant();
+
             }
 
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, principal);
@@ -402,9 +441,7 @@ namespace Web.IdP.Services
                 await _applicationManager.GetPropertiesAsync(application, cancellationToken));
             var amrValues = principal.GetClaims(AuthConstants.ClaimTypes.Amr)
                 .Distinct(StringComparer.Ordinal);
-            var hasMfaEvidence = amrValues.Any(value =>
-                value.Equals(AuthConstants.Amr.Mfa, StringComparison.OrdinalIgnoreCase) ||
-                value.Equals(AuthConstants.Amr.HardwareKey, StringComparison.OrdinalIgnoreCase));
+            var hasMfaEvidence = Web.IdP.Helpers.MfaEnrollmentSession.HasMfa(principal);
 
             if ((policy.EnforceMandatoryMfaEnrollment || clientRequiresMfa) && !hasMfaEvidence)
             {
@@ -418,9 +455,18 @@ namespace Web.IdP.Services
             }
 
             var requestScopes = request.GetScopes().ToImmutableArray();
-            var effectiveScopes = requestScopes.IsDefaultOrEmpty
-                ? principal.GetScopes().ToImmutableArray()
-                : requestScopes;
+            var originalScopes = principal.GetScopes();
+            if (requestScopes.Except(originalScopes, StringComparer.Ordinal).Any())
+                return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidScope,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The requested scope exceeds the original grant."
+                    }));
+            var permissions = await _applicationManager.GetPermissionsAsync(application, cancellationToken);
+            var effectiveScopes = (requestScopes.IsDefaultOrEmpty ? originalScopes : requestScopes)
+                .Where(scope => permissions.Contains(OpenIddictConstants.Permissions.Prefixes.Scope + scope))
+                .ToImmutableArray();
 
             var identity = new ClaimsIdentity(
                 authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
@@ -433,8 +479,9 @@ namespace Web.IdP.Services
             identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
                 .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
                 .SetClaim(Claims.Name, displayName)
-                .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
+                .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user));
+
+            identity.SetClaim(Claims.AuthenticationTime, Web.IdP.Helpers.AuthorizationAuthenticationSession.GetAuthenticationTime(principal));
 
             foreach (var amrValue in amrValues)
             {
@@ -446,9 +493,27 @@ namespace Web.IdP.Services
             await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, effectiveScopes, cancellationToken);
 
             identity.SetScopes(effectiveScopes);
+            Web.IdP.Helpers.UserTokenClaimScopes.Apply(identity);
             identity.SetDestinations(GetDestinations);
 
+            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+
+            {
+
+                return InvalidPasswordGrant();
+
+            }
+
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+        }
+
+        private async Task<bool> HasCurrentScopePermissionsAsync(OpenIddictRequest request,
+            ClaimsPrincipal principal, CancellationToken cancellationToken)
+        {
+            var application = await _applicationManager.FindByClientIdAsync(request.ClientId!, cancellationToken);
+            if (application == null) return false;
+            var permissions = await _applicationManager.GetPermissionsAsync(application, cancellationToken);
+            return principal.GetScopes().All(scope => permissions.Contains(OpenIddictConstants.Permissions.Prefixes.Scope + scope, StringComparer.Ordinal));
         }
 
         private async Task<bool> CanIssueTokenForCurrentUserStateAsync(
@@ -478,7 +543,8 @@ namespace Web.IdP.Services
                 }
             }
 
-            return await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken);
+            return await _migrationIssuanceGuard.CanIssueAsync(user.Id, cancellationToken) &&
+                await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken);
         }
 
         private static ForbidResult InvalidPasswordGrant() =>
@@ -512,7 +578,7 @@ namespace Web.IdP.Services
             // mandatory-enrollment policy even when TOTP and Email MFA are not enabled.
             var hasPasskey = await _db.UserCredentials
                 .AsNoTracking()
-                .AnyAsync(credential => credential.UserId == user.Id, cancellationToken);
+                .AnyAsync(credential => credential.UserId == user.Id && credential.DisabledAtUtc == null, cancellationToken);
             if (hasPasskey)
             {
                 return true;
@@ -573,6 +639,8 @@ namespace Web.IdP.Services
                         }));
                 }
 
+                if (!await SatisfiesClientMfaAsync(request, schemePrincipal, cancellationToken)) return InvalidPasswordGrant();
+
                 var subject = schemePrincipal.GetClaim(Claims.Subject);
                 if (string.IsNullOrEmpty(subject))
                 {
@@ -608,7 +676,10 @@ namespace Web.IdP.Services
                     roleType: Claims.Role);
 
                 identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user));
+                identity.SetClaim(Claims.AuthenticationTime, Web.IdP.Helpers.AuthorizationAuthenticationSession.GetAuthenticationTime(schemePrincipal));
+                identity.SetClaims(AuthConstants.ClaimTypes.Amr, schemePrincipal.GetClaims(AuthConstants.ClaimTypes.Amr));
 
+                if (!await HasCurrentScopePermissionsAsync(request, schemePrincipal, cancellationToken)) return InvalidPasswordGrant();
                 var requestedScopes = schemePrincipal.GetScopes().ToList();
                 await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, requestedScopes, cancellationToken);
 
@@ -623,10 +694,15 @@ namespace Web.IdP.Services
                     identity.SetAudiences(audiences.ToImmutableArray());
                 }
 
-                identity.SetDestinations(GetDestinations);
+                Web.IdP.Helpers.UserTokenClaimScopes.Apply(identity);
+            identity.SetDestinations(GetDestinations);
 
                 var claimsPrincipal = new ClaimsPrincipal(identity);
                 LogDeviceCodeGrantSuccess(claimsPrincipal.GetClaim(Claims.Subject));
+                if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+                {
+                    return InvalidPasswordGrant();
+                }
                 return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, claimsPrincipal);
             }
             catch (Exception ex)
@@ -665,6 +741,13 @@ namespace Web.IdP.Services
             identity.SetClaim(Claims.Name, await _applicationManager.GetDisplayNameAsync(application, cancellationToken));
             
             identity.SetScopes(request.GetScopes());
+            var adminPermissions = global::Infrastructure.Authorization.AdministrativeClientGrant.ReadPermissions(
+                await _applicationManager.GetPropertiesAsync(application, cancellationToken));
+            if (adminPermissions.Count > 0)
+            {
+                identity.SetClaim(global::Infrastructure.Authorization.AdministrativeClientGrant.ApplicationClaim,
+                    await _applicationManager.GetIdAsync(application, cancellationToken));
+            }
             identity.SetDestinations(GetDestinations);
 
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
@@ -674,6 +757,9 @@ namespace Web.IdP.Services
         {
             switch (claim.Type)
             {
+                case "auth_time":
+                    yield return Destinations.IdentityToken;
+                    yield break;
                 case Claims.Name:
                 case Claims.Email:
                 case Claims.Subject:

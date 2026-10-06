@@ -7,6 +7,7 @@
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 @inject IViteManifestService ViteService
 @inject IBrandingService BrandingService
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     ViewData["Title"] = Localizer["TwoStepVerification"];
     Layout = null;
@@ -17,6 +18,7 @@
 <!DOCTYPE html>
 <html lang="@currentCulture" class="h-full bg-gray-50">
 <head>
+    <meta name="csrf-token" content="@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - @productName</title>

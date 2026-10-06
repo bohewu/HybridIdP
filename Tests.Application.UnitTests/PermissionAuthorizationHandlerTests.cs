@@ -10,6 +10,29 @@ namespace Tests.Application.UnitTests;
 
 public class PermissionAuthorizationHandlerTests
 {
+    [Theory]
+    [InlineData("scope", "users.read")]
+    [InlineData("role", "Admin")]
+    [InlineData("permission", "users.read")]
+    [InlineData("active_role", "Admin")]
+    public async Task PermissionHandler_ShouldRejectUnapprovedBearerAuthority(string claimType, string value)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(claimType, value)], "Bearer"));
+        var requirement = new PermissionRequirement("users.read");
+        var context = new AuthorizationHandlerContext([requirement], principal, null);
+        await new PermissionAuthorizationHandler(CreateRoleManagerMock().Object, CreateCookieBoundary(principal)).HandleAsync(context);
+        Assert.False(context.HasSucceeded);
+    }
+
+    private static IAdministrativeAuthorizationBoundary CreateCookieBoundary(ClaimsPrincipal principal)
+    {
+        var boundary = new Mock<IAdministrativeAuthorizationBoundary>();
+        var cookie = AuthorizationRoleClaimResolver.GetApplicationPrincipal(principal);
+        boundary.Setup(b => b.ResolveAsync()).ReturnsAsync(cookie.Identity?.IsAuthenticated == true
+            ? new AdministrativeAuthority(cookie, false, new HashSet<string>()) : null);
+        return boundary.Object;
+    }
+
     private static Mock<RoleManager<ApplicationRole>> CreateRoleManagerMock()
     {
         var store = new Mock<IRoleStore<ApplicationRole>>();
@@ -30,11 +53,11 @@ public class PermissionAuthorizationHandlerTests
         {
             new Claim(ClaimTypes.Role, "User"),
             new Claim(ClaimTypes.Role, "ApplicationManager")
-        }, "Test"));
+        }, Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme));
 
         var requirement = new PermissionRequirement(Permissions.Scopes.Update);
         var context = new AuthorizationHandlerContext([requirement], principal, null);
-        var handler = new PermissionAuthorizationHandler(roleManager.Object);
+        var handler = new PermissionAuthorizationHandler(roleManager.Object, CreateCookieBoundary(principal));
 
         // Act
         await handler.HandleAsync(context);
@@ -58,11 +81,11 @@ public class PermissionAuthorizationHandlerTests
             new Claim("active_role", "User"),
             new Claim(ClaimTypes.Role, "User"),
             new Claim(ClaimTypes.Role, "ApplicationManager")
-        }, "Test"));
+        }, Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme));
 
         var requirement = new PermissionRequirement(Permissions.Scopes.Update);
         var context = new AuthorizationHandlerContext([requirement], principal, null);
-        var handler = new PermissionAuthorizationHandler(roleManager.Object);
+        var handler = new PermissionAuthorizationHandler(roleManager.Object, CreateCookieBoundary(principal));
 
         // Act
         await handler.HandleAsync(context);
@@ -81,11 +104,11 @@ public class PermissionAuthorizationHandlerTests
             new Claim("permission", Permissions.Scopes.Update),
             new Claim("app_role", AuthConstants.Roles.Admin),
             new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin)
-        }, "Test"));
+        }, Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme));
 
         var requirement = new PermissionRequirement(Permissions.Scopes.Update);
         var context = new AuthorizationHandlerContext([requirement], principal, null);
-        var handler = new PermissionAuthorizationHandler(roleManager.Object);
+        var handler = new PermissionAuthorizationHandler(roleManager.Object, CreateCookieBoundary(principal));
 
         // Act
         await handler.HandleAsync(context);
@@ -103,11 +126,11 @@ public class PermissionAuthorizationHandlerTests
         {
             new Claim("app_role", AuthConstants.Roles.Admin.ToLowerInvariant()),
             new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin)
-        }, "Test"));
+        }, Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme));
 
         var requirement = new PermissionRequirement(Permissions.Scopes.Update);
         var context = new AuthorizationHandlerContext([requirement], principal, null);
-        var handler = new PermissionAuthorizationHandler(roleManager.Object);
+        var handler = new PermissionAuthorizationHandler(roleManager.Object, CreateCookieBoundary(principal));
 
         // Act
         await handler.HandleAsync(context);
@@ -126,11 +149,11 @@ public class PermissionAuthorizationHandlerTests
             new Claim("app_role", AuthConstants.Roles.Admin),
             new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin),
             new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin)
-        }, "Test"));
+        }, Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme));
 
         var requirement = new PermissionRequirement(Permissions.Scopes.Update);
         var context = new AuthorizationHandlerContext([requirement], principal, null);
-        var handler = new PermissionAuthorizationHandler(roleManager.Object);
+        var handler = new PermissionAuthorizationHandler(roleManager.Object, CreateCookieBoundary(principal));
 
         await handler.HandleAsync(context);
 
@@ -152,11 +175,11 @@ public class PermissionAuthorizationHandlerTests
         {
             new Claim(ClaimTypes.Role, "User"),
             new Claim(ClaimTypes.Role, "ApplicationManager")
-        }, "Test"));
+        }, Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme));
 
         var requirement = new HasAnyPermissionRequirement(Permissions.Clients.Update, Permissions.Scopes.Update);
         var context = new AuthorizationHandlerContext([requirement], principal, null);
-        var handler = new HasAnyPermissionAuthorizationHandler(roleManager.Object);
+        var handler = new HasAnyPermissionAuthorizationHandler(roleManager.Object, CreateCookieBoundary(principal));
 
         // Act
         await handler.HandleAsync(context);
@@ -180,11 +203,11 @@ public class PermissionAuthorizationHandlerTests
             new Claim("active_role", "User"),
             new Claim(ClaimTypes.Role, "User"),
             new Claim(ClaimTypes.Role, "ApplicationManager")
-        }, "Test"));
+        }, Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme));
 
         var requirement = new HasAnyPermissionRequirement(Permissions.Clients.Update, Permissions.Scopes.Update);
         var context = new AuthorizationHandlerContext([requirement], principal, null);
-        var handler = new HasAnyPermissionAuthorizationHandler(roleManager.Object);
+        var handler = new HasAnyPermissionAuthorizationHandler(roleManager.Object, CreateCookieBoundary(principal));
 
         // Act
         await handler.HandleAsync(context);
@@ -202,11 +225,11 @@ public class PermissionAuthorizationHandlerTests
         {
             new Claim("app_role", AuthConstants.Roles.Admin),
             new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin)
-        }, "Test"));
+        }, Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme));
 
         var requirement = new HasAnyPermissionRequirement(Permissions.Clients.Update, Permissions.Scopes.Update);
         var context = new AuthorizationHandlerContext([requirement], principal, null);
-        var handler = new HasAnyPermissionAuthorizationHandler(roleManager.Object);
+        var handler = new HasAnyPermissionAuthorizationHandler(roleManager.Object, CreateCookieBoundary(principal));
 
         // Act
         await handler.HandleAsync(context);
@@ -225,13 +248,13 @@ public class PermissionAuthorizationHandlerTests
             new Claim("app_role", AuthConstants.Roles.Admin),
             new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin),
             new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin)
-        }, "Test"));
+        }, Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme));
 
         var requirement = new HasAnyPermissionRequirement(
             Permissions.Clients.Update,
             Permissions.Scopes.Update);
         var context = new AuthorizationHandlerContext([requirement], principal, null);
-        var handler = new HasAnyPermissionAuthorizationHandler(roleManager.Object);
+        var handler = new HasAnyPermissionAuthorizationHandler(roleManager.Object, CreateCookieBoundary(principal));
 
         await handler.HandleAsync(context);
 

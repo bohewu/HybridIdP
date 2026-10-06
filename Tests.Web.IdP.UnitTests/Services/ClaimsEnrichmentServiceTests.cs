@@ -51,7 +51,7 @@ public class ClaimsEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task AddPermissionClaimsAsync_WithPrivilegedClient_AddsPermissions()
+    public async Task AddPermissionClaimsAsync_WithPrivilegedLookingClient_DoesNotAddIdpPermissions()
     {
         // Arrange
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "admin" };
@@ -68,8 +68,8 @@ public class ClaimsEnrichmentServiceTests
         await _service.AddPermissionClaimsAsync(identity, user, clientId);
 
         // Assert
-        Assert.True(identity.HasClaim(c => c.Type == "permission" && c.Value == "users.read"));
-        Assert.True(identity.HasClaim(c => c.Type == "permission" && c.Value == "roles.manage"));
+        Assert.False(identity.HasClaim(c => c.Type == "permission" && c.Value == "users.read"));
+        Assert.False(identity.HasClaim(c => c.Type == "permission" && c.Value == "roles.manage"));
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class ClaimsEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task AddPermissionClaimsAsync_WithNullClient_AddsPermissions()
+    public async Task AddPermissionClaimsAsync_WithNullClient_DoesNotAddIdpPermissions()
     {
         // Arrange
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "admin" };
@@ -111,7 +111,7 @@ public class ClaimsEnrichmentServiceTests
         await _service.AddPermissionClaimsAsync(identity, user, clientId);
 
         // Assert
-        Assert.True(identity.HasClaim(c => c.Type == "permission" && c.Value == "users.read"));
+        Assert.False(identity.HasClaim(c => c.Type == "permission" && c.Value == "users.read"));
     }
 
     [Fact]
@@ -161,7 +161,9 @@ public class ClaimsEnrichmentServiceTests
 
         var requirement = new PermissionRequirement(Permissions.Users.Read);
         var authorizationContext = new AuthorizationHandlerContext([requirement], principal, null);
-        var handler = new PermissionAuthorizationHandler(_mockRoleManager.Object);
+        var boundary = new Mock<IAdministrativeAuthorizationBoundary>();
+        boundary.Setup(b => b.ResolveAsync()).ReturnsAsync((AdministrativeAuthority?)null);
+        var handler = new PermissionAuthorizationHandler(_mockRoleManager.Object, boundary.Object);
 
         await handler.HandleAsync(authorizationContext);
 

@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using System.Security.Claims;
 using Core.Application;
 using Core.Domain;
 using Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Options; // Added
@@ -17,6 +19,7 @@ namespace Web.IdP.Pages.Account;
 
 public class RegisterModel : PageModel
 {
+    private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ITurnstileService _turnstileService;
@@ -30,6 +33,7 @@ public class RegisterModel : PageModel
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public RegisterModel(
+        Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ITurnstileService turnstileService,
@@ -42,6 +46,7 @@ public class RegisterModel : PageModel
         ISecurityPolicyService securityPolicyService,
         IStringLocalizer<SharedResource> localizer)
     {
+        _lifecycleEligibility = lifecycleEligibility;
         _userManager = userManager;
         _signInManager = signInManager;
         _turnstileService = turnstileService;
@@ -101,7 +106,7 @@ public class RegisterModel : PageModel
         
         var hasSiteKey = !string.IsNullOrWhiteSpace(TurnstileSiteKey);
         
-        TurnstileEnabled = isEnabledFlag && hasSiteKey && hasSecretKey && _turnstileStateService.IsAvailable;
+        TurnstileEnabled = isEnabledFlag;
     }
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
@@ -227,7 +232,30 @@ public class RegisterModel : PageModel
                 await _userManager.AddToRoleAsync(user, "User");
 
                 // Automatically sign in the user after registration
-                await _signInManager.SignInAsync(user, isPersistent: false);
+                if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+                {
+                    return RedirectToPage("./Login");
+                }
+                AuthenticationMethodSession.Replace(HttpContext.Session, AuthConstants.Amr.Password);
+                if (CurrentPolicy?.EnforceMandatoryMfaEnrollment == true)
+                {
+                    var now = DateTime.UtcNow;
+                    user.MfaRequirementNotifiedAt ??= now;
+                    if (!(await _userManager.UpdateAsync(user)).Succeeded)
+                    {
+                        return RedirectToPage("./Login");
+                    }
+                    if (now >= user.MfaRequirementNotifiedAt.Value.AddDays(CurrentPolicy.MfaEnforcementGracePeriodDays))
+                    {
+                        var identity = new ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
+                        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+                        identity.AddClaim(MfaEnrollmentSession.BeginInitial(HttpContext.Session, user.Id));
+                        await HttpContext.SignInAsync(IdentityConstants.TwoFactorUserIdScheme, new ClaimsPrincipal(identity));
+                        return RedirectToPage("./MfaSetup", new { returnUrl });
+                    }
+                }
+                await _signInManager.SignInWithClaimsAsync(user, isPersistent: false,
+                    AuthenticationMethodSession.CreateClaims(HttpContext.Session));
                 
                 return this.SafeRedirect(returnUrl);
             }

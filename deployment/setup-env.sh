@@ -9,6 +9,7 @@
 #
 
 set -e
+umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_PATH="$SCRIPT_DIR/.env"
@@ -161,7 +162,9 @@ if [ -f "$ENV_PATH" ]; then
     fi
 
     backup_path="$ENV_PATH.backup.$(date +%Y%m%d_%H%M%S)"
+    chmod 600 "$ENV_PATH"
     cp "$ENV_PATH" "$backup_path"
+    chmod 600 "$backup_path"
     print_info "Backup created: $backup_path"
 fi
 
@@ -214,7 +217,7 @@ if [ "$use_external_db" = true ]; then
         echo
         if [ -z "$external_db_password" ]; then
             external_db_password=$(generate_password 24 true)
-            print_info "Generated random password: $external_db_password"
+            print_info "Generated a random database password; it will be stored in .env."
         fi
 
         validate_external_connection_part "SQL Server host" "$external_db_host"
@@ -230,7 +233,7 @@ if [ "$use_external_db" = true ]; then
         echo
         if [ -z "$external_db_password" ]; then
             external_db_password=$(generate_password 24)
-            print_info "Generated random password: $external_db_password"
+            print_info "Generated a random database password; it will be stored in .env."
         fi
 
         validate_external_connection_part "PostgreSQL host" "$external_db_host"
@@ -253,11 +256,7 @@ postgres_password=$(generate_password 24)
 encryption_cert_password=$(generate_password 20)
 signing_cert_password=$(generate_password 20)
 
-print_info "Random passwords generated successfully:"
-echo "  - MSSQL_SA_PASSWORD: $mssql_password" >&2
-echo "  - POSTGRES_PASSWORD: $postgres_password" >&2
-echo "  - ENCRYPTION_CERT_PASSWORD: $encryption_cert_password" >&2
-echo "  - SIGNING_CERT_PASSWORD: $signing_cert_password" >&2
+print_info "Random passwords generated successfully; they will be stored in .env."
 
 print_title "Redis Configuration"
 redis_choice=""
@@ -461,6 +460,7 @@ RateLimiting__LoginWindowSeconds=60
 EOF
 
 print_info ".env file created at: $ENV_PATH"
+chmod 600 "$ENV_PATH"
 
 print_title "Certificate Generation"
 certs_dir="$SCRIPT_DIR/certs"
@@ -470,6 +470,9 @@ if [ ! -d "$certs_dir" ]; then
 fi
 
 # Check for existing certificates
+chmod 700 "$certs_dir"
+find "$certs_dir" -type d -exec chmod 700 {} +
+find "$certs_dir" -type f -exec chmod 600 {} +
 encryption_pfx="$certs_dir/encryption.pfx"
 signing_pfx="$certs_dir/signing.pfx"
 

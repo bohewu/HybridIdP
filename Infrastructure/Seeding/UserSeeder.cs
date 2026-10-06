@@ -981,8 +981,9 @@ public static class UserSeeder
         var result = await userManager.CreateAsync(user, password);
         if (result.Succeeded)
         {
-            // Set the TOTP Secret manually
-            await userManager.SetAuthenticationTokenAsync(user, "[Internal]", "AuthenticatorKey", sharedKey);
+            // Identity's EF user store reads authenticator keys from this provider.
+            // This fixed key is only used by the public development fixture.
+            await userManager.SetAuthenticationTokenAsync(user, "[AspNetUserStore]", "AuthenticatorKey", sharedKey);
 
             person.CreatedBy = user.Id;
             person.IdentityVerifiedBy = user.Id;

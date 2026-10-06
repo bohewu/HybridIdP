@@ -10,9 +10,14 @@ public class ClientOwnership
     /// Primary key
     /// </summary>
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// Immutable OpenIddict application key. Unbound legacy rows grant no ownership.
+    /// </summary>
+    public Guid? ApplicationId { get; set; }
     
     /// <summary>
-    /// OpenIddict Application/Client ID
+    /// Client identifier at creation, retained for operator reference only.
     /// </summary>
     public string ClientId { get; set; } = string.Empty;
     

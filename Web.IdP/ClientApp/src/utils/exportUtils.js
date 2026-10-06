@@ -29,10 +29,16 @@ export const downloadFile = (content, filename, mimeType) => {
  */
 export const exportToCsv = (headers, rows, filename = 'export.csv') => {
   const csvContent = [headers, ...rows]
-    .map(row => row.map(field => `"${field}"`).join(','))
+    .map(row => row.map(escapeCsvCell).join(','))
     .join('\n')
   
   downloadFile(csvContent, filename, 'text/csv')
+}
+
+export const escapeCsvCell = field => {
+  let value = String(field ?? '')
+  if (/^[\s\u0000-\u001f\u007f]*[=+\-@]/u.test(value)) value = `'${value}`
+  return `"${value.replaceAll('"', '""')}"`
 }
 
 /**

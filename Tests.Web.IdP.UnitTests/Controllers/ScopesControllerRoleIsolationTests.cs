@@ -3,6 +3,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Options;
 using Core.Domain.Constants;
+using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -194,7 +195,8 @@ public class ScopesControllerRoleIsolationTests
 
         var identity = new ClaimsIdentity(
             claims,
-            authenticationType: "test",
+            authenticationType: callerKind is CallerKind.Admin or CallerKind.SameOwner or CallerKind.CrossOwner or CallerKind.AppRoleAdmin or CallerKind.NoPerson
+                ? Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme : "Bearer",
             nameType: ClaimTypes.Name,
             roleType: ClaimTypes.Role);
         var environment = new Mock<IWebHostEnvironment>();
@@ -222,6 +224,9 @@ public class ScopesControllerRoleIsolationTests
             }
         };
 
+        if (callerKind == CallerKind.TrustedAutomation)
+            controller.HttpContext.Items[AdministrativeAuthorizationBoundary.AuthorityKey] = new AdministrativeAuthority(
+                controller.User, true, Permissions.GetAll().ToHashSet());
         return controller;
     }
 

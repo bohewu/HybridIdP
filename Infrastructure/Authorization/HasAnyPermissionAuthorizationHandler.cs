@@ -13,18 +13,28 @@ namespace Infrastructure.Authorization;
 public class HasAnyPermissionAuthorizationHandler : AuthorizationHandler<HasAnyPermissionRequirement>
 {
     private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly IAdministrativeAuthorizationBoundary _boundary;
 
-    public HasAnyPermissionAuthorizationHandler(RoleManager<ApplicationRole> roleManager)
+    public HasAnyPermissionAuthorizationHandler(RoleManager<ApplicationRole> roleManager, IAdministrativeAuthorizationBoundary boundary)
     {
         _roleManager = roleManager;
+        _boundary = boundary;
     }
 
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         HasAnyPermissionRequirement requirement)
     {
+        var authority = await _boundary.ResolveAsync();
+        if (authority == null || authority.Principal.Identity?.IsAuthenticated != true) return;
+        if (authority.IsBearer)
+        {
+            if (requirement.Permissions.Any(authority.Permissions.Contains)) context.Succeed(requirement);
+            return;
+        }
+        var principal = authority.Principal;
         // 1) Direct permission claims for cookie-authenticated interactive users.
-        var permissionClaims = context.User.FindAll("permission")
+        var permissionClaims = principal.FindAll("permission")
             .Select(c => c.Value)
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -35,7 +45,7 @@ public class HasAnyPermissionAuthorizationHandler : AuthorizationHandler<HasAnyP
         }
 
         // 2) Prefer active role when present.
-        var activeRoleName = context.User.Claims.FirstOrDefault(c => c.Type == "active_role")?.Value;
+        var activeRoleName = principal.Claims.FirstOrDefault(c => c.Type == "active_role")?.Value;
         if (!string.IsNullOrWhiteSpace(activeRoleName))
         {
             if (await RoleHasAnyPermissionAsync(activeRoleName, requirement.Permissions))
@@ -46,7 +56,7 @@ public class HasAnyPermissionAuthorizationHandler : AuthorizationHandler<HasAnyP
         }
 
         // 3) Fallback for sessions without active_role: evaluate IdP roles only.
-        var roleNames = AuthorizationRoleClaimResolver.GetIdpRoleNames(context.User);
+        var roleNames = AuthorizationRoleClaimResolver.GetIdpRoleNames(principal);
 
         if (roleNames.Count == 0)
         {

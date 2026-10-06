@@ -711,7 +711,7 @@ cd Infrastructure.Migrations.SqlServer
 dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # ✅ 正確方式 2 - 使用 --project 參數指定 migrations 專案
-cd C:\repos\HybridIdP
+cd .
 dotnet ef database update --project Infrastructure.Migrations.SqlServer --startup-project Web.IdP --context ApplicationDbContext
 
 # PostgreSQL 同理
@@ -1008,6 +1008,45 @@ PostgreSQL migrations 中存在類型不匹配：
 
 ## 📝 快速參考命令
 
+### Client ownership migration
+
+`BindClientOwnershipToApplication` adds nullable `ClientOwnerships.ApplicationId`
+for the immutable OpenIddict application key. New delegated clients bind this key
+atomically with creation. Client ID changes and reuse do not transfer ownership.
+`ClientId` in an ownership row is retained only as an operator reference.
+
+Existing rows remain unbound and grant no delegated access after migration.
+Do not backfill them by joining the current ClientId: historic renames/reuse can
+make that join assign another person's client. An administrator must verify the
+application key and Person against independent creation/audit evidence, then
+explicitly bind the verified row to that key (one owner per application). Leave
+ambiguous rows unbound and use the administrator workflow for those clients.
+Review this requirement before deployment. No production migration or owner
+assignment is performed by the local security fix. Rolling back the application
+requires the migration/restore policy above; `Down` cannot safely reconstruct
+the former unique ClientId index when identifiers have been reused.
+
+### Passkey retirement migration
+
+`AddPasskeyDisabledAtUtc` adds nullable `UserCredentials.DisabledAtUtc` in both
+provider migration projects. Null means active; a UTC timestamp means retired.
+The migration leaves existing credentials active and contains no bulk data
+update. The application treats this field as a concurrency token so retirement
+during assertion verification prevents its usage update from committing.
+
+Before an operator retires selected credentials, back up the database, confirm
+another usable sign-in method for each affected user, apply the schema migration,
+and run only application versions that honor this field on every instance.
+Use an explicit reviewed credential ID and user ID inventory; never infer
+retirement from date, authenticator model, or credential type. Retire rows by
+setting the timestamp, retain their records, and leave newly registered keys
+active. A stored external-login binding alone does not prove usable sign-in.
+
+Old application versions ignore retirement. Rolling back to an old binary or
+dropping the column can therefore allow retired keys to authenticate again.
+Do not use the migration's `Down` as an operational reactivation procedure.
+Registration creates a new credential; it does not clear retirement timestamps.
+
 ### SQL Server 常用命令
 
 ```powershell
@@ -1015,7 +1054,7 @@ PostgreSQL migrations 中存在類型不匹配：
 pwd
 
 # ⚠️ 重要：必須切換到 Infrastructure.Migrations.SqlServer 目錄（不是 Infrastructure）
-cd C:\repos\HybridIdP\Infrastructure.Migrations.SqlServer
+cd .\Infrastructure.Migrations.SqlServer
 
 # 列出 migrations（驗證設定正確）
 dotnet ef migrations list --startup-project ..\Web.IdP --context ApplicationDbContext
@@ -1024,7 +1063,7 @@ dotnet ef migrations list --startup-project ..\Web.IdP --context ApplicationDbCo
 dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # 或者從專案根目錄執行（使用 --project 參數）
-# cd C:\repos\HybridIdP
+# cd .
 # dotnet ef database update --project Infrastructure.Migrations.SqlServer --startup-project Web.IdP --context ApplicationDbContext
 
 # 建立新 migration
@@ -1050,7 +1089,7 @@ dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDb
 pwd
 
 # ⚠️ 重要：必須切換到 Infrastructure.Migrations.Postgres 目錄（不是 Infrastructure）
-cd C:\repos\HybridIdP\Infrastructure.Migrations.Postgres
+cd .\Infrastructure.Migrations.Postgres
 
 # 列出 migrations（驗證設定正確）
 dotnet ef migrations list --startup-project ..\Web.IdP --context ApplicationDbContext
@@ -1059,7 +1098,7 @@ dotnet ef migrations list --startup-project ..\Web.IdP --context ApplicationDbCo
 dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
 
 # 或者從專案根目錄執行（使用 --project 參數）
-# cd C:\repos\HybridIdP
+# cd .
 # dotnet ef database update --project Infrastructure.Migrations.Postgres --startup-project Web.IdP --context ApplicationDbContext
 
 # 建立新 migration

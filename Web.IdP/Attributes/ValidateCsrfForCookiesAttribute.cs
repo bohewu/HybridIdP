@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using OpenIddict.Validation.AspNetCore;
@@ -12,8 +14,8 @@ namespace Web.IdP.Attributes;
 /// 2. Attackers cannot access tokens stored in browser memory/localStorage (same-origin policy)
 /// 3. CSRF attacks only work with credentials that browsers automatically send (cookies)
 /// 
-/// SECURITY NOTE: We check the actual authentication scheme AFTER authentication runs,
-/// not just the presence of Authorization header (which could be faked by attackers).
+/// Exemption requires successful OpenIddict authentication and no participating cookie identity.
+/// An Authorization header or an identity's authentication-type label is not token validation.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
 public class ValidateCsrfForCookiesAttribute : Attribute, IAsyncActionFilter
@@ -22,7 +24,6 @@ public class ValidateCsrfForCookiesAttribute : Attribute, IAsyncActionFilter
     {
         var httpContext = context.HttpContext;
         var method = httpContext.Request.Method;
-        var authorizationHeader = httpContext.Request.Headers.Authorization.ToString();
 
         // Only validate for mutating methods (POST, PUT, DELETE, PATCH)
         if (HttpMethods.IsGet(method) ||
@@ -34,28 +35,19 @@ public class ValidateCsrfForCookiesAttribute : Attribute, IAsyncActionFilter
             return;
         }
 
-        // Check the ACTUAL authentication scheme used, not just headers
-        // This runs AFTER authentication, so we can trust the auth result
         var user = httpContext.User;
-        if (user.Identity?.IsAuthenticated == true)
+        var hasCookieIdentity = user.Identities.Any(identity => identity.IsAuthenticated &&
+            (identity.AuthenticationType == IdentityConstants.ApplicationScheme ||
+             identity.AuthenticationType == IdentityConstants.TwoFactorUserIdScheme));
+        if (user.Identity?.IsAuthenticated == true && !hasCookieIdentity)
         {
-            // Check if authenticated via Bearer token (JWT)
-            var authScheme = user.Identity.AuthenticationType;
-            if (authScheme == "Bearer" ||  // JWT Bearer tokens
-                authScheme == OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme ||
-                authScheme == "AuthenticationTypes.Federation" ||  // Federated tokens
-                authScheme?.Contains("Jwt", StringComparison.OrdinalIgnoreCase) == true)
+            var bearer = await httpContext.AuthenticateAsync(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+            if (bearer.Succeeded && bearer.Principal?.Identity?.IsAuthenticated == true)
             {
                 // Authenticated via Bearer token - CSRF not needed
                 await next();
                 return;
             }
-        }
-
-        if (authorizationHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        {
-            await next();
-            return;
         }
 
         // Cookie-authenticated or unauthenticated mutating request - validate CSRF

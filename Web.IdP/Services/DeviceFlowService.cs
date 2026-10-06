@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Collections.Immutable;
 using Core.Domain;
 using Core.Domain.Constants;
 using Microsoft.AspNetCore.Authentication;
@@ -14,6 +15,7 @@ namespace Web.IdP.Services;
 
 public partial class DeviceFlowService : IDeviceFlowService
 {
+    private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly UserManager<ApplicationUser> _userManager;
@@ -22,6 +24,7 @@ public partial class DeviceFlowService : IDeviceFlowService
     private readonly IClaimsEnrichmentService _claimsEnricher;
 
     public DeviceFlowService(
+        Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
         IOpenIddictScopeManager scopeManager,
         IOpenIddictApplicationManager applicationManager,
         UserManager<ApplicationUser> userManager,
@@ -29,6 +32,7 @@ public partial class DeviceFlowService : IDeviceFlowService
         ILogger<DeviceFlowService> logger,
         IClaimsEnrichmentService claimsEnricher)
     {
+        _lifecycleEligibility = lifecycleEligibility;
         _scopeManager = scopeManager;
         _applicationManager = applicationManager;
         _userManager = userManager;
@@ -72,7 +76,7 @@ public partial class DeviceFlowService : IDeviceFlowService
         return vm;
     }
 
-    public async Task<IActionResult> ProcessVerificationAsync(ClaimsPrincipal userPrincipal, AuthenticateResult authenticateResult)
+    public async Task<IActionResult> ProcessVerificationAsync(ClaimsPrincipal userPrincipal, AuthenticateResult authenticateResult, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.GetUserAsync(userPrincipal);
         if (user == null)
@@ -88,6 +92,18 @@ public partial class DeviceFlowService : IDeviceFlowService
         if (authenticateResult is { Succeeded: true } && !string.IsNullOrEmpty(authenticateResult.Principal.GetClaim(Claims.ClientId)))
         {
             // Create the claims-based identity that will be used by OpenIddict to generate tokens.
+            var client = await _applicationManager.FindByClientIdAsync(
+                authenticateResult.Principal.GetClaim(Claims.ClientId)!, cancellationToken);
+            if (client == null || (ClientMfaPolicy.RequiresMfa(await _applicationManager.GetPropertiesAsync(client, cancellationToken)) &&
+                !Web.IdP.Helpers.MfaEnrollmentSession.HasMfa(userPrincipal)))
+            {
+                return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The client's multi-factor authentication requirement is not satisfied."
+                    }));
+            }
             var identity = new ClaimsIdentity(
                 authenticationType: TokenValidationParameters.DefaultAuthenticationType,
                 nameType: Claims.Name,
@@ -95,6 +111,10 @@ public partial class DeviceFlowService : IDeviceFlowService
 
             // Add the claims that will be persisted in the tokens.
             identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user));
+            identity.SetClaim(Claims.AuthenticationTime, Web.IdP.Helpers.AuthorizationAuthenticationSession.GetAuthenticationTime(userPrincipal));
+            identity.SetClaims(AuthConstants.ClaimTypes.Amr, userPrincipal.Claims
+                .Where(c => c.Type == AuthConstants.ClaimTypes.Amr || c.Type == ClaimTypes.AuthenticationMethod)
+                .Select(c => c.Value).Distinct(StringComparer.Ordinal).ToImmutableArray());
             
             // Enrich with scope-mapped claims and permissions using shared service
             var scopes = authenticateResult.Principal.GetScopes();
@@ -103,6 +123,7 @@ public partial class DeviceFlowService : IDeviceFlowService
 
             identity.SetScopes(scopes);
             identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
+            Web.IdP.Helpers.UserTokenClaimScopes.Apply(identity);
             identity.SetDestinations(GetDestinations);
 
             var properties = new AuthenticationProperties
@@ -110,6 +131,15 @@ public partial class DeviceFlowService : IDeviceFlowService
                 RedirectUri = "/connect/verify/success"
             };
 
+            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+            {
+                return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The user is no longer allowed to sign in."
+                    }));
+            }
             LogDeviceFlowApproved(user.Id);
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity), properties);
         }
@@ -124,8 +154,13 @@ public partial class DeviceFlowService : IDeviceFlowService
 
     private static IEnumerable<string> GetDestinations(Claim claim)
     {
+        if (Web.IdP.Helpers.UserTokenClaimScopes.RequiredScope(claim.Type) is string required &&
+            claim.Subject?.HasScope(required) != true) yield break;
         switch (claim.Type)
         {
+            case Claims.AuthenticationTime:
+                yield return Destinations.IdentityToken;
+                yield break;
             case Claims.Name or Claims.PreferredUsername:
                 yield return Destinations.AccessToken;
                 if (claim.Subject!.HasScope(Scopes.Profile))

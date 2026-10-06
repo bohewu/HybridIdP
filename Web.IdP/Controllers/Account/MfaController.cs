@@ -52,6 +52,7 @@ public partial class MfaController : ControllerBase
     /// Starts an interactive reauthentication flow before MFA enrollment.
     /// </summary>
     [HttpPost("reauthenticate")]
+    [ValidateAntiForgeryToken]
     public async Task<ActionResult> BeginReauthentication()
     {
         var applicationAuthentication =
@@ -68,7 +69,9 @@ public partial class MfaController : ControllerBase
         }
 
         await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-        MfaEnrollmentSession.Begin(HttpContext.Session);
+        var hasFactors = user.TwoFactorEnabled || user.EmailMfaEnabled ||
+            (await _passkeyService.GetUserPasskeysAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
+        MfaEnrollmentSession.Begin(HttpContext.Session, user.Id, hasFactors);
 
         var setupUrl = QueryHelpers.AddQueryString(
             "/Account/MfaSetup",
@@ -142,7 +145,7 @@ public partial class MfaController : ControllerBase
             return Unauthorized();
         }
 
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user.Id))
+        if (user.TwoFactorEnabled || !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct))
         {
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
@@ -176,7 +179,7 @@ public partial class MfaController : ControllerBase
             return Unauthorized();
         }
 
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user.Id))
+        if (user.TwoFactorEnabled || !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct))
         {
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
@@ -285,6 +288,7 @@ public partial class MfaController : ControllerBase
     /// Generate new recovery codes.
     /// </summary>
     [HttpPost("recovery-codes")]
+    [ValidateAntiForgeryToken]
     public async Task<ActionResult<RecoveryCodesResponse>> GenerateRecoveryCodes(
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RecoveryCodesRequest? request,
         CancellationToken ct)

@@ -98,6 +98,28 @@ public class UserManagementServiceTests : IDisposable
 
     #region GetUsersAsync Tests
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetUsersAsync_ShouldReportPasskeyOnlyForActiveCredentials(bool disabled)
+    {
+        var user = new ApplicationUser { UserName = "passkey-user", Email = "passkey@example.test", IsActive = true };
+        Assert.True((await _userManager.CreateAsync(user)).Succeeded);
+        _context.UserCredentials.Add(new UserCredential
+        {
+            UserId = user.Id,
+            CredentialId = new byte[] { 1 },
+            PublicKey = new byte[] { 2 },
+            DisabledAtUtc = disabled ? DateTime.UtcNow : null
+        });
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetUsersAsync();
+
+        Assert.Equal(!disabled, Assert.Single(result.Items).HasPasskey);
+        Assert.Single(_context.UserCredentials);
+    }
+
     [Fact]
     public async Task GetUsersAsync_ShouldReturnPagedUsers_WhenUsersExist()
     {

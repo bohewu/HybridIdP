@@ -259,7 +259,7 @@ public class JitProvisioningServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ProvisionExternalUser_ActiveUsernameMatch_ShouldLinkExistingUser()
+    public async Task ProvisionExternalUser_ActiveUsernameMatch_ShouldLinkExistingUser_WhenMatchingEmailIsEnabled()
     {
         var existingUser = new ApplicationUser
         {
@@ -286,7 +286,9 @@ public class JitProvisioningServiceTests : IDisposable
         _userManagerMock.Setup(manager => manager.AddLoginAsync(existingUser, It.IsAny<UserLoginInfo>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var result = await _service.ProvisionExternalUserAsync(externalAuth);
+        var service = new JitProvisioningService(_userManagerMock.Object, _context,
+            Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = true }));
+        var result = await service.ProvisionExternalUserAsync(externalAuth);
 
         Assert.Same(existingUser, result);
         Assert.NotNull(existingUser.PersonId);
@@ -294,6 +296,41 @@ public class JitProvisioningServiceTests : IDisposable
         _userManagerMock.Verify(manager => manager.CreateAsync(It.IsAny<ApplicationUser>()), Times.Never);
         _userManagerMock.Verify(manager => manager.UpdateAsync(existingUser), Times.Once);
         _userManagerMock.Verify(manager => manager.AddLoginAsync(existingUser, It.IsAny<UserLoginInfo>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false, "victim@example.com")]
+    [InlineData(true, "different@example.com")]
+    public async Task ProvisionExternalUser_ShouldRejectUsernameCollisionBeforeMutation(bool autoLink, string localEmail)
+    {
+        var existingUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(), UserName = "victim@example.com", Email = localEmail,
+            FirstName = "Victim", IsActive = true
+        };
+        var externalAuth = new ExternalAuthResult
+        {
+            Provider = "Google", ProviderKey = "new-key", Email = existingUser.UserName,
+            EmailVerified = true, FirstName = "Attacker"
+        };
+        var context = new Mock<IApplicationDbContext>(MockBehavior.Strict);
+        var service = new JitProvisioningService(_userManagerMock.Object, context.Object,
+            Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = autoLink }));
+        _userManagerMock.Setup(m => m.FindByLoginAsync(externalAuth.Provider, externalAuth.ProviderKey))
+            .ReturnsAsync((ApplicationUser?)null);
+        _userManagerMock.Setup(m => m.FindByNameAsync(existingUser.UserName)).ReturnsAsync(existingUser);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => service.ProvisionExternalUserAsync(externalAuth));
+
+        Assert.Equal("An existing account requires explicit linking.", error.Message);
+        Assert.Equal("Victim", existingUser.FirstName);
+        Assert.Equal(localEmail, existingUser.Email);
+        Assert.Null(existingUser.PersonId);
+        _userManagerMock.Verify(m => m.AddLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<UserLoginInfo>()), Times.Never);
+        _userManagerMock.Verify(m => m.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _userManagerMock.Verify(m => m.CreateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        context.VerifyGet(c => c.Persons, Times.Never);
+        context.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -379,7 +416,8 @@ public class JitProvisioningServiceTests : IDisposable
         )).ReturnsAsync(IdentityResult.Success);
 
         // Act
-        var result = await _service.ProvisionExternalUserAsync(externalAuth);
+        var service = CreateEmailLinkingService();
+        var result = await service.ProvisionExternalUserAsync(externalAuth);
 
         // Assert
         Assert.NotNull(result);
@@ -392,8 +430,10 @@ public class JitProvisioningServiceTests : IDisposable
         Assert.Equal(1, personCount);
     }
 
-    [Fact]
-    public async Task ProvisionExternalUser_UnverifiedEmail_ShouldNotBindToExistingPerson()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProvisionExternalUser_EmailMatchingDisabled_ShouldNotBindToOrMutateExistingPerson(bool assuredEmail)
     {
         var existingPerson = new Person
         {
@@ -410,6 +450,7 @@ public class JitProvisioningServiceTests : IDisposable
             Provider = "CustomProvider",
             ProviderKey = "attacker-provider-key",
             Email = "victim@company.com",
+            EmailVerified = assuredEmail,
             FirstName = "Attacker"
         };
 
@@ -425,12 +466,15 @@ public class JitProvisioningServiceTests : IDisposable
         var result = await _service.ProvisionExternalUserAsync(externalAuth);
 
         Assert.NotEqual(existingPerson.Id, result.PersonId);
-        Assert.Equal("CustomProvider_attacker-provider-key", result.UserName);
-        Assert.False(result.EmailConfirmed);
+        Assert.Equal(assuredEmail ? "victim@company.com" : "CustomProvider_attacker-provider-key", result.UserName);
+        Assert.Equal(assuredEmail, result.EmailConfirmed);
         Assert.Equal(2, await _context.Persons.CountAsync());
         var isolatedPerson = await _context.Persons.SingleAsync(person => person.Id == result.PersonId);
-        Assert.Null(isolatedPerson.Email);
-        _userManagerMock.Verify(um => um.FindByNameAsync(It.IsAny<string>()), Times.Never);
+        Assert.Equal(assuredEmail ? externalAuth.Email : null, isolatedPerson.Email);
+        Assert.Equal("Victim", existingPerson.FirstName);
+        Assert.Equal("victim@company.com", existingPerson.Email);
+        Assert.Null(existingPerson.ModifiedAt);
+        _userManagerMock.Verify(um => um.FindByNameAsync(It.IsAny<string>()), assuredEmail ? Times.Once() : Times.Never());
     }
 
     [Fact]
@@ -523,7 +567,7 @@ public class JitProvisioningServiceTests : IDisposable
             .ReturnsAsync(IdentityResult.Success);
 
         // Act
-        var result = await _service.ProvisionExternalUserAsync(externalAuth);
+        var result = await CreateEmailLinkingService().ProvisionExternalUserAsync(externalAuth);
 
         // Assert
         Assert.NotNull(result);
@@ -572,7 +616,7 @@ public class JitProvisioningServiceTests : IDisposable
             .ReturnsAsync(IdentityResult.Success);
 
         // Act
-        await _service.ProvisionExternalUserAsync(externalAuth);
+        await CreateEmailLinkingService().ProvisionExternalUserAsync(externalAuth);
 
         // Assert - NationalId should NOT be overwritten
         var updatedPerson = await _context.Persons.FirstOrDefaultAsync(p => p.Id == existingPerson.Id);
@@ -695,6 +739,10 @@ public class JitProvisioningServiceTests : IDisposable
     }
 
     // Helper methods
+    private JitProvisioningService CreateEmailLinkingService() => new(
+        _userManagerMock.Object, _context,
+        Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = true }));
+
     private static Mock<UserManager<ApplicationUser>> CreateUserManagerMock()
     {
         var store = new Mock<IUserStore<ApplicationUser>>();

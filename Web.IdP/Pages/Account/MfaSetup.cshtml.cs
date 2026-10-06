@@ -20,6 +20,7 @@ public class MfaSetupModel : PageModel
     private readonly ISecurityPolicyService _securityPolicyService;
     private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
     private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility;
+    private readonly IPasskeyService _passkeyService;
 
     public MfaSetupModel(
         SignInManager<ApplicationUser> signInManager,
@@ -27,7 +28,8 @@ public class MfaSetupModel : PageModel
         IStringLocalizer<SharedResource> localizer,
         ISecurityPolicyService securityPolicyService,
         IMigrationIssuanceGuard migrationIssuanceGuard,
-        ICurrentUserLifecycleEligibility lifecycleEligibility)
+        ICurrentUserLifecycleEligibility lifecycleEligibility,
+        IPasskeyService passkeyService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -35,6 +37,7 @@ public class MfaSetupModel : PageModel
         _securityPolicyService = securityPolicyService;
         _migrationIssuanceGuard = migrationIssuanceGuard;
         _lifecycleEligibility = lifecycleEligibility;
+        _passkeyService = passkeyService;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -50,7 +53,8 @@ public class MfaSetupModel : PageModel
     public async Task<IActionResult> OnGetAsync()
     {
         var user = await GetTwoFactorUserAsync();
-        if (user == null)
+        if (user == null || !await MfaEnrollmentSession.IsAuthorizedAsync(
+            HttpContext, user, _passkeyService, HttpContext.RequestAborted, requireFreshProof: false))
         {
             _localizer["User not found or not authenticated."].ToString(); // Diagnostic hint
             return RedirectToPage("./Login");
@@ -111,13 +115,23 @@ public class MfaSetupModel : PageModel
             return RedirectToPage("./Login");
         }
 
+        if (!MfaEnrollmentSession.HasInitial(HttpContext.Session, user.Id) ||
+            !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, HttpContext.RequestAborted) ||
+            user.TwoFactorEnabled || user.EmailMfaEnabled ||
+            (await _passkeyService.GetUserPasskeysAsync(user.Id, HttpContext.RequestAborted)).Count > 0 ||
+            HttpContext.Session.GetString("MfaEnforcedByAcr") == "true")
+        {
+            return StatusCode(403);
+        }
+
         // SECURITY FIX: Re-validate grace period server-side
         // Do not trust the GracePeriodExpired bind property
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
-        if (policy.EnforceMandatoryMfaEnrollment && user.MfaRequirementNotifiedAt != null)
+        if (policy.EnforceMandatoryMfaEnrollment)
         {
+             if (user.MfaRequirementNotifiedAt == null) return StatusCode(403);
              var expiry = user.MfaRequirementNotifiedAt.Value.AddDays(policy.MfaEnforcementGracePeriodDays);
-             if (DateTime.UtcNow > expiry)
+             if (DateTime.UtcNow >= expiry)
              {
                  // Grace period expired, cannot skip
                  return Page(); 
@@ -130,7 +144,10 @@ public class MfaSetupModel : PageModel
             return RedirectToPage("./Login");
         }
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
+        MfaEnrollmentSession.Consume(HttpContext.Session);
+        AuthorizationAuthenticationSession.PreserveTime(HttpContext, User);
+        await _signInManager.SignInWithClaimsAsync(user, isPersistent: false,
+            AuthenticationMethodSession.CreateClaims(HttpContext.Session));
         return this.SafeRedirect(ReturnUrl, "~/");
     }
 
@@ -185,5 +202,6 @@ public class MfaSetupModel : PageModel
 
     private async Task<bool> CanIssueFullCookieAsync(ApplicationUser user) =>
         await _lifecycleEligibility.IsEligibleAsync(user.Id, HttpContext.RequestAborted) &&
-        await _migrationIssuanceGuard.CanIssueAsync(user.Id, HttpContext.RequestAborted);
+        await _migrationIssuanceGuard.CanIssueAsync(user.Id, HttpContext.RequestAborted) &&
+        await _lifecycleEligibility.IsEligibleAsync(user.Id, HttpContext.RequestAborted);
 }

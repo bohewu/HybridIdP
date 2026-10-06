@@ -1,4 +1,8 @@
 {
+  "Recovery.Identity.Identifier.Label": "Identity document number",
+  "Recovery.Identity.Identifier.Help": "Enter your identity document number if required for your account. It is used only for this verification.",
+  "Recovery.ReadyToSend": "Send a verification code to:",
+  "Recovery.SendCode": "Send verification code",
   "AdminPortal": "Admin Portal",
   "Admin": "Admin",
   "Dashboard": "Dashboard",
@@ -267,6 +271,7 @@
   "EnterEmailCodeDescription": "Send a verification code to your email, then enter it below",
   "InvalidMfaCode": "Invalid verification code",
   "LoginWithPasskey": "Sign in with a Passkey",
+  "OtherVerificationMethods": "Other verification methods",
   "ForgotPassword": "Forgot password?",
   "NativeRecovery.Title": "Reset your password",
   "NativeRecovery.Description": "Recover an eligible local account using its verified recovery email.",

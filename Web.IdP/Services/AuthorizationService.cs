@@ -12,6 +12,7 @@ using Core.Application.Interfaces;
 using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Constants;
+using Web.IdP.Helpers;
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.AspNetCore;
@@ -31,7 +32,8 @@ namespace Web.IdP.Services // Keep consistent namespace case
 {
     public partial class AuthorizationService : Web.IdP.Services.IAuthorizationService
     {
-        private readonly IOpenIddictApplicationManager _applicationManager;
+        private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
+    private readonly IOpenIddictApplicationManager _applicationManager;
         private readonly IOpenIddictAuthorizationManager _authorizationManager;
         private readonly IOpenIddictScopeManager _scopeManager;
         private readonly UserManager<ApplicationUser> _userManager;
@@ -51,6 +53,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
         private readonly ISessionService _sessionService;
 
         public AuthorizationService(
+        Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
             IOpenIddictApplicationManager applicationManager,
             IOpenIddictAuthorizationManager authorizationManager,
             IOpenIddictScopeManager scopeManager,
@@ -70,6 +73,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             IPasskeyService passkeyService,
             ISessionService sessionService)
         {
+        _lifecycleEligibility = lifecycleEligibility;
             _applicationManager = applicationManager;
             _authorizationManager = authorizationManager;
             _scopeManager = scopeManager;
@@ -103,7 +107,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
 
-            var promptValues = ParsePromptValues(prompt);
+            var promptValues = ParsePromptValues(prompt ?? request.Prompt);
             if (promptValues.Length > 1 && promptValues.Contains("none", StringComparer.OrdinalIgnoreCase))
             {
                 LogInvalidPromptCombination(request.ClientId, prompt ?? string.Empty);
@@ -135,12 +139,32 @@ namespace Web.IdP.Services // Keep consistent namespace case
                         }));
                 }
 
+                if (promptValues.Contains("login", StringComparer.OrdinalIgnoreCase) || request.MaxAge != null)
+                    AuthorizationAuthenticationSession.Begin(HttpContext.Session, request);
                 return new ChallengeResult(
                     authenticationSchemes: new[] { IdentityConstants.ApplicationScheme },
                     properties: new AuthenticationProperties
                     {
                         RedirectUri = Request.PathBase + Request.Path + Request.QueryString
                     });
+            }
+
+            if ((promptValues.Contains("login", StringComparer.OrdinalIgnoreCase) || request.MaxAge != null) &&
+                AuthorizationAuthenticationSession.RequiresChallenge(HttpContext.Session, userPrincipal, request,
+                promptValues.Contains("login", StringComparer.OrdinalIgnoreCase)))
+            {
+                if (promptValues.Contains("none", StringComparer.OrdinalIgnoreCase))
+                    return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.LoginRequired,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Fresh authentication is required."
+                        }));
+                AuthorizationAuthenticationSession.Begin(HttpContext.Session, request);
+                await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                await HttpContext.SignOutAsync(IdentityConstants.TwoFactorUserIdScheme);
+                return new ChallengeResult(IdentityConstants.ApplicationScheme,
+                    new AuthenticationProperties { RedirectUri = Request.PathBase + Request.Path + Request.QueryString });
             }
 
             // Retrieve user object early for MFA checks and enrichment
@@ -166,6 +190,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
                  throw new InvalidOperationException("User not found.");
             }
 
+            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+            {
+                return LifecycleDenied();
+            }
+
             // Resolve the target application before evaluating its interactive MFA policy.
             var application = await _applicationManager.FindByClientIdAsync(request.ClientId!, cancellationToken) ??
                 throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
@@ -189,19 +218,17 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             if (mfaRequired)
             {
-                // Check if user has MFA claims in current session (amr: mfa or amr: hwk)
-                // Use a case-insensitive check and also support standard authentication method claim type
-                var amrClaims = userPrincipal.Claims
-                    .Where(c => c.Type == "amr" || c.Type == System.Security.Claims.ClaimTypes.AuthenticationMethod)
-                    .Select(c => c.Value)
-                    .ToList();
-                
-                var hasMfaClaim = amrClaims.Any(v => 
-                    v.Equals(Core.Domain.Constants.AuthConstants.Amr.Mfa, StringComparison.OrdinalIgnoreCase) || 
-                    v.Equals(Core.Domain.Constants.AuthConstants.Amr.HardwareKey, StringComparison.OrdinalIgnoreCase));
+                var hasMfaClaim = MfaEnrollmentSession.HasMfa(userPrincipal);
 
                 if (!hasMfaClaim)
                 {
+                    if (promptValues.Contains("none", StringComparer.OrdinalIgnoreCase))
+                        return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                            new AuthenticationProperties(new Dictionary<string, string?>
+                            {
+                                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.LoginRequired,
+                                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Multi-factor authentication is required."
+                            }));
                     LogMfaRequiredButNotPresent();
 
                     var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, cancellationToken);
@@ -229,6 +256,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                         // Redirect to MfaSetup enrollment flow.
                         // Store the "enforced by acr_values" flag in session for security (not URL param)
                         _httpContextAccessor.HttpContext?.Session.SetString("MfaEnforcedByAcr", "true");
+                        MfaEnrollmentSession.BeginInitial(HttpContext.Session, user.Id);
                         var returnUrl = Microsoft.AspNetCore.Http.Extensions.UriHelper.GetEncodedPathAndQuery(Request);
                         return new RedirectResult($"/Account/MfaSetup?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}");
                     }
@@ -307,17 +335,12 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             // Always show consent page for first time or if prompt=consent is requested
             // In production, you may skip consent if authorization already exists
-            if (authorizations.Count > 0 && prompt != "consent")
+            if (authorizations.Count > 0 && !promptValues.Contains("consent", StringComparer.OrdinalIgnoreCase))
             {
                 var existingAuthorization = authorizations[0];
                 var existingAuthorizationScopes = (await _authorizationManager.GetScopesAsync(existingAuthorization, cancellationToken))
+                    .Intersect(effectiveRequestedScopes, StringComparer.Ordinal)
                     .ToImmutableArray();
-
-                // Fallback to effective requested scopes if authorization scopes cannot be resolved.
-                if (existingAuthorizationScopes.IsDefaultOrEmpty)
-                {
-                    existingAuthorizationScopes = effectiveRequestedScopes;
-                }
 
                  // If a permanent authorization was found, return immediately
                 // Create a clean identity without ASP.NET Identity cookie claims to avoid duplicates
@@ -330,12 +353,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
                         ?? await _userManager.GetUserNameAsync(user);
 
-                    identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
+                    identity.SetClaim(Claims.AuthenticationTime, AuthorizationAuthenticationSession.GetAuthenticationTime(userPrincipal))
+                        .SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
                         .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
                         .SetClaim(Claims.Name, displayName);
 
-                    var roles = await _userManager.GetRolesAsync(user);
-                    identity.SetClaims(Claims.Role, [..roles]);
 
                     // Enrichment
                     await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId, cancellationToken);
@@ -376,14 +398,28 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 var authorizationId = await _authorizationManager.GetIdAsync(existingAuthorization, cancellationToken)
                     ?? throw new InvalidOperationException("The authorization identifier cannot be resolved.");
                 identity.SetAuthorizationId(authorizationId);
-                identity.SetDestinations(GetDestinations);
+                Web.IdP.Helpers.UserTokenClaimScopes.Apply(identity);
+            identity.SetDestinations(GetDestinations);
 
-                await TrackUserSessionAsync(
-                    userPrincipal,
-                    user!,
+                if (!await _lifecycleEligibility.IsEligibleAsync(user!.Id, cancellationToken))
+                {
+                    return LifecycleDenied();
+                }
+
+                var activeRoleId = await ResolveActiveRoleIdAsync(userPrincipal, user!);
+                if (!await _lifecycleEligibility.IsEligibleAsync(user!.Id, cancellationToken))
+                {
+                    return LifecycleDenied();
+                }
+
+                await _sessionService.EnsureCreatedAsync(
+                    user.Id,
                     authorizationId,
                     request.ClientId!,
                     ApplicationName,
+                    activeRoleId,
+                    HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    Request.Headers.UserAgent.ToString(),
                     cancellationToken);
 
                 return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
@@ -416,6 +452,18 @@ namespace Web.IdP.Services // Keep consistent namespace case
             }
 
             // User denied consent -> audit and forbid
+            var requiresMfa = ClientMfaPolicy.RequiresMfa(await _applicationManager.GetPropertiesAsync(application, cancellationToken)) ||
+                request.GetAcrValues().Any(v => v.Equals("mfa", StringComparison.OrdinalIgnoreCase)) ||
+                (await _securityPolicyService.GetCurrentPolicyAsync()).EnforceMandatoryMfaEnrollment;
+            if (submit != "deny" && requiresMfa && !MfaEnrollmentSession.HasMfa(userPrincipal))
+            {
+                return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = "unmet_authentication_requirements",
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Multi-factor authentication is required."
+                    }));
+            }
             if (submit == "deny")
             {
                 var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -452,6 +500,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken) 
                 ?? throw new InvalidOperationException("The user details cannot be retrieved.");
 
+            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+            {
+                return LifecycleDenied();
+            }
+
             // Create a clean ClaimsIdentity without copying ASP.NET Identity cookie claims to avoid duplicates
             var identity = new ClaimsIdentity(
                 authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -460,12 +513,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
             var displayNameSubmit = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
                 ?? await _userManager.GetUserNameAsync(user);
 
-            identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
+            identity.SetClaim(Claims.AuthenticationTime, AuthorizationAuthenticationSession.GetAuthenticationTime(userPrincipal))
+                .SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
                 .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
                 .SetClaim(Claims.Name, displayNameSubmit);
 
-            var roles = await _userManager.GetRolesAsync(user);
-            identity.SetClaims(Claims.Role, roles.ToImmutableArray());
 
             // Add permission claims from user's roles
             await _claimsEnricher.AddPermissionClaimsAsync(identity, user, request.ClientId, cancellationToken);
@@ -558,6 +610,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
             }
 
             identity.SetScopes(effectiveScopes);
+            Web.IdP.Helpers.UserTokenClaimScopes.Apply(identity);
             identity.SetDestinations(GetDestinations);
 
             // Determine authorization type based on client's consent type
@@ -568,25 +621,18 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 ? AuthorizationTypes.AdHoc 
                 : AuthorizationTypes.Permanent;
 
-            var authorization = await _authorizationManager.CreateAsync(
-                identity: identity,
-                subject: await _userManager.GetUserIdAsync(user),
-                client: applicationId,
-                type: authorizationType,
-                scopes: effectiveScopes,
-                cancellationToken: cancellationToken);
+            var subject = await _userManager.GetUserIdAsync(user);
+            if (!await _lifecycleEligibility.IsEligibleAsync(user!.Id, cancellationToken))
+            {
+                return LifecycleDenied();
+            }
 
-            var authorizationId = await _authorizationManager.GetIdAsync(authorization, cancellationToken)
-                ?? throw new InvalidOperationException("The authorization identifier cannot be resolved.");
-            identity.SetAuthorizationId(authorizationId);
-
-            await TrackUserSessionAsync(
-                userPrincipal,
-                user,
-                authorizationId,
-                request.ClientId!,
-                await _applicationManager.GetDisplayNameAsync(application, cancellationToken),
-                cancellationToken);
+            var activeRoleId = await ResolveActiveRoleIdAsync(userPrincipal, user);
+            if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
+            {
+                return LifecycleDenied();
+            }
+            var clientDisplayName = await _applicationManager.GetDisplayNameAsync(application, cancellationToken);
 
             // Structured audit log for full/partial grant
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -602,9 +648,39 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 consentType,
                 authorizationType
             });
+            var auditSubject = await _userManager.GetUserIdAsync(user);
+
+            // Finish fresh acceptance after preparation and before any grant or session is persisted.
+            if (!await _lifecycleEligibility.IsEligibleAsync(user!.Id, cancellationToken))
+            {
+                return LifecycleDenied();
+            }
+
+            var authorization = await _authorizationManager.CreateAsync(
+                identity: identity,
+                subject: subject,
+                client: applicationId,
+                type: authorizationType,
+                scopes: effectiveScopes,
+                cancellationToken: cancellationToken);
+
+            var authorizationId = await _authorizationManager.GetIdAsync(authorization, cancellationToken)
+                ?? throw new InvalidOperationException("The authorization identifier cannot be resolved.");
+            identity.SetAuthorizationId(authorizationId);
+
+            await _sessionService.EnsureCreatedAsync(
+                user.Id,
+                authorizationId,
+                request.ClientId!,
+                clientDisplayName,
+                activeRoleId,
+                ipAddress,
+                userAgent,
+                cancellationToken);
+
             await _auditService.LogEventAsync(
                 classification.IsPartialGrant ? "AuthorizationGrantedPartial" : "AuthorizationGrantedFull",
-                await _userManager.GetUserIdAsync(user),
+                auditSubject,
                 auditDetails,
                 ipAddress,
                 userAgent,
@@ -613,13 +689,17 @@ namespace Web.IdP.Services // Keep consistent namespace case
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
         }
 
-        private async Task TrackUserSessionAsync(
+        private static ForbidResult LifecycleDenied() => new(
+            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+            new AuthenticationProperties(new Dictionary<string, string?>
+            {
+                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.AccessDenied,
+                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The user is no longer allowed to sign in."
+            }));
+
+        private async Task<Guid?> ResolveActiveRoleIdAsync(
             ClaimsPrincipal userPrincipal,
-            ApplicationUser user,
-            string authorizationId,
-            string clientId,
-            string? clientDisplayName,
-            CancellationToken cancellationToken)
+            ApplicationUser user)
         {
             var assignedRoles = await _userManager.GetRolesAsync(user);
             var activeRoleName = userPrincipal.FindFirst("active_role")?.Value;
@@ -635,26 +715,23 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 activeRoleId = (await _roleManager.FindByNameAsync(activeRoleName))?.Id;
             }
 
-            await _sessionService.EnsureCreatedAsync(
-                user.Id,
-                authorizationId,
-                clientId,
-                clientDisplayName,
-                activeRoleId,
-                HttpContext.Connection.RemoteIpAddress?.ToString(),
-                Request.Headers.UserAgent.ToString(),
-                cancellationToken);
+            return activeRoleId;
         }
 
         // Helper methods copied and adapted from PageModel
         private static IEnumerable<string> GetDestinations(Claim claim)
         {
+            if (Web.IdP.Helpers.UserTokenClaimScopes.RequiredScope(claim.Type) is string required &&
+                claim.Subject?.HasScope(required) != true) yield break;
             // Note: by default, claims are NOT automatically included in the access and identity tokens.
             // To allow OpenIddict to serialize them, you must attach them a destination, that specifies
             // whether they should be included in access tokens, in identity tokens or in both.
 
             switch (claim.Type)
             {
+                case "auth_time":
+                    yield return Destinations.IdentityToken;
+                    yield break;
                 case Claims.Name:
                 case Claims.Email:
                 case Claims.Subject:

@@ -184,6 +184,8 @@ public static class ClientSeeder
         };
 
         // Add all permission scopes to the client permissions
+        descriptor.Properties[Infrastructure.Authorization.AdministrativeClientGrant.PermissionsProperty] =
+            System.Text.Json.JsonSerializer.SerializeToElement(allPermissions);
         foreach (var permission in allPermissions)
         {
             descriptor.Permissions.Add($"{Permissions.Prefixes.Scope}{permission}");

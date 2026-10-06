@@ -3,6 +3,28 @@
 ## Overview
 HybridAuthIdP is committed to maintaining a high level of security. This document outlines our multi-factor authentication (MFA) implementations, security hardening practices, and how to report vulnerabilities.
 
+### Administrative API authority
+
+Interactive administration uses the authenticated Identity application cookie.
+User OAuth tokens carry application roles and do not inherit global IdP roles or
+administrative permissions. Outstanding authorization codes are sanitized at
+redemption. Ordinary and previously issued bearer tokens cannot authorize IdP
+administration merely by containing a permission scope, role, or client name.
+
+Administrative client-credentials access requires server-controlled provisioning
+of `IdpAdministrationPermissions` on the application record. Client and scope
+management APIs cannot create this approval. The Development/Test admin client
+seeder provisions it only when privileged test-client seeding is enabled. This
+is not a production bootstrap mechanism; production approvals require trusted
+operator provisioning outside delegated client management.
+
+Tokens bind that approval to the immutable application record. Authorization
+checks the current approval, validated presenter, client subject, and requested
+scope against the approved permission ceiling. Deleting and recreating a client
+with the same name does not inherit approval. Delegated ownership does not grant
+management of approved administrative clients. Reissue existing administrative
+M2M tokens after upgrading; older tokens lack the record-bound approval claim.
+
 ## Supported Multi-Factor Authentication (MFA)
 
 We support three primary MFA methods to ensure account security:
@@ -26,7 +48,13 @@ We support three primary MFA methods to ensure account security:
 - **Authenticators**: Biometrics (Windows Hello, Touch ID, Face ID) and hardware keys (e.g., YubiKey).
 - **Security Policy**: Configurable "Strong MFA Prerequisite" (requires existing TOTP/Email MFA before registering a Passkey).
 - **Sign-in policy**: Passkey sign-in is rejected when the current security policy disables passkeys.
+- **Anonymous options**: Submitted usernames are ignored; public options have no account-specific credential descriptors. Anonymous login uses discoverable credentials.
+- **Historical keys**: Account-specific descriptors are available only for the server-resolved application cookie or temporary two-factor cookie after password/external proof. TOTP and email challenges link to the existing MFA method selector. Assertions are bound to that protected subject and options are consumed on each attempt.
+- **Inventory limits**: Stored credentials do not record discoverability. Registration date, credential type and authenticator model cannot identify non-discoverable keys reliably. Existing credentials are preserved; do not bulk-delete them based on those fields.
+- **Credential retirement**: `UserCredentials.DisabledAtUtc` disables an individual key while retaining its record. Disabled keys cannot authenticate, satisfy enrollment or privileged-role MFA checks, consume the active-key limit, or appear in active-key lists and WebAuthn descriptors. Verification also fails if the credential is disabled before its usage update commits.
+- **Rebinding**: Retirement does not disable the account or external login. Users authenticate through another working method, complete any existing TOTP/email MFA, and register a new discoverable credential under current policy. The old credential never becomes active through sign-in or registration; new registration uses a new credential ID. If `RequireMfaForPasskey` is enabled, TOTP/email enrollment is required first. Operators must confirm another usable sign-in method before retiring a user's last key. Existing sessions and issued tokens follow their existing lifetime policy.
 - **Authentication assurance**: Passkey and user-presence AMR values are recorded for a successful passkey assertion; MFA is recorded only when validated authenticator data confirms user verification.
+- **MFA requirements**: Authorization, device approval, token redemption, refresh, and factor management require the performed `mfa` evidence. A hardware-key (`hwk`) claim alone does not satisfy MFA.
 
 ---
 
@@ -46,6 +74,27 @@ All authentication and session cookies are configured with:
 - `HttpOnly`: Prevents access from JavaScript.
 - `Secure`: Transmitted only over HTTPS.
 - `SameSite`: Set to `Lax` or `Strict` for CSRF protection.
+
+### Antiforgery for account and administrative APIs
+
+Cookie-authenticated mutations require a valid antiforgery cookie and request
+token. The shared API filter exempts only successful OpenIddict bearer
+authentication without a participating application or temporary two-factor
+cookie identity. An Authorization header or authentication-type label alone
+does not grant an exemption; mixed bearer/cookie principals still require CSRF
+validation.
+
+Passkey registration, assertion, options and deletion are browser-session
+operations and always require antiforgery validation, including anonymous
+passkey login. The login, MFA selector and enrollment pages publish an encoded
+request token for the existing fetch interceptor to send as `X-XSRF-TOKEN`.
+Missing or invalid tokens are rejected before ceremony processing. Interactive
+MFA reauthentication and recovery-code regeneration also require antiforgery,
+because their authority is the application cookie.
+
+The recovery-email selection flow retains its additional cookie/session-bound
+validation. When that feature is disabled, existing high-assurance bearer-only
+recovery clients remain supported; cookie requests use the shared CSRF filter.
 
 ### Lifecycle Cookie Validation
 
@@ -299,6 +348,11 @@ automatic matching-email account selection or linking checks the applicable
 provider-specific assurance policy before any existing-account lookup. Explicit
 linking protected by local credentials remains a separate path and is
 independent of automatic email matching.
+
+JIT account creation also enforces `AutoLinkMatchingEmail`. A local username
+collision is rejected before profile mutation unless automatic linking is
+enabled and the assured external email matches that account's email. Users
+can use the explicit linking flow with local credentials instead.
 
 ### Real-Time Monitoring Authorization
 

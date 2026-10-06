@@ -5,10 +5,13 @@ using Core.Application.DTOs;
 using Core.Application.Options;
 using Core.Domain;
 using Core.Domain.Constants;
+using Core.Domain.Entities;
+using Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +25,41 @@ namespace Tests.Application.UnitTests;
 
 public class UsersControllerPrivilegedSessionAssuranceTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AssignRoles_ShouldCountOnlyActivePasskeysForTargetMfa(bool disabled)
+    {
+        await using var context = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var target = new ApplicationUser { Id = Guid.NewGuid(), UserName = "passkey-target" };
+        context.UserCredentials.Add(new UserCredential
+        {
+            UserId = target.Id,
+            CredentialId = new byte[] { 1 },
+            PublicKey = new byte[] { 2 },
+            DisabledAtUtc = disabled ? DateTime.UtcNow : null
+        });
+        await context.SaveChangesAsync();
+        var userManager = CreateUserManager();
+        userManager.Setup(m => m.FindByIdAsync(target.Id.ToString())).ReturnsAsync(target);
+        var userManagement = new Mock<IUserManagementService>();
+        userManagement.Setup(s => s.AssignRolesAsync(target.Id, It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, Array.Empty<string>()));
+        userManagement.Setup(s => s.GetUserByIdAsync(target.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserDetailDto { Id = target.Id, Roles = [AuthConstants.Roles.Admin] });
+        var controller = CreateController(userManagement, userManager, CreateRoleUpdateAuthorizationService(),
+            new PrivilegedRoleProtectionOptions { RequireTargetMfaForPrivilegedRoleAssignment = true, CountPasskeyAsMfa = true }, context);
+        SetPrincipal(controller, Guid.NewGuid(), "Identity.Application", AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.Mfa, AuthConstants.Amr.Otp);
+
+        var result = await controller.AssignRoles(target.Id, new UsersController.AssignRolesRequest([AuthConstants.Roles.Admin]));
+
+        if (disabled) Assert.IsType<BadRequestObjectResult>(result);
+        else Assert.IsType<OkObjectResult>(result);
+        userManagement.Verify(s => s.AssignRolesAsync(target.Id, It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()),
+            disabled ? Times.Never() : Times.Once());
+    }
+
     [Theory]
     [InlineData("Identity.Application")]
     [InlineData("OpenIddict.Validation.AspNetCore")]
@@ -304,7 +342,8 @@ public class UsersControllerPrivilegedSessionAssuranceTests
         Mock<IUserManagementService> userManagementService,
         Mock<UserManager<ApplicationUser>> userManager,
         Mock<AspNetCoreAuthorizationService> authorizationService,
-        PrivilegedRoleProtectionOptions options)
+        PrivilegedRoleProtectionOptions options,
+        IApplicationDbContext? dbContext = null)
     {
         var roleManager = new Mock<RoleManager<ApplicationRole>>(
             Mock.Of<IRoleStore<ApplicationRole>>(),
@@ -314,12 +353,13 @@ public class UsersControllerPrivilegedSessionAssuranceTests
             Mock.Of<ILogger<RoleManager<ApplicationRole>>>());
 
         return new UsersController(
+            Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             userManagementService.Object,
             userManager.Object,
             roleManager.Object,
             Mock.Of<ISessionService>(),
             Mock.Of<ILoginHistoryService>(),
-            Mock.Of<IApplicationDbContext>(),
+            dbContext ?? Mock.Of<IApplicationDbContext>(),
             Mock.Of<IStringLocalizer<SharedResource>>(),
             Mock.Of<IImpersonationService>(),
             authorizationService.Object,

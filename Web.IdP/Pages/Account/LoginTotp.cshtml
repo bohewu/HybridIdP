@@ -99,6 +99,9 @@
                             <a asp-page="./Login" class="link-google text-sm font-medium">
                                 @Localizer["BackToLogin"]
                             </a>
+                            <a asp-page="./LoginMfa" asp-route-returnUrl="@Model.ReturnUrl" asp-route-rememberMe="@Model.RememberMe" class="link-google text-sm" data-test-id="mfa-other-methods">
+                                @Localizer["OtherVerificationMethods"]
+                            </a>
                             @if (Model.EmailMfaEnabled)
                             {
                                 <a asp-page="./LoginEmailOtp" asp-route-returnUrl="@Model.ReturnUrl" asp-route-rememberMe="@Model.RememberMe" class="link-google text-sm">

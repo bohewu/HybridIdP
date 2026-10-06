@@ -126,6 +126,12 @@ public class JitProvisioningService : IJitProvisioningService
             throw new InvalidOperationException("User account is unavailable.");
         }
 
+        if (usernameUser != null && (!_externalLoginOptions.AutoLinkMatchingEmail ||
+            !string.Equals(usernameUser.Email, externalAuth.Email, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException("An existing account requires explicit linking.");
+        }
+
         // Step 2: Try to find existing Person by identity documents first, then by Email
         Person? person = await FindExistingPersonAsync(externalAuth, cancellationToken);
 
@@ -336,7 +342,8 @@ public class JitProvisioningService : IJitProvisioningService
         }
 
         // Priority 2: Fallback to Email matching (if no identity documents or no match)
-        if (externalAuth.EmailVerified && !string.IsNullOrWhiteSpace(externalAuth.Email))
+        if (_externalLoginOptions.AutoLinkMatchingEmail && externalAuth.EmailVerified &&
+            !string.IsNullOrWhiteSpace(externalAuth.Email))
         {
             // Check Person.Email first
             personId = await _context.Persons

@@ -1,126 +1,87 @@
+using Microsoft.AspNetCore.Mvc;
 using TestClient.Constants;
+using TestClient.Options;
+using TestClient.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
+builder.Services.AddOptions<OidcDemoOptions>()
+    .BindConfiguration(OidcDemoOptions.Section)
+    .Validate(options => Uri.TryCreate(options.Authority, UriKind.Absolute, out var uri) &&
+        uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo) &&
+        string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment), "Oidc:Authority must be an HTTPS issuer URL.")
+    .Validate(options => !string.IsNullOrWhiteSpace(options.ClientId) &&
+        options.Scopes is { Length: > 0 } && options.Scopes.Contains("openid") &&
+        options.Scopes.All(scope => !string.IsNullOrWhiteSpace(scope) && !scope.Any(char.IsWhiteSpace)),
+        "Oidc requires a client ID and nonempty scopes including openid.")
+    .ValidateOnStart();
+var configured = builder.Configuration.GetSection(OidcDemoOptions.Section).Get<OidcDemoOptions>() ?? new();
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = AuthenticationSchemes.Cookies;
     options.DefaultChallengeScheme = AuthenticationSchemes.OpenIdConnect;
 })
-.AddCookie(AuthenticationSchemes.Cookies)
+.AddCookie(AuthenticationSchemes.Cookies, options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+})
 .AddOpenIdConnect(AuthenticationSchemes.OpenIdConnect, options =>
 {
-    options.Authority = "https://localhost:7035";
-    // Public client (no client secret)
-    options.ClientId = "testclient-public";
+    options.Authority = configured.Authority;
+    options.ClientId = configured.ClientId;
     options.ResponseType = "code";
-    options.ResponseMode = "query"; // Use query instead of form_post for public clients
-    options.UsePkce = true; // REQUIRED for public clients
+    options.ResponseMode = "query";
+    options.UsePkce = true;
     options.SaveTokens = true;
-    
     options.Scope.Clear();
-    options.Scope.Add("openid");
-    options.Scope.Add("offline_access");
-    options.Scope.Add("profile");
-    options.Scope.Add("email");
-    options.Scope.Add("roles");
-    options.Scope.Add("api:company:read");
-    options.Scope.Add("api:inventory:read");
-    
-    options.RequireHttpsMetadata = true; // Using trusted dev cert
-    options.GetClaimsFromUserInfoEndpoint = false; // OpenIddict doesn't require userinfo endpoint
-
-    // Keep original JWT claim types (don't remap to WS-* URIs)
+    foreach (var scope in configured.Scopes) options.Scope.Add(scope);
+    options.RequireHttpsMetadata = true;
     options.MapInboundClaims = false;
+    options.TokenValidationParameters.NameClaimType = "name";
+    options.TokenValidationParameters.RoleClaimType = "role";
 
-    // Handle remote authentication failures (e.g., user denies consent)
     options.Events.OnRemoteFailure = context =>
     {
-        // Check if the error is from the authorization endpoint
-        if (context.Failure?.Message.Contains("access_denied") == true)
-        {
-            // User denied authorization
+        var message = context.Failure?.Message ?? string.Empty;
+        if (message.Contains("access_denied", StringComparison.Ordinal))
             context.Response.Redirect("/Account/AccessDenied");
-            context.HandleResponse();
-            return Task.CompletedTask;
-        }
-
-        if (context.Failure?.Message.Contains("invalid_") == true)
+        else
         {
-            // OAuth/OIDC error (invalid_request, invalid_scope, etc.)
-            context.Response.Redirect("/Account/AuthError?error=" + Uri.EscapeDataString(context.Failure.Message));
-            context.HandleResponse();
-            return Task.CompletedTask;
+            var knownErrors = new[] { "invalid_scope", "invalid_request", "login_required", "consent_required", "interaction_required", "server_error" };
+            var code = knownErrors.FirstOrDefault(code => message.Contains(code, StringComparison.Ordinal)) ?? "authentication_failed";
+            context.Response.Redirect("/Account/AuthError?error=" + code);
         }
-
-        // For other errors, use default error handling
-        context.Response.Redirect("/Home/Error");
         context.HandleResponse();
         return Task.CompletedTask;
     };
-
-    // Inject an intentionally invalid scope when navigating to /Account/InvalidScopes
     options.Events.OnRedirectToIdentityProvider = context =>
     {
-        if (context.Request.Path.StartsWithSegments("/Account/InvalidScopes"))
+        context.Properties.Items.TryGetValue("demo_scenario", out var scenario);
+        switch (scenario)
         {
-            var currentScope = context.ProtocolMessage.Scope ?? string.Empty;
-            // Append invalid scope token (will be filtered or produce invalid_scope error)
-            if (!currentScope.Contains("api:invalid:read"))
-            {
-                context.ProtocolMessage.Scope = (currentScope + " api:invalid:read").Trim();
-            }
+            case "mfa": context.ProtocolMessage.AcrValues = "mfa"; break;
+            case "fresh": context.ProtocolMessage.Prompt = "login"; break;
+            case "max-age": context.ProtocolMessage.SetParameter("max_age", "0"); break;
+            case "consent": context.ProtocolMessage.Prompt = "consent"; break;
+            case "silent": context.ProtocolMessage.Prompt = "none"; break;
         }
-
-        // Support acr_values from Challenge properties
-        if (context.Properties.Items.TryGetValue("acr_values", out var acrValues))
-        {
-            context.ProtocolMessage.AcrValues = acrValues;
-        }
-
-        return Task.CompletedTask;
-    };
-
-    // Keep PAR enabled for normal sign-in, but use a front-channel request for the
-    // invalid-scope sample so its OAuth error returns through OnRemoteFailure.
-    options.Events.OnPushAuthorization = context =>
-    {
-        if (context.Request.Path.StartsWithSegments("/Account/InvalidScopes"))
-        {
-            context.SkipPush();
-        }
-
         return Task.CompletedTask;
     };
 });
-
-builder.Services.AddHttpClient();
-
-builder.Services.AddControllersWithViews();
-
+builder.Services.AddHttpClient<OidcDemoService>(client => client.Timeout = TimeSpan.FromSeconds(10))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
+builder.Services.AddControllersWithViews(options => options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
-
 app.UseHttpsRedirection();
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapStaticAssets();
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
-
-
+app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
 app.Run();

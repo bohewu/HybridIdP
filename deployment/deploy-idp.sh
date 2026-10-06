@@ -75,12 +75,12 @@ wait_for_idp_readiness() {
 
         if [[ "$HAS_NGINX_GATEWAY" == true ]]; then
             if docker compose "${COMPOSE_ARGS[@]}" exec -T nginx-gateway \
-                wget -q -O /dev/null http://idp-service/health; then
+                wget -q -O /dev/null http://idp-service/health/ready; then
                 info "IDP readiness confirmed."
                 return 0
             fi
         elif curl --fail --silent --show-error --max-time 5 \
-            "http://${DIRECT_READINESS_HOST:-127.0.0.1}:8080/health" >/dev/null 2>&1; then
+            "http://${DIRECT_READINESS_HOST:-127.0.0.1}:8080/health/ready" >/dev/null 2>&1; then
             info "IDP readiness confirmed."
             return 0
         fi

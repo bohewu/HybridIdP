@@ -1,4 +1,8 @@
 {
+  "Recovery.Identity.Identifier.Label": "身分證件號碼",
+  "Recovery.Identity.Identifier.Help": "若帳號需要身分核對，請輸入身分證件號碼。此資料僅用於本次核對。",
+  "Recovery.ReadyToSend": "將驗證碼寄送至：",
+  "Recovery.SendCode": "寄送驗證碼",
   "AdminPortal": "管理後台",
   "Admin": "管理",
   "Dashboard": "儀表板",
@@ -266,6 +270,7 @@
   "EnterEmailCodeDescription": "請先將驗證碼寄送到您的電子郵件，再於下方輸入",
   "InvalidMfaCode": "驗證碼無效",
   "LoginWithPasskey": "使用 Passkey 登入",
+  "OtherVerificationMethods": "其他驗證方式",
   "ForgotPassword": "忘記密碼？",
   "NativeRecovery.Title": "重設密碼",
   "NativeRecovery.Description": "使用已驗證的復原信箱，復原符合條件的本地帳號。",
