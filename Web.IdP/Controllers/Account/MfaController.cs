@@ -52,6 +52,7 @@ public partial class MfaController : ControllerBase
     /// Starts an interactive reauthentication flow before MFA enrollment.
     /// </summary>
     [HttpPost("reauthenticate")]
+    [ValidateAntiForgeryToken]
     public async Task<ActionResult> BeginReauthentication()
     {
         var applicationAuthentication =
@@ -287,6 +288,7 @@ public partial class MfaController : ControllerBase
     /// Generate new recovery codes.
     /// </summary>
     [HttpPost("recovery-codes")]
+    [ValidateAntiForgeryToken]
     public async Task<ActionResult<RecoveryCodesResponse>> GenerateRecoveryCodes(
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RecoveryCodesRequest? request,
         CancellationToken ct)

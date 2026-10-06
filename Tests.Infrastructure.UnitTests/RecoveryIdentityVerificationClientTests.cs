@@ -104,7 +104,8 @@ public sealed class RecoveryIdentityVerificationClientTests
         using var handler = new Handler((_, _) => Task.FromResult(Response(body, status, mediaType)));
         using var http = new HttpClient(handler);
         var result = await new RecoveryIdentityVerificationClient(http, Options.Create(Settings())).VerifyAsync(Request());
-        Assert.Equal(accepts, result is not null);
+        var accepted = result is not null;
+        Assert.True(accepted == accepts, $"{name}: expected envelope acceptance {accepts}, actual {accepted}.");
         Assert.Equal(1, handler.Calls);
     }
 

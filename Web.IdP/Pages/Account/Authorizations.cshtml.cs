@@ -96,7 +96,9 @@ public class AuthorizationsModel : PageModel
     
     public async Task<IActionResult> OnPostRevokeAsync(string applicationId)
     {
-        if (string.IsNullOrEmpty(applicationId))
+        if (string.IsNullOrWhiteSpace(applicationId) ||
+            applicationId.Any(character => char.IsControl(character) || character is '\u2028' or '\u2029') ||
+            !Guid.TryParse(applicationId, out var parsedApplicationId))
         {
             return BadRequest();
         }
@@ -106,7 +108,7 @@ public class AuthorizationsModel : PageModel
         // Find all authorizations for this user and application
         var authorizationsQuery = _authorizationManager.FindAsync(
             subject: userId,
-            client: applicationId,
+            client: parsedApplicationId.ToString("D"),
             status: OpenIddictConstants.Statuses.Valid,
             type: OpenIddictConstants.AuthorizationTypes.Permanent,
             scopes: default);
@@ -124,7 +126,7 @@ public class AuthorizationsModel : PageModel
             await _authorizationManager.DeleteAsync(authorization);
         }
         
-        _logger.LogInformation("User {UserId} revoked authorization for application {ApplicationId}", userId, applicationId);
+        _logger.LogInformation("User {UserId} revoked authorization for application {ApplicationId}", userId, parsedApplicationId);
         
         // Return success - page will reload via JavaScript
         return new JsonResult(new { success = true });

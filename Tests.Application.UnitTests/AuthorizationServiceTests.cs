@@ -672,7 +672,6 @@ namespace Tests.Application.UnitTests
         {
             const int assignedRoleCount = 0;
             string? claimedActiveRole = null;
-            const bool expectsActiveRole = false;
             var lifecycleChecks = 0;
             _lifecycle.Setup(policy => policy.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => ++lifecycleChecks != deniedCheck);
@@ -738,12 +737,6 @@ namespace Tests.Application.UnitTests
                 .Select(index => $"Role{(char)('A' + index)}")
                 .ToList();
             _mockUserManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(assignedRoles);
-            var activeRoleId = Guid.NewGuid();
-            if (expectsActiveRole)
-            {
-                _mockRoleManager.Setup(m => m.FindByNameAsync("RoleA"))
-                    .ReturnsAsync(new ApplicationRole { Id = activeRoleId, Name = "RoleA" });
-            }
             _mockApiResourceService.Setup(service => service.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>()))
                 .ReturnsAsync([]);
             _mockClaimsEnricher.Setup(service => service.AddPermissionClaimsAsync(
@@ -780,7 +773,7 @@ namespace Tests.Application.UnitTests
                 "auth-existing",
                 "client",
                 "Test client",
-                It.Is<Guid?>(roleId => roleId == (expectsActiveRole ? activeRoleId : null)),
+                It.Is<Guid?>(roleId => roleId == null),
                 It.IsAny<string?>(),
                 It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()), deniedCheck == 0 ? Times.Once() : Times.Never());

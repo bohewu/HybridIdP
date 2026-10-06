@@ -24,6 +24,7 @@ namespace Web.IdP.Controllers.Account;
 public record LoginOptionsRequest(string? Username);
 
 [Route("api/passkey")]
+[AutoValidateAntiforgeryToken]
 [ApiController]
 public partial class PasskeyController : ControllerBase
 {

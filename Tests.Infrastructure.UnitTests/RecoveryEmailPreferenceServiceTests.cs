@@ -250,7 +250,7 @@ public sealed class RecoveryEmailPreferenceServiceTests
             return await f.CreateService(db).VerifyAsync(f.User.Id, code, ctx);
         }
         var outcomes = await Task.WhenAll(Task.Run(Verify), Task.Run(Verify));
-        Assert.Single(outcomes.Where(o => o == RecoveryProofOutcome.Success));
+        Assert.Single(outcomes, o => o == RecoveryProofOutcome.Success);
         await using var read = f.NewContext();
         Assert.Equal(2, (await read.RecoveryEmailPreferences.SingleAsync()).SelectionEpoch);
         Assert.Equal(2, await read.RecoveryNotifications.CountAsync());

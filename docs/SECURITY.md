@@ -75,6 +75,27 @@ All authentication and session cookies are configured with:
 - `Secure`: Transmitted only over HTTPS.
 - `SameSite`: Set to `Lax` or `Strict` for CSRF protection.
 
+### Antiforgery for account and administrative APIs
+
+Cookie-authenticated mutations require a valid antiforgery cookie and request
+token. The shared API filter exempts only successful OpenIddict bearer
+authentication without a participating application or temporary two-factor
+cookie identity. An Authorization header or authentication-type label alone
+does not grant an exemption; mixed bearer/cookie principals still require CSRF
+validation.
+
+Passkey registration, assertion, options and deletion are browser-session
+operations and always require antiforgery validation, including anonymous
+passkey login. The login, MFA selector and enrollment pages publish an encoded
+request token for the existing fetch interceptor to send as `X-XSRF-TOKEN`.
+Missing or invalid tokens are rejected before ceremony processing. Interactive
+MFA reauthentication and recovery-code regeneration also require antiforgery,
+because their authority is the application cookie.
+
+The recovery-email selection flow retains its additional cookie/session-bound
+validation. When that feature is disabled, existing high-assurance bearer-only
+recovery clients remain supported; cookie requests use the shared CSRF filter.
+
 ### Lifecycle Cookie Validation
 
 Every ASP.NET Core Identity application-cookie validation checks the current
