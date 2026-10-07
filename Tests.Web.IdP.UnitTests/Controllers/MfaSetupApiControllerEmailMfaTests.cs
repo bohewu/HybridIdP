@@ -259,6 +259,7 @@ public class MfaSetupApiControllerEmailMfaTests
         {
             Id = Guid.NewGuid(),
             UserName = "pending-email-mfa-user",
+            SecurityStamp = "current-stamp",
             Email = "pending@example.test"
         };
         var userManager = new Mock<UserManager<ApplicationUser>>(
@@ -324,7 +325,7 @@ public class MfaSetupApiControllerEmailMfaTests
         var httpContext = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
+                [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim("AspNet.Identity.SecurityStamp", user.SecurityStamp)],
                 "Test"))
         };
         httpContext.Features.Set<ISessionFeature>(new TestSessionFeature
@@ -357,7 +358,8 @@ public class MfaSetupApiControllerEmailMfaTests
     private static void ArrangeTwoFactorPartialAuthentication(ControllerFixture fixture)
     {
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, fixture.User.Id.ToString()), MfaEnrollmentSession.BeginInitial(fixture.Session, fixture.User.Id)],
+            [new Claim(ClaimTypes.NameIdentifier, fixture.User.Id.ToString()), new Claim("AspNet.Identity.SecurityStamp", fixture.User.SecurityStamp!),
+             MfaEnrollmentSession.BeginInitial(fixture.Session, fixture.User.Id, securityStamp: fixture.User.SecurityStamp)],
             IdentityConstants.TwoFactorUserIdScheme));
         var authentication = new Mock<IAuthenticationService>();
         authentication

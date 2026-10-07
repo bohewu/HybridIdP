@@ -160,7 +160,11 @@ public partial class MfaController : ControllerBase
             return StatusCode(403, new { error = "mfaDisabled" });
         }
 
+        var previousStamp = user.SecurityStamp;
         var setupInfo = await _mfaService.GetTotpSetupInfoAsync(user, ct);
+        await PendingExternalLoginLink.CarryInitialEnrollmentStampAsync(HttpContext, user, previousStamp);
+        if (!await MfaEnrollmentSession.CarryAuthorizedStampAsync(HttpContext, user, previousStamp, ct))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
 
         return Ok(new MfaSetupResponse
         {
@@ -224,6 +228,7 @@ public partial class MfaController : ControllerBase
     /// Requires password verification OR TOTP code for passwordless users.
     /// </summary>
     [HttpPost("disable")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("login")]
     public async Task<ActionResult> Disable([FromBody] MfaDisableRequest request, CancellationToken ct)
     {
         var user = await GetCurrentUserAsync();
@@ -246,7 +251,8 @@ public partial class MfaController : ControllerBase
                 return BadRequest(new { error = "passwordRequired" });
             }
             
-            var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+            var isPasswordValid = await PasswordConfirmation.CheckAsync(_userManager, user, request.Password,
+                await _securityPolicyService.GetCurrentPolicyAsync());
             if (!isPasswordValid)
             {
                 return BadRequest(new { error = "invalidPassword" });
@@ -283,6 +289,7 @@ public partial class MfaController : ControllerBase
     /// Generate new recovery codes.
     /// </summary>
     [HttpPost("recovery-codes")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("login")]
     [ValidateAntiForgeryToken]
     public async Task<ActionResult<RecoveryCodesResponse>> GenerateRecoveryCodes(
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RecoveryCodesRequest? request,
@@ -313,6 +320,9 @@ public partial class MfaController : ControllerBase
             return BadRequest(new { error = "MFA is not enabled" });
         }
 
+        if (!await MfaEnrollmentSession.IsRemovalAuthorizedAsync(HttpContext, user, ct))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
+
         var hasPassword = await _userManager.HasPasswordAsync(user);
         if (hasPassword)
         {
@@ -321,7 +331,7 @@ public partial class MfaController : ControllerBase
                 return BadRequest(new { error = "passwordRequired" });
             }
 
-            var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+            var isPasswordValid = await PasswordConfirmation.CheckAsync(_userManager, user, request.Password, policy);
             if (!isPasswordValid)
             {
                 return BadRequest(new { error = "invalidPassword" });
@@ -342,6 +352,7 @@ public partial class MfaController : ControllerBase
         }
 
         var codes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
+        MfaEnrollmentSession.Consume(HttpContext.Session);
 
         LogRecoveryCodesRegenerated(user.Id);
         await _auditService.LogEventAsync("MfaRecoveryCodesRegenerated", user.Id.ToString(), null, null, null, ct);
@@ -365,6 +376,9 @@ public partial class MfaController : ControllerBase
         {
             return Unauthorized();
         }
+
+        if (user.EmailMfaEnabled || !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
 
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableEmailMfa)
@@ -402,6 +416,9 @@ public partial class MfaController : ControllerBase
             return Unauthorized();
         }
 
+        if (user.EmailMfaEnabled || !await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
+
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (!policy.EnableEmailMfa)
         {
@@ -419,6 +436,7 @@ public partial class MfaController : ControllerBase
         if (isValid)
         {
             LogEmailMfaCodeVerified(user.Id);
+            MfaEnrollmentSession.Consume(HttpContext.Session);
             LogEmailMfaEnabled(user.Id);
             await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null, ct);
             return Ok(new { success = true });

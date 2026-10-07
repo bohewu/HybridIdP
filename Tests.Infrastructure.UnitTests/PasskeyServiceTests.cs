@@ -183,7 +183,7 @@ public class PasskeyServiceTests
     [InlineData(false, true)]
     public async Task DeletePasskeyAsync_ShouldPreserveKeyOnMandatoryPolicyOrFailedPersistence(bool mandatory, bool persistenceSucceeds)
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "owner" };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "owner", SecurityStamp = "before-removal" };
         _dbContext.Users.Add(user);
         _dbContext.UserCredentials.Add(new UserCredential { Id = 7, UserId = user.Id, CredentialId = [7], PublicKey = [7] });
         await _dbContext.SaveChangesAsync();
@@ -198,6 +198,7 @@ public class PasskeyServiceTests
         user.PhoneNumber = "test-later-save";
         await _dbContext.SaveChangesAsync();
         Assert.Equal(!mandatory && persistenceSucceeds, (await _dbContext.UserCredentials.SingleAsync()).DisabledAtUtc != null);
+        Assert.Equal(!mandatory && persistenceSucceeds, user.SecurityStamp != "before-removal");
     }
 
     [Fact]

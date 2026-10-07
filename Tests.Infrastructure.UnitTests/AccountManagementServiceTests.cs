@@ -118,6 +118,20 @@ public class AccountManagementServiceTests
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Switch_ShouldDenyImpersonationWithoutSideEffects(bool marker)
+    {
+        var identity = (ClaimsIdentity)_httpContext.User.Identity!;
+        if (marker) identity.AddClaim(new Claim(AuthConstants.Claims.ImpersonatorId, Guid.NewGuid().ToString()));
+        else identity.Actor = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "actor");
+        Assert.False(await _service.SwitchToAccountAsync(Guid.NewGuid(), Guid.NewGuid(), "switch"));
+        _userManagerMock.Verify(manager => manager.FindByIdAsync(It.IsAny<string>()), Times.Never);
+        _signInManagerMock.Verify(manager => manager.SignOutAsync(), Times.Never);
+        _signInManagerMock.Verify(manager => manager.SignInAsync(It.IsAny<ApplicationUser>(), It.IsAny<bool>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Theory]
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]

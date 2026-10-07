@@ -274,13 +274,14 @@ public partial class LoginModel : PageModel
                 if (isAbnormal)
                 {
                     loginHistory.IsFlaggedAbnormal = true;
+                    var currentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
+                    loginHistory.IsSuccessful = !currentPolicy.BlockAbnormalLogin;
                     // Record login first so we have the record
                     await _loginHistoryService.RecordLoginAsync(loginHistory);
                     
                     await _notificationService.NotifyAbnormalLoginAsync(result.User!.Id.ToString(), loginHistory);
 
                     // Check if we should block abnormal logins
-                    var currentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
                     if (currentPolicy.BlockAbnormalLogin)
                     {
                         LogAbnormalLoginBlocked(result.User!.UserName, loginHistory.IpAddress);
@@ -306,8 +307,7 @@ public partial class LoginModel : PageModel
                 {
                     // Store user ID for 2FA verification
                     // Identity's GetTwoFactorAuthenticationUserAsync expects ClaimTypes.NameIdentifier
-                    var identity = new System.Security.Claims.ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
-                    identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, result.User.Id.ToString()));
+                    var identity = TwoFactorAuthenticationSession.CreateIdentity(result.User, _userManager);
                     await HttpContext.SignInAsync(
                         IdentityConstants.TwoFactorUserIdScheme,
                         new System.Security.Claims.ClaimsPrincipal(identity));
@@ -374,9 +374,9 @@ public partial class LoginModel : PageModel
                                 if (!isGracePeriodActive)
                                 {
                                     // Store user ID for 2FA setup access using partial authentication
-                                    var identity = new System.Security.Claims.ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
-                                    identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, result.User.Id.ToString()));
-                                    identity.AddClaim(MfaEnrollmentSession.BeginInitial(HttpContext.Session, result.User.Id));
+                                    var identity = TwoFactorAuthenticationSession.CreateIdentity(result.User, _userManager);
+                                    identity.AddClaim(MfaEnrollmentSession.BeginInitial(HttpContext.Session, result.User.Id,
+                                        securityStamp: result.User.SecurityStamp));
                                     await HttpContext.SignInAsync(IdentityConstants.TwoFactorUserIdScheme, new System.Security.Claims.ClaimsPrincipal(identity));
 
                                     return RedirectToPage("./MfaSetup", new { returnUrl });

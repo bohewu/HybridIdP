@@ -11,11 +11,90 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Web.IdP.Controllers.Account;
+using Web.IdP.Services;
+using Web.IdP.Helpers;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
 
 public class MfaControllerRecoveryCodesTests
 {
+    [Fact]
+    public async Task PasswordConfirmation_ShouldShareConfiguredAccountBudgetAndStopCheckingAfterLockout()
+    {
+        var fixture = CreateCookieAuthenticatedController(true);
+        var failures = 0;
+        var locked = false;
+        fixture.UserManager.Setup(manager => manager.IsLockedOutAsync(fixture.User)).ReturnsAsync(() => locked);
+        fixture.UserManager.Setup(manager => manager.AccessFailedAsync(fixture.User))
+            .Callback(() => locked = ++failures >= fixture.UserManager.Object.Options.Lockout.MaxFailedAccessAttempts)
+            .ReturnsAsync(IdentityResult.Success);
+        var policy = new SecurityPolicy { MaxFailedAccessAttempts = 3, LockoutDurationMinutes = 10 };
+        for (var index = 0; index < 5; index++)
+            Assert.False(await PasswordConfirmation.CheckAsync(fixture.UserManager.Object, fixture.User, "invalid-confirmation", policy));
+        Assert.Equal(3, failures);
+        fixture.UserManager.Verify(manager => manager.CheckPasswordAsync(fixture.User, "invalid-confirmation"), Times.Exactly(3));
+    }
+
+    [Theory]
+    [InlineData("password")]
+    [InlineData("consumed")]
+    [InlineData("stamp")]
+    public async Task GenerateRecoveryCodes_ShouldRejectMissingOrRevokedMfaManagementAuthority(string condition)
+    {
+        var fixture = CreateCookieAuthenticatedController(true);
+        if (condition == "password")
+        {
+            var identity = (ClaimsIdentity)fixture.Controller.User.Identity!;
+            identity.RemoveClaim(identity.FindFirst("amr")!);
+            identity.AddClaim(new Claim("amr", "pwd"));
+        }
+        if (condition == "consumed") MfaEnrollmentSession.Consume(fixture.Controller.HttpContext.Session);
+        if (condition == "stamp") fixture.User.SecurityStamp = "reset-stamp";
+        var result = await fixture.Controller.GenerateRecoveryCodes(new RecoveryCodesRequest { Password = Guid.NewGuid().ToString("N") }, default);
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result.Result).StatusCode);
+        fixture.UserManager.Verify(manager => manager.CheckPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()), Times.Never);
+        VerifyNoRegenerationOrAudit(fixture);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GenericEmailEnrollment_ShouldRejectOrdinaryCookieWithoutFreshProof(bool verify)
+    {
+        var fixture = CreateCookieAuthenticatedController(true);
+        fixture.User.Email = "enrollment@example.test";
+        MfaEnrollmentSession.Consume(fixture.Controller.HttpContext.Session);
+        var result = verify
+            ? await fixture.Controller.VerifyEmailMfaCode(new EmailMfaVerifyRequest { Code = "123456" }, default)
+            : await fixture.Controller.SendEmailMfaCode(default);
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
+        fixture.MfaService.Verify(service => service.SendEmailMfaCodeAsync(It.IsAny<ApplicationUser>(), It.IsAny<CancellationToken>()), Times.Never);
+        fixture.MfaService.Verify(service => service.VerifyAndEnableEmailMfaAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GenericEmailEnrollment_ShouldCompleteWithFreshMfaProofAndConsumeItOnlyAfterSuccess()
+    {
+        var fixture = CreateCookieAuthenticatedController(true);
+        fixture.User.Email = "enrollment@example.test";
+        fixture.MfaService.Setup(service => service.SendEmailMfaCodeAsync(fixture.User, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, 60));
+        Assert.IsType<OkObjectResult>(await fixture.Controller.SendEmailMfaCode(default));
+        Assert.True(MfaEnrollmentSession.HasFreshProof(fixture.Controller.HttpContext.Session, fixture.User.Id));
+        fixture.MfaService.Setup(service => service.VerifyAndEnableEmailMfaAsync(fixture.User, "invalid", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        Assert.IsType<OkObjectResult>(await fixture.Controller.VerifyEmailMfaCode(new EmailMfaVerifyRequest { Code = "invalid" }, default));
+        Assert.True(MfaEnrollmentSession.HasFreshProof(fixture.Controller.HttpContext.Session, fixture.User.Id));
+        fixture.MfaService.Setup(service => service.VerifyAndEnableEmailMfaAsync(fixture.User, "valid", It.IsAny<CancellationToken>()))
+            .Callback(() => fixture.User.EmailMfaEnabled = true).ReturnsAsync(true);
+        Assert.IsType<OkObjectResult>(await fixture.Controller.VerifyEmailMfaCode(new EmailMfaVerifyRequest { Code = "valid" }, default));
+        Assert.True(fixture.User.EmailMfaEnabled);
+        Assert.False(MfaEnrollmentSession.HasFreshProof(fixture.Controller.HttpContext.Session, fixture.User.Id));
+        fixture.MfaService.Verify(service => service.SendEmailMfaCodeAsync(fixture.User, It.IsAny<CancellationToken>()), Times.Once);
+        fixture.AuditService.Verify(service => service.LogEventAsync("EmailMfaEnabled", fixture.User.Id.ToString(),
+            null, null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Fact]
     public async Task GenerateRecoveryCodes_BearerPrincipalWithoutInteractiveAuthentication_ReturnsUnauthorizedOrForbiddenWithoutMutation()
     {
@@ -318,10 +397,12 @@ public class MfaControllerRecoveryCodesTests
         {
             Id = Guid.NewGuid(),
             UserName = "interactive-user",
+            SecurityStamp = "current-stamp",
             TwoFactorEnabled = true
         };
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
+            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim("amr", "mfa"),
+             new Claim("AspNet.Identity.SecurityStamp", user.SecurityStamp)],
             IdentityConstants.ApplicationScheme));
 
         var mfaService = new Mock<IMfaService>();
@@ -347,9 +428,12 @@ public class MfaControllerRecoveryCodesTests
         userManager
             .Setup(manager => manager.HasPasswordAsync(user))
             .ReturnsAsync(hasPassword);
+        userManager.Setup(manager => manager.AccessFailedAsync(user)).ReturnsAsync(IdentityResult.Success);
 
         var auditService = new Mock<IAuditService>();
         var authenticationService = new Mock<IAuthenticationService>();
+        authenticationService.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthenticateResult.NoResult());
         authenticationService
             .Setup(service => service.AuthenticateAsync(
                 It.IsAny<HttpContext>(),
@@ -361,12 +445,19 @@ public class MfaControllerRecoveryCodesTests
 
         var services = new ServiceCollection()
             .AddSingleton(authenticationService.Object)
+            .AddSingleton(Mock.Of<ICurrentUserLifecycleEligibility>(service =>
+                service.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()) == Task.FromResult(true)))
+            .AddSingleton(Mock.Of<IMigrationIssuanceGuard>(service =>
+                service.CanIssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()) == Task.FromResult(true)))
             .BuildServiceProvider();
         var httpContext = new DefaultHttpContext
         {
             RequestServices = services,
+            Session = new Tests.Web.IdP.UnitTests.TestSupport.MemorySession(),
             User = principal
         };
+        MfaEnrollmentSession.Begin(httpContext.Session, user.Id, true, securityStamp: user.SecurityStamp);
+        Assert.True(MfaEnrollmentSession.CompletePending(httpContext.Session, principal));
 
         var controller = new MfaController(
             mfaService.Object,

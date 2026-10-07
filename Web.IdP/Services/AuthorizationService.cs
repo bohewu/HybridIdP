@@ -332,14 +332,23 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 cancellationToken: cancellationToken);
 
             var authorizations = new List<object>();
+            var consentType = await _applicationManager.GetConsentTypeAsync(application, cancellationToken);
             await foreach (var authorization in authorizationsEnumerable)
             {
+                if (consentType == ConsentTypes.External)
+                {
+                    var approvedScopes = await _authorizationManager.GetScopesAsync(authorization, cancellationToken);
+                    if (!effectiveRequestedScopes.All(scope => approvedScopes.Contains(scope, StringComparer.Ordinal))) continue;
+                }
                 authorizations.Add(authorization);
             }
 
+            if (consentType == ConsentTypes.External && authorizations.Count == 0) return ExternalConsentDenied();
+
             // Always show consent page for first time or if prompt=consent is requested
             // In production, you may skip consent if authorization already exists
-            if (authorizations.Count > 0 && !promptValues.Contains("consent", StringComparer.OrdinalIgnoreCase))
+            if (authorizations.Count > 0 && (consentType == ConsentTypes.External ||
+                !promptValues.Contains("consent", StringComparer.OrdinalIgnoreCase)))
             {
                 var existingAuthorization = authorizations[0];
                 var existingAuthorizationScopes = (await _authorizationManager.GetScopesAsync(existingAuthorization, cancellationToken))
@@ -534,6 +543,24 @@ namespace Web.IdP.Services // Keep consistent namespace case
             var eval = await _clientScopeProcessor.EnforceAsync(clientGuid, requestedScopesOriginal, logAuditIfRestricted: false);
             var requestedScopes = eval.AllowedScopes.ToImmutableArray();
 
+            var consentType = await _applicationManager.GetConsentTypeAsync(application, cancellationToken);
+            object? externalAuthorization = null;
+            if (consentType == ConsentTypes.External)
+            {
+                await foreach (var grant in _authorizationManager.FindAsync(
+                    subject: user.Id.ToString(), client: applicationId, status: Statuses.Valid,
+                    type: AuthorizationTypes.Permanent, scopes: requestedScopes, cancellationToken: cancellationToken))
+                {
+                    var approvedScopes = await _authorizationManager.GetScopesAsync(grant, cancellationToken);
+                    if (requestedScopes.All(scope => approvedScopes.Contains(scope, StringComparer.Ordinal)))
+                    {
+                        externalAuthorization = grant;
+                        break;
+                    }
+                }
+                if (externalAuthorization == null) return ExternalConsentDenied();
+            }
+
             // Reload scope information for POST request (ScopeInfos is only populated in GET)
             await LoadScopeInfosAsync(requestedScopes, clientGuid, cancellationToken);
 
@@ -620,7 +647,6 @@ namespace Web.IdP.Services // Keep consistent namespace case
             // Determine authorization type based on client's consent type
             // If ConsentType is Explicit, create AdHoc (temporary) authorization that requires consent each time
             // Otherwise, create Permanent authorization that persists across sessions
-            var consentType = await _applicationManager.GetConsentTypeAsync(application, cancellationToken);
             var authorizationType = consentType == ConsentTypes.Explicit 
                 ? AuthorizationTypes.AdHoc 
                 : AuthorizationTypes.Permanent;
@@ -660,7 +686,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 return LifecycleDenied();
             }
 
-            var authorization = await _authorizationManager.CreateAsync(
+            var authorization = externalAuthorization ?? await _authorizationManager.CreateAsync(
                 identity: identity,
                 subject: subject,
                 client: applicationId,
@@ -692,6 +718,14 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
         }
+
+        private static ForbidResult ExternalConsentDenied() => new(
+            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+            new AuthenticationProperties(new Dictionary<string, string?>
+            {
+                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.ConsentRequired,
+                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "External approval is required for the requested scopes."
+            }));
 
         private static ForbidResult LifecycleDenied() => new(
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,

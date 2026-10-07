@@ -11,6 +11,7 @@ using Infrastructure;
 using Core.Application.Interfaces;
 using Core.Application.Utilities;
 using Core.Application.Options; // Added
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Controllers.Api;
 
@@ -255,6 +256,7 @@ public class ProfileManagementController : ControllerBase
     /// POST api/profile/change-password - Change current user's password
     /// </summary>
     [HttpPost("change-password")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("login")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.GetUserAsync(User);
@@ -281,11 +283,16 @@ public class ProfileManagementController : ControllerBase
             return BadRequest(new { error = "Cannot change password for external login accounts" });
         }
 
+        if (await _userManager.IsLockedOutAsync(user))
+            return StatusCode(429, new { error = "accountLocked" });
+
         // Attempt to change password (will use DynamicPasswordValidator)
         var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
 
         if (!result.Succeeded)
         {
+            if (result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.PasswordMismatch)))
+                await PasswordConfirmation.RecordFailureAsync(_userManager, user, policy);
             _logger.LogWarning("Password change failed for user {UserId}: {Errors}",
                 user.Id, string.Join(", ", result.Errors.Select(e => e.Description)));
 

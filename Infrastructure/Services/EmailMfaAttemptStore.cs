@@ -30,11 +30,13 @@ public sealed class EmailMfaAttemptStore : IEmailMfaAttemptStore
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(
                     user => user.EmailMfaVerificationAttempts,
-                    user => user.EmailMfaVerificationAttempts + 1),
+                    user => user.EmailMfaVerificationAttempts + 1)
+                    .SetProperty(user => user.ConcurrencyStamp, Guid.NewGuid().ToString()),
                 ct);
 
         if (reserved == 1)
         {
+            await ReloadTrackedUserAsync(userId, ct);
             return EmailMfaAttemptReservation.Reserved;
         }
 
@@ -43,9 +45,11 @@ public sealed class EmailMfaAttemptStore : IEmailMfaAttemptStore
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(
                     user => user.EmailMfaVerificationAttempts,
-                    maxAttempts),
+                    maxAttempts)
+                    .SetProperty(user => user.ConcurrencyStamp, Guid.NewGuid().ToString()),
                 ct);
 
+        await ReloadTrackedUserAsync(userId, ct);
         return finalAttempt == 1
             ? EmailMfaAttemptReservation.FinalAttempt
             : EmailMfaAttemptReservation.Rejected;
@@ -62,8 +66,17 @@ public sealed class EmailMfaAttemptStore : IEmailMfaAttemptStore
                 setters => setters
                     .SetProperty(user => user.EmailMfaCode, (string?)null)
                     .SetProperty(user => user.EmailMfaCodeExpiry, (DateTime?)null)
-                    .SetProperty(user => user.EmailMfaVerificationAttempts, 0),
+                    .SetProperty(user => user.EmailMfaVerificationAttempts, 0)
+                    .SetProperty(user => user.ConcurrencyStamp, Guid.NewGuid().ToString()),
                 ct);
+        await ReloadTrackedUserAsync(userId, ct);
+    }
+
+    private async Task ReloadTrackedUserAsync(Guid userId, CancellationToken ct)
+    {
+        var entry = _dbContext.ChangeTracker.Entries<Core.Domain.ApplicationUser>()
+            .SingleOrDefault(entry => entry.Entity.Id == userId);
+        if (entry != null) await entry.ReloadAsync(ct);
     }
 
     private IQueryable<Core.Domain.ApplicationUser> MatchingPendingCode(

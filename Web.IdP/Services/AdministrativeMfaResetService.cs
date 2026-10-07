@@ -61,6 +61,10 @@ public sealed class AdministrativeMfaResetService(
         target.EmailMfaCode = null;
         target.EmailMfaCodeExpiry = null;
         target.EmailMfaVerificationAttempts = 0;
+        target.RecoveryCodes = null;
+        var nativeCodes = await db.UserTokens.Where(token => token.UserId == targetId &&
+            token.LoginProvider == "[AspNetUserStore]" && token.Name == "RecoveryCodes").ToListAsync(ct);
+        db.UserTokens.RemoveRange(nativeCodes);
         EnsureSucceeded(await users.UpdateAsync(target));
 
         var sessions = await db.UserSessions.Where(session => session.UserId == targetId && session.RevokedUtc == null).ToListAsync(ct);

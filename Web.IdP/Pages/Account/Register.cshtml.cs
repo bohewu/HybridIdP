@@ -247,9 +247,9 @@ public class RegisterModel : PageModel
                     }
                     if (now >= user.MfaRequirementNotifiedAt.Value.AddDays(CurrentPolicy.MfaEnforcementGracePeriodDays))
                     {
-                        var identity = new ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
-                        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
-                        identity.AddClaim(MfaEnrollmentSession.BeginInitial(HttpContext.Session, user.Id));
+                        var identity = TwoFactorAuthenticationSession.CreateIdentity(user, _userManager);
+                        identity.AddClaim(MfaEnrollmentSession.BeginInitial(HttpContext.Session, user.Id,
+                            securityStamp: user.SecurityStamp));
                         await HttpContext.SignInAsync(IdentityConstants.TwoFactorUserIdScheme, new ClaimsPrincipal(identity));
                         return RedirectToPage("./MfaSetup", new { returnUrl });
                     }

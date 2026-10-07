@@ -711,6 +711,8 @@ async function sendEmailMfaCode() {
       startEmailCooldown(result.remainingSeconds || 60);
       await nextTick();
       emailCodeInput.value?.focus();
+    } else if (result.error === 'freshAuthenticationRequired') {
+      await startSetup();
     } else if (result.remainingSeconds) {
       emailCodeSent.value = true;
       startEmailCooldown(result.remainingSeconds);
@@ -752,6 +754,8 @@ async function verifyEmailMfa() {
       emailMfaSuccess.value = t('mfa.emailMfaEnabled');
       emit('status-changed');
       setTimeout(() => { emailMfaSuccess.value = ''; }, 3000);
+    } else if (result.error === 'freshAuthenticationRequired') {
+      await startSetup();
     } else {
       emailMfaModalError.value = result.message || t('mfa.errors.invalidOrExpiredCode');
     }
@@ -960,6 +964,10 @@ async function regenerateCodes() {
         // Use the localized fallback below when the response has no JSON error body.
       }
 
+      if (errorKey === 'freshAuthenticationRequired') {
+        await startSetup(true);
+        return;
+      }
       const knownErrors = ['passwordRequired', 'invalidPassword', 'totpRequired', 'invalidCode'];
       regenerateError.value = knownErrors.includes(errorKey)
         ? t(`mfa.errors.${errorKey}`)

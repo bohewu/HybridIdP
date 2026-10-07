@@ -429,16 +429,7 @@ public partial class PasskeyController : ControllerBase
             return user;
         }
 
-        var partial = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-        if (!partial.Succeeded || partial.Principal?.Identity?.IsAuthenticated != true)
-        {
-            return null;
-        }
-
-        var subject = partial.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        return Guid.TryParse(subject, out var userId)
-            ? await _userManager.FindByIdAsync(userId.ToString())
-            : null;
+        return await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
     }
 
     private async Task<ApplicationUser?> GetApplicationCookieUserAsync()

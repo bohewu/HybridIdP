@@ -81,6 +81,11 @@ migration eligibility, scope permissions and API usage approval checks.
 
 ## Deprecated / Removed Flows
 
+External-consent clients require a valid permanent authorization covering all
+requested scopes after client policy filtering. Both authorize GET and POST
+reuse that approval; interactive consent cannot create an External grant.
+Missing approval returns the OpenIddict `consent_required` protocol error.
+
 ### Implicit Flow
 **Status:** **REMOVED**
 Legacy flow returning tokens in URL. Replaced by Authorization Code + PKCE.

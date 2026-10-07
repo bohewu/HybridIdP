@@ -473,12 +473,33 @@ public class ProfileManagementControllerTests : IDisposable
         };
 
         // Act
+        _mockUserManager.Setup(manager => manager.AccessFailedAsync(_testUser)).ReturnsAsync(IdentityResult.Success);
         var result = await _controller.ChangePassword(request);
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         // Check that errors are returned
         Assert.Contains("errors", badRequestResult.Value.ToString().ToLower());
+        _mockUserManager.Verify(manager => manager.AccessFailedAsync(_testUser), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ChangePassword_ShouldHonorLockoutWithoutCountingNewPasswordPolicyErrors(bool locked)
+    {
+        _mockUserManager.Setup(manager => manager.GetUserAsync(It.IsAny<ClaimsPrincipal>())).ReturnsAsync(_testUser);
+        _mockUserManager.Setup(manager => manager.HasPasswordAsync(_testUser)).ReturnsAsync(true);
+        _mockUserManager.Setup(manager => manager.IsLockedOutAsync(_testUser)).ReturnsAsync(locked);
+        _mockSecurityPolicyService.Setup(service => service.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy { AllowSelfPasswordChange = true });
+        _mockUserManager.Setup(manager => manager.ChangePasswordAsync(_testUser, "correct-current", "weak-new"))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError { Code = "PasswordTooShort", Description = "New password is too short" }));
+        var result = await _controller.ChangePassword(new ChangePasswordRequest
+            { CurrentPassword = "correct-current", NewPassword = "weak-new", ConfirmPassword = "weak-new" });
+        Assert.Equal(locked ? 429 : 400, Assert.IsAssignableFrom<ObjectResult>(result).StatusCode);
+        _mockUserManager.Verify(manager => manager.AccessFailedAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _mockUserManager.Verify(manager => manager.ChangePasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>()),
+            locked ? Times.Never() : Times.Once());
     }
 
     [Fact]

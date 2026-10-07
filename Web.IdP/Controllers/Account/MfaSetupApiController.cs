@@ -129,6 +129,8 @@ public partial class MfaSetupApiController : ControllerBase
         var previousStamp = user.SecurityStamp;
         var setupInfo = await _mfaService.GetTotpSetupInfoAsync(user, ct);
         await PendingExternalLoginLink.CarryInitialEnrollmentStampAsync(HttpContext, user, previousStamp);
+        if (!await MfaEnrollmentSession.CarryAuthorizedStampAsync(HttpContext, user, previousStamp, ct))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
 
         return Ok(new MfaSetupTotpResponse
         {
@@ -367,18 +369,7 @@ public partial class MfaSetupApiController : ControllerBase
         if (user != null)
             return user;
 
-        // Try TwoFactorUserIdScheme (partial authentication during MFA setup)
-        var twoFactorResult = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-        if (twoFactorResult.Succeeded && twoFactorResult.Principal != null)
-        {
-            var userId = twoFactorResult.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
-            {
-                return await _userManager.FindByIdAsync(userGuid.ToString());
-            }
-        }
-
-        return null;
+        return await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
     }
 
     private async Task<bool> CanIssueFullCookieAsync(

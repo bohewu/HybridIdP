@@ -75,6 +75,9 @@ public class AdministrativeMfaResetServiceTests
             fixture.Identity.AddClaim(new Claim("active_role", AuthConstants.Roles.Admin));
         }
         var session = new UserSession { Id = Guid.NewGuid(), UserId = fixture.Target.Id };
+        fixture.Target.RecoveryCodes = "[\"retired-custom-code\"]";
+        fixture.Db.UserTokens.Add(new IdentityUserToken<Guid> { UserId = fixture.Target.Id,
+            LoginProvider = "[AspNetUserStore]", Name = "RecoveryCodes", Value = "retired-native-code" });
         fixture.Db.UserSessions.Add(session);
         await fixture.Db.SaveChangesAsync();
         await AccountSecurityOperationSession.BeginAsync(fixture.Http, fixture.Actor,
@@ -85,6 +88,8 @@ public class AdministrativeMfaResetServiceTests
         Assert.False(fixture.Target.TwoFactorEnabled);
         Assert.False(fixture.Target.EmailMfaEnabled);
         Assert.Null(fixture.Target.EmailMfaCode);
+        Assert.Null(fixture.Target.RecoveryCodes);
+        Assert.Empty(fixture.Db.UserTokens.Where(token => token.UserId == fixture.Target.Id));
         Assert.NotNull(session.RevokedUtc);
         fixture.Users.Verify(value => value.UpdateSecurityStampAsync(fixture.Target), Times.Once);
         fixture.Authorizations.Verify(value => value.TryRevokeAsync(fixture.Grant, It.IsAny<CancellationToken>()), Times.Once);

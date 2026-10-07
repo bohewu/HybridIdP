@@ -182,6 +182,60 @@ namespace Tests.Application.UnitTests
             return new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
         }
 
+        [Theory]
+        [InlineData(false, "missing")]
+        [InlineData(false, "insufficient")]
+        [InlineData(false, "covering")]
+        [InlineData(true, "missing")]
+        [InlineData(true, "insufficient")]
+        [InlineData(true, "covering")]
+        public async Task ExternalConsent_ShouldRequireCoveringApprovalAndNeverCreateGrant(bool submit, string approval)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true };
+            SetupMockUsers(user);
+            SetupMockScopeExtensions();
+            using var sessionDb = SetupSessionPersistence();
+            var application = new object();
+            var grant = new object();
+            var applicationId = Guid.NewGuid().ToString();
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim(OpenIddictConstants.Claims.Subject, user.Id.ToString()),
+                new Claim(OpenIddictConstants.Claims.AuthenticationTime, "1700000000")], "Test"));
+            _mockHttpContextAccessor.Setup(value => value.HttpContext).Returns(new DefaultHttpContext());
+            _mockApplicationManager.Setup(value => value.FindByClientIdAsync("client", It.IsAny<CancellationToken>())).ReturnsAsync(application);
+            _mockApplicationManager.Setup(value => value.GetIdAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(applicationId);
+            _mockApplicationManager.Setup(value => value.GetPermissionsAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([OpenIddictConstants.Permissions.ResponseTypes.Code]);
+            _mockApplicationManager.Setup(value => value.GetConsentTypeAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(OpenIddictConstants.ConsentTypes.External);
+            _mockUserManager.Setup(value => value.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
+            _mockUserManager.Setup(value => value.GetRolesAsync(user)).ReturnsAsync([]);
+            _mockClientScopeProcessor.Setup(value => value.EnforceAsync(It.IsAny<Guid>(), It.IsAny<IEnumerable<string>>(), It.IsAny<bool>()))
+                .ReturnsAsync(new ClientScopeEvaluationResult { AllowedScopes = ["openid", "profile"] });
+            _mockClientAllowedScopesService.Setup(value => value.GetRequiredScopesAsync(It.IsAny<Guid>())).ReturnsAsync([]);
+            _mockScopeService.Setup(value => value.ClassifyScopes(It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<ScopeSummary>>(), It.IsAny<IEnumerable<string>>()))
+                .Returns(new ScopeClassificationResult { Allowed = ["openid"] });
+            _mockApiResourceService.Setup(value => value.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync([]);
+            _mockAuthorizationManager.Setup(value => value.FindAsync(user.Id.ToString(), applicationId,
+                OpenIddictConstants.Statuses.Valid, OpenIddictConstants.AuthorizationTypes.Permanent,
+                It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()))
+                .Returns(approval == "missing" ? ToAsyncEnumerable() : ToAsyncEnumerable(grant));
+            _mockAuthorizationManager.Setup(value => value.GetScopesAsync(grant, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(approval == "covering" ? ["openid", "profile"] : ["openid"]);
+            _mockAuthorizationManager.Setup(value => value.GetIdAsync(grant, It.IsAny<CancellationToken>())).ReturnsAsync("approved-grant");
+            var request = new OpenIddictRequest { ClientId = "client", Scope = "openid profile", ResponseType = "code", Prompt = "consent" };
+            var result = submit
+                ? await _authorizationService.HandleAuthorizeSubmitAsync(principal, request, "accept", ["openid"])
+                : await _authorizationService.HandleAuthorizeRequestAsync(principal, request, "consent");
+            if (approval == "covering")
+                Assert.Equal("approved-grant", Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal.GetAuthorizationId());
+            else
+                Assert.Equal(OpenIddictConstants.Errors.ConsentRequired, Assert.IsType<ForbidResult>(result)
+                    .Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+            _mockAuthorizationManager.Verify(value => value.CreateAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
         private static Mock<RoleManager<ApplicationRole>> MockRoleManager()
         {
             var store = new Mock<IRoleStore<ApplicationRole>>();
@@ -590,7 +644,7 @@ namespace Tests.Application.UnitTests
         [InlineData(true, false, false)]
         [InlineData(false, true, false)]
         [InlineData(false, false, true)]
-        public async Task HandleAuthorizeRequestAsync_WhenClientGlobalOrAcrRequiresMfa_RedirectsToMfaSetup(
+        public async Task HandleAuthorizeRequestAsync_WhenClientGlobalOrAcrRequiresMfa_RequiresFreshLoginForEnrollment(
             bool clientRequiresMfa,
             bool globallyRequiresMfa,
             bool acrRequiresMfa)
@@ -632,7 +686,7 @@ namespace Tests.Application.UnitTests
             var result = await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null);
 
             var redirect = Assert.IsType<RedirectResult>(result);
-            Assert.Contains("/Account/MfaSetup", redirect.Url);
+            Assert.Equal("/Account/Login", redirect.Url);
         }
 
         [Fact]

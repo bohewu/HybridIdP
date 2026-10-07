@@ -27,6 +27,26 @@ vi.mock('../../../composables/useWebAuthn', () => ({
 vi.stubGlobal('fetch', vi.fn());
 
 describe('MfaSettings.vue', () => {
+    it.each(['email-send', 'email-verify', 'recovery'])('starts reauthentication after denied %s management', async (operation) => {
+        if (operation === 'recovery') mockMfaAccount({ hasPassword: true, recoveryHandler: () => jsonResponse({}) });
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        const endpoint = operation === 'email-send' ? '/api/account/mfa/email/send'
+            : operation === 'email-verify' ? '/api/account/mfa/email/verify' : '/api/account/mfa/recovery-codes';
+        fetch.mockImplementation((url) => Promise.resolve({ ok: false,
+            json: async () => url === endpoint ? { error: 'freshAuthenticationRequired' } : {} }));
+        if (operation === 'email-verify') wrapper.vm.emailMfaCode = '123456';
+        if (operation === 'recovery') wrapper.vm.regeneratePassword = 'confirmation';
+        await (operation === 'email-send' ? wrapper.vm.sendEmailMfaCode()
+            : operation === 'email-verify' ? wrapper.vm.verifyEmailMfa() : wrapper.vm.regenerateCodes());
+        await flushPromises();
+        expect(fetch.mock.calls.filter(([url]) => url === endpoint)).toHaveLength(1);
+        expect(fetch).toHaveBeenCalledWith(operation === 'recovery'
+            ? '/api/account/mfa/reauthenticate?forRemoval=true' : '/api/account/mfa/reauthenticate',
+            { method: 'POST', credentials: 'include' });
+        wrapper.unmount();
+    });
+
     it.each(['totp', 'email', 'passkey'])('starts reauthentication after denied %s removal without retrying the mutation', async (factor) => {
         const wrapper = mount(MfaSettings);
         await flushPromises();

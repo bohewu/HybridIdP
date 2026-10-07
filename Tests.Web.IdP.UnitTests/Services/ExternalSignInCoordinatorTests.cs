@@ -210,6 +210,7 @@ public class ExternalSignInCoordinatorTests
         {
             Id = Guid.NewGuid(),
             UserName = "external-user",
+            SecurityStamp = "current-stamp",
             IsActive = true
         };
 

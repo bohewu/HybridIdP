@@ -229,23 +229,7 @@ public partial class LoginEmailOtpModel : PageModel
     private async Task<ApplicationUser?> GetTwoFactorUserAsync()
     {
         // Try standard Identity method first
-        var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
-        
-        // Fallback: manually look up user from cookie if Identity method fails (Guid key issue)
-        if (user == null)
-        {
-            var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-            if (twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
-            {
-                var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
-                {
-                    user = await _userManager.FindByIdAsync(userId.ToString());
-                }
-            }
-        }
-        
-        return user;
+        return await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
     }
 
     private async Task<bool> CanIssueFullCookieAsync(

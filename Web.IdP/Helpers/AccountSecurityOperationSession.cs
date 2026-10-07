@@ -49,8 +49,8 @@ public static class AccountSecurityOperationSession
         var state = Read(http);
         if (state?.UserId == user.Id && (state.Totp || state.EmailMfa || state.Passkeys.Length > 0))
         {
-            var identity = new ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
-            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+            var identity = TwoFactorAuthenticationSession.CreateIdentity(user,
+                http.RequestServices.GetRequiredService<UserManager<ApplicationUser>>());
             await http.SignInAsync(IdentityConstants.TwoFactorUserIdScheme, new ClaimsPrincipal(identity));
             AuthenticationMethodSession.Replace(http.Session);
             return QueryHelpers.AddQueryString("/Account/LoginMfa", "returnUrl", returnUrl);

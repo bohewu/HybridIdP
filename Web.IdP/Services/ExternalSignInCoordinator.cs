@@ -180,13 +180,13 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
 
     private Task IssuePartialSignInAsync(HttpContext httpContext, ApplicationUser user, bool initialEnrollment = false)
     {
-        var identity = new ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
-        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+        var identity = TwoFactorAuthenticationSession.CreateIdentity(user, _userManager);
         var linkPurpose = PendingExternalLoginLink.GetPurposeClaim(httpContext.Session, user.Id, _timeProvider);
         if (linkPurpose != null) identity.AddClaim(linkPurpose);
         if (initialEnrollment)
         {
-            identity.AddClaim(MfaEnrollmentSession.BeginInitial(httpContext.Session, user.Id));
+            identity.AddClaim(MfaEnrollmentSession.BeginInitial(httpContext.Session, user.Id,
+                securityStamp: user.SecurityStamp));
         }
 
         return httpContext.SignInAsync(

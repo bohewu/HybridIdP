@@ -40,7 +40,12 @@ namespace Infrastructure.Services
             var historyCount = policy.AbnormalLoginHistoryCount;
 
             // Get recent login history
-            var recentLogins = await GetLoginHistoryAsync(currentLogin.UserId, historyCount);
+            var recentLogins = await _dbContext.LoginHistories
+                .Where(login => login.UserId == currentLogin.UserId &&
+                    login.IsSuccessful && (!login.IsFlaggedAbnormal || login.IsApprovedByAdmin))
+                .OrderByDescending(login => login.LoginTime)
+                .Take(historyCount)
+                .ToListAsync();
 
             if (!recentLogins.Any())
             {

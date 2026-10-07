@@ -115,6 +115,12 @@ public partial class AccountManagementService : IAccountManagementService
         string reason,
         CancellationToken cancellationToken = default)
     {
+        var principal = _signInManager.Context.User;
+        if (principal.HasClaim(claim => claim.Type == AuthConstants.Claims.ImpersonatorId) ||
+            principal.Identities.Any(identity => identity.Actor != null))
+        {
+            return false;
+        }
         try
         {
             // Get both users

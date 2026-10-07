@@ -274,7 +274,8 @@ public class PendingExternalLoginLinkTests
     {
         using var fixture = new Fixture("none");
         fixture.Partial = fixture.Principal();
-        ((ClaimsIdentity)fixture.Partial.Identity!).AddClaim(MfaEnrollmentSession.BeginInitial(fixture.Http.Session, fixture.User.Id));
+        ((ClaimsIdentity)fixture.Partial.Identity!).AddClaim(MfaEnrollmentSession.BeginInitial(fixture.Http.Session, fixture.User.Id,
+            securityStamp: fixture.User.SecurityStamp));
         var policy = new Mock<ISecurityPolicyService>();
         policy.Setup(x => x.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy());
         fixture.SignIn.Object.Context = fixture.Http;

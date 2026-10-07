@@ -38,12 +38,13 @@ public static class MfaEnrollmentSession
             JsonSerializer.Serialize(new PendingEnrollment(userId, requiresMfa, now.Add(Lifetime), securityStamp)));
     }
 
-    public static Claim BeginInitial(ISession session, Guid userId, TimeProvider? timeProvider = null)
+    public static Claim BeginInitial(ISession session, Guid userId, TimeProvider? timeProvider = null,
+        string? securityStamp = null)
     {
         Consume(session);
         var nonce = Guid.NewGuid().ToString("N");
         session.SetString(InitialKey, JsonSerializer.Serialize(new InitialEnrollment(
-            userId, nonce, (timeProvider ?? TimeProvider.System).GetUtcNow().Add(Lifetime))));
+            userId, nonce, (timeProvider ?? TimeProvider.System).GetUtcNow().Add(Lifetime), securityStamp)));
         return new Claim(InitialPurposeClaim, nonce);
     }
 
@@ -150,6 +151,45 @@ public static class MfaEnrollmentSession
         session.Remove(PendingKey);
     }
 
+    public static async Task<bool> CarryAuthorizedStampAsync(HttpContext context, ApplicationUser user,
+        string? previousStamp, CancellationToken ct)
+    {
+        if (user.SecurityStamp == previousStamp) return true;
+        if (string.IsNullOrEmpty(previousStamp) || string.IsNullOrEmpty(user.SecurityStamp) ||
+            !await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(
+                Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AsNoTracking(
+                    context.RequestServices.GetRequiredService<IApplicationDbContext>().Users),
+                value => value.Id == user.Id && value.SecurityStamp == user.SecurityStamp, ct)) return false;
+        var users = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+        var stampType = users.Options.ClaimsIdentity.SecurityStampClaimType;
+        foreach (var scheme in new[] { IdentityConstants.ApplicationScheme, IdentityConstants.TwoFactorUserIdScheme })
+        {
+            var authentication = await context.AuthenticateAsync(scheme);
+            if (!authentication.Succeeded || !PrincipalMatchesUser(authentication.Principal, user.Id) ||
+                authentication.Principal!.FindFirstValue(stampType) != previousStamp) continue;
+            if (scheme == IdentityConstants.ApplicationScheme)
+            {
+                var proof = Read<EnrollmentProof>(context.Session, ProofKey);
+                if (proof == null || proof.SecurityStamp != previousStamp || !HasFreshProof(context.Session, user.Id)) return false;
+                context.Session.SetString(ProofKey, JsonSerializer.Serialize(proof with { SecurityStamp = user.SecurityStamp }));
+            }
+            else
+            {
+                var initial = Read<InitialEnrollment>(context.Session, InitialKey);
+                if (initial?.SecurityStamp != previousStamp || !HasInitial(context.Session, user.Id,
+                        authentication.Principal.FindFirstValue(InitialPurposeClaim))) return false;
+                context.Session.SetString(InitialKey, JsonSerializer.Serialize(initial with { SecurityStamp = user.SecurityStamp }));
+            }
+            var principal = authentication.Principal.Clone();
+            var identity = (ClaimsIdentity)principal.Identity!;
+            foreach (var claim in identity.FindAll(stampType).ToArray()) identity.RemoveClaim(claim);
+            identity.AddClaim(new Claim(stampType, user.SecurityStamp));
+            await context.SignInAsync(scheme, principal, authentication.Properties);
+            return true;
+        }
+        return false;
+    }
+
     public static async Task<bool> IsRemovalAuthorizedAsync(HttpContext context, ApplicationUser user,
         CancellationToken cancellationToken = default, TimeProvider? timeProvider = null)
     {
@@ -181,8 +221,18 @@ public static class MfaEnrollmentSession
 
     public static async Task<bool> IsAuthorizedAsync(
         HttpContext context, ApplicationUser user, IPasskeyService passkeys,
-        CancellationToken cancellationToken = default, bool requireFreshProof = true, bool requireCurrentStamp = false)
+        CancellationToken cancellationToken = default, bool requireFreshProof = true, bool requireCurrentStamp = true)
     {
+        var application = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        var partial = await context.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+        if (!PrincipalMatchesUser(application.Principal, user.Id) && PrincipalMatchesUser(partial.Principal, user.Id))
+        {
+            var stampType = context.RequestServices.GetService<UserManager<ApplicationUser>>()?.Options
+                .ClaimsIdentity.SecurityStampClaimType ?? new IdentityOptions().ClaimsIdentity.SecurityStampClaimType;
+            var initial = Read<InitialEnrollment>(context.Session, InitialKey);
+            if (string.IsNullOrEmpty(user.SecurityStamp) || initial?.SecurityStamp != user.SecurityStamp ||
+                partial.Principal!.FindFirstValue(stampType) != user.SecurityStamp) return false;
+        }
         if (requireCurrentStamp)
         {
             var cookie = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
@@ -191,7 +241,7 @@ public static class MfaEnrollmentSession
                 var stampType = context.RequestServices.GetService<UserManager<ApplicationUser>>()?.Options
                     .ClaimsIdentity.SecurityStampClaimType ?? new IdentityOptions().ClaimsIdentity.SecurityStampClaimType;
                 var proof = Read<EnrollmentProof>(context.Session, ProofKey);
-                if (string.IsNullOrEmpty(user.SecurityStamp) || proof?.SecurityStamp != user.SecurityStamp ||
+                if (string.IsNullOrEmpty(user.SecurityStamp) || (requireFreshProof && proof?.SecurityStamp != user.SecurityStamp) ||
                     cookie.Principal!.FindFirstValue(stampType) != user.SecurityStamp) return false;
             }
         }
@@ -265,7 +315,7 @@ public static class MfaEnrollmentSession
 
     private sealed record PendingEnrollment(Guid UserId, bool RequiresMfa, DateTimeOffset ExpiresUtc, string? SecurityStamp);
 
-    private sealed record InitialEnrollment(Guid UserId, string Nonce, DateTimeOffset ExpiresUtc);
+    private sealed record InitialEnrollment(Guid UserId, string Nonce, DateTimeOffset ExpiresUtc, string? SecurityStamp);
 
     private sealed record EnrollmentProof(Guid UserId, DateTimeOffset ExpiresUtc, string? SecurityStamp, bool MfaCompleted);
 }

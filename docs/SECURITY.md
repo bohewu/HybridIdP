@@ -139,6 +139,17 @@ The existing enrollment grace for accounts without active factors is retained.
 
 ### Factor removal and one-time proof consumption
 
+Recovery-code regeneration also requires fresh performed-MFA management proof,
+followed by the existing password or TOTP confirmation. Email enrollment through
+either API requires the same enrollment authority. Initial enrollment stores the
+current security stamp in both its server session and temporary cookie; every
+pending two-factor sign-in rejects missing or retired stamps. Only authorized
+TOTP seed creation can carry that exact stamp transition into enrollment proof.
+Resetting or retiring TOTP removes custom and Identity recovery codes. Password
+confirmations share the configured account lockout budget and login rate limit.
+Atomic email-code attempt writes advance the Identity concurrency stamp and
+reload the tracked user so later Identity writes cannot restore an old budget.
+
 TOTP, email MFA and passkey removal require a completed MFA reauthentication
 within five minutes, bound to the same account and its current security stamp.
 The existing `/api/account/mfa/reauthenticate` interactive flow produces this

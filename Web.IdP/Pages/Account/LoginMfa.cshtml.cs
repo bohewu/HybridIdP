@@ -247,8 +247,10 @@ public partial class LoginMfaModel : PageModel
 
     private async Task<ApplicationUser?> GetMfaUserAsync()
     {
-        // Try standard Identity method first
-        var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
+        var authentication = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+        if (authentication.Succeeded)
+            return await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
+        ApplicationUser? user = null;
 
         // Client-triggered step-up starts from an existing password-authenticated session,
         // not Identity's temporary two-factor cookie.
@@ -257,19 +259,6 @@ public partial class LoginMfaModel : PageModel
             user = await _userManager.GetUserAsync(User);
         }
 
-        // Fallback: manually look up user from cookie if Identity method fails (Guid key issue)
-        if (user == null)
-        {
-            var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-            if (twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
-            {
-                var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
-                {
-                    user = await _userManager.FindByIdAsync(userId.ToString());
-                }
-            }
-        }
         
         return user;
     }

@@ -167,7 +167,8 @@ public class PasskeyControllerTests
             .Callback<ApplicationUser, bool, IEnumerable<Claim>>((_, _, claims) =>
             {
                 cookie = new ClaimsPrincipal(new ClaimsIdentity(
-                    new[] { new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()) }.Concat(claims), IdentityConstants.ApplicationScheme));
+                    new[] { new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                        new Claim("AspNet.Identity.SecurityStamp", user.SecurityStamp!) }.Concat(claims), IdentityConstants.ApplicationScheme));
             }).Returns(Task.CompletedTask);
         Assert.IsType<OkObjectResult>(await _controller.MakeCredential(EmptyClientResponse(), default));
         Assert.True(MfaEnrollmentSession.HasMfa(cookie));
@@ -824,7 +825,8 @@ public class PasskeyControllerTests
     {
         _userManagerMock.Setup(manager => manager.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), MfaEnrollmentSession.BeginInitial(_session, user.Id)],
+            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim("AspNet.Identity.SecurityStamp", user.SecurityStamp!),
+             MfaEnrollmentSession.BeginInitial(_session, user.Id, securityStamp: user.SecurityStamp)],
             IdentityConstants.TwoFactorUserIdScheme));
         var authenticationService = new Mock<IAuthenticationService>();
         authenticationService.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))

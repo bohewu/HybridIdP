@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Core.Application;
 using Core.Domain;
 using Web.IdP.Services;
@@ -15,6 +17,81 @@ namespace Tests.Web.IdP.UnitTests.Helpers;
 
 public class MfaEnrollmentSessionTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task SeedCreation_ShouldCarryOnlyTheAuthorizedStampTransition(bool partial, bool revoked)
+    {
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var user = new ApplicationUser { Id = Guid.NewGuid(), SecurityStamp = "before-seed" };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        var users = new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null);
+        users.Setup(manager => manager.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
+        var session = new MemorySession();
+        var identity = TwoFactorAuthenticationSession.CreateIdentity(user, users.Object);
+        if (partial) identity.AddClaim(MfaEnrollmentSession.BeginInitial(session, user.Id, securityStamp: user.SecurityStamp));
+        else
+        {
+            identity.AddClaim(new Claim("amr", "mfa"));
+            MfaEnrollmentSession.Begin(session, user.Id, true, securityStamp: user.SecurityStamp);
+            Assert.True(MfaEnrollmentSession.CompletePending(session, new ClaimsPrincipal(identity)));
+        }
+        var scheme = partial ? IdentityConstants.TwoFactorUserIdScheme : IdentityConstants.ApplicationScheme;
+        var principal = new ClaimsPrincipal(identity);
+        var auth = new Mock<IAuthenticationService>();
+        auth.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string>())).ReturnsAsync(AuthenticateResult.NoResult());
+        auth.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), scheme))
+            .ReturnsAsync(() => AuthenticateResult.Success(new AuthenticationTicket(principal, scheme)));
+        auth.Setup(service => service.SignInAsync(It.IsAny<HttpContext>(), scheme, It.IsAny<ClaimsPrincipal>(), It.IsAny<AuthenticationProperties>()))
+            .Callback<HttpContext, string, ClaimsPrincipal, AuthenticationProperties>((_, _, updated, _) => principal = updated)
+            .Returns(Task.CompletedTask);
+        var context = new DefaultHttpContext { Session = session, RequestServices = new ServiceCollection()
+            .AddSingleton(auth.Object).AddSingleton(users.Object).AddSingleton<IApplicationDbContext>(db).BuildServiceProvider() };
+        user.SecurityStamp = "after-seed";
+        await db.SaveChangesAsync();
+        Assert.Equal(!revoked, await MfaEnrollmentSession.CarryAuthorizedStampAsync(context, user,
+            revoked ? "unrelated-reset" : "before-seed", default));
+        var passkeys = new Mock<Core.Application.Interfaces.IPasskeyService>();
+        passkeys.Setup(service => service.GetUserPasskeysAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        Assert.Equal(!revoked, await MfaEnrollmentSession.IsAuthorizedAsync(context, user, passkeys.Object));
+        auth.Verify(service => service.SignInAsync(It.IsAny<HttpContext>(), scheme, It.IsAny<ClaimsPrincipal>(), It.IsAny<AuthenticationProperties>()),
+            revoked ? Times.Never() : Times.Once());
+    }
+
+    [Theory]
+    [InlineData("valid", true)]
+    [InlineData("stamp", false)]
+    [InlineData("unstamped", false)]
+    [InlineData("session-stamp", false)]
+    [InlineData("nonce", false)]
+    public async Task InitialEnrollment_ShouldRequireCurrentStampInCookieAndSession(string condition, bool allowed)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), SecurityStamp = "initial-stamp" };
+        var users = new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null);
+        users.Setup(manager => manager.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
+        var session = new MemorySession();
+        var identity = TwoFactorAuthenticationSession.CreateIdentity(user, users.Object);
+        identity.AddClaim(MfaEnrollmentSession.BeginInitial(session, user.Id,
+            securityStamp: condition == "session-stamp" ? "old-stamp" : user.SecurityStamp));
+        if (condition == "nonce") identity.RemoveClaim(identity.FindFirst(MfaEnrollmentSession.InitialPurposeClaim)!);
+        if (condition == "unstamped") identity.RemoveClaim(identity.FindFirst(users.Object.Options.ClaimsIdentity.SecurityStampClaimType)!);
+        if (condition == "stamp") user.SecurityStamp = "reset-stamp";
+        var auth = new Mock<IAuthenticationService>();
+        auth.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme)).ReturnsAsync(AuthenticateResult.NoResult());
+        auth.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme))
+            .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), IdentityConstants.TwoFactorUserIdScheme)));
+        var context = new DefaultHttpContext { Session = session, RequestServices = new ServiceCollection()
+            .AddSingleton(auth.Object).AddSingleton(users.Object).BuildServiceProvider() };
+        var passkeys = new Mock<Core.Application.Interfaces.IPasskeyService>();
+        passkeys.Setup(service => service.GetUserPasskeysAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        Assert.Equal(allowed, await MfaEnrollmentSession.IsAuthorizedAsync(context, user, passkeys.Object));
+        Assert.Equal(condition is not ("stamp" or "unstamped"), await TwoFactorAuthenticationSession.GetUserAsync(context, users.Object) != null);
+    }
+
     [Theory]
     [InlineData("cookie", "valid", true)]
     [InlineData("bearer", "valid", true)]

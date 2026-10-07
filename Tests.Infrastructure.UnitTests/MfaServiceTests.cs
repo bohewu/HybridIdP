@@ -414,6 +414,8 @@ public class MfaServiceTests : IDisposable
         user.TwoFactorEnabled = totp;
         user.EmailMfaEnabled = !totp;
         user.LastTotpValidatedWindow = 12;
+        user.RecoveryCodes = "[\"retired-code\"]";
+        var previousStamp = user.SecurityStamp;
         _dbContext.Users.Add(user);
         var historicalTime = DateTime.UtcNow.AddYears(-1);
         _dbContext.UserCredentials.AddRange(
@@ -435,6 +437,8 @@ public class MfaServiceTests : IDisposable
         Assert.Equal(mandatory, keys[0].DisabledAtUtc == null);
         Assert.Equal(historicalTime, keys[1].DisabledAtUtc);
         if (mandatory) _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Never);
+        Assert.Equal(mandatory, user.RecoveryCodes != null);
+        if (!mandatory) Assert.NotEqual(previousStamp, user.SecurityStamp);
     }
 
     [Theory]
@@ -592,6 +596,7 @@ public class MfaServiceTests : IDisposable
         // Assert
         user.EmailMfaCode.Should().Be("HASHED_CODE");
         user.EmailMfaCodeExpiry.Should().BeCloseTo(DateTime.UtcNow.AddMinutes(10), TimeSpan.FromSeconds(5));
+        user.EmailMfaCodeExpiry!.Value.Kind.Should().Be(DateTimeKind.Utc);
         user.EmailMfaVerificationAttempts.Should().Be(0);
         generatedCode.Should().MatchRegex("^[0-9]{6}$");
         _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
@@ -683,6 +688,9 @@ public class MfaServiceTests : IDisposable
                 $"EmailMfa_Cooldown_{user.Id}",
                 It.IsAny<CancellationToken>()),
             Times.Once);
+        _emailMfaAttemptStoreMock.Verify(x => x.TryReserveAttemptAsync(
+            user.Id, "HASHED_CODE", It.Is<DateTime>(now => now.Kind == DateTimeKind.Utc),
+            5, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
