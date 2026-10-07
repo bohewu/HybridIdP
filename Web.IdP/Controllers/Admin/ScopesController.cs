@@ -40,15 +40,18 @@ public class ScopesController : ControllerBase
     private readonly IScopeService _scopeService;
     private readonly PrivilegedTestAdminBootstrapOptions _privilegedTestAdminBootstrapOptions;
     private readonly IHostEnvironment _hostEnvironment;
+    private readonly IApiScopeUsagePolicy _scopeUsage;
 
     public ScopesController(
         IScopeService scopeService,
         IOptions<PrivilegedTestAdminBootstrapOptions> privilegedTestAdminBootstrapOptions,
-        IHostEnvironment hostEnvironment)
+        IHostEnvironment hostEnvironment,
+        IApiScopeUsagePolicy scopeUsage)
     {
         _scopeService = scopeService;
         _privilegedTestAdminBootstrapOptions = privilegedTestAdminBootstrapOptions.Value;
         _hostEnvironment = hostEnvironment;
+        _scopeUsage = scopeUsage;
     }
 
     /// <summary>
@@ -68,7 +71,8 @@ public class ScopesController : ControllerBase
         // ApplicationManager sees all scopes, but IsReadOnly is set for scopes they don't own.
         // We no longer strictly filter effectively hiding other scopes, we just mark them read-only.
         Guid? ownerFilterId = null; // Do not filter out scopes
-        Guid? viewerPersonId = IsAdmin() ? null : GetCurrentPersonId();
+        var actor = await _scopeUsage.GetActorAsync(cancellationToken);
+        Guid? viewerPersonId = actor.IsAdmin ? null : actor.PersonId ?? Guid.Empty;
         
         var (items, totalCount) = await _scopeService.GetScopesAsync(skip, take, search, sort, ownerFilterId, viewerPersonId, cancellationToken);
         return Ok(new { items, totalCount });
@@ -103,7 +107,9 @@ public class ScopesController : ControllerBase
 
         try
         {
-            var personId = GetCurrentPersonId();
+            var actor = await _scopeUsage.GetActorAsync(cancellationToken);
+            if (!actor.IsAdmin && !actor.PersonId.HasValue && !IsTrustedAdministrationAutomation()) return Forbid();
+            var personId = actor.PersonId;
             
             var result = await _scopeService.CreateScopeAsync(request, personId, cancellationToken);
             return CreatedAtAction(nameof(Get), new { id = result.Id }, new
@@ -166,7 +172,7 @@ public class ScopesController : ControllerBase
         var authorizationResult = await AuthorizeScopeMutationAsync(
             id,
             identifierIsName: true,
-            missingResult: null,
+            missingResult: BadRequest(new { message = "Cannot delete this scope because it is currently in use or not found." }),
             cancellationToken);
         if (authorizationResult != null)
         {
@@ -270,10 +276,11 @@ public class ScopesController : ControllerBase
     private async Task<ActionResult?> AuthorizeScopeMutationAsync(
         string scopeIdentifier,
         bool identifierIsName,
-        ActionResult? missingResult,
+        ActionResult missingResult,
         CancellationToken cancellationToken)
     {
-        if (IsAdmin())
+        var actor = await _scopeUsage.GetActorAsync(cancellationToken);
+        if (actor.IsAdmin)
         {
             return null;
         }
@@ -298,7 +305,7 @@ public class ScopesController : ControllerBase
             return null;
         }
 
-        var personId = GetCurrentPersonId();
+        var personId = actor.PersonId;
         if (personId.HasValue &&
             await _scopeService.IsScopeOwnedByPersonAsync(
                 existingScope.Id,
@@ -322,6 +329,20 @@ public class ScopesController : ControllerBase
 
         return HttpContext.Items[AdministrativeAuthorizationBoundary.AuthorityKey] is
             AdministrativeAuthority { IsBearer: true };
+    }
+
+    [HttpPost("{scopeId}/usage-approvals")]
+    [HasPermission(Permissions.Scopes.Update)]
+    public async Task<ActionResult> ApproveClientScope(string scopeId, [FromBody] ApiScopeApprovalRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _scopeService.ApproveClientScopeAsync(scopeId, request.ApplicationId, cancellationToken);
+            return NoContent();
+        }
+        catch (UnauthorizedAccessException) { return Forbid(); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     private static bool IsStandardOidcScope(string? scopeName)

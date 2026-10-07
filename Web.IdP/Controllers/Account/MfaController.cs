@@ -53,25 +53,28 @@ public partial class MfaController : ControllerBase
     /// </summary>
     [HttpPost("reauthenticate")]
     [ValidateAntiForgeryToken]
-    public async Task<ActionResult> BeginReauthentication()
+    public async Task<ActionResult> BeginReauthentication([FromQuery] bool forRemoval = false)
     {
         var applicationAuthentication =
             await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
-        if (applicationAuthentication.Principal?.Identity?.IsAuthenticated != true)
-        {
-            return StatusCode(403, new { error = "interactiveAuthenticationRequired" });
-        }
-
-        var user = await _userManager.GetUserAsync(applicationAuthentication.Principal);
+        var bearerAuthentication = await HttpContext.AuthenticateAsync(
+            OpenIddict.Validation.AspNetCore.OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+        var user = await GetCurrentUserAsync();
         if (user == null)
         {
             return Unauthorized();
         }
+        var authentications = new[] { applicationAuthentication, bearerAuthentication }
+            .Where(result => result.Succeeded).ToArray();
+        if (authentications.Length == 0 || authentications.Any(result =>
+                (result.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ??
+                 result.Principal?.FindFirst("sub")?.Value) != user.Id.ToString()))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
 
         await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
         var hasFactors = user.TwoFactorEnabled || user.EmailMfaEnabled ||
             (await _passkeyService.GetUserPasskeysAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
-        MfaEnrollmentSession.Begin(HttpContext.Session, user.Id, hasFactors);
+        MfaEnrollmentSession.Begin(HttpContext.Session, user.Id, hasFactors, securityStamp: user.SecurityStamp);
 
         var setupUrl = QueryHelpers.AddQueryString(
             "/Account/MfaSetup",
@@ -80,7 +83,7 @@ public partial class MfaController : ControllerBase
         var loginUrl = QueryHelpers.AddQueryString(
             "/Account/Login",
             "returnUrl",
-            setupUrl);
+            forRemoval ? "/Account/Profile" : setupUrl);
 
         return Ok(new { loginUrl });
     }
@@ -229,20 +232,8 @@ public partial class MfaController : ControllerBase
             return Unauthorized();
         }
 
-        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
-        if (policy.EnforceMandatoryMfaEnrollment)
-        {
-            // Check if this (TOTP) is the last factor
-            var otherFactors = 0;
-            if (user.EmailMfaEnabled) otherFactors++;
-            var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, ct);
-            otherFactors += passkeys.Count;
-
-            if (otherFactors == 0)
-            {
-                return BadRequest(new { error = "mandatoryMfaEnforced" });
-            }
-        }
+        if (!await MfaEnrollmentSession.IsRemovalAuthorizedAsync(HttpContext, user, ct))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
 
         // Check if user has a local password
         var hasPassword = await _userManager.HasPasswordAsync(user);
@@ -276,7 +267,11 @@ public partial class MfaController : ControllerBase
             }
         }
 
-        await _mfaService.DisableMfaAsync(user, ct);
+        var removal = await _mfaService.DisableMfaAsync(user, ct);
+        if (removal != MfaRemovalResult.Succeeded)
+            return BadRequest(new { error = removal == MfaRemovalResult.MandatoryFactorRequired
+                ? "mandatoryMfaEnforced" : "disableFailed" });
+        MfaEnrollmentSession.Consume(HttpContext.Session);
 
         LogMfaDisabled(user.Id);
         await _auditService.LogEventAsync("MfaDisabled", user.Id.ToString(), null, null, null, ct);
@@ -471,22 +466,14 @@ public partial class MfaController : ControllerBase
             return Unauthorized();
         }
 
-        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
-        if (policy.EnforceMandatoryMfaEnrollment)
-        {
-            // Check if this (Email MFA) is the last factor
-            var otherFactors = 0;
-            if (user.TwoFactorEnabled) otherFactors++;
-            var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, ct);
-            otherFactors += passkeys.Count;
+        if (!await MfaEnrollmentSession.IsRemovalAuthorizedAsync(HttpContext, user, ct))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
 
-            if (otherFactors == 0)
-            {
-                return BadRequest(new { error = "mandatoryMfaEnforced" });
-            }
-        }
-
-        await _mfaService.DisableEmailMfaAsync(user, ct);
+        var removal = await _mfaService.DisableEmailMfaAsync(user, ct);
+        if (removal != MfaRemovalResult.Succeeded)
+            return BadRequest(new { error = removal == MfaRemovalResult.MandatoryFactorRequired
+                ? "mandatoryMfaEnforced" : "disableFailed" });
+        MfaEnrollmentSession.Consume(HttpContext.Session);
 
         LogEmailMfaDisabled(user.Id);
         await _auditService.LogEventAsync("EmailMfaDisabled", user.Id.ToString(), null, null, null, ct);

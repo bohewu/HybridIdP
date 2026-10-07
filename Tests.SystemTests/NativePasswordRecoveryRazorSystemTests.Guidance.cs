@@ -194,6 +194,106 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
     }
 
     [Fact]
+    public async Task BottomNotice_DefaultSettings_RenderNoNotice()
+    {
+        await using var factory = await NativeRecoveryKestrelFactory.CreateGuidanceTestServerAsync(_ => { });
+        var options = factory.Services.GetRequiredService<IOptions<ForgotPasswordRecoveryOptions>>().Value;
+        Assert.Equal(string.Empty, options.BottomNotice);
+        Assert.Equal("info", options.BottomNoticeType);
+        var html = await factory.Client.GetStringAsync("/Account/ForgotPassword");
+        Assert.DoesNotContain("native-recovery-bottom-notice", html);
+        Assert.DoesNotContain("login-notice", html);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    [InlineData("@ ")]
+    [InlineData("@missing")]
+    public async Task BottomNotice_EmptyOrUnresolvedSetting_RenderNoNoticeOrSpacing(string setting)
+    {
+        await using var factory = await NativeRecoveryKestrelFactory.CreateGuidanceTestServerAsync(options =>
+        {
+            options.BottomNotice = setting;
+            options.BottomNoticeType = "warning";
+        });
+        var html = await factory.Client.GetStringAsync("/Account/ForgotPassword");
+        Assert.DoesNotContain("native-recovery-bottom-notice", html);
+        Assert.DoesNotContain("login-notice", html);
+    }
+
+    [Theory]
+    [InlineData("info", "bg-blue-50 border-blue-400 text-blue-700")]
+    [InlineData("warning", "bg-yellow-50 border-yellow-400 text-yellow-800")]
+    [InlineData("success", "bg-green-50 border-green-400 text-green-700")]
+    [InlineData("error", "bg-red-50 border-red-400 text-red-700")]
+    [InlineData("muted", "bg-gray-50 border-gray-300 text-gray-600")]
+    [InlineData("unknown", "bg-blue-50 border-blue-400 text-blue-700")]
+    public async Task BottomNotice_Literal_IsEncodedAndUsesLoginStyleAfterActionsAndSupport(
+        string type, string expectedStyle)
+    {
+        const string notice = "Bottom <img src=x onerror=alert(1)> & notice";
+        await using var factory = await NativeRecoveryKestrelFactory.CreateGuidanceTestServerAsync(options =>
+        {
+            options.BottomNotice = notice;
+            options.BottomNoticeType = type;
+            options.SupportText = "Support before bottom notice";
+        });
+        var html = await factory.Client.GetStringAsync("/Account/ForgotPassword");
+        Assert.Contains(HtmlEncoder.Default.Encode(notice), html);
+        Assert.DoesNotContain(notice, html);
+        Assert.Contains($"login-notice border-l-4 p-3 rounded-r text-sm {expectedStyle} mt-6", html);
+        Assert.DoesNotContain("native-recovery-top-notice", html);
+        var bottom = html.IndexOf("id=\"native-recovery-bottom-notice\"", StringComparison.Ordinal);
+        Assert.True(bottom > html.LastIndexOf("</form>", StringComparison.Ordinal));
+        Assert.True(bottom > html.IndexOf("data-test-id=\"native-recovery-support\"", StringComparison.Ordinal));
+        Assert.True(bottom < html.IndexOf("class=\"google-footer", StringComparison.Ordinal));
+        Assert.Single(Regex.Matches(html, "id=\"native-recovery-bottom-notice\""));
+    }
+
+    [Fact]
+    public async Task BottomNotice_Resources_UseCultureFallbackAndRefreshWithoutResolvingOutputAgain()
+    {
+        await using var factory = await NativeRecoveryKestrelFactory.CreateGuidanceTestServerAsync(options =>
+        {
+            options.BottomNotice = "@ Bottom.Notice ";
+        });
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var exact = new Resource { Key = "Bottom.Notice", Culture = "zh-TW", Value = "Localized <script>alert('x')</script> & notice" };
+        var fallback = new Resource { Key = "Bottom.Notice", Culture = "en-US", Value = "English bottom fallback" };
+        db.Resources.AddRange(exact, fallback);
+        await db.SaveChangesAsync();
+        const string path = "/Account/ForgotPassword?culture=zh-TW&ui-culture=zh-TW";
+        var html = await factory.Client.GetStringAsync(path);
+        Assert.Contains("id=\"native-recovery-bottom-notice\"", html);
+        Assert.Contains(HtmlEncoder.Default.Encode(exact.Value), html);
+        Assert.DoesNotContain("<script>alert", html);
+        Assert.DoesNotContain(fallback.Value, html);
+
+        exact.Value = "@Updated literal Resource text";
+        await db.SaveChangesAsync();
+        html = await factory.Client.GetStringAsync(path);
+        Assert.Contains("id=\"native-recovery-bottom-notice\"", html);
+        Assert.Contains(exact.Value, html);
+
+        exact.IsEnabled = false;
+        await db.SaveChangesAsync();
+        Assert.Contains(fallback.Value, await factory.Client.GetStringAsync(path));
+        fallback.IsEnabled = false;
+        await db.SaveChangesAsync();
+        Assert.DoesNotContain("native-recovery-bottom-notice", await factory.Client.GetStringAsync(path));
+
+        exact.IsEnabled = true;
+        exact.Value = " \t ";
+        fallback.IsEnabled = true;
+        await db.SaveChangesAsync();
+        html = await factory.Client.GetStringAsync(path);
+        Assert.DoesNotContain("native-recovery-bottom-notice", html);
+        Assert.DoesNotContain(fallback.Value, html);
+    }
+
+    [Fact]
     [Trait("Category", "ExplicitLocalE2E")]
     public async Task Guidance_RealRazorSyntheticServices_BrowserCheck()
     {
@@ -212,6 +312,15 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
             options.SupportUrl = "https://help.example.invalid/recovery";
         });
         factory.ResetService.Outcome = NativeRecoveryResetOutcome.Succeeded;
+        var boundOptions = factory.Services.GetRequiredService<IOptions<ForgotPasswordRecoveryOptions>>().Value;
+        if (Environment.GetEnvironmentVariable("ForgotPasswordRecovery__BottomNotice") is { } bottomNotice)
+        {
+            Assert.Equal(bottomNotice, boundOptions.BottomNotice);
+        }
+        if (Environment.GetEnvironmentVariable("ForgotPasswordRecovery__BottomNoticeType") is { } bottomNoticeType)
+        {
+            Assert.Equal(bottomNoticeType, boundOptions.BottomNoticeType);
+        }
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -229,6 +338,8 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
                 db.Resources.Add(new Resource { Key = "Guidance." + key, Culture = "en-US", Value = en });
                 db.Resources.Add(new Resource { Key = "Guidance." + key, Culture = "zh-TW", Value = zh });
             }
+            db.Resources.Add(new Resource { Key = "Recovery.Guidance.Bottom", Culture = "en-US", Value = "Need help resetting your password? Contact your support team." });
+            db.Resources.Add(new Resource { Key = "Recovery.Guidance.Bottom", Culture = "zh-TW", Value = "需要協助重設密碼？請聯絡您的服務窗口。" });
             await db.SaveChangesAsync();
         }
         try
@@ -246,6 +357,7 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
     private static void ConfigureLiteralGuidance(ForgotPasswordRecoveryOptions options)
     {
         options.TopNotice = "Top <img src=x onerror=alert(1)> & guidance";
+        options.BottomNotice = "Bottom <img src=x onerror=alert(1)> & guidance";
         options.VerificationTip = "Verification guidance";
         options.ResetTip = "Reset guidance";
         options.SuccessReminder = "Success reminder";
@@ -274,10 +386,15 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
         {
             Assert.Equal(expected, html.Contains($"data-test-id=\"native-recovery-{slot}\""));
         }
+        Assert.Equal(configured, html.Contains("id=\"native-recovery-bottom-notice\""));
         if (!configured) return;
         var top = html.IndexOf("data-test-id=\"native-recovery-top-notice\"", StringComparison.Ordinal);
         var support = html.IndexOf("data-test-id=\"native-recovery-support\"", StringComparison.Ordinal);
+        var bottom = html.IndexOf("id=\"native-recovery-bottom-notice\"", StringComparison.Ordinal);
         Assert.True(top < support);
+        Assert.True(support < bottom);
+        Assert.Single(Regex.Matches(html, "id=\"native-recovery-bottom-notice\""));
+        Assert.Contains(HtmlEncoder.Default.Encode("Bottom <img src=x onerror=alert(1)> & guidance"), html);
         foreach (var marker in new[] { "native-recovery-error", "native-recovery-sent", "native-recovery-success" })
         {
             var index = html.IndexOf($"data-test-id=\"{marker}\"", StringComparison.Ordinal);
@@ -287,6 +404,10 @@ public sealed partial class NativePasswordRecoveryRazorSystemTests
         {
             Assert.True(top < html.IndexOf("<form", StringComparison.Ordinal));
             Assert.True(support > html.LastIndexOf("</form>", StringComparison.Ordinal));
+        }
+        else
+        {
+            Assert.True(bottom > html.IndexOf("data-test-id=\"native-recovery-login\"", StringComparison.Ordinal));
         }
     }
 }

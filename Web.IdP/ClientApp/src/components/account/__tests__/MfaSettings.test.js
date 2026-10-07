@@ -27,6 +27,23 @@ vi.mock('../../../composables/useWebAuthn', () => ({
 vi.stubGlobal('fetch', vi.fn());
 
 describe('MfaSettings.vue', () => {
+    it.each(['totp', 'email', 'passkey'])('starts reauthentication after denied %s removal without retrying the mutation', async (factor) => {
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        const endpoint = factor === 'totp' ? '/api/account/mfa/disable'
+            : factor === 'email' ? '/api/account/mfa/email/disable' : '/api/passkey/7';
+        fetch.mockImplementation((url) => Promise.resolve(url === endpoint
+            ? { ok: false, json: async () => ({ error: 'freshAuthenticationRequired' }) }
+            : { ok: false, json: async () => ({}) }));
+        if (factor === 'passkey') wrapper.vm.confirmDeletePasskey({ id: 7 });
+        await (factor === 'totp' ? wrapper.vm.disableMfa()
+            : factor === 'email' ? wrapper.vm.disableEmailMfa() : wrapper.vm.deletePasskey());
+        await flushPromises();
+        expect(fetch.mock.calls.filter(([url]) => url === endpoint)).toHaveLength(1);
+        expect(fetch).toHaveBeenCalledWith('/api/account/mfa/reauthenticate?forRemoval=true', { method: 'POST', credentials: 'include' });
+        wrapper.unmount();
+    });
+
     const mockRegisterPasskey = vi.fn(() => Promise.resolve({ success: true }));
     const jsonResponse = (data, ok = true) => ({
         ok,

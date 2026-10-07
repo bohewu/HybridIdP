@@ -2,6 +2,7 @@
   "Recovery.Identity.Identifier.Label": "身分證件號碼",
   "Recovery.Identity.Identifier.Help": "若帳號需要身分核對，請輸入身分證件號碼。此資料僅用於本次核對。",
   "Recovery.ReadyToSend": "將驗證碼寄送至：",
+  "Recovery.ReadyToSendNeutral": "選擇「寄送驗證碼」以繼續。若帳號與核對資料符合復原條件，驗證碼將寄送至其復原信箱。",
   "Recovery.SendCode": "寄送驗證碼",
   "AdminPortal": "管理後台",
   "Admin": "管理",

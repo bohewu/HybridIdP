@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Interfaces;
@@ -24,12 +25,17 @@ public sealed class RecoveryPrecheckServiceTests
 {
     private static readonly NativeRecoveryContext Browser = new("browser", "csrf", "budget");
 
-    [Fact]
-    public async Task PrepareAndExplicitSend_ShouldReserveOnceWithoutAuthenticationOrEvidencePersistence()
+    [Theory]
+    [InlineData(null)]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PrepareAndExplicitSend_ShouldReserveOnceWithoutAuthenticationOrEvidencePersistence(bool? hintsEnabled)
     {
         await using var f = await Fixture.CreateAsync(directory: true);
+        if (hintsEnabled.HasValue) f.Native.PrecheckHintsEnabled = hintsEnabled.Value;
         var prepared = await f.PrepareAsync();
         Assert.NotNull(prepared.GrantId);
+        Assert.Equal(hintsEnabled == false ? null : "c***@example.test", prepared.MaskedDestination);
         Assert.Equal("  synthetic-id  ", f.Provider.Last!.Evidence.IdentityIdentifier);
         Assert.Equal("provider", f.Provider.Last.ProviderNamespace);
         Assert.Equal("subject", f.Provider.Last.StableSubject);
@@ -53,17 +59,26 @@ public sealed class RecoveryPrecheckServiceTests
     }
 
     [Theory]
-    [InlineData("context")]
-    [InlineData("csrf")]
-    [InlineData("expired")]
-    [InlineData("stamp")]
-    [InlineData("destination")]
-    [InlineData("epoch")]
-    [InlineData("policy")]
-    [InlineData("inactive")]
-    public async Task Send_ShouldRejectChangedGrantState(string mutation)
+    [InlineData("context", true)]
+    [InlineData("csrf", true)]
+    [InlineData("expired", true)]
+    [InlineData("stamp", true)]
+    [InlineData("destination", true)]
+    [InlineData("epoch", true)]
+    [InlineData("policy", true)]
+    [InlineData("inactive", true)]
+    [InlineData("context", false)]
+    [InlineData("csrf", false)]
+    [InlineData("expired", false)]
+    [InlineData("stamp", false)]
+    [InlineData("destination", false)]
+    [InlineData("epoch", false)]
+    [InlineData("policy", false)]
+    [InlineData("inactive", false)]
+    public async Task Send_ShouldRejectChangedGrantState(string mutation, bool hintsEnabled)
     {
         await using var f = await Fixture.CreateAsync();
+        f.Native.PrecheckHintsEnabled = hintsEnabled;
         var prepared = await f.PrepareAsync();
         var context = Browser;
         switch (mutation)
@@ -81,6 +96,75 @@ public sealed class RecoveryPrecheckServiceTests
         await f.Service.SendOtpAsync(new(prepared.GrantId!.Value, context, "127.0.0.1"));
         Assert.Equal(0, f.Mail.Count);
         Assert.Empty(await f.Db.RecoveryProofChallenges.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("inactive")]
+    [InlineData("identity-denied")]
+    public async Task PrepareWithHintsOff_ShouldNotCreateAuthorityOrMailForDeniedAccounts(string denial)
+    {
+        await using var f = await Fixture.CreateAsync(directory: denial == "identity-denied");
+        f.Native.PrecheckHintsEnabled = false;
+        if (denial == "inactive") f.User.IsActive = false;
+        f.Provider.Denied = denial == "identity-denied";
+        await f.Db.SaveChangesAsync();
+        var prepared = await f.Service.PrepareAsync(new(denial == "missing" ? "missing" : "user",
+            "synthetic-id", Browser, "127.0.0.1"));
+        Assert.Equal(new RecoveryPrepareResult(), prepared);
+        Assert.Empty(await f.Db.RecoveryPrecheckGrants.ToListAsync());
+        Assert.Empty(await f.Db.RecoveryProofChallenges.ToListAsync());
+        Assert.Equal(0, f.Mail.Count);
+
+        var sent = await f.Service.SendOtpAsync(new(Guid.Empty, Browser, "127.0.0.1"));
+        Assert.NotEqual(Guid.Empty, sent.RequestId);
+        var proof = new NativePasswordRecoveryProofService(f.Db, Mock.Of<IEmailService>(),
+            new PasswordHasher<ApplicationUser>(), new UpperInvariantLookupNormalizer(),
+            Mock.Of<IRecoveryVerificationPolicyEvaluator>(), new ForgotPasswordRoutingEvaluator(Options.Create(f.Native)),
+            Options.Create(f.Native), f.Time, Options.Create(f.Identity),
+            Options.Create(new RecoveryEmailSelectionOptions { Enabled = true }), f.Service);
+        var verified = await proof.VerifyAsync(new(sent.RequestId, "123456", Browser));
+        Assert.Equal(NativeRecoveryVerificationOutcome.Denied, verified.Outcome);
+        Assert.Null(verified.Proof);
+        Assert.Empty(await f.Db.RecoveryPrecheckGrants.ToListAsync());
+        Assert.Empty(await f.Db.RecoveryProofChallenges.ToListAsync());
+        Assert.Equal(0, f.Mail.Count);
+    }
+
+    [Fact]
+    public async Task HintsOff_ShouldRetainRealOtpContextAndSingleUseProof()
+    {
+        await using var f = await Fixture.CreateAsync();
+        f.Native.PrecheckHintsEnabled = false;
+        var prepared = await f.PrepareAsync();
+        Assert.NotNull(prepared.GrantId);
+        Assert.Null(prepared.MaskedDestination);
+        var sent = await f.Service.SendOtpAsync(new(prepared.GrantId!.Value, Browser, "127.0.0.1"));
+        var code = Regex.Match(f.Mail.Body!, @"\b[0-9]{6}\b").Value;
+        Assert.Equal(6, code.Length);
+        var proof = new NativePasswordRecoveryProofService(f.Db, Mock.Of<IEmailService>(),
+            new PasswordHasher<ApplicationUser>(), new UpperInvariantLookupNormalizer(),
+            Mock.Of<IRecoveryVerificationPolicyEvaluator>(), new ForgotPasswordRoutingEvaluator(Options.Create(f.Native)),
+            Options.Create(f.Native), f.Time, Options.Create(f.Identity),
+            Options.Create(new RecoveryEmailSelectionOptions { Enabled = true }), f.Service);
+        var wrongCode = code == "000000" ? "111111" : "000000";
+        foreach (var request in new[]
+        {
+            new NativeRecoveryVerificationRequest(sent.RequestId, wrongCode, Browser),
+            new NativeRecoveryVerificationRequest(sent.RequestId, code, Browser with { ContextHash = "other" }),
+            new NativeRecoveryVerificationRequest(sent.RequestId, code, Browser with { CsrfHash = "other" })
+        })
+        {
+            var denied = await proof.VerifyAsync(request);
+            Assert.Equal(NativeRecoveryVerificationOutcome.Denied, denied.Outcome);
+            Assert.Null(denied.Proof);
+        }
+        var verified = await proof.VerifyAsync(new(sent.RequestId, code, Browser));
+        Assert.Equal(NativeRecoveryVerificationOutcome.Verified, verified.Outcome);
+        Assert.False(string.IsNullOrWhiteSpace(verified.Proof));
+        Assert.Equal(NativeRecoveryVerificationOutcome.Denied,
+            (await proof.VerifyAsync(new(sent.RequestId, code, Browser))).Outcome);
+        Assert.Equal(1, f.Mail.Count);
     }
 
     [Theory]
@@ -250,6 +334,8 @@ public sealed class RecoveryPrecheckServiceTests
         public Mail Mail { get; } = new();
         public EmailOptions EmailOptions { get; } = new() { SmtpHost = "fake-only" };
         public RecoveryIdentityVerificationOptions Identity { get; } = new();
+        public ForgotPasswordRecoveryOptions Native { get; } = new() { NativeRecoveryEnabled = true,
+            NativeDirectoryRecoveryEnabled = true, DeploymentCeiling = ForgotPasswordMode.Native };
         public string ThrottleKey { get; } = Guid.NewGuid().ToString("N");
         public RecoveryPrecheckService Service => CreateService(Db);
         public ApplicationDbContext NewContext() => new(new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(_connection.ConnectionString).Options);
@@ -262,8 +348,7 @@ public sealed class RecoveryPrecheckServiceTests
                 .ReturnsAsync(() => new RecoveryDestinationResult(RecoveryDestinationFailure.None, Destination));
             var mailOptions = new Mock<IOptionsSnapshot<EmailOptions>>();
             mailOptions.SetupGet(o => o.Value).Returns(EmailOptions);
-            var native = Options.Create(new ForgotPasswordRecoveryOptions { NativeRecoveryEnabled = true,
-                NativeDirectoryRecoveryEnabled = true, DeploymentCeiling = ForgotPasswordMode.Native });
+            var native = Options.Create(Native);
             return new(db, destination.Object, Provider,
                 new RecoveryThrottleService(db, Options.Create(new RecoveryThrottleOptions { HashKey = ThrottleKey }), Time),
                 new RecoveryOtpDeliveryService(Mail, mailOptions.Object), new PasswordHasher<ApplicationUser>(),

@@ -160,6 +160,7 @@ public partial class LoginModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null, CancellationToken cancellationToken = default)
     {
+        PendingExternalLoginLink.Cancel(HttpContext);
         ExternalLogins = await GetAvailableExternalLoginsAsync(returnUrl, cancellationToken);
 
         // If user is already authenticated, redirect away from login page
@@ -199,6 +200,7 @@ public partial class LoginModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
+        PendingExternalLoginLink.Cancel(HttpContext);
         returnUrl ??= Url.Content("~/");
 
         // Load settings needed for UI re-rendering
@@ -529,6 +531,7 @@ public partial class LoginModel : PageModel
 
     public async Task<IActionResult> OnPostExternalLogin(string provider, string? returnUrl = null, CancellationToken cancellationToken = default)
     {
+        PendingExternalLoginLink.Cancel(HttpContext);
         returnUrl ??= Request.Form["returnUrl"].FirstOrDefault();
         returnUrl ??= Request.Query["returnUrl"].FirstOrDefault();
         returnUrl ??= Request.Query["ReturnUrl"].FirstOrDefault();

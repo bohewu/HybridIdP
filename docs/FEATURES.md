@@ -9,8 +9,16 @@
 ## Recovery identity verification and custom-first email selection (default disabled)
 
 Native recovery can require an account identifier plus deployment-approved
-identity-document evidence, then show a masked destination and wait for an
-explicit Send code action. A provider `Verified` response authorizes only a
+identity-document evidence, then wait for an explicit Send code action.
+`ForgotPasswordRecovery.PrecheckHintsEnabled` defaults to `true`: eligible
+prechecks retain the current guidance and masked destination, an intentional
+limited disclosure. With it `false`, comparable valid eligible, absent and
+ineligible prechecks show the same public guidance and Send action without
+eligibility or masked-address content, including GET restoration and post-Send
+projection. Precheck sends no mail; Send and every proof/reset stage retain
+their current server eligibility, policy/lifecycle, OTP and browser/CSRF gates.
+The hint choice enables no recovery feature and makes no exact timing guarantee.
+A provider `Verified` response authorizes only a
 restricted server precheck grant; email OTP and the existing reset authority
 are still required. It does not authenticate the user or bypass MFA. Birthday
 is outside the fixed 1.0 scheme, and browser input cannot select a provider,
@@ -482,7 +490,7 @@ Turnstile 驗證服務實作於：
 ### 安全與權限
 - **權限要求**: 必須具備 `Permissions.Users.Impersonate`。
 - **防範越權**: 管理員無法模擬其他管理員，以防止權限提升。
-- **審計追蹤**: 模擬期間的所有操作都會記錄 `Actor` (模擬者) 的身分。
+- **審計追蹤**: 開始與停止模擬會持久化審計事件。模擬期間原本已納入審計的操作（含 session refresh/revocation）保留原有 `UserId`，並在 `Details.impersonation` 保存 `actorUserId`（原始模擬者）與 `subjectUserId`（被模擬者）。這些帳號 ID 會隨 cookie 還原保留歸因；姓名與 email 仍依既有遮罩設定處理。審計寫入失敗時不會切換 cookie。
 
 ---
 **Last Updated**: 2025-12-19

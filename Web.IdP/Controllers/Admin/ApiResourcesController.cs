@@ -89,6 +89,10 @@ public class ApiResourcesController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -123,7 +127,7 @@ public class ApiResourcesController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
         }
     }
 
@@ -146,7 +150,7 @@ public class ApiResourcesController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
         }
     }
 
@@ -161,5 +165,21 @@ public class ApiResourcesController : ControllerBase
         return Ok(new { scopes });
     }
 
+    [HttpPost("{id}/usage-approvals")]
+    [HasPermission(Permissions.ApiResources.Update)]
+    public async Task<ActionResult> ApproveClientScope(int id, [FromBody] ApiScopeApprovalRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _apiResourceService.ApproveClientScopeAsync(id, request.ApplicationId, request.ScopeId, cancellationToken);
+            return NoContent();
+        }
+        catch (UnauthorizedAccessException) { return Forbid(); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
 
 }
+
+public sealed record ApiScopeApprovalRequest(Guid ApplicationId, string ScopeId);

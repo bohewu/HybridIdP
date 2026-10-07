@@ -460,7 +460,8 @@ public class UsersControllerRoleAuthorizationTests
             authorizationService.Object,
             Options.Create(new PrivilegedRoleProtectionOptions()),
             new Mock<ILogger<UsersController>>().Object,
-            Mock.Of<IRecoveryAssistanceService>());
+            Mock.Of<IRecoveryAssistanceService>(),
+            Mock.Of<IAuditService>());
     }
 
     private static ClaimsPrincipal CreatePrincipal(params string[] permissions)

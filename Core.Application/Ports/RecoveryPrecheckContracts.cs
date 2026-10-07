@@ -17,5 +17,6 @@ public sealed record RecoveryPrepareRequest(string Identifier, string IdentityId
     public override string ToString() => "RecoveryPrepareRequest [redacted]";
 }
 
+// Server-only authority reference. MaskedDestination is omitted when public precheck hints are disabled.
 public sealed record RecoveryPrepareResult(Guid? GrantId = null, string? MaskedDestination = null);
 public sealed record RecoverySendOtpRequest(Guid GrantId, NativeRecoveryContext Context, string SourceIp);

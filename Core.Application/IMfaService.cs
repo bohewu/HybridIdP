@@ -27,7 +27,7 @@ public interface IMfaService
     /// <summary>
     /// Disables MFA for the user.
     /// </summary>
-    Task DisableMfaAsync(ApplicationUser user, CancellationToken ct = default);
+    Task<MfaRemovalResult> DisableMfaAsync(ApplicationUser user, CancellationToken ct = default);
     
     /// <summary>
     /// Generates and persists new recovery codes for the user.
@@ -46,6 +46,9 @@ public interface IMfaService
     /// Validates a recovery code (consumes it if valid).
     /// </summary>
     Task<bool> ValidateRecoveryCodeAsync(ApplicationUser user, string code, CancellationToken ct = default);
+
+    /// <summary>Consumes an Identity recovery code and discards failed tracked consumption.</summary>
+    Task<bool> ValidateNativeRecoveryCodeAsync(ApplicationUser user, string code, CancellationToken ct = default);
     
     // ========== Email MFA (Phase 20.3) ==========
     
@@ -70,7 +73,14 @@ public interface IMfaService
     /// <summary>
     /// Disables Email MFA for the user.
     /// </summary>
-    Task DisableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default);
+    Task<MfaRemovalResult> DisableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default);
+}
+
+public enum MfaRemovalResult
+{
+    Succeeded,
+    MandatoryFactorRequired,
+    PersistenceFailed
 }
 
 /// <summary>

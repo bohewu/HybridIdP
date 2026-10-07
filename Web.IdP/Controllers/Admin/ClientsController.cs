@@ -32,19 +32,22 @@ public class ClientsController : ControllerBase
     private readonly ClientAdminApiHardeningOptions _clientAdminApiHardeningOptions;
     private readonly PrivilegedTestAdminBootstrapOptions _privilegedTestAdminBootstrapOptions;
     private readonly IHostEnvironment _hostEnvironment;
+    private readonly IApiScopeUsagePolicy _scopeUsage;
 
     public ClientsController(
         IClientService clientService,
         IClientAllowedScopesService allowedScopesService,
         IOptions<ClientAdminApiHardeningOptions> clientAdminApiHardeningOptions,
         IOptions<PrivilegedTestAdminBootstrapOptions> privilegedTestAdminBootstrapOptions,
-        IHostEnvironment hostEnvironment)
+        IHostEnvironment hostEnvironment,
+        IApiScopeUsagePolicy scopeUsage)
     {
         _clientService = clientService;
         _allowedScopesService = allowedScopesService;
         _clientAdminApiHardeningOptions = clientAdminApiHardeningOptions.Value;
         _privilegedTestAdminBootstrapOptions = privilegedTestAdminBootstrapOptions.Value;
         _hostEnvironment = hostEnvironment;
+        _scopeUsage = scopeUsage;
     }
 
     /// <summary>
@@ -62,7 +65,8 @@ public class ClientsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         // Admin sees all clients, non-Admin sees only their own
-        Guid? ownerPersonId = IsAdmin() ? null : GetCurrentPersonId();
+        var actor = await _scopeUsage.GetActorAsync(cancellationToken);
+        Guid? ownerPersonId = actor.IsAdmin ? null : actor.PersonId ?? Guid.Empty;
         
         var (items, totalCount) = await _clientService.GetClientsAsync(skip, take, search, type, sort, ownerPersonId, cancellationToken);
         return Ok(new { items, totalCount });
@@ -128,7 +132,9 @@ public class ClientsController : ControllerBase
 
         try
         {
-            var personId = GetCurrentPersonId();
+            var actor = await _scopeUsage.GetActorAsync(cancellationToken);
+            if (!actor.IsAdmin && !actor.PersonId.HasValue && !IsTrustedAdministrationAutomation()) return Forbid();
+            var personId = actor.PersonId;
             
             var response = await _clientService.CreateClientAsync(request, personId, cancellationToken);
             return CreatedAtAction(nameof(GetClient), new { id = response.Id }, new
@@ -143,6 +149,10 @@ public class ClientsController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
@@ -190,6 +200,10 @@ public class ClientsController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
         }
     }
 
@@ -333,6 +347,10 @@ public class ClientsController : ControllerBase
 
             await _allowedScopesService.SetAllowedScopesAsync(clientId, request.Scopes);
             return Ok(new { message = "Allowed scopes updated successfully." });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
@@ -479,12 +497,13 @@ public class ClientsController : ControllerBase
         Guid clientId,
         CancellationToken cancellationToken)
     {
-        if (IsAdmin() || IsTrustedAdministrationAutomation())
+        var actor = await _scopeUsage.GetActorAsync(cancellationToken);
+        if (actor.IsAdmin || IsTrustedAdministrationAutomation())
         {
             return null;
         }
 
-        var personId = GetCurrentPersonId();
+        var personId = actor.PersonId;
         if (personId.HasValue &&
             await _clientService.IsClientOwnedByPersonAsync(
                 clientId,

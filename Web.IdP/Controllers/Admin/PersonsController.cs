@@ -288,6 +288,10 @@ public partial class PersonsController : ControllerBase
 
             return NoContent();
         }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
         catch (InvalidOperationException ex)
         {
             LogWarningInvalidLinkOperation(ex, dto.UserId, id);
@@ -324,6 +328,10 @@ public partial class PersonsController : ControllerBase
                 cancellationToken);
 
             return NoContent();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (Exception ex)
         {
@@ -421,6 +429,10 @@ public partial class PersonsController : ControllerBase
         catch (KeyNotFoundException ex)
         {
             return NotFound(ex.Message);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (Exception ex)
         {

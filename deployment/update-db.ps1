@@ -33,7 +33,6 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "🚀 Starting Database Update Process..." -ForegroundColor Cyan
 Write-Host "Provider: $Provider" -ForegroundColor Gray
-Write-Host "Connection String: $ConnectionString" -ForegroundColor DarkGray
 
 # 1. Set Environment Variables
 Write-Host "`nStep 1: Setting Environment Variables..." -ForegroundColor Yellow

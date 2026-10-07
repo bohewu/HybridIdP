@@ -14,6 +14,13 @@ using Microsoft.Extensions.Options;
 using Moq;
 using System.Data.Common;
 using System.Threading;
+using System.Security.Claims;
+using System.Collections.Immutable;
+using System.Text.Json;
+using Core.Domain.Constants;
+using Infrastructure.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using OpenIddict.Abstractions;
 using Xunit;
 
 namespace Tests.Infrastructure.UnitTests;
@@ -29,6 +36,11 @@ public class PersonServiceTests : IDisposable
     private readonly Mock<IAuditService> _auditServiceMock;
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly IOptions<AuditOptions> _auditOptions;
+    private readonly Mock<IAdministrativeAuthorizationBoundary> _boundary = new();
+    private readonly Mock<Microsoft.AspNetCore.Authorization.IAuthorizationService> _authorization = new();
+    private readonly Mock<IOpenIddictApplicationManager> _applications = new();
+    private readonly Mock<IOpenIddictScopeManager> _scopes = new();
+    private readonly PrivilegedRoleProtectionOptions _roleProtection = new();
 
     public PersonServiceTests()
     {
@@ -44,11 +56,30 @@ public class PersonServiceTests : IDisposable
         var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
         _userManagerMock = new Mock<UserManager<ApplicationUser>>(
             userStoreMock.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+        _userManagerMock.Setup(manager => manager.GetRolesAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(new List<string>());
+        _userManagerMock.Setup(manager => manager.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
+            .ReturnsAsync(IdentityResult.Success);
+        SetActor(Guid.NewGuid(), true, Permissions.GetAll().ToArray());
     }
     
     private PersonService CreateService(ApplicationDbContext context)
     {
-        return new PersonService(context, _loggerMock.Object, _auditServiceMock.Object, _userManagerMock.Object, _auditOptions);
+        var authorization = new PersonOperationAuthorization(context, _boundary.Object, _authorization.Object,
+            _applications.Object, _scopes.Object, Options.Create(_roleProtection));
+        return new PersonService(context, _loggerMock.Object, _auditServiceMock.Object, _userManagerMock.Object, _auditOptions, authorization);
+    }
+
+    private void SetActor(Guid actorId, bool admin, params string[] permissions)
+    {
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, actorId.ToString()) };
+        if (admin) claims.Add(new Claim(ClaimTypes.Role, AuthConstants.Roles.Admin));
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, IdentityConstants.ApplicationScheme));
+        _boundary.Setup(boundary => boundary.ResolveAsync())
+            .ReturnsAsync(new AdministrativeAuthority(principal, false, new HashSet<string>()));
+        _authorization.Setup(service => service.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), null, It.IsAny<string>()))
+            .ReturnsAsync((ClaimsPrincipal _, object? _, string permission) =>
+                permissions.Contains(permission) ? AuthorizationResult.Success() : AuthorizationResult.Failed());
     }
 
     public void Dispose()
@@ -1488,6 +1519,326 @@ public class PersonServiceTests : IDisposable
 
         // Verify Audit Log
         _auditServiceMock.Verify(s => s.LogEventAsync("ResourceOwnershipTransferred", It.IsAny<string>(), It.IsAny<string>(), null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LinkAccountToPersonAsync_ShouldDenyPersonnelOnlyActor_EvenBeforePersonOwnsAssets()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Future", LastName = "Owner" };
+        var account = new ApplicationUser { UserName = "controlled" };
+        context.AddRange(person, account);
+        await context.SaveChangesAsync();
+        SetActor(account.Id, false, Permissions.Persons.Update);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            CreateService(context).LinkAccountToPersonAsync(person.Id, account.Id, Guid.NewGuid()));
+
+        // A later unrelated save must not persist a denied association.
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        Assert.Null((await context.Users.FindAsync(account.Id))!.PersonId);
+        _userManagerMock.Verify(manager => manager.AddToRolesAsync(It.IsAny<ApplicationUser>(),
+            It.IsAny<IEnumerable<string>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LinkAccountToPersonAsync_ShouldAllowEmptyPerson_WithAccountAndPersonnelAuthority()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Empty", LastName = "Person" };
+        var account = new ApplicationUser { UserName = "account" };
+        context.AddRange(person, account);
+        await context.SaveChangesAsync();
+        SetActor(Guid.NewGuid(), false, Permissions.Persons.Update, Permissions.Users.Update);
+        var service = CreateService(context);
+
+        Assert.True(await service.LinkAccountToPersonAsync(person.Id, account.Id));
+        Assert.True(await service.UnlinkAccountFromPersonAsync(account.Id));
+        Assert.Null(account.PersonId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PersonAssociation_ShouldDenyRoleRetentionRoute_WithoutRoleAuthority(bool unlink)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Protected", LastName = "Person" };
+        var source = new ApplicationUser { UserName = "source", PersonId = person.Id };
+        var target = new ApplicationUser { UserName = "target", PersonId = unlink ? person.Id : null };
+        context.AddRange(person, source, target);
+        await context.SaveChangesAsync();
+        _userManagerMock.Setup(manager => manager.GetRolesAsync(source)).ReturnsAsync(new List<string> { "Admin" });
+        _userManagerMock.Setup(manager => manager.GetRolesAsync(target))
+            .ReturnsAsync(unlink ? new List<string> { "Admin" } : new List<string>());
+        SetActor(target.Id, false, Permissions.Persons.Update, Permissions.Users.Update);
+        var service = CreateService(context);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => unlink
+            ? service.UnlinkAccountFromPersonAsync(target.Id)
+            : service.LinkAccountToPersonAsync(person.Id, target.Id));
+
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        Assert.Equal(unlink ? person.Id : (Guid?)null, (await context.Users.FindAsync(target.Id))!.PersonId);
+        _userManagerMock.Verify(manager => manager.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.RemoveFromRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    public async Task LinkAccountToPersonAsync_ShouldPreflightProtectedTargetMfa(bool passkey, bool disabled, bool allowed)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Protected", LastName = "Person" };
+        var source = new ApplicationUser { UserName = "source", PersonId = person.Id };
+        var target = new ApplicationUser { UserName = "target" };
+        context.AddRange(person, source, target);
+        if (passkey) context.UserCredentials.Add(new UserCredential
+        {
+            UserId = target.Id, CredentialId = [1], PublicKey = [2],
+            DisabledAtUtc = disabled ? DateTime.UtcNow : null
+        });
+        await context.SaveChangesAsync();
+        _roleProtection.RequireTargetMfaForPrivilegedRoleAssignment = true;
+        _userManagerMock.Setup(manager => manager.GetRolesAsync(source)).ReturnsAsync(new List<string> { "Admin" });
+        var service = CreateService(context);
+
+        if (allowed)
+        {
+            Assert.True(await service.LinkAccountToPersonAsync(person.Id, target.Id));
+            _userManagerMock.Verify(manager => manager.AddToRolesAsync(target,
+                It.Is<IEnumerable<string>>(roles => roles.Contains("Admin"))), Times.Once);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.LinkAccountToPersonAsync(person.Id, target.Id));
+            await context.SaveChangesAsync();
+            Assert.Null(target.PersonId);
+            _userManagerMock.Verify(manager => manager.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PersonAssociation_ShouldDenyForeignOwnership_WithAllDomainPermissions(bool unlink)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Foreign", LastName = "Owner" };
+        var account = new ApplicationUser { UserName = "account", PersonId = unlink ? person.Id : null };
+        context.AddRange(person, account, new ApiResource { Name = "foreign", OwnerPersonId = person.Id });
+        await context.SaveChangesAsync();
+        SetActor(Guid.NewGuid(), false, Permissions.GetAll().ToArray());
+        var service = CreateService(context);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => unlink
+            ? service.UnlinkAccountFromPersonAsync(account.Id)
+            : service.LinkAccountToPersonAsync(person.Id, account.Id));
+        Assert.Equal(unlink ? person.Id : (Guid?)null, account.PersonId);
+    }
+
+    [Theory]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, true)]
+    public async Task LinkAccountToPersonAsync_ShouldHonorConfiguredOperatorMfa(bool requireMfa, bool completedMfa, bool allowed)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Protected", LastName = "Person" };
+        var source = new ApplicationUser { UserName = "source", PersonId = person.Id };
+        var target = new ApplicationUser { UserName = "target" };
+        context.AddRange(person, source, target);
+        await context.SaveChangesAsync();
+        _roleProtection.RequireOperatorMfaForPrivilegedRoleAssignment = requireMfa;
+        _userManagerMock.Setup(manager => manager.GetRolesAsync(source)).ReturnsAsync(new List<string> { "Admin" });
+        var authority = (await _boundary.Object.ResolveAsync())!;
+        if (completedMfa) ((ClaimsIdentity)authority.Principal.Identity!).AddClaim(new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.Mfa));
+
+        if (allowed) Assert.True(await CreateService(context).LinkAccountToPersonAsync(person.Id, target.Id));
+        else
+        {
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => CreateService(context).LinkAccountToPersonAsync(person.Id, target.Id));
+            Assert.Null(target.PersonId);
+        }
+    }
+
+    [Fact]
+    public async Task LinkAccountToPersonAsync_ShouldRejectUntrustedContext_RegardlessOfAuditUserId()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Empty", LastName = "Person" };
+        var target = new ApplicationUser { UserName = "target" };
+        context.AddRange(person, target);
+        await context.SaveChangesAsync();
+        _boundary.Setup(boundary => boundary.ResolveAsync()).ReturnsAsync((AdministrativeAuthority?)null);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            CreateService(context).LinkAccountToPersonAsync(person.Id, target.Id, Guid.NewGuid()));
+        Assert.Null(target.PersonId);
+    }
+
+    [Fact]
+    public async Task LinkAccountToPersonAsync_ShouldRespectBearerApprovalCeiling_DespiteAdminRoleClaim()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Empty", LastName = "Person" };
+        var target = new ApplicationUser { UserName = "target" };
+        context.AddRange(person, target);
+        await context.SaveChangesAsync();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim(ClaimTypes.Role, "Admin") }, AdministrativeAuthorizationBoundary.BearerScheme));
+        _boundary.Setup(boundary => boundary.ResolveAsync()).ReturnsAsync(new AdministrativeAuthority(principal, true,
+            new HashSet<string> { Permissions.Persons.Update }));
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            CreateService(context).LinkAccountToPersonAsync(person.Id, target.Id));
+        Assert.Null(target.PersonId);
+    }
+
+    [Theory]
+    [InlineData("clients.update")]
+    [InlineData("scopes.update")]
+    [InlineData("apiresources.update")]
+    [InlineData("foreign-owner")]
+    public async Task TransferAssetsAsync_ShouldLeaveEveryDomainUnchanged_WhenAnyAuthorityIsMissing(string missing)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var source = new Person { Id = Guid.NewGuid(), FirstName = "Source", LastName = "Owner" };
+        var destination = new Person { Id = Guid.NewGuid(), FirstName = "Destination", LastName = "Owner" };
+        var actor = new ApplicationUser { UserName = "actor", PersonId = missing == "foreign-owner" ? null : source.Id };
+        var api = new ApiResource { Name = "api", OwnerPersonId = source.Id };
+        var client = new ClientOwnership { ApplicationId = Guid.NewGuid(), ClientId = "client", CreatedByPersonId = source.Id };
+        var scope = new ScopeOwnership { ScopeId = "scope-id", CreatedByPersonId = source.Id };
+        context.AddRange(source, destination, actor, api, client, scope);
+        await context.SaveChangesAsync();
+        SetActor(actor.Id, false, Permissions.GetAll().Where(permission => permission != missing).ToArray());
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            CreateService(context).TransferAssetsAsync(source.Id, destination.Id));
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        Assert.Equal(source.Id, (await context.ApiResources.FindAsync(api.Id))!.OwnerPersonId);
+        Assert.Equal(source.Id, (await context.ClientOwnerships.FindAsync(client.Id))!.CreatedByPersonId);
+        Assert.Equal(source.Id, (await context.ScopeOwnerships.FindAsync(scope.Id))!.CreatedByPersonId);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task TransferAssetsAsync_ShouldRequireClientPermissionAndAdmin_ForUnboundClientOwnership(
+        bool admin, bool clientPermission)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var source = new Person { Id = Guid.NewGuid(), FirstName = "Source", LastName = "Owner" };
+        var destination = new Person { Id = Guid.NewGuid(), FirstName = "Destination", LastName = "Owner" };
+        var actor = new ApplicationUser { UserName = "actor", PersonId = admin ? null : source.Id };
+        var api = new ApiResource { Name = "api", OwnerPersonId = source.Id };
+        var client = new ClientOwnership { ApplicationId = null, ClientId = "legacy", CreatedByPersonId = source.Id };
+        var scope = new ScopeOwnership { ScopeId = "scope-id", CreatedByPersonId = source.Id };
+        context.AddRange(source, destination, actor, api, client, scope);
+        await context.SaveChangesAsync();
+        SetActor(actor.Id, admin, Permissions.GetAll()
+            .Where(permission => clientPermission || permission != Permissions.Clients.Update).ToArray());
+        var service = CreateService(context);
+        var allowed = admin && clientPermission;
+
+        if (allowed) await service.TransferAssetsAsync(source.Id, destination.Id);
+        else await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.TransferAssetsAsync(source.Id, destination.Id));
+
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        var expectedOwner = allowed ? destination.Id : source.Id;
+        Assert.Equal(expectedOwner, (await context.ApiResources.FindAsync(api.Id))!.OwnerPersonId);
+        Assert.Equal(expectedOwner, (await context.ClientOwnerships.FindAsync(client.Id))!.CreatedByPersonId);
+        Assert.Null((await context.ClientOwnerships.FindAsync(client.Id))!.ApplicationId);
+        Assert.Equal(expectedOwner, (await context.ScopeOwnerships.FindAsync(scope.Id))!.CreatedByPersonId);
+        _applications.Verify(manager => manager.FindByIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PersonAssociation_ShouldDenyUnboundClientOwnership_ForDelegatedOwner(bool unlink)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Legacy", LastName = "Owner" };
+        var actor = new ApplicationUser { UserName = "actor", PersonId = person.Id };
+        var target = new ApplicationUser { UserName = "target", PersonId = unlink ? person.Id : null };
+        var client = new ClientOwnership { ApplicationId = null, ClientId = "legacy", CreatedByPersonId = person.Id };
+        context.AddRange(person, actor, target, client);
+        await context.SaveChangesAsync();
+        SetActor(actor.Id, false, Permissions.GetAll().ToArray());
+        var service = CreateService(context);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => unlink
+            ? service.UnlinkAccountFromPersonAsync(target.Id)
+            : service.LinkAccountToPersonAsync(person.Id, target.Id));
+
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        Assert.Equal(unlink ? person.Id : (Guid?)null, (await context.Users.FindAsync(target.Id))!.PersonId);
+        Assert.Equal(person.Id, (await context.ClientOwnerships.FindAsync(client.Id))!.CreatedByPersonId);
+        Assert.Null((await context.ClientOwnerships.FindAsync(client.Id))!.ApplicationId);
+        _userManagerMock.Verify(manager => manager.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+        _applications.Verify(manager => manager.FindByIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task TransferAssetsAsync_ShouldAllowExactOwner_WithOnlyPresentDomainPermission()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var source = new Person { Id = Guid.NewGuid(), FirstName = "Source", LastName = "Owner" };
+        var destination = new Person { Id = Guid.NewGuid(), FirstName = "Destination", LastName = "Owner" };
+        var actor = new ApplicationUser { UserName = "actor", PersonId = source.Id };
+        var api = new ApiResource { Name = "api", OwnerPersonId = source.Id };
+        context.AddRange(source, destination, actor, api);
+        await context.SaveChangesAsync();
+        SetActor(actor.Id, false, Permissions.Persons.Update, Permissions.ApiResources.Update);
+
+        await CreateService(context).TransferAssetsAsync(source.Id, destination.Id);
+        Assert.Equal(destination.Id, api.OwnerPersonId);
+    }
+
+    [Theory]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    public async Task TransferAssetsAsync_ShouldPreserveAdministrativeClientAndStandardScopeRestrictions(
+        bool approvedClient, bool standardScope, bool allowed)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var source = new Person { Id = Guid.NewGuid(), FirstName = "Source", LastName = "Owner" };
+        var destination = new Person { Id = Guid.NewGuid(), FirstName = "Destination", LastName = "Owner" };
+        var actor = new ApplicationUser { UserName = "actor", PersonId = source.Id };
+        var client = new ClientOwnership { ApplicationId = Guid.NewGuid(), ClientId = "client", CreatedByPersonId = source.Id };
+        var scope = new ScopeOwnership { ScopeId = "scope-id", CreatedByPersonId = source.Id };
+        context.AddRange(source, destination, actor, client, scope);
+        await context.SaveChangesAsync();
+        SetActor(actor.Id, false, Permissions.Persons.Update, Permissions.Clients.Update, Permissions.Scopes.Update);
+        var application = new object();
+        _applications.Setup(manager => manager.FindByIdAsync(client.ApplicationId.ToString(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(application);
+        _applications.Setup(manager => manager.GetPropertiesAsync(application, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(approvedClient
+                ? ImmutableDictionary<string, JsonElement>.Empty.Add(AdministrativeClientGrant.PermissionsProperty,
+                    JsonSerializer.SerializeToElement(new[] { Permissions.Users.Read }))
+                : ImmutableDictionary<string, JsonElement>.Empty);
+        var oidcScope = new object();
+        _scopes.Setup(manager => manager.FindByIdAsync(scope.ScopeId, It.IsAny<CancellationToken>())).ReturnsAsync(oidcScope);
+        _scopes.Setup(manager => manager.GetNameAsync(oidcScope, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(standardScope ? "openid" : "custom");
+        var service = CreateService(context);
+
+        if (allowed) await service.TransferAssetsAsync(source.Id, destination.Id);
+        else await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.TransferAssetsAsync(source.Id, destination.Id));
+        Assert.Equal(allowed ? destination.Id : source.Id, client.CreatedByPersonId);
+        Assert.Equal(allowed ? destination.Id : source.Id, scope.CreatedByPersonId);
     }
 
     private static DbContextOptions<ApplicationDbContext> CreateSqliteOptions(

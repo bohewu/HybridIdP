@@ -9,6 +9,7 @@ using FluentAssertions;
 using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -19,7 +20,7 @@ namespace Tests.Infrastructure.UnitTests;
 /// <summary>
 /// TDD tests for MfaService - write these FIRST, then implement the service.
 /// </summary>
-public class MfaServiceTests
+public class MfaServiceTests : IDisposable
 {
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly Mock<IBrandingService> _brandingServiceMock;
@@ -31,6 +32,10 @@ public class MfaServiceTests
     private readonly Mock<IEmailMfaAttemptStore> _emailMfaAttemptStoreMock;
     private readonly Mock<ILogger<MfaService>> _loggerMock;
     private readonly MfaService _sut;
+    private readonly ApplicationDbContext _dbContext = new(new DbContextOptionsBuilder<ApplicationDbContext>()
+        .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+    private readonly MfaTestTimeProvider _time = new();
+    private const string TotpKey = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
 
     public MfaServiceTests()
     {
@@ -39,6 +44,8 @@ public class MfaServiceTests
             store.Object, null!, null!, null!, null!, null!, null!, null!, null!);
         
         _brandingServiceMock = new Mock<IBrandingService>();
+        _userManagerMock.Setup(x => x.GetAuthenticatorKeyAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(TotpKey);
+        _userManagerMock.Setup(x => x.UpdateAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(IdentityResult.Success);
         _brandingServiceMock.Setup(x => x.GetAppNameAsync()).ReturnsAsync("TestApp");
         
         _emailServiceMock = new Mock<IEmailService>();
@@ -72,8 +79,8 @@ public class MfaServiceTests
             _distributedCacheMock.Object,
             _securityPolicyServiceMock.Object,
             _emailMfaAttemptStoreMock.Object,
-            null!, // ApplicationDbContext - not used by the tests we're running
-            _loggerMock.Object);
+            _dbContext,
+            _loggerMock.Object, _time);
     }
 
     #region GetTotpSetupInfoAsync Tests
@@ -129,7 +136,7 @@ public class MfaServiceTests
     {
         // Arrange
         var user = CreateTestUser();
-        var validCode = "123456";
+        var validCode = TotpCode(_time.GetUtcNow());
         
         _userManagerMock.Setup(x => x.VerifyTwoFactorTokenAsync(
             user, 
@@ -144,7 +151,7 @@ public class MfaServiceTests
 
         // Assert
         result.Should().BeTrue();
-        _userManagerMock.Verify(x => x.SetTwoFactorEnabledAsync(user, true), Times.Once);
+        user.TwoFactorEnabled.Should().BeTrue();
     }
 
     [Fact]
@@ -178,7 +185,7 @@ public class MfaServiceTests
         // Arrange
         var user = CreateTestUser();
         user.TwoFactorEnabled = true;
-        var validCode = "123456";
+        var validCode = TotpCode(_time.GetUtcNow());
         
         _userManagerMock.Setup(x => x.VerifyTwoFactorTokenAsync(
             user, 
@@ -233,7 +240,7 @@ public class MfaServiceTests
         await _sut.DisableMfaAsync(user);
 
         // Assert
-        _userManagerMock.Verify(x => x.SetTwoFactorEnabledAsync(user, false), Times.Once);
+        user.TwoFactorEnabled.Should().BeFalse();
         _userManagerMock.Verify(x => x.ResetAuthenticatorKeyAsync(user), Times.Once);
     }
 
@@ -346,6 +353,124 @@ public class MfaServiceTests
 
     #region Replay Attack Prevention Tests
 
+    [Theory]
+    [InlineData(-2)]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task ValidateTotpCodeAsync_ShouldConsumeActualMatchedStepAndRejectReplayAcrossClockAdvance(int offset)
+    {
+        var user = CreateTestUser();
+        user.TwoFactorEnabled = true;
+        var issued = _time.Now.AddSeconds(offset * 30);
+        var code = TotpCode(issued);
+        _userManagerMock.Setup(x => x.VerifyTwoFactorTokenAsync(user, It.IsAny<string>(), code)).ReturnsAsync(true);
+
+        Assert.True(await _sut.ValidateTotpCodeAsync(user, code));
+        Assert.Equal(issued.ToUnixTimeSeconds() / 30, user.LastTotpValidatedWindow);
+        Assert.False(await _sut.ValidateTotpCodeAsync(user, code));
+        _time.Now = _time.Now.AddSeconds(30);
+        Assert.False(await _sut.ValidateTotpCodeAsync(user, code));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TotpConsumption_ShouldRejectFailedPersistenceAndRestoreState(bool enrollment)
+    {
+        var user = CreateTestUser();
+        user.TwoFactorEnabled = !enrollment;
+        var code = TotpCode(_time.Now);
+        _userManagerMock.Setup(x => x.VerifyTwoFactorTokenAsync(user, It.IsAny<string>(), code)).ReturnsAsync(true);
+        _userManagerMock.Setup(x => x.UpdateAsync(user)).ReturnsAsync(IdentityResult.Failed(new IdentityError { Code = "ConcurrencyFailure" }));
+
+        Assert.False(enrollment ? await _sut.VerifyAndEnableTotpAsync(user, code) : await _sut.ValidateTotpCodeAsync(user, code));
+        Assert.Null(user.LastTotpValidatedWindow);
+        Assert.Equal(!enrollment, user.TwoFactorEnabled);
+    }
+
+    [Fact]
+    public async Task ValidateRecoveryCodeAsync_ShouldRejectFailedPersistenceAndMalformedStorage()
+    {
+        var user = CreateTestUser();
+        user.RecoveryCodes = "[\"hashed-code\"]";
+        _passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "hashed-code", "CODE")).Returns(PasswordVerificationResult.SuccessRehashNeeded);
+        _userManagerMock.Setup(x => x.UpdateAsync(user)).ReturnsAsync(IdentityResult.Failed(new IdentityError()));
+        Assert.False(await _sut.ValidateRecoveryCodeAsync(user, "CODE"));
+        Assert.Equal("[\"hashed-code\"]", user.RecoveryCodes);
+        user.RecoveryCodes = "not-json";
+        Assert.False(await _sut.ValidateRecoveryCodeAsync(user, "CODE"));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task DisableFactor_ShouldPlanCascadeBeforeMutationAndPreserveRetiredHistory(bool totp, bool mandatory)
+    {
+        var user = CreateTestUser();
+        user.TwoFactorEnabled = totp;
+        user.EmailMfaEnabled = !totp;
+        user.LastTotpValidatedWindow = 12;
+        _dbContext.Users.Add(user);
+        var historicalTime = DateTime.UtcNow.AddYears(-1);
+        _dbContext.UserCredentials.AddRange(
+            new Core.Domain.Entities.UserCredential { Id = 1, UserId = user.Id, CredentialId = [1], PublicKey = [1] },
+            new Core.Domain.Entities.UserCredential { Id = 2, UserId = user.Id, CredentialId = [2], PublicKey = [2], DisabledAtUtc = historicalTime });
+        await _dbContext.SaveChangesAsync();
+        _securityPolicyServiceMock.Setup(x => x.GetCurrentPolicyAsync()).ReturnsAsync(new Core.Domain.Entities.SecurityPolicy
+            { RequireMfaForPasskey = true, EnforceMandatoryMfaEnrollment = mandatory });
+        _userManagerMock.Setup(x => x.UpdateAsync(user)).Returns(async () => { await _dbContext.SaveChangesAsync(); return IdentityResult.Success; });
+        _userManagerMock.Setup(x => x.ResetAuthenticatorKeyAsync(user)).Returns(async () => { await _dbContext.SaveChangesAsync(); return IdentityResult.Success; });
+
+        var result = totp ? await _sut.DisableMfaAsync(user) : await _sut.DisableEmailMfaAsync(user);
+
+        Assert.Equal(mandatory ? MfaRemovalResult.MandatoryFactorRequired : MfaRemovalResult.Succeeded, result);
+        Assert.Equal(mandatory && totp, user.TwoFactorEnabled);
+        Assert.Equal(mandatory && !totp, user.EmailMfaEnabled);
+        var keys = await _dbContext.UserCredentials.OrderBy(key => key.Id).ToListAsync();
+        Assert.Equal(2, keys.Count);
+        Assert.Equal(mandatory, keys[0].DisabledAtUtc == null);
+        Assert.Equal(historicalTime, keys[1].DisabledAtUtc);
+        if (mandatory) _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DisableFactor_ShouldRequireAnEnabledRemainingMethod(bool otherMethodEnabled)
+    {
+        var user = CreateTestUser();
+        user.TwoFactorEnabled = true;
+        user.EmailMfaEnabled = true;
+        _securityPolicyServiceMock.Setup(x => x.GetCurrentPolicyAsync()).ReturnsAsync(new Core.Domain.Entities.SecurityPolicy
+            { EnforceMandatoryMfaEnrollment = true, EnableEmailMfa = otherMethodEnabled });
+        _userManagerMock.Setup(x => x.ResetAuthenticatorKeyAsync(user)).ReturnsAsync(IdentityResult.Success);
+        var result = await _sut.DisableMfaAsync(user);
+        Assert.Equal(otherMethodEnabled ? MfaRemovalResult.Succeeded : MfaRemovalResult.MandatoryFactorRequired, result);
+    }
+
+    [Fact]
+    public async Task DisableEmailMfaAsync_ShouldNotLeakFailedFactorOrRetirementIntoLaterSave()
+    {
+        var user = CreateTestUser();
+        user.EmailMfaEnabled = true;
+        _dbContext.Users.Add(user);
+        _dbContext.UserCredentials.Add(new Core.Domain.Entities.UserCredential
+            { UserId = user.Id, CredentialId = [1], PublicKey = [1] });
+        await _dbContext.SaveChangesAsync();
+        _securityPolicyServiceMock.Setup(s => s.GetCurrentPolicyAsync())
+            .ReturnsAsync(new Core.Domain.Entities.SecurityPolicy { RequireMfaForPasskey = true });
+        _userManagerMock.Setup(s => s.UpdateAsync(user)).ReturnsAsync(IdentityResult.Failed(new IdentityError()));
+        Assert.Equal(MfaRemovalResult.PersistenceFailed, await _sut.DisableEmailMfaAsync(user));
+        user.PhoneNumber = "later-write";
+        await _dbContext.SaveChangesAsync();
+        Assert.True((await _dbContext.Users.SingleAsync()).EmailMfaEnabled);
+        Assert.Null((await _dbContext.UserCredentials.SingleAsync()).DisabledAtUtc);
+    }
+
     [Fact]
     public async Task ValidateTotpCodeAsync_FirstUse_ReturnsTrue()
     {
@@ -357,13 +482,13 @@ public class MfaServiceTests
         _userManagerMock.Setup(x => x.VerifyTwoFactorTokenAsync(
             user, 
             It.IsAny<string>(), 
-            "123456"))
+            TotpCode(_time.GetUtcNow())))
             .ReturnsAsync(true);
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
 
         // Act
-        var result = await _sut.ValidateTotpCodeAsync(user, "123456");
+        var result = await _sut.ValidateTotpCodeAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         result.Should().BeTrue();
@@ -377,17 +502,17 @@ public class MfaServiceTests
         var user = CreateTestUser();
         user.TwoFactorEnabled = true;
         // Simulates the same 30-second window (current window number)
-        var currentWindow = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30;
+        var currentWindow = _time.GetUtcNow().ToUnixTimeSeconds() / 30;
         user.LastTotpValidatedWindow = currentWindow;
         
         _userManagerMock.Setup(x => x.VerifyTwoFactorTokenAsync(
             user, 
             It.IsAny<string>(), 
-            "123456"))
+            TotpCode(_time.GetUtcNow())))
             .ReturnsAsync(true); // Code is valid by Identity
 
         // Act
-        var result = await _sut.ValidateTotpCodeAsync(user, "123456");
+        var result = await _sut.ValidateTotpCodeAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         result.Should().BeFalse(); // But rejected due to replay attack prevention
@@ -400,19 +525,19 @@ public class MfaServiceTests
         var user = CreateTestUser();
         user.TwoFactorEnabled = true;
         // Previous window (more than 30 seconds ago)
-        var previousWindow = (DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30) - 2;
+        var previousWindow = (_time.GetUtcNow().ToUnixTimeSeconds() / 30) - 2;
         user.LastTotpValidatedWindow = previousWindow;
         
         _userManagerMock.Setup(x => x.VerifyTwoFactorTokenAsync(
             user, 
             It.IsAny<string>(), 
-            "654321"))
+            TotpCode(_time.GetUtcNow())))
             .ReturnsAsync(true);
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
 
         // Act
-        var result = await _sut.ValidateTotpCodeAsync(user, "654321");
+        var result = await _sut.ValidateTotpCodeAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         result.Should().BeTrue();
@@ -493,7 +618,7 @@ public class MfaServiceTests
         var sut = CreateMfaService(emailServiceMock, emailTemplateServiceMock, passwordHasherMock, distributedCacheMock);
 
         // Act
-        var result = await sut.VerifyEmailMfaCodeAsync(user, "123456");
+        var result = await sut.VerifyEmailMfaCodeAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         result.Should().BeFalse();
@@ -518,7 +643,7 @@ public class MfaServiceTests
         var sut = CreateMfaService(emailServiceMock, emailTemplateServiceMock, passwordHasherMock, distributedCacheMock);
 
         // Act
-        var result = await sut.VerifyEmailMfaCodeAsync(user, "123456");
+        var result = await sut.VerifyEmailMfaCodeAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         result.Should().BeFalse();
@@ -539,7 +664,7 @@ public class MfaServiceTests
         var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
-        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "123456"))
+        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", TotpCode(_time.GetUtcNow())))
             .Returns(PasswordVerificationResult.Success);
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
@@ -547,7 +672,7 @@ public class MfaServiceTests
         var sut = CreateMfaService(emailServiceMock, emailTemplateServiceMock, passwordHasherMock, distributedCacheMock);
 
         // Act
-        var result = await sut.VerifyEmailMfaCodeAsync(user, "123456");
+        var result = await sut.VerifyEmailMfaCodeAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         result.Should().BeTrue();
@@ -622,7 +747,7 @@ public class MfaServiceTests
             invalidResult.Should().BeFalse();
         }
 
-        var resultAfterLimit = await sut.VerifyEmailMfaCodeAsync(user, "123456");
+        var resultAfterLimit = await sut.VerifyEmailMfaCodeAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         resultAfterLimit.Should().BeFalse();
@@ -651,7 +776,7 @@ public class MfaServiceTests
         var emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
         var distributedCacheMock = new Mock<IDistributedCache>();
-        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "123456"))
+        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", TotpCode(_time.GetUtcNow())))
             .Returns(PasswordVerificationResult.Success);
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
@@ -667,7 +792,7 @@ public class MfaServiceTests
         var sut = CreateMfaService(emailServiceMock, emailTemplateServiceMock, passwordHasherMock, distributedCacheMock);
 
         // Act
-        var result = await sut.VerifyAndEnableEmailMfaAsync(user, "123456");
+        var result = await sut.VerifyAndEnableEmailMfaAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         result.Should().BeTrue();
@@ -697,7 +822,7 @@ public class MfaServiceTests
         user.EmailMfaCode = "HASHED_CODE";
         user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5);
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
-        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "123456"))
+        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", TotpCode(_time.GetUtcNow())))
             .Returns(PasswordVerificationResult.Success);
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
@@ -712,7 +837,7 @@ public class MfaServiceTests
             distributedCacheMock: distributedCacheMock);
 
         // Act
-        var result = await sut.VerifyAndEnableEmailMfaAsync(user, "123456");
+        var result = await sut.VerifyAndEnableEmailMfaAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         result.Should().BeTrue();
@@ -766,7 +891,7 @@ public class MfaServiceTests
         var sut = CreateMfaService(passwordHasherMock: passwordHasherMock);
 
         // Act
-        var result = await sut.VerifyAndEnableEmailMfaAsync(user, "123456");
+        var result = await sut.VerifyAndEnableEmailMfaAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         result.Should().BeFalse();
@@ -792,7 +917,7 @@ public class MfaServiceTests
         user.EmailMfaCodeExpiry = pendingExpiry;
         user.EmailMfaVerificationAttempts = 2;
         var passwordHasherMock = new Mock<IPasswordHasher<ApplicationUser>>();
-        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", "123456"))
+        passwordHasherMock.Setup(x => x.VerifyHashedPassword(user, "HASHED_CODE", TotpCode(_time.GetUtcNow())))
             .Returns(PasswordVerificationResult.Success);
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Failed(new IdentityError
@@ -806,7 +931,7 @@ public class MfaServiceTests
             distributedCacheMock: distributedCacheMock);
 
         // Act
-        var result = await sut.VerifyAndEnableEmailMfaAsync(user, "123456");
+        var result = await sut.VerifyAndEnableEmailMfaAsync(user, TotpCode(_time.GetUtcNow()));
 
         // Assert
         result.Should().BeFalse();
@@ -853,6 +978,21 @@ public class MfaServiceTests
 
     #region Helpers
 
+    private static string TotpCode(DateTimeOffset time)
+    {
+        var step = BitConverter.GetBytes(System.Net.IPAddress.HostToNetworkOrder(time.ToUnixTimeSeconds() / 30));
+        var hash = System.Security.Cryptography.HMACSHA1.HashData(System.Text.Encoding.ASCII.GetBytes("12345678901234567890"), step);
+        var offset = hash[^1] & 15;
+        var value = ((hash[offset] & 127) << 24) | (hash[offset + 1] << 16) | (hash[offset + 2] << 8) | hash[offset + 3];
+        return (value % 1000000).ToString("D6");
+    }
+
+    private sealed class MfaTestTimeProvider : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
     private static ApplicationUser CreateTestUser() => new()
     {
         Id = Guid.NewGuid(),
@@ -860,6 +1000,8 @@ public class MfaServiceTests
         Email = "test@example.com",
         EmailConfirmed = true
     };
+
+    public void Dispose() => _dbContext.Dispose();
 
     private MfaService CreateMfaService(
         Mock<IEmailService>? emailServiceMock = null,
@@ -877,8 +1019,8 @@ public class MfaServiceTests
             distributedCacheMock?.Object ?? _distributedCacheMock.Object,
             _securityPolicyServiceMock.Object,
             emailMfaAttemptStoreMock?.Object ?? _emailMfaAttemptStoreMock.Object,
-            null!,
-            _loggerMock.Object);
+            _dbContext,
+            _loggerMock.Object, _time);
     }
 
     #endregion

@@ -105,11 +105,20 @@ If you need to change your network binding after running the setup script (e.g.,
 ```
 
 ### How to Update Trusted Proxy
-If your Reverse Proxy (Host A) IP changes, update `Proxy__KnownProxies`:
+For local Nginx split-host modes, update `Proxy__KnownProxies` when Host A or
+the local gateway address changes. Supply only the actual addresses as seen
+by the IdP; no Docker subnet or blanket private-network trust is assumed:
 ```bash
-# Add your new Host A IP here
-Proxy__KnownProxies=192.168.1.10;172.16.0.0/12;...
+# Replace both placeholders with your operator-approved IPs or narrow CIDRs.
+Proxy__KnownProxies='<HOST_A_IP>;<LOCAL_GATEWAY_IP_OR_NARROW_CIDR>'
 ```
+
+Both gateway compose modes require this list and process two forwarding hops.
+The setup wizards require Host A and gateway input separately. Direct
+`docker-compose.splithost.yml` instead uses the required `PROXY_HOST_IP` as its
+effective trust list, overriding `Proxy__KnownProxies`. Set that value explicitly
+for direct mode. The repository supplies no live address and does not modify an
+existing deployment's environment file.
 
 ---
 

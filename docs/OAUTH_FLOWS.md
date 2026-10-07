@@ -2,6 +2,22 @@
 
 This document describes the supported OAuth 2.0 / OpenID Connect flows in HybridIdP.
 
+API scopes require current resource usage approval at token issuance. Stored
+client scope permissions and end-user consent alone do not establish it. Every
+mapped API resource must be explicitly open or have a server-recorded approval
+for that client and scope from its owner or a full IdP Admin. The scope's catalog
+visibility and OIDC/M2M `IsPublic` classification are separate decisions.
+Authorization-code, refresh, device, client-credentials and password issuance
+return the normal machine-readable OAuth `invalid_scope` error through the
+OpenIddict server scheme if usage approval is missing. Current audiences are
+recomputed on successful issuance. Discovery and supported grants are unchanged.
+
+Existing and seeded sample API clients require explicit approval after upgrade;
+their permissions and credentials are preserved. Approve each mapped resource
+in its API Resource editor, then configure the client's allowed scopes. Unmapped
+custom scopes can be approved in the Scope editor. Ownerless or unknown resource
+ownership requires full Admin approval; no legacy permission is auto-approved.
+
 ## Supported Flows
 
 ### 1. Authorization Code Flow (with PKCE)
@@ -32,6 +48,16 @@ Used when the application acts on its own behalf, not a user.
 3. User visits URI on another device (phone/laptop) and enters code.
 4. Device polls `/connect/token` until user approves.
 
+Approval and device-code redemption each evaluate the current global mandatory
+MFA policy as well as the client's `RequireMfa` setting. Either requirement
+needs performed `amr=mfa` evidence; `hwk` alone is insufficient. A password-only
+cookie cannot approve after policy activation, and an approval persisted before
+activation cannot redeem without that evidence. Enrollment grace does not
+grandfather a device authorization. A rejected redemption returns OAuth
+`invalid_grant` as JSON through the OpenIddict server scheme. Compliant MFA
+retains the existing one-time approval intent, current account/Person and
+migration eligibility, scope permissions and API usage approval checks.
+
 ### 4. Refresh Token Flow
 **Standard for:** Renewing access tokens without re-authentication.
 **Grant Type:** `refresh_token`
@@ -51,6 +77,20 @@ Only for legacy migration or highly trusted legacy clients.
 
 ## Endpoints
 
+### OIDC end-session confirmation
+
+`/connect/logout` accepts initial RP GET and POST requests without requiring
+local antiforgery. An authenticated application cookie is retained until the
+user submits the local confirmation form with valid antiforgery bound to that
+browser/user. Missing, invalid or another browser's confirmation cannot sign
+out the user. POST-carried client, id-token, post-logout redirect, state and
+optional logout/UI-locale parameters survive the confirmation roundtrip.
+Unauthenticated completion retains the existing behavior. OpenIddict still
+validates client permissions and registered post-logout redirects; local
+confirmation grants no redirect authority. Discovery retains
+`end_session_endpoint=/connect/logout`. Focused local fixtures do not establish
+a rendered browser/RP roundtrip or deployed endpoint acceptance.
+
 | Endpoint | Path | Method | Description |
 |----------|------|--------|-------------|
 | Authorization | `/connect/authorize` | GET/POST | User interactive login |
@@ -60,6 +100,7 @@ Only for legacy migration or highly trusted legacy clients.
 | Device Auth | `/connect/device` | POST | Device flow initiation |
 | Verification | `/connect/verify` | GET/POST | Device flow user input |
 | UserInfo | `/connect/userinfo` | GET/POST | User profile data |
+| End Session | `/connect/logout` | GET/POST | OIDC ingress and browser-bound local confirmation |
 
 ## Testing
 

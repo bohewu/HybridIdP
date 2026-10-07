@@ -42,6 +42,7 @@ public class UsersController : ControllerBase
     private readonly IApplicationDbContext _dbContext;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IImpersonationService _impersonationService;
+    private readonly IAuditService _auditService;
     private readonly AspNetCoreAuthorizationService _authorizationService;
     private readonly ILogger<UsersController> _logger;
     private readonly PrivilegedRoleProtectionOptions _privilegedRoleProtectionOptions;
@@ -62,6 +63,7 @@ public class UsersController : ControllerBase
         IOptions<PrivilegedRoleProtectionOptions> privilegedRoleProtectionOptions,
         ILogger<UsersController> logger,
         IRecoveryAssistanceService recoveryAssistanceService,
+        IAuditService auditService,
         INativeRecoveryAssistanceService? nativeRecoveryAssistanceService = null)
     {
         _lifecycleEligibility = lifecycleEligibility;
@@ -73,6 +75,7 @@ public class UsersController : ControllerBase
         _dbContext = dbContext;
         _localizer = localizer;
         _impersonationService = impersonationService;
+        _auditService = auditService;
         _authorizationService = authorizationService;
         _privilegedRoleProtectionOptions = privilegedRoleProtectionOptions.Value;
         _logger = logger;
@@ -694,8 +697,14 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var currentUserIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                                   ?? User.GetClaim(OpenIddict.Abstractions.OpenIddictConstants.Claims.Subject);
+            var identity = AuthorizationRoleClaimResolver.GetApplicationPrincipal(User).Identity as ClaimsIdentity
+                ?? User.Identity as ClaimsIdentity;
+            var currentUserIdStr = identity?.Actor?.FindFirst(AuthConstants.Claims.ImpersonatorId)?.Value
+                                   ?? identity?.Actor?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                   ?? identity?.Actor?.FindFirst("sub")?.Value
+                                   ?? identity?.FindFirst(AuthConstants.Claims.ImpersonatorId)?.Value
+                                   ?? identity?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                                   ?? identity?.FindFirst(OpenIddict.Abstractions.OpenIddictConstants.Claims.Subject)?.Value;
 
             if (string.IsNullOrEmpty(currentUserIdStr) || !Guid.TryParse(currentUserIdStr, out var currentUserId))
             {
@@ -721,6 +730,8 @@ public class UsersController : ControllerBase
             }
 
             // Issue the cookie
+            await _auditService.LogImpersonationEventAsync("ImpersonationStarted", principal!,
+                HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString(), HttpContext.RequestAborted);
             await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal!, new AuthenticationProperties
             {
                 IsPersistent = false

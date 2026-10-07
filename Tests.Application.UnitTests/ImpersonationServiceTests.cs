@@ -147,4 +147,26 @@ _userManagerMock.Object, _claimsFactoryMock.Object);
         Assert.True(result.Success);
         Assert.NotNull(result.Principal);
     }
+
+    [Fact]
+    public async Task RevertImpersonationAsync_ShouldRestoreOriginalActor_WhenOnlyPreservedCookieClaimRemains()
+    {
+        var actorId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var originalUser = new ApplicationUser { Id = actorId };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, subjectId.ToString()),
+            new Claim(AuthConstants.Claims.ImpersonatorId, actorId.ToString())], "cookie"));
+        var restored = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "cookie"));
+        _userManagerMock.Setup(manager => manager.FindByIdAsync(actorId.ToString())).ReturnsAsync(originalUser);
+        _claimsFactoryMock.Setup(factory => factory.CreateAsync(originalUser)).ReturnsAsync(restored);
+
+        var result = await _sut.RevertImpersonationAsync(principal);
+
+        Assert.True(result.Success);
+        Assert.Same(restored, result.Principal);
+        Assert.Null(((ClaimsIdentity)restored.Identity!).Actor);
+        Assert.Null(restored.FindFirst(AuthConstants.Claims.ImpersonatorId));
+        _userManagerMock.Verify(manager => manager.FindByIdAsync(subjectId.ToString()), Times.Never);
+    }
 }

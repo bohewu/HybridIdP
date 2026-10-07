@@ -365,7 +365,8 @@ public class UsersControllerPrivilegedSessionAssuranceTests
             authorizationService.Object,
             Options.Create(options),
             Mock.Of<ILogger<UsersController>>(),
-            Mock.Of<IRecoveryAssistanceService>());
+            Mock.Of<IRecoveryAssistanceService>(),
+            Mock.Of<IAuditService>());
     }
 
     private static Mock<UserManager<ApplicationUser>> CreateUserManager() =>

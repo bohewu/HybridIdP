@@ -39,8 +39,8 @@ HTTPS with normal certificate validation is the default. Authenticated HTTP is
 allowed only with explicit `AllowPrivateNetworkHttp=true` for a deployment's
 controlled private network. This flag permits HTTP; it does not itself validate
 whether a hostname resolves to a private address. Configure only trusted fixed
-endpoints, with no redirects; the current typed HTTP client has the platform's
-default redirect behavior, not a provider-discovery or redirect trust policy.
+endpoints. The typed client disables automatic redirects; a `3xx` causes no
+follow-up shared-secret request and is handled as a non-success response.
 
 Request:
 
@@ -161,6 +161,13 @@ verification timestamp, is `Untrusted`; only usable trusted email is
 was absent, disabled, ambiguous or unavailable, so the consumer does not infer
 one of those causes. These are local outcomes, not wire fields.
 Caller cancellation propagates. No retry is installed by this adapter.
+
+Response consumption has a fixed 16 KiB byte ceiling before JSON parsing,
+including missing Content-Length and chunked bodies. Oversize and body-read
+failures report `Unavailable` and invalidate all prior snapshot evidence; they
+cannot leave an earlier Available snapshot usable. Valid in-limit `2xx` JSON
+keeps the existing media-type/charset handling, tuple checks and outcome rules.
+No response-size configuration surface is added.
 
 Recovery policy accepts source email only when explicitly enabled for its trust
 origin and its snapshot is `Available`. Evidence fetched before the configured

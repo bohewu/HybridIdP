@@ -4,11 +4,13 @@ using Core.Application;
 using Core.Application.Ports;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
+using Infrastructure.Options;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 
 namespace Web.IdP.Pages.Account;
 
@@ -22,6 +24,7 @@ public sealed class ForgotPasswordModel : PageModel
     private const string ProofKey = "native-recovery.proof";
     private const string AdministrativeApprovalKey = "native-recovery.admin-approval";
     private const string GrantKey = "native-recovery.grant";
+    private const string PreparedKey = "native-recovery.prepared";
     private const string MaskedDestinationKey = "native-recovery.masked";
     private const string BrowserBudgetKey = "native-recovery.browser-budget";
 
@@ -33,6 +36,7 @@ public sealed class ForgotPasswordModel : PageModel
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly INativeRecoveryAssistanceService? _assistanceService;
     private readonly IRecoveryPrecheckService? _precheck;
+    private readonly IOptions<ForgotPasswordRecoveryOptions>? _recoveryOptions;
 
     public ForgotPasswordModel(
         INativePasswordRecoveryProofService proofService,
@@ -42,7 +46,8 @@ public sealed class ForgotPasswordModel : PageModel
         IDataProtectionProvider dataProtectionProvider,
         IStringLocalizer<SharedResource> localizer,
         INativeRecoveryAssistanceService? assistanceService = null,
-        IRecoveryPrecheckService? precheck = null)
+        IRecoveryPrecheckService? precheck = null,
+        IOptions<ForgotPasswordRecoveryOptions>? recoveryOptions = null)
     {
         _proofService = proofService;
         _resetService = resetService;
@@ -53,6 +58,7 @@ public sealed class ForgotPasswordModel : PageModel
         _localizer = localizer;
         _assistanceService = assistanceService;
         _precheck = precheck;
+        _recoveryOptions = recoveryOptions;
     }
 
     [BindProperty]
@@ -69,6 +75,7 @@ public sealed class ForgotPasswordModel : PageModel
     public bool RecoverySucceeded { get; private set; }
     public bool ReadyToSend { get; private set; }
     public string? MaskedDestination { get; private set; }
+    public bool PrecheckHintsEnabled => _recoveryOptions?.Value.PrecheckHintsEnabled ?? true;
     public bool IdentityInputEnabled => _precheck?.IdentityInputEnabled == true;
     public string IdentityLabelResourceKey => _precheck?.LabelResourceKey ?? "Recovery.Identity.Identifier.Label";
     public string IdentityHelpResourceKey => _precheck?.HelpResourceKey ?? "Recovery.Identity.Identifier.Help";
@@ -136,12 +143,17 @@ public sealed class ForgotPasswordModel : PageModel
         {
             var prepared = await _precheck.PrepareAsync(new RecoveryPrepareRequest(identifier, evidence ?? string.Empty,
                 context, HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"), cancellationToken);
-            if (prepared.GrantId is not { } grantId || string.IsNullOrWhiteSpace(prepared.MaskedDestination))
+            if (PrecheckHintsEnabled &&
+                (prepared.GrantId is null || string.IsNullOrWhiteSpace(prepared.MaskedDestination)))
                 return ResetDenied();
-            HttpContext.Session.SetString(GrantKey, grantId.ToString("D"));
-            HttpContext.Session.SetString(MaskedDestinationKey, prepared.MaskedDestination);
+            if (prepared.GrantId is { } grantId)
+                HttpContext.Session.SetString(GrantKey, grantId.ToString("D"));
+            // A public phase marker is not a grant. Unavailable OFF-mode requests cannot reserve an OTP.
+            HttpContext.Session.SetString(PreparedKey, "ready");
+            if (PrecheckHintsEnabled)
+                HttpContext.Session.SetString(MaskedDestinationKey, prepared.MaskedDestination!);
             ReadyToSend = true;
-            MaskedDestination = prepared.MaskedDestination;
+            MaskedDestination = PrecheckHintsEnabled ? prepared.MaskedDestination : null;
             return Page();
         }
         var result = await _proofService.StartAsync(
@@ -157,11 +169,16 @@ public sealed class ForgotPasswordModel : PageModel
         Identifier = new IdentifierInput();
         ModelState.Clear();
         await HttpContext.Session.LoadAsync(cancellationToken);
+        var hasGrant = Guid.TryParse(HttpContext.Session.GetString(GrantKey), out var grantId);
         if (!await IsNativeAvailableAsync() || _precheck?.Enabled != true ||
-            !Guid.TryParse(HttpContext.Session.GetString(GrantKey), out var grantId) ||
+            !hasGrant && (PrecheckHintsEnabled || HttpContext.Session.GetString(PreparedKey) != "ready") ||
             !TryGetContext(out var context)) return ResetDenied();
         HttpContext.Session.Remove(GrantKey);
+        HttpContext.Session.Remove(PreparedKey);
         HttpContext.Session.Remove(MaskedDestinationKey);
+        ReadyToSend = false;
+        MaskedDestination = null;
+        // Guid.Empty follows the existing denied-send path; no durable grant or challenge is fabricated.
         var result = await _precheck.SendOtpAsync(new RecoverySendOtpRequest(grantId, context,
             HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"), cancellationToken);
         HttpContext.Session.SetString(RequestIdKey, result.RequestId.ToString("D"));
@@ -326,6 +343,11 @@ public sealed class ForgotPasswordModel : PageModel
 
     private async Task<bool> IsNativeAvailableAsync()
     {
+        if (!PrecheckHintsEnabled)
+        {
+            HttpContext.Session.Remove(MaskedDestinationKey);
+            MaskedDestination = null;
+        }
         CurrentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
         ClientPasswordRules = BuildClientPasswordRules(CurrentPolicy);
         var decision = _routingEvaluator.Evaluate(
@@ -475,8 +497,10 @@ public sealed class ForgotPasswordModel : PageModel
 
     private void RestorePhase()
     {
-        ReadyToSend = Guid.TryParse(HttpContext.Session.GetString(GrantKey), out _);
-        MaskedDestination = ReadyToSend ? HttpContext.Session.GetString(MaskedDestinationKey) : null;
+        ReadyToSend = _precheck?.Enabled == true &&
+            (Guid.TryParse(HttpContext.Session.GetString(GrantKey), out _) ||
+             !PrecheckHintsEnabled && HttpContext.Session.GetString(PreparedKey) == "ready");
+        MaskedDestination = ReadyToSend && PrecheckHintsEnabled ? HttpContext.Session.GetString(MaskedDestinationKey) : null;
         AwaitingPassword = TryGetProof(out _);
         AwaitingCode = !AwaitingPassword &&
             Guid.TryParse(HttpContext.Session.GetString(RequestIdKey), out _);
@@ -509,6 +533,7 @@ public sealed class ForgotPasswordModel : PageModel
         HttpContext.Session.Remove(ProofKey);
         HttpContext.Session.Remove(AdministrativeApprovalKey);
         HttpContext.Session.Remove(GrantKey);
+        HttpContext.Session.Remove(PreparedKey);
         HttpContext.Session.Remove(MaskedDestinationKey);
         ReadyToSend = false;
         MaskedDestination = null;

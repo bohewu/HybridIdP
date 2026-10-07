@@ -195,6 +195,7 @@ public partial class PasskeyController : ControllerBase
                     Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
                     Core.Domain.Constants.AuthConstants.Amr.UserPresence,
                     Core.Domain.Constants.AuthConstants.Amr.Mfa);
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
                 await _signInManager.SignInWithClaimsAsync(
                     user,
                     isPersistent: false,
@@ -226,7 +227,7 @@ public partial class PasskeyController : ControllerBase
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null) return Unauthorized();
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+        if (!await MfaEnrollmentSession.IsRemovalAuthorizedAsync(HttpContext, user, ct))
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
@@ -240,8 +241,8 @@ public partial class PasskeyController : ControllerBase
             {
                 // Last passkey - check other factors
                 var otherFactors = 0;
-                if (user.TwoFactorEnabled) otherFactors++;
-                if (user.EmailMfaEnabled) otherFactors++;
+                if (policy.EnableTotpMfa && user.TwoFactorEnabled) otherFactors++;
+                if (policy.EnableEmailMfa && user.EmailMfaEnabled) otherFactors++;
 
                 if (otherFactors == 0)
                 {
@@ -255,6 +256,8 @@ public partial class PasskeyController : ControllerBase
         {
             return NotFound(new { error = "Passkey not found" });
         }
+
+        MfaEnrollmentSession.Consume(HttpContext.Session);
 
         LogPasskeyDeleted(user.Id, id);
         await _auditService.LogEventAsync(
@@ -401,6 +404,8 @@ public partial class PasskeyController : ControllerBase
             var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
             RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, result.User.Id, hardware: true);
+            if (result.UserVerified)
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, result.User);
             await _signInManager.SignInWithClaimsAsync(result.User, isPersistent: false, claims);
             await _userManagementService.UpdateLastLoginAsync(result.User.Id, ct);
             LogPasskeyLogin(result.User.UserName);

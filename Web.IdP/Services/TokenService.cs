@@ -34,7 +34,8 @@ namespace Web.IdP.Services
         IOptions<CredentialMigrationOptions> credentialMigrationOptions,
         ICredentialMigrationStateStore credentialMigrationStateStore,
         IStage2CredentialMigrationService stage2CredentialMigrationService,
-        IMigrationIssuanceGuard migrationIssuanceGuard) : ITokenService
+        IMigrationIssuanceGuard migrationIssuanceGuard,
+        global::Infrastructure.Authorization.IApiScopeUsagePolicy scopeUsage) : ITokenService
     {
         private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility = lifecycleEligibility;
         private readonly UserManager<ApplicationUser> _userManager = userManager;
@@ -64,29 +65,49 @@ namespace Web.IdP.Services
                 return permissionError;
             }
 
+            // Recheck current approval at every token grant, including stored code/device/refresh scopes.
+            var application = await _applicationManager.FindByClientIdAsync(request.ClientId ?? string.Empty, cancellationToken);
+            var effectiveScopes = request.IsAuthorizationCodeGrantType() || request.IsDeviceCodeGrantType()
+                ? schemePrincipal?.GetScopes() ?? []
+                : request.IsRefreshTokenGrantType() && string.IsNullOrEmpty(request.Scope)
+                    ? schemePrincipal?.GetScopes() ?? []
+                    : request.GetScopes();
+            if (application != null && request.IsRefreshTokenGrantType())
+            {
+                var currentPermissions = await _applicationManager.GetPermissionsAsync(application, cancellationToken);
+                effectiveScopes = effectiveScopes.Where(scope => currentPermissions.Contains(OpenIddictConstants.Permissions.Prefixes.Scope + scope)).ToImmutableArray();
+            }
+            if (application == null || !await scopeUsage.CanUseScopesAsync(application, effectiveScopes, cancellationToken))
+                return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidScope,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The client is not approved to use the requested API scopes."
+                    }));
+
             if (request.IsPasswordGrantType())
             {
-                return await HandlePasswordGrantAsync(request, cancellationToken);
+                return await ApplyCurrentAudiencesAsync(await HandlePasswordGrantAsync(request, cancellationToken));
             }
 
             if (request.IsAuthorizationCodeGrantType())
             {
-                return await HandleAuthorizationCodeGrantAsync(request, schemePrincipal, cancellationToken);
+                return await ApplyCurrentAudiencesAsync(await HandleAuthorizationCodeGrantAsync(request, schemePrincipal, cancellationToken));
             }
 
             if (request.IsRefreshTokenGrantType())
             {
-                return await HandleRefreshTokenGrantAsync(request, schemePrincipal, cancellationToken);
+                return await ApplyCurrentAudiencesAsync(await HandleRefreshTokenGrantAsync(request, schemePrincipal, cancellationToken));
             }
             
             if (request.IsDeviceCodeGrantType())
             {
-                return await HandleDeviceCodeGrantAsync(request, schemePrincipal, cancellationToken);
+                return await ApplyCurrentAudiencesAsync(await HandleDeviceCodeGrantAsync(request, schemePrincipal, cancellationToken));
             }
 
             if (request.IsClientCredentialsGrantType())
             {
-                return await HandleClientCredentialsGrantAsync(request, cancellationToken);
+                return await ApplyCurrentAudiencesAsync(await HandleClientCredentialsGrantAsync(request, cancellationToken));
             }
 
             return new ForbidResult(
@@ -96,6 +117,17 @@ namespace Web.IdP.Services
                     [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.UnsupportedGrantType,
                     [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The specified grant type is not supported."
                 }));
+        }
+
+        private async Task<IActionResult> ApplyCurrentAudiencesAsync(IActionResult result)
+        {
+            if (result is Microsoft.AspNetCore.Mvc.SignInResult signIn && signIn.Principal != null)
+            {
+                var audiences = await _apiResourceService.GetAudiencesByScopesAsync(signIn.Principal.GetScopes());
+                signIn.Principal.SetAudiences(audiences.ToImmutableArray());
+                signIn.Principal.SetResources(audiences.ToImmutableArray());
+            }
+            return result;
         }
 
         private async Task<IActionResult?> ValidateClientGrantPermissionAsync(OpenIddictRequest request, CancellationToken cancellationToken)
@@ -639,7 +671,17 @@ namespace Web.IdP.Services
                         }));
                 }
 
-                if (!await SatisfiesClientMfaAsync(request, schemePrincipal, cancellationToken)) return InvalidPasswordGrant();
+                var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+                if ((policy.EnforceMandatoryMfaEnrollment && !Web.IdP.Helpers.MfaEnrollmentSession.HasMfa(schemePrincipal)) ||
+                    !await SatisfiesClientMfaAsync(request, schemePrincipal, cancellationToken))
+                {
+                    return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Multi-factor authentication is required for this device authorization."
+                        }));
+                }
 
                 var subject = schemePrincipal.GetClaim(Claims.Subject);
                 if (string.IsNullOrEmpty(subject))

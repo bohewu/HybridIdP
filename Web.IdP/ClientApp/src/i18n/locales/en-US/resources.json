@@ -52,7 +52,21 @@
     "cancelButton": "Cancel",
     "validation": {
       "nameRequired": "Name is required and cannot be empty."
-    }
+    },
+    "usagePolicy": "API usage policy",
+    "usageOpen": "Allow self-service usage",
+    "usageOpenHelp": "Any client manager may add these scopes. Other mapped resources must also allow usage.",
+    "catalogVisible": "Show in the shared catalog",
+    "catalogVisibleHelp": "Makes this resource discoverable. Usage still requires approval unless self-service is enabled.",
+    "usageApproval": "Approve a client for this scope",
+    "usageApprovalHelp": "Approve one saved scope for this resource. Each other restricted resource needs its own approval. Then the client manager can add the scope.",
+    "applicationId": "Client application ID (UUID from the client management URL)",
+    "approvalScope": "Saved scope",
+    "selectApprovalScope": "Select a scope",
+    "approveUsage": "Approve usage",
+    "approvingUsage": "Approving...",
+    "usageApprovalSaved": "Approval saved. The client manager can request this scope when every resource has approved it.",
+    "usageApprovalFailed": "Approval failed. Check the client application ID, saved scope and your owner permissions."
   },
   "accessDenied": {
     "read": "You do not have permission to view API resources.",

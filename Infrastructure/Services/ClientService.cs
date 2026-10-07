@@ -23,18 +23,21 @@ public class ClientService : IClientService
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly RedirectUriSecurityPolicyOptions _redirectUriSecurityPolicy;
     private readonly HashSet<string> _allowedRedirectHosts;
+    private readonly Infrastructure.Authorization.IApiScopeUsagePolicy _scopeUsage;
 
     public ClientService(
         IOpenIddictApplicationManager applicationManager, 
         IDomainEventPublisher eventPublisher,
         IApplicationDbContext context,
         IOpenIddictScopeManager scopeManager,
-        IOptions<RedirectUriSecurityPolicyOptions> redirectUriSecurityPolicyOptions)
+        IOptions<RedirectUriSecurityPolicyOptions> redirectUriSecurityPolicyOptions,
+        Infrastructure.Authorization.IApiScopeUsagePolicy scopeUsage)
     {
         _applicationManager = applicationManager;
         _eventPublisher = eventPublisher;
         _context = context;
         _scopeManager = scopeManager;
+        _scopeUsage = scopeUsage;
         _redirectUriSecurityPolicy = redirectUriSecurityPolicyOptions.Value;
         _allowedRedirectHosts = (_redirectUriSecurityPolicy.AllowedHosts ?? [])
             .Where(host => !string.IsNullOrWhiteSpace(host))
@@ -350,6 +353,7 @@ public class ClientService : IClientService
             throw new ArgumentException("Redirect URIs are required for interactive clients (Authorization Code or Implicit flow).");
         }
 
+        await _scopeUsage.PrepareClientScopesAsync(descriptor, cancellationToken);
         var id = await CreateApplicationWithOwnershipAsync(descriptor, creatorPersonId, cancellationToken);
 
         // Publish domain event
@@ -484,8 +488,9 @@ public class ClientService : IClientService
                 }
             }
 
-            // Publish scope change event if permissions include scopes
-            // Publish scope change event if permissions include scopes
+            await _scopeUsage.PrepareClientScopesAsync(descriptor, cancellationToken);
+
+            // Publish scope change event only after the entire scope policy preflight.
             var scopeChanges = string.Join(", ", request.Permissions.Where(p => p.StartsWith(Permissions.Prefixes.Scope)));
             if (!string.IsNullOrEmpty(scopeChanges))
             {

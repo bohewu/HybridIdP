@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Server.AspNetCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Antiforgery;
 
 namespace Web.IdP.Controllers.Connect;
 
@@ -13,6 +14,13 @@ namespace Web.IdP.Controllers.Connect;
 /// </summary>
 public class LogoutController : Controller
 {
+    private readonly IAntiforgery _antiforgery;
+
+    public LogoutController(IAntiforgery antiforgery)
+    {
+        _antiforgery = antiforgery;
+    }
+
     [HttpGet("~/connect/logout")]
     [HttpPost("~/connect/logout")]
     [IgnoreAntiforgeryToken]
@@ -24,20 +32,34 @@ public class LogoutController : Controller
             return BadRequest("The OpenID Connect request cannot be retrieved.");
         }
 
-        // GET request: show confirmation page if user is authenticated
-        if (HttpMethods.IsGet(Request.Method))
+        if (User.Identity?.IsAuthenticated != true)
         {
-            if (User.Identity?.IsAuthenticated != true)
-            {
-                // Not authenticated, just complete the logout flow
-                return SignOut(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-            }
-
-            // Show confirmation view
-            return View("~/Views/Connect/Logout.cshtml");
+            // No local session to clear; let OpenIddict complete the validated request.
+            return SignOut(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
 
-        // POST request: perform the sign-out
+        // RP GET/POST ingress has no local antiforgery token. Only the local form
+        // can confirm sign-out, with a token bound to this browser and user.
+        if (!HttpMethods.IsPost(Request.Method) || !Request.HasFormContentType ||
+            !Request.Form.ContainsKey("logout_confirmation"))
+        {
+            return View("~/Views/Connect/Logout.cshtml", request);
+        }
+
+        if (Request.Form["logout_confirmation"].ToString() != "true")
+        {
+            return BadRequest();
+        }
+
+        try
+        {
+            await _antiforgery.ValidateRequestAsync(HttpContext);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            return BadRequest();
+        }
+
         await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
         
         return SignOut(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);

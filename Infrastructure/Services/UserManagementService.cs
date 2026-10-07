@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Options;
 using Core.Domain;
 using Core.Domain.Entities;
 using Core.Domain.Events;
@@ -8,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using System.Text.Json;
 using System.Threading;
+using Infrastructure.Authorization;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services;
 
@@ -18,19 +21,22 @@ public class UserManagementService : IUserManagementService
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly IApplicationDbContext _context;
     private readonly IOpenIddictApplicationManager _applicationManager;
+    private readonly PrivilegedRoleProtectionOptions _roleProtection;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         IDomainEventPublisher eventPublisher,
         IApplicationDbContext context,
-        IOpenIddictApplicationManager applicationManager)
+        IOpenIddictApplicationManager applicationManager,
+        IOptions<PrivilegedRoleProtectionOptions>? roleProtection = null)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _eventPublisher = eventPublisher;
         _context = context;
         _applicationManager = applicationManager;
+        _roleProtection = roleProtection?.Value ?? new PrivilegedRoleProtectionOptions();
     }
 
     public async Task<PagedUsersDto> GetUsersAsync(
@@ -201,6 +207,10 @@ public class UserManagementService : IUserManagementService
         CancellationToken cancellationToken = default)
     {
         // Phase 10.4: Create Person first, then ApplicationUser
+        if (_roleProtection.RequireTargetMfaForPrivilegedRoleAssignment &&
+            PrivilegedRoleAssignmentPolicy.ContainsProtectedRole(createDto.Roles ?? [], _roleProtection))
+            return (false, null, new[] { PrivilegedRoleAssignmentPolicy.TargetMfaError });
+
         var person = new Person
         {
             Id = Guid.NewGuid(),
@@ -299,6 +309,11 @@ public class UserManagementService : IUserManagementService
         {
             return (false, new[] { "User not found" });
         }
+
+        if (updateRoles && !await PrivilegedRoleAssignmentPolicy.CanReceiveAsync(user,
+                updateDto.Roles.Except(await _userManager.GetRolesAsync(user), StringComparer.OrdinalIgnoreCase),
+                _roleProtection, _context, cancellationToken))
+            return (false, new[] { PrivilegedRoleAssignmentPolicy.TargetMfaError });
 
         var isActiveChanged = user.IsActive != updateDto.IsActive;
 
@@ -482,7 +497,7 @@ public class UserManagementService : IUserManagementService
             return (false, new[] { "User not found" });
         }
 
-        var allowedRolesList = roles.ToList(); // Materialize to avoid multiple enumeration (CA1851)
+        var allowedRolesList = roles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var currentRoles = await _userManager.GetRolesAsync(user);
         var rolesToRemove = currentRoles.Except(allowedRolesList).ToList();
         var rolesToAdd = allowedRolesList.Except(currentRoles).ToList();
@@ -496,53 +511,43 @@ public class UserManagementService : IUserManagementService
                 .ToListAsync(cancellationToken);
         }
 
-        // Remove roles from main user and siblings
-        if (rolesToRemove.Count > 0)
+        var changes = new List<(ApplicationUser User, List<string> Add, List<string> Remove)>
         {
-            var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
-            if (!removeResult.Succeeded)
-            {
-                return (false, removeResult.Errors.Select(e => e.Description));
-            }
+            (user, rolesToAdd, rolesToRemove)
+        };
+        foreach (var sibling in siblingAccounts)
+        {
+            var siblingRoles = await _userManager.GetRolesAsync(sibling);
+            changes.Add((sibling,
+                allowedRolesList.Except(siblingRoles, StringComparer.OrdinalIgnoreCase).ToList(),
+                siblingRoles.Intersect(rolesToRemove, StringComparer.OrdinalIgnoreCase).ToList()));
+        }
 
-            // Sync removal to siblings
-            foreach (var sibling in siblingAccounts)
+        // Validate every actual recipient before any removal or addition, even if the selected
+        // account already has a requested role that is missing from one of its siblings.
+        foreach (var change in changes)
+        {
+            if (!await PrivilegedRoleAssignmentPolicy.CanReceiveAsync(change.User, change.Add,
+                    _roleProtection, _context, cancellationToken))
+                return (false, new[] { PrivilegedRoleAssignmentPolicy.TargetMfaError });
+        }
+
+        foreach (var change in changes)
+        {
+            if (change.Remove.Count > 0)
             {
-                var siblingCurrentRoles = await _userManager.GetRolesAsync(sibling);
-                var siblingRolesToRemove = siblingCurrentRoles.Intersect(rolesToRemove).ToList();
-                if (siblingRolesToRemove.Count > 0)
-                {
-                    await _userManager.RemoveFromRolesAsync(sibling, siblingRolesToRemove);
-                }
+                var result = await _userManager.RemoveFromRolesAsync(change.User, change.Remove);
+                if (!result.Succeeded) return (false, result.Errors.Select(error => error.Description));
+            }
+            if (change.Add.Count > 0)
+            {
+                var result = await _userManager.AddToRolesAsync(change.User, change.Add);
+                if (!result.Succeeded) return (false, result.Errors.Select(error => error.Description));
             }
         }
 
-        // Add roles to main user and siblings
-        if (rolesToAdd.Count > 0)
-        {
-            var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
-            if (!addResult.Succeeded)
-            {
-                return (false, addResult.Errors.Select(e => e.Description));
-            }
-
-            // Sync addition to siblings
-            foreach (var sibling in siblingAccounts)
-            {
-                var siblingCurrentRoles = await _userManager.GetRolesAsync(sibling);
-                var siblingRolesToAdd = rolesToAdd.Except(siblingCurrentRoles).ToList();
-                if (siblingRolesToAdd.Count > 0)
-                {
-                    await _userManager.AddToRolesAsync(sibling, siblingRolesToAdd);
-                }
-            }
-
-            // Publish events for added roles
-            foreach (var role in rolesToAdd)
-            {
-                await _eventPublisher.PublishAsync(new UserRoleAssignedEvent(user.Id.ToString(), user.UserName!, role, true));
-            }
-        }
+        foreach (var role in rolesToAdd)
+            await _eventPublisher.PublishAsync(new UserRoleAssignedEvent(user.Id.ToString(), user.UserName!, role, true));
 
         // Publish events for removed roles
         foreach (var role in rolesToRemove)

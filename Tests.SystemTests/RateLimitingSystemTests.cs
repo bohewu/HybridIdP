@@ -13,6 +13,45 @@ namespace Tests.SystemTests;
 public sealed class RateLimitingSystemTests
 {
     [Fact]
+    public async Task ExternalLinkConfirmation_ShouldShareLoginSourceBudgetAcrossAccountNamesBeforeVerification()
+    {
+        var metadata = typeof(Web.IdP.Pages.Account.ExternalLoginConfirmationModel)
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute), true)
+            .Cast<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>().Single();
+        Assert.Equal("login", metadata.PolicyName);
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Test" });
+        builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["RateLimiting:Enabled"] = "true", ["RateLimiting:LoginPermitLimit"] = "5",
+            ["RateLimiting:LoginWindowSeconds"] = "60", ["RateLimiting:QueueLimit"] = "0"
+        });
+        builder.Services.AddCustomRateLimiting(builder.Configuration);
+        await using var app = builder.Build();
+        app.UseRouting();
+        app.UseRateLimiter();
+        var credentialChecks = 0;
+        app.MapPost("/Account/ExternalLoginConfirmation", () => { credentialChecks++; return Results.Ok(); })
+            .WithMetadata(metadata);
+        app.MapPost("/Account/Login", () => { credentialChecks++; return Results.Ok(); }).RequireRateLimiting("login");
+        app.MapGet("/Account/ExternalLoginCallback", () => Results.Ok());
+        await app.StartAsync();
+        using var client = app.GetTestClient();
+        for (var index = 0; index < 5; index++)
+        {
+            using var response = await client.PostAsync(index == 0 ? "/Account/Login" : "/Account/ExternalLoginConfirmation?handler=Link",
+                new FormUrlEncodedContent(new Dictionary<string, string> { ["Input.Login"] = $"account-{index}", ["Input.Password"] = "synthetic" }));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+        using var exhausted = await client.PostAsync("/Account/ExternalLoginConfirmation?handler=Link",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["Input.Login"] = "another-account" }));
+        Assert.Equal(HttpStatusCode.TooManyRequests, exhausted.StatusCode);
+        Assert.Equal(5, credentialChecks);
+        using var callback = await client.GetAsync("/Account/ExternalLoginCallback");
+        Assert.Equal(HttpStatusCode.OK, callback.StatusCode);
+    }
+
+    [Fact]
     public void NativeRecoveryEnabled_WithoutRateLimiting_FailsClosed()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

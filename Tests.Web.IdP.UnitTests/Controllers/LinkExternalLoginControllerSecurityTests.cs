@@ -10,13 +10,19 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Web.IdP.Controllers.Account;
+using Web.IdP.Services;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
 
 public class LinkExternalLoginControllerSecurityTests
 {
-    [Fact]
-    public async Task Callback_ProviderClaimsIncludeMfa_DoesNotChangeCurrentAuthenticationMethods()
+    [Theory]
+    [InlineData(ExternalSignInCompletionStatus.Succeeded)]
+    [InlineData(ExternalSignInCompletionStatus.TotpRequired)]
+    [InlineData(ExternalSignInCompletionStatus.EmailOtpRequired)]
+    [InlineData(ExternalSignInCompletionStatus.MfaEnrollmentRequired)]
+    [InlineData(ExternalSignInCompletionStatus.PasskeyRequired)]
+    public async Task Callback_ProviderClaimsIncludeMfa_DelegatesCorrelatedInfoWithoutPrematureLink(ExternalSignInCompletionStatus status)
     {
         var user = new ApplicationUser
         {
@@ -92,19 +98,23 @@ public class LinkExternalLoginControllerSecurityTests
                 IdentityConstants.ApplicationScheme))
         };
 
+        var coordinator = new Mock<IExternalSignInCoordinator>();
+        coordinator.Setup(x => x.LinkAsync(httpContext, user, externalInfo, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExternalSignInCompletionResult(status));
         var controller = new LinkExternalLoginController(
             signInManager.Object,
             userManager.Object,
             Mock.Of<ILogger<LinkExternalLoginController>>(),
-            loginService.Object)
+            loginService.Object, coordinator.Object)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };
 
         var result = await controller.Callback();
 
-        var redirect = Assert.IsType<RedirectResult>(result);
-        Assert.Equal("/Account/Profile?success=LinkAdded", redirect.Url);
+        if (status == ExternalSignInCompletionStatus.Succeeded)
+            Assert.Equal("/Account/Profile?success=LinkAdded", Assert.IsType<RedirectResult>(result).Url);
+        else Assert.IsType<RedirectToPageResult>(result);
         signInManager.Verify(
             manager => manager.GetExternalLoginInfoAsync(expectedXsrf),
             Times.Once);
@@ -116,7 +126,8 @@ public class LinkExternalLoginControllerSecurityTests
             Times.Once);
         userManager.Verify(
             manager => manager.AddLoginAsync(user, externalInfo),
-            Times.Once);
+            Times.Never);
+        coordinator.Verify(x => x.LinkAsync(httpContext, user, externalInfo, It.IsAny<CancellationToken>()), Times.Once);
         signInManager.Verify(
             manager => manager.RefreshSignInAsync(It.IsAny<ApplicationUser>()),
             Times.Never);
@@ -131,7 +142,7 @@ public class LinkExternalLoginControllerSecurityTests
                 httpContext,
                 IdentityConstants.ExternalScheme,
                 It.IsAny<AuthenticationProperties>()),
-            Times.Once);
+            status == ExternalSignInCompletionStatus.Succeeded ? Times.Once() : Times.Never());
     }
 
     [Fact]
@@ -189,7 +200,7 @@ public class LinkExternalLoginControllerSecurityTests
             signInManager.Object,
             userManager.Object,
             Mock.Of<ILogger<LinkExternalLoginController>>(),
-            loginService.Object)
+            loginService.Object, Mock.Of<IExternalSignInCoordinator>())
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };
@@ -263,7 +274,7 @@ public class LinkExternalLoginControllerSecurityTests
             signInManager.Object,
             userManager.Object,
             Mock.Of<ILogger<LinkExternalLoginController>>(),
-            loginService.Object)
+            loginService.Object, Mock.Of<IExternalSignInCoordinator>())
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };

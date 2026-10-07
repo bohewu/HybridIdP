@@ -36,6 +36,16 @@ checks determine the result. If no local user is found, it calls
 username/password compatibility adapter. Failed, malformed, and unsuccessful
 LegacyAuth responses are not authenticated.
 
+LegacyAuth uses a no-redirect HTTP client and a fixed 64 KiB response-byte
+ceiling, including unknown-length bodies. Redirects, oversize and read failures
+cannot authenticate; ordinary in-limit `2xx` JSON retains existing parsing.
+`LegacyAuth:RequireHttps` (`LegacyAuth__RequireHttps`) defaults to `false`;
+`true` rejects non-HTTPS dispatch before credentials or the shared secret leave
+the service. HTTP compatibility is an explicit deployment choice. HTTPS uses
+normal certificate validation and does not require an internal CA. Proof and
+Metadata have independent no-redirect clients and fixed 64 KiB/16 KiB ceilings;
+their contract, timeout/cancellation and authority boundaries remain separate.
+
 LegacyAuth is current compatibility behavior, not AD/LDAP support and not the
 future generic provider contract. In particular, it does not by itself declare
 the stable-key, matching-assurance, capability, or MFA-trust semantics required
@@ -47,6 +57,15 @@ are considered before email matching. Google and Microsoft email handling use
 provider-specific assurance rules; a missing or untrusted assurance signal must
 not select an existing account or Person by email. Explicit external-account
 linking remains a locally protected flow.
+
+Browser links to an existing account remain pending while local MFA is
+outstanding, including verified-email matching and profile linking. The
+five-minute intent is bound to the original provider/key, account and security
+stamp, and a purpose nonce in the protected two-factor cookie. Only the matching
+successful MFA continuation can persist it after current eligibility, collision
+and link-limit rechecks. A new login or factor-management reauthentication
+cancels abandoned intent. Browser JIT account creation cannot silently select an
+existing account; it returns that case to the same configured linking flow.
 
 The current local seams include JIT provisioning and durable provider-key
 links, `ApplicationUser` and Person lifecycle validation, IdP MFA, cookies,

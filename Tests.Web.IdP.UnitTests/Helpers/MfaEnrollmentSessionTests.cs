@@ -1,4 +1,8 @@
 using System.Security.Claims;
+using Core.Application;
+using Core.Domain;
+using Web.IdP.Services;
+using OpenIddict.Validation.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -11,6 +15,72 @@ namespace Tests.Web.IdP.UnitTests.Helpers;
 
 public class MfaEnrollmentSessionTests
 {
+    [Theory]
+    [InlineData("cookie", "valid", true)]
+    [InlineData("bearer", "valid", true)]
+    [InlineData("mixed", "valid", true)]
+    [InlineData("bearer", "password", false)]
+    [InlineData("cookie", "hardware", false)]
+    [InlineData("bearer", "expired", false)]
+    [InlineData("cookie", "stamp", false)]
+    [InlineData("bearer", "subject", false)]
+    [InlineData("mixed", "mixed-subject", false)]
+    [InlineData("mixed", "mixed-password", false)]
+    [InlineData("cookie", "initial", false)]
+    [InlineData("cookie", "ineligible", false)]
+    [InlineData("bearer", "migration", false)]
+    [InlineData("cookie", "consumed", false)]
+    public async Task IsRemovalAuthorizedAsync_ShouldRequireFreshSubjectStampBoundPerformedMfa(string scheme, string condition, bool allowed)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), SecurityStamp = "current-stamp", IsActive = true };
+        var session = new MemorySession();
+        var time = new MutableTimeProvider(DateTimeOffset.UtcNow);
+        var completion = CreatePrincipal(user.Id);
+        ((ClaimsIdentity)completion.Identity!).AddClaim(new Claim("amr", "mfa"));
+        ((ClaimsIdentity)completion.Identity!).AddClaim(new Claim("AspNet.Identity.SecurityStamp", user.SecurityStamp));
+        MfaEnrollmentSession.Begin(session, user.Id, requiresMfa: true, timeProvider: time, securityStamp: user.SecurityStamp);
+        Assert.True(MfaEnrollmentSession.CompletePending(session, completion, time));
+        if (condition == "expired") time.Advance(TimeSpan.FromMinutes(6));
+        if (condition == "stamp") user.SecurityStamp = "rotated";
+        if (condition == "subject") user.Id = Guid.NewGuid();
+        if (condition == "initial") MfaEnrollmentSession.BeginInitial(session, user.Id, time);
+        if (condition == "consumed") MfaEnrollmentSession.Consume(session);
+
+        var auth = new Mock<IAuthenticationService>();
+        auth.Setup(s => s.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string>())).ReturnsAsync(AuthenticateResult.NoResult());
+        foreach (var identityScheme in new[] { IdentityConstants.ApplicationScheme, OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme })
+        {
+            var cookie = identityScheme == IdentityConstants.ApplicationScheme;
+            if (scheme == "cookie" && !cookie || scheme == "bearer" && cookie) continue;
+            var principal = CreatePrincipal(condition == "mixed-subject" && !cookie ? Guid.NewGuid() : user.Id);
+            ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("amr",
+                condition is "password" || condition == "mixed-password" && !cookie ? "pwd" : condition == "hardware" ? "hwk" : "mfa"));
+            // No auth_time claim: actual access JWTs legitimately omit it.
+            auth.Setup(s => s.AuthenticateAsync(It.IsAny<HttpContext>(), identityScheme))
+                .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(principal, identityScheme)));
+        }
+        var eligibility = new Mock<ICurrentUserLifecycleEligibility>();
+        eligibility.Setup(s => s.IsEligibleAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(condition != "ineligible");
+        var migration = new Mock<IMigrationIssuanceGuard>();
+        migration.Setup(s => s.CanIssueAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(condition != "migration");
+        var context = new DefaultHttpContext { Session = session, RequestServices = new ServiceCollection()
+            .AddSingleton(auth.Object).AddSingleton(eligibility.Object).AddSingleton(migration.Object).BuildServiceProvider() };
+
+        Assert.Equal(allowed, await MfaEnrollmentSession.IsRemovalAuthorizedAsync(context, user, timeProvider: time));
+    }
+
+    [Fact]
+    public void CompletePending_ShouldRejectRotatedStampAndPasswordOnlyCompletion()
+    {
+        var session = new MemorySession();
+        var user = Guid.NewGuid();
+        var principal = CreatePrincipal(user);
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("AspNet.Identity.SecurityStamp", "new-stamp"));
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("amr", "mfa"));
+        MfaEnrollmentSession.Begin(session, user, true, securityStamp: "old-stamp");
+        Assert.False(MfaEnrollmentSession.CompletePending(session, principal));
+        Assert.False(MfaEnrollmentSession.HasFreshProof(session, user));
+    }
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

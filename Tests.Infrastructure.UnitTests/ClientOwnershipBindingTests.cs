@@ -90,7 +90,7 @@ public class ClientOwnershipBindingTests
             Context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             Manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
             Service = new ClientService(Manager, Mock.Of<IDomainEventPublisher>(), Context,
-                Mock.Of<IOpenIddictScopeManager>(), Options.Create(new RedirectUriSecurityPolicyOptions()));
+                Mock.Of<IOpenIddictScopeManager>(), Options.Create(new RedirectUriSecurityPolicyOptions()), Moq.Mock.Of<global::Infrastructure.Authorization.IApiScopeUsagePolicy>());
         }
 
         public static async Task<Fixture> CreateAsync()

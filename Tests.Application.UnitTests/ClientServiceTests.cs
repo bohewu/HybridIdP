@@ -52,7 +52,7 @@ public class ClientServiceTests
             _mockEventPublisher.Object,
             _mockContext.Object,
             _mockScopeManager.Object,
-            Options.Create(new RedirectUriSecurityPolicyOptions()));
+            Options.Create(new RedirectUriSecurityPolicyOptions()), Moq.Mock.Of<Infrastructure.Authorization.IApiScopeUsagePolicy>());
     }
 
     #region GetClientsAsync Tests

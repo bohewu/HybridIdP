@@ -36,6 +36,7 @@ public class ConfigureEmailOptions : IPostConfigureOptions<EmailOptions>
         if (!string.IsNullOrEmpty(password)) options.SmtpPassword = password;
 
         var enableSsl = settings.GetValueAsync<string>(SettingKeys.Email.SmtpEnableSsl).GetAwaiter().GetResult();
+        // This selects implicit TLS versus STARTTLS; deployment TLS/certificate policy stays intact.
         if (bool.TryParse(enableSsl, out var ssl)) options.SmtpEnableSsl = ssl;
 
         var fromAddress = settings.GetValueAsync<string>(SettingKeys.Email.FromAddress).GetAwaiter().GetResult();

@@ -9,12 +9,17 @@ public sealed class ForgotPasswordRecoveryOptions
 
     // Optional plain text or @ResourceKey guidance; empty values render nothing.
     public string TopNotice { get; set; } = string.Empty;
+    public string BottomNotice { get; set; } = string.Empty;
+    public string BottomNoticeType { get; set; } = "info";
     public string VerificationTip { get; set; } = string.Empty;
     public string ResetTip { get; set; } = string.Empty;
     public string SuccessReminder { get; set; } = string.Empty;
     public string SupportText { get; set; } = string.Empty;
     public string SupportLabel { get; set; } = string.Empty;
     public string SupportUrl { get; set; } = string.Empty;
+
+    // Controls public precheck guidance only; recovery authority remains server-owned.
+    public bool PrecheckHintsEnabled { get; set; } = true;
 
     // This is the maximum runtime mode a deployment permits, not native-backend readiness.
     public ForgotPasswordMode DeploymentCeiling { get; set; } = ForgotPasswordMode.External;

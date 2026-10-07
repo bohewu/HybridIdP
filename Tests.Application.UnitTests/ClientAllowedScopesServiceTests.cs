@@ -31,7 +31,7 @@ public class ClientAllowedScopesServiceTests : IDisposable
         _service = new ClientAllowedScopesService(
             _mockApplicationManager.Object,
             _mockScopeManager.Object,
-            _dbContext);
+            _dbContext, Moq.Mock.Of<Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.CanUseScopesAsync(Moq.It.IsAny<object>(), Moq.It.IsAny<IEnumerable<string>>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)));
     }
 
     public void Dispose()

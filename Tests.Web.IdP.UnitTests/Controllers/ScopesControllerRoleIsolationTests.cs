@@ -2,14 +2,25 @@ using System.Security.Claims;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Options;
+using Core.Domain;
 using Core.Domain.Constants;
+using Core.Domain.Entities;
+using Core.Domain.Events;
+using Infrastructure;
 using Infrastructure.Authorization;
+using Infrastructure.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Moq;
 using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using Web.IdP.Controllers.Admin;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
@@ -140,15 +151,87 @@ public class ScopesControllerRoleIsolationTests
         if (mutation == ScopeMutation.Delete)
         {
             Assert.IsType<BadRequestObjectResult>(result);
-            VerifyExpectedMutation(mutation, Times.Once());
         }
         else
         {
             Assert.IsType<NotFoundObjectResult>(result);
-            VerifyNoMutationServices();
         }
 
+        VerifyNoMutationServices();
         VerifyExpectedLookup(mutation, Times.Once());
+    }
+
+    [Theory]
+    [InlineData(CallerKind.CrossOwner, false)]
+    [InlineData(CallerKind.SameOwner, false)]
+    [InlineData(CallerKind.Admin, false)]
+    [InlineData(CallerKind.CrossOwner, true)]
+    public async Task Delete_ShouldEnforceHiddenScopeOwnership_WithRealScopeService(CallerKind callerKind, bool missing)
+    {
+        // Use the existing isolated SQLite/OpenIddict setup used by ownership tests.
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var services = new ServiceCollection().AddLogging();
+        services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connection).UseOpenIddict<Guid>());
+        services.AddOpenIddict().AddCore(options => options.UseEntityFrameworkCore()
+            .UseDbContext<ApplicationDbContext>().ReplaceDefaultEntities<Guid>());
+        await using var provider = services.BuildServiceProvider();
+        await using var serviceScope = provider.CreateAsyncScope();
+        var db = serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await db.Database.EnsureCreatedAsync();
+        var scopeManager = serviceScope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
+        var applicationManager = serviceScope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var owner = new Person { Id = Guid.NewGuid() };
+        var actorPerson = callerKind == CallerKind.SameOwner ? owner : new Person { Id = Guid.NewGuid() };
+        db.Persons.Add(owner);
+        if (actorPerson != owner) db.Persons.Add(actorPerson);
+        var user = new ApplicationUser { Id = Guid.NewGuid(), PersonId = actorPerson.Id, IsActive = true };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        var scope = await scopeManager.CreateAsync(new OpenIddictScopeDescriptor { Name = TargetScopeName });
+        var scopeId = (await scopeManager.GetIdAsync(scope))!;
+        db.ScopeOwnerships.Add(new ScopeOwnership { ScopeId = scopeId, CreatedByPersonId = owner.Id });
+        db.ScopeExtensions.Add(new ScopeExtension { ScopeId = scopeId, IsPublic = true });
+        await db.SaveChangesAsync();
+
+        var identity = new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Role, callerKind == CallerKind.Admin ? AuthConstants.Roles.Admin : AuthConstants.Roles.ApplicationManager),
+            new Claim("permission", Permissions.Scopes.Delete)
+        }, IdentityConstants.ApplicationScheme);
+        var principal = new ClaimsPrincipal(identity);
+        var boundary = new Mock<IAdministrativeAuthorizationBoundary>();
+        boundary.Setup(b => b.ResolveAsync()).ReturnsAsync(new AdministrativeAuthority(principal, false, new HashSet<string>()));
+        var authorization = new Mock<IAuthorizationService>();
+        authorization.Setup(a => a.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var policy = new ApiScopeUsagePolicy(db, scopeManager, applicationManager, boundary.Object, authorization.Object);
+        var scopeService = new ScopeService(scopeManager, applicationManager, db, Mock.Of<IDomainEventPublisher>(), policy);
+        var environment = Mock.Of<IWebHostEnvironment>(e => e.EnvironmentName == Environments.Production);
+        var controller = new ScopesController(scopeService,
+            Microsoft.Extensions.Options.Options.Create(new PrivilegedTestAdminBootstrapOptions()), environment, policy)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = principal } }
+        };
+        Assert.Equal(callerKind != CallerKind.CrossOwner, await policy.CanViewScopeAsync(scopeId));
+        Assert.Empty(await db.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>().ToListAsync());
+
+        var result = await controller.Delete(missing ? "missing-scope" : TargetScopeName);
+
+        var denied = callerKind == CallerKind.CrossOwner;
+        if (denied)
+        {
+            var error = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal("Cannot delete this scope because it is currently in use or not found.",
+                error.Value!.GetType().GetProperty("message")!.GetValue(error.Value));
+            Assert.False(db.ChangeTracker.HasChanges());
+        }
+        else
+            Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(denied, await db.Set<OpenIddictEntityFrameworkCoreScope<Guid>>().AsNoTracking()
+            .AnyAsync(s => s.Name == TargetScopeName));
+        Assert.Equal(denied, await db.ScopeExtensions.AsNoTracking().AnyAsync(s => s.ScopeId == scopeId));
     }
 
     private ScopesController CreateController(CallerKind callerKind, Guid personId)
@@ -215,7 +298,8 @@ public class ScopesControllerRoleIsolationTests
                         or CallerKind.UnrecognizedAutomation
                         or CallerKind.SameSubjectProductionAutomation
                 }),
-            environment.Object);
+            environment.Object, Moq.Mock.Of<Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.GetActorAsync(Moq.It.IsAny<CancellationToken>()) == Task.FromResult(
+                new Infrastructure.Authorization.ApiUsageActor(null, claims.Where(c => c.Type == AuthConstants.Claims.PersonId).Select(c => (Guid?)Guid.Parse(c.Value)).FirstOrDefault(), callerKind == CallerKind.Admin, false))));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

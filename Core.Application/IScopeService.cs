@@ -7,6 +7,7 @@ namespace Core.Application
 {
     public interface IScopeService
     {
+        Task ApproveClientScopeAsync(string scopeId, Guid applicationId, CancellationToken cancellationToken = default);
         /// <summary>
         /// Get paginated, filtered, and sorted list of scopes.
         /// </summary>

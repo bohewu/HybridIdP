@@ -87,6 +87,17 @@ When you write `Permissions.Clients.READ`, it evaluates to `undefined` which nev
 - `Permissions.Persons.Update` → `'persons.update'`
 - `Permissions.Persons.Delete` → `'persons.delete'`
 
+Person account linking/unlinking also requires `Permissions.Users.Update`, even
+for an empty Person. If account roles are involved, `Permissions.Roles.Update`
+and the configured protected-role MFA checks also apply. This does not change
+ordinary Person profile CRUD permissions.
+
+Person links/unlinks and asset transfers additionally require the update
+permission for every asset domain present (`Clients`, `Scopes`, `ApiResources`)
+and exact source Person ownership, with the full IdP Admin exception. No
+permission is required for an absent asset domain. All checks finish before
+any association, role or ownership write; a denied transfer changes no owner.
+
 ### Audit
 - `Permissions.Audit.Read` → `'audit.read'`
 

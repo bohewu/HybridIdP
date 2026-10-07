@@ -1,4 +1,5 @@
 using Core.Application.DTOs;
+using System.Security.Claims;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,12 @@ namespace Core.Application
         /// <param name="userAgent">Client user agent</param>
         /// <returns>Task</returns>
         Task LogEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Logs an impersonation transition using the impersonated cookie principal,
+        /// retaining its original actor and effective subject before cookie replacement.
+        /// </summary>
+        Task LogImpersonationEventAsync(string eventType, ClaimsPrincipal impersonatedPrincipal, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets audit events with filtering and pagination.

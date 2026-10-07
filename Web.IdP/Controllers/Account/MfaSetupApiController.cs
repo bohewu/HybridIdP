@@ -126,7 +126,9 @@ public partial class MfaSetupApiController : ControllerBase
             return StatusCode(403, new { error = "mfaDisabled" });
         }
 
+        var previousStamp = user.SecurityStamp;
         var setupInfo = await _mfaService.GetTotpSetupInfoAsync(user, ct);
+        await PendingExternalLoginLink.CarryInitialEnrollmentStampAsync(HttpContext, user, previousStamp);
 
         return Ok(new MfaSetupTotpResponse
         {
@@ -177,6 +179,7 @@ public partial class MfaSetupApiController : ControllerBase
                 HttpContext.Session,
                 AuthConstants.Amr.Mfa,
                 AuthConstants.Amr.Otp);
+            await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
             await _signInManager.SignInWithClaimsAsync(
                 user,
                 isPersistent: false,
@@ -317,6 +320,7 @@ public partial class MfaSetupApiController : ControllerBase
             HttpContext.Session,
             AuthConstants.Amr.Mfa,
             AuthConstants.Amr.Otp);
+        await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
         await _signInManager.SignInWithClaimsAsync(
             user,
             isPersistent: false,

@@ -69,6 +69,9 @@ public sealed class ProviderMetadataRefreshServiceTests
     [InlineData(HttpStatusCode.Unauthorized, "{}", ProviderMetadataRefreshOutcome.AuthenticationFailed)]
     [InlineData(HttpStatusCode.Forbidden, "{}", ProviderMetadataRefreshOutcome.AuthenticationFailed)]
     [InlineData(HttpStatusCode.BadRequest, "{}", ProviderMetadataRefreshOutcome.Unavailable)]
+    [InlineData(HttpStatusCode.Redirect, "{}", ProviderMetadataRefreshOutcome.Unavailable)]
+    [InlineData(HttpStatusCode.TemporaryRedirect, "{}", ProviderMetadataRefreshOutcome.Unavailable)]
+    [InlineData(HttpStatusCode.PermanentRedirect, "{}", ProviderMetadataRefreshOutcome.Unavailable)]
     [InlineData(HttpStatusCode.OK, "null", ProviderMetadataRefreshOutcome.Missing)]
     [InlineData(HttpStatusCode.OK, "", ProviderMetadataRefreshOutcome.Malformed)]
     [InlineData(HttpStatusCode.OK, "{not-json", ProviderMetadataRefreshOutcome.Malformed)]
@@ -229,6 +232,90 @@ public sealed class ProviderMetadataRefreshServiceTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.RefreshAsync(
             binding.ProviderNamespace, binding.StableSubject, cancellation.Token));
         Assert.Equal(1, handler.CallCount);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RefreshAsync_ShouldAcceptInLimitSuccessWithoutMediaTypeEnforcement(bool knownLength)
+    {
+        await using var database = await OpenDatabaseAsync();
+        await using var context = CreateContext(database);
+        var binding = SeedBinding(context);
+        var content = new UpstreamTestContent(
+            "{\"contractVersion\":\"1.0\",\"providerNamespace\":\"example.provider\",\"stableSubject\":\"subject-1\",\"email\":\"source@example.test\",\"emailTrustOrigin\":\"SourceVerified\"}",
+            knownLength)
+        {
+            Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/plain") }
+        };
+        var handler = new StubHttpMessageHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Created)
+        {
+            Content = content
+        }));
+
+        var outcome = await CreateService(context, handler).RefreshAsync(binding.ProviderNamespace, binding.StableSubject);
+
+        Assert.Equal(ProviderMetadataRefreshOutcome.Refreshed, outcome);
+        Assert.Equal(ProviderMetadataEvidenceState.Available,
+            (await context.ProviderMetadataSnapshots.SingleAsync()).EvidenceState);
+        Assert.Equal(1, handler.CallCount);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_ShouldPropagateCallerCancellationDuringBodyReadWithoutRetry()
+    {
+        await using var database = await OpenDatabaseAsync();
+        await using var context = CreateContext(database);
+        var binding = SeedBinding(context);
+        using var cancellation = new CancellationTokenSource();
+        var content = new UpstreamTestContent("{}", knownLength: false, onRead: cancellation.Cancel);
+        var handler = new StubHttpMessageHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = content
+        }));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateService(context, handler)
+            .RefreshAsync(binding.ProviderNamespace, binding.StableSubject, cancellation.Token));
+
+        Assert.True(content.ReadStarted);
+        Assert.Equal(1, handler.CallCount);
+    }
+
+    [Theory]
+    [InlineData(true, false, false)]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, true)]
+    public async Task RefreshAsync_ShouldInvalidatePriorEvidenceOnOversizeOrBodyFailure(
+        bool knownLength, bool failRead, bool timeout)
+    {
+        await using var database = await OpenDatabaseAsync();
+        await using var context = CreateContext(database);
+        var binding = SeedBinding(context);
+        var prior = new ProviderMetadataSnapshot(binding.Id, DateTimeOffset.Parse("2026-09-01T00:00:00Z"));
+        prior.Refresh("prior@example.test", ProviderEmailTrustOrigin.SourceVerified,
+            DateTimeOffset.Parse("2026-09-01T00:00:00Z"), DateTimeOffset.Parse("2026-09-01T00:01:00Z"));
+        context.ProviderMetadataSnapshots.Add(prior);
+        await context.SaveChangesAsync();
+        var content = new UpstreamTestContent(new string(' ', ProviderMetadataRefreshService.MaximumResponseBytes + 1),
+            knownLength, failRead, waitForCancellation: timeout);
+        var handler = new StubHttpMessageHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = content, Headers = { TransferEncodingChunked = !knownLength }
+        }));
+
+        var outcome = await CreateService(context, handler, TimeSpan.FromMilliseconds(100))
+            .RefreshAsync(binding.ProviderNamespace, binding.StableSubject).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(timeout ? ProviderMetadataRefreshOutcome.TimedOut : ProviderMetadataRefreshOutcome.Unavailable, outcome);
+        var snapshot = await context.ProviderMetadataSnapshots.SingleAsync();
+        Assert.Equal(timeout ? ProviderMetadataEvidenceState.TimedOut : ProviderMetadataEvidenceState.Unavailable, snapshot.EvidenceState);
+        Assert.Null(snapshot.Email);
+        Assert.Equal(ProviderEmailTrustOrigin.Unknown, snapshot.EmailTrustOrigin);
+        Assert.Null(snapshot.VerifiedAt);
+        Assert.Equal(1, handler.CallCount);
+        if (!failRead && !timeout)
+            Assert.Equal(knownLength ? 0 : ProviderMetadataRefreshService.MaximumResponseBytes + 1, content.BytesRead);
     }
 
     [Fact]

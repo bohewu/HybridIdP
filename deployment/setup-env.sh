@@ -193,6 +193,10 @@ if [ "$use_split_host" = true ]; then
     
     print_info "We need to trust the external Reverse Proxy (Host A) to correctly parse headers."
     proxy_host_ip=$(prompt_with_default "External Reverse Proxy IP (Host A IP)" "")
+    if [ -z "${proxy_host_ip//[[:space:]]/}" ]; then
+        print_warn "The actual Host A proxy address is required for split-host mode."
+        exit 1
+    fi
 fi
 
 print_title "Database Configuration"
@@ -278,9 +282,23 @@ else
     [[ "$proxy_choice" == *"Yes"* ]] && proxy_enabled="true" || proxy_enabled="false"
 fi
 
-known_proxies="172.16.0.0/12;192.168.0.0/16;10.0.0.0/8"
-if [ "$use_split_host" = true ] && [ -n "$proxy_host_ip" ]; then
-    known_proxies="$proxy_host_ip;172.16.0.0/12;192.168.0.0/16;10.0.0.0/8"
+known_proxies=""
+if [ "$proxy_enabled" = true ]; then
+    if [ "$use_split_host" = true ]; then
+        print_info "Trust Host A and the local Nginx gateway as seen by the IdP; no Docker subnet is assumed."
+        gateway_proxies=$(prompt_with_default "Actual local Nginx gateway IPs/CIDRs (semicolon-separated)" "")
+        if [ -z "${gateway_proxies//[[:space:]]/}" ]; then
+            print_warn "The actual local Nginx gateway addresses are required. No .env was written."
+            exit 1
+        fi
+        known_proxies="$proxy_host_ip;$gateway_proxies"
+    else
+        known_proxies=$(prompt_with_default "Actual trusted proxy IPs/CIDRs (semicolon-separated)" "")
+        if [ -z "${known_proxies//[[:space:]]/}" ]; then
+            print_warn "The actual trusted proxy addresses are required. No .env was written."
+            exit 1
+        fi
+    fi
 fi
 
 print_title "Optional: External Services"
@@ -288,9 +306,13 @@ print_title "Optional: External Services"
 # Email Settings
 echo -e "\nEmail (SMTP) Configuration (press Enter to skip for later):"
 smtp_host=$(prompt_with_default "SMTP Host" "")
+smtp_require_tls="false"
+smtp_validate_server_certificate="true"
 if [ -n "$smtp_host" ]; then
     smtp_port=$(prompt_with_default "SMTP Port" "587")
-    smtp_enable_ssl=$(prompt_with_default "Enable SSL (true/false)" "true")
+    smtp_enable_ssl=$(prompt_with_default "Use implicit TLS (true/false; false selects STARTTLS)" "true")
+    smtp_require_tls=$(prompt_with_default "Require SMTP TLS (true/false; false permits optional STARTTLS)" "false")
+    smtp_validate_server_certificate=$(prompt_with_default "Validate SMTP server certificate (true/false)" "true")
     smtp_username=$(prompt_with_default "SMTP Username" "")
     smtp_password=$(prompt_with_default "SMTP Password" "")
     smtp_from_address=$(prompt_with_default "From Address" "noreply@example.com")
@@ -383,6 +405,13 @@ Redis__Enabled=$redis_enabled
 # Proxy Configuration
 Proxy__Enabled=$proxy_enabled
 Proxy__KnownProxies=$known_proxies
+
+# Optional deployment policies; review these choices before enabling integrations.
+LegacyAuth__RequireHttps=false
+EmailSettings__SmtpRequireTls=$smtp_require_tls
+EmailSettings__SmtpValidateServerCertificate=$smtp_validate_server_certificate
+# Hints do not enable recovery; false hides eligibility and masked destinations.
+ForgotPasswordRecovery__PrecheckHintsEnabled=true
 
 # Network Binding (Split-Host)
 INTERNAL_IP=$internal_ip

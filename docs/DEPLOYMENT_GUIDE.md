@@ -48,6 +48,7 @@ The wizard will ask for:
 2.  **Database**: Choose SQL Server or PostgreSQL (Internal Docker or External connection).
 3.  **Security**: It will auto-generate strong passwords for DBs and Certs.
 4.  **Certificates**: It can generate self-signed certificates using OpenSSL automatically.
+5.  **Proxy trust**: When proxy mode is selected, supply the actual proxy IPs or narrow CIDRs. No private-network or Docker-subnet trust is filled in automatically.
 
 #### New External Database TLS
 
@@ -75,9 +76,12 @@ docker compose -f docker-compose.nginx.yml --env-file .env up -d
 | **E. Split-Host Local Nginx + External DB** | `docker-compose.splithost-nginx-nodb.yml` | Gateway and IdP are on Host B; the database is external. | `nginx-gateway` + `idp` + `redis` |
 
 ### Split-Host Security
-If you choose Mode C or D, the wizard will ask for:
+For the wizard's split-host local Nginx modes (D and E), it will ask for:
 - **Internal IP**: The IP of the host machine to bind the gateway to (e.g., `192.168.1.20`). This prevents exposure on public interfaces.
 - **Proxy Host IP**: The IP of your external Reverse Proxy (Host A) to trust for forwarding headers.
+- **Local gateway IPs/CIDRs**: The local Nginx gateway addresses as seen by the IdP. Both Host A and the gateway are required; blank trust input stops generation before a new `.env` is written.
+
+Mode C is configured manually using `PROXY_HOST_IP`. Nginx mode A and proxy-enabled internal mode B require an explicit semicolon-separated trust list in the wizard. Proxy-disabled mode B emits an empty list.
 
 ### IP Allowlist Configuration (Split-Host)
 For Split-Host deployments, you need to configure the Nginx IP allowlist:
@@ -124,6 +128,14 @@ the compose modes require this setting and use `Proxy__ForwardLimit=2`. Keep the
 trusted set limited to those proxies so rate limiting sees the originating
 client address. Verify the address chain in the deployed network before release.
 
+The `.env.example` trust list is empty. All three Nginx compose modes require a
+non-empty operator list and retain its IP/CIDR entries; they supply no blanket
+RFC1918 defaults. In direct split-host mode, `PROXY_HOST_IP` supplies the effective
+`Proxy__KnownProxies` value, overriding that env_file key. Internal mode passes
+the env_file trust list through when `Proxy__Enabled=true`. An empty list adds
+no remote proxy trust; the framework's loopback defaults remain. These templates
+do not rewrite an existing deployment's `.env` or prove its actual network chain.
+
 Use the setup scripts to create the operator-managed values in `deployment/.env`, or start from `.env.example` and supply the values through an approved secret-management process. Production compose does not provide a database-password fallback.
 
 All modes require non-empty `DATABASE_PROVIDER`, `ConnectionStrings__SqlServerConnection`, `ConnectionStrings__PostgreSqlConnection`, `ENCRYPTION_CERT_PASSWORD`, `SIGNING_CERT_PASSWORD`, `OpenIddict__Issuer`, and `PUBLIC_AUTHORITY`. `DATABASE_PROVIDER` selects the provider used by the IdP, but both database connection-string variables are required by the compose contract because both are passed into the container.
@@ -140,10 +152,10 @@ Production startup derives its Host allowlist from the issuer and fails closed i
 | Compose file | Additional required non-empty values |
 |--------------|--------------------------------------|
 | `docker-compose.internal.yml` | `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, `POSTGRES_PASSWORD` |
-| `docker-compose.nginx.yml` | `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, `POSTGRES_PASSWORD` |
+| `docker-compose.nginx.yml` | `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, `POSTGRES_PASSWORD`, `Proxy__KnownProxies` |
 | `docker-compose.splithost.yml` | `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, `POSTGRES_PASSWORD`, `INTERNAL_IP`, `PROXY_HOST_IP` |
-| `docker-compose.splithost-nginx.yml` | `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, `POSTGRES_PASSWORD`, `INTERNAL_IP` |
-| `docker-compose.splithost-nginx-nodb.yml` | `INTERNAL_IP` |
+| `docker-compose.splithost-nginx.yml` | `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, `POSTGRES_PASSWORD`, `INTERNAL_IP`, `Proxy__KnownProxies` |
+| `docker-compose.splithost-nginx-nodb.yml` | `INTERNAL_IP`, `Proxy__KnownProxies` |
 
 The external-database mode sets its Redis connection to the local Redis service, so it does not require `ConnectionStrings__RedisConnection`, `MSSQL_SA_PASSWORD`, or `POSTGRES_PASSWORD`. The other four modes contain both database services; therefore their SQL Server and PostgreSQL initialization passwords are required even when only one provider is selected.
 
@@ -209,6 +221,14 @@ To roll back, roll back the application image separately. Do not automatically r
 
 ### Optional Provider Contract Configuration
 
+LegacyAuth, Provider Proof and Provider Metadata do not follow HTTP redirects.
+Their fixed response ceilings are 64 KiB, 64 KiB and 16 KiB respectively,
+including unknown-length/chunked bodies. Oversize cannot authenticate or supply
+usable refreshed metadata; metadata read failures invalidate prior evidence.
+Valid in-limit `2xx` JSON retains the existing media-type/charset handling.
+No response-size tuning option or retry was added. These controls do not change
+the independent lifecycle, recovery-verification or password-sync transports.
+
 Provider Proof 1.0, Provider Metadata 1.0 and Legacy Password Sync are three
 independent boundaries. Their checked-in settings are disabled or incomplete;
 copying the examples does not enable an integration. Read the public contracts
@@ -239,6 +259,73 @@ offline only; no live or production database migration was run. Never retry
 `PartialSuccess`, `CommitUnknown` or any request that may have been dispatched.
 These instructions do not claim external interoperability, a connected
 password write or production deployment has been verified.
+
+### Optional LegacyAuth, SMTP and recovery-hint policies
+
+The environment template and both wizards emit the actual defaults below.
+All five production compose modes pass them through their existing
+`env_file: ${IDP_ENV_FILE:-.env}`; no duplicate compose override is required.
+Review the operator-managed values before enabling the corresponding integration.
+
+| Environment key | Default | Behavior |
+| --- | --- | --- |
+| `LegacyAuth__RequireHttps` | `false` | `true` rejects an invalid or non-HTTPS LegacyAuth endpoint before sending credentials or `X-Internal-Secret`. `false` retains HTTP compatibility. |
+| `EmailSettings__SmtpRequireTls` | `false` | Requires encryption in ordinary and test-send paths when `true`; cannot be overridden by stored mail settings or the test-send DTO. |
+| `EmailSettings__SmtpValidateServerCertificate` | `true` | Uses normal MailKit certificate/hostname validation. `false` explicitly accepts any server certificate when TLS is negotiated. |
+| `ForgotPasswordRecovery__PrecheckHintsEnabled` | `true` | ON/omitted preserves eligible guidance and the masked destination. OFF presents uniform public precheck, GET restoration and Send guidance without eligibility or a mask. |
+
+SMTP security is selected with the existing `SmtpEnableSsl` value:
+
+| `SmtpEnableSsl` | `SmtpRequireTls` | Transport |
+| --- | --- | --- |
+| `true` | Either | Implicit TLS (`SslOnConnect`); TLS failure prevents dispatch. |
+| `false` | `true` | Mandatory STARTTLS (`StartTls`); unsupported TLS fails before authentication or Send. |
+| `false` | `false` | Opportunistic STARTTLS (`StartTlsWhenAvailable`); plaintext is possible when TLS is unavailable. |
+
+Choose the relay's matching port; the port does not select the security mode.
+Existing stored host/port/credentials/from/SSL settings retain their precedence,
+and the test-send DTO retains its transport settings. The two new policy flags
+remain global deployment controls. Localhost and SSL-off no longer imply a
+certificate exception. HTTPS/TLS can use an already trusted certificate;
+an internal CA is not mandatory. HTTP, optional STARTTLS and disabled certificate
+validation are explicit operator risk choices.
+
+Default-ON recovery hints intentionally retain limited account/destination
+disclosure. OFF changes the public projection only, including after refresh and
+explicit Send; exact timing indistinguishability is not promised. Precheck sends
+no mail. Explicit Send, current server eligibility, identity proof, destination,
+lifecycle/policy, OTP and browser/session/CSRF gates remain authoritative. The hint
+flag enables no recovery feature and changes no registration feedback or sign-in
+continuation. Local checks do not establish real SMTP delivery, provider/browser
+interoperability, directory behavior or production acceptance.
+
+### Optional forgot-password bottom notice
+
+The recovery page has one optional notice after the phase form or sign-in action
+and support content, matching the login notice style. It appears in every recovery
+phase and is independent of `LoginNotices` and the existing recovery guidance.
+It defaults to hidden and adds no institution-specific content.
+
+Set these optional values in the operator-managed `.env`:
+
+```dotenv
+ForgotPasswordRecovery__BottomNotice='@Recovery.Guidance.Bottom'
+ForgotPasswordRecovery__BottomNoticeType=info
+```
+
+`BottomNotice` accepts literal plain text or `@ResourceKey`. Use the existing
+Resource management workflow to supply enabled rows for the current culture and
+an `en-US` fallback. Missing, disabled or blank resolved text hides the notice;
+all text is Razor-encoded. Resource changes appear on the next request.
+`BottomNoticeType` selects `info` (default), `warning`, `success`, `error` or
+`muted`; an unrecognized type uses `info` styling. Clearing `BottomNotice` hides
+the notice regardless of type.
+
+All five production compose modes pass these keys through the existing
+`env_file: ${IDP_ENV_FILE:-.env}`. No compose override or wizard change is needed.
+These options are startup-bound: restart after application configuration changes.
+Editing a container's env file requires recreating the container to load the new
+environment; Resource edits alone require neither restart nor recreation.
 
 ### Optional Provider Lifecycle Status
 

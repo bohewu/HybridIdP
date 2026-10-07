@@ -48,9 +48,18 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         HttpContext httpContext,
         ApplicationUser user,
         CancellationToken cancellationToken = default)
+        => await CompleteCoreAsync(httpContext, user, null, cancellationToken);
+
+    public Task<ExternalSignInCompletionResult> LinkAsync(HttpContext httpContext,
+        ApplicationUser user, UserLoginInfo login, CancellationToken cancellationToken = default)
+        => CompleteCoreAsync(httpContext, user, login, cancellationToken);
+
+    private async Task<ExternalSignInCompletionResult> CompleteCoreAsync(HttpContext httpContext,
+        ApplicationUser user, UserLoginInfo? login, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(user);
+        PendingExternalLoginLink.Cancel(httpContext);
 
         var eligibility = await _loginService.ValidateExternalUserSignInAsync(user, cancellationToken);
         if (!eligibility.IsSuccess)
@@ -70,8 +79,28 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
             return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
         }
 
+        var preserveSession = login != null && httpContext.User.Identity?.IsAuthenticated == true &&
+            httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) == user.Id.ToString() &&
+            !string.IsNullOrEmpty(user.SecurityStamp) &&
+            httpContext.User.FindFirstValue(_userManager.Options.ClaimsIdentity.SecurityStampClaimType) == user.SecurityStamp;
+        if (preserveSession && MfaEnrollmentSession.HasMfa(httpContext.User))
+        {
+            return await PendingExternalLoginLink.PersistAsync(httpContext, user, login!, user.SecurityStamp, cancellationToken)
+                ? ExternalSignInCompletionResult.Succeeded()
+                : ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
+        }
+
         await httpContext.Session.LoadAsync(cancellationToken);
         AuthenticationMethodSession.Replace(httpContext.Session, AuthConstants.Amr.External);
+
+        if (login != null)
+        {
+            if (string.IsNullOrEmpty(user.SecurityStamp) || user.RequiresPasswordChange ||
+                await _userManager.FindByLoginAsync(login.LoginProvider, login.ProviderKey) != null ||
+                !(await _loginService.CanLinkExternalLoginAsync(user, login.LoginProvider, cancellationToken)).Succeeded)
+                return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
+            PendingExternalLoginLink.Begin(httpContext.Session, user, login, _timeProvider);
+        }
 
         if (user.TwoFactorEnabled)
         {
@@ -83,6 +112,12 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         {
             await IssuePartialSignInAsync(httpContext, user);
             return ExternalSignInCompletionResult.EmailOtpRequired();
+        }
+
+        if (login != null && (await _passkeyService.GetUserPasskeysAsync(user.Id, cancellationToken)).Count > 0)
+        {
+            await IssuePartialSignInAsync(httpContext, user);
+            return new ExternalSignInCompletionResult(ExternalSignInCompletionStatus.PasskeyRequired);
         }
 
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
@@ -121,15 +156,24 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         {
             return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
         }
-        await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, claims);
+        if (login != null)
+        {
+            PendingExternalLoginLink.Cancel(httpContext);
+            if (!await PendingExternalLoginLink.PersistAsync(httpContext, user, login, user.SecurityStamp, cancellationToken))
+                return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
+        }
+        if (!preserveSession)
+            await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, claims);
 
         return ExternalSignInCompletionResult.Succeeded();
     }
 
-    private static Task IssuePartialSignInAsync(HttpContext httpContext, ApplicationUser user, bool initialEnrollment = false)
+    private Task IssuePartialSignInAsync(HttpContext httpContext, ApplicationUser user, bool initialEnrollment = false)
     {
         var identity = new ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
         identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+        var linkPurpose = PendingExternalLoginLink.GetPurposeClaim(httpContext.Session, user.Id, _timeProvider);
+        if (linkPurpose != null) identity.AddClaim(linkPurpose);
         if (initialEnrollment)
         {
             identity.AddClaim(MfaEnrollmentSession.BeginInitial(httpContext.Session, user.Id));

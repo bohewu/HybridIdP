@@ -85,6 +85,22 @@ const loadingResources = ref(false)
 
 const submitting = ref(false)
 const error = ref(null)
+const approvalApplicationId = ref('')
+const approvingUsage = ref(false)
+const approvalMessage = ref('')
+const approveUsage = async () => {
+  approvingUsage.value = true
+  error.value = null
+  approvalMessage.value = ''
+  try {
+    const response = await fetch(`/api/admin/scopes/${props.scope.id}/usage-approvals`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: approvalApplicationId.value.trim(), scopeId: props.scope.id })
+    })
+    if (!response.ok) throw new Error(t('resources.form.usageApprovalFailed'))
+    approvalMessage.value = t('resources.form.usageApprovalSaved')
+  } catch (e) { error.value = e.message } finally { approvingUsage.value = false }
+}
 
 const resetForm = () => {
   formData.value = {
@@ -360,6 +376,18 @@ const saveScopeClaims = async (scopeId) => {
               :placeholder="$t('scopes.form.descriptionPlaceholder')"
             ></textarea>
           </div>
+
+          <section v-if="isEdit && !isStandardScopeReadOnly" class="mb-5 space-y-3 border-t pt-4" aria-labelledby="scope-approval-heading">
+            <h4 id="scope-approval-heading" class="text-sm font-semibold text-gray-900">{{ t('resources.form.usageApproval') }}</h4>
+            <p class="text-xs text-gray-500">{{ t('scopes.form.usageApprovalHelp') }}</p>
+            <label for="scope-approval-application" class="block text-sm text-gray-700">{{ t('resources.form.applicationId') }}</label>
+            <input id="scope-approval-application" v-model="approvalApplicationId" class="block w-full rounded-md border-gray-300 h-10 px-3 text-sm" />
+            <button type="button" :disabled="approvingUsage || submitting || !approvalApplicationId.trim()" @click="approveUsage"
+              class="rounded-md border border-google-500 px-3 py-2 text-sm text-google-600 disabled:opacity-50" data-testid="approve-scope-usage">
+              {{ t(approvingUsage ? 'resources.form.approvingUsage' : 'resources.form.approveUsage') }}
+            </button>
+            <p v-if="approvalMessage" role="status" class="text-sm text-green-700">{{ approvalMessage }}</p>
+          </section>
 
           <!-- Resources (Multi-select) -->
           <div class="mb-5">

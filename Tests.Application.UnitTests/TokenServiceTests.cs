@@ -30,6 +30,138 @@ namespace Tests.Application.UnitTests
     public class TokenServiceTests
     {
         [Theory]
+        [InlineData("pwd", false)]
+        [InlineData("hwk", false)]
+        [InlineData("pwd", true)]
+        [InlineData("hwk", true)]
+        public async Task HandleTokenRequestAsync_DeviceCode_ShouldRequirePerformedMfa_WhenGlobalPolicyActivatesAfterApproval(
+            string primaryAmr, bool completedMfa)
+        {
+            var policy = new SecurityPolicy { MfaEnforcementGracePeriodDays = 30 };
+            _mockSecurityPolicyService.Setup(service => service.GetCurrentPolicyAsync()).ReturnsAsync(policy);
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true, UserName = "stale-device-approval" };
+            var principal = SetupDeviceCodeGrant(user);
+            principal.SetClaims(AuthConstants.ClaimTypes.Amr, completedMfa
+                ? ImmutableArray.Create(primaryAmr, AuthConstants.Amr.Mfa)
+                : ImmutableArray.Create(primaryAmr, AuthConstants.Amr.UserPresence));
+            principal.SetClaim(Claims.AuthenticationTime, DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds());
+            _mockApplicationManager.Setup(manager => manager.GetPropertiesAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateClientProperties(requireMfa: false));
+
+            // A stored approval is not grandfathered when global policy changes.
+            policy.EnforceMandatoryMfaEnrollment = true;
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(GrantTypes.DeviceCode), principal);
+
+            _mockSecurityPolicyService.Verify(service => service.GetCurrentPolicyAsync(), Times.Once);
+            if (!completedMfa)
+            {
+                AssertInvalidGrant(result);
+                var denied = Assert.IsType<ForbidResult>(result);
+                Assert.Equal("Multi-factor authentication is required for this device authorization.",
+                    denied.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription]);
+                _mockClaimsEnricher.Verify(enricher => enricher.AddPermissionClaimsAsync(
+                    It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+                return;
+            }
+
+            var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+            Assert.Equal<string>(principal.GetClaims(AuthConstants.ClaimTypes.Amr), issued.GetClaims(AuthConstants.ClaimTypes.Amr));
+            Assert.Equal(principal.GetClaim(Claims.AuthenticationTime), issued.GetClaim(Claims.AuthenticationTime));
+            Assert.Equal<string>(principal.GetScopes(), issued.GetScopes());
+        }
+
+        [Theory]
+        [InlineData(false, true, Errors.InvalidScope)]
+        [InlineData(true, false, Errors.InvalidGrant)]
+        public async Task HandleTokenRequestAsync_DeviceCode_ShouldKeepScopeAndMigrationGuards_WithGlobalMfa(
+            bool scopeApproved, bool migrationAllowed, string expectedError)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true, UserName = "mfa-device-user" };
+            var principal = SetupDeviceCodeGrant(user);
+            principal.SetClaims(AuthConstants.ClaimTypes.Amr, ImmutableArray.Create(AuthConstants.Amr.Password, AuthConstants.Amr.Mfa));
+            _mockSecurityPolicyService.Setup(service => service.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy { EnforceMandatoryMfaEnrollment = true });
+            _scopeUsage.Setup(policy => policy.CanUseScopesAsync(It.IsAny<object>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(scopeApproved);
+            _mockMigrationIssuanceGuard.Setup(guard => guard.CanIssueAsync(user.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(migrationAllowed);
+
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(GrantTypes.DeviceCode), principal);
+
+            var denied = Assert.IsType<ForbidResult>(result);
+            Assert.Equal(expectedError, denied.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+            Assert.Contains(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, denied.AuthenticationSchemes);
+        }
+
+        [Theory]
+        [InlineData(GrantTypes.AuthorizationCode, "legacy")]
+        [InlineData(GrantTypes.AuthorizationCode, "open")]
+        [InlineData(GrantTypes.AuthorizationCode, "approved")]
+        [InlineData(GrantTypes.RefreshToken, "legacy")]
+        [InlineData(GrantTypes.RefreshToken, "open")]
+        [InlineData(GrantTypes.RefreshToken, "approved")]
+        [InlineData(GrantTypes.DeviceCode, "legacy")]
+        [InlineData(GrantTypes.DeviceCode, "open")]
+        [InlineData(GrantTypes.DeviceCode, "approved")]
+        [InlineData(GrantTypes.ClientCredentials, "legacy")]
+        [InlineData(GrantTypes.ClientCredentials, "open")]
+        [InlineData(GrantTypes.ClientCredentials, "approved")]
+        public async Task ApiUsage_ShouldEnforceRealPolicyAtEveryTokenGrant(string grant, string state)
+        {
+            using var db = new Infrastructure.ApplicationDbContext(new DbContextOptionsBuilder<Infrastructure.ApplicationDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+            var resource = new ApiResource { Name = "approved-api", OwnerPersonId = Guid.NewGuid(), IsUsageOpen = state == "open" };
+            resource.Scopes.Add(new ApiResourceScope { ScopeId = "scope-id" });
+            db.ApiResources.Add(resource);
+            await db.SaveChangesAsync();
+            var scopes = new Mock<IOpenIddictScopeManager>();
+            var scope = new object();
+            scopes.Setup(m => m.FindByNameAsync("api:read", It.IsAny<CancellationToken>())).ReturnsAsync(scope);
+            scopes.Setup(m => m.GetIdAsync(scope, It.IsAny<CancellationToken>())).ReturnsAsync("scope-id");
+            scopes.Setup(m => m.GetResourcesAsync(scope, It.IsAny<CancellationToken>())).ReturnsAsync(ImmutableArray<string>.Empty);
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "api-user", IsActive = true };
+            ClaimsPrincipal? principal = grant switch
+            {
+                GrantTypes.AuthorizationCode => SetupAuthorizationCodeGrant(user),
+                GrantTypes.RefreshToken => SetupRefreshGrant(user),
+                GrantTypes.DeviceCode => SetupDeviceCodeGrant(user),
+                _ => null
+            };
+            principal?.SetScopes("api:read");
+            principal?.SetAudiences("stale-api");
+            var app = new object();
+            _mockApplicationManager.Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>())).ReturnsAsync(app);
+            _mockApplicationManager.Setup(m => m.GetClientIdAsync(app, It.IsAny<CancellationToken>())).ReturnsAsync("test-client");
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(app, It.IsAny<CancellationToken>())).ReturnsAsync(
+                ImmutableArray.Create(OidcPermissions.Prefixes.GrantType + grant, OidcPermissions.Prefixes.Scope + "api:read"));
+            var properties = ImmutableDictionary<string, JsonElement>.Empty;
+            if (state == "approved") properties = properties.Add(Infrastructure.Authorization.ApiScopeUsagePolicy.ApprovalsProperty,
+                JsonSerializer.SerializeToElement(new[] { new Infrastructure.Authorization.ApiScopeUsagePolicy.Approval(
+                    "scope-id", "api:read", resource.Id, resource.OwnerPersonId, Guid.NewGuid(), DateTime.UtcNow, []) }));
+            _mockApplicationManager.Setup(m => m.GetPropertiesAsync(app, It.IsAny<CancellationToken>())).ReturnsAsync(properties);
+            var policy = new Infrastructure.Authorization.ApiScopeUsagePolicy(db, scopes.Object, _mockApplicationManager.Object,
+                Mock.Of<Infrastructure.Authorization.IAdministrativeAuthorizationBoundary>(), Mock.Of<Microsoft.AspNetCore.Authorization.IAuthorizationService>());
+            _scopeUsage.Setup(p => p.CanUseScopesAsync(It.IsAny<object>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+                .Returns((object application, IEnumerable<string> names, CancellationToken ct) => policy.CanUseScopesAsync(application, names, ct));
+            _mockApiResourceService.Setup(s => s.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(["approved-api"]);
+            var request = CreateRequest(grant, scope: grant == GrantTypes.ClientCredentials ? "api:read" : null);
+            var result = await _service.HandleTokenRequestAsync(request, principal);
+            if (state == "legacy")
+            {
+                var denied = Assert.IsType<ForbidResult>(result);
+                Assert.Equal(Errors.InvalidScope, denied.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+                Assert.Contains(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, denied.AuthenticationSchemes);
+            }
+            else
+            {
+                var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+                Assert.Equal(new[] { "api:read" }, issued.GetScopes());
+                Assert.Equal(new[] { "approved-api" }, issued.GetAudiences());
+                Assert.DoesNotContain("stale-api", issued.GetResources());
+            }
+        }
+
+        [Theory]
         [InlineData(GrantTypes.AuthorizationCode, false)]
         [InlineData(GrantTypes.AuthorizationCode, true)]
         [InlineData(GrantTypes.DeviceCode, false)]
@@ -201,6 +333,7 @@ namespace Tests.Application.UnitTests
         private readonly Mock<IAuditService> _mockAuditService;
         private readonly Mock<ISecurityPolicyService> _mockSecurityPolicyService;
         private readonly Mock<IApplicationDbContext> _mockDbContext;
+        private readonly Mock<Infrastructure.Authorization.IApiScopeUsagePolicy> _scopeUsage = new();
         private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
         private readonly Mock<ILogger<TokenService>> _mockLogger;
         private readonly Mock<IClaimsEnrichmentService> _mockClaimsEnricher;
@@ -257,6 +390,8 @@ namespace Tests.Application.UnitTests
                 .Setup(x => x.GetCurrentPolicyAsync())
                 .ReturnsAsync(new SecurityPolicy());
 
+            _scopeUsage.Setup(p => p.CanUseScopesAsync(It.IsAny<object>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _mockApiResourceService.Setup(s => s.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(new List<string>());
             _service = new TokenService(
                 _lifecycle.Object,
                 _mockUserManager.Object,
@@ -273,7 +408,7 @@ namespace Tests.Application.UnitTests
                 Options.Create(_credentialMigrationOptions = new CredentialMigrationOptions()),
                 _mockCredentialMigrationStateStore.Object,
                 _mockStage2CredentialMigrationService.Object,
-                _mockMigrationIssuanceGuard.Object);
+                _mockMigrationIssuanceGuard.Object, _scopeUsage.Object);
         }
 
         [Theory]

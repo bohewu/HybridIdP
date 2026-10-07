@@ -31,7 +31,7 @@
         _ => "text-blue-500"
     };
     
-    <div class="login-notice border-l-4 p-3 rounded-r text-sm @cssClass" role="alert">
+    <div id="@ViewData["NoticeId"]" class="login-notice border-l-4 p-3 rounded-r text-sm @cssClass @ViewData["NoticeClass"]" role="alert">
         <div class="flex items-start">
             <span class="mr-2 @iconClass">
                 @switch (Model.Type?.ToLower())

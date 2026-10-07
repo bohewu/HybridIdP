@@ -67,8 +67,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITurnstileService, TurnstileService>();
         services.AddScoped<IJitProvisioningService, JitProvisioningService>();
         services.AddScoped<ILegacyAuthService, LegacyAuthService>();
-        services.AddHttpClient<IProofProvider, ProviderProofProvider>();
-        services.AddHttpClient<IProviderMetadataRefreshService, ProviderMetadataRefreshService>();
+        services.AddHttpClient(LegacyAuthService.HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(LegacyAuthService.CreatePrimaryHandler);
+        services.AddHttpClient<IProofProvider, ProviderProofProvider>()
+            .ConfigurePrimaryHttpMessageHandler(ProviderProofProvider.CreatePrimaryHandler);
+        services.AddHttpClient<IProviderMetadataRefreshService, ProviderMetadataRefreshService>()
+            .ConfigurePrimaryHttpMessageHandler(ProviderMetadataRefreshService.CreatePrimaryHandler);
         services.AddHttpClient<IProviderLifecycleClient, ProviderLifecycleClient>(client =>
                 client.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(ProviderLifecycleClient.CreatePrimaryHandler)
@@ -140,11 +144,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRoleManagementService, RoleManagementService>();
         services.AddScoped<IScopeService, ScopeService>();
         services.AddScoped<IPersonService, PersonService>();
+        services.AddScoped<global::Infrastructure.Authorization.PersonOperationAuthorization>();
         services.AddScoped<IOpenIddictSubjectTokenRevoker, OpenIddictSubjectTokenRevoker>();
         services.AddScoped<IPersonLifecycleService, PersonLifecycleService>(); // Phase 18
         services.AddScoped<ILocalizationService, LocalizationService>();
         services.AddScoped<ILocalizationManagementService, LocalizationManagementService>();
         services.AddScoped<IApiResourceService, ApiResourceService>();
+        services.AddScoped<global::Infrastructure.Authorization.IApiScopeUsagePolicy, global::Infrastructure.Authorization.ApiScopeUsagePolicy>();
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<IClientAllowedScopesService, ClientAllowedScopesService>();
         services.AddScoped<IClientScopeRequestProcessor, ClientScopeRequestProcessor>();
@@ -229,6 +235,7 @@ public static class ServiceCollectionExtensions
         // Options Configuration
         services.Configure<AppInfoOptions>(configuration.GetSection(AppInfoOptions.Section));
         services.Configure<LegacyAuthOptions>(configuration.GetSection(LegacyAuthOptions.SectionName));
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
         services.Configure<RateLimitingOptions>(configuration.GetSection(RateLimitingOptions.Section));
         services.Configure<OperationalAdminBootstrapOptions>(
             configuration.GetSection(OperationalAdminBootstrapOptions.Section));
@@ -590,6 +597,8 @@ public static class ServiceCollectionExtensions
             {
                 if (context.Principal != null)
                 {
+                    if (!await PendingExternalLoginLink.CompleteAsync(context.HttpContext, context.Principal))
+                        throw new InvalidOperationException("External login linking could not be completed.");
                     AuthorizationAuthenticationSession.OnSigningIn(context);
                     MfaEnrollmentSession.CompletePending(
                         context.HttpContext.Session,

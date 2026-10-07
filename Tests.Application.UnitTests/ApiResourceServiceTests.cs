@@ -1,3 +1,7 @@
+using System.Security.Claims;
+using Infrastructure.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
@@ -21,11 +25,13 @@ public class ApiResourceServiceTests : IDisposable
     private readonly Mock<IOpenIddictScopeManager> _mockScopeManager;
     private readonly Mock<ILogger<ApiResourceService>> _mockLogger;
     private readonly ApplicationDbContext _dbContext;
+    private readonly Mock<IAdministrativeAuthorizationBoundary> _boundary = new();
     private readonly ApiResourceService _apiResourceService;
 
     public ApiResourceServiceTests()
     {
         _mockScopeManager = new Mock<IOpenIddictScopeManager>();
+        _mockScopeManager.Setup(m => m.GetResourcesAsync(It.IsAny<object>(), It.IsAny<CancellationToken>())).ReturnsAsync(System.Collections.Immutable.ImmutableArray<string>.Empty);
         _mockLogger = new Mock<ILogger<ApiResourceService>>();
         
         // Setup in-memory database
@@ -35,7 +41,25 @@ public class ApiResourceServiceTests : IDisposable
         
         _dbContext = new ApplicationDbContext(options);
         
-        _apiResourceService = new ApiResourceService(_dbContext, _mockScopeManager.Object, _mockLogger.Object);
+        SetActor(null, true);
+        var authorization = new Mock<IAuthorizationService>();
+        authorization.Setup(a => a.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), It.IsAny<string>())).ReturnsAsync(AuthorizationResult.Success());
+        _mockScopeManager.Setup(m => m.FindByResourceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(AsyncEnumerable.Empty<object>());
+        var policy = new ApiScopeUsagePolicy(_dbContext, _mockScopeManager.Object, Mock.Of<IOpenIddictApplicationManager>(), _boundary.Object, authorization.Object);
+        _apiResourceService = new ApiResourceService(_dbContext, _mockScopeManager.Object, _mockLogger.Object, policy);
+    }
+
+    private void SetActor(Guid? personId, bool admin = false)
+    {
+        if (personId.HasValue && !_dbContext.Persons.Any(p => p.Id == personId))
+            _dbContext.Persons.Add(new Person { Id = personId.Value });
+        var user = new Core.Domain.ApplicationUser { Id = Guid.NewGuid(), PersonId = personId, IsActive = true };
+        _dbContext.Users.Add(user);
+        _dbContext.SaveChanges();
+        var identity = new ClaimsIdentity(IdentityConstants.ApplicationScheme);
+        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+        if (admin) identity.AddClaim(new Claim(ClaimTypes.Role, "Admin"));
+        _boundary.Setup(b => b.ResolveAsync()).ReturnsAsync(new AdministrativeAuthority(new ClaimsPrincipal(identity), false, new HashSet<string>()));
     }
 
     public void Dispose()
@@ -749,6 +773,7 @@ public class ApiResourceServiceTests : IDisposable
         );
 
         // Act
+        SetActor(ownerId);
         var result = await _apiResourceService.CreateResourceAsync(request, ownerId);
 
         // Assert
@@ -785,6 +810,9 @@ public class ApiResourceServiceTests : IDisposable
         await _dbContext.SaveChangesAsync(default);
 
         // Act
+        SetActor(ownerId);
+        foreach (var resource in _dbContext.ApiResources) resource.IsCatalogVisible = true;
+        await _dbContext.SaveChangesAsync();
         var (items, _) = await _apiResourceService.GetResourcesAsync(0, 10, null, null, ownerId);
 
         // Assert
@@ -824,6 +852,7 @@ public class ApiResourceServiceTests : IDisposable
         );
 
         // Act & Assert
+        SetActor(nonOwnerId);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => 
             _apiResourceService.UpdateResourceAsync(resource.Id, request, nonOwnerId));
     }
@@ -853,6 +882,7 @@ public class ApiResourceServiceTests : IDisposable
         );
 
         // Act
+        SetActor(ownerId);
         var result = await _apiResourceService.UpdateResourceAsync(resource.Id, request, ownerId);
 
         // Assert
@@ -879,6 +909,7 @@ public class ApiResourceServiceTests : IDisposable
         await _dbContext.SaveChangesAsync(default);
 
         // Act & Assert
+        SetActor(nonOwnerId);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => 
             _apiResourceService.DeleteResourceAsync(resource.Id, nonOwnerId));
     }
@@ -900,6 +931,7 @@ public class ApiResourceServiceTests : IDisposable
         await _dbContext.SaveChangesAsync(default);
 
         // Act
+        SetActor(ownerId);
         var result = await _apiResourceService.DeleteResourceAsync(resource.Id, ownerId);
 
         // Assert

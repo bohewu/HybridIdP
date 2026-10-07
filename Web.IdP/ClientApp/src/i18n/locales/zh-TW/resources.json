@@ -52,7 +52,21 @@
     "cancelButton": "取消",
     "validation": {
       "nameRequired": "名稱為必填且不能為空。"
-    }
+    },
+    "usagePolicy": "API 使用政策",
+    "usageOpen": "開放自行申請使用",
+    "usageOpenHelp": "允許應用程式管理者加入這些範圍；同一範圍對應的其他資源也必須允許使用。",
+    "catalogVisible": "顯示於共用目錄",
+    "catalogVisibleHelp": "讓其他管理者能找到此資源；未開放自行申請時，使用仍需核准。",
+    "usageApproval": "核准應用程式使用範圍",
+    "usageApprovalHelp": "核准此資源的一個已儲存範圍。其他受限資源需分別核准，之後應用程式管理者才能加入此範圍。",
+    "applicationId": "應用程式識別碼（管理網址中的 UUID）",
+    "approvalScope": "已儲存的範圍",
+    "selectApprovalScope": "請選擇範圍",
+    "approveUsage": "核准使用",
+    "approvingUsage": "核准中…",
+    "usageApprovalSaved": "已儲存核准。所有對應資源都核准後，應用程式管理者即可申請此範圍。",
+    "usageApprovalFailed": "核准失敗，請確認應用程式識別碼、已儲存的範圍及擁有者權限。"
   },
   "accessDenied": {
     "read": "您沒有權限查看 API 資源。",

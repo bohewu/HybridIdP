@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Core.Application.DTOs;
+using Core.Application;
 using Core.Domain.Entities;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
@@ -28,6 +29,7 @@ public class PasskeyServiceTests
     private readonly DbContextOptions<ApplicationDbContext> _dbOptions;
     private readonly Mock<ILogger<PasskeyService>> _loggerMock;
     private readonly PasskeyService _sut;
+    private readonly Mock<ISecurityPolicyService> _securityPolicy = new();
 
     public PasskeyServiceTests()
     {
@@ -43,12 +45,14 @@ public class PasskeyServiceTests
         _dbContext = new ApplicationDbContext(_dbOptions);
         
         _loggerMock = new Mock<ILogger<PasskeyService>>();
+        _securityPolicy.Setup(service => service.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy());
         
         _sut = new PasskeyService(
             _fido2Mock.Object,
             _userManagerMock.Object,
             _dbContext,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _securityPolicy.Object);
     }
 
     [Fact]
@@ -111,7 +115,7 @@ public class PasskeyServiceTests
     }
 
     [Fact]
-    public async Task DeletePasskeyAsync_ExistingPasskey_ReturnsTrueAndDeletes()
+    public async Task DeletePasskeyAsync_ExistingPasskey_RetiresOnceAndPreservesHistory()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -124,6 +128,9 @@ public class PasskeyServiceTests
         };
         
         _dbContext.UserCredentials.Add(cred);
+        _dbContext.Users.Add(new ApplicationUser { Id = userId, UserName = "key-owner" });
+        _userManagerMock.Setup(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()))
+            .Returns(async () => { await _dbContext.SaveChangesAsync(); return IdentityResult.Success; });
         await _dbContext.SaveChangesAsync();
 
         // Act
@@ -131,7 +138,10 @@ public class PasskeyServiceTests
 
         // Assert
         Assert.True(result);
-        Assert.Empty(_dbContext.UserCredentials);
+        Assert.NotNull((await _dbContext.UserCredentials.SingleAsync()).DisabledAtUtc);
+        var retiredAt = cred.DisabledAtUtc;
+        Assert.False(await _sut.DeletePasskeyAsync(userId, 1));
+        Assert.Equal(retiredAt, (await _dbContext.UserCredentials.SingleAsync()).DisabledAtUtc);
     }
 
     [Fact]
@@ -145,6 +155,29 @@ public class PasskeyServiceTests
 
         // Assert
         Assert.False(result);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public async Task DeletePasskeyAsync_ShouldPreserveKeyOnMandatoryPolicyOrFailedPersistence(bool mandatory, bool persistenceSucceeds)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "owner" };
+        _dbContext.Users.Add(user);
+        _dbContext.UserCredentials.Add(new UserCredential { Id = 7, UserId = user.Id, CredentialId = [7], PublicKey = [7] });
+        await _dbContext.SaveChangesAsync();
+        _securityPolicy.Setup(s => s.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy { EnforceMandatoryMfaEnrollment = mandatory });
+        _userManagerMock.Setup(s => s.UpdateAsync(user)).Returns(async () =>
+        {
+            if (!persistenceSucceeds) return IdentityResult.Failed(new IdentityError { Code = "ConcurrencyFailure" });
+            await _dbContext.SaveChangesAsync();
+            return IdentityResult.Success;
+        });
+        Assert.Equal(!mandatory && persistenceSucceeds, await _sut.DeletePasskeyAsync(user.Id, 7));
+        user.PhoneNumber = "test-later-save";
+        await _dbContext.SaveChangesAsync();
+        Assert.Equal(!mandatory && persistenceSucceeds, (await _dbContext.UserCredentials.SingleAsync()).DisabledAtUtc != null);
     }
 
     [Fact]

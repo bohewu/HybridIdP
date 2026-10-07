@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Collections.Immutable;
+using Core.Application;
 using Core.Domain;
 using Core.Domain.Constants;
 using Microsoft.AspNetCore.Authentication;
@@ -22,6 +23,7 @@ public partial class DeviceFlowService : IDeviceFlowService
     private readonly IStringLocalizer<DeviceFlowService> _localizer;
     private readonly ILogger<DeviceFlowService> _logger;
     private readonly IClaimsEnrichmentService _claimsEnricher;
+    private readonly ISecurityPolicyService _securityPolicyService;
 
     public DeviceFlowService(
         Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
@@ -30,7 +32,8 @@ public partial class DeviceFlowService : IDeviceFlowService
         UserManager<ApplicationUser> userManager,
         IStringLocalizer<DeviceFlowService> localizer,
         ILogger<DeviceFlowService> logger,
-        IClaimsEnrichmentService claimsEnricher)
+        IClaimsEnrichmentService claimsEnricher,
+        ISecurityPolicyService securityPolicyService)
     {
         _lifecycleEligibility = lifecycleEligibility;
         _scopeManager = scopeManager;
@@ -39,6 +42,7 @@ public partial class DeviceFlowService : IDeviceFlowService
         _localizer = localizer;
         _logger = logger;
         _claimsEnricher = claimsEnricher;
+        _securityPolicyService = securityPolicyService;
     }
 
     public async Task<DeviceVerificationViewModel> PrepareVerificationViewModelAsync(AuthenticateResult authenticateResult)
@@ -94,14 +98,16 @@ public partial class DeviceFlowService : IDeviceFlowService
             // Create the claims-based identity that will be used by OpenIddict to generate tokens.
             var client = await _applicationManager.FindByClientIdAsync(
                 authenticateResult.Principal.GetClaim(Claims.ClientId)!, cancellationToken);
-            if (client == null || (ClientMfaPolicy.RequiresMfa(await _applicationManager.GetPropertiesAsync(client, cancellationToken)) &&
+            var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+            if (client == null || ((policy.EnforceMandatoryMfaEnrollment ||
+                ClientMfaPolicy.RequiresMfa(await _applicationManager.GetPropertiesAsync(client, cancellationToken))) &&
                 !Web.IdP.Helpers.MfaEnrollmentSession.HasMfa(userPrincipal)))
             {
                 return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
                     new AuthenticationProperties(new Dictionary<string, string?>
                     {
                         [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
-                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The client's multi-factor authentication requirement is not satisfied."
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Multi-factor authentication is required for this device authorization."
                     }));
             }
             var identity = new ClaimsIdentity(

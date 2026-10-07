@@ -20,6 +20,8 @@ const formData = ref({
   displayName: '',
   description: '',
   baseUrl: '',
+  isUsageOpen: false,
+  isCatalogVisible: false,
   scopeIds: []
 })
 
@@ -30,6 +32,30 @@ const loadingScopes = ref(false)
 
 const submitting = ref(false)
 const error = ref(null)
+const approvalApplicationId = ref('')
+const approvalScopeId = ref('')
+const resourceScopes = ref([])
+const approving = ref(false)
+const approvalMessage = ref('')
+
+const approveUsage = async () => {
+  approving.value = true
+  approvalMessage.value = ''
+  error.value = null
+  try {
+    const response = await fetch(`/api/admin/resources/${props.resource.id}/usage-approvals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationId: approvalApplicationId.value.trim(), scopeId: approvalScopeId.value })
+    })
+    if (!response.ok) throw new Error(t('resources.form.usageApprovalFailed'))
+    approvalMessage.value = t('resources.form.usageApprovalSaved')
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    approving.value = false
+  }
+}
 
 const nameInput = ref(null)
 
@@ -39,6 +65,8 @@ const resetForm = () => {
     displayName: '',
     description: '',
     baseUrl: '',
+    isUsageOpen: false,
+    isCatalogVisible: false,
     scopeIds: []
   }
   selectedScopeIds.value = []
@@ -67,6 +95,9 @@ const fetchResourceScopes = async (resourceId) => {
     if (!response.ok) throw new Error('Failed to fetch resource details')
     const data = await response.json()
     selectedScopeIds.value = data.scopes ? data.scopes.map(s => s.scopeId) : []
+    resourceScopes.value = data.scopes || []
+    formData.value.isUsageOpen = data.isUsageOpen === true
+    formData.value.isCatalogVisible = data.isCatalogVisible === true
   } catch (e) {
     console.error('Error fetching resource scopes:', e)
   }
@@ -79,6 +110,8 @@ watch(() => props.resource, async (newResource) => {
       displayName: newResource.displayName || '',
       description: newResource.description || '',
       baseUrl: newResource.baseUrl || '',
+      isUsageOpen: newResource.isUsageOpen === true,
+      isCatalogVisible: newResource.isCatalogVisible === true,
       scopeIds: []
     }
     // Load scopes for this resource
@@ -117,7 +150,8 @@ const handleSubmit = async () => {
       displayName: formData.value.displayName || null,
       description: formData.value.description || null,
       baseUrl: formData.value.baseUrl || null,
-      scopeIds: selectedScopeIds.value
+      isUsageOpen: formData.value.isUsageOpen,
+      isCatalogVisible: formData.value.isCatalogVisible
     }
 
     const url = isEdit.value
@@ -251,6 +285,34 @@ const isScopeSelected = (scopeId) => {
             <p class="mt-1 text-xs text-gray-500">{{ $t('resources.form.baseUrlHelp') }}</p>
           </div>
 
+          <fieldset class="space-y-3 border-t pt-4">
+            <legend class="text-sm font-semibold text-gray-900">{{ t('resources.form.usagePolicy') }}</legend>
+            <label class="flex items-start gap-2 text-sm text-gray-700">
+              <input v-model="formData.isUsageOpen" type="checkbox" class="mt-1 rounded border-gray-300 text-google-500" data-testid="usage-open" />
+              <span>{{ t('resources.form.usageOpen') }}<span class="block text-xs text-gray-500">{{ t('resources.form.usageOpenHelp') }}</span></span>
+            </label>
+            <label class="flex items-start gap-2 text-sm text-gray-700">
+              <input v-model="formData.isCatalogVisible" type="checkbox" class="mt-1 rounded border-gray-300 text-google-500" data-testid="catalog-visible" />
+              <span>{{ t('resources.form.catalogVisible') }}<span class="block text-xs text-gray-500">{{ t('resources.form.catalogVisibleHelp') }}</span></span>
+            </label>
+          </fieldset>
+
+          <section v-if="isEdit" class="space-y-3 border-t pt-4" aria-labelledby="usage-approval-heading">
+            <h4 id="usage-approval-heading" class="text-sm font-semibold text-gray-900">{{ t('resources.form.usageApproval') }}</h4>
+            <p class="text-xs text-gray-500">{{ t('resources.form.usageApprovalHelp') }}</p>
+            <label for="approval-application" class="block text-sm text-gray-700">{{ t('resources.form.applicationId') }}</label>
+            <input id="approval-application" v-model="approvalApplicationId" class="block w-full rounded-md border-gray-300 h-10 px-3 text-sm" />
+            <label for="approval-scope" class="block text-sm text-gray-700">{{ t('resources.form.approvalScope') }}</label>
+            <select id="approval-scope" v-model="approvalScopeId" class="block w-full rounded-md border-gray-300 h-10 px-3 text-sm">
+              <option value="">{{ t('resources.form.selectApprovalScope') }}</option>
+              <option v-for="scope in resourceScopes" :key="scope.scopeId" :value="scope.scopeId">{{ scope.displayName || scope.name }}</option>
+            </select>
+            <button type="button" :disabled="approving || submitting || !approvalApplicationId.trim() || !approvalScopeId" @click="approveUsage"
+              class="rounded-md border border-google-500 px-3 py-2 text-sm text-google-600 disabled:opacity-50" data-testid="approve-usage">
+              {{ t(approving ? 'resources.form.approvingUsage' : 'resources.form.approveUsage') }}
+            </button>
+            <p v-if="approvalMessage" role="status" class="text-sm text-green-700">{{ approvalMessage }}</p>
+          </section>
         </div>
       </form>
     </template>

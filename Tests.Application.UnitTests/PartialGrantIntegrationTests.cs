@@ -36,7 +36,7 @@ public class PartialGrantIntegrationTests : IDisposable
         var scopeMgr = new Mock<IOpenIddictScopeManager>();
         var appMgr = new Mock<IOpenIddictApplicationManager>();
         var publisher = new Mock<IDomainEventPublisher>();
-        _scopeService = new ScopeService(scopeMgr.Object, appMgr.Object, _db, publisher.Object);
+        _scopeService = new ScopeService(scopeMgr.Object, appMgr.Object, _db, publisher.Object, Moq.Mock.Of<Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.CanViewScopeAsync(Moq.It.IsAny<string>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)));
     }
 
     [Fact]

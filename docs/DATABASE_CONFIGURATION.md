@@ -4,6 +4,21 @@
 
 ## 📋 目錄
 
+API usage policy adds two non-null, false-default columns to `ApiResources`:
+`IsUsageOpen` and `IsCatalogVisible`. Both provider migration sources use the
+same restricted/private defaults. Existing updates that omit either policy
+field preserve its saved value. Apply the selected provider's migration only
+through the established operator-controlled deployment process.
+
+Exact scope/resource approval receipts use the existing OpenIddict application
+properties JSON under the server-owned `IdpApiScopeUsageApprovals` key; no new
+approval table or guessed legacy backfill is required. Existing application
+permissions and credentials are retained. Until explicit owner/Admin approval
+or an explicit resource opening, legacy API permissions (including samples)
+cannot produce new API tokens. Resource ownership/mapping changes can invalidate
+the applicable receipt; plan the corresponding explicit reapproval. This source
+change does not run a migration or connect to an operational database.
+
 - [🚀 快速開始](#-快速開始)
 - [🏗️ 資料庫架構](#-資料庫架構)
 - [💻 本地開發環境](#-本地開發環境)
@@ -1027,6 +1042,12 @@ requires the migration/restore policy above; `Down` cannot safely reconstruct
 the former unique ClientId index when identifiers have been reused.
 
 ### Passkey retirement migration
+
+Factor removal uses the existing `DisabledAtUtc`, Identity `ConcurrencyStamp`,
+`LastTotpValidatedWindow` and recovery-code storage; it adds no schema migration.
+Dependent passkey retirements and factor changes share the user update's save
+boundary. One-time proof conflicts discard failed tracked user/token state so
+later writes cannot persist a rejected consumption.
 
 `AddPasskeyDisabledAtUtc` adds nullable `UserCredentials.DisabledAtUtc` in both
 provider migration projects. Null means active; a UTC timestamp means retired.

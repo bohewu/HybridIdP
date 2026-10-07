@@ -7,6 +7,8 @@ namespace Core.Application.DTOs;
 /// </summary>
 public sealed class ApiResourceSummary
 {
+    public bool IsUsageOpen { get; set; }
+    public bool IsCatalogVisible { get; set; }
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? DisplayName { get; set; }
@@ -24,6 +26,8 @@ public sealed class ApiResourceSummary
 /// </summary>
 public sealed class ApiResourceDetail
 {
+    public bool IsUsageOpen { get; set; }
+    public bool IsCatalogVisible { get; set; }
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? DisplayName { get; set; }
@@ -65,7 +69,9 @@ public record CreateApiResourceRequest(
     [Url(ErrorMessage = "BaseUrl must be a valid URL")]
     string? BaseUrl,
     
-    List<string>? ScopeIds
+    List<string>? ScopeIds,
+    bool IsUsageOpen = false,
+    bool IsCatalogVisible = false
 );
 
 /// <summary>
@@ -86,5 +92,7 @@ public record UpdateApiResourceRequest(
     [Url(ErrorMessage = "BaseUrl must be a valid URL")]
     string? BaseUrl,
     
-    List<string>? ScopeIds
+    List<string>? ScopeIds,
+    bool? IsUsageOpen = null,
+    bool? IsCatalogVisible = null
 );

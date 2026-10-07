@@ -10,6 +10,9 @@ public class EmailOptions
     public string SmtpHost { get; set; } = string.Empty;
     public int SmtpPort { get; set; } = 587;
     public bool SmtpEnableSsl { get; set; } = true;
+    // Deployment policy; persisted mail settings cannot override these protections.
+    public bool SmtpRequireTls { get; set; } = false;
+    public bool SmtpValidateServerCertificate { get; set; } = true;
     public string SmtpUsername { get; set; } = string.Empty;
     public string SmtpPassword { get; set; } = string.Empty;
     

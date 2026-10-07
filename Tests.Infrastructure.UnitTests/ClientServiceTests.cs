@@ -38,7 +38,7 @@ public class ClientServiceTests
             _mockEventPublisher.Object,
             _mockContext.Object,
             _mockScopeManager.Object,
-            Options.Create(new RedirectUriSecurityPolicyOptions())
+            Options.Create(new RedirectUriSecurityPolicyOptions()), Moq.Mock.Of<global::Infrastructure.Authorization.IApiScopeUsagePolicy>()
         );
     }
 
@@ -263,7 +263,7 @@ public class ClientServiceTests
                 EnforceHttps = true,
                 AllowLocalhostHttp = true,
                 AllowedHosts = ["trusted.example"]
-            }));
+            }), Moq.Mock.Of<global::Infrastructure.Authorization.IApiScopeUsagePolicy>());
 
         var request = new CreateClientRequest(
             ClientId: "host-restricted",
