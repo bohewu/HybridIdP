@@ -128,6 +128,29 @@ public sealed class Stage2DirectoryCredentialTests
     }
 
     [Fact]
+    public void ResetCredentialRequest_ShouldUseImmutableObjectIdAndPreservePasswordEncoding()
+    {
+        var objectId = Guid.NewGuid();
+        var replacementValue = Guid.NewGuid().ToString("N") + "\u4e2d\u6587\"";
+
+        var request = LdapProtectedDirectoryTransport.CreateResetCredentialRequest(objectId, replacementValue);
+
+        Assert.Equal($"<GUID={objectId:D}>", request.DistinguishedName);
+        AssertPasswordModification(Assert.Single(request.Modifications.Cast<DirectoryAttributeModification>()),
+            DirectoryAttributeOperation.Replace, replacementValue);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ResetCredentialRequest_ShouldRejectMissingIdentityOrPassword(bool emptyIdentity, bool emptyPassword)
+    {
+        Assert.Throws<InvalidOperationException>(() => LdapProtectedDirectoryTransport.CreateResetCredentialRequest(
+            emptyIdentity ? Guid.Empty : Guid.NewGuid(), emptyPassword ? string.Empty : Guid.NewGuid().ToString("N")));
+    }
+
+    [Fact]
     public async Task TemporaryCredentialCapability_DefaultOffContactsNoTransport()
     {
         var transport = new RecordingTransport();

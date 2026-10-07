@@ -107,12 +107,7 @@ public sealed class LdapProtectedDirectoryTransport :
                 return new ProtectedDirectoryCredentialOperationTransportResult(MapOperation(gate.Value));
             }
 
-            var quotedPassword = $"\"{newPassword}\"";
-            var request = new ModifyRequest(
-                entry.DistinguishedName,
-                DirectoryAttributeOperation.Replace,
-                "unicodePwd",
-                System.Text.Encoding.Unicode.GetBytes(quotedPassword));
+            var request = CreateResetCredentialRequest(directoryObjectId, newPassword);
             await SendAsync(connection, request, cancellationToken);
             return new ProtectedDirectoryCredentialOperationTransportResult(ProtectedDirectoryCredentialOperationTransportOutcome.Succeeded);
         }
@@ -230,6 +225,18 @@ public sealed class LdapProtectedDirectoryTransport :
         {
             return new(ProtectedDirectoryCredentialOperationTransportOutcome.Malformed);
         }
+    }
+
+    internal static ModifyRequest CreateResetCredentialRequest(Guid directoryObjectId, string newPassword)
+    {
+        if (directoryObjectId == Guid.Empty || string.IsNullOrEmpty(newPassword))
+        {
+            throw new InvalidOperationException("A directory identity and new password are required.");
+        }
+
+        var request = new ModifyRequest($"<GUID={directoryObjectId:D}>");
+        request.Modifications.Add(PasswordModification(DirectoryAttributeOperation.Replace, newPassword));
+        return request;
     }
 
     internal static ModifyRequest CreateTemporaryCredentialRequest(Guid directoryObjectId, string temporaryPassword)

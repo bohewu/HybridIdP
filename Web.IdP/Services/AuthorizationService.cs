@@ -345,9 +345,9 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             if (consentType == ConsentTypes.External && authorizations.Count == 0) return ExternalConsentDenied();
 
-            // Always show consent page for first time or if prompt=consent is requested
-            // In production, you may skip consent if authorization already exists
-            if (authorizations.Count > 0 && (consentType == ConsentTypes.External ||
+            // Current per-request consent policy takes precedence over historical grants.
+            if (consentType is not (ConsentTypes.Explicit or ConsentTypes.Systematic) &&
+                authorizations.Count > 0 && (consentType == ConsentTypes.External ||
                 !promptValues.Contains("consent", StringComparer.OrdinalIgnoreCase)))
             {
                 var existingAuthorization = authorizations[0];
@@ -436,6 +436,16 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     cancellationToken);
 
                 return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+            }
+
+            if (promptValues.Contains("none", StringComparer.OrdinalIgnoreCase))
+            {
+                return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.ConsentRequired,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "User consent is required."
+                    }));
             }
 
             // Show consent View

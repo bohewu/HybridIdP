@@ -1102,7 +1102,7 @@ ClientForm.vue
     -   Pagination updated: "顯示第 1 至 5 項結果，共 5 項"
 -   ✅ **REGENERATE SECRET Operation**: Regenerated secret for existing client
     -   Confirmation dialog: "您確定要為 "test_client" 重新產生密鑰嗎？舊密鑰將立即失效。"
-    -   New secret generated: `WQy1z25iNgKGHPmOpxawJxuygUp5QxCLK913b0HYBTo` (32-byte base64url)
+    -   New secret generated: `[REDACTED]` (32-byte base64url)
     -   Old secret immediately invalidated
 
 #### Git Commits

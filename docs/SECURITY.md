@@ -64,6 +64,10 @@ grant and client permission checks still apply.
 
 ## Impersonation audit attribution
 
+External-login removal is denied before any account mutation when the current
+principal carries an impersonator marker or Actor. Ordinary self-service removal
+retains its lifecycle checks, cookie refresh and audit behavior.
+
 Impersonation retains the `Users.Impersonate` permission check, administrator
 target denial and current account eligibility checks. Successful transitions
 persist `ImpersonationStarted` and `ImpersonationStopped` through the existing

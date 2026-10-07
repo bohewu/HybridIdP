@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options; // Added
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Infrastructure;
 using Core.Application.Interfaces;
@@ -328,6 +329,12 @@ public class ProfileManagementController : ControllerBase
     [HttpPost("remove-login")]
     public async Task<IActionResult> RemoveLogin([FromBody] RemoveLoginRequest request, CancellationToken cancellationToken = default)
     {
+        if (User.HasClaim(claim => claim.Type == AuthConstants.Claims.ImpersonatorId) ||
+            User.Identities.Any(identity => identity.Actor != null))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "External login removal is unavailable during impersonation." });
+        }
+
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
         {

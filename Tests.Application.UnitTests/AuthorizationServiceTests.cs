@@ -236,6 +236,61 @@ namespace Tests.Application.UnitTests
                 It.IsAny<string>(), It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
+        [Theory]
+        [InlineData(OpenIddictConstants.ConsentTypes.Explicit, null, false)]
+        [InlineData(OpenIddictConstants.ConsentTypes.Explicit, "none", false)]
+        [InlineData(OpenIddictConstants.ConsentTypes.Systematic, null, false)]
+        [InlineData(OpenIddictConstants.ConsentTypes.Systematic, "none", false)]
+        [InlineData(OpenIddictConstants.ConsentTypes.Implicit, null, true)]
+        [InlineData(OpenIddictConstants.ConsentTypes.Implicit, "none", true)]
+        [InlineData(OpenIddictConstants.ConsentTypes.Implicit, "consent", false)]
+        [InlineData(OpenIddictConstants.ConsentTypes.External, "none", true)]
+        public async Task ExistingPermanentGrant_ShouldHonorCurrentConsentPolicy(string consentType, string? prompt, bool reuseGrant)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true };
+            SetupMockUsers(user);
+            SetupMockScopeExtensions();
+            using var sessionDb = SetupSessionPersistence();
+            var application = new object();
+            var grant = new object();
+            var applicationId = Guid.NewGuid().ToString();
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim(OpenIddictConstants.Claims.Subject, user.Id.ToString()),
+                new Claim(OpenIddictConstants.Claims.AuthenticationTime, "1700000000")], "Test"));
+            _mockHttpContextAccessor.Setup(value => value.HttpContext).Returns(new DefaultHttpContext());
+            _mockApplicationManager.Setup(value => value.FindByClientIdAsync("client", It.IsAny<CancellationToken>())).ReturnsAsync(application);
+            _mockApplicationManager.Setup(value => value.GetIdAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(applicationId);
+            _mockApplicationManager.Setup(value => value.GetPermissionsAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([OpenIddictConstants.Permissions.ResponseTypes.Code]);
+            _mockApplicationManager.Setup(value => value.GetConsentTypeAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(consentType);
+            _mockUserManager.Setup(value => value.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
+            _mockUserManager.Setup(value => value.GetRolesAsync(user)).ReturnsAsync([]);
+            _mockClientAllowedScopesService.Setup(value => value.GetRequiredScopesAsync(It.IsAny<Guid>())).ReturnsAsync([]);
+            _mockClientScopeProcessor.Setup(value => value.EnforceAsync(It.IsAny<Guid>(), It.IsAny<IEnumerable<string>>(), It.IsAny<bool>()))
+                .ReturnsAsync(new ClientScopeEvaluationResult { AllowedScopes = ["openid"] });
+            _mockAuthorizationManager.Setup(value => value.FindAsync(user.Id.ToString(), applicationId,
+                OpenIddictConstants.Statuses.Valid, OpenIddictConstants.AuthorizationTypes.Permanent,
+                It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>())).Returns(ToAsyncEnumerable(grant));
+            _mockAuthorizationManager.Setup(value => value.GetScopesAsync(grant, It.IsAny<CancellationToken>())).ReturnsAsync(["openid"]);
+            _mockAuthorizationManager.Setup(value => value.GetIdAsync(grant, It.IsAny<CancellationToken>())).ReturnsAsync("historical-grant");
+            _mockApiResourceService.Setup(value => value.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync([]);
+
+            var request = new OpenIddictRequest { ClientId = "client", Scope = "openid", ResponseType = "code", Prompt = prompt };
+            var result = await _authorizationService.HandleAuthorizeRequestAsync(principal, request, prompt);
+
+            if (reuseGrant)
+                Assert.Equal("historical-grant", Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal.GetAuthorizationId());
+            else if (prompt == "none")
+                Assert.Equal(OpenIddictConstants.Errors.ConsentRequired, Assert.IsType<ForbidResult>(result)
+                    .Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+            else
+                Assert.IsType<OkResult>(result);
+            _mockAuthorizationManager.Verify(value => value.CreateAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+            if (!reuseGrant)
+                _mockAuthorizationManager.Verify(value => value.GetIdAsync(grant, It.IsAny<CancellationToken>()), Times.Never);
+        }
+
         private static Mock<RoleManager<ApplicationRole>> MockRoleManager()
         {
             var store = new Mock<IRoleStore<ApplicationRole>>();

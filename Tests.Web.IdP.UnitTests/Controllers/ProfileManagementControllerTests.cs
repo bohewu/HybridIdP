@@ -554,6 +554,32 @@ public class ProfileManagementControllerTests : IDisposable
 
     #region RemoveLogin Tests
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RemoveLogin_ShouldRejectImpersonationBeforeMutation_WhenClaimOrActorIsPresent(bool actorOnly)
+    {
+        _mockUserManager.Setup(manager => manager.GetUserAsync(It.IsAny<ClaimsPrincipal>())).ReturnsAsync(_testUser);
+        _mockUserManager.Setup(manager => manager.RemoveLoginAsync(_testUser, "Google", "google-id")).ReturnsAsync(IdentityResult.Success);
+        var identity = (ClaimsIdentity)_controller.User.Identity!;
+        if (actorOnly)
+            identity.Actor = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "actor");
+        else
+            identity.AddClaim(new Claim(Core.Domain.Constants.AuthConstants.Claims.ImpersonatorId, "invalid-actor"));
+
+        var result = await _controller.RemoveLogin(new RemoveLoginRequest
+        {
+            LoginProvider = "Google",
+            ProviderKey = "google-id"
+        });
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<ObjectResult>(result).StatusCode);
+        _mockUserManager.Verify(manager => manager.GetUserAsync(It.IsAny<ClaimsPrincipal>()), Times.Never);
+        _mockUserManager.Verify(manager => manager.RemoveLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockSignInManager.Verify(manager => manager.RefreshSignInAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _mockAuditService.VerifyNoOtherCalls();
+    }
+
     [Fact]
     public async Task RemoveLogin_ValidRequest_RemovesLoginAndReturnsOk()
     {

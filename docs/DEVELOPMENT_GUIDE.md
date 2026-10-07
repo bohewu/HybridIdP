@@ -52,6 +52,14 @@ docs/
 docker compose -f docker-compose.dev.yml up -d
 ```
 
+Development database, Redis, and Mailpit host ports bind to `127.0.0.1` by
+default. Container-to-container service names are unchanged. For intentionally
+shared development, set `DEV_DEPENDENCY_BIND_ADDRESS` to the intended host
+interface in the invoking environment or local `.env`; `0.0.0.0` publishes on
+all IPv4 interfaces. Remove that override to restore loopback binding. Review
+`docker compose -f docker-compose.dev.yml config` locally before starting the
+stack; its expanded output contains credentials and must not be shared.
+
 或者使用 PowerShell 腳本（僅限 PostgreSQL）：
 ```powershell
 // See docs/examples/development_guide_start_db.ps1.example

@@ -273,7 +273,7 @@ const removeLogin = async (login) => {
       emit('updated')
     } else {
       console.error('Failed to remove login')
-      alert(t('profile.removeLoginFailed') || 'Failed to remove login')
+      alert(t('profile.common.removeLoginFailed'))
     }
   } catch (e) {
     console.error('Error removing login:', e)

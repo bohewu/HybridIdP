@@ -86,6 +86,13 @@ requested scopes after client policy filtering. Both authorize GET and POST
 reuse that approval; interactive consent cannot create an External grant.
 Missing approval returns the OpenIddict `consent_required` protocol error.
 
+Current Explicit and Systematic consent policies require a new approval on each
+authorization request, including after a change from Implicit with an existing
+Permanent grant. Such grants cannot bypass the current policy. A silent
+`prompt=none` request that needs approval returns `consent_required`; it never
+renders an interactive consent page. Implicit grant reuse and prior External
+approval remain available under their respective policies.
+
 ### Implicit Flow
 **Status:** **REMOVED**
 Legacy flow returning tokens in URL. Replaced by Authorization Code + PKCE.

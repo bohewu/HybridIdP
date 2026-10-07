@@ -63,6 +63,45 @@ public class ScopeServiceTests : IDisposable
     #region GetScopesAsync Tests
 
     [Fact]
+    public async Task GetScopesAsync_ShouldCloseScopeReader_BeforeEvaluatingVisibility()
+    {
+        var readerOpen = false;
+        var scope = new object();
+
+        async IAsyncEnumerable<object> ReadScopesAsync()
+        {
+            readerOpen = true;
+            try
+            {
+                yield return scope;
+                await Task.Yield();
+            }
+            finally
+            {
+                readerOpen = false;
+            }
+        }
+
+        _mockScopeManager.Setup(manager => manager.ListAsync(It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Returns(ReadScopesAsync());
+        _mockScopeManager.Setup(manager => manager.GetIdAsync(scope, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("scope1");
+        _mockScopeManager.Setup(manager => manager.GetNameAsync(scope, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("openid");
+        _mockScopeManager.Setup(manager => manager.GetResourcesAsync(scope, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+        _scopeUsage.Setup(policy => policy.CanViewScopeAsync("scope1", It.IsAny<CancellationToken>()))
+            .Callback(() => Assert.False(readerOpen))
+            .ReturnsAsync(true);
+
+        var (items, totalCount) = await _scopeService.GetScopesAsync(0, 25, null, null);
+
+        Assert.Single(items);
+        Assert.Equal(1, totalCount);
+        _scopeUsage.Verify(policy => policy.CanViewScopeAsync("scope1", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task GetScopesAsync_ShouldReturnAllScopes_WhenNoFiltersApplied()
     {
         // Arrange
