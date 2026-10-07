@@ -298,6 +298,7 @@ public partial class LoginModel : PageModel
                 AuthenticationMethodSession.Replace(
                     HttpContext.Session,
                     AuthConstants.Amr.Password);
+                AccountSecurityOperationSession.MarkVerified(HttpContext, result.User, "password");
 
                 // Check if user has MFA enabled - redirect to MFA verification page
                 // Support both TOTP MFA (TwoFactorEnabled) and Email MFA (EmailMfaEnabled)

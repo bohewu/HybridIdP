@@ -6,6 +6,8 @@ using Core.Domain;
 using Core.Domain.Constants;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Web.IdP.Helpers;
 
 namespace Web.IdP.Services;
@@ -79,12 +81,13 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
             return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
         }
 
-        var preserveSession = login != null && httpContext.User.Identity?.IsAuthenticated == true &&
-            httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) == user.Id.ToString() &&
-            !string.IsNullOrEmpty(user.SecurityStamp) &&
-            httpContext.User.FindFirstValue(_userManager.Options.ClaimsIdentity.SecurityStampClaimType) == user.SecurityStamp;
-        if (preserveSession && MfaEnrollmentSession.HasMfa(httpContext.User))
+        string? nonce = null;
+        if (login is ExternalLoginInfo info)
+            info.AuthenticationProperties?.Items.TryGetValue(AccountSecurityOperationSession.CorrelationProperty, out nonce);
+        if (login != null && nonce != null && await AccountSecurityOperationSession.IsAuthorizedAsync(httpContext, user,
+                AccountSecurityOperationSession.ExternalLinkPurpose, login.LoginProvider, nonce))
         {
+            AccountSecurityOperationSession.Consume(httpContext);
             return await PendingExternalLoginLink.PersistAsync(httpContext, user, login!, user.SecurityStamp, cancellationToken)
                 ? ExternalSignInCompletionResult.Succeeded()
                 : ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
@@ -99,7 +102,15 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
                 await _userManager.FindByLoginAsync(login.LoginProvider, login.ProviderKey) != null ||
                 !(await _loginService.CanLinkExternalLoginAsync(user, login.LoginProvider, cancellationToken)).Succeeded)
                 return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
-            PendingExternalLoginLink.Begin(httpContext.Session, user, login, _timeProvider);
+            var passwordVerified = PendingExternalLoginLink.TakePasswordCompletion(httpContext, user);
+            var credentials = await httpContext.RequestServices.GetRequiredService<IApplicationDbContext>().UserCredentials
+                .Where(credential => credential.UserId == user.Id && credential.DisabledAtUtc == null)
+                .Select(credential => credential.CredentialId).ToListAsync(cancellationToken);
+            if (!passwordVerified && !user.TwoFactorEnabled && !user.EmailMfaEnabled && credentials.Count == 0)
+                return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
+            await httpContext.SignOutAsync(IdentityConstants.TwoFactorRememberMeScheme);
+            PendingExternalLoginLink.Begin(httpContext.Session, user, login, _timeProvider, passwordVerified,
+                credentials.Select(WebEncoders.Base64UrlEncode).ToArray());
         }
 
         if (user.TwoFactorEnabled)
@@ -162,8 +173,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
             if (!await PendingExternalLoginLink.PersistAsync(httpContext, user, login, user.SecurityStamp, cancellationToken))
                 return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
         }
-        if (!preserveSession)
-            await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, claims);
+        await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, claims);
 
         return ExternalSignInCompletionResult.Succeeded();
     }

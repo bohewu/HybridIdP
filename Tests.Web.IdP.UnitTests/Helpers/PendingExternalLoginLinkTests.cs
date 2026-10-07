@@ -26,6 +26,52 @@ namespace Tests.Web.IdP.UnitTests.Helpers;
 
 public class PendingExternalLoginLinkTests
 {
+    [Fact]
+    public async Task AutoLink_ShouldRejectCandidateAndOldMfaCookieWhenNoEstablishedFactorWasVerified()
+    {
+        using var fixture = new Fixture("none");
+        fixture.Http.User = fixture.Principal();
+        var result = await fixture.Coordinator.LinkAsync(fixture.Http, fixture.User, new UserLoginInfo("Google", "candidate", "Google"));
+        Assert.Equal(ExternalSignInCompletionStatus.Blocked, result.Status);
+        Assert.Empty(fixture.Links);
+    }
+
+    [Fact]
+    public async Task PendingLink_ShouldRejectNewEnrollmentAndNewPasskeyUntilExistingTotpCompletes()
+    {
+        using var fixture = new Fixture();
+        await fixture.BeginAsync();
+        await PendingExternalLoginLink.MarkMfaCompletionAsync(fixture.Http, fixture.User, "enrollment");
+        await PendingExternalLoginLink.CompleteAsync(fixture.Http, fixture.Principal());
+        await PendingExternalLoginLink.MarkMfaCompletionAsync(fixture.Http, fixture.User, "passkey", "new-key");
+        await PendingExternalLoginLink.CompleteAsync(fixture.Http, fixture.Principal());
+        Assert.Empty(fixture.Links);
+        await PendingExternalLoginLink.MarkMfaCompletionAsync(fixture.Http, fixture.User, "totp");
+        Assert.True(await PendingExternalLoginLink.CompleteAsync(fixture.Http, fixture.Principal()));
+        Assert.Single(fixture.Links);
+    }
+
+    [Fact]
+    public async Task ProfileLink_ShouldConsumeFreshProviderBoundProofAndPreserveSession()
+    {
+        using var fixture = new Fixture();
+        fixture.Http.User = fixture.Principal();
+        var auth = Mock.Get(fixture.Http.RequestServices.GetRequiredService<IAuthenticationService>());
+        auth.Setup(value => value.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
+            .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(fixture.Http.User, IdentityConstants.ApplicationScheme)));
+        var nonce = await AccountSecurityOperationSession.BeginAsync(fixture.Http, fixture.User,
+            AccountSecurityOperationSession.ExternalLinkPurpose, "Google");
+        AccountSecurityOperationSession.MarkVerified(fixture.Http, fixture.User, "totp");
+        var info = new ExternalLoginInfo(new ClaimsPrincipal(), "Google", "fresh-key", "Google")
+            { AuthenticationProperties = new AuthenticationProperties() };
+        info.AuthenticationProperties.Items[AccountSecurityOperationSession.CorrelationProperty] = nonce;
+        Assert.True((await fixture.Coordinator.LinkAsync(fixture.Http, fixture.User, info)).IsSucceeded);
+        Assert.Single(fixture.Links);
+        Assert.Equal(0, fixture.FullCookies);
+        Assert.False(await AccountSecurityOperationSession.IsAuthorizedAsync(fixture.Http, fixture.User,
+            AccountSecurityOperationSession.ExternalLinkPurpose, "Google", nonce));
+    }
+
     [Theory]
     [InlineData("totp", ExternalSignInCompletionStatus.TotpRequired)]
     [InlineData("email", ExternalSignInCompletionStatus.EmailOtpRequired)]
@@ -40,7 +86,7 @@ public class PendingExternalLoginLinkTests
         Assert.NotNull(fixture.Partial!.FindFirst(PendingExternalLoginLink.PurposeClaim));
         Assert.Equal(0, fixture.FullCookies);
 
-        await PendingExternalLoginLink.MarkMfaCompletionAsync(fixture.Http, fixture.User);
+        await PendingExternalLoginLink.MarkMfaCompletionAsync(fixture.Http, fixture.User, method, "AQ");
         Assert.True(await PendingExternalLoginLink.CompleteAsync(fixture.Http, fixture.Principal()));
         Assert.Equal((fixture.User.Id, "Google", "original-key"), Assert.Single(fixture.Links));
         // A duplicate hook or later sign-in cannot add the association again.
@@ -95,7 +141,7 @@ public class PendingExternalLoginLinkTests
         if (condition == "migration") fixture.Migration.Setup(x => x.CanIssueAsync(fixture.User.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         if (condition == "identity-policy") fixture.SignIn.Setup(x => x.CanSignInAsync(fixture.User)).ReturnsAsync(false);
         if (condition == "lockout") fixture.Login.Setup(x => x.ValidateExternalUserSignInAsync(fixture.User, It.IsAny<CancellationToken>())).ReturnsAsync(LoginResult.InvalidCredentials());
-        await PendingExternalLoginLink.MarkMfaCompletionAsync(fixture.Http, fixture.User);
+        await PendingExternalLoginLink.MarkMfaCompletionAsync(fixture.Http, fixture.User, "totp");
         var principal = fixture.Principal(mfa: condition != "hardware-only");
         if (condition == "unauthenticated") principal = new ClaimsPrincipal(new ClaimsIdentity(principal.Claims));
         await PendingExternalLoginLink.CompleteAsync(fixture.Http, principal,
@@ -115,7 +161,7 @@ public class PendingExternalLoginLinkTests
         if (nextFlow == "normal-login") PendingExternalLoginLink.Cancel(fixture.Http);
         if (nextFlow == "factor-management") MfaEnrollmentSession.Begin(fixture.Http.Session, fixture.User.Id, true, securityStamp: fixture.User.SecurityStamp);
         if (nextFlow == "other-external-login") await fixture.Coordinator.CompleteAsync(fixture.Http, fixture.User);
-        if (nextFlow != "generic-signin") await PendingExternalLoginLink.MarkMfaCompletionAsync(fixture.Http, fixture.User);
+        if (nextFlow != "generic-signin") await PendingExternalLoginLink.MarkMfaCompletionAsync(fixture.Http, fixture.User, "totp");
         Assert.True(await PendingExternalLoginLink.CompleteAsync(fixture.Http, fixture.Principal()));
         Assert.Empty(fixture.Links);
     }
@@ -268,21 +314,21 @@ public class PendingExternalLoginLinkTests
             policy.Object, Mock.Of<IUserManagementService>(), null!, Mock.Of<IAuditService>(), Mock.Of<ILogger<PasskeyController>>(),
             fixture.Migration.Object, fixture.Lifecycle.Object)
         { ControllerContext = new ControllerContext { HttpContext = fixture.Http } };
-        using var response = System.Text.Json.JsonDocument.Parse("{}");
+        using var response = System.Text.Json.JsonDocument.Parse("{\"id\":\"AQ\",\"rawId\":\"AQ\"}");
         if (enrollment) await controller.MakeCredential(response.RootElement, default);
         else await controller.MakeAssertion(response.RootElement, default);
         Assert.Equal(userVerified ? 1 : 0, fixture.Links.Count);
     }
 
     [Fact]
-    public async Task AuthenticatedMfaProfileLink_ShouldPreserveExistingSessionAndCommitAuthorizedLink()
+    public async Task AuthenticatedMfaCookie_ShouldRequirePerformedExistingFactorBeforeLinking()
     {
         using var fixture = new Fixture();
         fixture.Http.User = fixture.Principal();
-        Assert.True((await fixture.BeginAsync()).IsSucceeded);
-        Assert.Single(fixture.Links);
+        Assert.Equal(ExternalSignInCompletionStatus.TotpRequired, (await fixture.BeginAsync()).Status);
+        Assert.Empty(fixture.Links);
         Assert.Equal(0, fixture.FullCookies);
-        Assert.Null(fixture.Partial);
+        Assert.NotNull(fixture.Partial);
     }
 
     private sealed class Fixture : IDisposable
@@ -301,14 +347,18 @@ public class PendingExternalLoginLinkTests
         public ExternalSignInCoordinator Coordinator { get; }
         public List<(Guid UserId, string Provider, string Key)> Links { get; } = [];
         public int FullCookies { get; private set; }
+        private readonly bool _passwordVerified;
 
         public Fixture(string method = "totp")
         {
+            _passwordVerified = method is "none" or "enrollment";
             User.TwoFactorEnabled = method == "totp";
             User.EmailMfaEnabled = method == "email";
             Database = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
             Database.Users.Add(User);
+            if (method == "passkey") Database.UserCredentials.Add(new UserCredential
+                { UserId = User.Id, CredentialId = [1], PublicKey = [2] });
             Database.SaveChanges();
             Users = new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null);
             Users.Setup(x => x.FindByIdAsync(User.Id.ToString())).ReturnsAsync(User);
@@ -356,7 +406,11 @@ public class PendingExternalLoginLinkTests
                 policy.Object, Passkeys.Object, Migration.Object, Mock.Of<ILogger<ExternalSignInCoordinator>>());
         }
 
-        public Task<ExternalSignInCompletionResult> BeginAsync() => Coordinator.LinkAsync(Http, User, new UserLoginInfo("Google", "original-key", "Google"));
+        public Task<ExternalSignInCompletionResult> BeginAsync()
+        {
+            if (_passwordVerified) PendingExternalLoginLink.MarkPasswordCompletion(Http, User);
+            return Coordinator.LinkAsync(Http, User, new UserLoginInfo("Google", "original-key", "Google"));
+        }
         public ClaimsPrincipal Principal(Guid? subject = null, bool mfa = true) => new(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, (subject ?? User.Id).ToString()),
              new Claim("AspNet.Identity.SecurityStamp", User.SecurityStamp!), new Claim("amr", mfa ? "mfa" : "hwk")], IdentityConstants.ApplicationScheme));

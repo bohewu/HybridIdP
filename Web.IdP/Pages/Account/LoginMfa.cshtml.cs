@@ -157,7 +157,8 @@ public partial class LoginMfaModel : PageModel
                 var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
                 RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
-                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
+                AccountSecurityOperationSession.MarkVerified(HttpContext, user, "totp");
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user, "totp");
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 LogLoginWithTotp(_logger);
@@ -204,7 +205,8 @@ public partial class LoginMfaModel : PageModel
                 var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
                 RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
-                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
+                AccountSecurityOperationSession.MarkVerified(HttpContext, user, "recovery");
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user, "recovery");
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 LogLoginWithRecovery(_logger);

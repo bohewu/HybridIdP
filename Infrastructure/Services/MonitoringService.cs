@@ -16,6 +16,10 @@ namespace Infrastructure.Services;
 
 public class MonitoringService : IMonitoringService
 {
+    public const string HttpClientName = "MonitoringMetrics";
+
+    public static HttpClientHandler CreatePrimaryHandler() => new() { AllowAutoRedirect = false };
+
     private readonly IApplicationDbContext _db;
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -242,7 +246,7 @@ public class MonitoringService : IMonitoringService
     {
         try
         {
-            var client = _httpClientFactory.CreateClient();
+            var client = _httpClientFactory.CreateClient(HttpClientName);
             var baseUrl = _options.MetricsBaseUrl; // Changed
             var response = await client.GetAsync($"{baseUrl.TrimEnd('/')}/metrics");
             response.EnsureSuccessStatusCode();

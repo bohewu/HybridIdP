@@ -32,6 +32,7 @@ const securityPolicy = ref(null)
 // Check permissions
 const canCreate = ref(false)
 const canUpdate = ref(false)
+const canResetMfa = ref(false)
 const canManageRoles = ref(false)
 const canDelete = ref(false)
 const canRead = ref(false)
@@ -44,6 +45,7 @@ onMounted(async () => {
   await permissionService.loadPermissions()
   canCreate.value = permissionService.hasPermission(Permissions.Users.Create)
   canUpdate.value = permissionService.hasPermission(Permissions.Users.Update)
+  canResetMfa.value = permissionService.hasPermission(Permissions.Users.ResetMfa)
   canManageRoles.value = canUpdate.value &&
     permissionService.hasPermission(Permissions.Roles.Read) &&
     permissionService.hasPermission(Permissions.Roles.Update)
@@ -61,6 +63,13 @@ onMounted(async () => {
   }
   
   await fetchUsers()
+  const target = new URLSearchParams(window.location.search).get('resetMfaTarget')
+  if (target && canResetMfa.value) {
+    window.history.replaceState({}, '', window.location.pathname)
+    const user = users.value.find(candidate => candidate.id.toLowerCase() === target.toLowerCase())
+    if (user) await handleResetMfa(user)
+    else alert(t('users.mfa.verifiedRetry'))
+  }
 })
 
 // Paging / filtering / sorting state
@@ -299,25 +308,39 @@ const handleReactivate = async (user) => {
 }
 
 const handleResetMfa = async (user) => {
-  if (!canUpdate.value) {
+  if (!canResetMfa.value) {
     showAccessDenied.value = true
     deniedMessage.value = t('deniedMessages.update')
-    deniedPermission.value = Permissions.Users.Update
+    deniedPermission.value = Permissions.Users.ResetMfa
     return
   }
 
   if (!confirm(t('users.mfa.resetConfirm'))) {
     return
   }
+  const reason = prompt(t('users.mfa.reasonPrompt'))?.trim()
+  if (!reason) return
 
   try {
-    const response = await fetch(`/api/admin/users/${user.id}/reset-mfa`, {
-      method: 'POST'
+    const response = await fetchWithCsrf(`/api/admin/users/${user.id}/reset-mfa`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
     })
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}))
-      throw new Error(errData.error || `HTTP error! status: ${response.status}`)
+      if (errData.error === 'freshAuthenticationRequired') {
+        alert(t('users.mfa.reauthenticate'))
+        const reauthentication = await fetchWithCsrf(`/api/admin/users/${user.id}/reset-mfa/reauthenticate`, { method: 'POST' })
+        const result = await reauthentication.json().catch(() => ({}))
+        if (reauthentication.ok && result.loginUrl) {
+          window.location.assign(result.loginUrl)
+          return
+        }
+        throw new Error(t(result.error === 'mfaRequired' ? 'users.mfa.mfaRequired' : 'users.mfa.resetDenied'))
+      }
+      throw new Error(t('users.mfa.resetDenied'))
     }
 
     await fetchUsers()
@@ -508,6 +531,7 @@ const handleImpersonate = async (user) => {
         :total-count="totalCount"
         :sort="sort"
         :can-update="canUpdate"
+        :can-reset-mfa="canResetMfa"
         :can-manage-roles="canManageRoles"
         :can-delete="canDelete"
         :can-read="canRead"

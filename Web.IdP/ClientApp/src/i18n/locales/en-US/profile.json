@@ -78,6 +78,7 @@
     "errors": {
       "loginAlreadyAssociated": "The external login is already associated with an account.",
       "linkFailed": "Failed to link the external login.",
+      "freshAuthenticationRequired": "Sign in again using your existing password, MFA or passkey before linking another account.",
       "unknown": "An unknown error occurred."
     },
     "success": {

@@ -65,10 +65,13 @@ public static class ServiceCollectionExtensions
                 provider.GetRequiredService<ICurrentUserLifecycleEligibility>(),
                 provider.GetRequiredService<IMigrationIssuanceGuard>()));
         services.AddScoped<ITurnstileService, TurnstileService>();
+        services.AddScoped<AdministrativeMfaResetService>();
         services.AddScoped<IJitProvisioningService, JitProvisioningService>();
         services.AddScoped<ILegacyAuthService, LegacyAuthService>();
         services.AddHttpClient(LegacyAuthService.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(LegacyAuthService.CreatePrimaryHandler);
+        services.AddHttpClient(MonitoringService.HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(MonitoringService.CreatePrimaryHandler);
         services.AddHttpClient<IProofProvider, ProviderProofProvider>()
             .ConfigurePrimaryHttpMessageHandler(ProviderProofProvider.CreatePrimaryHandler);
         services.AddHttpClient<IProviderMetadataRefreshService, ProviderMetadataRefreshService>()
@@ -601,7 +604,7 @@ public static class ServiceCollectionExtensions
                         throw new InvalidOperationException("External login linking could not be completed.");
                     AuthorizationAuthenticationSession.OnSigningIn(context);
                     MfaEnrollmentSession.CompletePending(
-                        context.HttpContext.Session,
+                        context.HttpContext,
                         context.Principal);
                     await RecoveryReauthenticationSession.CompleteAsync(context.HttpContext, context.Principal);
                 }
@@ -705,10 +708,16 @@ public static class ServiceCollectionExtensions
                     options.AddEncryptionCertificate(X509CertificateLoader.LoadPkcs12FromFile(encryptionCertPath, encryptionCertPassword));
                     options.AddSigningCertificate(X509CertificateLoader.LoadPkcs12FromFile(signingCertPath, signingCertPassword));
                 }
-                else
+                else if (environment.IsDevelopment() || environment.IsEnvironment("Test"))
                 {
                     options.AddDevelopmentEncryptionCertificate()
                            .AddDevelopmentSigningCertificate();
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        "Configured signing and encryption PFX files are required outside Development and Test. " +
+                        "Set Certificates:SigningCertificatePath and Certificates:EncryptionCertificatePath to existing files.");
                 }
 
                 options.UseAspNetCore()

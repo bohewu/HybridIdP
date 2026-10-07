@@ -69,7 +69,7 @@ services:
       - redis-service
 
   nginx-service:
-    image: nginx:alpine
+    image: nginx:alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2
     environment:
       - PUBLIC_AUTHORITY=${PUBLIC_AUTHORITY:?PUBLIC_AUTHORITY is required}
       - NGINX_ENVSUBST_FILTER=PUBLIC_AUTHORITY
@@ -89,7 +89,7 @@ services:
       - idp-service
 
   mssql-service:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:2022-latest@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD is required}"
@@ -102,7 +102,7 @@ services:
         max-file: "10"
 
   postgres-service:
-    image: postgres:17
+    image: postgres:17@sha256:ae69c452f483507a6b99fb654cf93aad7fe156ffd2c56247707eef4e36d3c12b
     environment:
       POSTGRES_DB: hybridauth_idp
       POSTGRES_USER: ${POSTGRES_USER:-user}
@@ -116,7 +116,7 @@ services:
         max-file: "10"
 
   redis-service:
-    image: redis:alpine
+    image: redis:alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
     volumes:
       - redis-data:/data
     logging:

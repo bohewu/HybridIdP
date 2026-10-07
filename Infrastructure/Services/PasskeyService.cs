@@ -198,11 +198,14 @@ public class PasskeyService : IPasskeyService
                 return (false, null, false, "Invalid assertion response");
             }
             
+            var credentialIdBytes = Base64UrlTextEncoder.Decode(assertionResponse.Id);
+            if (assertionResponse.RawId == null || !credentialIdBytes.AsSpan().SequenceEqual(assertionResponse.RawId))
+                return (false, null, false, "Invalid assertion response");
+
             var options = AssertionOptions.FromJson(originalOptionsJson);
             
             // 2. Find the credential by ID
-            // Note: EF Core can't translate SequenceEqual to SQL, so we use RawId bytes directly
-            var credentialIdBytes = Base64UrlTextEncoder.Decode(assertionResponse.Id); // Id is Base64Url string
+            // Both wire representations must identify the same verified credential.
             
             // Use Contains check which SQL Server/PostgreSQL can handle for byte arrays
             var credential = await _dbContext.UserCredentials

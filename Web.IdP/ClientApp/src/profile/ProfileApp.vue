@@ -80,6 +80,8 @@ onMounted(() => {
       alert(t('profile.common.errors.loginAlreadyAssociated'))
     } else if (error === 'LinkFailed') {
       alert(t('profile.common.errors.linkFailed'))
+    } else if (error === 'FreshAuthenticationRequired') {
+      alert(t('profile.common.errors.freshAuthenticationRequired'))
     } else {
       alert(t('profile.common.errors.unknown'))
     }

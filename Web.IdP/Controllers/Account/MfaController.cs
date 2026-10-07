@@ -71,7 +71,9 @@ public partial class MfaController : ControllerBase
                  result.Principal?.FindFirst("sub")?.Value) != user.Id.ToString()))
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
 
-        await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+        if (await AccountSecurityOperationSession.BeginAsync(HttpContext, user,
+                AccountSecurityOperationSession.MfaEnrollmentPurpose, user.Id.ToString(), HttpContext.RequestAborted) == null)
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
         var hasFactors = user.TwoFactorEnabled || user.EmailMfaEnabled ||
             (await _passkeyService.GetUserPasskeysAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
         MfaEnrollmentSession.Begin(HttpContext.Session, user.Id, hasFactors, securityStamp: user.SecurityStamp);
@@ -80,9 +82,7 @@ public partial class MfaController : ControllerBase
             "/Account/MfaSetup",
             "returnUrl",
             "/Account/Profile");
-        var loginUrl = QueryHelpers.AddQueryString(
-            "/Account/Login",
-            "returnUrl",
+        var loginUrl = await AccountSecurityOperationSession.GetLoginUrlAsync(HttpContext, user,
             forRemoval ? "/Account/Profile" : setupUrl);
 
         return Ok(new { loginUrl });

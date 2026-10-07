@@ -23,6 +23,26 @@ namespace Tests.Infrastructure.UnitTests;
 
 public class PasskeyServiceTests
 {
+    [Theory]
+    [InlineData("AQ", "Ag")]
+    [InlineData("Ag", "AQ")]
+    [InlineData("AQ", null)]
+    public async Task VerifyAssertionAsync_ShouldRejectDifferentWireIdsBeforeCryptographicVerification(string id, string? rawId)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "two-key-user" };
+        _dbContext.Users.Add(user);
+        _dbContext.UserCredentials.AddRange(
+            new UserCredential { UserId = user.Id, CredentialId = [1], PublicKey = [3] },
+            new UserCredential { UserId = user.Id, CredentialId = [2], PublicKey = [4] });
+        await _dbContext.SaveChangesAsync();
+        var response = System.Text.Json.JsonSerializer.Serialize(new { id, rawId, type = "public-key" });
+        var result = await _sut.VerifyAssertionAsync(response, "{\"challenge\":\"AQ\"}");
+        Assert.False(result.Success);
+        Assert.Null(result.User);
+        _fido2Mock.Verify(fido => fido.MakeAssertionAsync(It.IsAny<MakeAssertionParams>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.All(_dbContext.UserCredentials, credential => Assert.Null(credential.LastUsedAt));
+    }
+
     private readonly Mock<IFido2> _fido2Mock;
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly ApplicationDbContext _dbContext;

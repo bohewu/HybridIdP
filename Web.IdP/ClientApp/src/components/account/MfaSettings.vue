@@ -600,6 +600,7 @@ async function registerNewPasskey() {
     setTimeout(() => { passkeySuccess.value = ''; }, 3000);
   } catch (err: any) {
     passkeyError.value = t(err.message) || t('mfa.errors.registerPasskeyFailed');
+    if (err.message === 'mfa.errors.freshAuthenticationRequired') await startSetup();
   } finally {
     passkeyLoading.value = false;
   }

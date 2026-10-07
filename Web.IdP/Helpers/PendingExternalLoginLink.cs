@@ -17,13 +17,22 @@ public static class PendingExternalLoginLink
     private const string SessionKey = "ExternalLogin:PendingLink";
     public const string PurposeClaim = "external_link";
     private static readonly object CompletionKey = new();
+    private static readonly object PasswordCompletionKey = new();
+
+    public static void MarkPasswordCompletion(HttpContext http, ApplicationUser user) =>
+        http.Items[PasswordCompletionKey] = (user.Id, user.SecurityStamp);
+
+    public static bool TakePasswordCompletion(HttpContext http, ApplicationUser user) =>
+        http.Items.Remove(PasswordCompletionKey, out var value) &&
+        value is ValueTuple<Guid, string?> proof && proof.Item1 == user.Id && proof.Item2 == user.SecurityStamp;
 
     public static Claim Begin(ISession session, ApplicationUser user, UserLoginInfo login,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null, bool passwordVerified = false, string[]? passkeys = null)
     {
         var pending = new Pending(user.Id, user.SecurityStamp ?? string.Empty,
             login.LoginProvider, login.ProviderKey, login.ProviderDisplayName,
-            Guid.NewGuid().ToString("N"), (timeProvider ?? TimeProvider.System).GetUtcNow().AddMinutes(5));
+            Guid.NewGuid().ToString("N"), (timeProvider ?? TimeProvider.System).GetUtcNow().AddMinutes(5),
+            user.TwoFactorEnabled, user.EmailMfaEnabled, user.Email, passkeys ?? [], passwordVerified);
         session.SetString(SessionKey, JsonSerializer.Serialize(pending));
         return new Claim(PurposeClaim, pending.Nonce);
     }
@@ -53,10 +62,21 @@ public static class PendingExternalLoginLink
     }
 
     // Called only by successful TOTP, email, recovery or user-verified passkey callers.
-    public static async Task MarkMfaCompletionAsync(HttpContext http, ApplicationUser user)
+    public static async Task MarkMfaCompletionAsync(HttpContext http, ApplicationUser user,
+        string method = "enrollment", string? credentialId = null)
     {
         var pending = Read(http.Features.Get<ISessionFeature>()?.Session);
         if (pending == null) return;
+        var established = method switch
+        {
+            "totp" => pending.Totp && user.TwoFactorEnabled,
+            "email" => pending.EmailMfa && user.EmailMfaEnabled && pending.Email == user.Email,
+            "recovery" => pending.Totp && user.TwoFactorEnabled || pending.EmailMfa && user.EmailMfaEnabled,
+            "passkey" => credentialId != null && pending.Passkeys.Contains(credentialId, StringComparer.Ordinal),
+            "enrollment" => pending.PasswordVerified,
+            _ => false
+        };
+        if (!established) return;
         var partial = await http.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
         if (partial.Succeeded && partial.Principal?.Identity?.IsAuthenticated == true &&
             partial.Principal.FindFirstValue(ClaimTypes.NameIdentifier) == pending.UserId.ToString() &&
@@ -130,5 +150,6 @@ public static class PendingExternalLoginLink
     }
 
     private sealed record Pending(Guid UserId, string Stamp, string Provider, string ProviderKey,
-        string? DisplayName, string Nonce, DateTimeOffset ExpiresUtc);
+        string? DisplayName, string Nonce, DateTimeOffset ExpiresUtc,
+        bool Totp, bool EmailMfa, string? Email, string[] Passkeys, bool PasswordVerified);
 }

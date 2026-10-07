@@ -29,6 +29,37 @@ namespace Tests.Web.IdP.UnitTests.Controllers;
 
 public class PasskeyControllerTests
 {
+    [Fact]
+    public async Task Registration_ShouldRejectFreshEnrollmentProofAfterAccountStampChanges()
+    {
+        var user = CreateEligibleUser("stamp-revoked-enrollment");
+        ArrangeAuthenticatedUser(user);
+        ArrangeApplicationCookieUser(user);
+        MfaEnrollmentSession.Begin(_session, user.Id, securityStamp: user.SecurityStamp);
+        Assert.True(MfaEnrollmentSession.CompletePending(_session, _controller.HttpContext.User));
+        user.SecurityStamp = "revoked-by-reset";
+        _session.SetString("fido2.attestationOptions", "{}");
+        Assert.Equal(403, Assert.IsType<ObjectResult>(await _controller.MakeCredentialOptions(default)).StatusCode);
+        Assert.Equal(403, Assert.IsType<ObjectResult>(await _controller.MakeCredential(EmptyClientResponse(), default)).StatusCode);
+        _passkeyServiceMock.Verify(service => service.RegisterCredentialsAsync(It.IsAny<ApplicationUser>(),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Registration_ShouldRejectOldMfaCookieBeforeCreatingAnyNewFactor()
+    {
+        var user = CreateEligibleUser("old-mfa-cookie");
+        user.TwoFactorEnabled = true;
+        ArrangeAuthenticatedUser(user);
+        ArrangeApplicationCookieUser(user);
+        ((ClaimsIdentity)_controller.HttpContext.User.Identity!).AddClaim(new Claim("amr", "mfa"));
+        _session.SetString("fido2.attestationOptions", "{}");
+        Assert.Equal(403, Assert.IsType<ObjectResult>(await _controller.MakeCredentialOptions(default)).StatusCode);
+        Assert.Equal(403, Assert.IsType<ObjectResult>(await _controller.MakeCredential(EmptyClientResponse(), default)).StatusCode);
+        _passkeyServiceMock.Verify(service => service.RegisterCredentialsAsync(It.IsAny<ApplicationUser>(),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -37,6 +68,8 @@ public class PasskeyControllerTests
         var user = CreateEligibleUser("rebind-passkey-user");
         ArrangeAuthenticatedUser(user);
         ArrangeApplicationCookieUser(user);
+        MfaEnrollmentSession.Begin(_session, user.Id);
+        Assert.True(MfaEnrollmentSession.CompletePending(_session, _controller.HttpContext.User));
         _dbContext.UserCredentials.Add(new UserCredential
         {
             UserId = user.Id,
@@ -115,13 +148,16 @@ public class PasskeyControllerTests
         var user = CreateEligibleUser("first-passkey-cookie-user");
         ArrangeAuthenticatedUser(user);
         var cookie = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim("amr", "pwd")], IdentityConstants.ApplicationScheme));
+            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim("amr", "pwd"),
+             new Claim("AspNet.Identity.SecurityStamp", user.SecurityStamp!)], IdentityConstants.ApplicationScheme));
         var auth = new Mock<IAuthenticationService>();
         auth.Setup(s => s.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
             .ReturnsAsync(() => AuthenticateResult.Success(new AuthenticationTicket(cookie, IdentityConstants.ApplicationScheme)));
         auth.Setup(s => s.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme))
             .ReturnsAsync(AuthenticateResult.NoResult());
         _controller.HttpContext.RequestServices = new ServiceCollection().AddSingleton(auth.Object).BuildServiceProvider();
+        MfaEnrollmentSession.Begin(_session, user.Id);
+        Assert.True(MfaEnrollmentSession.CompletePending(_session, cookie));
         _session.SetString("fido2.attestationOptions", "{}");
         _passkeyServiceMock.Setup(s => s.RegisterCredentialsAsync(user, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Callback(() => _passkeyServiceMock.Setup(s => s.GetUserPasskeysAsync(user.Id, It.IsAny<CancellationToken>()))
@@ -815,6 +851,7 @@ public class PasskeyControllerTests
         {
             Id = Guid.NewGuid(),
             UserName = userName,
+            SecurityStamp = "test-stamp",
             PersonId = person.Id,
             Person = person,
             IsActive = true
@@ -824,7 +861,7 @@ public class PasskeyControllerTests
     private void ArrangeApplicationCookieUser(ApplicationUser user)
     {
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
+            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim("AspNet.Identity.SecurityStamp", user.SecurityStamp!)],
             IdentityConstants.ApplicationScheme));
         var authenticationService = new Mock<IAuthenticationService>();
         authenticationService.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string>()))

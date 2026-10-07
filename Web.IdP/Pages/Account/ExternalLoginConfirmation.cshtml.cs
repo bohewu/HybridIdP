@@ -153,6 +153,7 @@ public class ExternalLoginConfirmationModel : PageModel
              return Page();
         }
 
+        Web.IdP.Helpers.PendingExternalLoginLink.MarkPasswordCompletion(HttpContext, user);
         var completion = await _externalSignInCoordinator.LinkAsync(HttpContext, user, info, cancellationToken);
         if (!completion.IsSucceeded)
         {

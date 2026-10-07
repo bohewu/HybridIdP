@@ -76,7 +76,7 @@ public partial class PasskeyController : ControllerBase
             return Unauthorized();
         }
 
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireCurrentStamp: true))
         {
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
@@ -143,7 +143,7 @@ public partial class PasskeyController : ControllerBase
             return Unauthorized();
         }
 
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireCurrentStamp: true))
         {
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
@@ -405,7 +405,13 @@ public partial class PasskeyController : ControllerBase
 
             RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, result.User.Id, hardware: true);
             if (result.UserVerified)
-                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, result.User);
+            {
+                var credentialId = clientResponse.TryGetProperty("id", out var id) && id.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(
+                        Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlDecode(id.GetString()!)) : null;
+                AccountSecurityOperationSession.MarkVerified(HttpContext, result.User, "passkey", credentialId);
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, result.User, "passkey", credentialId);
+            }
             await _signInManager.SignInWithClaimsAsync(result.User, isPersistent: false, claims);
             await _userManagementService.UpdateLastLoginAsync(result.User.Id, ct);
             LogPasskeyLogin(result.User.UserName);

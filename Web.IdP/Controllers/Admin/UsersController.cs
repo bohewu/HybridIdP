@@ -758,35 +758,31 @@ public class UsersController : ControllerBase
     /// </summary>
     /// <param name="id">User ID</param>
     [HttpPost("{id}/reset-mfa")]
-    [HasPermission(Permissions.Users.Update)]
-    public async Task<IActionResult> ResetMfa(Guid id)
+    [HasPermission(Permissions.Users.ResetMfa)]
+    public async Task<IActionResult> ResetMfa(Guid id, [FromBody] AdministrativeMfaResetRequest request,
+        [FromServices] AdministrativeMfaResetService service, CancellationToken cancellationToken = default)
     {
         try
         {
-            var user = await _userManager.FindByIdAsync(id.ToString());
-            if (user == null)
-            {
-                return NotFound(new { error = "User not found" });
-            }
-
-            // Disable TOTP 2FA
-            await _userManager.SetTwoFactorEnabledAsync(user, false);
-            // Reset authenticator key
-            await _userManager.ResetAuthenticatorKeyAsync(user);
-            
-            // Also disable Email MFA
-            user.EmailMfaEnabled = false;
-            user.EmailMfaCode = null;
-            user.EmailMfaCodeExpiry = null;
-            user.EmailMfaVerificationAttempts = 0;
-            await _userManager.UpdateAsync(user);
-
+            var result = await service.ResetAsync(HttpContext, id, request.Reason, cancellationToken);
+            if (result.StatusCode != 200) return StatusCode(result.StatusCode, new { error = result.Error });
             return Ok(new { success = true, message = "MFA has been reset for the user" });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = "An error occurred while resetting MFA", details = ex.Message });
+            _logger.LogError("Administrative MFA reset failed ({ErrorType})", ex.GetType().Name);
+            return StatusCode(500, new { error = "mfaResetFailed" });
         }
+    }
+
+    [HttpPost("{id}/reset-mfa/reauthenticate")]
+    [HasPermission(Permissions.Users.ResetMfa)]
+    public async Task<IActionResult> BeginMfaReset(Guid id, [FromServices] AdministrativeMfaResetService service,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await service.BeginAsync(HttpContext, id, cancellationToken);
+        return result.StatusCode == 200 ? Ok(new { loginUrl = result.LoginUrl })
+            : StatusCode(result.StatusCode, new { error = result.Error });
     }
 
     [HttpPost("{id}/password-recovery/resend-otp")]

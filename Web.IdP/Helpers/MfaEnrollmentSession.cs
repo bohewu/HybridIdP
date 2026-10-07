@@ -79,10 +79,19 @@ public static class MfaEnrollmentSession
         return true;
     }
 
+    public static bool CompletePending(HttpContext http, ClaimsPrincipal principal)
+    {
+        if (!AccountSecurityOperationSession.IsVerifiedEnrollment(http, principal)) return false;
+        var completed = CompletePending(http.Session, principal, securityStampClaimType:
+            http.RequestServices.GetRequiredService<UserManager<ApplicationUser>>().Options.ClaimsIdentity.SecurityStampClaimType);
+        if (completed) AccountSecurityOperationSession.Consume(http);
+        return completed;
+    }
+
     public static bool CompletePending(
         ISession session,
         ClaimsPrincipal principal,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null, string? securityStampClaimType = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(principal);
@@ -98,7 +107,7 @@ public static class MfaEnrollmentSession
         var userIdValue =
             principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
             principal.FindFirst("sub")?.Value;
-        var stamp = principal.FindFirst(new IdentityOptions().ClaimsIdentity.SecurityStampClaimType)?.Value;
+        var stamp = principal.FindFirst(securityStampClaimType ?? new IdentityOptions().ClaimsIdentity.SecurityStampClaimType)?.Value;
         if (!Guid.TryParse(userIdValue, out var userId) || userId != pending.UserId ||
             (pending.SecurityStamp != null && pending.SecurityStamp != stamp) ||
             principal.Identity?.IsAuthenticated != true || (pending.RequiresMfa && !HasMfa(principal)))
@@ -172,8 +181,20 @@ public static class MfaEnrollmentSession
 
     public static async Task<bool> IsAuthorizedAsync(
         HttpContext context, ApplicationUser user, IPasskeyService passkeys,
-        CancellationToken cancellationToken = default, bool requireFreshProof = true)
+        CancellationToken cancellationToken = default, bool requireFreshProof = true, bool requireCurrentStamp = false)
     {
+        if (requireCurrentStamp)
+        {
+            var cookie = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+            if (PrincipalMatchesUser(cookie.Principal, user.Id))
+            {
+                var stampType = context.RequestServices.GetService<UserManager<ApplicationUser>>()?.Options
+                    .ClaimsIdentity.SecurityStampClaimType ?? new IdentityOptions().ClaimsIdentity.SecurityStampClaimType;
+                var proof = Read<EnrollmentProof>(context.Session, ProofKey);
+                if (string.IsNullOrEmpty(user.SecurityStamp) || proof?.SecurityStamp != user.SecurityStamp ||
+                    cookie.Principal!.FindFirstValue(stampType) != user.SecurityStamp) return false;
+            }
+        }
         var hasFactors = user.TwoFactorEnabled || user.EmailMfaEnabled ||
             (await passkeys.GetUserPasskeysAsync(user.Id, cancellationToken)).Count > 0;
         return await IsAuthorizedAsync(context, user.Id, hasExistingFactor: hasFactors,
@@ -194,8 +215,7 @@ public static class MfaEnrollmentSession
         if (PrincipalMatchesUser(applicationAuthentication.Principal, userId))
         {
             return (!hasExistingFactor || HasMfa(applicationAuthentication.Principal!)) &&
-                (!requireFreshProof || HasFreshProof(httpContext.Session, userId, timeProvider) ||
-                 (!hasExistingFactor && HasInitial(httpContext.Session, userId, timeProvider: timeProvider)));
+                (!requireFreshProof || HasFreshProof(httpContext.Session, userId, timeProvider));
         }
 
         var partialAuthentication =

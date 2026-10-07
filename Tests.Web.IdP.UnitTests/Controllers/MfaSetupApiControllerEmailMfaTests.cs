@@ -331,7 +331,8 @@ public class MfaSetupApiControllerEmailMfaTests
         {
             Session = new MemorySession()
         });
-        MfaEnrollmentSession.BeginInitial(httpContext.Session, user.Id);
+        MfaEnrollmentSession.Begin(httpContext.Session, user.Id);
+        Assert.True(MfaEnrollmentSession.CompletePending(httpContext.Session, httpContext.User));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = httpContext

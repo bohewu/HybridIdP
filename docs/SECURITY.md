@@ -524,6 +524,43 @@ for association. Cookie refresh, unrelated login and factor-management
 reauthentication do not complete an abandoned intent. Completion rechecks current
 eligibility, collision and provider limits. An authorized initial TOTP seed
 creation carries only its own security-stamp change through the same intent.
+Automatic email matching selects an account; association still requires an
+existing local factor ceremony, or explicit successful password confirmation.
+New-factor enrollment may finish a pending association only after that password
+confirmation, never on the strength of the candidate provider or an old cookie.
+
+Authenticated profile linking additionally requires a new five-minute operation
+bound to the current subject, security stamp and selected provider. Only a
+successful existing password, enabled TOTP/email factor, recovery code or
+user-verified existing passkey ceremony grants it. Old cookie AMR, provider AMR,
+cookie refresh and factor enrollment do not grant it. The provider callback must
+carry the same nonce; completion consumes the operation. Passwordless accounts
+may use an existing factor or passkey. An external-only account without an
+established local factor cannot use its existing SSO cookie to add a login.
+Ordinary sign-in through an existing provider-key association is unchanged.
+Passkey enrollment also requires performed reauthentication before creation.
+Generic cookie refresh cannot mint an enrollment proof. Assertion `id` and
+`rawId` must decode to the same credential at the shared verification boundary;
+operation proofs use that credential's canonical ID.
+
+Administrative TOTP/email MFA reset requires `users.reset_mfa`, an interactive
+operator cookie, a fresh existing-MFA ceremony bound to the target account, and
+a nonempty reason of at most 500 characters. M2M and impersonated operators are
+denied. Protected-role targets require the operator's full active IdP Admin role
+and current Admin membership. Reset rotates the security stamp, revokes
+UserSessions and stored OpenIddict authorizations/tokens, and records actor,
+target and reason. Passkeys remain registered. Cookie stamp checks use their
+configured validation interval (one minute by default); offline validation of
+issued JWTs remains subject to the client's token validation and lifetime.
+
+Role-detail members require `users.read` for account metadata in every
+detail/create/update response. Otherwise members contain only `id` and
+`displayName`; an email-shaped username is not a display-name fallback.
+
+The metrics HTTP client does not follow redirects. Configured internal HTTP
+endpoints remain supported. Outside Development/Test, explicit signing and
+encryption PFX files are required at startup. Operator-managed self-signed PFX
+files remain supported; missing files never select development credentials.
 
 MFA Setup normalizes its return destination on the server before rendering it
 or handling skip. All enrollment methods use that local destination, including

@@ -79,6 +79,7 @@
     "errors": {
       "loginAlreadyAssociated": "此外部登入已與其他帳戶關聯。",
       "linkFailed": "無法連結外部登入。",
+      "freshAuthenticationRequired": "請先使用既有密碼、MFA 或通行密鑰重新驗證身分，再連結其他帳號。",
       "unknown": "發生未知錯誤。"
     },
     "success": {

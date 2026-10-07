@@ -155,7 +155,12 @@
     "disabled": "2FA Disabled",
     "reset": "Reset MFA",
     "resetConfirm": "Are you sure you want to reset MFA for this user? They will need to set up 2FA again.",
-    "resetSuccess": "MFA has been reset successfully."
+    "resetSuccess": "MFA has been reset successfully.",
+    "reasonPrompt": "Enter the reason for resetting MFA (up to 500 characters).",
+    "reauthenticate": "Verify your identity with an existing MFA method before resetting this user's MFA.",
+    "verifiedRetry": "Identity verified. Select the same user and retry the MFA reset.",
+    "mfaRequired": "Set up MFA on your administrator account before resetting another user's MFA.",
+    "resetDenied": "MFA reset was denied or could not be completed. Check your permissions and retry."
   },
   "recoveryAssistance": {
     "target": "Account: {name}",

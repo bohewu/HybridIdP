@@ -12,5 +12,5 @@ public class RoleDetailDto
     public List<string> Permissions { get; set; } = new();
     public bool IsSystem { get; set; }
     public int UserCount { get; set; }
-    public List<UserSummaryDto> Users { get; set; } = new();
+    public List<RoleMemberDto> Users { get; set; } = new();
 }

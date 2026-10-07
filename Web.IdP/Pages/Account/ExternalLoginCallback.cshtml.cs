@@ -140,6 +140,8 @@ public partial class ExternalLoginCallbackModel : PageModel
                 RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = false }),
             ExternalSignInCompletionStatus.MfaEnrollmentRequired =>
                 RedirectToPage("./MfaSetup", new { returnUrl }),
+            ExternalSignInCompletionStatus.Blocked when completion.Denial?.Status == LoginStatus.InvalidCredentials =>
+                RedirectToPage("./ExternalLoginConfirmation", new { ReturnUrl = returnUrl }),
             ExternalSignInCompletionStatus.Blocked when completion.Denial != null =>
                 HandleExternalSignInBlocked(user, completion.Denial),
             _ => RedirectToPage("./Login", new { ReturnUrl = returnUrl, error = "ExternalLoginFailure" })

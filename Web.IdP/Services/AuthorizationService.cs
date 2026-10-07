@@ -256,9 +256,13 @@ namespace Web.IdP.Services // Keep consistent namespace case
                         // Redirect to MfaSetup enrollment flow.
                         // Store the "enforced by acr_values" flag in session for security (not URL param)
                         _httpContextAccessor.HttpContext?.Session.SetString("MfaEnforcedByAcr", "true");
-                        MfaEnrollmentSession.BeginInitial(HttpContext.Session, user.Id);
                         var returnUrl = Microsoft.AspNetCore.Http.Extensions.UriHelper.GetEncodedPathAndQuery(Request);
-                        return new RedirectResult($"/Account/MfaSetup?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}");
+                        if (await AccountSecurityOperationSession.BeginAsync(HttpContext, user,
+                                AccountSecurityOperationSession.MfaEnrollmentPurpose, user.Id.ToString(), cancellationToken) == null)
+                            return new RedirectResult("/Account/Login");
+                        MfaEnrollmentSession.Begin(HttpContext.Session, user.Id, securityStamp: user.SecurityStamp);
+                        var setupUrl = $"/Account/MfaSetup?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}";
+                        return new RedirectResult(await AccountSecurityOperationSession.GetLoginUrlAsync(HttpContext, user, setupUrl));
                     }
                 }
             }
