@@ -42,7 +42,7 @@ public class ClientRequiredScopeIntegrationTests : IDisposable
         _service = new ClientAllowedScopesService(
             _mockAppManager.Object,
             _mockScopeManager.Object,
-            _db);
+            _db, Moq.Mock.Of<global::Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.CanUseScopesAsync(Moq.It.IsAny<object>(), Moq.It.IsAny<IEnumerable<string>>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)));
 
         // Setup mock client
         var mockClient = new object();

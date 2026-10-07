@@ -11,6 +11,7 @@ using Core.Application.Interfaces;
 using Core.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using QRCoder;
@@ -98,64 +99,33 @@ public class MfaService : IMfaService
     public async Task<bool> VerifyAndEnableTotpAsync(ApplicationUser user, string code, CancellationToken ct = default)
     {
         if (user.TwoFactorEnabled) return false;
-        // Verify the TOTP code
+        return await ConsumeTotpAsync(user, code, enable: true, ct);
+    }
+
+    public Task<bool> ValidateTotpCodeAsync(ApplicationUser user, string code, CancellationToken ct = default) =>
+        user.TwoFactorEnabled ? ConsumeTotpAsync(user, code, enable: false, ct) : Task.FromResult(false);
+
+    private async Task<bool> ConsumeTotpAsync(ApplicationUser user, string code, bool enable, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
         var isValid = await _userManager.VerifyTwoFactorTokenAsync(
             user,
             _userManager.Options.Tokens.AuthenticatorTokenProvider,
             code);
+        if (!isValid) return false;
 
-        if (!isValid)
-        {
-            return false;
-        }
+        // Identity 10 accepts current-2 .. current+2, not just the clock's current step.
+        var matchedWindow = MatchTotpWindow(await _userManager.GetAuthenticatorKeyAsync(user), code);
+        if (matchedWindow is null || user.LastTotpValidatedWindow >= matchedWindow) return false;
 
-        // Enable 2FA
-        await _userManager.SetTwoFactorEnabledAsync(user, true);
-        return true;
+        var previous = _dbContext.Entry(user).CurrentValues.Clone();
+        user.LastTotpValidatedWindow = matchedWindow;
+        if (enable) user.TwoFactorEnabled = true;
+        return await PersistProofAsync(user, previous, () => _userManager.UpdateAsync(user), ct);
     }
 
-    public async Task<bool> ValidateTotpCodeAsync(ApplicationUser user, string code, CancellationToken ct = default)
-    {
-        // Calculate current TOTP time window (30-second intervals since Unix epoch)
-        var currentWindow = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30;
-        
-        // Replay Attack Prevention: Check if this window was already used
-        if (user.LastTotpValidatedWindow.HasValue && user.LastTotpValidatedWindow.Value >= currentWindow)
-        {
-            // Same code already validated in this time window - reject to prevent replay
-            return false;
-        }
-        
-        // Verify the TOTP code with Identity
-        var isValid = await _userManager.VerifyTwoFactorTokenAsync(
-            user,
-            _userManager.Options.Tokens.AuthenticatorTokenProvider,
-            code);
-        
-        if (!isValid)
-        {
-            return false;
-        }
-        
-        // Update last validated window to prevent replay
-        user.LastTotpValidatedWindow = currentWindow;
-        await _userManager.UpdateAsync(user);
-        
-        return true;
-    }
-
-    public async Task DisableMfaAsync(ApplicationUser user, CancellationToken ct = default)
-    {
-        await _userManager.SetTwoFactorEnabledAsync(user, false);
-        await _userManager.ResetAuthenticatorKeyAsync(user);
-        
-        // Cascading revocation: if policy requires MFA for passkeys and this was the last MFA method
-        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
-        if (policy.RequireMfaForPasskey && !user.EmailMfaEnabled)
-        {
-            await RevokeAllPasskeysAsync(user.Id, ct);
-        }
-    }
+    public Task<MfaRemovalResult> DisableMfaAsync(ApplicationUser user, CancellationToken ct = default) =>
+        DisableFactorAsync(user, totp: true, ct);
 
     public async Task<IEnumerable<string>> GenerateRecoveryCodesAsync(ApplicationUser user, int count = 10, CancellationToken ct = default)
     {
@@ -197,7 +167,9 @@ public class MfaService : IMfaService
             return false;
         }
 
-        var hashedCodes = System.Text.Json.JsonSerializer.Deserialize<List<string>>(user.RecoveryCodes);
+        List<string>? hashedCodes;
+        try { hashedCodes = System.Text.Json.JsonSerializer.Deserialize<List<string>>(user.RecoveryCodes); }
+        catch (System.Text.Json.JsonException) { return false; }
         if (hashedCodes == null || hashedCodes.Count == 0)
         {
             return false;
@@ -207,7 +179,7 @@ public class MfaService : IMfaService
         foreach (var hashedCode in hashedCodes)
         {
             var result = _passwordHasher.VerifyHashedPassword(user, hashedCode, code);
-            if (result == PasswordVerificationResult.Success)
+            if (result != PasswordVerificationResult.Failed)
             {
                 matchedCode = hashedCode;
                 break;
@@ -216,13 +188,88 @@ public class MfaService : IMfaService
 
         if (matchedCode != null)
         {
+            var previous = _dbContext.Entry(user).CurrentValues.Clone();
             hashedCodes.Remove(matchedCode);
             user.RecoveryCodes = System.Text.Json.JsonSerializer.Serialize(hashedCodes);
-            await _userManager.UpdateAsync(user);
-            return true;
+            return await PersistProofAsync(user, previous, () => _userManager.UpdateAsync(user), ct);
         }
 
         return false;
+    }
+
+    public Task<bool> ValidateNativeRecoveryCodeAsync(ApplicationUser user, string code, CancellationToken ct = default)
+    {
+        // Identity's generated codes contain a hyphen; the existing login form accepts either spelling.
+        var normalized = code.Replace(" ", "").Replace("-", "");
+        if (normalized.Length == 10) normalized = normalized.Insert(5, "-");
+        var previous = _dbContext.Entry(user).CurrentValues.Clone();
+        return PersistProofAsync(user, previous,
+            () => _userManager.RedeemTwoFactorRecoveryCodeAsync(user, normalized), ct);
+    }
+
+    private async Task<bool> PersistProofAsync(ApplicationUser user, PropertyValues previous,
+        Func<Task<IdentityResult>> update, CancellationToken ct)
+    {
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            if ((await update()).Succeeded) return true;
+        }
+        catch (DbUpdateException)
+        {
+            // Includes optimistic concurrency; neither a cookie nor a success result is allowed.
+        }
+        catch
+        {
+            await DiscardFailedProofAsync(user, previous);
+            throw;
+        }
+        await DiscardFailedProofAsync(user, previous);
+        return false;
+    }
+
+    private async Task DiscardFailedProofAsync(ApplicationUser user, PropertyValues previous)
+    {
+        // Native redemption mutates an Identity token before UpdateAsync. Never let a later
+        // AccessFailedAsync or unrelated SaveChanges flush that unsuccessful consumption.
+        foreach (var token in _dbContext.ChangeTracker.Entries<IdentityUserToken<Guid>>()
+                     .Where(entry => entry.Entity.UserId == user.Id).ToArray())
+            token.State = EntityState.Detached;
+        var entry = _dbContext.Entry(user);
+        entry.CurrentValues.SetValues(previous);
+        if (entry.State == EntityState.Detached) return;
+        try { await entry.ReloadAsync(CancellationToken.None); }
+        catch { entry.State = EntityState.Detached; throw; }
+    }
+
+    private long? MatchTotpWindow(string? key, string token)
+    {
+        if (string.IsNullOrEmpty(key) || !int.TryParse(token, out var submitted)) return null;
+        var bytes = new List<byte>();
+        var buffer = 0;
+        var bits = 0;
+        foreach (var character in key.TrimEnd('=').ToUpperInvariant())
+        {
+            var digit = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".IndexOf(character);
+            if (digit < 0) return null;
+            buffer = (buffer << 5) | digit;
+            bits += 5;
+            if (bits >= 8) { bits -= 8; bytes.Add((byte)(buffer >> bits)); }
+        }
+        if (bytes.Count == 0) return null;
+        var keyBytes = bytes.ToArray();
+        var current = _timeProvider.GetUtcNow().ToUnixTimeSeconds() / 30;
+        Span<byte> counter = stackalloc byte[8];
+        for (var offset = -2; offset <= 2; offset++)
+        {
+            var step = current + offset;
+            System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(counter, step);
+            var hash = HMACSHA1.HashData(keyBytes, counter);
+            var index = hash[^1] & 15;
+            var value = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(hash.AsSpan(index, 4)) & int.MaxValue;
+            if (value % 1_000_000 == submitted) return step;
+        }
+        return null;
     }
 
     public Task<int> CountRecoveryCodesAsync(ApplicationUser user, CancellationToken ct = default)
@@ -396,37 +443,54 @@ public class MfaService : IMfaService
         }
     }
 
-    public async Task DisableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default)
+    public Task<MfaRemovalResult> DisableEmailMfaAsync(ApplicationUser user, CancellationToken ct = default) =>
+        DisableFactorAsync(user, totp: false, ct);
+
+    private async Task<MfaRemovalResult> DisableFactorAsync(ApplicationUser user, bool totp, CancellationToken ct)
     {
-        user.EmailMfaEnabled = false;
-        user.EmailMfaCode = null;
-        user.EmailMfaCodeExpiry = null;
-        user.EmailMfaVerificationAttempts = 0;
-        await _userManager.UpdateAsync(user);
-        
-        // Cascading revocation: if policy requires MFA for passkeys and this was the last MFA method
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
-        if (policy.RequireMfaForPasskey && !user.TwoFactorEnabled)
-        {
-            await RevokeAllPasskeysAsync(user.Id, ct);
-        }
-    }
-    
-    /// <summary>
-    /// Revokes all passkeys for the user when MFA is disabled with RequireMfaForPasskey policy.
-    /// </summary>
-    private async Task RevokeAllPasskeysAsync(Guid userId, CancellationToken ct)
-    {
         var passkeys = await _dbContext.UserCredentials
-            .Where(c => c.UserId == userId)
+            .Where(c => c.UserId == user.Id && c.DisabledAtUtc == null)
             .ToListAsync(ct);
-        
-        if (passkeys.Count > 0)
+        var remainingTotp = !totp && user.TwoFactorEnabled;
+        var remainingEmail = totp && user.EmailMfaEnabled;
+        var retirePasskeys = policy.RequireMfaForPasskey && !remainingTotp && !remainingEmail;
+        if (policy.EnforceMandatoryMfaEnrollment &&
+            !(policy.EnableTotpMfa && remainingTotp) && !(policy.EnableEmailMfa && remainingEmail) &&
+            !(policy.EnablePasskey && !retirePasskeys && passkeys.Count > 0))
+            return MfaRemovalResult.MandatoryFactorRequired;
+
+        var previous = _dbContext.Entry(user).CurrentValues.Clone();
+        if (totp)
         {
-            _dbContext.UserCredentials.RemoveRange(passkeys);
-            await _dbContext.SaveChangesAsync(ct);
-            _logger.LogWarning("Revoked {Count} passkeys for user {UserId} due to MFA disable with RequireMfaForPasskey policy", passkeys.Count, userId);
+            user.TwoFactorEnabled = false;
+            user.LastTotpValidatedWindow = null;
         }
+        else
+        {
+            user.EmailMfaEnabled = false;
+            user.EmailMfaCode = null;
+            user.EmailMfaCodeExpiry = null;
+            user.EmailMfaVerificationAttempts = 0;
+        }
+        if (retirePasskeys)
+            foreach (var passkey in passkeys) passkey.DisabledAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+
+        // ResetAuthenticatorKey persists the reset, user state and staged retirements together.
+        // Both factor types compete on the user's Identity concurrency stamp.
+        var persisted = false;
+        try
+        {
+            persisted = await PersistProofAsync(user, previous,
+                () => totp ? _userManager.ResetAuthenticatorKeyAsync(user) : _userManager.UpdateAsync(user), ct);
+            if (persisted) return MfaRemovalResult.Succeeded;
+        }
+        finally
+        {
+            if (!persisted)
+                foreach (var passkey in passkeys) await _dbContext.Entry(passkey).ReloadAsync(CancellationToken.None);
+        }
+        return MfaRemovalResult.PersistenceFailed;
     }
 
     #endregion

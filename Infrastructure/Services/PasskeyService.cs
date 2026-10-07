@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Core.Application.Interfaces;
+using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
 using Core.Domain.Entities;
@@ -25,17 +26,20 @@ public class PasskeyService : IPasskeyService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<PasskeyService> _logger;
+    private readonly ISecurityPolicyService _securityPolicyService;
 
     public PasskeyService(
         IFido2 fido2,
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext dbContext,
-        ILogger<PasskeyService> logger)
+        ILogger<PasskeyService> logger,
+        ISecurityPolicyService securityPolicyService)
     {
         _fido2 = fido2;
         _userManager = userManager;
         _dbContext = dbContext;
         _logger = logger;
+        _securityPolicyService = securityPolicyService;
     }
 
     public async Task<CredentialCreateOptions> GetRegistrationOptionsAsync(ApplicationUser user, CancellationToken ct = default)
@@ -279,17 +283,42 @@ public class PasskeyService : IPasskeyService
     public async Task<bool> DeletePasskeyAsync(Guid userId, int credentialId, CancellationToken ct = default)
     {
         var credential = await _dbContext.UserCredentials
-            .FirstOrDefaultAsync(c => c.UserId == userId && c.Id == credentialId, ct);
+            .FirstOrDefaultAsync(c => c.UserId == userId && c.Id == credentialId && c.DisabledAtUtc == null, ct);
         
         if (credential == null)
         {
             return false; // Not found or not owned by user
         }
         
-        _dbContext.UserCredentials.Remove(credential);
-        await _dbContext.SaveChangesAsync(ct);
+        var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId, ct);
+        if (user == null) return false;
+        var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+        var otherPasskeys = policy.EnablePasskey && (!policy.RequireMfaForPasskey ||
+            user.TwoFactorEnabled || user.EmailMfaEnabled) && await _dbContext.UserCredentials
+            .AnyAsync(c => c.UserId == userId && c.Id != credentialId && c.DisabledAtUtc == null, ct);
+        if (policy.EnforceMandatoryMfaEnrollment && !otherPasskeys &&
+            !(policy.EnableTotpMfa && user.TwoFactorEnabled) && !(policy.EnableEmailMfa && user.EmailMfaEnabled))
+            return false;
+
+        credential.DisabledAtUtc = DateTime.UtcNow;
+        var persisted = false;
+        try
+        {
+            // Compete with other factor removals on the same user concurrency stamp.
+            persisted = (await _userManager.UpdateAsync(user)).Succeeded;
+            if (!persisted) return false;
+        }
+        catch (DbUpdateException) { return false; }
+        finally
+        {
+            if (!persisted)
+            {
+                await _dbContext.Entry(credential).ReloadAsync(CancellationToken.None);
+                await _dbContext.Entry(user).ReloadAsync(CancellationToken.None);
+            }
+        }
         
-        _logger.LogInformation("Deleted passkey {CredentialId} for user {UserId}", credentialId, userId);
+        _logger.LogInformation("Retired passkey {CredentialId} for user {UserId}", credentialId, userId);
         return true;
     }
 }

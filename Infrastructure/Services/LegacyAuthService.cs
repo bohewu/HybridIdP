@@ -9,6 +9,9 @@ namespace Infrastructure.Services;
 
 public partial class LegacyAuthService : ILegacyAuthService
 {
+    public const string HttpClientName = "LegacyAuth";
+    // Eight scalar profile/identity fields; leave ample room for escaped and Unicode text.
+    internal const int MaximumResponseBytes = 64 * 1024;
     private readonly HttpClient _httpClient;
     private readonly LegacyAuthOptions _options;
     private readonly ILogger<LegacyAuthService> _logger;
@@ -18,10 +21,12 @@ public partial class LegacyAuthService : ILegacyAuthService
         IOptions<LegacyAuthOptions> options,
         ILogger<LegacyAuthService> logger)
     {
-        _httpClient = httpClientFactory.CreateClient();
+        _httpClient = httpClientFactory.CreateClient(HttpClientName);
         _options = options.Value;
         _logger = logger;
     }
+
+    public static HttpClientHandler CreatePrimaryHandler() => new() { AllowAutoRedirect = false };
 
     public async Task<LegacyUserDto> ValidateAsync(string username, string password, CancellationToken cancellationToken = default)
     {
@@ -33,13 +38,27 @@ public partial class LegacyAuthService : ILegacyAuthService
         try
         {
             var requestUrl = _options.LoginUrl;
+            if (_options.RequireHttps &&
+                (!Uri.TryCreate(requestUrl, UriKind.Absolute, out var endpoint) ||
+                 endpoint.Scheme != Uri.UriSchemeHttps))
+            {
+                return new LegacyUserDto { IsAuthenticated = false };
+            }
+
+            // HeadersRead stops HttpClient.Timeout at the headers; retain its whole-body deadline.
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            if (_httpClient.Timeout != Timeout.InfiniteTimeSpan)
+            {
+                deadline.CancelAfter(_httpClient.Timeout);
+            }
             var requestBody = new { username, password };
 
             using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
             request.Headers.Add("X-Internal-Secret", _options.Secret);
             request.Content = JsonContent.Create(requestBody);
 
-            var response = await _httpClient.SendAsync(request, cancellationToken);
+            using var response = await _httpClient.SendAsync(
+                request, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -47,7 +66,9 @@ public partial class LegacyAuthService : ILegacyAuthService
                 return new LegacyUserDto { IsAuthenticated = false };
             }
 
-            var apiResult = await response.Content.ReadFromJsonAsync<LegacyApiLoginResult>(cancellationToken: cancellationToken);
+            using var bounded = await BoundedUpstreamResponse.ReadAsync(
+                response.Content, MaximumResponseBytes, deadline.Token);
+            var apiResult = await bounded.ReadFromJsonAsync<LegacyApiLoginResult>(cancellationToken: deadline.Token);
 
             if (apiResult == null || !apiResult.Authenticated)
             {

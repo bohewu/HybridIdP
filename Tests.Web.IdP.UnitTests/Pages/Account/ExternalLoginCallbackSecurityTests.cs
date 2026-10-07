@@ -62,8 +62,12 @@ public class ExternalLoginCallbackSecurityTests
             Times.Never);
     }
 
-    [Fact]
-    public async Task OnGetAsync_TrustedGoogleMatchingEmail_AutoLinksAndCompletesSignIn()
+    [Theory]
+    [InlineData(ExternalSignInCompletionStatus.Succeeded)]
+    [InlineData(ExternalSignInCompletionStatus.TotpRequired)]
+    [InlineData(ExternalSignInCompletionStatus.EmailOtpRequired)]
+    [InlineData(ExternalSignInCompletionStatus.Blocked)]
+    public async Task OnGetAsync_TrustedGoogleMatchingEmail_DelegatesWithoutPrematureLink(ExternalSignInCompletionStatus status)
     {
         var info = CreateExternalLoginInfo(AuthConstants.Providers.Google, "true");
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "existing-user" };
@@ -88,11 +92,12 @@ public class ExternalLoginCallbackSecurityTests
             .ReturnsAsync((true, null));
         var externalSignInCoordinator = new Mock<IExternalSignInCoordinator>();
         externalSignInCoordinator
-            .Setup(service => service.CompleteAsync(
+            .Setup(service => service.LinkAsync(
                 It.IsAny<HttpContext>(),
                 user,
+                info,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ExternalSignInCompletionResult.Succeeded());
+            .ReturnsAsync(new ExternalSignInCompletionResult(status));
 
         var model = CreateModel(
             signInManager,
@@ -103,13 +108,15 @@ public class ExternalLoginCallbackSecurityTests
 
         var result = await model.OnGetAsync("/");
 
-        Assert.IsType<LocalRedirectResult>(result);
+        if (status == ExternalSignInCompletionStatus.Succeeded) Assert.IsType<LocalRedirectResult>(result);
+        else Assert.IsType<RedirectToPageResult>(result);
         userManager.Verify(manager => manager.FindByEmailAsync("matched@example.com"), Times.Once);
-        userManager.Verify(manager => manager.AddLoginAsync(user, info), Times.Once);
+        userManager.Verify(manager => manager.AddLoginAsync(user, info), Times.Never);
         externalSignInCoordinator.Verify(
-            service => service.CompleteAsync(
+            service => service.LinkAsync(
                 It.IsAny<HttpContext>(),
                 user,
+                info,
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

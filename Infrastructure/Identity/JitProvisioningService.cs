@@ -126,7 +126,7 @@ public class JitProvisioningService : IJitProvisioningService
             throw new InvalidOperationException("User account is unavailable.");
         }
 
-        if (usernameUser != null && (!_externalLoginOptions.AutoLinkMatchingEmail ||
+        if (usernameUser != null && (externalAuth.RequireNewAccount || !_externalLoginOptions.AutoLinkMatchingEmail ||
             !string.Equals(usernameUser.Email, externalAuth.Email, StringComparison.OrdinalIgnoreCase)))
         {
             throw new InvalidOperationException("An existing account requires explicit linking.");

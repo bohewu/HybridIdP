@@ -8,6 +8,7 @@ public enum ExternalSignInCompletionStatus
     Succeeded,
     TotpRequired,
     EmailOtpRequired,
+    PasskeyRequired,
     MfaEnrollmentRequired,
     Blocked
 }
@@ -36,6 +37,12 @@ public sealed record ExternalSignInCompletionResult(
 
 public interface IExternalSignInCoordinator
 {
+    Task<ExternalSignInCompletionResult> LinkAsync(
+        HttpContext httpContext,
+        ApplicationUser user,
+        Microsoft.AspNetCore.Identity.UserLoginInfo login,
+        CancellationToken cancellationToken = default);
+
     Task<ExternalSignInCompletionResult> CompleteAsync(
         HttpContext httpContext,
         ApplicationUser user,

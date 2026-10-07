@@ -16,10 +16,12 @@ using Core.Domain.Constants;
 using Core.Application.Interfaces;
 using Core.Application;
 using Core.Domain;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Web.IdP.Pages.Account;
 
 [AllowAnonymous]
+[EnableRateLimiting("login")]
 public class ExternalLoginConfirmationModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -91,6 +93,7 @@ public class ExternalLoginConfirmationModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
+        Web.IdP.Helpers.PendingExternalLoginLink.Cancel(HttpContext);
         ReturnUrl = returnUrl ?? Url.Content("~/");
 
         var info = await _signInManager.GetExternalLoginInfoAsync();
@@ -112,6 +115,7 @@ public class ExternalLoginConfirmationModel : PageModel
     // ACTION: Link to Existing Account
     public async Task<IActionResult> OnPostLinkAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
+        Web.IdP.Helpers.PendingExternalLoginLink.Cancel(HttpContext);
         ReturnUrl = returnUrl ?? Url.Content("~/");
         var info = await _signInManager.GetExternalLoginInfoAsync();
         if (info == null)
@@ -149,42 +153,21 @@ public class ExternalLoginConfirmationModel : PageModel
              return Page();
         }
 
-        // 3. Link the external login
-        var addResult = await _userManager.AddLoginAsync(user, info);
-        if (addResult.Succeeded)
+        var completion = await _externalSignInCoordinator.LinkAsync(HttpContext, user, info, cancellationToken);
+        if (!completion.IsSucceeded)
         {
-            _logger.LogInformation("User {UserId} linked {Provider} account.", user.Id, info.LoginProvider);
-
-            var completion = await _externalSignInCoordinator.CompleteAsync(
-                HttpContext,
-                user,
-                cancellationToken);
-            if (completion.Status == ExternalSignInCompletionStatus.Blocked)
-            {
-                await _userManager.RemoveLoginAsync(user, info.LoginProvider, info.ProviderKey);
-                return HandleExternalSignInIncomplete(completion, ReturnUrl);
-            }
-
-            if (!completion.IsSucceeded)
-            {
-                return HandleExternalSignInIncomplete(completion, ReturnUrl);
-            }
-
-            await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
-            await RecordSuccessfulLoginAsync(user.Id);
-            return LocalRedirect(ReturnUrl);
+            return HandleExternalSignInIncomplete(completion, ReturnUrl);
         }
 
-        foreach (var error in addResult.Errors)
-        {
-             ModelState.AddModelError(string.Empty, error.Description);
-        }
-        return Page();
+        await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
+        await RecordSuccessfulLoginAsync(user.Id);
+        return LocalRedirect(ReturnUrl);
     }
 
     // ACTION: Create New Account (JIT)
     public async Task<IActionResult> OnPostCreateAsync(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
+        Web.IdP.Helpers.PendingExternalLoginLink.Cancel(HttpContext);
         ReturnUrl = returnUrl ?? Url.Content("~/");
         
         // Security check: Is registration enabled?
@@ -208,6 +191,7 @@ public class ExternalLoginConfirmationModel : PageModel
             ProviderKey = info.ProviderKey,
             Email = info.Principal.FindFirstValue(ClaimTypes.Email),
             EmailVerified = ExternalEmailAssurance.IsVerified(info),
+            RequireNewAccount = true,
             DisplayName = info.Principal.Identity?.Name,       
             FirstName = info.Principal.FindFirstValue(ClaimTypes.GivenName),
             LastName = info.Principal.FindFirstValue(ClaimTypes.Surname),
@@ -218,6 +202,13 @@ public class ExternalLoginConfirmationModel : PageModel
 
         try 
         {
+            if (externalAuth.EmailVerified && !string.IsNullOrWhiteSpace(externalAuth.Email) &&
+                (await _userManager.FindByEmailAsync(externalAuth.Email) != null ||
+                 await _userManager.FindByNameAsync(externalAuth.Email) != null))
+            {
+                // Let the callback apply the configured auto-link policy and MFA.
+                return RedirectToPage("./ExternalLoginCallback", new { returnUrl = ReturnUrl });
+            }
             var user = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth, cancellationToken);
 
             var completion = await _externalSignInCoordinator.CompleteAsync(
@@ -257,6 +248,8 @@ public class ExternalLoginConfirmationModel : PageModel
                 RedirectToPage("./LoginTotp", new { returnUrl, rememberMe = false }),
             ExternalSignInCompletionStatus.EmailOtpRequired =>
                 RedirectToPage("./LoginEmailOtp", new { returnUrl, rememberMe = false }),
+            ExternalSignInCompletionStatus.PasskeyRequired =>
+                RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = false }),
             ExternalSignInCompletionStatus.MfaEnrollmentRequired =>
                 RedirectToPage("./MfaSetup", new { returnUrl }),
             ExternalSignInCompletionStatus.Blocked when completion.Denial?.Status == LoginStatus.LockedOut =>

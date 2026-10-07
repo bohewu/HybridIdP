@@ -452,7 +452,8 @@ public class ClientsControllerTests
                 Enabled = callerKind is CallerKind.TrustedAutomation
                     or CallerKind.SameSubjectProductionAutomation
             }),
-            hostEnvironment.Object);
+            hostEnvironment.Object, Moq.Mock.Of<Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.GetActorAsync(Moq.It.IsAny<CancellationToken>()) == Task.FromResult(
+                new Infrastructure.Authorization.ApiUsageActor(null, claims.Where(c => c.Type == AuthConstants.Claims.PersonId).Select(c => (Guid?)Guid.Parse(c.Value)).FirstOrDefault(), callerKind == CallerKind.Admin, false))));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

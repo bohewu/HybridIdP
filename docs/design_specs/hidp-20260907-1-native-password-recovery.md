@@ -35,15 +35,19 @@ connected-environment acceptance.
 
 ### Configurable neutral recovery guidance (HIDP-16)
 
-The native recovery page now has seven optional settings on the existing
-`ForgotPasswordRecovery` configuration surface. Every setting defaults to an
+HIDP-16 introduced seven optional settings on the existing
+`ForgotPasswordRecovery` configuration surface. These settings default to an
 empty string, preserving an OSS deployment with no institution-specific content
-and no empty custom-guidance containers:
+and no empty custom-guidance containers. The page also supports an optional
+`BottomNotice` (default empty) and `BottomNoticeType` (default `info`), added on
+2026-10-06 independently of the login page's notice settings:
 
 ```json
 {
   "ForgotPasswordRecovery": {
     "TopNotice": "@Recovery.Guidance.Top",
+    "BottomNotice": "@Recovery.Guidance.Bottom",
+    "BottomNoticeType": "info",
     "VerificationTip": "Check your junk mail folder if the code has not arrived.",
     "ResetTip": "@Recovery.Guidance.Reset",
     "SuccessReminder": "Use your new password the next time you sign in.",
@@ -54,7 +58,7 @@ and no empty custom-guidance containers:
 }
 ```
 
-`TopNotice`, `VerificationTip`, `ResetTip`, `SuccessReminder`, `SupportText`,
+`TopNotice`, `BottomNotice`, `VerificationTip`, `ResetTip`, `SuccessReminder`, `SupportText`,
 and `SupportLabel` accept literal plain text or `@ResourceKey`. The key portion
 is trimmed. Resource lookup selects the first enabled exact-culture row, then an
 enabled `en-US` row, then hides the slot. Thus a disabled or missing exact row
@@ -68,6 +72,13 @@ Resource-backed text is resolved for every request, so Resource updates become
 visible on the next request. Configuration remains bound through the existing
 startup-lifecycle `IOptions<ForgotPasswordRecoveryOptions>` registration; no
 configuration hot-reload guarantee is made.
+
+The deployment keys are `ForgotPasswordRecovery__BottomNotice` and
+`ForgotPasswordRecovery__BottomNoticeType`. Env file changes require container
+recreation to update the process environment. The bottom notice reuses the login
+notice partial and its `info`, `warning`, `success`, `error` and `muted` styles;
+unknown types use `info`. Resource text beginning with `@` remains literal output
+after resolution and is not looked up again.
 
 `SupportUrl` is configured independently and is not localized. It is eligible
 only when it parses as an absolute `http` or `https` URL without UserInfo. Even
@@ -83,6 +94,7 @@ The page keeps the following stable, neutral hierarchy:
 | Awaiting password | Core password prompt/error content first, then `TopNotice`, then `ResetTip`, then the password form and authoritative policy content. |
 | Recovery succeeded | Core success content first, then `TopNotice`, then `SuccessReminder`, then the sign-in action. |
 | Every native phase | Independently resolved support text and any eligible support link appear near the bottom after the phase form or action. |
+| Every native phase | `BottomNotice` appears once after support content, using the shared login notice style. Empty or unresolved content renders no notice or spacing container. |
 
 Only the phase-specific tip shown in the table is eligible. In particular,
 `SuccessReminder` is absent from validation, rejected-password, failed-

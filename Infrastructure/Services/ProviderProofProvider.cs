@@ -13,6 +13,8 @@ namespace Infrastructure.Services;
 /// </summary>
 public sealed class ProviderProofProvider : IProofProvider
 {
+    // One identity, seven optional profile strings and small assurance/action lists.
+    internal const int MaximumResponseBytes = 64 * 1024;
     private readonly HttpClient _httpClient;
     private readonly ProviderProofOptions _options;
 
@@ -21,6 +23,8 @@ public sealed class ProviderProofProvider : IProofProvider
         _httpClient = httpClient;
         _options = options.Value;
     }
+
+    public static HttpClientHandler CreatePrimaryHandler() => new() { AllowAutoRedirect = false };
 
     public async Task<ProofResult> ProveAsync(
         ProofRequest request,
@@ -57,7 +61,9 @@ public sealed class ProviderProofProvider : IProofProvider
                 return new ProofResult { Outcome = ProofOutcome.Unavailable };
             }
 
-            var proof = await response.Content.ReadFromJsonAsync(
+            using var bounded = await BoundedUpstreamResponse.ReadAsync(
+                response.Content, MaximumResponseBytes, linked.Token);
+            var proof = await bounded.ReadFromJsonAsync(
                 ProviderProofJsonContext.Default.ProofResult,
                 linked.Token);
             if (proof is not null)

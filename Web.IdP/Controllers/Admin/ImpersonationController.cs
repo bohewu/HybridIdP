@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Web.IdP.Attributes;
 using Web.IdP.Services;
+using Core.Application;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -19,15 +20,18 @@ public class ImpersonationController : ControllerBase
 {
     private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly IImpersonationService _impersonationService;
+    private readonly IAuditService _auditService;
     private readonly ILogger<ImpersonationController> _logger;
 
     public ImpersonationController(
         Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
         IImpersonationService impersonationService,
-        ILogger<ImpersonationController> logger)
+        ILogger<ImpersonationController> logger,
+        IAuditService auditService)
     {
         _lifecycleEligibility = lifecycleEligibility;
         _impersonationService = impersonationService;
+        _auditService = auditService;
         _logger = logger;
     }
 
@@ -68,6 +72,8 @@ public class ImpersonationController : ControllerBase
             }
 
             // Restore the cookie
+            await _auditService.LogImpersonationEventAsync("ImpersonationStopped", User,
+                HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString(), HttpContext.RequestAborted);
             await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal!, new AuthenticationProperties
             {
                 IsPersistent = false

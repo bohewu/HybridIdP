@@ -47,6 +47,7 @@ public partial class ExternalLoginCallbackModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? returnUrl = null, string? remoteError = null, CancellationToken cancellationToken = default)
     {
+        Web.IdP.Helpers.PendingExternalLoginLink.Cancel(HttpContext);
         returnUrl = returnUrl ?? Url.Content("~/");
         if (remoteError != null)
         {
@@ -101,30 +102,17 @@ public partial class ExternalLoginCallbackModel : PageModel
 
                     if (canLink)
                     {
-                        var addLoginResult = await _userManager.AddLoginAsync(user, info);
-                        if (addLoginResult.Succeeded)
+                        var completion = await _externalSignInCoordinator.LinkAsync(
+                            HttpContext, user, info, cancellationToken);
+                        if (!completion.IsSucceeded)
                         {
-                            var completion = await _externalSignInCoordinator.CompleteAsync(
-                                HttpContext,
-                                user,
-                                cancellationToken);
-                            if (completion.Status == ExternalSignInCompletionStatus.Blocked)
-                            {
-                                await _userManager.RemoveLoginAsync(user, info.LoginProvider, info.ProviderKey);
-                                return HandleExternalSignInIncomplete(user, completion, returnUrl);
-                            }
-
-                            if (!completion.IsSucceeded)
-                            {
-                                return HandleExternalSignInIncomplete(user, completion, returnUrl);
-                            }
-
-                            await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
-                            await RecordSuccessfulLoginAsync(user.Id);
-
-                            LogAutoLinkSuccess(email, info.LoginProvider);
-                            return LocalRedirect(returnUrl);
+                            return HandleExternalSignInIncomplete(user, completion, returnUrl);
                         }
+
+                        await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
+                        await RecordSuccessfulLoginAsync(user.Id);
+                        LogAutoLinkSuccess(email, info.LoginProvider);
+                        return LocalRedirect(returnUrl);
                     }
                 }
             }
@@ -148,6 +136,8 @@ public partial class ExternalLoginCallbackModel : PageModel
                 RedirectToPage("./LoginTotp", new { returnUrl, rememberMe = false }),
             ExternalSignInCompletionStatus.EmailOtpRequired =>
                 RedirectToPage("./LoginEmailOtp", new { returnUrl, rememberMe = false }),
+            ExternalSignInCompletionStatus.PasskeyRequired =>
+                RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = false }),
             ExternalSignInCompletionStatus.MfaEnrollmentRequired =>
                 RedirectToPage("./MfaSetup", new { returnUrl }),
             ExternalSignInCompletionStatus.Blocked when completion.Denial != null =>

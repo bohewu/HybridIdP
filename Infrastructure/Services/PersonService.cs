@@ -7,6 +7,7 @@ using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Infrastructure.Validators;
+using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -31,19 +32,22 @@ public partial class PersonService : IPersonService
     private readonly IAuditService _auditService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly PiiMaskingLevel _piiMaskingLevel;
+    private readonly PersonOperationAuthorization _operationAuthorization;
 
     public PersonService(
         ApplicationDbContext context,
         ILogger<PersonService> logger,
         IAuditService auditService,
         UserManager<ApplicationUser> userManager,
-        IOptions<AuditOptions> auditOptions)
+        IOptions<AuditOptions> auditOptions,
+        PersonOperationAuthorization operationAuthorization)
     {
         _context = context;
         _logger = logger;
         _auditService = auditService;
         _userManager = userManager;
         _piiMaskingLevel = auditOptions.Value.PiiMaskingLevel;
+        _operationAuthorization = operationAuthorization;
     }
 
     public async Task<Person?> GetPersonByIdAsync(Guid personId, CancellationToken cancellationToken = default)
@@ -488,6 +492,22 @@ public partial class PersonService : IPersonService
             throw new InvalidOperationException($"User is already linked to another person (PersonId: {user.PersonId.Value})");
         }
 
+        var currentUserRoles = await _userManager.GetRolesAsync(user);
+        var sourceAccount = await _context.Users
+            .Where(account => account.PersonId == personId && account.Id != userId)
+            .FirstOrDefaultAsync(cancellationToken);
+        var sourceRoles = sourceAccount == null
+            ? new List<string>()
+            : (await _userManager.GetRolesAsync(sourceAccount)).ToList();
+        var rolesToAdd = user.PersonId == personId
+            ? new List<string>()
+            : sourceRoles.Except(currentUserRoles, StringComparer.OrdinalIgnoreCase).ToList();
+
+        // Identity role writes can flush a tracked PersonId. Complete every check before either changes.
+        await _operationAuthorization.RequireAssociationAsync(personId, user,
+            currentUserRoles.Concat(sourceRoles).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            rolesToAdd, cancellationToken);
+
         // Check if user is already linked to the same person (idempotent operation)
         if (user.PersonId == personId)
         {
@@ -500,26 +520,13 @@ public partial class PersonService : IPersonService
         user.ModifiedAt = DateTime.UtcNow;
         user.ModifiedBy = modifiedBy;
 
-        // Sync roles from existing accounts in the same Person
-        var existingAccounts = await _context.Users
-            .Where(u => u.PersonId == personId && u.Id != userId)
-            .ToListAsync(cancellationToken);
-            
-        if (existingAccounts.Count > 0)
+        // Sync the preflighted roles from the existing Person account.
+        if (rolesToAdd.Count > 0)
         {
-            // Get roles from the first existing account to replicate
-            var sourceAccount = existingAccounts.First();
-            var sourceRoles = await _userManager.GetRolesAsync(sourceAccount);
-            if (sourceRoles.Count > 0)
-            {
-                var currentUserRoles = await _userManager.GetRolesAsync(user);
-                var rolesToAdd = sourceRoles.Except(currentUserRoles).ToList();
-                if (rolesToAdd.Count > 0)
-                {
-                    await _userManager.AddToRolesAsync(user, rolesToAdd);
-                    LogRolesSynced(rolesToAdd.Count, userId, string.Join(", ", rolesToAdd));
-                }
-            }
+            var roleResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+            if (!roleResult.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", roleResult.Errors.Select(error => error.Description)));
+            LogRolesSynced(rolesToAdd.Count, userId, string.Join(", ", rolesToAdd));
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -557,6 +564,9 @@ public partial class PersonService : IPersonService
         }
 
         var previousPersonId = user.PersonId;
+
+        await _operationAuthorization.RequireAssociationAsync(previousPersonId, user,
+            (await _userManager.GetRolesAsync(user)).ToList(), [], cancellationToken);
 
         // Unlink user from person
         user.PersonId = null;
@@ -792,26 +802,34 @@ public partial class PersonService : IPersonService
         var apiResources = await _context.ApiResources
             .Where(r => r.OwnerPersonId == fromPersonId)
             .ToListAsync(cancellationToken);
+
+        // 2. ScopeOwnerships
+        var scopes = await _context.ScopeOwnerships
+            .Where(o => o.CreatedByPersonId == fromPersonId)
+            .ToListAsync(cancellationToken);
+
+        // 3. ClientOwnerships
+        var clients = await _context.ClientOwnerships
+            .Where(o => o.CreatedByPersonId == fromPersonId)
+            .ToListAsync(cancellationToken);
+
+        // Authorize exactly the assets that will be mutated, with no later domain query.
+        await _operationAuthorization.RequireTransferAsync(fromPersonId,
+            clients.Select(client => client.ApplicationId).ToList(),
+            scopes.Select(scope => scope.ScopeId).ToList(), apiResources.Count > 0, cancellationToken);
+
         foreach (var r in apiResources)
         {
             r.OwnerPersonId = toPersonId;
         }
         var apiResourcesCount = apiResources.Count;
 
-        // 2. ScopeOwnerships
-        var scopes = await _context.ScopeOwnerships
-            .Where(o => o.CreatedByPersonId == fromPersonId)
-            .ToListAsync(cancellationToken);
         foreach (var s in scopes)
         {
             s.CreatedByPersonId = toPersonId;
         }
         var scopesCount = scopes.Count;
 
-        // 3. ClientOwnerships
-        var clients = await _context.ClientOwnerships
-            .Where(o => o.CreatedByPersonId == fromPersonId)
-            .ToListAsync(cancellationToken);
         foreach (var c in clients)
         {
             c.CreatedByPersonId = toPersonId;

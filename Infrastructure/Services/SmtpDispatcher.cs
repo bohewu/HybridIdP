@@ -6,6 +6,7 @@ using Core.Application.Interfaces;
 using Core.Domain.Models;
 using Core.Domain.Constants;
 using MailKit.Net.Smtp;
+using MailKit.Security;
 using MimeKit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -38,7 +39,7 @@ public partial class SmtpDispatcher : IEmailDispatcher
             FromName = mailSettings.FromName
         };
 
-        return SendCoreAsync(message, settings, isTest: false, ct);
+        return SendCoreAsync(message, settings, mailSettings, isTest: false, ct);
     }
 
     public Task SendTestAsync(
@@ -47,12 +48,13 @@ public partial class SmtpDispatcher : IEmailDispatcher
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        return SendCoreAsync(message, settings, isTest: true, ct);
+        return SendCoreAsync(message, settings, _options.Value, isTest: true, ct);
     }
 
     private async Task SendCoreAsync(
         EmailMessage message,
         MailSettingsDto settings,
+        EmailOptions policy,
         bool isTest,
         CancellationToken ct)
     {
@@ -89,13 +91,8 @@ public partial class SmtpDispatcher : IEmailDispatcher
 
             using var client = new SmtpClient();
 
-            // For Mailpit or Dev, we might accept all certs
-            if (settings.Host == "localhost" || !settings.EnableSsl)
-            {
-                client.ServerCertificateValidationCallback = (s, c, h, e) => true;
-            }
-
-            await client.ConnectAsync(settings.Host, settings.Port, settings.EnableSsl, ct);
+            var socketOptions = ApplySecurityPolicy(client, settings, policy);
+            await client.ConnectAsync(settings.Host, settings.Port, socketOptions, ct);
             
             if (!string.IsNullOrEmpty(settings.Username))
             {
@@ -127,6 +124,23 @@ public partial class SmtpDispatcher : IEmailDispatcher
             LogEmailSendFailed(_logger, ex, message.To, settings.Host, settings.Port);
             throw;
         }
+    }
+
+    internal static SecureSocketOptions ApplySecurityPolicy(
+        SmtpClient client, MailSettingsDto settings, EmailOptions policy)
+    {
+        client.ServerCertificateValidationCallback = policy.SmtpValidateServerCertificate
+            ? null
+            : (_, _, _, _) => true;
+
+        if (settings.EnableSsl)
+        {
+            return SecureSocketOptions.SslOnConnect;
+        }
+
+        return policy.SmtpRequireTls
+            ? SecureSocketOptions.StartTls
+            : SecureSocketOptions.StartTlsWhenAvailable;
     }
 
     // Removed GetMailSettingsAsync as we now use IOptionsSnapshot

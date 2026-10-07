@@ -82,6 +82,13 @@ becomes `Malformed`; the configured deadline becomes `Timeout`. Caller
 cancellation propagates. There is no automatic fallback to another credential
 authority and no retry or version-negotiation protocol in this adapter.
 
+The typed client disables automatic redirects; a `3xx` is `Unavailable` and
+causes no follow-up credential/shared-secret request. Response consumption has a
+fixed 64 KiB byte ceiling before JSON parsing, including missing Content-Length
+and chunked bodies. Oversize or body-read failure is `Unavailable` and cannot
+authenticate. The existing media-type/charset handling and valid in-limit `2xx`
+results are preserved; no response-size configuration surface is added.
+
 The deadline defaults to five seconds and must be greater than zero and no more
 than thirty seconds. A producer should emit canonical camelCase JSON and string
 enum names. Contract 1.0 has no URL-version discovery, downgrade, compatibility

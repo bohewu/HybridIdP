@@ -13,6 +13,8 @@ namespace Infrastructure.Services;
 
 public sealed class ProviderMetadataRefreshService : IProviderMetadataRefreshService
 {
+    // Six fields, including a 200/256-code-unit tuple, one mailbox and a timestamp.
+    internal const int MaximumResponseBytes = 16 * 1024;
     private readonly IApplicationDbContext _dbContext;
     private readonly HttpClient _httpClient;
     private readonly ProviderMetadataRefreshOptions _options;
@@ -29,6 +31,8 @@ public sealed class ProviderMetadataRefreshService : IProviderMetadataRefreshSer
         _options = options.Value;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
+
+    public static HttpClientHandler CreatePrimaryHandler() => new() { AllowAutoRedirect = false };
 
     public async Task<ProviderMetadataRefreshOutcome> RefreshAsync(
         string providerNamespace,
@@ -95,7 +99,9 @@ public sealed class ProviderMetadataRefreshService : IProviderMetadataRefreshSer
                     : ProviderMetadataRefreshOutcome.Unavailable;
             }
 
-            result = await response.Content.ReadFromJsonAsync(
+            using var bounded = await BoundedUpstreamResponse.ReadAsync(
+                response.Content, MaximumResponseBytes, linked.Token);
+            result = await bounded.ReadFromJsonAsync(
                 ProviderMetadataJsonContext.Default.ProviderMetadataResult,
                 linked.Token);
         }
@@ -108,7 +114,7 @@ public sealed class ProviderMetadataRefreshService : IProviderMetadataRefreshSer
             await InvalidateAsync(binding.Id, ProviderMetadataEvidenceState.TimedOut, cancellationToken);
             return ProviderMetadataRefreshOutcome.TimedOut;
         }
-        catch (HttpRequestException)
+        catch (Exception exception) when (exception is HttpRequestException or IOException)
         {
             await InvalidateAsync(binding.Id, ProviderMetadataEvidenceState.Unavailable, cancellationToken);
             return ProviderMetadataRefreshOutcome.Unavailable;

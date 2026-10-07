@@ -140,6 +140,7 @@ public partial class LoginTotpModel : PageModel
                 var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
                 RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
                 await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 
@@ -172,9 +173,9 @@ public partial class LoginTotpModel : PageModel
         if (!string.IsNullOrWhiteSpace(Input.RecoveryCode))
         {
             var cleanCode = Input.RecoveryCode.Replace(" ", "").Replace("-", "");
-            var result = await _userManager.RedeemTwoFactorRecoveryCodeAsync(user, cleanCode);
+            var succeeded = await _mfaService.ValidateNativeRecoveryCodeAsync(user, cleanCode, cancellationToken);
             
-            if (result.Succeeded)
+            if (succeeded)
             {
                 if (!await CanIssueFullCookieAsync(user, cancellationToken))
                 {
@@ -185,6 +186,7 @@ public partial class LoginTotpModel : PageModel
                 var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
 
                 RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 _logger.LogInformation("User logged in with recovery code.");

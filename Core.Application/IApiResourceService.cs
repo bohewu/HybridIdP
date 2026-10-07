@@ -4,6 +4,7 @@ namespace Core.Application;
 
 public interface IApiResourceService
 {
+    Task ApproveClientScopeAsync(int resourceId, Guid applicationId, string scopeId, CancellationToken cancellationToken = default);
     Task<(IEnumerable<ApiResourceSummary> items, int totalCount)> GetResourcesAsync(int skip, int take, string? search, string? sort, Guid? viewerPersonId = null);
     Task<ApiResourceDetail?> GetResourceByIdAsync(int id, Guid? viewerPersonId = null);
     Task<ApiResourceSummary> CreateResourceAsync(CreateApiResourceRequest request, Guid? ownerPersonId = null);

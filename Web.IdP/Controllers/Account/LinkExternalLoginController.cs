@@ -5,6 +5,8 @@ using Core.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication;
 using Core.Domain;
+using Web.IdP.Services;
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Controllers.Account;
 
@@ -16,22 +18,26 @@ public partial class LinkExternalLoginController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<LinkExternalLoginController> _logger;
     private readonly Core.Application.ILoginService _loginService;
+    private readonly IExternalSignInCoordinator _externalSignInCoordinator;
 
     public LinkExternalLoginController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         ILogger<LinkExternalLoginController> logger,
-        Core.Application.ILoginService loginService)
+        Core.Application.ILoginService loginService,
+        IExternalSignInCoordinator externalSignInCoordinator)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _logger = logger;
         _loginService = loginService;
+        _externalSignInCoordinator = externalSignInCoordinator;
     }
 
     [HttpGet("Challenge")]
     public IActionResult Challenge(string provider)
     {
+        PendingExternalLoginLink.Cancel(HttpContext);
         // Request a redirect to the external login provider to link a login for the current user
         var redirectUrl = Url.Action("Callback", "LinkExternalLogin");
         var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl, _userManager.GetUserId(User));
@@ -62,16 +68,18 @@ public partial class LinkExternalLoginController : Controller
              return Redirect("/Account/Profile?error=ProviderLimitReached");
         }
 
-        var result = await _userManager.AddLoginAsync(user, info);
-        if (!result.Succeeded)
+        var result = await _externalSignInCoordinator.LinkAsync(HttpContext, user, info, cancellationToken);
+        if (!result.IsSucceeded)
         {
-            // Modified: Simplified error logging and handling
-            if (result.Errors.Any(e => e.Code == "LoginAlreadyAssociated"))
+            const string returnUrl = "/Account/Profile?success=LinkAdded";
+            return result.Status switch
             {
-                return Redirect("/Account/Profile?error=LoginAlreadyAssociated");
-            }
-            LogAddLoginFailed(user.Id, info.LoginProvider); // Modified: Changed errors to info.LoginProvider
-            return Redirect("/Account/Profile?error=LinkFailed");
+                ExternalSignInCompletionStatus.TotpRequired => RedirectToPage("/Account/LoginTotp", new { returnUrl }),
+                ExternalSignInCompletionStatus.EmailOtpRequired => RedirectToPage("/Account/LoginEmailOtp", new { returnUrl }),
+                ExternalSignInCompletionStatus.PasskeyRequired => RedirectToPage("/Account/LoginMfa", new { returnUrl }),
+                ExternalSignInCompletionStatus.MfaEnrollmentRequired => RedirectToPage("/Account/MfaSetup", new { returnUrl }),
+                _ => Redirect("/Account/Profile?error=LinkFailed")
+            };
         }
 
         // Clear the external authentication cookie to ensure a clean state

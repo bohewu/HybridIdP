@@ -78,9 +78,13 @@ public class PasskeyControllerTests
     public async Task DeletePasskey_ShouldProtectLastActiveFactor_WhenRetiredCredentialRemains(int credentialId)
     {
         var user = CreateEligibleUser("last-active-passkey-user");
+        user.SecurityStamp = "current-stamp";
         ArrangeAuthenticatedUser(user);
         ArrangeApplicationCookieUser(user);
         ((ClaimsIdentity)_controller.HttpContext.User.Identity!).AddClaim(new Claim("amr", "mfa"));
+        ((ClaimsIdentity)_controller.HttpContext.User.Identity!).AddClaim(new Claim("AspNet.Identity.SecurityStamp", user.SecurityStamp));
+        MfaEnrollmentSession.Begin(_session, user.Id, requiresMfa: true, securityStamp: user.SecurityStamp);
+        Assert.True(MfaEnrollmentSession.CompletePending(_session, _controller.HttpContext.User));
         _passkeyServiceMock.Setup(s => s.GetUserPasskeysAsync(user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([new UserCredentialDto { Id = 1 }]);
         _dbContext.UserCredentials.AddRange(
@@ -823,6 +827,8 @@ public class PasskeyControllerTests
             [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
             IdentityConstants.ApplicationScheme));
         var authenticationService = new Mock<IAuthenticationService>();
+        authenticationService.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthenticateResult.NoResult());
         authenticationService
             .Setup(service => service.AuthenticateAsync(
                 It.IsAny<HttpContext>(),
@@ -838,6 +844,8 @@ public class PasskeyControllerTests
         _controller.HttpContext.User = principal;
         _controller.HttpContext.RequestServices = new ServiceCollection()
             .AddSingleton(authenticationService.Object)
+            .AddSingleton(_lifecycleEligibilityMock.Object)
+            .AddSingleton(_migrationIssuanceGuardMock.Object)
             .BuildServiceProvider();
     }
 

@@ -52,6 +52,7 @@ public class MfaSetupModel : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
+        NormalizeReturnUrl();
         var user = await GetTwoFactorUserAsync();
         if (user == null || !await MfaEnrollmentSession.IsAuthorizedAsync(
             HttpContext, user, _passkeyService, HttpContext.RequestAborted, requireFreshProof: false))
@@ -109,6 +110,7 @@ public class MfaSetupModel : PageModel
 
     public async Task<IActionResult> OnPostSkipAsync()
     {
+        NormalizeReturnUrl();
         var user = await GetTwoFactorUserAsync();
         if (user == null)
         {
@@ -145,6 +147,7 @@ public class MfaSetupModel : PageModel
         }
 
         MfaEnrollmentSession.Consume(HttpContext.Session);
+        PendingExternalLoginLink.Cancel(HttpContext);
         AuthorizationAuthenticationSession.PreserveTime(HttpContext, User);
         await _signInManager.SignInWithClaimsAsync(user, isPersistent: false,
             AuthenticationMethodSession.CreateClaims(HttpContext.Session));
@@ -177,6 +180,9 @@ public class MfaSetupModel : PageModel
         
         return user;
     }
+
+    private void NormalizeReturnUrl() =>
+        ReturnUrl = RedirectHelper.IsSafeReturnUrl(ReturnUrl) ? ReturnUrl : "/";
 
     private async Task PromotePartialPrincipalForAntiforgeryAsync(ApplicationUser user)
     {

@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Application.DTOs;
+using Core.Application.Options;
 using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
@@ -981,6 +982,105 @@ public class UserManagementServiceTests : IDisposable
     #endregion
 
     #region Person-Level Role Synchronization Tests
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task AssignRoles_ShouldPreflightAllRecipientsBeforeAnyWrite(bool selectedAlreadyHasRole, bool useRoleIds)
+    {
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Mixed", LastName = "Mfa" };
+        _context.Persons.Add(person);
+        var selected = new ApplicationUser { UserName = "selected", PersonId = person.Id, TwoFactorEnabled = true };
+        var sibling = new ApplicationUser { UserName = "sibling", PersonId = person.Id };
+        Assert.True((await _userManager.CreateAsync(selected)).Succeeded);
+        Assert.True((await _userManager.CreateAsync(sibling)).Succeeded);
+        var adminRole = new ApplicationRole { Name = "Admin" };
+        Assert.True((await _roleManager.CreateAsync(adminRole)).Succeeded);
+        Assert.True((await _roleManager.CreateAsync(new ApplicationRole { Name = "OldRole" })).Succeeded);
+        await _userManager.AddToRoleAsync(selected, "OldRole");
+        await _userManager.AddToRoleAsync(sibling, "OldRole");
+        if (selectedAlreadyHasRole) await _userManager.AddToRoleAsync(selected, "Admin");
+        // Historical credentials must not make this sibling eligible.
+        _context.UserCredentials.Add(new UserCredential
+        {
+            UserId = sibling.Id, CredentialId = [1], PublicKey = [2], DisabledAtUtc = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+        var service = CreateRoleProtectedService();
+
+        var result = useRoleIds
+            ? await service.AssignRolesByIdAsync(selected.Id, [adminRole.Id])
+            : await service.AssignRolesAsync(selected.Id, ["Admin"]);
+
+        Assert.False(result.Success);
+        _context.ChangeTracker.Clear();
+        var persistedSelected = (await _userManager.FindByIdAsync(selected.Id.ToString()))!;
+        var persistedSibling = (await _userManager.FindByIdAsync(sibling.Id.ToString()))!;
+        Assert.Contains("OldRole", await _userManager.GetRolesAsync(persistedSelected));
+        Assert.Contains("OldRole", await _userManager.GetRolesAsync(persistedSibling));
+        Assert.Equal(selectedAlreadyHasRole, await _userManager.IsInRoleAsync(persistedSelected, "Admin"));
+        Assert.False(await _userManager.IsInRoleAsync(persistedSibling, "Admin"));
+        _mockEventPublisher.Verify(publisher => publisher.PublishAsync(It.IsAny<UserRoleAssignedEvent>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("Admin", true, true, true)]
+    [InlineData("Admin", false, false, true)]
+    [InlineData("Admin", true, false, false)]
+    [InlineData("Auditor", true, false, true)]
+    public async Task AssignRolesAsync_ShouldPreserveEligibleOrdinaryAndOptionalMfaModes(
+        string role, bool requireTargetMfa, bool countPasskey, bool allowed)
+    {
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Eligible", LastName = "Person" };
+        _context.Persons.Add(person);
+        var selected = new ApplicationUser { UserName = "selected", PersonId = person.Id, EmailMfaEnabled = true };
+        var sibling = new ApplicationUser { UserName = "sibling", PersonId = person.Id };
+        Assert.True((await _userManager.CreateAsync(selected)).Succeeded);
+        Assert.True((await _userManager.CreateAsync(sibling)).Succeeded);
+        Assert.True((await _roleManager.CreateAsync(new ApplicationRole { Name = role })).Succeeded);
+        await _userManager.AddToRoleAsync(selected, role);
+        _context.UserCredentials.Add(new UserCredential { UserId = sibling.Id, CredentialId = [1], PublicKey = [2] });
+        await _context.SaveChangesAsync();
+
+        var result = await CreateRoleProtectedService(requireTargetMfa, countPasskey)
+            .AssignRolesAsync(selected.Id, [role]);
+
+        Assert.Equal(allowed, result.Success);
+        Assert.True(await _userManager.IsInRoleAsync(selected, role));
+        Assert.Equal(allowed, await _userManager.IsInRoleAsync(sibling, role));
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_ShouldDenyProtectedRoleBeforeProfileOrRoleWrites_WhenTargetHasNoMfa()
+    {
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Original", LastName = "Name" };
+        _context.Persons.Add(person);
+        var user = new ApplicationUser { UserName = "original", Email = "original@example.test", PersonId = person.Id };
+        Assert.True((await _userManager.CreateAsync(user)).Succeeded);
+        Assert.True((await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin" })).Succeeded);
+
+        var result = await CreateRoleProtectedService().UpdateUserAsync(user.Id, new UpdateUserDto
+        {
+            Email = "changed@example.test", FirstName = "Changed", IsActive = true, Roles = ["Admin"]
+        });
+
+        Assert.False(result.Success);
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+        Assert.Equal("Original", (await _context.Persons.FindAsync(person.Id))!.FirstName);
+        Assert.Equal("original@example.test", (await _context.Users.FindAsync(user.Id))!.Email);
+        Assert.Empty(await _userManager.GetRolesAsync(user));
+    }
+
+    private UserManagementService CreateRoleProtectedService(bool requireTargetMfa = true, bool countPasskey = true) =>
+        new(_userManager, _roleManager, _mockEventPublisher.Object, _context, _mockApplicationManager.Object,
+            Options.Create(new PrivilegedRoleProtectionOptions
+            {
+                RequireTargetMfaForPrivilegedRoleAssignment = requireTargetMfa,
+                CountPasskeyAsMfa = countPasskey
+            }));
 
     [Fact]
     public async Task AssignRolesAsync_ShouldSyncRolesToSiblingAccounts_WhenPersonIdExists()

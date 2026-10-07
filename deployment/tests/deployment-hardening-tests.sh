@@ -76,7 +76,7 @@ COMPOSE_FILES=(
 MODE_NAMES=("internal" "nginx" "splithost" "splithost-nginx" "splithost-nginx-nodb")
 MODE_REQUIRED=(
     "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD OpenIddict__Issuer PUBLIC_AUTHORITY"
-    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD OpenIddict__Issuer PUBLIC_AUTHORITY"
+    "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD Proxy__KnownProxies OpenIddict__Issuer PUBLIC_AUTHORITY"
     "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD INTERNAL_IP PROXY_HOST_IP OpenIddict__Issuer PUBLIC_AUTHORITY"
     "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ConnectionStrings__RedisConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD MSSQL_SA_PASSWORD POSTGRES_PASSWORD INTERNAL_IP Proxy__KnownProxies OpenIddict__Issuer PUBLIC_AUTHORITY"
     "DATABASE_PROVIDER ConnectionStrings__SqlServerConnection ConnectionStrings__PostgreSqlConnection ENCRYPTION_CERT_PASSWORD SIGNING_CERT_PASSWORD INTERNAL_IP Proxy__KnownProxies OpenIddict__Issuer PUBLIC_AUTHORITY"
@@ -237,10 +237,10 @@ assert_internal_docker_output() {
     fi
 }
 
-wizard_sql_input=$'4\n\n\n1\nsql.fixture.invalid,1433\nfixture_db\nfixture_user\nfixture-password_123!\n1\n\n\n\n\n\n\n\n\nhttps://idp.fixture.invalid/'
-wizard_postgres_ca_input=$'4\n\n\n2\npostgres.fixture.invalid\n5432\nfixture_db\nfixture_user\nfixture-password_123!\n2\nfixture-ca.pem\n1\n\n\n\n\n\n\n\n\nhttps://idp.fixture.invalid/'
-wizard_postgres_invalid_ca_input=$'4\n\n\n2\npostgres.fixture.invalid\n5432\nfixture_db\nfixture_user\nfixture-password_123!\n2\n../unsafe.crt'
-wizard_internal_input=$'1\n1\n1\n\n\n\n\n\n\n\n\nhttps://idp.fixture.invalid/'
+wizard_sql_input=$'4\n\n192.0.2.10\n1\nsql.fixture.invalid,1433\nfixture_db\nfixture_user\nfixture-password_123!\n1\n192.0.2.20\n\n\n\n\n\n\n\n\nhttps://idp.fixture.invalid/'
+wizard_postgres_ca_input=$'4\n\n192.0.2.10\n2\npostgres.fixture.invalid\n5432\nfixture_db\nfixture_user\nfixture-password_123!\n2\nfixture-ca.pem\n1\n192.0.2.20\n\n\n\n\n\n\n\n\nhttps://idp.fixture.invalid/'
+wizard_postgres_invalid_ca_input=$'4\n\n192.0.2.10\n2\npostgres.fixture.invalid\n5432\nfixture_db\nfixture_user\nfixture-password_123!\n2\n../unsafe.crt'
+wizard_internal_input=$'1\n1\n1\n192.0.2.20\n\n\n\n\n\n\n\n\nhttps://idp.fixture.invalid/'
 
 for shell_name in bash powershell; do
     create_wizard_fixture "$shell_name-external-sql"

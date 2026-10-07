@@ -39,6 +39,41 @@ describe('MfaSetupApp Email MFA', () => {
     document.body.innerHTML = ''
   })
 
+  it.each(['totp', 'email', 'passkey'].flatMap(method =>
+    ['/', '/connect/authorize?request_uri=urn:ietf:params:oauth:request_uri:test'].map(url => [method, url])
+  ))('uses the server-normalized return for %s completion and skip (%s)', async (method, url) => {
+    vi.useFakeTimers()
+    const originalWindow = window
+    const location = { href: '' }
+    document.getElementById('mfa-setup-app').dataset.returnUrl = url
+    fetch.mockImplementation(endpoint => Promise.resolve(jsonResponse(
+      endpoint.endsWith('/passkeys') ? [] : { success: true, recoveryCodes: ['synthetic-code'] }
+    )))
+    const wrapper = mount(MfaSetupApp)
+    try {
+      await flushPromises()
+      expect(wrapper.get('input[name="ReturnUrl"]').element.value).toBe(url)
+      if (method === 'totp') {
+        await wrapper.vm.verifyTotp()
+        wrapper.vm.finishTotpSetup()
+      } else if (method === 'email') {
+        await wrapper.vm.startEmailMfaSetup()
+        await flushPromises()
+        await wrapper.get('#setup-email-mfa-code').setValue('123456')
+        await wrapper.vm.verifyEmailMfa()
+      } else {
+        await wrapper.vm.registerPasskey()
+      }
+      vi.stubGlobal('window', { ...originalWindow, location })
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(location.href).toBe(url)
+    } finally {
+      vi.stubGlobal('window', originalWindow)
+      wrapper.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('sends and verifies an emailed code before completing partial authentication', async () => {
     fetch.mockImplementation((url) => {
       if (url === '/api/account/mfa-setup/status') {

@@ -122,10 +122,15 @@ public class ExternalLoginConfirmationEmailAssuranceTests
         Assert.IsType<LocalRedirectResult>(result);
         Assert.NotNull(capturedAuth);
         Assert.Equal(expectedVerified, capturedAuth.EmailVerified);
+        Assert.True(capturedAuth.RequireNewAccount);
     }
 
-    [Fact]
-    public async Task OnPostLinkAsync_MissingEmailAssurance_LinksAuthenticatedLocalUser()
+    [Theory]
+    [InlineData(ExternalSignInCompletionStatus.Succeeded)]
+    [InlineData(ExternalSignInCompletionStatus.TotpRequired)]
+    [InlineData(ExternalSignInCompletionStatus.EmailOtpRequired)]
+    [InlineData(ExternalSignInCompletionStatus.Blocked)]
+    public async Task OnPostLinkAsync_MissingEmailAssurance_DelegatesWithoutPrematureLink(ExternalSignInCompletionStatus status)
     {
         var info = new ExternalLoginInfo(
             new ClaimsPrincipal(new ClaimsIdentity(
@@ -198,11 +203,12 @@ public class ExternalLoginConfirmationEmailAssuranceTests
 
         var externalSignInCoordinator = new Mock<IExternalSignInCoordinator>();
         externalSignInCoordinator
-            .Setup(service => service.CompleteAsync(
+            .Setup(service => service.LinkAsync(
                 It.IsAny<HttpContext>(),
                 localUser,
+                info,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ExternalSignInCompletionResult.Succeeded());
+            .ReturnsAsync(new ExternalSignInCompletionResult(status));
 
         var model = new ExternalLoginConfirmationModel(
             userManager.Object,
@@ -231,16 +237,19 @@ public class ExternalLoginConfirmationEmailAssuranceTests
 
         var result = await model.OnPostLinkAsync("/account");
 
-        var redirect = Assert.IsType<LocalRedirectResult>(result);
-        Assert.Equal("/account", redirect.Url);
+        if (status == ExternalSignInCompletionStatus.Succeeded)
+            Assert.Equal("/account", Assert.IsType<LocalRedirectResult>(result).Url);
+        else
+            Assert.IsType<RedirectToPageResult>(result);
         loginService.Verify(
             service => service.AuthenticateAsync("local-user", "test-password", It.IsAny<CancellationToken>()),
             Times.Once);
-        userManager.Verify(manager => manager.AddLoginAsync(localUser, info), Times.Once);
+        userManager.Verify(manager => manager.AddLoginAsync(localUser, info), Times.Never);
         externalSignInCoordinator.Verify(
-            service => service.CompleteAsync(
+            service => service.LinkAsync(
                 It.IsAny<HttpContext>(),
                 localUser,
+                info,
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

@@ -267,6 +267,12 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<bool>("IsCatalogVisible")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsUsageOpen")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)

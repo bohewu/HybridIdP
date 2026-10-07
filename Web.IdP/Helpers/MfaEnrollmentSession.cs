@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Identity;
 using Core.Application.Interfaces;
 using Core.Domain;
 using Core.Domain.Constants;
+using Core.Application;
+using Microsoft.AspNetCore.Http.Features;
+using OpenIddict.Validation.AspNetCore;
+using Web.IdP.Services;
 
 namespace Web.IdP.Helpers;
 
@@ -20,16 +24,18 @@ public static class MfaEnrollmentSession
     public const string InitialPurposeClaim = "mfa_enrollment";
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
 
-    public static void Begin(ISession session, Guid userId, bool requiresMfa = false, TimeProvider? timeProvider = null)
+    public static void Begin(ISession session, Guid userId, bool requiresMfa = false, TimeProvider? timeProvider = null,
+        string? securityStamp = null)
     {
         ArgumentNullException.ThrowIfNull(session);
 
         var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
+        PendingExternalLoginLink.Cancel(session);
         session.Remove(ProofKey);
         session.Remove(InitialKey);
         session.SetString(
             PendingKey,
-            JsonSerializer.Serialize(new PendingEnrollment(userId, requiresMfa, now.Add(Lifetime))));
+            JsonSerializer.Serialize(new PendingEnrollment(userId, requiresMfa, now.Add(Lifetime), securityStamp)));
     }
 
     public static Claim BeginInitial(ISession session, Guid userId, TimeProvider? timeProvider = null)
@@ -92,7 +98,9 @@ public static class MfaEnrollmentSession
         var userIdValue =
             principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
             principal.FindFirst("sub")?.Value;
+        var stamp = principal.FindFirst(new IdentityOptions().ClaimsIdentity.SecurityStampClaimType)?.Value;
         if (!Guid.TryParse(userIdValue, out var userId) || userId != pending.UserId ||
+            (pending.SecurityStamp != null && pending.SecurityStamp != stamp) ||
             principal.Identity?.IsAuthenticated != true || (pending.RequiresMfa && !HasMfa(principal)))
         {
             session.Remove(PendingKey);
@@ -101,7 +109,8 @@ public static class MfaEnrollmentSession
 
         session.SetString(
             ProofKey,
-            JsonSerializer.Serialize(new EnrollmentProof(userId, now.Add(Lifetime))));
+            JsonSerializer.Serialize(new EnrollmentProof(userId, now.Add(Lifetime), stamp,
+                pending.RequiresMfa && HasMfa(principal))));
         session.Remove(PendingKey);
         return true;
     }
@@ -130,6 +139,35 @@ public static class MfaEnrollmentSession
         session.Remove(ProofKey);
         session.Remove(InitialKey);
         session.Remove(PendingKey);
+    }
+
+    public static async Task<bool> IsRemovalAuthorizedAsync(HttpContext context, ApplicationUser user,
+        CancellationToken cancellationToken = default, TimeProvider? timeProvider = null)
+    {
+        var session = context.Features.Get<ISessionFeature>()?.Session;
+        var proof = session == null ? null : Read<EnrollmentProof>(session, ProofKey);
+        if (proof == null || !proof.MfaCompleted || proof.UserId != user.Id ||
+            string.IsNullOrEmpty(user.SecurityStamp) || proof.SecurityStamp != user.SecurityStamp ||
+            proof.ExpiresUtc <= (timeProvider ?? TimeProvider.System).GetUtcNow() ||
+            user.RequiresPasswordChange || !user.IsActive || user.IsDeleted) return false;
+
+        // Authenticate each participating scheme; an aggregate principal must not borrow
+        // another subject's MFA. Bearers use the server proof, never a required auth_time claim.
+        var authenticated = false;
+        foreach (var scheme in new[] { IdentityConstants.ApplicationScheme,
+                     OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme })
+        {
+            var authentication = await context.AuthenticateAsync(scheme);
+            if (!authentication.Succeeded) continue;
+            if (!PrincipalMatchesUser(authentication.Principal, user.Id) || !HasMfa(authentication.Principal!))
+                return false;
+            authenticated = true;
+        }
+        if (!authenticated) return false;
+        return await context.RequestServices.GetRequiredService<ICurrentUserLifecycleEligibility>()
+                   .IsEligibleAsync(user.Id, cancellationToken) &&
+               await context.RequestServices.GetRequiredService<IMigrationIssuanceGuard>()
+                   .CanIssueAsync(user.Id, cancellationToken);
     }
 
     public static async Task<bool> IsAuthorizedAsync(
@@ -205,9 +243,9 @@ public static class MfaEnrollmentSession
         }
     }
 
-    private sealed record PendingEnrollment(Guid UserId, bool RequiresMfa, DateTimeOffset ExpiresUtc);
+    private sealed record PendingEnrollment(Guid UserId, bool RequiresMfa, DateTimeOffset ExpiresUtc, string? SecurityStamp);
 
     private sealed record InitialEnrollment(Guid UserId, string Nonce, DateTimeOffset ExpiresUtc);
 
-    private sealed record EnrollmentProof(Guid UserId, DateTimeOffset ExpiresUtc);
+    private sealed record EnrollmentProof(Guid UserId, DateTimeOffset ExpiresUtc, string? SecurityStamp, bool MfaCompleted);
 }

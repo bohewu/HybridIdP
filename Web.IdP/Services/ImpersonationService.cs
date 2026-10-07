@@ -87,15 +87,16 @@ public class ImpersonationService : IImpersonationService
         }
 
         // 1. Check if actually impersonating
-        if (currentIdentity.Actor == null)
+        if (currentIdentity.Actor == null && currentIdentity.FindFirst(AuthConstants.Claims.ImpersonatorId) == null)
         {
             return (false, null, "Not currently impersonating");
         }
 
         var actor = currentIdentity.Actor;
-        var originalUserSub = actor.FindFirst(AuthConstants.Claims.ImpersonatorId)?.Value 
-                              ?? actor.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                              ?? actor.FindFirst("sub")?.Value;
+        var originalUserSub = actor?.FindFirst(AuthConstants.Claims.ImpersonatorId)?.Value
+                              ?? actor?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? actor?.FindFirst("sub")?.Value
+                              ?? currentIdentity.FindFirst(AuthConstants.Claims.ImpersonatorId)?.Value;
 
         if (string.IsNullOrEmpty(originalUserSub))
         {

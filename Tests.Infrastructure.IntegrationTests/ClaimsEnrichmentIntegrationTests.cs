@@ -116,6 +116,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             _db,
             _mockClaimsLogger.Object);
 
+        _mockApiResourceService.Setup(s => s.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(new List<string>());
         _tokenService = new TokenService(
             Moq.Mock.Of<global::Web.IdP.Services.ICurrentUserLifecycleEligibility>(policy => policy.IsEligibleAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)),
             _userManager,
@@ -132,7 +133,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             Options.Create(new CredentialMigrationOptions()),
             migrationStateStore.Object,
             stage2CredentialMigrationService.Object,
-            migrationIssuanceGuard.Object);
+            migrationIssuanceGuard.Object, Moq.Mock.Of<global::Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.CanUseScopesAsync(Moq.It.IsAny<object>(), Moq.It.IsAny<IEnumerable<string>>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)));
     }
 
     public void Dispose()

@@ -26,6 +26,12 @@ public class ExternalAuthResult
     /// assurance to use <see cref="Email"/> for local identity binding.
     /// </summary>
     public bool EmailVerified { get; set; }
+
+    /// <summary>
+    /// Browser registration must not implicitly attach a login to an existing
+    /// account. Existing accounts complete their local authentication separately.
+    /// </summary>
+    public bool RequireNewAccount { get; set; }
     
     /// <summary>
     /// First name / Given name

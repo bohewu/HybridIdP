@@ -33,13 +33,15 @@ public class ScopeService : IScopeService
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IApplicationDbContext _db;
     private readonly IDomainEventPublisher _eventPublisher;
+    private readonly Infrastructure.Authorization.IApiScopeUsagePolicy _scopeUsage;
 
-    public ScopeService(IOpenIddictScopeManager scopeManager, IOpenIddictApplicationManager applicationManager, IApplicationDbContext db, IDomainEventPublisher eventPublisher)
+    public ScopeService(IOpenIddictScopeManager scopeManager, IOpenIddictApplicationManager applicationManager, IApplicationDbContext db, IDomainEventPublisher eventPublisher, Infrastructure.Authorization.IApiScopeUsagePolicy scopeUsage)
     {
         _scopeManager = scopeManager;
         _applicationManager = applicationManager;
         _db = db;
         _eventPublisher = eventPublisher;
+        _scopeUsage = scopeUsage;
     }
 
     public async Task<(IEnumerable<ScopeSummary> items, int totalCount)> GetScopesAsync(int skip, int take, string? search, string? sort, Guid? ownerFilterId = null, Guid? viewerPersonId = null, CancellationToken cancellationToken = default)
@@ -72,6 +74,7 @@ public class ScopeService : IScopeService
         await foreach (var scope in _scopeManager.ListAsync().WithCancellation(cancellationToken))
         {
             var id = await _scopeManager.GetIdAsync(scope);
+            if (id == null || !await _scopeUsage.CanViewScopeAsync(id, cancellationToken)) continue;
             
             // Skip if filtering by owner and this scope is not owned by the filter target
             if (ownedScopeIds != null && !ownedScopeIds.Contains(id!))
@@ -154,6 +157,7 @@ public class ScopeService : IScopeService
 
     public async Task<ScopeSummary?> GetScopeByIdAsync(string id, CancellationToken cancellationToken = default)
     {
+        if (!await _scopeUsage.CanViewScopeAsync(id, cancellationToken)) return null;
         var scope = await _scopeManager.FindByIdAsync(id, cancellationToken);
         if (scope == null) return null;
 
@@ -164,6 +168,9 @@ public class ScopeService : IScopeService
     {
         var scope = await _scopeManager.FindByNameAsync(name, cancellationToken);
         if (scope == null) return null;
+
+        var id = await _scopeManager.GetIdAsync(scope, cancellationToken);
+        if (id == null || !await _scopeUsage.CanViewScopeAsync(id, cancellationToken)) return null;
 
         return await CreateScopeSummaryAsync(scope, cancellationToken);
     }
@@ -608,4 +615,7 @@ public class ScopeService : IScopeService
         return await _db.ScopeOwnerships
             .AnyAsync(so => so.ScopeId == scopeId && so.CreatedByPersonId == personId, cancellationToken);
     }
+
+    public Task ApproveClientScopeAsync(string scopeId, Guid applicationId, CancellationToken cancellationToken = default) =>
+        _scopeUsage.ApproveAsync(applicationId, scopeId, null, cancellationToken);
 }

@@ -27,7 +27,7 @@ public class ScopeServiceClassificationTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new ApplicationDbContext(options);
-        _service = new ScopeService(_mockScopeManager.Object, _mockApplicationManager.Object, _dbContext, _mockEventPublisher.Object);
+        _service = new ScopeService(_mockScopeManager.Object, _mockApplicationManager.Object, _dbContext, _mockEventPublisher.Object, Moq.Mock.Of<Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.CanViewScopeAsync(Moq.It.IsAny<string>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)));
     }
 
     [Fact]

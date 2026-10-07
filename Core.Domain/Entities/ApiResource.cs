@@ -33,6 +33,12 @@ public class ApiResource
     /// </summary>
     public string? BaseUrl { get; set; }
 
+    /// <summary>Explicit owner/Admin decision to allow client self-service usage.</summary>
+    public bool IsUsageOpen { get; set; }
+
+    /// <summary>Catalog discovery only; never grants usage approval.</summary>
+    public bool IsCatalogVisible { get; set; }
+
     /// <summary>
     /// Timestamp when the resource was created
     /// </summary>

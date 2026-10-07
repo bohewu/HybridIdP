@@ -102,7 +102,8 @@
     "createButton": "新增範圍",
     "updateButton": "更新範圍",
     "cancel": "取消",
-    "validationError": "請修正以下驗證錯誤。"
+    "validationError": "請修正以下驗證錯誤。",
+    "usageApprovalHelp": "未對應 API 資源的範圍可由範圍擁有者或 IdP 管理員在此核准。已對應的範圍請至 API 資源分別核准；未登錄的資源名稱僅能由 IdP 管理員核准。"
   },
   "accessDenied": {
     "create": "您沒有權限新增範圍。",

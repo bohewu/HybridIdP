@@ -17,7 +17,7 @@ services:
       - ConnectionStrings__RedisConnection=${ConnectionStrings__RedisConnection:?ConnectionStrings__RedisConnection is required}
       - Redis__Enabled=${Redis__Enabled:-true}
       - Proxy__Enabled=true
-      - Proxy__KnownProxies=172.16.0.0/12;192.168.0.0/16;10.0.0.0/8 # Trust private ranges or specific Nginx IP
+      - Proxy__KnownProxies=${Proxy__KnownProxies:?Configure the actual trusted Nginx proxy IPs or CIDRs}
       - Certificates__EncryptionCertificatePath=/app/certs/encryption.pfx
       - Certificates__EncryptionCertificatePassword=${ENCRYPTION_CERT_PASSWORD:?ENCRYPTION_CERT_PASSWORD is required}
       - Certificates__SigningCertificatePath=/app/certs/signing.pfx

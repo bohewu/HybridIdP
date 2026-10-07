@@ -1,7 +1,9 @@
 using System.Collections.Immutable;
 using System.Security.Claims;
+using Core.Application;
 using Core.Domain;
 using Core.Domain.Constants;
+using Core.Domain.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +20,58 @@ namespace Tests.Application.UnitTests;
 
 public class DeviceFlowServiceTests
 {
+    [Theory]
+    [InlineData("pwd", false, "amr")]
+    [InlineData("hwk", false, "amr")]
+    [InlineData("pwd", true, "amr")]
+    [InlineData("hwk", true, "amr")]
+    [InlineData("hwk", false, ClaimTypes.AuthenticationMethod)]
+    [InlineData("pwd", true, ClaimTypes.AuthenticationMethod)]
+    public async Task ProcessVerificationAsync_ShouldRequirePerformedMfa_WhenGlobalPolicyActivatesAfterCookieIssued(
+        string primaryAmr, bool completedMfa, string claimType)
+    {
+        var policy = new SecurityPolicy { MfaEnforcementGracePeriodDays = 30 };
+        _securityPolicy.Setup(service => service.GetCurrentPolicyAsync()).ReturnsAsync(policy);
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "stale-device-cookie", IsActive = true };
+        var identity = new ClaimsIdentity(
+            [new Claim(claimType, primaryAmr)], IdentityConstants.ApplicationScheme);
+        if (completedMfa) identity.AddClaim(new Claim(claimType, AuthConstants.Amr.Mfa));
+        identity.SetClaim(Claims.AuthenticationTime, DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds());
+        var userPrincipal = new ClaimsPrincipal(identity);
+        _mockUserManager.Setup(manager => manager.GetUserAsync(userPrincipal)).ReturnsAsync(user);
+        _mockUserManager.Setup(manager => manager.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
+        _mockApplicationManager.Setup(manager => manager.GetPropertiesAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableDictionary<string, System.Text.Json.JsonElement>.Empty.Add(
+                AuthConstants.Properties.RequireMfa, System.Text.Json.JsonSerializer.SerializeToElement(false)));
+        _mockScopeManager.Setup(manager => manager.ListResourcesAsync(It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()))
+            .Returns(new List<string>().ToAsyncEnumerable());
+        var device = new ClaimsPrincipal(new ClaimsIdentity([new Claim(Claims.ClientId, "test-client")], "device"));
+        device.SetScopes(Scopes.OpenId);
+
+        // The cookie predates the policy change; enrollment grace does not establish performed MFA.
+        policy.EnforceMandatoryMfaEnrollment = true;
+        var result = await _service.ProcessVerificationAsync(userPrincipal,
+            AuthenticateResult.Success(new AuthenticationTicket(device, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)));
+
+        _securityPolicy.Verify(service => service.GetCurrentPolicyAsync(), Times.Once);
+        if (!completedMfa)
+        {
+            var denied = Assert.IsType<ForbidResult>(result);
+            Assert.Equal(Errors.InvalidGrant, denied.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+            Assert.Contains(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, denied.AuthenticationSchemes);
+            _mockClaimsEnricher.Verify(enricher => enricher.AddScopeMappedClaimsAsync(
+                It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+            return;
+        }
+
+        var approved = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+        Assert.Contains(AuthConstants.Amr.Mfa, approved.GetClaims(AuthConstants.ClaimTypes.Amr));
+        Assert.Contains(primaryAmr, approved.GetClaims(AuthConstants.ClaimTypes.Amr));
+        Assert.Equal(user.Id.ToString(), approved.GetClaim(Claims.Subject));
+        Assert.Equal<string>(device.GetScopes(), approved.GetScopes());
+        Assert.Equal(userPrincipal.GetClaim(Claims.AuthenticationTime), approved.GetClaim(Claims.AuthenticationTime));
+    }
+
     [Theory]
     [InlineData(false, "pwd")]
     [InlineData(false, "hwk")]
@@ -49,6 +103,7 @@ public class DeviceFlowServiceTests
     private readonly Mock<IStringLocalizer<DeviceFlowService>> _mockLocalizer;
     private readonly Mock<ILogger<DeviceFlowService>> _mockLogger;
     private readonly Mock<IClaimsEnrichmentService> _mockClaimsEnricher;
+    private readonly Mock<ISecurityPolicyService> _securityPolicy = new();
     private readonly DeviceFlowService _service;
 
     public DeviceFlowServiceTests()
@@ -63,6 +118,7 @@ public class DeviceFlowServiceTests
         _mockLocalizer = new Mock<IStringLocalizer<DeviceFlowService>>();
         _mockLogger = new Mock<ILogger<DeviceFlowService>>();
         _mockClaimsEnricher = new Mock<IClaimsEnrichmentService>();
+        _securityPolicy.Setup(policy => policy.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy());
 
         _mockLocalizer.Setup(l => l[It.IsAny<string>()]).Returns((string key) => new LocalizedString(key, key));
 
@@ -78,7 +134,8 @@ public class DeviceFlowServiceTests
             _mockUserManager.Object,
             _mockLocalizer.Object,
             _mockLogger.Object,
-            _mockClaimsEnricher.Object);
+            _mockClaimsEnricher.Object,
+            _securityPolicy.Object);
     }
 
     private static Mock<UserManager<TUser>> MockUserManager<TUser>() where TUser : class

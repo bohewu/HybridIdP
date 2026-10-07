@@ -65,7 +65,7 @@ public sealed class RecoveryPrecheckService(ApplicationDbContext db, IRecoveryDe
                 after.Destination.Version, now, now.AddMinutes(lifetime));
             db.RecoveryPrecheckGrants.Add(grant);
             await db.SaveChangesAsync(cancellationToken);
-            return new(grant.Id, after.Destination.MaskedAddress);
+            return new(grant.Id, nativeOptions.Value.PrecheckHintsEnabled ? after.Destination.MaskedAddress : null);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch { return new(); }

@@ -13,6 +13,26 @@ namespace Tests.Web.IdP.UnitTests.Configuration;
 
 public sealed class ProviderMetadataConfigurationTests
 {
+    [Fact]
+    public void Registration_ShouldDisableRedirectsAtEffectivePrimaryHandler()
+    {
+        var configuration = new ConfigurationBuilder().Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton(Mock.Of<IApplicationDbContext>());
+        services.AddCustomApplicationServices(configuration);
+        using var provider = services.BuildServiceProvider();
+        var handler = provider.GetRequiredService<IHttpMessageHandlerFactory>()
+            .CreateHandler(nameof(IProviderMetadataRefreshService));
+        while (handler is DelegatingHandler delegating) handler = delegating.InnerHandler!;
+
+        Assert.False(Assert.IsType<HttpClientHandler>(handler).AllowAutoRedirect);
+        var options = provider.GetRequiredService<IOptions<ProviderMetadataRefreshOptions>>().Value;
+        Assert.False(options.Enabled);
+        Assert.False(options.AllowPrivateNetworkHttp);
+        Assert.Equal(TimeSpan.FromSeconds(5), options.Timeout);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

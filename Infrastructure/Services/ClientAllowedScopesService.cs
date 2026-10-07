@@ -15,15 +15,18 @@ public class ClientAllowedScopesService : IClientAllowedScopesService
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly ApplicationDbContext _db;
+    private readonly Infrastructure.Authorization.IApiScopeUsagePolicy _scopeUsage;
 
     public ClientAllowedScopesService(
         IOpenIddictApplicationManager applicationManager,
         IOpenIddictScopeManager scopeManager,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        Infrastructure.Authorization.IApiScopeUsagePolicy scopeUsage)
     {
         _applicationManager = applicationManager;
         _scopeManager = scopeManager;
         _db = db;
+        _scopeUsage = scopeUsage;
     }
 
     public async Task<IReadOnlyList<string>> GetAllowedScopesAsync(Guid clientId)
@@ -75,6 +78,7 @@ public class ClientAllowedScopesService : IClientAllowedScopesService
             descriptor.Permissions.Add($"{scopePrefix}{scope}");
         }
 
+        await _scopeUsage.PrepareClientScopesAsync(descriptor);
         await _applicationManager.UpdateAsync(application, descriptor);
     }
 
@@ -86,10 +90,15 @@ public class ClientAllowedScopesService : IClientAllowedScopesService
 
     public async Task<IReadOnlyList<string>> ValidateRequestedScopesAsync(Guid clientId, IEnumerable<string> requestedScopes)
     {
+        var application = await _applicationManager.FindByIdAsync(clientId.ToString());
+        if (application == null) return Array.Empty<string>();
         var allowedScopes = await GetAllowedScopesAsync(clientId);
-        var validScopes = requestedScopes
-            .Where(s => allowedScopes.Contains(s))
-            .ToList();
+        var validScopes = new List<string>();
+        foreach (var scope in requestedScopes.Distinct(StringComparer.Ordinal))
+        {
+            if (allowedScopes.Contains(scope) && await _scopeUsage.CanUseScopesAsync(application, new[] { scope }))
+                validScopes.Add(scope);
+        }
 
         return validScopes.AsReadOnly();
     }

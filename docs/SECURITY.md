@@ -25,6 +25,61 @@ with the same name does not inherit approval. Delegated ownership does not grant
 management of approved administrative clients. Reissue existing administrative
 M2M tokens after upgrading; older tokens lack the record-bound approval claim.
 
+### API scope usage approval
+
+API resources default to restricted usage and a private catalog. Only the
+current resource-owning Person or a full interactive IdP Admin can explicitly
+enable `IsUsageOpen`, change `IsCatalogVisible`, or approve a client's scope for
+that resource. Catalog visibility grants discovery only. `ScopeExtension.IsPublic`
+retains its OIDC/user versus M2M classification; it is never usage approval.
+
+Client creation, full permission updates, scope replacement and token issuance
+evaluate every resource associated with a scope, combining `ApiResourceScope`
+rows and OpenIddict scope resource names. Each restricted resource needs its own
+approval. Owners can approve their own part independently in the existing API
+Resource editor; that action does not add client permissions. A client write
+preflights the complete requested set before saving any new approvals or
+permissions. Standard identity scopes bypass approval only when no specific
+API mapping exists. M2M clients still cannot use user-centric scopes.
+
+Approval receipts live in the immutable OpenIddict application's server-owned
+`IdpApiScopeUsageApprovals` property. Client DTOs cannot set or replace this
+property. Receipts bind the scope ID/name, individual resource ID, current
+owner, approving user and approval time. Ownership changes or new resource
+mappings require applicable new approval. Unmapped custom scopes require their
+scope owner or Admin; ownerless scopes and unregistered audience names require
+explicit Admin approval, with unknown audience names bound as an exact set.
+These approvals cannot widen `IdpAdministrationPermissions`. Administrative
+bearers retain their current server-provisioned permission ceiling and never
+become resource owners or full interactive administrators.
+
+There is no legacy approval backfill. Existing scope permissions, client secrets
+and other credentials remain stored, including seeded sample API clients. After
+upgrading, unproven non-identity scope usage fails closed at new authorization
+code, refresh, device and client-credentials token issuance (also password
+issuance). An owner or Admin must explicitly approve those clients, or explicitly
+open each resource. Already-issued self-contained tokens retain their ordinary
+lifetime. Issuance rebuilds audiences from current mappings; cookie, consent,
+grant and client permission checks still apply.
+
+## Impersonation audit attribution
+
+Impersonation retains the `Users.Impersonate` permission check, administrator
+target denial and current account eligibility checks. Successful transitions
+persist `ImpersonationStarted` and `ImpersonationStopped` through the existing
+audit service before replacing the application cookie. Their `UserId` is the
+original actor. Audit persistence failure prevents cookie replacement.
+
+Already-audited operations, including direct session refresh/revocation records,
+retain their existing `UserId` and detail fields. During impersonation, `Details`
+also contains `impersonation.actorUserId` and `impersonation.subjectUserId`,
+resolved from the authenticated application identity and its preserved Actor or
+`impersonator_id` claim. These are opaque account IDs; attribution does not add
+usernames, email addresses or tokens. Existing name/email masking still applies.
+Text details are retained under `details` when this JSON attribution is added.
+Ordinary and system records keep their existing representation. Audit listing
+and export retain these details, including after cookie restoration.
+
 ## Supported Multi-Factor Authentication (MFA)
 
 We support three primary MFA methods to ensure account security:
@@ -55,6 +110,44 @@ We support three primary MFA methods to ensure account security:
 - **Rebinding**: Retirement does not disable the account or external login. Users authenticate through another working method, complete any existing TOTP/email MFA, and register a new discoverable credential under current policy. The old credential never becomes active through sign-in or registration; new registration uses a new credential ID. If `RequireMfaForPasskey` is enabled, TOTP/email enrollment is required first. Operators must confirm another usable sign-in method before retiring a user's last key. Existing sessions and issued tokens follow their existing lifetime policy.
 - **Authentication assurance**: Passkey and user-presence AMR values are recorded for a successful passkey assertion; MFA is recorded only when validated authenticator data confirms user verification.
 - **MFA requirements**: Authorization, device approval, token redemption, refresh, and factor management require the performed `mfa` evidence. A hardware-key (`hwk`) claim alone does not satisfy MFA.
+
+Device approval and device-code redemption independently recheck current global
+mandatory MFA, even when the client does not require it. The browser cookie and
+persisted device principal must carry performed `mfa` evidence respectively.
+An existing password-only cookie or approval is not exempt after activation,
+including during enrollment grace. The existing per-client MFA, one-time
+approval intent, current lifecycle/migration and scope checks still apply;
+redemption failures use the normal machine-readable OAuth `invalid_grant` JSON.
+
+### Factor removal and one-time proof consumption
+
+TOTP, email MFA and passkey removal require a completed MFA reauthentication
+within five minutes, bound to the same account and its current security stamp.
+The existing `/api/account/mfa/reauthenticate` interactive flow produces this
+server-session proof only after the intended account completes sign-in with
+MFA. Cookie and validated bearer callers must also carry performed `mfa`
+evidence; mixed identities must agree on the subject and assurance. A bearer
+may omit `auth_time` and present the fresh server-session proof. The browser
+session and antiforgery requirements of the reauthentication and passkey APIs
+still apply. This path does not depend on recovery-email rollout switches.
+Successful removal consumes the management proof. Expired, password-only,
+initial-enrollment or security-stamp-mismatched proofs cannot authorize removal.
+The optional `forRemoval=true` reauthentication intent selects a fixed Profile
+return after sign-in; the default enrollment return remains MFA Setup. Neither
+intent changes the sign-in requirements or automatically repeats a removal.
+
+Removal checks current account/Person eligibility and computes the qualifying
+methods remaining after any required passkey cascade, including policy-disabled
+methods. Mandatory MFA cannot be satisfied by a key that the same operation
+will retire. Only active affected keys receive `DisabledAtUtc`; previously
+retired records retain their original timestamps. Factor state and dependent
+retirements persist together through the user's Identity concurrency update.
+
+TOTP verification records the actual accepted 30-second step within Identity's
+current-2 through current+2 window. Enrollment consumes that proof as well.
+TOTP and custom/Identity recovery codes succeed only after their consumption
+commits. Conflicts fail authentication, and failed user/token changes are
+discarded before the login failure branch can perform another save.
 
 ---
 
@@ -120,6 +213,33 @@ This remediation adds no schema migration, UserSession redesign, endpoint, or
 production certificate behavior change.
 
 ### Upstream Credential and Assertion Boundary
+
+The current LegacyAuth, Provider Proof and Provider Metadata clients deny
+automatic redirects and bound response consumption before JSON parsing at
+64 KiB, 64 KiB and 16 KiB respectively. Oversize cannot authenticate or refresh
+usable metadata; metadata body-read failures invalidate prior evidence. These
+controls preserve in-limit `2xx` JSON, cancellation/deadline and authority rules,
+and add no retry or alternate provider. `LegacyAuth__RequireHttps=false` retains
+HTTP compatibility; `true` rejects HTTP before credential/shared-secret dispatch.
+
+SMTP ordinary and test-send share `EmailSettings__SmtpRequireTls=false` and
+`EmailSettings__SmtpValidateServerCertificate=true` defaults. SSL-on requires
+implicit TLS. SSL-off uses mandatory STARTTLS when RequireTls is true and
+opportunistic STARTTLS otherwise. Localhost/SSL-off does not disable certificate
+validation; false explicitly accepts any certificate if TLS is used. Stored
+mail/DTO transport settings cannot override these global policy flags. See the
+[deployment policy combinations](DEPLOYMENT_GUIDE.md#optional-legacyauth-smtp-and-recovery-hint-policies)
+for the supported operator choices; no internal CA is mandatory.
+
+Recovery precheck hints default ON and intentionally retain eligible guidance
+and a masked destination. `ForgotPasswordRecovery__PrecheckHintsEnabled=false`
+uses uniform public precheck/restoration/Send guidance without eligibility or
+mask disclosure. Precheck sends no mail, and explicit Send, proof, OTP,
+CSRF/context, selection, lifecycle and current server policy remain mandatory.
+Authenticated `/connect/logout` GET/POST ingress retains the application cookie
+until valid browser/user-bound local confirmation; OIDC ingress and validated
+protocol completion remain supported. These local controls do not establish
+external SMTP/provider, browser or production acceptance.
 
 Current password authentication is Local plus the configurable LegacyAuth HTTP
 integration; it does not implement AD/LDAP. Direct, deployment-configured
@@ -260,6 +380,32 @@ only by the full IdP Admin role. The fixed administration automation exception
 applies only to custom scopes when its Development/Test fixture is explicitly
 enabled and has no effect in Production.
 
+### Person Association and Ownership Transfer
+
+Account linking and unlinking require both `persons.update` and `users.update`,
+including when a Person currently has no roles or assets. Association grants
+durable Person membership and can affect ownership of assets created later.
+When either the linked account or the source account has IdP roles, the operation
+also requires `roles.update`. Protected-role operator MFA policy applies, and
+new protected-role recipients must meet the configured target MFA policy.
+Unlinking preserves legitimately assigned roles; it cannot bypass these checks.
+
+Linking, unlinking and asset transfer resolve the authenticated administrative
+authority before mutating tracked Person IDs, roles or owners. For each asset
+type present, the actor needs its update permission plus exact current Person
+ownership or the full interactive IdP Admin role. Delegated owners cannot use
+these operations to manage approved administrative clients or standard OIDC
+scopes. Transfer requires existing source and destination Persons; the exact
+source owner may transfer to another existing Person under `persons.update`.
+An audit user ID or a bearer role claim is never evidence of ownership or Admin
+authority. Bearer permissions remain bounded by the live administrative grant.
+
+Role assignment preflights every account receiving a protected role, including
+same-Person siblings missing a role already held by the selected account,
+before any role removal or addition. Full user updates also preflight before
+profile writes. Target MFA enforcement remains optional; when enabled, retired
+passkeys never qualify and active passkeys count only when configured.
+
 ### Sensitive Administrative Settings
 
 Exact-key settings reads never echo a non-empty value whose key is classified
@@ -348,6 +494,23 @@ automatic matching-email account selection or linking checks the applicable
 provider-specific assurance policy before any existing-account lookup. Explicit
 linking protected by local credentials remains a separate path and is
 independent of automatic email matching.
+
+Existing-account association is committed only after required local MFA.
+Explicit password confirmation shares the configured per-IP login budget
+with the normal login page. Verified-email automatic matching and authenticated
+profile linking use the same completion boundary; provider AMR is not local MFA.
+A pending link expires after five minutes and binds the subject, security stamp,
+provider/key and a nonce in the protected temporary MFA cookie. Successful TOTP,
+email OTP, recovery or user-verified passkey completion marks only that request
+for association. Cookie refresh, unrelated login and factor-management
+reauthentication do not complete an abandoned intent. Completion rechecks current
+eligibility, collision and provider limits. An authorized initial TOTP seed
+creation carries only its own security-stamp change through the same intent.
+
+MFA Setup normalizes its return destination on the server before rendering it
+or handling skip. All enrollment methods use that local destination, including
+authorization URLs with `request_uri` query values; unsafe or missing values
+fall back to `/`.
 
 JIT account creation also enforces `AutoLinkMatchingEmail`. A local username
 collision is rejected before profile mutation unless automatic linking is

@@ -13,6 +13,43 @@ namespace Tests.Web.IdP.UnitTests.Configuration;
 
 public sealed class ProviderProofConfigurationTests
 {
+    [Theory]
+    [InlineData("LegacyAuth")]
+    [InlineData(nameof(IProofProvider))]
+    public void Registration_ShouldDisableRedirectsAtEffectivePrimaryHandler(string clientName)
+    {
+        var configuration = new ConfigurationBuilder().Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton(Mock.Of<IApplicationDbContext>());
+        services.AddCustomApplicationServices(configuration);
+        using var provider = services.BuildServiceProvider();
+        var handler = provider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(clientName);
+        while (handler is DelegatingHandler delegating) handler = delegating.InnerHandler!;
+
+        Assert.False(Assert.IsType<HttpClientHandler>(handler).AllowAutoRedirect);
+        var options = provider.GetRequiredService<IOptions<ProviderProofOptions>>().Value;
+        Assert.False(options.AllowPrivateNetworkHttp);
+        Assert.Equal(TimeSpan.FromSeconds(5), options.Timeout);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Registration_ShouldBindOptionalLegacyHttpsPolicy(bool requireHttps)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["LegacyAuth:RequireHttps"] = requireHttps.ToString()
+        }).Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddCustomApplicationServices(configuration);
+        using var provider = services.BuildServiceProvider();
+
+        Assert.Equal(requireHttps, provider.GetRequiredService<IOptions<LegacyAuthOptions>>().Value.RequireHttps);
+    }
+
     [Fact]
     public void Registration_ShouldBindProviderProofAndIndependentPasswordSyncOptions()
     {

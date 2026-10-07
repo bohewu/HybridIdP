@@ -39,7 +39,7 @@ public class ScopeServiceTests : IDisposable
         
         _dbContext = new ApplicationDbContext(options);
         
-        _scopeService = new ScopeService(_mockScopeManager.Object, _mockApplicationManager.Object, _dbContext, _mockEventPublisher.Object);
+        _scopeService = new ScopeService(_mockScopeManager.Object, _mockApplicationManager.Object, _dbContext, _mockEventPublisher.Object, Moq.Mock.Of<Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.CanViewScopeAsync(Moq.It.IsAny<string>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)));
     }
 
     public void Dispose()

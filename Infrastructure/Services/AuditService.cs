@@ -7,6 +7,11 @@ using Core.Domain.Events;
 using Core.Domain.Constants; // Added
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Http;
+using System.Security.Claims;
+using System.Text.Json.Nodes;
+using System.Text.Json;
+using Infrastructure.Authorization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -44,22 +49,30 @@ public class AuditService : IAuditService,
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly ISettingsService _settingsService;
     private readonly PiiMaskingLevel _piiMaskingLevel;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
 
     public AuditService(
         IApplicationDbContext db,
         ApplicationDbContext dbContext,
         IDomainEventPublisher eventPublisher,
         ISettingsService settingsService,
-        IOptions<AuditOptions> auditOptions)
+        IOptions<AuditOptions> auditOptions,
+        IHttpContextAccessor? httpContextAccessor = null)
     {
         _db = db;
         _dbContext = dbContext;
         _eventPublisher = eventPublisher;
         _settingsService = settingsService;
         _piiMaskingLevel = auditOptions.Value.PiiMaskingLevel;
+        _httpContextAccessor = httpContextAccessor;
     }
 
-    public async Task LogEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
+    public Task LogEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
+    {
+        return PersistEventAsync(eventType, userId, AddImpersonationDetails(details, _httpContextAccessor?.HttpContext?.User), ipAddress, userAgent, cancellationToken);
+    }
+
+    private async Task PersistEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent, CancellationToken cancellationToken)
     {
         var auditEvent = new AuditEvent
         {
@@ -90,6 +103,58 @@ public class AuditService : IAuditService,
         // Publish domain event
         var domainEvent = new AuditEventLoggedEvent(auditEvent.Id, eventType, userId);
         await _eventPublisher.PublishAsync(domainEvent);
+    }
+
+    public Task LogImpersonationEventAsync(string eventType, ClaimsPrincipal impersonatedPrincipal, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
+    {
+        var attribution = GetImpersonationAttribution(impersonatedPrincipal)
+            ?? throw new InvalidOperationException("Original user identifier not found");
+        return PersistEventAsync(eventType, attribution.ActorUserId.ToString(),
+            AddImpersonationDetails(null, impersonatedPrincipal), ipAddress, userAgent, cancellationToken);
+    }
+
+    internal static string? AddImpersonationDetails(string? details, ClaimsPrincipal? principal)
+    {
+        var attribution = GetImpersonationAttribution(principal);
+        if (attribution is null) return details;
+
+        JsonNode? original = null;
+        if (details is not null)
+        {
+            try { original = JsonNode.Parse(details); }
+            catch (JsonException) { original = JsonValue.Create(details); }
+        }
+
+        // Preserve existing JSON fields or text; attribution is always server supplied.
+        var result = original as JsonObject ?? new JsonObject { ["details"] = original };
+        result["impersonation"] = new JsonObject
+        {
+            ["actorUserId"] = attribution.Value.ActorUserId.ToString(),
+            ["subjectUserId"] = attribution.Value.SubjectUserId.ToString()
+        };
+        return result.ToJsonString();
+    }
+
+    private static (Guid ActorUserId, Guid SubjectUserId)? GetImpersonationAttribution(ClaimsPrincipal? principal)
+    {
+        var identity = principal is null ? null :
+            AuthorizationRoleClaimResolver.GetApplicationPrincipal(principal).Identity as ClaimsIdentity ?? principal.Identity as ClaimsIdentity;
+        if (identity?.IsAuthenticated != true) return null;
+        var actorId = identity.Actor?.FindFirst(AuthConstants.Claims.ImpersonatorId)?.Value
+            ?? identity.Actor?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? identity.Actor?.FindFirst("sub")?.Value;
+        var preservedActorId = identity.FindFirst(AuthConstants.Claims.ImpersonatorId)?.Value;
+        if (identity.Actor is null && preservedActorId is null) return null;
+
+        var subjectId = identity.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? identity.FindFirst("sub")?.Value;
+        if (!Guid.TryParse(actorId ?? preservedActorId, out var actorUserId) ||
+            !Guid.TryParse(subjectId, out var subjectUserId) ||
+            (preservedActorId is not null && (!Guid.TryParse(preservedActorId, out var preservedId) || preservedId != actorUserId)))
+        {
+            throw new InvalidOperationException("Invalid impersonation attribution");
+        }
+
+        return (actorUserId, subjectUserId);
     }
 
     public async Task<(IEnumerable<AuditEventDto> items, int totalCount)> GetEventsAsync(AuditEventFilterDto filter, CancellationToken cancellationToken = default)

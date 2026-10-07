@@ -10,6 +10,7 @@ using OpenIddict.Abstractions;
 using Core.Domain.Entities;
 using Core.Domain.Constants;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
 
 namespace Infrastructure.Services;
 
@@ -20,19 +21,22 @@ public class SessionService : ISessionService
     private readonly IOpenIddictTokenManager _tokens;
     private readonly IApplicationDbContext _db;
     private readonly TimeProvider _timeProvider;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
 
     public SessionService(
         IOpenIddictAuthorizationManager authorizations,
         IOpenIddictApplicationManager applications,
         IOpenIddictTokenManager tokens,
         IApplicationDbContext dbContext,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IHttpContextAccessor? httpContextAccessor = null)
     {
         _authorizations = authorizations;
         _applications = applications;
         _tokens = tokens;
         _db = dbContext;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task EnsureCreatedAsync(
@@ -340,7 +344,7 @@ public class SessionService : ISessionService
                 EventType = AuditEventTypes.RefreshTokenReuseDetected,
                 UserId = userId.ToString(),
                 Timestamp = _timeProvider.GetUtcNow().DateTime,
-                Details = $"{{\"authorizationId\":\"{authorizationId}\"}}",
+                Details = AuditService.AddImpersonationDetails($"{{\"authorizationId\":\"{authorizationId}\"}}", _httpContextAccessor?.HttpContext?.User),
                 IPAddress = ipAddress,
                 UserAgent = userAgent
             });
@@ -383,7 +387,7 @@ public class SessionService : ISessionService
                     EventType = AuditEventTypes.SlidingExpirationExtended,
                     UserId = userId.ToString(),
                     Timestamp = _timeProvider.GetUtcNow().DateTime,
-                    Details = $"{{\"authorizationId\":\"{authorizationId}\",\"newExpiresUtc\":\"{newSlidingExpiry:o}\"}}",
+                    Details = AuditService.AddImpersonationDetails($"{{\"authorizationId\":\"{authorizationId}\",\"newExpiresUtc\":\"{newSlidingExpiry:o}\"}}", _httpContextAccessor?.HttpContext?.User),
                     IPAddress = ipAddress,
                     UserAgent = userAgent
                 });
@@ -396,7 +400,7 @@ public class SessionService : ISessionService
             EventType = AuditEventTypes.RefreshTokenRotated,
             UserId = userId.ToString(),
             Timestamp = _timeProvider.GetUtcNow().DateTime,
-            Details = $"{{\"authorizationId\":\"{authorizationId}\"}}",
+            Details = AuditService.AddImpersonationDetails($"{{\"authorizationId\":\"{authorizationId}\"}}", _httpContextAccessor?.HttpContext?.User),
             IPAddress = ipAddress,
             UserAgent = userAgent
         });
@@ -434,7 +438,7 @@ public class SessionService : ISessionService
             EventType = AuditEventTypes.SessionRevoked,
             UserId = userId.ToString(),
             Timestamp = _timeProvider.GetUtcNow().DateTime,
-            Details = $"{{\"authorizationId\":\"{authorizationId}\",\"reason\":\"{reason}\"}}"
+            Details = AuditService.AddImpersonationDetails($"{{\"authorizationId\":\"{authorizationId}\",\"reason\":\"{reason}\"}}", _httpContextAccessor?.HttpContext?.User)
         });
 
         // Attempt OpenIddict authorization/token revocation (best-effort)

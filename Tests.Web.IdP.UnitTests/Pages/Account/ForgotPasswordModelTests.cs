@@ -23,6 +23,21 @@ namespace Tests.Web.IdP.UnitTests.Pages.Account;
 public sealed class ForgotPasswordModelTests
 {
     [Theory]
+    [InlineData(null)]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void RecoveryConfiguration_ShouldDefaultHintsOnAndBindExplicitChoice(bool? hintsEnabled)
+    {
+        var values = new Dictionary<string, string?>();
+        if (hintsEnabled.HasValue)
+            values["ForgotPasswordRecovery:PrecheckHintsEnabled"] = hintsEnabled.Value.ToString();
+        using var provider = new ServiceCollection().AddLogging().AddCustomApplicationServices(
+            new ConfigurationBuilder().AddInMemoryCollection(values).Build()).BuildServiceProvider();
+        Assert.Equal(hintsEnabled ?? true,
+            provider.GetRequiredService<IOptions<ForgotPasswordRecoveryOptions>>().Value.PrecheckHintsEnabled);
+    }
+
+    [Theory]
     [InlineData(false, false, false, false)]
     [InlineData(true, false, false, true)]
     [InlineData(false, true, false, true)]
@@ -56,8 +71,10 @@ public sealed class ForgotPasswordModelTests
         Assert.True(new RecoveryIdentityVerificationOptionsValidator().Validate(null, options).Succeeded);
     }
 
-    [Fact]
-    public async Task PrepareThenSend_ShouldClearEvidenceAndRequireExplicitSendWithStableContext()
+    [Theory]
+    [InlineData(null)]
+    [InlineData(true)]
+    public async Task PrepareThenSend_ShouldClearEvidenceAndRequireExplicitSendWithStableContext(bool? hintsEnabled)
     {
         var precheck = new Mock<IRecoveryPrecheckService>();
         precheck.SetupGet(p => p.Enabled).Returns(true);
@@ -70,12 +87,14 @@ public sealed class ForgotPasswordModelTests
         precheck.Setup(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()))
             .Callback<RecoverySendOtpRequest, CancellationToken>((request, _) => send = request)
             .ReturnsAsync(new NativeRecoveryStartResult(Guid.NewGuid()));
-        var f = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object);
+        var f = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object, hintsEnabled: hintsEnabled);
         f.Model.Identifier.Value = "user";
         f.Model.Identifier.IdentityIdentifier = "  synthetic-id  ";
         f.Model.ModelState.SetModelValue("Identifier.IdentityIdentifier", "  synthetic-id  ", "  synthetic-id  ");
         Assert.IsType<PageResult>(await f.Model.OnPostStartAsync(default));
         Assert.True(f.Model.ReadyToSend);
+        Assert.True(f.Model.PrecheckHintsEnabled);
+        Assert.Equal("c***@example.test", f.Model.MaskedDestination);
         Assert.False(f.Model.AwaitingCode);
         Assert.False(f.Model.AwaitingPassword);
         Assert.Equal("  synthetic-id  ", prepare!.IdentityIdentifier);
@@ -84,22 +103,131 @@ public sealed class ForgotPasswordModelTests
         Assert.DoesNotContain(f.Session.TextValues, value => value.Contains("synthetic-id"));
         precheck.Verify(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()), Times.Never);
         f.ProofService.VerifyNoOtherCalls();
+        var refreshed = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object,
+            hintsEnabled: hintsEnabled, session: f.Session);
+        Assert.IsType<PageResult>(await refreshed.Model.OnGetAsync());
+        Assert.True(refreshed.Model.ReadyToSend);
+        Assert.Equal("c***@example.test", refreshed.Model.MaskedDestination);
         Assert.IsType<PageResult>(await f.Model.OnPostSendCodeAsync(default));
         Assert.Equal(grant, send!.GrantId);
         Assert.Equal(prepare.Context, send.Context);
         Assert.True(f.Model.AwaitingCode);
+        Assert.False(f.Model.ReadyToSend);
+        Assert.Null(f.Model.MaskedDestination);
         Assert.False(f.Model.AwaitingPassword);
         Assert.False(f.Model.User.Identity?.IsAuthenticated ?? false);
         await f.Model.OnPostSendCodeAsync(default);
         precheck.Verify(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    [Fact]
-    public async Task BrowserClaimedVerificationWithoutServerGrant_ShouldNotSendOrReset()
+    [Theory]
+    [InlineData("eligible")]
+    [InlineData("absent")]
+    [InlineData("ineligible")]
+    [InlineData("identity-denied")]
+    public async Task HintsOff_ShouldProjectSamePrepareRefreshAndSendPhasesWithoutDestination(string accountState)
     {
         var precheck = new Mock<IRecoveryPrecheckService>();
         precheck.SetupGet(p => p.Enabled).Returns(true);
+        var grant = accountState == "eligible" ? Guid.NewGuid() : (Guid?)null;
+        precheck.Setup(p => p.PrepareAsync(It.IsAny<RecoveryPrepareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RecoveryPrepareResult(grant, grant.HasValue ? "c***@example.test" : null));
+        RecoverySendOtpRequest? send = null;
+        precheck.Setup(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecoverySendOtpRequest, CancellationToken>((request, _) => send = request)
+            .ReturnsAsync(new NativeRecoveryStartResult(Guid.NewGuid()));
+        var f = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object, hintsEnabled: false);
+        f.Model.Identifier.Value = "user";
+        f.Model.Identifier.IdentityIdentifier = "synthetic-id";
+        Assert.IsType<PageResult>(await f.Model.OnPostStartAsync(default));
+        Assert.True(f.Model.ReadyToSend);
+        Assert.False(f.Model.AwaitingCode);
+        Assert.False(f.Model.AwaitingPassword);
+        Assert.Null(f.Model.MaskedDestination);
+        Assert.Empty(ModelErrors(f.Model));
+        Assert.Null(f.Model.Identifier.Value);
+        Assert.Null(f.Model.Identifier.IdentityIdentifier);
+        Assert.DoesNotContain(f.Session.TextValues, value => value.Contains("c***@example.test") || value.Contains("synthetic-id"));
+        precheck.Verify(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        f.ProofService.VerifyNoOtherCalls();
+
+        var refreshed = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object, hintsEnabled: false, session: f.Session);
+        Assert.IsType<PageResult>(await refreshed.Model.OnGetAsync());
+        Assert.True(refreshed.Model.ReadyToSend);
+        Assert.False(refreshed.Model.AwaitingCode);
+        Assert.Null(refreshed.Model.MaskedDestination);
+        Assert.Empty(ModelErrors(refreshed.Model));
+        Assert.IsType<PageResult>(await refreshed.Model.OnPostSendCodeAsync(default));
+        Assert.Equal(grant ?? Guid.Empty, send!.GrantId);
+        Assert.True(refreshed.Model.AwaitingCode);
+        Assert.False(refreshed.Model.ReadyToSend);
+        Assert.False(refreshed.Model.AwaitingPassword);
+        Assert.Null(refreshed.Model.MaskedDestination);
+        Assert.Empty(ModelErrors(refreshed.Model));
+
+        var afterSend = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object, hintsEnabled: false, session: f.Session);
+        Assert.IsType<PageResult>(await afterSend.Model.OnGetAsync());
+        Assert.True(afterSend.Model.AwaitingCode);
+        Assert.False(afterSend.Model.ReadyToSend);
+        Assert.Null(afterSend.Model.MaskedDestination);
+        afterSend.ProofService.Setup(p => p.VerifyAsync(It.IsAny<NativeRecoveryVerificationRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NativeRecoveryVerificationResult(NativeRecoveryVerificationOutcome.Denied));
+        afterSend.Model.Verification.Code = "123456";
+        await afterSend.Model.OnPostVerifyAsync(default);
+        Assert.True(afterSend.Model.AwaitingCode);
+        Assert.False(afterSend.Model.AwaitingPassword);
+        await afterSend.Model.OnPostResetAsync(default);
+        afterSend.ResetService.VerifyNoOtherCalls();
+        await afterSend.Model.OnPostSendCodeAsync(default);
+        precheck.Verify(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+        precheck.Verify(p => p.PrepareAsync(It.IsAny<RecoveryPrepareRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetWithHintsOff_ShouldSuppressAndRemovePreviouslyStoredDestination()
+    {
+        var precheck = new Mock<IRecoveryPrecheckService>();
+        precheck.SetupGet(p => p.Enabled).Returns(true);
+        precheck.Setup(p => p.PrepareAsync(It.IsAny<RecoveryPrepareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RecoveryPrepareResult(Guid.NewGuid(), "c***@example.test"));
         var f = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object);
+        f.Model.Identifier.Value = "user";
+        await f.Model.OnPostStartAsync(default);
+        Assert.Contains("c***@example.test", f.Session.TextValues);
+
+        var refreshed = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object, hintsEnabled: false, session: f.Session);
+        await refreshed.Model.OnGetAsync();
+        Assert.True(refreshed.Model.ReadyToSend);
+        Assert.Null(refreshed.Model.MaskedDestination);
+        Assert.DoesNotContain("c***@example.test", f.Session.TextValues);
+        precheck.Verify(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HintsOn_ShouldRetainDeniedPrecheckAndActionAvailability()
+    {
+        var precheck = new Mock<IRecoveryPrecheckService>();
+        precheck.SetupGet(p => p.Enabled).Returns(true);
+        precheck.Setup(p => p.PrepareAsync(It.IsAny<RecoveryPrepareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RecoveryPrepareResult());
+        var f = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object);
+        f.Model.Identifier.Value = "user";
+        await f.Model.OnPostStartAsync(default);
+        Assert.False(f.Model.ReadyToSend);
+        Assert.False(f.Model.AwaitingCode);
+        Assert.Equal(["NativeRecovery.RequestFailed"], ModelErrors(f.Model));
+        await f.Model.OnPostSendCodeAsync(default);
+        precheck.Verify(p => p.SendOtpAsync(It.IsAny<RecoverySendOtpRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task BrowserClaimedVerificationWithoutServerGrant_ShouldNotSendOrReset(bool hintsEnabled)
+    {
+        var precheck = new Mock<IRecoveryPrecheckService>();
+        precheck.SetupGet(p => p.Enabled).Returns(true);
+        var f = new Fixture(ForgotPasswordMode.Native, precheck: precheck.Object, hintsEnabled: hintsEnabled);
         f.Model.ModelState.SetModelValue("Verified", "true", "true");
         f.Model.ModelState.SetModelValue("recipient", "attacker@example.test", "attacker@example.test");
         await f.Model.OnPostSendCodeAsync(default);
@@ -281,11 +409,13 @@ public sealed class ForgotPasswordModelTests
     {
         public Mock<INativePasswordRecoveryProofService> ProofService { get; } = new();
         public Mock<INativePasswordRecoveryResetService> ResetService { get; } = new();
-        public TestSession Session { get; } = new();
+        public TestSession Session { get; }
         public ForgotPasswordModel Model { get; }
 
-        public Fixture(ForgotPasswordMode runtimeMode, SecurityPolicy? customPolicy = null, IRecoveryPrecheckService? precheck = null)
+        public Fixture(ForgotPasswordMode runtimeMode, SecurityPolicy? customPolicy = null,
+            IRecoveryPrecheckService? precheck = null, bool? hintsEnabled = null, TestSession? session = null)
         {
+            Session = session ?? new();
             var policy = customPolicy ?? new SecurityPolicy
             {
                 ForgotPasswordMode = runtimeMode,
@@ -309,12 +439,13 @@ public sealed class ForgotPasswordModelTests
                 .Setup(service => service[It.IsAny<string>(), It.IsAny<object[]>()])
                 .Returns((string name, object[] arguments) =>
                     new LocalizedString(name, $"{name}:{string.Join(",", arguments)}"));
-            var evaluator = new ForgotPasswordRoutingEvaluator(
-                Microsoft.Extensions.Options.Options.Create(new ForgotPasswordRecoveryOptions
-                {
-                    DeploymentCeiling = ForgotPasswordMode.Native,
-                    NativeRecoveryEnabled = true
-                }));
+            var nativeOptions = new ForgotPasswordRecoveryOptions
+            {
+                DeploymentCeiling = ForgotPasswordMode.Native,
+                NativeRecoveryEnabled = true,
+                PrecheckHintsEnabled = hintsEnabled ?? true
+            };
+            var evaluator = new ForgotPasswordRoutingEvaluator(Microsoft.Extensions.Options.Options.Create(nativeOptions));
 
             Model = new ForgotPasswordModel(
                 ProofService.Object,
@@ -322,7 +453,8 @@ public sealed class ForgotPasswordModelTests
                 policyService.Object,
                 evaluator,
                 new EphemeralDataProtectionProvider(),
-                localizer.Object, precheck: precheck)
+                localizer.Object, precheck: precheck,
+                recoveryOptions: hintsEnabled.HasValue ? Microsoft.Extensions.Options.Options.Create(nativeOptions) : null)
             {
                 PageContext = new PageContext
                 {

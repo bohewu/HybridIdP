@@ -15,6 +15,23 @@ namespace Tests.Application.UnitTests;
 
 public class JitProvisioningServiceTests : IDisposable
 {
+    [Fact]
+    public async Task ProvisionExternalUser_BrowserNewAccountIntent_ShouldRejectExistingUsernameBeforeMutation()
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "existing@example.test", Email = "existing@example.test", IsActive = true };
+        _userManagerMock.Setup(x => x.FindByNameAsync(user.UserName)).ReturnsAsync(user);
+        var service = new JitProvisioningService(_userManagerMock.Object, _context,
+            Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = true }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ProvisionExternalUserAsync(new ExternalAuthResult
+        {
+            Provider = "Google", ProviderKey = "attacker-key", Email = user.Email,
+            EmailVerified = true, RequireNewAccount = true
+        }));
+        _userManagerMock.Verify(x => x.AddLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<UserLoginInfo>()), Times.Never);
+        _userManagerMock.Verify(x => x.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        Assert.Empty(_context.Persons);
+    }
+
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly ApplicationDbContext _context;
     private readonly JitProvisioningService _service;

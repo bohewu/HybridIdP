@@ -211,6 +211,9 @@ if ($useSplitHost) {
     
     Write-Info "We need to trust the external Reverse Proxy (Host A) to correctly parse headers."
     $proxyHostIp = Read-PromptWithDefault -Prompt "External Reverse Proxy IP (Host A IP)" -Default ""
+    if ([string]::IsNullOrWhiteSpace($proxyHostIp)) {
+        throw "The actual Host A proxy address is required for split-host mode."
+    }
 }
 
 Write-Title "Database Configuration"
@@ -301,12 +304,21 @@ $proxyEnabled = if ($useNginx) { "true" } else {
     if ($proxyChoice -eq "Yes") { "true" } else { "false" }
 }
 
-$knownProxies = "172.16.0.0/12;192.168.0.0/16;10.0.0.0/8"
-if ($useSplitHost -and $proxyHostIp) {
-    # If specific proxy IP is known, we can be more specific, or just append it to ensure it's trusted
-    # For strict security, we might want ONLY this IP, but for ease of use with Docker networks, we keep the CIDRs too or just add it.
-    # Let's use the specific IP if provided to be explicit in the config.
-    $knownProxies = "$proxyHostIp;172.16.0.0/12;192.168.0.0/16;10.0.0.0/8"
+$knownProxies = ""
+if ($proxyEnabled -eq "true") {
+    if ($useSplitHost) {
+        Write-Info "Trust Host A and the local Nginx gateway as seen by the IdP; no Docker subnet is assumed."
+        $gatewayProxies = Read-PromptWithDefault -Prompt "Actual local Nginx gateway IPs/CIDRs (semicolon-separated)" -Default ""
+        if ([string]::IsNullOrWhiteSpace($gatewayProxies)) {
+            throw "The actual local Nginx gateway addresses are required. No .env was written."
+        }
+        $knownProxies = "$proxyHostIp;$gatewayProxies"
+    } else {
+        $knownProxies = Read-PromptWithDefault -Prompt "Actual trusted proxy IPs/CIDRs (semicolon-separated)" -Default ""
+        if ([string]::IsNullOrWhiteSpace($knownProxies)) {
+            throw "The actual trusted proxy addresses are required. No .env was written."
+        }
+    }
 }
 
 Write-Title "Optional: External Services"
@@ -314,9 +326,13 @@ Write-Title "Optional: External Services"
 # Email Settings
 Write-Host "`nEmail (SMTP) Configuration (press Enter to skip for later):"
 $smtpHost = Read-PromptWithDefault -Prompt "SMTP Host" -Default ""
+$smtpRequireTls = "false"
+$smtpValidateServerCertificate = "true"
 if ($smtpHost) {
     $smtpPort = Read-PromptWithDefault -Prompt "SMTP Port" -Default "587"
-    $smtpEnableSsl = Read-PromptWithDefault -Prompt "Enable SSL (true/false)" -Default "true"
+    $smtpEnableSsl = Read-PromptWithDefault -Prompt "Use implicit TLS (true/false; false selects STARTTLS)" -Default "true"
+    $smtpRequireTls = Read-PromptWithDefault -Prompt "Require SMTP TLS (true/false; false permits optional STARTTLS)" -Default "false"
+    $smtpValidateServerCertificate = Read-PromptWithDefault -Prompt "Validate SMTP server certificate (true/false)" -Default "true"
     $smtpUsername = Read-PromptWithDefault -Prompt "SMTP Username" -Default ""
     $smtpPassword = Read-PromptWithDefault -Prompt "SMTP Password" -Default ""
     $smtpFromAddress = Read-PromptWithDefault -Prompt "From Address" -Default "noreply@example.com"
@@ -415,6 +431,13 @@ Redis__Enabled=$($redisEnabled.ToString().ToLower())
 # Proxy Configuration
 Proxy__Enabled=$proxyEnabled
 Proxy__KnownProxies=$knownProxies
+
+# Optional deployment policies; review these choices before enabling integrations.
+LegacyAuth__RequireHttps=false
+EmailSettings__SmtpRequireTls=$smtpRequireTls
+EmailSettings__SmtpValidateServerCertificate=$smtpValidateServerCertificate
+# Hints do not enable recovery; false hides eligibility and masked destinations.
+ForgotPasswordRecovery__PrecheckHintsEnabled=true
 
 # Network Binding (Split-Host)
 INTERNAL_IP=$(if ($internalIp) { $internalIp } else { "0.0.0.0" })

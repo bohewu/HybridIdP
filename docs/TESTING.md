@@ -180,7 +180,7 @@ or pass counts.
 
 #### HIDP-16 configurable recovery guidance (2026-09-16)
 
-Native recovery guidance is optional and OSS-neutral. All seven settings under
+Native recovery guidance is optional and OSS-neutral. The seven HIDP-16 settings under
 `ForgotPasswordRecovery` default to an empty string; leaving a setting empty or
 whitespace-only, or clearing it later and restarting the application, hides that
 slot without rendering an empty guidance container.
@@ -234,6 +234,33 @@ Guidance does not vary by account existence, eligibility, configured recovery
 email, or source-cohort classification. This delivery did not change recovery
 routing or availability, OTP behavior, directory/AD writes, sessions, tokens,
 or `PasswordHash` rules.
+
+The optional bottom notice added on 2026-10-06 uses
+`ForgotPasswordRecovery.BottomNotice` (default empty) and `BottomNoticeType`
+(default `info`). Configure them independently of `LoginNotices`, or set
+`ForgotPasswordRecovery__BottomNotice` and
+`ForgotPasswordRecovery__BottomNoticeType` in the deployment `.env`. The notice
+appears once after the phase form or sign-in action and support content in every
+recovery phase. It shares the login notice styles: `info`, `warning`, `success`,
+`error` and `muted`; unknown types use `info`.
+
+`BottomNotice` follows the same literal/Resource resolution, encoding, hidden
+blank/missing/disabled value, and next-request Resource update rules described
+above. A Resource value beginning with `@` is output as text, without a second
+lookup. Configuration changes require restart (and container recreation for env
+file edits); Resource edits alone do not.
+
+Focused TestServer coverage reuses the native recovery guidance factory and
+synthetic proof/reset services. Run the bottom-notice tests, the existing phase
+placement test, and the shared login rendering regression tests without starting
+a physical host, browser, or deployment database:
+
+```powershell
+dotnet test Tests.SystemTests/Tests.SystemTests.csproj --no-restore --filter "FullyQualifiedName~BottomNotice_|FullyQualifiedName~Guidance_RazorPhases_PreserveCoreOrderAndExcludeReminderUntilSuccess|FullyQualifiedName~LoginNoticeRenderingSystemTests"
+```
+
+This verifies server-rendered HTML and configured Resource behavior. It does not
+establish browser layout, connected recovery, or production acceptance.
 
 #### HIDP-17 Legacy Password Sync focused verification (2026-09-18)
 

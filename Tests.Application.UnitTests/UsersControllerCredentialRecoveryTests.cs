@@ -127,6 +127,7 @@ public sealed class UsersControllerCredentialRecoveryTests
             Options.Create(new PrivilegedRoleProtectionOptions()),
             Mock.Of<ILogger<UsersController>>(),
             assistance,
+            Mock.Of<IAuditService>(),
             nativeAssistance);
         controller.ControllerContext = new ControllerContext
         {

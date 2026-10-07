@@ -102,7 +102,8 @@
     "createButton": "Create Scope",
     "updateButton": "Update Scope",
     "cancel": "Cancel",
-    "validationError": "Please correct the validation errors below."
+    "validationError": "Please correct the validation errors below.",
+    "usageApprovalHelp": "For scopes without an API resource, the scope owner or an IdP administrator may approve usage here. Approve mapped scopes in API Resources. Unknown resource names require an IdP administrator."
   },
   "accessDenied": {
     "create": "You do not have permission to create scopes.",

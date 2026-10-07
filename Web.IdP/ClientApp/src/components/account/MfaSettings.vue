@@ -627,6 +627,7 @@ async function deletePasskey() {
     } else {
       const result = await response.json();
       passkeyError.value = result.error ? t(`mfa.errors.${result.error}`) : t('mfa.errors.deletePasskeyFailed');
+      if (result.error === 'freshAuthenticationRequired') await startSetup(true);
     }
   } catch (err) {
     passkeyError.value = t('mfa.errors.deletePasskeyFailed');
@@ -779,6 +780,7 @@ async function disableEmailMfa() {
     } else {
       const result = await response.json();
       emailMfaError.value = result.message || t('mfa.errors.toggleFailed');
+      if (result.error === 'freshAuthenticationRequired') await startSetup(true);
     }
   } catch (err) {
     emailMfaError.value = t('mfa.errors.toggleFailed');
@@ -787,12 +789,12 @@ async function disableEmailMfa() {
   }
 }
 
-async function startSetup() {
+async function startSetup(forRemoval = false) {
   totpSetupLoading.value = true;
   totpSetupError.value = '';
 
   try {
-    const response = await fetch('/api/account/mfa/reauthenticate', {
+    const response = await fetch(forRemoval === true ? '/api/account/mfa/reauthenticate?forRemoval=true' : '/api/account/mfa/reauthenticate', {
       method: 'POST',
       credentials: 'include'
     });
@@ -878,6 +880,7 @@ async function disableMfa() {
       // Translate error key from API (e.g., 'invalidPassword' -> mfa.errors.invalidPassword)
       const errorKey = result.error ? `mfa.errors.${result.error}` : 'mfa.errors.disableFailed';
       disableError.value = t(errorKey);
+      if (result.error === 'freshAuthenticationRequired') await startSetup(true);
     }
   } catch (err) {
     disableError.value = t('mfa.errors.disableFailed');

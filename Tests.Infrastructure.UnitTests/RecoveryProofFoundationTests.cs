@@ -12,6 +12,9 @@ using Infrastructure;
 using Infrastructure.Options;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -23,6 +26,152 @@ namespace Tests.Infrastructure.UnitTests;
 
 public sealed class RecoveryProofFoundationTests
 {
+    [Theory]
+    [InlineData("totp")]
+    [InlineData("custom")]
+    [InlineData("native")]
+    public async Task MfaProof_ShouldAllowOnlyOnePersistedConcurrentConsumption(string kind)
+    {
+        var connectionString = $"Data Source=file:mfa-proof-{Guid.NewGuid():N}?mode=memory&cache=shared;Default Timeout=5";
+        await using var keeper = new SqliteConnection(connectionString);
+        await keeper.OpenAsync();
+        await using var anchor = CreateContext(keeper);
+        await anchor.Database.EnsureCreatedAsync();
+        var accountId = await SeedUserAsync(anchor);
+        var time = new ProofTimeProvider(DateTimeOffset.UtcNow);
+        var code = await SeedMfaProofAsync(anchor, accountId, kind, time.GetUtcNow());
+        using var gate = new Barrier(2);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+
+        async Task<bool> ConsumeAsync()
+        {
+            await using var contender = CreateContext(connectionString, new ProofSaveBarrier(gate));
+            using var users = CreateProofUserManager(contender);
+            var user = await contender.Users.SingleAsync(u => u.Id == accountId, timeout.Token);
+            var service = CreateProofMfaService(contender, users, time);
+            return await ConsumeMfaProofAsync(service, user, kind, code, timeout.Token);
+        }
+
+        var outcomes = await Task.WhenAll(Task.Run(ConsumeAsync), Task.Run(ConsumeAsync));
+        Assert.Single(outcomes, succeeded => succeeded);
+        Assert.Single(outcomes, succeeded => !succeeded);
+        await using var replay = CreateContext(connectionString);
+        using var replayUsers = CreateProofUserManager(replay);
+        var replayUser = await replay.Users.SingleAsync(u => u.Id == accountId);
+        Assert.False(await ConsumeMfaProofAsync(CreateProofMfaService(replay, replayUsers, time), replayUser, kind, code));
+        if (kind == "totp") Assert.Equal(time.GetUtcNow().ToUnixTimeSeconds() / 30 + 2, replayUser.LastTotpValidatedWindow);
+        if (kind == "custom") Assert.Equal("[]", replayUser.RecoveryCodes);
+        if (kind == "native") Assert.Equal(0, await replayUsers.CountRecoveryCodesAsync(replayUser));
+    }
+
+    [Theory]
+    [InlineData("totp")]
+    [InlineData("custom")]
+    [InlineData("native")]
+    public async Task MfaProof_ShouldDiscardFailedTrackedConsumptionBeforeLaterSave(string kind)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var anchor = CreateContext(connection);
+        await anchor.Database.EnsureCreatedAsync();
+        var id = await SeedUserAsync(anchor);
+        var time = new ProofTimeProvider(DateTimeOffset.UtcNow);
+        var code = await SeedMfaProofAsync(anchor, id, kind, time.GetUtcNow());
+        var failure = new FailProofSaveOnce();
+        await using var context = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection).AddInterceptors(failure).Options);
+        using var users = CreateProofUserManager(context);
+        var user = await context.Users.SingleAsync(u => u.Id == id);
+        var service = CreateProofMfaService(context, users, time);
+
+        Assert.False(await ConsumeMfaProofAsync(service, user, kind, code));
+        // This is the real caller's failure branch; it must not flush the failed proof/token edit.
+        Assert.True((await users.AccessFailedAsync(user)).Succeeded);
+        await using var observer = CreateContext(connection);
+        var persisted = await observer.Users.SingleAsync(u => u.Id == id);
+        Assert.Null(persisted.LastTotpValidatedWindow);
+        if (kind == "custom") Assert.NotEqual("[]", persisted.RecoveryCodes);
+        if (kind == "native")
+        {
+            using var observerUsers = CreateProofUserManager(observer);
+            Assert.Equal(1, await observerUsers.CountRecoveryCodesAsync(persisted));
+        }
+        Assert.True(await ConsumeMfaProofAsync(service, user, kind, code));
+        Assert.False(await ConsumeMfaProofAsync(service, user, kind, code));
+    }
+
+    private static async Task<string> SeedMfaProofAsync(ApplicationDbContext db, Guid id, string kind, DateTimeOffset now)
+    {
+        var user = await db.Users.SingleAsync(u => u.Id == id);
+        user.TwoFactorEnabled = true;
+        user.SecurityStamp = "test-mfa-stamp";
+        user.ConcurrencyStamp = Guid.NewGuid().ToString();
+        const string recoveryCode = "ABCDE-FGHIJ";
+        if (kind == "custom") user.RecoveryCodes = System.Text.Json.JsonSerializer.Serialize(new[]
+            { new PasswordHasher<ApplicationUser>().HashPassword(user, recoveryCode) });
+        if (kind == "native") db.UserTokens.Add(new IdentityUserToken<Guid>
+            { UserId = id, LoginProvider = "[AspNetUserStore]", Name = "RecoveryCodes", Value = recoveryCode });
+        if (kind == "totp") db.UserTokens.Add(new IdentityUserToken<Guid>
+            { UserId = id, LoginProvider = "[AspNetUserStore]", Name = "AuthenticatorKey", Value = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" });
+        await db.SaveChangesAsync();
+        if (kind != "totp") return recoveryCode;
+        var counter = BitConverter.GetBytes(System.Net.IPAddress.HostToNetworkOrder(now.ToUnixTimeSeconds() / 30 + 2));
+        var hash = HMACSHA1.HashData(Encoding.ASCII.GetBytes("12345678901234567890"), counter);
+        var offset = hash[^1] & 15;
+        var binary = ((hash[offset] & 127) << 24) | (hash[offset + 1] << 16) | (hash[offset + 2] << 8) | hash[offset + 3];
+        return (binary % 1_000_000).ToString("D6");
+    }
+
+    private static UserManager<ApplicationUser> CreateProofUserManager(ApplicationDbContext db)
+    {
+        var manager = new UserManager<ApplicationUser>(
+            new UserStore<ApplicationUser, ApplicationRole, ApplicationDbContext, Guid>(db),
+            Options.Create(new IdentityOptions()), new PasswordHasher<ApplicationUser>(), [], [],
+            new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), null!,
+            NullLogger<UserManager<ApplicationUser>>.Instance);
+        manager.RegisterTokenProvider(TokenOptions.DefaultAuthenticatorProvider, new AuthenticatorTokenProvider<ApplicationUser>());
+        return manager;
+    }
+
+    private static MfaService CreateProofMfaService(ApplicationDbContext db, UserManager<ApplicationUser> users, TimeProvider time) =>
+        new(users, Mock.Of<IBrandingService>(), Mock.Of<IEmailService>(), Mock.Of<IEmailTemplateService>(),
+            new PasswordHasher<ApplicationUser>(), Mock.Of<IDistributedCache>(), Mock.Of<ISecurityPolicyService>(),
+            Mock.Of<IEmailMfaAttemptStore>(), db, NullLogger<MfaService>.Instance, time);
+
+    private static Task<bool> ConsumeMfaProofAsync(MfaService service, ApplicationUser user, string kind, string code,
+        CancellationToken ct = default) => kind switch
+        {
+            "totp" => service.ValidateTotpCodeAsync(user, code, ct),
+            "custom" => service.ValidateRecoveryCodeAsync(user, code, ct),
+            _ => service.ValidateNativeRecoveryCodeAsync(user, code, ct)
+        };
+
+    private sealed class ProofTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class ProofSaveBarrier(Barrier gate) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (!gate.SignalAndWait(TimeSpan.FromSeconds(10), cancellationToken)) throw new TimeoutException("MFA contenders did not meet.");
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    private sealed class FailProofSaveOnce : SaveChangesInterceptor
+    {
+        private bool _failed;
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (!_failed) { _failed = true; throw new DbUpdateConcurrencyException("Test proof consumption conflict."); }
+            return ValueTask.FromResult(result);
+        }
+    }
+
     [Fact]
     public async Task RecoveryEmailAndMigrationOtp_AreIndependentSingleUseProofsWithoutMfaSideEffects()
     {

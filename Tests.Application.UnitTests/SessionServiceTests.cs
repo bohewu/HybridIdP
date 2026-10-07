@@ -11,6 +11,11 @@ using OpenIddict.Abstractions;
 using Xunit;
 using Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using System.Security.Claims;
+using System.Text.Json;
+using Core.Domain.Entities;
+using Core.Domain.Constants;
 
 namespace Tests.Application.UnitTests;
 
@@ -21,6 +26,7 @@ public class SessionServiceTests
     private readonly Mock<IOpenIddictTokenManager> _tokens;
     private readonly SessionService _service;
     private readonly ApplicationDbContext _dbContext;
+    private readonly HttpContextAccessor _httpContextAccessor = new();
 
     public SessionServiceTests()
     {
@@ -42,7 +48,58 @@ public class SessionServiceTests
             .Options;
         _dbContext = new ApplicationDbContext(options);
 
-        _service = new SessionService(_authz.Object, _apps.Object, _tokens.Object, _dbContext);
+        _service = new SessionService(_authz.Object, _apps.Object, _tokens.Object, _dbContext, httpContextAccessor: _httpContextAccessor);
+    }
+
+    [Theory]
+    [InlineData("rotation", false)]
+    [InlineData("rotation", true)]
+    [InlineData("reuse", false)]
+    [InlineData("reuse", true)]
+    [InlineData("revoke", false)]
+    [InlineData("revoke", true)]
+    public async Task SessionAudit_ShouldPreserveActorAndSubject_ForEveryDirectWriter(string operation, bool impersonating)
+    {
+        var actorId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, subjectId.ToString())], "cookie");
+        if (impersonating) identity.AddClaim(new Claim(AuthConstants.Claims.ImpersonatorId, actorId.ToString()));
+        _httpContextAccessor.HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
+        _dbContext.UserSessions.Add(new UserSession
+        {
+            UserId = subjectId,
+            AuthorizationId = "auth-attribution",
+            CurrentRefreshTokenHash = "hash_current",
+            PreviousRefreshTokenHash = "hash_previous",
+            SlidingExpiresUtc = DateTime.UtcNow.AddMinutes(2)
+        });
+        await _dbContext.SaveChangesAsync();
+
+        if (operation == "revoke") await _service.RevokeChainAsync(subjectId, "auth-attribution", "user-request");
+        else await _service.RefreshAsync(subjectId, "auth-attribution", operation == "reuse" ? "raw-previous-token" : "raw-current-token", null, null);
+
+        _dbContext.ChangeTracker.Clear();
+        var stored = await _dbContext.AuditEvents.ToListAsync();
+        var expectedTypes = operation switch
+        {
+            "rotation" => new[] { AuditEventTypes.RefreshTokenRotated, AuditEventTypes.SlidingExpirationExtended },
+            "reuse" => new[] { AuditEventTypes.RefreshTokenReuseDetected },
+            _ => new[] { AuditEventTypes.SessionRevoked }
+        };
+        Assert.Equal(expectedTypes.OrderBy(type => type), stored.Select(record => record.EventType).OrderBy(type => type));
+        foreach (var record in stored)
+        {
+            Assert.Equal(subjectId.ToString(), record.UserId);
+            using var details = JsonDocument.Parse(record.Details!);
+            Assert.Equal("auth-attribution", details.RootElement.GetProperty("authorizationId").GetString());
+            if (impersonating)
+            {
+                var attribution = details.RootElement.GetProperty("impersonation");
+                Assert.Equal(actorId.ToString(), attribution.GetProperty("actorUserId").GetString());
+                Assert.Equal(subjectId.ToString(), attribution.GetProperty("subjectUserId").GetString());
+            }
+            else Assert.False(details.RootElement.TryGetProperty("impersonation", out _));
+        }
     }
 
     private sealed class AsyncEnumerable<T> : IAsyncEnumerable<T>
