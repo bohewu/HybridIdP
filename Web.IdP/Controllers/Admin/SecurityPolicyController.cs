@@ -15,10 +15,12 @@ namespace Web.IdP.Controllers.Admin;
 public class SecurityPolicyController : ControllerBase
 {
     private readonly ISecurityPolicyService _securityPolicyService;
+    private readonly IAuditService _audit;
 
-    public SecurityPolicyController(ISecurityPolicyService securityPolicyService)
+    public SecurityPolicyController(ISecurityPolicyService securityPolicyService, IAuditService audit)
     {
         _securityPolicyService = securityPolicyService;
+        _audit = audit;
     }
 
     [HttpGet]
@@ -73,7 +75,6 @@ public class SecurityPolicyController : ControllerBase
         {
             var updatedBy = User.FindFirstValue(ClaimTypes.Name) ?? "Unknown";
             await _securityPolicyService.UpdatePolicyAsync(policyDto, updatedBy);
-            return NoContent(); // 204 No Content is appropriate for a successful update
         }
         catch (InvalidOperationException ex)
         {
@@ -81,5 +82,8 @@ public class SecurityPolicyController : ControllerBase
             ModelState.AddModelError(string.Empty, ex.Message);
             return BadRequest(ModelState);
         }
+        await _audit.LogAdministrativeEventAsync("SecurityPolicyUpdated", "SecurityPolicy", "current",
+            "Security policy updated.", HttpContext.RequestAborted);
+        return NoContent();
     }
 }

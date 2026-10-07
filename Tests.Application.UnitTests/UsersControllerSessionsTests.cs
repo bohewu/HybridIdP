@@ -164,10 +164,13 @@ public class UsersControllerSessionsTests
             User = await factory.Object.CreateAsync(actor)
         };
         var accessor = new HttpContextAccessor { HttpContext = context };
+        var administrativeBoundary = new Mock<IAdministrativeAuthorizationBoundary>();
+        administrativeBoundary.Setup(boundary => boundary.ResolveAsync()).ReturnsAsync(() =>
+            new AdministrativeAuthority(context.User, false, new HashSet<string>()));
         using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         var audit = new AuditService(db, db, Mock.Of<IDomainEventPublisher>(), Mock.Of<ISettingsService>(),
-            Options.Create(new AuditOptions { PiiMaskingLevel = PiiMaskingLevel.Strict }), accessor);
+            Options.Create(new AuditOptions { PiiMaskingLevel = PiiMaskingLevel.Strict }), accessor, administrativeBoundary.Object);
         var startController = CreateController(out _, lifecycle, impersonation, audit);
         startController.ControllerContext = new ControllerContext { HttpContext = context };
 
@@ -191,8 +194,10 @@ public class UsersControllerSessionsTests
         foreach (var eventType in new[] { "ImpersonationStarted", "UserUpdated", "ImpersonationStopped" })
         {
             var record = Assert.Single(records, entry => entry.EventType == eventType);
-            Assert.Equal(eventType == "UserUpdated" ? affectedUserId : actor.Id.ToString(), record.UserId);
+            Assert.Equal(actor.Id.ToString(), record.UserId);
             using var details = JsonDocument.Parse(record.Details!);
+            if (eventType == "UserUpdated")
+                Assert.Equal(affectedUserId, details.RootElement.GetProperty("target").GetProperty("id").GetString());
             var attribution = details.RootElement.GetProperty("impersonation");
             Assert.Equal(actor.Id.ToString(), attribution.GetProperty("actorUserId").GetString());
             Assert.Equal(target.Id.ToString(), attribution.GetProperty("subjectUserId").GetString());

@@ -21,17 +21,20 @@ public class SettingsController : ControllerBase
     private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
     private readonly IOptionsSnapshot<EmailOptions> _emailOptions;
+    private readonly IAuditService _audit;
 
     public SettingsController(
         ISettingsService settings, 
         IEmailService emailService, 
         IConfiguration configuration,
-        IOptionsSnapshot<EmailOptions> emailOptions)
+        IOptionsSnapshot<EmailOptions> emailOptions,
+        IAuditService audit)
     {
         _settings = settings;
         _emailService = emailService;
         _configuration = configuration;
         _emailOptions = emailOptions;
+        _audit = audit;
     }
 
     /// <summary>
@@ -171,6 +174,7 @@ public class SettingsController : ControllerBase
             return BadRequest(new { error = SystemManagedSettingError });
         }
 
+        await _audit.LogAdministrativeEventAsync("SettingUpdated", "Setting", key, "Setting value updated.", HttpContext.RequestAborted);
         return Ok(new { key, value = IsSensitive(key) ? "(set)" : valueToSave, message = "Setting updated successfully" });
     }
 

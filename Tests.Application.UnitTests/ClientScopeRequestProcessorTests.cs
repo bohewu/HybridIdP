@@ -37,6 +37,7 @@ namespace Tests.Application.UnitTests
             public Task<(IEnumerable<AuditEventDto> items, int totalCount)> GetEventsAsync(AuditEventFilterDto filter, CancellationToken cancellationToken = default) => throw new NotImplementedException();
             public Task<AuditEventExportDto?> ExportEventAsync(int eventId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
             public Task LogImpersonationEventAsync(string eventType, System.Security.Claims.ClaimsPrincipal impersonatedPrincipal, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+            public Task LogAdministrativeEventAsync(string eventType, string targetType, string targetId, string? details, CancellationToken cancellationToken = default) => Task.CompletedTask;
             
             // Phase 11.2: Add missing methods for account/role management
             public Task LogRoleSwitchAsync(Guid userId, Guid oldRoleId, Guid newRoleId, string sessionId, string ipAddress, string userAgent, CancellationToken cancellationToken = default) => Task.CompletedTask;

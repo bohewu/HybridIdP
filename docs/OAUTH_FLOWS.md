@@ -48,6 +48,20 @@ Used when the application acts on its own behalf, not a user.
 3. User visits URI on another device (phone/laptop) and enters code.
 4. Device polls `/connect/token` until user approves.
 
+Manual code entry first resolves the application and displays its requested
+scopes; it does not grant access. The user then allows the displayed scope set
+or denies the request. A complete verification URI opens that same review
+directly. Approval and denial require a one-time intent bound to the user,
+client and code. Explicit/systematic clients require an affirmative decision;
+external-consent clients additionally require a valid permanent authorization
+covering the requested scopes. Implicit clients retain their trusted consent
+policy. Denial causes device polling to return OAuth `access_denied` as JSON.
+
+When `RateLimiting:Enabled` is true, native device issuance uses the existing
+token budget and verification uses the existing authorize budget, each keyed
+by trusted source IP in separate partitions before OpenIddict processing.
+Issuance rejection returns HTTP 429 with OAuth `temporarily_unavailable` JSON.
+
 Approval and device-code redemption each evaluate the current global mandatory
 MFA policy as well as the client's `RequireMfa` setting. Either requirement
 needs performed `amr=mfa` evidence; `hwk` alone is insufficient. A password-only

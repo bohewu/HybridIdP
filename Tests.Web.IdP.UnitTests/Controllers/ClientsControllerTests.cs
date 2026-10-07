@@ -20,6 +20,7 @@ public class ClientsControllerTests
 
     private readonly Mock<IClientService> _clientService = new();
     private readonly Mock<IClientAllowedScopesService> _allowedScopesService = new();
+    private readonly Mock<IAuditService> _audit = new();
 
     [Theory]
     [InlineData(MutationOperation.Update, CallerKind.SameOwner)]
@@ -57,6 +58,11 @@ public class ClientsControllerTests
         AssertSuccessShape(operation, okResult.Value);
         VerifyExpectedMutation(operation, Times.Once());
         VerifyUnexpectedMutations(operation);
+        if (operation is MutationOperation.SetAllowedScopes or MutationOperation.SetRequiredScopes)
+            _audit.Verify(audit => audit.LogAdministrativeEventAsync(
+                operation == MutationOperation.SetAllowedScopes ? "ClientAllowedScopesChanged" : "ClientRequiredScopesChanged",
+                "Client", TargetClientId.ToString(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        else _audit.VerifyNoOtherCalls();
 
         if (callerKind == CallerKind.SameOwner)
         {
@@ -127,6 +133,7 @@ public class ClientsControllerTests
 
         Assert.IsType<ForbidResult>(result);
         VerifyNoMutationServices();
+        _audit.VerifyNoOtherCalls();
     }
 
     [Theory]
@@ -453,7 +460,7 @@ public class ClientsControllerTests
                     or CallerKind.SameSubjectProductionAutomation
             }),
             hostEnvironment.Object, Moq.Mock.Of<Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.GetActorAsync(Moq.It.IsAny<CancellationToken>()) == Task.FromResult(
-                new Infrastructure.Authorization.ApiUsageActor(null, claims.Where(c => c.Type == AuthConstants.Claims.PersonId).Select(c => (Guid?)Guid.Parse(c.Value)).FirstOrDefault(), callerKind == CallerKind.Admin, false))));
+                new Infrastructure.Authorization.ApiUsageActor(null, claims.Where(c => c.Type == AuthConstants.Claims.PersonId).Select(c => (Guid?)Guid.Parse(c.Value)).FirstOrDefault(), callerKind == CallerKind.Admin, false))), _audit.Object);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

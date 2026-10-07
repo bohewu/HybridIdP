@@ -23,6 +23,40 @@ namespace Tests.Application.UnitTests;
 public class ApiScopeUsagePolicyTests
 {
     [Theory]
+    [InlineData("admin", true)]
+    [InlineData("resource-owner", true)]
+    [InlineData("scope-owner", true)]
+    [InlineData("visible", true)]
+    [InlineData("hidden", false)]
+    [InlineData("mixed", false)]
+    [InlineData("unknown", false)]
+    public async Task ScopeClaims_ShouldApplyCatalogVisibilityBeforeReturningMapping(string state, bool visible)
+    {
+        using var f = new Fixture();
+        if (state == "unknown") f.ResourceNames = ["unknown-api"];
+        else
+        {
+            await f.AddResourceAsync(f.ResourceOwner, visible: state is "visible" or "mixed");
+            if (state == "mixed") await f.AddResourceAsync(Guid.NewGuid(), visible: false);
+        }
+        if (state == "scope-owner")
+            f.Db.ScopeOwnerships.Add(new ScopeOwnership { ScopeId = f.ScopeId, CreatedByPersonId = f.ClientOwner });
+        f.SetActor(state == "resource-owner" ? f.ResourceOwner : f.ClientOwner, admin: state == "admin");
+        var claim = new ClaimDefinition { Name = "internal-claim", DisplayName = "Internal claim", ClaimType = "internal", UserPropertyPath = "name", DataType = "String" };
+        f.Db.Set<ClaimDefinition>().Add(claim);
+        f.Db.ScopeClaims.Add(new ScopeClaim
+        {
+            ScopeId = f.ScopeId, ScopeName = f.ScopeName, ClaimDefinition = claim, CustomMappingLogic = "internal-source"
+        });
+        await f.Db.SaveChangesAsync();
+        var service = new ScopeService(f.Scopes.Object, f.Apps.Object, f.Db, Mock.Of<IDomainEventPublisher>(), f.Policy);
+
+        if (visible)
+            Assert.Equal("internal-source", Assert.Single((await service.GetScopeClaimsAsync(f.ScopeId)).claims).CustomMappingLogic);
+        else await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetScopeClaimsAsync(f.ScopeId));
+    }
+
+    [Theory]
     [InlineData("create", "foreign", false)]
     [InlineData("update", "foreign", false)]
     [InlineData("replace", "foreign", false)]

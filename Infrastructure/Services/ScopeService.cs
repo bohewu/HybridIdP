@@ -412,6 +412,10 @@ public class ScopeService : IScopeService
 
     public async Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> GetScopeClaimsAsync(string scopeId, CancellationToken cancellationToken = default)
     {
+        if (!await _scopeUsage.CanViewScopeAsync(scopeId, cancellationToken))
+        {
+            throw new KeyNotFoundException($"Scope with ID '{scopeId}' not found.");
+        }
         // Verify scope exists
         var scope = await _scopeManager.FindByIdAsync(scopeId, cancellationToken);
         if (scope == null)

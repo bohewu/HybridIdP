@@ -15,11 +15,12 @@ public class SecurityPolicyControllerTests
 {
     private readonly Mock<ISecurityPolicyService> _mockService;
     private readonly SecurityPolicyController _controller;
+    private readonly Mock<IAuditService> _audit = new();
 
     public SecurityPolicyControllerTests()
     {
         _mockService = new Mock<ISecurityPolicyService>();
-        _controller = new SecurityPolicyController(_mockService.Object);
+        _controller = new SecurityPolicyController(_mockService.Object, _audit.Object);
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
@@ -75,5 +76,20 @@ public class SecurityPolicyControllerTests
         // Assert
         _mockService.Verify();
         Assert.IsType<NoContentResult>(result);
+        _audit.Verify(audit => audit.LogAdministrativeEventAsync("SecurityPolicyUpdated", "SecurityPolicy", "current",
+            "Security policy updated.", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdatePolicy_ShouldNotAudit_WhenPolicyValidationFails()
+    {
+        var dto = new SecurityPolicyDto();
+        _mockService.Setup(service => service.UpdatePolicyAsync(dto, "TestUser"))
+            .ThrowsAsync(new InvalidOperationException("Invalid policy."));
+
+        var result = await _controller.UpdatePolicy(dto);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        _audit.VerifyNoOtherCalls();
     }
 }

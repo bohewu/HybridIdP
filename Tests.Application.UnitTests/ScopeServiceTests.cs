@@ -25,6 +25,7 @@ public class ScopeServiceTests : IDisposable
     private readonly ApplicationDbContext _dbContext;
     private readonly Mock<IDomainEventPublisher> _mockEventPublisher;
     private readonly ScopeService _scopeService;
+    private readonly Mock<Infrastructure.Authorization.IApiScopeUsagePolicy> _scopeUsage = new();
 
     public ScopeServiceTests()
     {
@@ -39,7 +40,19 @@ public class ScopeServiceTests : IDisposable
         
         _dbContext = new ApplicationDbContext(options);
         
-        _scopeService = new ScopeService(_mockScopeManager.Object, _mockApplicationManager.Object, _dbContext, _mockEventPublisher.Object, Moq.Mock.Of<Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.CanViewScopeAsync(Moq.It.IsAny<string>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)));
+        _scopeUsage.Setup(policy => policy.CanViewScopeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _scopeService = new ScopeService(_mockScopeManager.Object, _mockApplicationManager.Object, _dbContext, _mockEventPublisher.Object, _scopeUsage.Object);
+    }
+
+    [Fact]
+    public async Task GetScopeClaimsAsync_ShouldReturnNotFound_WhenScopeIsHidden()
+    {
+        _scopeUsage.Setup(policy => policy.CanViewScopeAsync("hidden-scope", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _scopeService.GetScopeClaimsAsync("hidden-scope"));
+
+        _mockScopeManager.Verify(manager => manager.FindByIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockScopeManager.Verify(manager => manager.GetNameAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     public void Dispose()

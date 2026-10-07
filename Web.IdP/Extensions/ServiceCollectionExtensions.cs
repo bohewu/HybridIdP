@@ -887,8 +887,42 @@ public static class ServiceCollectionExtensions
             services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                // Native OpenIddict handlers run during authentication, before MVC
+                // endpoint policies can protect these requests.
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                {
+                    var path = httpContext.Request.Path.Value?.TrimEnd('/');
+                    var device = string.Equals(path, "/connect/device", StringComparison.OrdinalIgnoreCase);
+                    var verification = string.Equals(path, "/connect/verify", StringComparison.OrdinalIgnoreCase);
+                    if (!device && !verification) return RateLimitPartition.GetNoLimiter("other");
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: $"{(device ? "device" : "verification")}:ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = device ? rateLimitingOptions.TokenPermitLimit : rateLimitingOptions.AuthorizePermitLimit,
+                            Window = TimeSpan.FromSeconds(device ? rateLimitingOptions.TokenWindowSeconds : rateLimitingOptions.AuthorizeWindowSeconds),
+                            QueueLimit = rateLimitingOptions.QueueLimit,
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                        });
+                });
                 options.OnRejected = async (context, cancellationToken) =>
                 {
+                    if (string.Equals(context.HttpContext.Request.Path.Value?.TrimEnd('/'),
+                        "/connect/device", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.HttpContext.Response.ContentType = "application/json";
+                        context.HttpContext.Response.Headers.CacheControl = "no-store";
+                        context.HttpContext.Response.Headers.Pragma = "no-cache";
+                        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                            context.HttpContext.Response.Headers.RetryAfter = Math.Ceiling(retryAfter.TotalSeconds)
+                                .ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        await context.HttpContext.Response.WriteAsync(JsonSerializer.Serialize(new
+                        {
+                            error = OpenIddictConstants.Errors.TemporarilyUnavailable,
+                            error_description = "Too many device authorization requests. Try again later."
+                        }), cancellationToken);
+                        return;
+                    }
                     if (context.HttpContext.Request.Method == HttpMethods.Post &&
                         context.HttpContext.Request.Path.Equals(
                             "/api/operational-bootstrap/admin"))

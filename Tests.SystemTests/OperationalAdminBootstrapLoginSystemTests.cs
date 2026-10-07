@@ -21,6 +21,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Testcontainers.PostgreSql;
 using Web.IdP.Middleware;
+using Web.IdP.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Tests.SystemTests;
 
@@ -354,19 +356,22 @@ public sealed class OperationalBootstrapHostFactory
     private readonly bool _proxyEnabled;
     private readonly string? _knownProxies;
     private readonly IPAddress _remoteAddress;
+    private readonly bool _rateLimitingEnabled;
 
     private OperationalBootstrapHostFactory(
         string connectionString,
         HostBootstrapRequest request,
         bool proxyEnabled,
         string? knownProxies,
-        IPAddress remoteAddress)
+        IPAddress remoteAddress,
+        bool rateLimitingEnabled)
     {
         _connectionString = connectionString;
         _request = request;
         _proxyEnabled = proxyEnabled;
         _knownProxies = knownProxies;
         _remoteAddress = remoteAddress;
+        _rateLimitingEnabled = rateLimitingEnabled;
     }
 
     public HttpClient Client { get; private set; } = null!;
@@ -376,14 +381,15 @@ public sealed class OperationalBootstrapHostFactory
         HostBootstrapRequest request,
         bool proxyEnabled,
         string? knownProxies,
-        IPAddress remoteAddress)
+        IPAddress remoteAddress,
+        bool rateLimitingEnabled = false)
     {
         var factory = new OperationalBootstrapHostFactory(
             connectionString,
             request,
             proxyEnabled,
             knownProxies,
-            remoteAddress);
+            remoteAddress, rateLimitingEnabled);
         await EnvironmentLock.WaitAsync();
         const string providerVariable = "DATABASE_PROVIDER";
         const string connectionVariable =
@@ -422,7 +428,10 @@ public sealed class OperationalBootstrapHostFactory
                 ["DatabaseProvider"] = "PostgreSQL",
                 ["ConnectionStrings:PostgreSqlConnection"] = _connectionString,
                 ["Redis:Enabled"] = "false",
-                ["RateLimiting:Enabled"] = "false",
+                ["RateLimiting:Enabled"] = _rateLimitingEnabled.ToString(),
+                ["RateLimiting:TokenPermitLimit"] = "2",
+                ["RateLimiting:AuthorizePermitLimit"] = "2",
+                ["RateLimiting:QueueLimit"] = "0",
                 ["SeedData:PrivilegedTestAdminBootstrap:Enabled"] = "false",
                 ["OperationalAdminBootstrap:Enabled"] = "true",
                 ["OperationalAdminBootstrap:TokenSha256Digest"] =
@@ -434,8 +443,13 @@ public sealed class OperationalBootstrapHostFactory
                 ["Turnstile:Enabled"] = "false"
             });
         });
-        builder.ConfigureServices(services =>
+        builder.ConfigureServices((context, services) =>
         {
+            if (_rateLimitingEnabled)
+            {
+                services.RemoveAll<IConfigureOptions<Microsoft.AspNetCore.RateLimiting.RateLimiterOptions>>();
+                services.AddCustomRateLimiting(context.Configuration);
+            }
             services.RemoveAll<IHostedService>();
             services.AddSingleton<IStartupFilter>(
                 new RemoteAddressStartupFilter(_remoteAddress));

@@ -43,13 +43,23 @@
                         </div>
                     </div>
                 }
-                else if (!string.IsNullOrEmpty(Model.ApplicationName))
+                @if (Model.IsResolved)
                 {
                     <div class="bg-blue-50 border-l-4 border-blue-400 p-4 flex items-start mb-6">
                          <i class="bi bi-info-circle-fill text-blue-400 mr-3 mt-0.5 text-lg"></i>
                         <div class="text-blue-700 text-sm">
-                            @Localizer["AppRequestAccess", Model.ApplicationName]
+                            @Localizer["AppRequestAccess", Model.ApplicationName ?? ""]
                         </div>
+                    </div>
+                    <div data-test-id="device-consent-scopes" class="text-sm text-gray-700">
+                        <p class="font-bold">@Localizer["RequestedScopes"]</p>
+                        <ul class="list-disc pl-5 mt-2">
+                            @foreach (var scope in (Model.Scope ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <li><code>@scope</code></li>
+                            }
+                        </ul>
+                        <p class="mt-3">@Localizer["ConsentInstruction"]</p>
                     </div>
                 }
 
@@ -77,6 +87,7 @@
                                style="letter-spacing: 0.2em;"
                                placeholder="XXXX-XXXX-XXXX" 
                                maxlength="15"
+                               readonly="@Model.IsResolved"
                                autofocus 
                                autocomplete="off" />
                     </div>
@@ -84,15 +95,24 @@
                 </div>
 
                 <div>
-                     <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
-                        @Localizer["ContinueButton"]
+                     <button type="submit" name="submit" value="@(Model.IsResolved ? "accept" : "continue")" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                        @Localizer[Model.IsResolved ? "AllowButton" : "ContinueButton"]
                     </button>
                 </div>
                 
                 <div class="text-center mt-4">
+                    @if (Model.IsResolved)
+                    {
+                        <button type="submit" name="submit" value="deny" class="text-sm font-bold text-indigo-600 hover:text-indigo-500 transition-colors">
+                            @Localizer["DenyButton"]
+                        </button>
+                    }
+                    else
+                    {
                     <a href="/" class="text-sm font-bold text-indigo-600 hover:text-indigo-500 transition-colors">
                         @Localizer["CancelLink"]
                     </a>
+                    }
                 </div>
             </form>
         </div>

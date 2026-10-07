@@ -6,6 +6,7 @@ using Core.Domain.Events;
 using Core.Domain.Constants; // Added
 using Infrastructure;
 using Infrastructure.Services;
+using Infrastructure.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Http;
@@ -27,6 +28,7 @@ public class AuditServiceTests : IDisposable
     private readonly Mock<ISettingsService> _settingsServiceMock;
     private readonly AuditService _auditService;
     private readonly HttpContextAccessor _httpContextAccessor = new();
+    private readonly Mock<IAdministrativeAuthorizationBoundary> _authority = new();
 
     public AuditServiceTests()
     {
@@ -40,7 +42,7 @@ public class AuditServiceTests : IDisposable
         _settingsServiceMock = new Mock<ISettingsService>();
         _settingsServiceMock.Setup(s => s.GetValueAsync<int>(SettingKeys.Audit.RetentionDays, It.IsAny<CancellationToken>())).ReturnsAsync(0);
         var auditOptions = Options.Create(new AuditOptions { PiiMaskingLevel = PiiMaskingLevel.Partial });
-        _auditService = new AuditService(_dbContext, _dbContext, _eventPublisherMock.Object, _settingsServiceMock.Object, auditOptions, _httpContextAccessor);
+        _auditService = new AuditService(_dbContext, _dbContext, _eventPublisherMock.Object, _settingsServiceMock.Object, auditOptions, _httpContextAccessor, _authority.Object);
     }
 
     public void Dispose()
@@ -49,6 +51,81 @@ public class AuditServiceTests : IDisposable
     }
 
     #region LogEventAsync Tests
+
+    [Theory]
+    [InlineData("User")]
+    [InlineData("Client")]
+    [InlineData("Role")]
+    [InlineData("Scope")]
+    public async Task HandleAsync_AdministrativeMutation_ShouldSeparateActorAndTarget(string targetType)
+    {
+        var actorId = Guid.NewGuid().ToString();
+        var targetId = Guid.NewGuid().ToString();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", actorId)], "cookie"));
+        _authority.Setup(boundary => boundary.ResolveAsync()).ReturnsAsync(new AdministrativeAuthority(principal, false, new HashSet<string>()));
+        _httpContextAccessor.HttpContext = new DefaultHttpContext { User = principal };
+        switch (targetType)
+        {
+            case "User": await _auditService.HandleAsync(new UserUpdatedEvent(targetId, "target-user", "profile")); break;
+            case "Client": await _auditService.HandleAsync(new ClientUpdatedEvent(targetId, "target-client", "permissions")); break;
+            case "Role": await _auditService.HandleAsync(new RolePermissionChangedEvent(targetId, "target-role", "permissions")); break;
+            case "Scope": await _auditService.HandleAsync(new ScopeClaimChangedEvent(targetId, "target-scope", "claims")); break;
+        }
+
+        var stored = await _dbContext.AuditEvents.SingleAsync();
+        Assert.Equal(actorId, stored.UserId);
+        using var details = JsonDocument.Parse(stored.Details!);
+        Assert.Equal("user", details.RootElement.GetProperty("actor").GetProperty("type").GetString());
+        Assert.Equal(actorId, details.RootElement.GetProperty("actor").GetProperty("id").GetString());
+        Assert.Equal(targetType, details.RootElement.GetProperty("target").GetProperty("type").GetString());
+        Assert.Equal(targetId, details.RootElement.GetProperty("target").GetProperty("id").GetString());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LogAdministrativeEventAsync_ShouldUseValidatedClientAuthority_DespiteUnrelatedCookie(bool cached)
+    {
+        var clientId = Guid.NewGuid().ToString();
+        var applicationId = Guid.NewGuid().ToString();
+        var authority = new AdministrativeAuthority(new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", clientId), new Claim(AdministrativeClientGrant.ApplicationClaim, applicationId)], "Bearer")),
+            true, new HashSet<string> { Permissions.Settings.Update });
+        var cookie = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+            new Claim(AuthConstants.Claims.ImpersonatorId, Guid.NewGuid().ToString())], "cookie");
+        _httpContextAccessor.HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(cookie) };
+        if (cached) _httpContextAccessor.HttpContext.Items[AdministrativeAuthorizationBoundary.AuthorityKey] = authority;
+        else _authority.Setup(boundary => boundary.ResolveAsync()).ReturnsAsync(authority);
+
+        await _auditService.LogAdministrativeEventAsync("SettingUpdated", "Setting", SettingKeys.Email.SmtpPassword, "Setting value updated.");
+
+        var stored = await _dbContext.AuditEvents.SingleAsync();
+        Assert.Null(stored.UserId);
+        using var details = JsonDocument.Parse(stored.Details!);
+        Assert.Equal("client", details.RootElement.GetProperty("actor").GetProperty("type").GetString());
+        Assert.Equal(clientId, details.RootElement.GetProperty("actor").GetProperty("id").GetString());
+        Assert.Equal(applicationId, details.RootElement.GetProperty("actor").GetProperty("applicationId").GetString());
+        Assert.False(details.RootElement.TryGetProperty("impersonation", out _));
+        Assert.Equal(SettingKeys.Email.SmtpPassword, details.RootElement.GetProperty("target").GetProperty("id").GetString());
+    }
+
+    [Fact]
+    public async Task LogAdministrativeEventAsync_ShouldNotTrustUnvalidatedHttpPrincipal()
+    {
+        _httpContextAccessor.HttpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", Guid.NewGuid().ToString())], "unvalidated"))
+        };
+
+        await _auditService.LogAdministrativeEventAsync("ScopeUpdated", "Scope", "target-id", "Updated.");
+
+        var stored = await _dbContext.AuditEvents.SingleAsync();
+        Assert.Null(stored.UserId);
+        using var details = JsonDocument.Parse(stored.Details!);
+        Assert.Equal("system", details.RootElement.GetProperty("actor").GetProperty("type").GetString());
+        Assert.Equal("target-id", details.RootElement.GetProperty("target").GetProperty("id").GetString());
+    }
 
     [Theory]
     [InlineData(false, false)]
@@ -93,15 +170,19 @@ public class AuditServiceTests : IDisposable
             new Claim(ClaimTypes.Name, "private-target-name")], "cookie")
         { Actor = new ClaimsIdentity([new Claim("sub", actorId.ToString()), new Claim(ClaimTypes.Name, "private-actor-name")], "Impersonation") };
         _httpContextAccessor.HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
+        _authority.Setup(boundary => boundary.ResolveAsync()).ReturnsAsync(new AdministrativeAuthority(
+            new ClaimsPrincipal(identity), false, new HashSet<string>()));
         var audit = new AuditService(_dbContext, _dbContext, _eventPublisherMock.Object, _settingsServiceMock.Object,
-            Options.Create(new AuditOptions { PiiMaskingLevel = level }), _httpContextAccessor);
+            Options.Create(new AuditOptions { PiiMaskingLevel = level }), _httpContextAccessor, _authority.Object);
 
         await audit.HandleAsync(new UserUpdatedEvent(subjectId.ToString(), "alice-private", "profile"));
 
         _dbContext.ChangeTracker.Clear();
         var stored = await _dbContext.AuditEvents.SingleAsync();
         using var details = JsonDocument.Parse(stored.Details!);
-        Assert.Equal($"User '{maskedName}' was updated: profile", details.RootElement.GetProperty("details").GetString());
+        Assert.Equal($"User '{maskedName}' was updated: profile", details.RootElement.GetProperty("message").GetString());
+        Assert.Equal(actorId.ToString(), stored.UserId);
+        Assert.Equal(subjectId.ToString(), details.RootElement.GetProperty("target").GetProperty("id").GetString());
         Assert.DoesNotContain("alice-private", stored.Details);
         Assert.DoesNotContain("private-actor-name", stored.Details);
         Assert.DoesNotContain("private-target-name", stored.Details);

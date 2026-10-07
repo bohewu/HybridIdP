@@ -374,6 +374,9 @@ namespace Web.IdP.Services
              }
 
             if (!await SatisfiesClientMfaAsync(request, principal, cancellationToken)) return InvalidPasswordGrant();
+            var policy = await _securityPolicyService.GetCurrentPolicyAsync();
+            if (policy.EnforceMandatoryMfaEnrollment && !Web.IdP.Helpers.MfaEnrollmentSession.HasMfa(principal))
+                return InvalidPasswordGrant();
             if (!await HasCurrentScopePermissionsAsync(request, principal, cancellationToken)) return InvalidPasswordGrant();
 
             // Ensure that the user happens to represent a valid user in our DB
@@ -606,14 +609,14 @@ namespace Web.IdP.Services
                 return true;
             }
 
-            // Match the interactive login contract: an enrolled passkey satisfies the
-            // mandatory-enrollment policy even when TOTP and Email MFA are not enabled.
+            // Enrollment is not a performed assertion. An enrolled account must use
+            // an interactive flow to complete MFA; only unenrolled accounts retain grace.
             var hasPasskey = await _db.UserCredentials
                 .AsNoTracking()
                 .AnyAsync(credential => credential.UserId == user.Id && credential.DisabledAtUtc == null, cancellationToken);
             if (hasPasskey)
             {
-                return true;
+                return false;
             }
 
             var now = DateTime.UtcNow;

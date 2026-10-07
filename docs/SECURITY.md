@@ -70,7 +70,7 @@ persist `ImpersonationStarted` and `ImpersonationStopped` through the existing
 audit service before replacing the application cookie. Their `UserId` is the
 original actor. Audit persistence failure prevents cookie replacement.
 
-Already-audited operations, including direct session refresh/revocation records,
+Direct authentication and session refresh/revocation records
 retain their existing `UserId` and detail fields. During impersonation, `Details`
 also contains `impersonation.actorUserId` and `impersonation.subjectUserId`,
 resolved from the authenticated application identity and its preserved Actor or
@@ -79,6 +79,17 @@ usernames, email addresses or tokens. Existing name/email masking still applies.
 Text details are retained under `details` when this JSON attribution is added.
 Ordinary and system records keep their existing representation. Audit listing
 and export retain these details, including after cookie restoration.
+
+Administrative user, client, role and scope mutation records separate the
+performer from the affected resource. `UserId` identifies the validated local
+actor (the original actor during impersonation); `Details.actor` records its
+type and stable ID, and `Details.target` records the resource type and ID.
+Administrative M2M records have a null `UserId` and a typed client actor bound
+to the validated client subject and immutable application ID. Background
+operations record a system actor. The existing masked change description is
+retained in `Details.message`. Allowed/required client scope replacements and
+setting and security-policy updates also create durable records; setting and credential values
+are omitted. Existing historical records are not rewritten.
 
 ## Supported Multi-Factor Authentication (MFA)
 
@@ -118,6 +129,13 @@ An existing password-only cookie or approval is not exempt after activation,
 including during enrollment grace. The existing per-client MFA, one-time
 approval intent, current lifecycle/migration and scope checks still apply;
 redemption failures use the normal machine-readable OAuth `invalid_grant` JSON.
+
+Authorization-code redemption also checks the current global mandatory MFA
+policy and the client's MFA requirement. A password-only code issued before
+activation cannot redeem afterward, even during enrollment grace. Password
+grants cannot perform a passkey assertion: an active passkey enrollment does
+not satisfy mandatory MFA, so enrolled accounts must use an interactive flow.
+The existing enrollment grace for accounts without active factors is retained.
 
 ### Factor removal and one-time proof consumption
 

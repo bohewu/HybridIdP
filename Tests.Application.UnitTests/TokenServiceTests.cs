@@ -30,6 +30,38 @@ namespace Tests.Application.UnitTests
     public class TokenServiceTests
     {
         [Theory]
+        [InlineData("amr", "pwd", false)]
+        [InlineData("amr", "hwk", false)]
+        [InlineData("amr", "pwd", true)]
+        [InlineData(ClaimTypes.AuthenticationMethod, "hwk", true)]
+        public async Task HandleTokenRequestAsync_AuthorizationCode_ShouldRequirePerformedMfa_WhenGlobalPolicyChanges(
+            string claimType, string primaryAmr, bool completedMfa)
+        {
+            var policy = new SecurityPolicy { MfaEnforcementGracePeriodDays = 30 };
+            _mockSecurityPolicyService.Setup(service => service.GetCurrentPolicyAsync()).ReturnsAsync(policy);
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true, UserName = "stale-code-user" };
+            var principal = SetupAuthorizationCodeGrant(user);
+            principal.SetClaims(claimType, completedMfa
+                ? ImmutableArray.Create(primaryAmr, AuthConstants.Amr.Mfa)
+                : ImmutableArray.Create(primaryAmr, AuthConstants.Amr.UserPresence));
+            principal.SetClaim(Claims.AuthenticationTime, DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds());
+            _mockApplicationManager.Setup(manager => manager.GetPropertiesAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateClientProperties(requireMfa: false));
+
+            policy.EnforceMandatoryMfaEnrollment = true;
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(GrantTypes.AuthorizationCode), principal);
+
+            _mockSecurityPolicyService.Verify(service => service.GetCurrentPolicyAsync(), Times.Once);
+            if (!completedMfa) AssertInvalidGrant(result);
+            else
+            {
+                var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+                Assert.Equal<string>(principal.GetClaims(claimType), issued.GetClaims(claimType));
+                Assert.Equal(principal.GetClaim(Claims.AuthenticationTime), issued.GetClaim(Claims.AuthenticationTime));
+            }
+        }
+
+        [Theory]
         [InlineData("pwd", false)]
         [InlineData("hwk", false)]
         [InlineData("pwd", true)]
@@ -1053,7 +1085,7 @@ namespace Tests.Application.UnitTests
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        public async Task HandleTokenRequestAsync_Password_MandatoryMfaWithPasskey_ShouldCountOnlyActiveCredentials(bool disabled)
+        public async Task HandleTokenRequestAsync_Password_MandatoryMfaWithPasskey_ShouldRejectWithoutAssertion(bool disabled)
         {
             var user = new ApplicationUser
             {
@@ -1073,14 +1105,30 @@ namespace Tests.Application.UnitTests
                     password: "${TEST_FIXTURE_001}"),
                 null);
 
-            if (disabled)
+            AssertPasswordGrantRejected(result);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task HandleTokenRequestAsync_Password_ShouldRejectEnrolledPasskeyWithoutAssertion_EvenDuringGrace(bool notified)
+        {
+            var user = new ApplicationUser
             {
-                AssertPasswordGrantRejected(result);
-            }
-            else
-            {
-                Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
-            }
+                Id = Guid.NewGuid(), UserName = "enrolled-grace-user", IsActive = true,
+                MfaRequirementNotifiedAt = notified ? DateTime.UtcNow.AddHours(-1) : null
+            };
+            var originalNotification = user.MfaRequirementNotifiedAt;
+            SetupPasswordGrant(user);
+            SetupMockUserCredentials(new UserCredential { UserId = user.Id });
+            SetupMandatoryMfaPolicy(gracePeriodDays: 3);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.Password, username: user.UserName, password: "${TEST_FIXTURE_001}"), null);
+
+            AssertPasswordGrantRejected(result);
+            Assert.Equal(originalNotification, user.MfaRequirementNotifiedAt);
+            _mockUserManager.Verify(manager => manager.UpdateAsync(user), Times.Never);
         }
 
         [Fact]

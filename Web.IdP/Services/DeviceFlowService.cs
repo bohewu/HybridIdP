@@ -19,6 +19,7 @@ public partial class DeviceFlowService : IDeviceFlowService
     private readonly Web.IdP.Services.ICurrentUserLifecycleEligibility _lifecycleEligibility;
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly IOpenIddictApplicationManager _applicationManager;
+    private readonly IOpenIddictAuthorizationManager _authorizationManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IStringLocalizer<DeviceFlowService> _localizer;
     private readonly ILogger<DeviceFlowService> _logger;
@@ -33,7 +34,8 @@ public partial class DeviceFlowService : IDeviceFlowService
         IStringLocalizer<DeviceFlowService> localizer,
         ILogger<DeviceFlowService> logger,
         IClaimsEnrichmentService claimsEnricher,
-        ISecurityPolicyService securityPolicyService)
+        ISecurityPolicyService securityPolicyService,
+        IOpenIddictAuthorizationManager authorizationManager)
     {
         _lifecycleEligibility = lifecycleEligibility;
         _scopeManager = scopeManager;
@@ -43,6 +45,7 @@ public partial class DeviceFlowService : IDeviceFlowService
         _logger = logger;
         _claimsEnricher = claimsEnricher;
         _securityPolicyService = securityPolicyService;
+        _authorizationManager = authorizationManager;
     }
 
     public async Task<DeviceVerificationViewModel> PrepareVerificationViewModelAsync(AuthenticateResult authenticateResult)
@@ -61,9 +64,11 @@ public partial class DeviceFlowService : IDeviceFlowService
             }
 
             // Render a form asking the user to confirm the authorization demand.
-            vm.ApplicationName = await _applicationManager.GetDisplayNameAsync(application);
+            vm.ApplicationName = await _applicationManager.GetDisplayNameAsync(application)
+                ?? authenticateResult.Principal.GetClaim(Claims.ClientId);
             vm.Scope = string.Join(" ", authenticateResult.Principal.GetScopes());
             vm.UserCode = authenticateResult.Properties?.GetTokenValue(OpenIddictServerAspNetCoreConstants.Tokens.UserCode);
+            vm.IsResolved = !string.IsNullOrWhiteSpace(vm.UserCode);
             return vm;
         }
 
@@ -80,7 +85,7 @@ public partial class DeviceFlowService : IDeviceFlowService
         return vm;
     }
 
-    public async Task<IActionResult> ProcessVerificationAsync(ClaimsPrincipal userPrincipal, AuthenticateResult authenticateResult, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> ProcessVerificationAsync(ClaimsPrincipal userPrincipal, AuthenticateResult authenticateResult, CancellationToken cancellationToken = default, bool consentGranted = false)
     {
         var user = await _userManager.GetUserAsync(userPrincipal);
         if (user == null)
@@ -110,6 +115,34 @@ public partial class DeviceFlowService : IDeviceFlowService
                         [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Multi-factor authentication is required for this device authorization."
                     }));
             }
+            var scopes = authenticateResult.Principal.GetScopes();
+            var consentType = await _applicationManager.GetConsentTypeAsync(client, cancellationToken)
+                ?? ConsentTypes.Explicit;
+            string? authorizationId = null;
+            if (consentType == ConsentTypes.External)
+            {
+                var applicationId = await _applicationManager.GetIdAsync(client, cancellationToken);
+                if (!string.IsNullOrEmpty(applicationId))
+                {
+                    await foreach (var authorization in _authorizationManager.FindAsync(
+                        subject: user.Id.ToString(), client: applicationId, status: Statuses.Valid,
+                        type: AuthorizationTypes.Permanent, scopes: scopes, cancellationToken: cancellationToken))
+                    {
+                        var approvedScopes = await _authorizationManager.GetScopesAsync(authorization, cancellationToken);
+                        if (scopes.All(scope => approvedScopes.Contains(scope, StringComparer.Ordinal)))
+                        {
+                            authorizationId = await _authorizationManager.GetIdAsync(authorization, cancellationToken);
+                            if (!string.IsNullOrEmpty(authorizationId)) break;
+                        }
+                    }
+                }
+                if (string.IsNullOrEmpty(authorizationId)) return ConsentDenied();
+            }
+            else if (consentType != ConsentTypes.Implicit &&
+                (consentType is not (ConsentTypes.Explicit or ConsentTypes.Systematic) || !consentGranted))
+            {
+                return ConsentDenied();
+            }
             var identity = new ClaimsIdentity(
                 authenticationType: TokenValidationParameters.DefaultAuthenticationType,
                 nameType: Claims.Name,
@@ -123,11 +156,11 @@ public partial class DeviceFlowService : IDeviceFlowService
                 .Select(c => c.Value).Distinct(StringComparer.Ordinal).ToImmutableArray());
             
             // Enrich with scope-mapped claims and permissions using shared service
-            var scopes = authenticateResult.Principal.GetScopes();
             await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes);
             await _claimsEnricher.AddPermissionClaimsAsync(identity, user, authenticateResult.Principal.GetClaim(Claims.ClientId));
 
             identity.SetScopes(scopes);
+            if (authorizationId != null) identity.SetAuthorizationId(authorizationId);
             identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
             Web.IdP.Helpers.UserTokenClaimScopes.Apply(identity);
             identity.SetDestinations(GetDestinations);
@@ -157,6 +190,14 @@ public partial class DeviceFlowService : IDeviceFlowService
             ErrorDescription = _localizer["InvalidUserCode"]
         });
     }
+
+    private static ForbidResult ConsentDenied() => new(
+        OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+        new AuthenticationProperties(new Dictionary<string, string?>
+        {
+            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.AccessDenied,
+            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Consent is required for this device authorization."
+        }));
 
     private static IEnumerable<string> GetDestinations(Claim claim)
     {
