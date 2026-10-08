@@ -64,13 +64,17 @@ grant and client permission checks still apply.
 
 ## Impersonation audit attribution
 
+External-login removal is denied before any account mutation when the current
+principal carries an impersonator marker or Actor. Ordinary self-service removal
+retains its lifecycle checks, cookie refresh and audit behavior.
+
 Impersonation retains the `Users.Impersonate` permission check, administrator
 target denial and current account eligibility checks. Successful transitions
 persist `ImpersonationStarted` and `ImpersonationStopped` through the existing
 audit service before replacing the application cookie. Their `UserId` is the
 original actor. Audit persistence failure prevents cookie replacement.
 
-Already-audited operations, including direct session refresh/revocation records,
+Direct authentication and session refresh/revocation records
 retain their existing `UserId` and detail fields. During impersonation, `Details`
 also contains `impersonation.actorUserId` and `impersonation.subjectUserId`,
 resolved from the authenticated application identity and its preserved Actor or
@@ -79,6 +83,39 @@ usernames, email addresses or tokens. Existing name/email masking still applies.
 Text details are retained under `details` when this JSON attribution is added.
 Ordinary and system records keep their existing representation. Audit listing
 and export retain these details, including after cookie restoration.
+
+Administrative user, client, role and scope mutation records separate the
+performer from the affected resource. `UserId` identifies the validated local
+actor (the original actor during impersonation); `Details.actor` records its
+type and stable ID, and `Details.target` records the resource type and ID.
+Administrative M2M records have a null `UserId` and a typed client actor bound
+to the validated client subject and immutable application ID. Background
+operations record a system actor. The existing masked change description is
+retained in `Details.message`. Allowed/required client scope replacements and
+setting and security-policy updates also create durable records; setting and credential values
+are omitted. Existing historical records are not rewritten.
+
+## Local Password Age and History
+
+Successful self-service local password changes commit the password hash, bounded
+prior-hash history and actual `LastPasswordChangeDate` together. A failed metadata
+write or audit operation rolls back the change. History count N retains the
+existing validation meaning: compare the current password plus N-1 earlier
+passwords. Minimum-age rules, expired/forced-change exceptions and failed-current-
+password lockout accounting remain enforced by the existing server policy.
+
+Local self-registration records the initial password date only after successful
+initial password validation and account creation. Person, user and initial date
+commit atomically before sign-in; a positive minimum age does not reject first
+creation. Existing accounts receive no invented historical dates or bulk backfill.
+
+When local password expiration is enabled, an account with an unknown password
+date must change its password after its next successful local-password proof.
+Interactive login routes to the existing required-change flow; the password
+grant is denied until the change is completed. Disabling expiration removes this
+unknown-date requirement, while explicit forced-change requirements still apply.
+External, passkey and directory authentication do not acquire a local password-age
+requirement; directory password policy remains directory-owned.
 
 ## Supported Multi-Factor Authentication (MFA)
 
@@ -96,6 +133,13 @@ We support three primary MFA methods to ensure account security:
 - **Generation and storage**: Codes use a cryptographically secure random-number generator and are stored only as password hashes.
 - **Verification budget**: Each pending code permits at most five verification attempts. The fifth failed attempt invalidates that code; sending a replacement code starts a new budget.
 - **Features**: Background queue processing (non-blocking), send rate-limiting, and a 10-minute expiry.
+
+Generic user updates reject an enrolled Email MFA account's email-address or
+confirmation-state change before writing any user or Person changes. Successful
+generic updates commit their related writes together. JIT and Stage 1 binding
+refresh preserve that enrolled ApplicationUser factor destination and confirmation
+state while continuing ordinary identity metadata and Person contact updates.
+Factor changes continue through the existing authorized security workflows.
 
 ### 3. Passkey (WebAuthn)
 
@@ -119,7 +163,52 @@ including during enrollment grace. The existing per-client MFA, one-time
 approval intent, current lifecycle/migration and scope checks still apply;
 redemption failures use the normal machine-readable OAuth `invalid_grant` JSON.
 
+Authorization-code redemption also checks the current global mandatory MFA
+policy and the client's MFA requirement. A password-only code issued before
+activation cannot redeem afterward, even during enrollment grace. Password
+grants cannot perform a passkey assertion: an active passkey enrollment does
+not satisfy mandatory MFA, so enrolled accounts must use an interactive flow.
+The existing enrollment grace for accounts without active factors is retained.
+
+### Authentication assurance and cookie rollout
+
+Principal generation does not import browser-session AMR. Pending ceremony
+methods are bound to the verified account ID and current security stamp, expire
+within the existing Identity temporary two-factor cookie's five-minute lifetime,
+and are consumed after successful full sign-in. Missing, malformed, legacy,
+expired or mismatched pending state contributes no inherited methods. A direct
+factor-only reauthentication records the performed factor without inventing a
+password method; recovery codes do not invent OTP proof.
+
+Application cookies carry the internal `idp_assurance_version=1` marker. On the
+first request to the updated application, cookies without exactly that version
+are rejected before security-stamp refresh. Those sessions must authenticate
+again; this includes previously issued cookies whose AMR may be contaminated.
+The rollout boundary is each old cookie's next validation, and completion for a
+session is replacement by a new ceremony or a deliberate no-assurance account
+transition. Deploy this check consistently on all IdP instances sharing cookies.
+Already-issued tokens retain their existing lifetimes; this is not token revocation.
+
+Automatic refresh and external-login removal preserve the validated same-account
+cookie's complete AMR and original `auth_time`; they grant no new ceremony or
+factor-management authority. Only the existing authorized enrollment stamp
+transition carries matching pending methods to the new stamp. Account switching,
+impersonation and impersonation revert create no inherited AMR or `auth_time`:
+being the same Person or a recorded actor is not authentication proof for the new
+subject. Subsequent assurance requirements require a real ceremony.
+
 ### Factor removal and one-time proof consumption
+
+Recovery-code regeneration also requires fresh performed-MFA management proof,
+followed by the existing password or TOTP confirmation. Email enrollment through
+either API requires the same enrollment authority. Initial enrollment stores the
+current security stamp in both its server session and temporary cookie; every
+pending two-factor sign-in rejects missing or retired stamps. Only authorized
+TOTP seed creation can carry that exact stamp transition into enrollment proof.
+Resetting or retiring TOTP removes custom and Identity recovery codes. Password
+confirmations share the configured account lockout budget and login rate limit.
+Atomic email-code attempt writes advance the Identity concurrency stamp and
+reload the tracked user so later Identity writes cannot restore an old budget.
 
 TOTP, email MFA and passkey removal require a completed MFA reauthentication
 within five minutes, bound to the same account and its current security stamp.
@@ -506,6 +595,43 @@ for association. Cookie refresh, unrelated login and factor-management
 reauthentication do not complete an abandoned intent. Completion rechecks current
 eligibility, collision and provider limits. An authorized initial TOTP seed
 creation carries only its own security-stamp change through the same intent.
+Automatic email matching selects an account; association still requires an
+existing local factor ceremony, or explicit successful password confirmation.
+New-factor enrollment may finish a pending association only after that password
+confirmation, never on the strength of the candidate provider or an old cookie.
+
+Authenticated profile linking additionally requires a new five-minute operation
+bound to the current subject, security stamp and selected provider. Only a
+successful existing password, enabled TOTP/email factor, recovery code or
+user-verified existing passkey ceremony grants it. Old cookie AMR, provider AMR,
+cookie refresh and factor enrollment do not grant it. The provider callback must
+carry the same nonce; completion consumes the operation. Passwordless accounts
+may use an existing factor or passkey. An external-only account without an
+established local factor cannot use its existing SSO cookie to add a login.
+Ordinary sign-in through an existing provider-key association is unchanged.
+Passkey enrollment also requires performed reauthentication before creation.
+Generic cookie refresh cannot mint an enrollment proof. Assertion `id` and
+`rawId` must decode to the same credential at the shared verification boundary;
+operation proofs use that credential's canonical ID.
+
+Administrative TOTP/email MFA reset requires `users.reset_mfa`, an interactive
+operator cookie, a fresh existing-MFA ceremony bound to the target account, and
+a nonempty reason of at most 500 characters. M2M and impersonated operators are
+denied. Protected-role targets require the operator's full active IdP Admin role
+and current Admin membership. Reset rotates the security stamp, revokes
+UserSessions and stored OpenIddict authorizations/tokens, and records actor,
+target and reason. Passkeys remain registered. Cookie stamp checks use their
+configured validation interval (one minute by default); offline validation of
+issued JWTs remains subject to the client's token validation and lifetime.
+
+Role-detail members require `users.read` for account metadata in every
+detail/create/update response. Otherwise members contain only `id` and
+`displayName`; an email-shaped username is not a display-name fallback.
+
+The metrics HTTP client does not follow redirects. Configured internal HTTP
+endpoints remain supported. Outside Development/Test, explicit signing and
+encryption PFX files are required at startup. Operator-managed self-signed PFX
+files remain supported; missing files never select development credentials.
 
 MFA Setup normalizes its return destination on the server before rendering it
 or handling skip. All enrollment methods use that local destination, including

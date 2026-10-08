@@ -20,6 +20,12 @@ namespace Core.Application
         Task LogEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Records the validated administrative actor separately from the affected resource.
+        /// Details must not contain credential or setting values.
+        /// </summary>
+        Task LogAdministrativeEventAsync(string eventType, string targetType, string targetId, string? details, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Logs an impersonation transition using the impersonated cookie principal,
         /// retaining its original actor and effective subject before cookie replacement.
         /// </summary>

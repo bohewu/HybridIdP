@@ -310,106 +310,150 @@ public class UserManagementService : IUserManagementService
             return (false, new[] { "User not found" });
         }
 
+        // Profile editing is not authority to replace an enrolled authentication factor.
+        if (user.EmailMfaEnabled &&
+            (!string.Equals(user.Email, updateDto.Email, StringComparison.Ordinal) ||
+             user.EmailConfirmed != updateDto.EmailConfirmed))
+        {
+            return (false, new[] { "EmailMfaAddressChangeRequiresRemoval" });
+        }
+
         if (updateRoles && !await PrivilegedRoleAssignmentPolicy.CanReceiveAsync(user,
                 updateDto.Roles.Except(await _userManager.GetRolesAsync(user), StringComparer.OrdinalIgnoreCase),
                 _roleProtection, _context, cancellationToken))
             return (false, new[] { PrivilegedRoleAssignmentPolicy.TargetMfaError });
 
-        var isActiveChanged = user.IsActive != updateDto.IsActive;
-
-        // Phase 10.4: Update Person first (if exists), then ApplicationUser
-        if (user.Person != null)
+        var dbContext = _context as DbContext;
+        await using var transaction = dbContext?.Database.IsRelational() == true
+            ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        var committed = false;
+        try
         {
-            user.Person.FirstName = updateDto.FirstName;
-            user.Person.LastName = updateDto.LastName;
-            user.Person.MiddleName = updateDto.MiddleName;
-            user.Person.Nickname = updateDto.Nickname;
-            user.Person.Department = updateDto.Department;
-            user.Person.JobTitle = updateDto.JobTitle;
-            user.Person.ProfileUrl = updateDto.ProfileUrl;
-            user.Person.PictureUrl = updateDto.PictureUrl;
-            user.Person.Website = updateDto.Website;
-            user.Person.Address = updateDto.Address;
-            user.Person.Birthdate = updateDto.Birthdate;
-            user.Person.Gender = updateDto.Gender;
-            user.Person.TimeZone = updateDto.TimeZone;
-            user.Person.Locale = updateDto.Locale;
-            user.Person.EmployeeId = updateDto.EmployeeId;
-            user.Person.ModifiedBy = modifiedBy;
-            user.Person.ModifiedAt = DateTime.UtcNow;
+            var isActiveChanged = user.IsActive != updateDto.IsActive;
 
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-
-        // Update ApplicationUser properties (keep for backward compatibility)
-        user.Email = updateDto.Email;
-        if (updateDto.UserName != null)
-        {
-            user.UserName = updateDto.UserName;
-        }
-        user.FirstName = updateDto.FirstName;
-        user.LastName = updateDto.LastName;
-        user.MiddleName = updateDto.MiddleName;
-        user.Nickname = updateDto.Nickname;
-        user.PhoneNumber = updateDto.PhoneNumber;
-        user.Department = updateDto.Department;
-        user.JobTitle = updateDto.JobTitle;
-        user.ProfileUrl = updateDto.ProfileUrl;
-        user.PictureUrl = updateDto.PictureUrl;
-        user.Website = updateDto.Website;
-        user.Address = updateDto.Address;
-        user.Birthdate = updateDto.Birthdate;
-        user.Gender = updateDto.Gender;
-        user.TimeZone = updateDto.TimeZone;
-        user.Locale = updateDto.Locale;
-        user.EmployeeId = updateDto.EmployeeId;
-        user.IsActive = updateDto.IsActive;
-        user.EmailConfirmed = updateDto.EmailConfirmed;
-        user.PhoneNumberConfirmed = updateDto.PhoneNumberConfirmed;
-        user.ModifiedBy = modifiedBy;
-        user.ModifiedAt = DateTime.UtcNow;
-        user.UpdatedAt = DateTime.UtcNow;
-
-        // Keep the lifecycle change and its cookie invalidation in the same
-        // UserManager persistence operation.
-        if (isActiveChanged)
-        {
-            user.SecurityStamp = Guid.NewGuid().ToString();
-        }
-
-        var result = await _userManager.UpdateAsync(user);
-
-        if (!result.Succeeded)
-        {
-            return (false, result.Errors.Select(e => e.Description));
-        }
-
-        if (updateRoles)
-        {
-            var currentRoles = await _userManager.GetRolesAsync(user);
-            var rolesToRemove = currentRoles.Except(updateDto.Roles).ToList();
-            var rolesToAdd = updateDto.Roles.Except(currentRoles).ToList();
-
-            if (rolesToRemove.Count > 0)
+            // Phase 10.4: Update Person first (if exists), then ApplicationUser
+            if (user.Person != null)
             {
-                var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
-                if (!removeResult.Succeeded)
+                user.Person.FirstName = updateDto.FirstName;
+                user.Person.LastName = updateDto.LastName;
+                user.Person.MiddleName = updateDto.MiddleName;
+                user.Person.Nickname = updateDto.Nickname;
+                user.Person.Department = updateDto.Department;
+                user.Person.JobTitle = updateDto.JobTitle;
+                user.Person.ProfileUrl = updateDto.ProfileUrl;
+                user.Person.PictureUrl = updateDto.PictureUrl;
+                user.Person.Website = updateDto.Website;
+                user.Person.Address = updateDto.Address;
+                user.Person.Birthdate = updateDto.Birthdate;
+                user.Person.Gender = updateDto.Gender;
+                user.Person.TimeZone = updateDto.TimeZone;
+                user.Person.Locale = updateDto.Locale;
+                user.Person.EmployeeId = updateDto.EmployeeId;
+                user.Person.ModifiedBy = modifiedBy;
+                user.Person.ModifiedAt = DateTime.UtcNow;
+
+                // Identity persists the tracked Person and user together below.
+            }
+
+            // Update ApplicationUser properties (keep for backward compatibility)
+            if (!string.Equals(user.Email, updateDto.Email, StringComparison.Ordinal))
+            {
+                // A pending enrollment code proves ownership of the previous address only.
+                user.EmailMfaCode = null;
+                user.EmailMfaCodeExpiry = null;
+                user.EmailMfaVerificationAttempts = 0;
+            }
+            user.Email = updateDto.Email;
+            if (updateDto.UserName != null)
+            {
+                user.UserName = updateDto.UserName;
+            }
+            user.FirstName = updateDto.FirstName;
+            user.LastName = updateDto.LastName;
+            user.MiddleName = updateDto.MiddleName;
+            user.Nickname = updateDto.Nickname;
+            user.PhoneNumber = updateDto.PhoneNumber;
+            user.Department = updateDto.Department;
+            user.JobTitle = updateDto.JobTitle;
+            user.ProfileUrl = updateDto.ProfileUrl;
+            user.PictureUrl = updateDto.PictureUrl;
+            user.Website = updateDto.Website;
+            user.Address = updateDto.Address;
+            user.Birthdate = updateDto.Birthdate;
+            user.Gender = updateDto.Gender;
+            user.TimeZone = updateDto.TimeZone;
+            user.Locale = updateDto.Locale;
+            user.EmployeeId = updateDto.EmployeeId;
+            user.IsActive = updateDto.IsActive;
+            user.EmailConfirmed = updateDto.EmailConfirmed;
+            user.PhoneNumberConfirmed = updateDto.PhoneNumberConfirmed;
+            user.ModifiedBy = modifiedBy;
+            user.ModifiedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            // Keep the lifecycle change and its cookie invalidation in the same
+            // UserManager persistence operation.
+            if (isActiveChanged)
+            {
+                user.SecurityStamp = Guid.NewGuid().ToString();
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                return (false, result.Errors.Select(e => e.Description));
+            }
+
+            if (updateRoles)
+            {
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                var rolesToRemove = currentRoles.Except(updateDto.Roles).ToList();
+                var rolesToAdd = updateDto.Roles.Except(currentRoles).ToList();
+
+                if (rolesToRemove.Count > 0)
                 {
-                    return (false, removeResult.Errors.Select(e => e.Description));
+                    var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+                    if (!removeResult.Succeeded)
+                    {
+                        return (false, removeResult.Errors.Select(e => e.Description));
+                    }
+                }
+
+                if (rolesToAdd.Count > 0)
+                {
+                    var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+                    if (!addResult.Succeeded)
+                    {
+                        return (false, addResult.Errors.Select(e => e.Description));
+                    }
                 }
             }
 
-            if (rolesToAdd.Count > 0)
+            if (transaction != null)
             {
-                var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
-                if (!addResult.Succeeded)
+                await transaction.CommitAsync(cancellationToken);
+            }
+            committed = true;
+        }
+        finally
+        {
+            if (!committed)
+            {
+                // A later save in this request must not flush an unsuccessful update.
+                if (user.Person != null) _context.Detach(user.Person);
+                _context.Detach(user);
+                if (dbContext != null)
                 {
-                    return (false, addResult.Errors.Select(e => e.Description));
+                    foreach (var role in dbContext.ChangeTracker.Entries<IdentityUserRole<Guid>>()
+                                 .Where(entry => entry.Entity.UserId == user.Id).ToArray())
+                        role.State = EntityState.Detached;
                 }
             }
         }
 
-        // Publish domain event
+        // Publish domain event only after persistence succeeds.
         var changes = $"Updated user details and roles";
         await _eventPublisher.PublishAsync(new UserUpdatedEvent(user.Id.ToString(), user.UserName!, changes));
 

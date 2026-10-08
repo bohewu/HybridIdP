@@ -164,6 +164,7 @@ public class DeviceFlowSystemTests : IAsyncLifetime
                 GetRequestVerificationToken(verificationHtml),
                 fields.Single(pair => pair.Key == "__RequestVerificationToken").Value);
             fields.Add(new KeyValuePair<string, string>("user_code", userCode!));
+            fields.Add(new KeyValuePair<string, string>("submit", "accept"));
             return fields;
         }
 
@@ -224,6 +225,7 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         var validFields = ExtractHiddenInputs(
             await unknownIntentResponse.Content.ReadAsStringAsync());
         validFields.Add(new KeyValuePair<string, string>("user_code", userCode!));
+        validFields.Add(new KeyValuePair<string, string>("submit", "accept"));
         using var validResponse = await recoveryBrowser.PostAsync(
             "/connect/verify",
             new FormUrlEncodedContent(validFields));
@@ -365,6 +367,7 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         var content = await response.Content.ReadAsStringAsync();
         var formFields = ExtractHiddenInputs(content);
         formFields.Add(new KeyValuePair<string, string>("user_code", userCode));
+        formFields.Add(new KeyValuePair<string, string>("submit", "continue"));
 
         var submitResponse = await client.PostAsync(
             "/connect/verify",
@@ -376,7 +379,8 @@ public class DeviceFlowSystemTests : IAsyncLifetime
 
     private static async Task ConfirmConsentAsync(HttpClient client, string html)
     {
-        if (!html.Contains("Authorize Application"))
+        var deviceConsent = html.Contains("device-consent-scopes", StringComparison.Ordinal);
+        if (!deviceConsent && !html.Contains("Authorize Application"))
         {
             // Not on consent page, maybe explicit consent is disabled or already granted?
             return;
@@ -443,10 +447,10 @@ public class DeviceFlowSystemTests : IAsyncLifetime
         }
         
         // Add submit button
-        formData.Add(new KeyValuePair<string, string>("submit", "allow"));
+        formData.Add(new KeyValuePair<string, string>("submit", deviceConsent ? "accept" : "allow"));
 
         var response = await client.PostAsync(
-            "/connect/authorize",
+            deviceConsent ? "/connect/verify" : "/connect/authorize",
             new FormUrlEncodedContent(formData));
         response.EnsureSuccessStatusCode();
         

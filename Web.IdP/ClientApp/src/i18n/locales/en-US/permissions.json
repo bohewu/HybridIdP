@@ -36,7 +36,8 @@
       "create": "Create Users",
       "update": "Update Users",
       "delete": "Delete Users",
-      "impersonate": "Impersonate Users"
+      "impersonate": "Impersonate Users",
+      "reset_mfa": "Reset User MFA"
     },
     "roles": {
       "read": "Read Roles",

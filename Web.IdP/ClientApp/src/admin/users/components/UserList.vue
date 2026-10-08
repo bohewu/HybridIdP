@@ -17,6 +17,7 @@ const props = defineProps({
   totalCount: { type: Number, required: true },
   sort: { type: String, default: '' },
   canUpdate: { type: Boolean, default: false },
+  canResetMfa: { type: Boolean, default: false },
   canManageRoles: { type: Boolean, default: false },
   canDelete: { type: Boolean, default: false },
   canRead: { type: Boolean, default: false },
@@ -303,7 +304,8 @@ const getSortIcon = (field) => {
                       {{ t('users.actions.viewLoginHistory') }}
                     </button>
                     <button
-                      v-if="canUpdate && (user.twoFactorEnabled || user.emailMfaEnabled)"
+                      v-if="canResetMfa && (user.twoFactorEnabled || user.emailMfaEnabled)"
+                      data-testid="reset-mfa-action"
                       @click="emit('reset-mfa', user); close()"
                       class="text-left w-full block px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
                     >

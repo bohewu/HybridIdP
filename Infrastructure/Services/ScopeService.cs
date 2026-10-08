@@ -71,7 +71,9 @@ public class ScopeService : IScopeService
                 .ToHashSet();
         }
 
-        await foreach (var scope in _scopeManager.ListAsync().WithCancellation(cancellationToken))
+        // Finish the scope reader before policy evaluation queries the same DbContext.
+        var listedScopes = await _scopeManager.ListAsync().ToListAsync(cancellationToken);
+        foreach (var scope in listedScopes)
         {
             var id = await _scopeManager.GetIdAsync(scope);
             if (id == null || !await _scopeUsage.CanViewScopeAsync(id, cancellationToken)) continue;
@@ -412,6 +414,10 @@ public class ScopeService : IScopeService
 
     public async Task<(string scopeId, string scopeName, IEnumerable<ScopeClaimDto> claims)> GetScopeClaimsAsync(string scopeId, CancellationToken cancellationToken = default)
     {
+        if (!await _scopeUsage.CanViewScopeAsync(scopeId, cancellationToken))
+        {
+            throw new KeyNotFoundException($"Scope with ID '{scopeId}' not found.");
+        }
         // Verify scope exists
         var scope = await _scopeManager.FindByIdAsync(scopeId, cancellationToken);
         if (scope == null)

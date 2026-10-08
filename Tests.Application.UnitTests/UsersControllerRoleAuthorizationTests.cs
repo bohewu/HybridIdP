@@ -23,6 +23,32 @@ namespace Tests.Application.UnitTests;
 public class UsersControllerRoleAuthorizationTests
 {
     [Fact]
+    public async Task UpdateUser_ShouldLocalizeEnrolledEmailError_WithoutChangingOtherErrors()
+    {
+        const string key = "EmailMfaAddressChangeRequiresRemoval";
+        var service = new Mock<IUserManagementService>();
+        var userId = Guid.NewGuid();
+        service.Setup(value => value.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserDetailDto { Id = userId, Roles = [] });
+        service.Setup(value => value.UpdateUserWithoutRolesAsync(userId, It.IsAny<UpdateUserDto>(),
+                It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((false, (IEnumerable<string>)new[] { key, "Existing error" }));
+        var localizer = new Mock<IStringLocalizer<SharedResource>>();
+        localizer.Setup(value => value[key]).Returns(new LocalizedString(key, "Localized factor protection"));
+        var controller = CreateController(service, new Mock<AspNetCoreAuthorizationService>(), localizer: localizer.Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = CreatePrincipal(Permissions.Users.Update) }
+        };
+
+        var result = Assert.IsType<BadRequestObjectResult>(await controller.UpdateUser(userId, new UpdateUserDto()));
+
+        var payload = System.Text.Json.JsonSerializer.SerializeToElement(result.Value);
+        Assert.Equal(new[] { "Localized factor protection", "Existing error" },
+            payload.GetProperty("errors").EnumerateArray().Select(value => value.GetString()));
+    }
+
+    [Fact]
     public async Task UpdateUser_ShouldForbidRoleChange_WhenCallerLacksRolesUpdate()
     {
         var userManagementService = new Mock<IUserManagementService>();
@@ -426,7 +452,8 @@ public class UsersControllerRoleAuthorizationTests
     private static UsersController CreateController(
         Mock<IUserManagementService> userManagementService,
         Mock<AspNetCoreAuthorizationService> authorizationService,
-        Mock<IRoleStore<ApplicationRole>>? roleStore = null)
+        Mock<IRoleStore<ApplicationRole>>? roleStore = null,
+        IStringLocalizer<SharedResource>? localizer = null)
     {
         var userStore = new Mock<IUserStore<ApplicationUser>>();
         roleStore ??= new Mock<IRoleStore<ApplicationRole>>();
@@ -455,7 +482,7 @@ public class UsersControllerRoleAuthorizationTests
             new Mock<ISessionService>().Object,
             new Mock<ILoginHistoryService>().Object,
             new Mock<IApplicationDbContext>().Object,
-            new Mock<IStringLocalizer<SharedResource>>().Object,
+            localizer ?? new Mock<IStringLocalizer<SharedResource>>().Object,
             new Mock<IImpersonationService>().Object,
             authorizationService.Object,
             Options.Create(new PrivilegedRoleProtectionOptions()),

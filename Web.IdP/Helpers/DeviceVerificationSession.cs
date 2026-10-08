@@ -62,7 +62,8 @@ public static class DeviceVerificationSession
         ClaimsPrincipal principal,
         AuthenticateResult authenticateResult,
         string? token,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        bool requireResolvedInteraction = false)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(principal);
@@ -95,7 +96,7 @@ public static class DeviceVerificationSession
         // device interaction the user subsequently types into that page.
         if (intent.InteractionFingerprint == null)
         {
-            return true;
+            return !requireResolvedInteraction;
         }
 
         var actualFingerprint = ComputeInteractionFingerprint(authenticateResult);

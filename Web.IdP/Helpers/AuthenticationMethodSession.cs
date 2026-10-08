@@ -1,82 +1,105 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Core.Domain;
 using Core.Domain.Constants;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Identity;
 
 namespace Web.IdP.Helpers;
 
+// Pending ceremony evidence only. This is never factor-management authority.
 public static class AuthenticationMethodSession
 {
     public const string SessionKey = "AuthenticationMethods";
+    // Matches the five-minute Identity temporary two-factor cookie used by AddIdentity.
+    private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
 
-    public static void Replace(ISession session, params string[] methods)
+    public static void Replace(ISession session, ApplicationUser user, params string[] methods)
     {
-        ArgumentNullException.ThrowIfNull(session);
-
-        var normalized = methods
-            .Where(method => !string.IsNullOrWhiteSpace(method))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        session.SetString(SessionKey, JsonSerializer.Serialize(normalized));
-    }
-
-    public static void Add(ISession session, params string[] methods)
-    {
-        ArgumentNullException.ThrowIfNull(session);
-
-        var current = Get(session).ToList();
-        foreach (var method in methods.Where(method => !string.IsNullOrWhiteSpace(method)))
+        if (string.IsNullOrEmpty(user.SecurityStamp))
         {
-            if (!current.Contains(method, StringComparer.Ordinal))
-            {
-                current.Add(method);
-            }
+            Consume(session);
+            return;
         }
-
-        session.SetString(SessionKey, JsonSerializer.Serialize(current));
+        var now = DateTimeOffset.UtcNow;
+        Write(session, new PendingMethods(user.Id, user.SecurityStamp, Normalize(methods), now, now.Add(Lifetime)));
     }
 
-    public static IReadOnlyList<string> Get(ISession session)
+    public static void Add(ISession session, ApplicationUser user, params string[] methods)
     {
-        ArgumentNullException.ThrowIfNull(session);
+        var pending = Read(session, user);
+        if (pending == null)
+        {
+            Replace(session, user, methods);
+            return;
+        }
+        Write(session, pending with { Methods = Normalize(pending.Methods.Concat(methods)) });
+    }
 
+    // Existing enrollment authorization must succeed before calling this. A current
+    // same-subject cookie may retain its methods while a newly verified factor is added.
+    public static async Task AddForEnrollmentAsync(HttpContext context, ApplicationUser user, params string[] methods)
+    {
+        var authentication = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        var principal = authentication.Principal;
+        if (authentication.Succeeded && AuthorizationAuthenticationSession.HasCurrentAssuranceVersion(principal) &&
+            principal!.FindFirstValue(ClaimTypes.NameIdentifier) == user.Id.ToString() &&
+            !string.IsNullOrEmpty(user.SecurityStamp))
+        {
+            var stampType = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>()
+                .Options.ClaimsIdentity.SecurityStampClaimType;
+            if (principal!.FindFirstValue(stampType) == user.SecurityStamp)
+                Add(context.Session, user, principal.Claims.Where(claim =>
+                        claim.Type is AuthConstants.ClaimTypes.Amr or ClaimTypes.AuthenticationMethod)
+                    .Select(claim => claim.Value).ToArray());
+        }
+        Add(context.Session, user, methods);
+    }
+
+    public static IReadOnlyList<string> Get(ISession session, ApplicationUser user) =>
+        Read(session, user)?.Methods ?? [];
+
+    public static IReadOnlyList<Claim> CreateClaims(ISession session, ApplicationUser user) =>
+        Get(session, user).Select(method => new Claim(AuthConstants.ClaimTypes.Amr, method)).ToList();
+
+    public static DateTimeOffset? GetAuthenticationTime(ISession session, ApplicationUser user) =>
+        Read(session, user)?.AuthenticatedAt;
+
+    public static void Consume(ISession session) => session.Remove(SessionKey);
+
+    // Only called after MfaEnrollmentSession has authorized this exact transition.
+    internal static void CarryAuthorizedStamp(ISession session, ApplicationUser user, string previousStamp)
+    {
+        var previous = new ApplicationUser { Id = user.Id, SecurityStamp = previousStamp };
+        var pending = Read(session, previous);
+        if (pending != null && !string.IsNullOrEmpty(user.SecurityStamp))
+            Write(session, pending with { SecurityStamp = user.SecurityStamp });
+    }
+
+    private static PendingMethods? Read(ISession session, ApplicationUser user)
+    {
         var value = session.GetString(SessionKey);
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return [];
-        }
-
+        if (value == null) return null;
         try
         {
-            return JsonSerializer.Deserialize<List<string>>(value)?
-                .Where(method => !string.IsNullOrWhiteSpace(method))
-                .Distinct(StringComparer.Ordinal)
-                .ToList() ?? [];
+            var pending = JsonSerializer.Deserialize<PendingMethods>(value);
+            var now = DateTimeOffset.UtcNow;
+            if (pending != null && pending.UserId == user.Id &&
+                !string.IsNullOrEmpty(user.SecurityStamp) && pending.SecurityStamp == user.SecurityStamp &&
+                pending.AuthenticatedAt <= now && pending.ExpiresUtc > now && pending.Methods != null &&
+                pending.Methods.All(method => !string.IsNullOrWhiteSpace(method))) return pending;
         }
-        catch (JsonException)
-        {
-            return [];
-        }
+        catch (JsonException) { }
+        Consume(session);
+        return null;
     }
 
-    public static IReadOnlyList<Claim> CreateClaims(
-        ISession session,
-        string fallbackPrimaryMethod = AuthConstants.Amr.Password)
-    {
-        var methods = Get(session).ToList();
-        if (!methods.Any(IsPrimaryMethod) &&
-            !string.IsNullOrWhiteSpace(fallbackPrimaryMethod))
-        {
-            methods.Insert(0, fallbackPrimaryMethod);
-        }
+    private static string[] Normalize(IEnumerable<string> methods) => methods
+        .Where(method => !string.IsNullOrWhiteSpace(method)).Distinct(StringComparer.Ordinal).ToArray();
 
-        return methods
-            .Select(method => new Claim(AuthConstants.ClaimTypes.Amr, method))
-            .ToList();
-    }
+    private static void Write(ISession session, PendingMethods pending) =>
+        session.SetString(SessionKey, JsonSerializer.Serialize(pending));
 
-    private static bool IsPrimaryMethod(string method) =>
-        method is AuthConstants.Amr.Password
-            or AuthConstants.Amr.External
-            or AuthConstants.Amr.HardwareKey;
+    private sealed record PendingMethods(Guid UserId, string SecurityStamp, string[] Methods,
+        DateTimeOffset AuthenticatedAt, DateTimeOffset ExpiresUtc);
 }

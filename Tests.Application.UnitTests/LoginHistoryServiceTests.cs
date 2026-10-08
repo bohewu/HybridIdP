@@ -104,6 +104,27 @@ public class LoginHistoryServiceTests : IDisposable
 
     #region DetectAbnormalLoginAsync Tests
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task DetectAbnormalLoginAsync_ShouldNotTrustFailedOrUnapprovedRetries(bool successful, bool abnormal)
+    {
+        var userId = Guid.NewGuid();
+        _dbContext.LoginHistories.Add(new LoginHistory { UserId = userId, LoginTime = DateTime.UtcNow.AddDays(-1),
+            IpAddress = "192.0.2.1", IsSuccessful = true });
+        for (var index = 0; index < 15; index++)
+            _dbContext.LoginHistories.Add(new LoginHistory { UserId = userId, LoginTime = DateTime.UtcNow.AddMinutes(-index),
+                IpAddress = "192.0.2.2", IsSuccessful = successful, IsFlaggedAbnormal = abnormal });
+        await _dbContext.SaveChangesAsync();
+        Assert.True(await _loginHistoryService.DetectAbnormalLoginAsync(new LoginHistory { UserId = userId, IpAddress = "192.0.2.2" }));
+        Assert.False(await _loginHistoryService.DetectAbnormalLoginAsync(new LoginHistory { UserId = userId, IpAddress = "192.0.2.1" }));
+        var blocked = await _dbContext.LoginHistories.FirstAsync(login => login.IpAddress == "192.0.2.2");
+        blocked.IsFlaggedAbnormal = true;
+        blocked.IsApprovedByAdmin = true;
+        await _dbContext.SaveChangesAsync();
+        Assert.False(await _loginHistoryService.DetectAbnormalLoginAsync(new LoginHistory { UserId = userId, IpAddress = "192.0.2.2" }));
+    }
+
     [Fact]
     public async Task DetectAbnormalLoginAsync_ShouldReturnFalse_ForNormalLogin()
     {

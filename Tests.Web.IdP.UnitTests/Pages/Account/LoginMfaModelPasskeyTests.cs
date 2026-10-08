@@ -1,4 +1,7 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection;
+using Web.IdP.Helpers;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Interfaces;
@@ -28,7 +31,7 @@ public sealed class LoginMfaModelPasskeyTests
     [InlineData(true, true)]
     public async Task LoginPages_ShouldNotSignIn_WhenProofConsumptionFails(bool nativePage, bool recovery)
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "proof-user", TwoFactorEnabled = true };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "proof-user", SecurityStamp = "current-stamp", TwoFactorEnabled = true };
         var users = CreateUserManager();
         users.Setup(x => x.AccessFailedAsync(user)).ReturnsAsync(IdentityResult.Success);
         var signIn = CreateSignInManager(users.Object);
@@ -41,6 +44,12 @@ public sealed class LoginMfaModelPasskeyTests
         var localizer = new Mock<IStringLocalizer<SharedResource>>();
         localizer.Setup(x => x[It.IsAny<string>()]).Returns((string key) => new LocalizedString(key, key));
         var pageContext = new PageContext(new ActionContext(new DefaultHttpContext(), new RouteData(), new ActionDescriptor()));
+        users.Setup(manager => manager.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
+        var auth = new Mock<IAuthenticationService>();
+        auth.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme))
+            .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(
+                new ClaimsPrincipal(TwoFactorAuthenticationSession.CreateIdentity(user, users.Object)), IdentityConstants.TwoFactorUserIdScheme)));
+        pageContext.HttpContext.RequestServices = new ServiceCollection().AddSingleton(auth.Object).BuildServiceProvider();
         IActionResult result;
         if (nativePage)
         {
@@ -112,6 +121,10 @@ public sealed class LoginMfaModelPasskeyTests
                 new DefaultHttpContext { User = principal },
                 new RouteData(),
                 new ActionDescriptor()));
+        var auth = new Mock<IAuthenticationService>();
+        auth.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthenticateResult.NoResult());
+        model.HttpContext.RequestServices = new ServiceCollection().AddSingleton(auth.Object).BuildServiceProvider();
 
         var returnUrl = "/connect/authorize?client_id=testclient-public";
 

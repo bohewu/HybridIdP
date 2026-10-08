@@ -65,10 +65,13 @@ public static class ServiceCollectionExtensions
                 provider.GetRequiredService<ICurrentUserLifecycleEligibility>(),
                 provider.GetRequiredService<IMigrationIssuanceGuard>()));
         services.AddScoped<ITurnstileService, TurnstileService>();
+        services.AddScoped<AdministrativeMfaResetService>();
         services.AddScoped<IJitProvisioningService, JitProvisioningService>();
         services.AddScoped<ILegacyAuthService, LegacyAuthService>();
         services.AddHttpClient(LegacyAuthService.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(LegacyAuthService.CreatePrimaryHandler);
+        services.AddHttpClient(MonitoringService.HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(MonitoringService.CreatePrimaryHandler);
         services.AddHttpClient<IProofProvider, ProviderProofProvider>()
             .ConfigurePrimaryHttpMessageHandler(ProviderProofProvider.CreatePrimaryHandler);
         services.AddHttpClient<IProviderMetadataRefreshService, ProviderMetadataRefreshService>()
@@ -526,7 +529,8 @@ public static class ServiceCollectionExtensions
         }
 
         // Configure SecurityStampValidatorOptions from configuration (e.g. for testing)
-        services.Configure<SecurityStampValidatorOptions>(options =>
+        services.AddOptions<SecurityStampValidatorOptions>()
+            .Configure<Microsoft.Extensions.Options.IOptions<IdentityOptions>>((options, identityOptions) =>
         {
             // Validate security stamp every 1 minute to ensure role/permission changes take effect quickly
             // but avoiding issues with Impersonation/Simulated Login where strict per-request validation can fail.
@@ -546,8 +550,8 @@ public static class ServiceCollectionExtensions
                 if (context.CurrentPrincipal?.Identity is ClaimsIdentity currentIdentity &&
                     context.NewPrincipal?.Identity is ClaimsIdentity newIdentity)
                 {
-                    foreach (var claim in currentIdentity.FindAll("auth_time"))
-                        newIdentity.AddClaim(claim);
+                    AuthorizationAuthenticationSession.CopyAssurance(context.CurrentPrincipal, context.NewPrincipal,
+                        identityOptions.Value.ClaimsIdentity.SecurityStampClaimType);
                     // 1. Restore Actor Identity
                     if (currentIdentity.Actor != null && newIdentity.Actor == null)
                     {
@@ -601,7 +605,7 @@ public static class ServiceCollectionExtensions
                         throw new InvalidOperationException("External login linking could not be completed.");
                     AuthorizationAuthenticationSession.OnSigningIn(context);
                     MfaEnrollmentSession.CompletePending(
-                        context.HttpContext.Session,
+                        context.HttpContext,
                         context.Principal);
                     await RecoveryReauthenticationSession.CompleteAsync(context.HttpContext, context.Principal);
                 }
@@ -705,10 +709,16 @@ public static class ServiceCollectionExtensions
                     options.AddEncryptionCertificate(X509CertificateLoader.LoadPkcs12FromFile(encryptionCertPath, encryptionCertPassword));
                     options.AddSigningCertificate(X509CertificateLoader.LoadPkcs12FromFile(signingCertPath, signingCertPassword));
                 }
-                else
+                else if (environment.IsDevelopment() || environment.IsEnvironment("Test"))
                 {
                     options.AddDevelopmentEncryptionCertificate()
                            .AddDevelopmentSigningCertificate();
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        "Configured signing and encryption PFX files are required outside Development and Test. " +
+                        "Set Certificates:SigningCertificatePath and Certificates:EncryptionCertificatePath to existing files.");
                 }
 
                 options.UseAspNetCore()
@@ -887,8 +897,42 @@ public static class ServiceCollectionExtensions
             services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                // Native OpenIddict handlers run during authentication, before MVC
+                // endpoint policies can protect these requests.
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                {
+                    var path = httpContext.Request.Path.Value?.TrimEnd('/');
+                    var device = string.Equals(path, "/connect/device", StringComparison.OrdinalIgnoreCase);
+                    var verification = string.Equals(path, "/connect/verify", StringComparison.OrdinalIgnoreCase);
+                    if (!device && !verification) return RateLimitPartition.GetNoLimiter("other");
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: $"{(device ? "device" : "verification")}:ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = device ? rateLimitingOptions.TokenPermitLimit : rateLimitingOptions.AuthorizePermitLimit,
+                            Window = TimeSpan.FromSeconds(device ? rateLimitingOptions.TokenWindowSeconds : rateLimitingOptions.AuthorizeWindowSeconds),
+                            QueueLimit = rateLimitingOptions.QueueLimit,
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                        });
+                });
                 options.OnRejected = async (context, cancellationToken) =>
                 {
+                    if (string.Equals(context.HttpContext.Request.Path.Value?.TrimEnd('/'),
+                        "/connect/device", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.HttpContext.Response.ContentType = "application/json";
+                        context.HttpContext.Response.Headers.CacheControl = "no-store";
+                        context.HttpContext.Response.Headers.Pragma = "no-cache";
+                        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                            context.HttpContext.Response.Headers.RetryAfter = Math.Ceiling(retryAfter.TotalSeconds)
+                                .ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        await context.HttpContext.Response.WriteAsync(JsonSerializer.Serialize(new
+                        {
+                            error = OpenIddictConstants.Errors.TemporarilyUnavailable,
+                            error_description = "Too many device authorization requests. Try again later."
+                        }), cancellationToken);
+                        return;
+                    }
                     if (context.HttpContext.Request.Method == HttpMethods.Post &&
                         context.HttpContext.Request.Path.Equals(
                             "/api/operational-bootstrap/admin"))

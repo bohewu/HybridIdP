@@ -36,7 +36,8 @@
       "create": "建立使用者",
       "update": "更新使用者",
       "delete": "刪除使用者",
-      "impersonate": "模擬使用者"
+      "impersonate": "模擬使用者",
+      "reset_mfa": "重設使用者 MFA"
     },
     "roles": {
       "read": "讀取角色",

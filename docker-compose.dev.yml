@@ -51,7 +51,7 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
     ports:
-      - "1433:1433"
+      - "${DEV_DEPENDENCY_BIND_ADDRESS:-127.0.0.1}:1433:1433"
     volumes:
       - mssql-data:/var/opt/mssql
   
@@ -62,20 +62,20 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "${DEV_DEPENDENCY_BIND_ADDRESS:-127.0.0.1}:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     
   redis-service:
     image: redis:alpine
     ports:
-      - "6379:6379"
+      - "${DEV_DEPENDENCY_BIND_ADDRESS:-127.0.0.1}:6379:6379"
 
   mailpit:
     image: axllent/mailpit
     ports:
-      - "1025:1025" # SMTP
-      - "8025:8025" # UI
+      - "${DEV_DEPENDENCY_BIND_ADDRESS:-127.0.0.1}:1025:1025" # SMTP
+      - "${DEV_DEPENDENCY_BIND_ADDRESS:-127.0.0.1}:8025:8025" # UI
     environment:
       MP_MAX_MESSAGES: 5000
 

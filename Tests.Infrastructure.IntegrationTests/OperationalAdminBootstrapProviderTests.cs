@@ -160,7 +160,7 @@ public sealed class OperationalAdminBootstrapProviderTests(
             settingsService,
             Mock.Of<IEmailService>(),
             new ConfigurationBuilder().Build(),
-            emailOptions.Object)
+            emailOptions.Object, Mock.Of<IAuditService>())
         {
             ControllerContext = new ControllerContext
             {

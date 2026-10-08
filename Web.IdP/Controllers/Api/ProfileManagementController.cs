@@ -1,3 +1,6 @@
+using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -6,11 +9,13 @@ using Microsoft.Extensions.Options; // Added
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Domain;
+using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Infrastructure;
 using Core.Application.Interfaces;
 using Core.Application.Utilities;
 using Core.Application.Options; // Added
+using Web.IdP.Helpers;
 
 namespace Web.IdP.Controllers.Api;
 
@@ -255,6 +260,7 @@ public class ProfileManagementController : ControllerBase
     /// POST api/profile/change-password - Change current user's password
     /// </summary>
     [HttpPost("change-password")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("login")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.GetUserAsync(User);
@@ -281,11 +287,57 @@ public class ProfileManagementController : ControllerBase
             return BadRequest(new { error = "Cannot change password for external login accounts" });
         }
 
-        // Attempt to change password (will use DynamicPasswordValidator)
-        var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (await _userManager.IsLockedOutAsync(user))
+            return StatusCode(429, new { error = "accountLocked" });
+
+        IdentityResult result;
+        await using (var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken))
+        {
+            var previousHash = user.PasswordHash;
+            // Validate against the existing password date and history before changing either.
+            result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+            if (result.Succeeded)
+            {
+                if (policy.PasswordHistoryCount > 0 && !string.IsNullOrWhiteSpace(previousHash))
+                {
+                    List<string> history;
+                    try
+                    {
+                        history = JsonSerializer.Deserialize<List<string>>(user.PasswordHistory) ?? [];
+                    }
+                    catch (JsonException)
+                    {
+                        history = [];
+                    }
+                    history.Insert(0, previousHash);
+                    user.PasswordHistory = JsonSerializer.Serialize(
+                        history.Distinct(StringComparer.Ordinal).Take(policy.PasswordHistoryCount).ToList());
+                }
+                user.LastPasswordChangeDate = DateTime.UtcNow;
+                result = await _userManager.UpdateAsync(user);
+            }
+
+            if (result.Succeeded)
+            {
+                await _auditService.LogEventAsync(
+                    eventType: "Profile.ChangePassword",
+                    userId: user.Id.ToString(),
+                    details: "User successfully changed their password",
+                    ipAddress: null,
+                    userAgent: null,
+                    cancellationToken: cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            else
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
+        }
 
         if (!result.Succeeded)
         {
+            if (result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.PasswordMismatch)))
+                await PasswordConfirmation.RecordFailureAsync(_userManager, user, policy);
             _logger.LogWarning("Password change failed for user {UserId}: {Errors}",
                 user.Id, string.Join(", ", result.Errors.Select(e => e.Description)));
 
@@ -299,16 +351,6 @@ public class ProfileManagementController : ControllerBase
             });
         }
 
-        // Audit log
-        await _auditService.LogEventAsync(
-            eventType: "Profile.ChangePassword",
-            userId: user.Id.ToString(),
-            details: "User successfully changed their password",
-            ipAddress: null,
-            userAgent: null,
-            cancellationToken: cancellationToken
-        );
-
         _logger.LogInformation("User {UserId} ({UserName}) successfully changed their password",
             user.Id, user.UserName);
 
@@ -321,11 +363,25 @@ public class ProfileManagementController : ControllerBase
     [HttpPost("remove-login")]
     public async Task<IActionResult> RemoveLogin([FromBody] RemoveLoginRequest request, CancellationToken cancellationToken = default)
     {
+        if (User.HasClaim(claim => claim.Type == AuthConstants.Claims.ImpersonatorId) ||
+            User.Identities.Any(identity => identity.Actor != null))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "External login removal is unavailable during impersonation." });
+        }
+
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
         {
             return NotFound(new { error = "User not found" });
         }
+
+        var authentication = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (!authentication.Succeeded ||
+            authentication.Principal?.FindFirstValue(ClaimTypes.NameIdentifier) != user.Id.ToString() ||
+            string.IsNullOrEmpty(user.SecurityStamp) ||
+            authentication.Principal.FindFirstValue(_userManager.Options.ClaimsIdentity.SecurityStampClaimType) != user.SecurityStamp ||
+            !Web.IdP.Helpers.AuthorizationAuthenticationSession.HasCurrentAssuranceVersion(authentication.Principal))
+            return Unauthorized();
 
         var result = await _userManager.RemoveLoginAsync(user, request.LoginProvider, request.ProviderKey);
         if (!result.Succeeded)
@@ -340,7 +396,7 @@ public class ProfileManagementController : ControllerBase
         {
             return Unauthorized();
         }
-        Web.IdP.Helpers.AuthorizationAuthenticationSession.PreserveTime(HttpContext, User);
+        Web.IdP.Helpers.AuthorizationAuthenticationSession.PreserveAssurance(HttpContext, authentication.Principal!);
         await _signInManager.RefreshSignInAsync(user);
         
         // Audit log

@@ -35,13 +35,36 @@ public partial class LinkExternalLoginController : Controller
     }
 
     [HttpGet("Challenge")]
-    public IActionResult Challenge(string provider)
+    public async Task<IActionResult> Challenge(string provider, string? operation = null)
     {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null || operation == null ||
+            !await AccountSecurityOperationSession.IsAuthorizedAsync(HttpContext, user,
+                AccountSecurityOperationSession.ExternalLinkPurpose, provider, operation))
+            return Redirect("/Account/Profile?error=FreshAuthenticationRequired");
         PendingExternalLoginLink.Cancel(HttpContext);
         // Request a redirect to the external login provider to link a login for the current user
         var redirectUrl = Url.Action("Callback", "LinkExternalLogin");
         var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl, _userManager.GetUserId(User));
+        properties.Items[AccountSecurityOperationSession.CorrelationProperty] = operation;
         return new ChallengeResult(provider, properties);
+    }
+
+    [HttpPost("Reauthenticate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Reauthenticate(string provider, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized();
+        if (!(await _signInManager.GetExternalAuthenticationSchemesAsync()).Any(scheme => scheme.Name == provider))
+            return BadRequest(new { error = "ExternalLoginFailed" });
+        var nonce = await AccountSecurityOperationSession.BeginAsync(HttpContext, user,
+            AccountSecurityOperationSession.ExternalLinkPurpose, provider, cancellationToken);
+        if (nonce == null) return StatusCode(403, new { error = "freshAuthenticationRequired" });
+        var continuation = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(
+            "/Account/LinkExternalLogin/Challenge", new Dictionary<string, string?>
+            { ["provider"] = provider, ["operation"] = nonce });
+        return Ok(new { loginUrl = await AccountSecurityOperationSession.GetLoginUrlAsync(HttpContext, user, continuation) });
     }
 
     [HttpGet("Callback")]
@@ -61,6 +84,14 @@ public partial class LinkExternalLoginController : Controller
             return Redirect("/Account/Profile?error=ExternalLoginFailed"); // Modified: Error message
         }
 
+        string? operation = null;
+        info.AuthenticationProperties?.Items.TryGetValue(AccountSecurityOperationSession.CorrelationProperty, out operation);
+        if (operation == null || !await AccountSecurityOperationSession.IsAuthorizedAsync(HttpContext, user,
+                AccountSecurityOperationSession.ExternalLinkPurpose, info.LoginProvider, operation))
+        {
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+            return Redirect("/Account/Profile?error=FreshAuthenticationRequired");
+        }
         // Check MaxLoginsPerProvider limit
         var linkCheck = await _loginService.CanLinkExternalLoginAsync(user, info.LoginProvider, cancellationToken);
         if (!linkCheck.Succeeded)

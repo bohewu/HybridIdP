@@ -144,12 +144,26 @@ public class PasskeyService : IPasskeyService
                 DeviceName = deviceName ?? "Unknown Device"
             };
             
-            _dbContext.UserCredentials.Add(credential);
-            await _dbContext.SaveChangesAsync(ct);
-            
-            _logger.LogInformation("Passkey registered successfully for user {UserId}", user.Id);
             var userVerified = AuthenticatorAttestationResponse.Parse(attestationResponse)
                 .AttestationObject.AuthData.UserVerified;
+            _dbContext.UserCredentials.Add(credential);
+            var persisted = false;
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                // Persist the key together with the user version that authorized it.
+                persisted = (await _userManager.UpdateAsync(user)).Succeeded;
+                if (!persisted) return (false, "Registration authorization expired", false);
+            }
+            finally
+            {
+                if (!persisted)
+                {
+                    _dbContext.Entry(credential).State = EntityState.Detached;
+                    await _dbContext.Entry(user).ReloadAsync(CancellationToken.None);
+                }
+            }
+            _logger.LogInformation("Passkey registered successfully for user {UserId}", user.Id);
             return (true, null, userVerified);
         }
         catch (Exception ex)
@@ -198,11 +212,14 @@ public class PasskeyService : IPasskeyService
                 return (false, null, false, "Invalid assertion response");
             }
             
+            var credentialIdBytes = Base64UrlTextEncoder.Decode(assertionResponse.Id);
+            if (assertionResponse.RawId == null || !credentialIdBytes.AsSpan().SequenceEqual(assertionResponse.RawId))
+                return (false, null, false, "Invalid assertion response");
+
             var options = AssertionOptions.FromJson(originalOptionsJson);
             
             // 2. Find the credential by ID
-            // Note: EF Core can't translate SequenceEqual to SQL, so we use RawId bytes directly
-            var credentialIdBytes = Base64UrlTextEncoder.Decode(assertionResponse.Id); // Id is Base64Url string
+            // Both wire representations must identify the same verified credential.
             
             // Use Contains check which SQL Server/PostgreSQL can handle for byte arrays
             var credential = await _dbContext.UserCredentials
@@ -301,6 +318,7 @@ public class PasskeyService : IPasskeyService
             return false;
 
         credential.DisabledAtUtc = DateTime.UtcNow;
+        user.SecurityStamp = Guid.NewGuid().ToString();
         var persisted = false;
         try
         {

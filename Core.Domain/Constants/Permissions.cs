@@ -48,6 +48,7 @@ public static class Permissions
         public const string Update = "users.update";
         public const string Delete = "users.delete";
         public const string Impersonate = "users.impersonate";
+        public const string ResetMfa = "users.reset_mfa";
     }
 
     /// <summary>
@@ -118,7 +119,7 @@ public static class Permissions
             Clients.Read, Clients.Create, Clients.Update, Clients.Delete,
             Scopes.Read, Scopes.Create, Scopes.Update, Scopes.Delete,
             ApiResources.Read, ApiResources.Create, ApiResources.Update, ApiResources.Delete,
-            Users.Read, Users.Create, Users.Update, Users.Delete, Users.Impersonate,
+            Users.Read, Users.Create, Users.Update, Users.Delete, Users.Impersonate, Users.ResetMfa,
             Roles.Read, Roles.Create, Roles.Update, Roles.Delete,
             Claims.Read, Claims.Create, Claims.Update, Claims.Delete,
             Persons.Read, Persons.Create, Persons.Update, Persons.Delete,

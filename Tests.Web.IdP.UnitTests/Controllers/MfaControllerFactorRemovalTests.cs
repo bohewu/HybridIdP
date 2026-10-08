@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
+using Infrastructure;
 using Moq;
 using OpenIddict.Validation.AspNetCore;
 using Tests.Web.IdP.UnitTests.TestSupport;
@@ -36,7 +38,10 @@ public class MfaControllerFactorRemovalTests
             .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(principal, scheme)));
         var users = new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null!, null!, null!, null!, null!, null!, null!, null!);
         users.Setup(x => x.GetUserAsync(It.IsAny<ClaimsPrincipal>())).ReturnsAsync(user);
-        using var services = new ServiceCollection().AddSingleton(auth.Object).BuildServiceProvider();
+        using var database = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        using var services = new ServiceCollection().AddSingleton(auth.Object).AddSingleton(users.Object)
+            .AddSingleton<IApplicationDbContext>(database).BuildServiceProvider();
         var session = new MemorySession();
         var controller = new MfaController(Mock.Of<IMfaService>(), Mock.Of<ISecurityPolicyService>(), users.Object,
             Mock.Of<IAuditService>(), Mock.Of<IPasskeyService>(), Mock.Of<ILogger<MfaController>>())
@@ -50,7 +55,9 @@ public class MfaControllerFactorRemovalTests
         Assert.False(MfaEnrollmentSession.HasFreshProof(session, user.Id));
         ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("amr", "mfa"));
         ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("AspNet.Identity.SecurityStamp", "stamp"));
-        Assert.True(MfaEnrollmentSession.CompletePending(session, principal));
+        Assert.False(MfaEnrollmentSession.CompletePending(controller.HttpContext, principal));
+        AccountSecurityOperationSession.MarkVerified(controller.HttpContext, user, "email");
+        Assert.True(MfaEnrollmentSession.CompletePending(controller.HttpContext, principal));
         Assert.True(MfaEnrollmentSession.HasFreshProof(session, user.Id));
     }
 

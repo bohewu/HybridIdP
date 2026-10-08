@@ -169,6 +169,7 @@ export const Permissions = {
     Read: 'users.read',
     Create: 'users.create',
     Update: 'users.update',
+    ResetMfa: 'users.reset_mfa',
     Delete: 'users.delete'
   },
   Roles: {

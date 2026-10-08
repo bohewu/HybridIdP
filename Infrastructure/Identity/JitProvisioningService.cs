@@ -55,8 +55,14 @@ public class JitProvisioningService : IJitProvisioningService
             }
 
             // Already exists, update ApplicationUser information
-            if (hasVerifiedEmail)
+            if (hasVerifiedEmail && !existingUser.EmailMfaEnabled)
             {
+                if (!string.Equals(existingUser.Email, externalAuth.Email, StringComparison.Ordinal))
+                {
+                    existingUser.EmailMfaCode = null;
+                    existingUser.EmailMfaCodeExpiry = null;
+                    existingUser.EmailMfaVerificationAttempts = 0;
+                }
                 existingUser.Email = externalAuth.Email;
                 existingUser.EmailConfirmed = true;
             }
@@ -69,7 +75,14 @@ public class JitProvisioningService : IJitProvisioningService
             existingUser.EmployeeId = externalAuth.EmployeeId ?? existingUser.EmployeeId;
             existingUser.ModifiedAt = DateTime.UtcNow;
             
-            await _userManager.UpdateAsync(existingUser);
+            var updateResult = await _userManager.UpdateAsync(existingUser);
+            if (!updateResult.Succeeded)
+            {
+                // A stale profile must not be returned as current authentication state,
+                // or flushed by the later Person save after an enrollment conflict.
+                _context.Detach(existingUser);
+                throw new InvalidOperationException("Failed to update external user profile.");
+            }
             
             // Also update linked Person if exists
             if (existingUser.PersonId.HasValue)

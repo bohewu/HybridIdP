@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using OpenIddict.Abstractions;
 
 namespace Web.IdP.Helpers;
@@ -9,6 +10,9 @@ namespace Web.IdP.Helpers;
 public static class AuthorizationAuthenticationSession
 {
     public const string PreserveTimeKey = "Identity:PreserveAuthenticationTime";
+    public const string AssuranceVersionClaim = "idp_assurance_version";
+    public const string AssuranceVersion = "1";
+    private const string PreserveAssuranceKey = "Identity:PreserveAssurance";
     private const string PendingKey = "Authorization:FreshAuthentication";
     private const string CeremonyClaim = "idp_authentication_ceremony";
 
@@ -42,6 +46,31 @@ public static class AuthorizationAuthenticationSession
     public static void PreserveTime(HttpContext context, ClaimsPrincipal principal) =>
         context.Items[PreserveTimeKey] = principal.FindFirst("auth_time")?.Value;
 
+    public static bool HasCurrentAssuranceVersion(ClaimsPrincipal? principal) =>
+        principal?.FindAll(AssuranceVersionClaim).Select(claim => claim.Value).SequenceEqual([AssuranceVersion]) == true;
+
+    public static void PreserveAssurance(HttpContext context, ClaimsPrincipal principal)
+    {
+        context.Items[PreserveAssuranceKey] = principal.Clone();
+    }
+
+    public static void CopyAssurance(ClaimsPrincipal current, ClaimsPrincipal refreshed,
+        string? securityStampClaimType = null, bool authorizedStampChange = false)
+    {
+        if (refreshed.Identity is not ClaimsIdentity identity) return;
+        foreach (var claim in identity.Claims.Where(IsAssuranceClaim).ToArray()) identity.RemoveClaim(claim);
+        var subject = current.FindFirstValue(ClaimTypes.NameIdentifier);
+        var stampType = securityStampClaimType ?? new IdentityOptions().ClaimsIdentity.SecurityStampClaimType;
+        var stamp = current.FindFirstValue(stampType);
+        if (string.IsNullOrEmpty(stamp) ||
+            (!authorizedStampChange && stamp != refreshed.FindFirstValue(stampType)) || subject == null || subject != refreshed.FindFirstValue(ClaimTypes.NameIdentifier) ||
+            !HasCurrentAssuranceVersion(current)) return;
+        foreach (var claim in current.Claims.Where(IsAssuranceClaim)) identity.AddClaim(claim);
+    }
+
+    private static bool IsAssuranceClaim(Claim claim) => claim.Type is
+        "amr" or ClaimTypes.AuthenticationMethod or "auth_time" or AssuranceVersionClaim;
+
     public static bool RequiresChallenge(ISession session, ClaimsPrincipal principal, OpenIddictRequest request,
         bool forceLogin, TimeProvider? clock = null)
     {
@@ -54,6 +83,17 @@ public static class AuthorizationAuthenticationSession
     public static void OnSigningIn(CookieSigningInContext context)
     {
         if (context.Principal?.Identity is not ClaimsIdentity identity) return;
+        if (context.HttpContext.Items.Remove(PreserveAssuranceKey, out var preserved) && preserved is ClaimsPrincipal current)
+        {
+            // The only callers are the authorized enrollment seed and external-login removal transitions.
+            CopyAssurance(current, context.Principal,
+                context.HttpContext.RequestServices.GetService<UserManager<Core.Domain.ApplicationUser>>()?
+                    .Options.ClaimsIdentity.SecurityStampClaimType, authorizedStampChange: true);
+            foreach (var claim in identity.FindAll(CeremonyClaim).ToArray()) identity.RemoveClaim(claim);
+            return;
+        }
+        foreach (var claim in identity.FindAll(AssuranceVersionClaim).ToArray()) identity.RemoveClaim(claim);
+        identity.AddClaim(new Claim(AssuranceVersionClaim, AssuranceVersion));
         foreach (var claim in identity.FindAll("auth_time").Concat(identity.FindAll(CeremonyClaim)).ToArray())
             identity.RemoveClaim(claim);
         if (context.HttpContext.Items.TryGetValue(PreserveTimeKey, out var originalTime))

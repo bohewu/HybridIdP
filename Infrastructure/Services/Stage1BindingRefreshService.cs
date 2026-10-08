@@ -151,7 +151,17 @@ public sealed class Stage1BindingRefreshService : IStage1BindingRefreshService
                 person.LastName = value;
             }
         });
-        Apply(profile.Email, value => user.Email = value, value =>
+        Apply(profile.Email, value =>
+        {
+            // Upstream profile assurance cannot replace an enrolled local factor.
+            if (!user.EmailMfaEnabled && !string.Equals(user.Email, value, StringComparison.Ordinal))
+            {
+                user.EmailMfaCode = null;
+                user.EmailMfaCodeExpiry = null;
+                user.EmailMfaVerificationAttempts = 0;
+                user.Email = value;
+            }
+        }, value =>
         {
             if (person is not null)
             {

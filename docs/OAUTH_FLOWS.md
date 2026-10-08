@@ -48,6 +48,20 @@ Used when the application acts on its own behalf, not a user.
 3. User visits URI on another device (phone/laptop) and enters code.
 4. Device polls `/connect/token` until user approves.
 
+Manual code entry first resolves the application and displays its requested
+scopes; it does not grant access. The user then allows the displayed scope set
+or denies the request. A complete verification URI opens that same review
+directly. Approval and denial require a one-time intent bound to the user,
+client and code. Explicit/systematic clients require an affirmative decision;
+external-consent clients additionally require a valid permanent authorization
+covering the requested scopes. Implicit clients retain their trusted consent
+policy. Denial causes device polling to return OAuth `access_denied` as JSON.
+
+When `RateLimiting:Enabled` is true, native device issuance uses the existing
+token budget and verification uses the existing authorize budget, each keyed
+by trusted source IP in separate partitions before OpenIddict processing.
+Issuance rejection returns HTTP 429 with OAuth `temporarily_unavailable` JSON.
+
 Approval and device-code redemption each evaluate the current global mandatory
 MFA policy as well as the client's `RequireMfa` setting. Either requirement
 needs performed `amr=mfa` evidence; `hwk` alone is insufficient. A password-only
@@ -66,6 +80,18 @@ migration eligibility, scope permissions and API usage approval checks.
 - **Lifetime:** Configurable (default 14 days).
 
 ## Deprecated / Removed Flows
+
+External-consent clients require a valid permanent authorization covering all
+requested scopes after client policy filtering. Both authorize GET and POST
+reuse that approval; interactive consent cannot create an External grant.
+Missing approval returns the OpenIddict `consent_required` protocol error.
+
+Current Explicit and Systematic consent policies require a new approval on each
+authorization request, including after a change from Implicit with an existing
+Permanent grant. Such grants cannot bypass the current policy. A silent
+`prompt=none` request that needs approval returns `consent_required`; it never
+renders an interactive consent page. Implicit grant reuse and prior External
+approval remain available under their respective policies.
 
 ### Implicit Flow
 **Status:** **REMOVED**

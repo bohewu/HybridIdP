@@ -160,14 +160,16 @@ public partial class LoginEmailOtpModel : PageModel
             }
 
             AuthenticationMethodSession.Add(
-                HttpContext.Session,
+                HttpContext.Session, user,
                 AuthConstants.Amr.Mfa,
                 AuthConstants.Amr.Otp);
-            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, user);
 
             RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
-            await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
+            AccountSecurityOperationSession.MarkVerified(HttpContext, user, "email");
+            await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user, "email");
             await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
+            AuthenticationMethodSession.Consume(HttpContext.Session);
             await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
             _logger.LogInformation("User logged in with Email MFA.");
             
@@ -228,23 +230,7 @@ public partial class LoginEmailOtpModel : PageModel
     private async Task<ApplicationUser?> GetTwoFactorUserAsync()
     {
         // Try standard Identity method first
-        var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
-        
-        // Fallback: manually look up user from cookie if Identity method fails (Guid key issue)
-        if (user == null)
-        {
-            var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-            if (twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
-            {
-                var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
-                {
-                    user = await _userManager.FindByIdAsync(userId.ToString());
-                }
-            }
-        }
-        
-        return user;
+        return await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
     }
 
     private async Task<bool> CanIssueFullCookieAsync(

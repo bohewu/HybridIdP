@@ -99,6 +99,7 @@ public class DeviceFlowServiceTests
 
     private readonly Mock<IOpenIddictScopeManager> _mockScopeManager;
     private readonly Mock<IOpenIddictApplicationManager> _mockApplicationManager;
+    private readonly Mock<IOpenIddictAuthorizationManager> _mockAuthorizationManager = new();
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<IStringLocalizer<DeviceFlowService>> _mockLocalizer;
     private readonly Mock<ILogger<DeviceFlowService>> _mockLogger;
@@ -114,6 +115,8 @@ public class DeviceFlowServiceTests
         _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
         _mockApplicationManager.Setup(m => m.FindByClientIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new object());
+        _mockApplicationManager.Setup(m => m.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.Implicit);
         _mockUserManager = MockUserManager<ApplicationUser>();
         _mockLocalizer = new Mock<IStringLocalizer<DeviceFlowService>>();
         _mockLogger = new Mock<ILogger<DeviceFlowService>>();
@@ -135,13 +138,86 @@ public class DeviceFlowServiceTests
             _mockLocalizer.Object,
             _mockLogger.Object,
             _mockClaimsEnricher.Object,
-            _securityPolicy.Object);
+            _securityPolicy.Object,
+            _mockAuthorizationManager.Object);
     }
 
     private static Mock<UserManager<TUser>> MockUserManager<TUser>() where TUser : class
     {
         var store = new Mock<IUserStore<TUser>>();
         return new Mock<UserManager<TUser>>(store.Object, null, null, null, null, null, null, null, null);
+    }
+
+    [Theory]
+    [InlineData(ConsentTypes.Explicit, false, false)]
+    [InlineData(ConsentTypes.Explicit, true, true)]
+    [InlineData(ConsentTypes.Systematic, false, false)]
+    [InlineData(ConsentTypes.Systematic, true, true)]
+    [InlineData(ConsentTypes.Implicit, false, true)]
+    [InlineData("unknown", true, false)]
+    [InlineData(null, false, false)]
+    public async Task ProcessVerificationAsync_ShouldHonorConsentPolicy(string? consentType, bool decision, bool allowed)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid() };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity("cookie"));
+        _mockUserManager.Setup(manager => manager.GetUserAsync(principal)).ReturnsAsync(user);
+        _mockUserManager.Setup(manager => manager.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
+        _mockApplicationManager.Setup(manager => manager.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(consentType);
+        _mockScopeManager.Setup(manager => manager.ListResourcesAsync(It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()))
+            .Returns(new List<string>().ToAsyncEnumerable());
+        var device = new ClaimsPrincipal(new ClaimsIdentity([new Claim(Claims.ClientId, "test-client")], "device"));
+        device.SetScopes(Scopes.OpenId, Scopes.Profile);
+
+        var result = await _service.ProcessVerificationAsync(principal,
+            AuthenticateResult.Success(new AuthenticationTicket(device, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)),
+            consentGranted: decision);
+
+        if (allowed)
+            Assert.Equal<string>(device.GetScopes(), Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!.GetScopes());
+        else
+        {
+            var denied = Assert.IsType<ForbidResult>(result);
+            Assert.Equal(Errors.AccessDenied, denied.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+            _mockClaimsEnricher.Verify(enricher => enricher.AddScopeMappedClaimsAsync(
+                It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ProcessVerificationAsync_ExternalConsent_ShouldRequireCoveringPermanentAuthorization(bool exists, bool coversScopes)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid() };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity("cookie"));
+        _mockUserManager.Setup(manager => manager.GetUserAsync(principal)).ReturnsAsync(user);
+        _mockUserManager.Setup(manager => manager.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
+        _mockApplicationManager.Setup(manager => manager.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConsentTypes.External);
+        _mockApplicationManager.Setup(manager => manager.GetIdAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("application-id");
+        var authorization = new object();
+        _mockAuthorizationManager.Setup(manager => manager.FindAsync(user.Id.ToString(), "application-id", Statuses.Valid,
+                AuthorizationTypes.Permanent, It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()))
+            .Returns((exists ? new[] { authorization } : Array.Empty<object>()).ToAsyncEnumerable());
+        _mockAuthorizationManager.Setup(manager => manager.GetScopesAsync(authorization, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(coversScopes ? ImmutableArray.Create(Scopes.OpenId, Scopes.Profile) : ImmutableArray.Create(Scopes.OpenId));
+        _mockAuthorizationManager.Setup(manager => manager.GetIdAsync(authorization, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("approved-authorization");
+        _mockScopeManager.Setup(manager => manager.ListResourcesAsync(It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()))
+            .Returns(new List<string>().ToAsyncEnumerable());
+        var device = new ClaimsPrincipal(new ClaimsIdentity([new Claim(Claims.ClientId, "test-client")], "device"));
+        device.SetScopes(Scopes.OpenId, Scopes.Profile);
+
+        var result = await _service.ProcessVerificationAsync(principal,
+            AuthenticateResult.Success(new AuthenticationTicket(device, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)),
+            consentGranted: true);
+
+        if (exists && coversScopes)
+            Assert.Equal("approved-authorization", Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!.GetAuthorizationId());
+        else Assert.IsType<ForbidResult>(result);
     }
 
     [Fact]

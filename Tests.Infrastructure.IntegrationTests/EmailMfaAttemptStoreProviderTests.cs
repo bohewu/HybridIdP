@@ -4,6 +4,7 @@ using Infrastructure;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Identity;
 
 namespace Tests.Infrastructure.IntegrationTests;
 
@@ -11,6 +12,58 @@ namespace Tests.Infrastructure.IntegrationTests;
 public sealed class EmailMfaAttemptStoreProviderTests(
     OperationalAdminBootstrapProviderFixture fixture)
 {
+    [Theory]
+    [InlineData(OperationalAdminBootstrapProviderFixture.SqlServer, false)]
+    [InlineData(OperationalAdminBootstrapProviderFixture.PostgreSql, false)]
+    [InlineData(OperationalAdminBootstrapProviderFixture.SqlServer, true)]
+    [InlineData(OperationalAdminBootstrapProviderFixture.PostgreSql, true)]
+    public async Task PendingCode_ShouldPreserveBudgetAcrossIdentityWritesAndRejectStaleResurrection(string providerName, bool valid)
+    {
+        var database = fixture.GetDatabase(providerName);
+        await database.ResetAsync();
+        await using var services = database.CreateServices();
+        await using var scope = services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var store = scope.ServiceProvider.GetRequiredService<IEmailMfaAttemptStore>();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "budget-user", LockoutEnabled = true,
+            EmailMfaCode = "test-only-hash", EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(10) };
+        Assert.True((await users.CreateAsync(user)).Succeeded);
+        await using var staleScope = services.CreateAsyncScope();
+        var staleUsers = staleScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var staleUser = (await staleUsers.FindByIdAsync(user.Id.ToString()))!;
+        var previousStamp = staleUser.ConcurrencyStamp;
+        var attempts = valid ? 1 : 5;
+        for (var attempt = 1; attempt <= attempts; attempt++)
+        {
+            Assert.Equal(attempt == 5 ? EmailMfaAttemptReservation.FinalAttempt : EmailMfaAttemptReservation.Reserved,
+                await store.TryReserveAttemptAsync(user.Id, "test-only-hash", DateTime.UtcNow, 5));
+            Assert.Equal(attempt, user.EmailMfaVerificationAttempts);
+            if (valid || attempt == 5)
+            {
+                if (valid)
+                {
+                    user.EmailMfaCode = null;
+                    user.EmailMfaCodeExpiry = null;
+                    user.EmailMfaVerificationAttempts = 0;
+                    Assert.True((await users.UpdateAsync(user)).Succeeded);
+                }
+                else await store.InvalidatePendingCodeAsync(user.Id, "test-only-hash");
+            }
+            if (!valid) Assert.True((await users.AccessFailedAsync(user)).Succeeded);
+            var persisted = await db.Users.AsNoTracking().SingleAsync(value => value.Id == user.Id);
+            Assert.Equal(attempt == attempts ? 0 : attempt, persisted.EmailMfaVerificationAttempts);
+        }
+        Assert.NotEqual(previousStamp, user.ConcurrencyStamp);
+        Assert.False((await staleUsers.UpdateAsync(staleUser)).Succeeded);
+        var final = await db.Users.AsNoTracking().SingleAsync(value => value.Id == user.Id);
+        Assert.Null(final.EmailMfaCode);
+        Assert.Null(final.EmailMfaCodeExpiry);
+        Assert.Equal(0, final.EmailMfaVerificationAttempts);
+        Assert.Equal(EmailMfaAttemptReservation.Rejected,
+            await store.TryReserveAttemptAsync(user.Id, "test-only-hash", DateTime.UtcNow, 5));
+    }
+
     [Theory]
     [InlineData(OperationalAdminBootstrapProviderFixture.SqlServer)]
     [InlineData(OperationalAdminBootstrapProviderFixture.PostgreSql)]

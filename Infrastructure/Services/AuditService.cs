@@ -50,6 +50,7 @@ public class AuditService : IAuditService,
     private readonly ISettingsService _settingsService;
     private readonly PiiMaskingLevel _piiMaskingLevel;
     private readonly IHttpContextAccessor? _httpContextAccessor;
+    private readonly IAdministrativeAuthorizationBoundary? _administrativeBoundary;
 
     public AuditService(
         IApplicationDbContext db,
@@ -57,7 +58,8 @@ public class AuditService : IAuditService,
         IDomainEventPublisher eventPublisher,
         ISettingsService settingsService,
         IOptions<AuditOptions> auditOptions,
-        IHttpContextAccessor? httpContextAccessor = null)
+        IHttpContextAccessor? httpContextAccessor = null,
+        IAdministrativeAuthorizationBoundary? administrativeBoundary = null)
     {
         _db = db;
         _dbContext = dbContext;
@@ -65,11 +67,47 @@ public class AuditService : IAuditService,
         _settingsService = settingsService;
         _piiMaskingLevel = auditOptions.Value.PiiMaskingLevel;
         _httpContextAccessor = httpContextAccessor;
+        _administrativeBoundary = administrativeBoundary;
     }
 
     public Task LogEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
     {
         return PersistEventAsync(eventType, userId, AddImpersonationDetails(details, _httpContextAccessor?.HttpContext?.User), ipAddress, userAgent, cancellationToken);
+    }
+
+    public async Task LogAdministrativeEventAsync(string eventType, string targetType, string targetId, string? details, CancellationToken cancellationToken = default)
+    {
+        var context = _httpContextAccessor?.HttpContext;
+        var authority = context?.Items[AdministrativeAuthorizationBoundary.AuthorityKey] as AdministrativeAuthority
+            ?? (_administrativeBoundary == null ? null : await _administrativeBoundary.ResolveAsync());
+        string? userId = null;
+        var actor = new JsonObject { ["type"] = "system" };
+        if (authority?.IsBearer == true)
+        {
+            actor = new JsonObject
+            {
+                ["type"] = "client",
+                ["id"] = authority.Principal.FindFirst("sub")?.Value,
+                ["applicationId"] = authority.Principal.FindFirst(AdministrativeClientGrant.ApplicationClaim)?.Value
+            };
+        }
+        else if (authority != null)
+        {
+            var subject = authority.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? authority.Principal.FindFirst("sub")?.Value;
+            var attribution = GetImpersonationAttribution(authority.Principal);
+            if (attribution != null) userId = attribution.Value.ActorUserId.ToString();
+            else if (Guid.TryParse(subject, out var actorId)) userId = actorId.ToString();
+            actor = new JsonObject { ["type"] = "user", ["id"] = userId };
+        }
+        var payload = new JsonObject
+        {
+            ["message"] = details,
+            ["actor"] = actor,
+            ["target"] = new JsonObject { ["type"] = targetType, ["id"] = targetId }
+        }.ToJsonString();
+        await PersistEventAsync(eventType, userId, AddImpersonationDetails(payload, authority?.Principal),
+            context?.Connection.RemoteIpAddress?.ToString(), context?.Request.Headers.UserAgent.ToString(), cancellationToken);
     }
 
     private async Task PersistEventAsync(string eventType, string? userId, string? details, string? ipAddress, string? userAgent, CancellationToken cancellationToken)
@@ -244,103 +282,103 @@ public class AuditService : IAuditService,
     {
         var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
         var maskedEmail = PiiMasker.MaskEmail(@event.Email, _piiMaskingLevel);
-        await LogEventAsync("UserCreated", @event.UserId, $"User '{maskedUserName}' ({maskedEmail}) was created", null, null);
+        await LogAdministrativeEventAsync("UserCreated", "User", @event.UserId, $"User '{maskedUserName}' ({maskedEmail}) was created");
     }
 
     public async Task HandleAsync(UserUpdatedEvent @event)
     {
         var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
-        await LogEventAsync("UserUpdated", @event.UserId, $"User '{maskedUserName}' was updated: {@event.Changes}", null, null);
+        await LogAdministrativeEventAsync("UserUpdated", "User", @event.UserId, $"User '{maskedUserName}' was updated: {@event.Changes}");
     }
 
     public async Task HandleAsync(UserDeletedEvent @event)
     {
         var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
-        await LogEventAsync("UserDeleted", @event.UserId, $"User '{maskedUserName}' was deleted", null, null);
+        await LogAdministrativeEventAsync("UserDeleted", "User", @event.UserId, $"User '{maskedUserName}' was deleted");
     }
 
     public async Task HandleAsync(UserRoleAssignedEvent @event)
     {
         var action = @event.IsAssigned ? "assigned to" : "removed from";
         var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
-        await LogEventAsync("UserRoleChanged", @event.UserId, $"User '{maskedUserName}' was {action} role '{@event.RoleName}'", null, null);
+        await LogAdministrativeEventAsync("UserRoleChanged", "User", @event.UserId, $"User '{maskedUserName}' was {action} role '{@event.RoleName}'");
     }
 
     public async Task HandleAsync(UserPasswordChangedEvent @event)
     {
         var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
-        await LogEventAsync("UserPasswordChanged", @event.UserId, $"Password changed for user '{maskedUserName}'", null, null);
+        await LogAdministrativeEventAsync("UserPasswordChanged", "User", @event.UserId, $"Password changed for user '{maskedUserName}'");
     }
 
     public async Task HandleAsync(UserAccountStatusChangedEvent @event)
     {
         var maskedUserName = PiiMasker.MaskUserName(@event.UserName, _piiMaskingLevel);
-        await LogEventAsync("UserStatusChanged", @event.UserId, $"User '{maskedUserName}' status changed from '{@event.OldStatus}' to '{@event.NewStatus}'", null, null);
+        await LogAdministrativeEventAsync("UserStatusChanged", "User", @event.UserId, $"User '{maskedUserName}' status changed from '{@event.OldStatus}' to '{@event.NewStatus}'");
     }
 
     public async Task HandleAsync(ClientCreatedEvent @event)
     {
-        await LogEventAsync("ClientCreated", null, $"Client '{@event.ClientName}' ({@event.ClientId}) was created", null, null);
+        await LogAdministrativeEventAsync("ClientCreated", "Client", @event.ClientId, $"Client '{@event.ClientName}' ({@event.ClientId}) was created");
     }
 
     public async Task HandleAsync(ClientUpdatedEvent @event)
     {
-        await LogEventAsync("ClientUpdated", null, $"Client '{@event.ClientName}' ({@event.ClientId}) was updated: {@event.Changes}", null, null);
+        await LogAdministrativeEventAsync("ClientUpdated", "Client", @event.ClientId, $"Client '{@event.ClientName}' ({@event.ClientId}) was updated: {@event.Changes}");
     }
 
     public async Task HandleAsync(ClientDeletedEvent @event)
     {
-        await LogEventAsync("ClientDeleted", null, $"Client '{@event.ClientName}' ({@event.ClientId}) was deleted", null, null);
+        await LogAdministrativeEventAsync("ClientDeleted", "Client", @event.ClientId, $"Client '{@event.ClientName}' ({@event.ClientId}) was deleted");
     }
 
     public async Task HandleAsync(ClientSecretChangedEvent @event)
     {
-        await LogEventAsync("ClientSecretChanged", null, $"Secret changed for client '{@event.ClientName}' ({@event.ClientId})", null, null);
+        await LogAdministrativeEventAsync("ClientSecretChanged", "Client", @event.ClientId, $"Secret changed for client '{@event.ClientName}' ({@event.ClientId})");
     }
 
     public async Task HandleAsync(ClientScopeChangedEvent @event)
     {
-        await LogEventAsync("ClientScopeChanged", null, $"Scopes changed for client '{@event.ClientName}' ({@event.ClientId}): {@event.ScopeChanges}", null, null);
+        await LogAdministrativeEventAsync("ClientScopeChanged", "Client", @event.ClientId, $"Scopes changed for client '{@event.ClientName}' ({@event.ClientId}): {@event.ScopeChanges}");
     }
 
     public async Task HandleAsync(RoleCreatedEvent @event)
     {
-        await LogEventAsync("RoleCreated", null, $"Role '{@event.RoleName}' ({@event.RoleId}) was created", null, null);
+        await LogAdministrativeEventAsync("RoleCreated", "Role", @event.RoleId, $"Role '{@event.RoleName}' ({@event.RoleId}) was created");
     }
 
     public async Task HandleAsync(RoleUpdatedEvent @event)
     {
-        await LogEventAsync("RoleUpdated", null, $"Role '{@event.RoleName}' ({@event.RoleId}) was updated: {@event.Changes}", null, null);
+        await LogAdministrativeEventAsync("RoleUpdated", "Role", @event.RoleId, $"Role '{@event.RoleName}' ({@event.RoleId}) was updated: {@event.Changes}");
     }
 
     public async Task HandleAsync(RoleDeletedEvent @event)
     {
-        await LogEventAsync("RoleDeleted", null, $"Role '{@event.RoleName}' ({@event.RoleId}) was deleted", null, null);
+        await LogAdministrativeEventAsync("RoleDeleted", "Role", @event.RoleId, $"Role '{@event.RoleName}' ({@event.RoleId}) was deleted");
     }
 
     public async Task HandleAsync(RolePermissionChangedEvent @event)
     {
-        await LogEventAsync("RolePermissionChanged", null, $"Permissions changed for role '{@event.RoleName}' ({@event.RoleId}): {@event.PermissionChanges}", null, null);
+        await LogAdministrativeEventAsync("RolePermissionChanged", "Role", @event.RoleId, $"Permissions changed for role '{@event.RoleName}' ({@event.RoleId}): {@event.PermissionChanges}");
     }
 
     public async Task HandleAsync(ScopeCreatedEvent @event)
     {
-        await LogEventAsync("ScopeCreated", null, $"Scope '{@event.ScopeName}' ({@event.ScopeId}) was created", null, null);
+        await LogAdministrativeEventAsync("ScopeCreated", "Scope", @event.ScopeId, $"Scope '{@event.ScopeName}' ({@event.ScopeId}) was created");
     }
 
     public async Task HandleAsync(ScopeUpdatedEvent @event)
     {
-        await LogEventAsync("ScopeUpdated", null, $"Scope '{@event.ScopeName}' ({@event.ScopeId}) was updated: {@event.Changes}", null, null);
+        await LogAdministrativeEventAsync("ScopeUpdated", "Scope", @event.ScopeId, $"Scope '{@event.ScopeName}' ({@event.ScopeId}) was updated: {@event.Changes}");
     }
 
     public async Task HandleAsync(ScopeDeletedEvent @event)
     {
-        await LogEventAsync("ScopeDeleted", null, $"Scope '{@event.ScopeName}' ({@event.ScopeId}) was deleted", null, null);
+        await LogAdministrativeEventAsync("ScopeDeleted", "Scope", @event.ScopeId, $"Scope '{@event.ScopeName}' ({@event.ScopeId}) was deleted");
     }
 
     public async Task HandleAsync(ScopeClaimChangedEvent @event)
     {
-        await LogEventAsync("ScopeClaimChanged", null, $"Claims changed for scope '{@event.ScopeName}' ({@event.ScopeId}): {@event.ClaimChanges}", null, null);
+        await LogAdministrativeEventAsync("ScopeClaimChanged", "Scope", @event.ScopeId, $"Claims changed for scope '{@event.ScopeName}' ({@event.ScopeId}): {@event.ClaimChanges}");
     }
 
     public async Task HandleAsync(LoginAttemptEvent @event)

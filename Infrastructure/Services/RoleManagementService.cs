@@ -6,6 +6,8 @@ using Core.Domain.Events;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.AspNetCore.Authorization;
+using Infrastructure.Authorization;
 
 namespace Infrastructure.Services;
 
@@ -14,15 +16,21 @@ public class RoleManagementService : IRoleManagementService
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IDomainEventPublisher _eventPublisher;
+    private readonly IAdministrativeAuthorizationBoundary? _boundary;
+    private readonly IAuthorizationService? _authorization;
 
     public RoleManagementService(
         RoleManager<ApplicationRole> roleManager,
         UserManager<ApplicationUser> userManager,
-        IDomainEventPublisher eventPublisher)
+        IDomainEventPublisher eventPublisher,
+        IAdministrativeAuthorizationBoundary? boundary = null,
+        IAuthorizationService? authorization = null)
     {
         _roleManager = roleManager;
         _userManager = userManager;
         _eventPublisher = eventPublisher;
+        _boundary = boundary;
+        _authorization = authorization;
     }
 
     public async Task<List<RoleSummaryDto>> GetRolesAsync()
@@ -119,9 +127,13 @@ public class RoleManagementService : IRoleManagementService
 
         var usersInRole = await _userManager.GetUsersInRoleAsync(role.Name!);
         
-        var userSummaries = usersInRole.Select(u => new UserSummaryDto
+        var authority = _boundary == null ? null : await _boundary.ResolveAsync();
+        var canReadUsers = authority != null && _authorization != null &&
+            (await _authorization.AuthorizeAsync(authority.Principal, null, Permissions.Users.Read)).Succeeded;
+        var userSummaries = usersInRole.Select(u => canReadUsers ? new RoleMemberDto
         {
             Id = u.Id,
+            DisplayName = GetMemberDisplayName(u),
             Email = u.Email ?? string.Empty,
             UserName = u.UserName,
             FirstName = u.FirstName,
@@ -132,8 +144,13 @@ public class RoleManagementService : IRoleManagementService
             EmailConfirmed = u.EmailConfirmed,
             LastLoginDate = u.LastLoginDate,
             CreatedAt = u.CreatedAt,
+            TwoFactorEnabled = false,
+            EmailMfaEnabled = false,
+            HasPasskey = false,
+            IsLockedOut = false,
+            AccessFailedCount = 0,
             Roles = new List<string> { role.Name! }
-        }).ToList();
+        } : new RoleMemberDto { Id = u.Id, DisplayName = GetMemberDisplayName(u) }).ToList();
 
         return new RoleDetailDto
         {
@@ -146,6 +163,15 @@ public class RoleManagementService : IRoleManagementService
             UserCount = usersInRole.Count,
             Users = userSummaries
         };
+    }
+
+    private static string GetMemberDisplayName(ApplicationUser user)
+    {
+        var name = string.Join(" ", new[] { user.FirstName, user.LastName }
+            .Where(value => !string.IsNullOrWhiteSpace(value))).Trim();
+        if (!string.IsNullOrEmpty(name) && !name.Contains('@')) return name;
+        if (!string.IsNullOrWhiteSpace(user.UserName) && !user.UserName.Contains('@')) return user.UserName;
+        return user.Id.ToString();
     }
 
     public async Task<(bool Success, Guid? RoleId, IEnumerable<string> Errors)> CreateRoleAsync(CreateRoleDto createDto)

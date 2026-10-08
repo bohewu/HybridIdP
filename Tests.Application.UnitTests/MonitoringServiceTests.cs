@@ -18,6 +18,52 @@ namespace Tests.Application.UnitTests;
 
 public class MonitoringServiceTests : IDisposable
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetPrometheusMetricsAsync_ShouldReadLocalHttpButNeverFollowRedirect(bool redirect)
+    {
+        var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var endpoint = (System.Net.IPEndPoint)listener.LocalEndpoint;
+        var requests = 0;
+        var server = Task.Run(async () =>
+        {
+            try
+            {
+                while (!stop.IsCancellationRequested)
+                {
+                    using var connection = await listener.AcceptTcpClientAsync(stop.Token);
+                    await using var stream = connection.GetStream();
+                    using var reader = new System.IO.StreamReader(stream, leaveOpen: true);
+                    while (!string.IsNullOrEmpty(await reader.ReadLineAsync(stop.Token))) { }
+                    Interlocked.Increment(ref requests);
+                    var body = "# TYPE test_metric gauge\ntest_metric 7\n";
+                    var status = redirect && requests == 1
+                        ? $"302 Found\r\nLocation: http://127.0.0.1:{endpoint.Port}/redirected"
+                        : "200 OK";
+                    var response = System.Text.Encoding.ASCII.GetBytes($"HTTP/1.1 {status}\r\nContent-Type: text/plain\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n{body}");
+                    await stream.WriteAsync(response, stop.Token);
+                }
+            }
+            catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        });
+        try
+        {
+            using var client = new HttpClient(MonitoringService.CreatePrimaryHandler());
+            _httpClientFactoryMock.Setup(value => value.CreateClient(MonitoringService.HttpClientName)).Returns(client);
+            _optionsMock.SetupGet(value => value.Value).Returns(new ObservabilityOptions { MetricsBaseUrl = $"http://127.0.0.1:{endpoint.Port}" });
+            var service = new MonitoringService(_dbContext, null!, _httpClientFactoryMock.Object, _hubContextMock.Object, _optionsMock.Object);
+            var result = await service.GetSystemMetricsAsync();
+            Assert.Equal(1, requests);
+            if (redirect) Assert.Empty(result.Gauges);
+            else Assert.Contains("test_metric", result.Gauges);
+            _httpClientFactoryMock.Verify(value => value.CreateClient(MonitoringService.HttpClientName), Times.Once);
+        }
+        finally { stop.Cancel(); await server; listener.Stop(); }
+    }
+
     private readonly ApplicationDbContext _dbContext;
     private readonly MonitoringService _monitoringService;
     private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;

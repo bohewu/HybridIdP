@@ -2,6 +2,18 @@
 
 This guide covers the deployment of HybridIdP using Docker Compose. The easiest way to deploy is using the **interactive setup wizard**, which handles configuration, security secrets, and certificates automatically.
 
+Release workflow actions and official build/production Compose images are pinned
+to reviewed commits and digests. `.github/dependabot.yml` proposes weekly GitHub
+Actions, Dockerfile and Docker Compose updates against `dev`. Review upstream
+changes, platform support and local build/Compose validation before merging;
+dependency updates do not publish an IdP image. The operator-selected `IDP_IMAGE`
+still follows the separately approved release tag/digest policy.
+
+Signing and encryption PFX files must be configured and readable outside
+Development/Test. Missing configuration or files stops startup. Explicit
+operator-generated self-signed PFX files are supported; an internal CA is not
+required by this startup check.
+
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
 2. [Quick Start (Recommended)](#quick-start-interactive-wizard)

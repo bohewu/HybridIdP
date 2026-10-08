@@ -24,7 +24,7 @@
 services:
   # Local Nginx Gateway - The only exposed service
   nginx-gateway:
-    image: nginx:alpine
+    image: nginx:alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2
     environment:
       - PUBLIC_AUTHORITY=${PUBLIC_AUTHORITY:?PUBLIC_AUTHORITY is required}
       - NGINX_ENVSUBST_FILTER=PUBLIC_AUTHORITY
@@ -142,7 +142,7 @@ services:
 
   # Redis - Session cache and distributed caching
   redis-service:
-    image: redis:alpine
+    image: redis:alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
     # No external port - only Docker network
     networks:
       - backend

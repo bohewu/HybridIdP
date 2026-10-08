@@ -131,6 +131,8 @@ public sealed class MigrationPageIssuanceGateTests
             .ReturnsAsync(IdentityResult.Success);
         identity.UserManager.Setup(manager => manager.AddToRoleAsync(It.IsAny<ApplicationUser>(), "User"))
             .ReturnsAsync(IdentityResult.Success);
+        identity.UserManager.Setup(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Success);
         var lifecycle = new Mock<ICurrentUserLifecycleEligibility>();
         lifecycle.Setup(service => service.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(allowed);
         var model = new RegisterModel(lifecycle.Object, identity.UserManager.Object, identity.SignInManager.Object,
@@ -161,8 +163,10 @@ public sealed class MigrationPageIssuanceGateTests
         await using var database = CreateDatabase();
         var identity = CreateIdentity(CreateUser());
         identity.UserManager.Setup(manager => manager.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+            .Callback<ApplicationUser, string>((created, _) => created.SecurityStamp = Guid.NewGuid().ToString())
             .ReturnsAsync(IdentityResult.Success);
-        identity.UserManager.Setup(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()))
+        identity.UserManager.SetupSequence(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Success)
             .ReturnsAsync(saved ? IdentityResult.Success : IdentityResult.Failed(new IdentityError { Code = "failed" }));
         var policy = new Mock<ISecurityPolicyService>();
         policy.Setup(service => service.GetCurrentPolicyAsync()).ReturnsAsync(new Core.Domain.Entities.SecurityPolicy
@@ -187,7 +191,7 @@ public sealed class MigrationPageIssuanceGateTests
             It.IsAny<IEnumerable<System.Security.Claims.Claim>>()), fullSignIn ? Times.Once() : Times.Never());
         identity.SignInManager.Verify(manager => manager.SignInAsync(It.IsAny<ApplicationUser>(), false, null), Times.Never());
         if (mandatory)
-            identity.UserManager.Verify(manager => manager.UpdateAsync(It.Is<ApplicationUser>(user => user.MfaRequirementNotifiedAt != null)), Times.Once());
+            identity.UserManager.Verify(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Exactly(2));
         if (fullSignIn) Assert.IsType<RedirectResult>(result);
         else Assert.Equal(saved ? "./MfaSetup" : "./Login", Assert.IsType<RedirectToPageResult>(result).PageName);
         authentication.Verify(service => service.SignInAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme,
@@ -224,7 +228,7 @@ public sealed class MigrationPageIssuanceGateTests
             RememberMe = true,
             ReturnUrl = "/continue"
         };
-        SetHttpContext(model);
+        SetMfaHttpContext(model, user);
 
         var result = await model.OnPostAsync();
 
@@ -277,7 +281,7 @@ public sealed class MigrationPageIssuanceGateTests
             RememberMe = true,
             ReturnUrl = "/continue"
         };
-        SetHttpContext(model);
+        SetMfaHttpContext(model, user);
 
         var result = await model.OnPostAsync();
 
@@ -288,6 +292,47 @@ public sealed class MigrationPageIssuanceGateTests
                 true,
                 It.IsAny<IEnumerable<System.Security.Claims.Claim>>()),
             Times.Once);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task LoginTotp_ShouldConsumeCurrentRecoveryCodesAndPreserveNativeCompatibility(
+        bool customCodeAccepted, bool nativeCodeAccepted)
+    {
+        var user = CreateUser();
+        user.TwoFactorEnabled = true;
+        var identity = CreateIdentity(user);
+        identity.UserManager.Setup(manager => manager.AccessFailedAsync(user)).ReturnsAsync(IdentityResult.Success);
+        var mfa = new Mock<IMfaService>();
+        mfa.Setup(service => service.ValidateRecoveryCodeAsync(user, "ABCDE12345", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(customCodeAccepted);
+        mfa.Setup(service => service.ValidateNativeRecoveryCodeAsync(user, "ABCDE12345", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(nativeCodeAccepted);
+        var localizer = new Mock<IStringLocalizer<SharedResource>>();
+        localizer.Setup(candidate => candidate[It.IsAny<string>()]).Returns((string key) => new LocalizedString(key, key));
+        var model = new LoginTotpModel(identity.SignInManager.Object, identity.UserManager.Object,
+            mfa.Object, CreateUserManagementService().Object, CreateEventPublisher().Object,
+            Mock.Of<ILogger<LoginTotpModel>>(), localizer.Object,
+            CreateMigrationGuard(user.Id, true).Object, CreateLifecycleEligibility(user.Id, true).Object)
+        {
+            Input = new LoginTotpModel.InputModel { RecoveryCode = "ABCDE-12345" },
+            ReturnUrl = "/continue"
+        };
+        SetMfaHttpContext(model, user);
+
+        var result = await model.OnPostAsync();
+
+        if (customCodeAccepted || nativeCodeAccepted) Assert.IsType<RedirectResult>(result);
+        else Assert.IsType<PageResult>(result);
+        mfa.Verify(service => service.ValidateRecoveryCodeAsync(user, "ABCDE12345", It.IsAny<CancellationToken>()), Times.Once);
+        mfa.Verify(service => service.ValidateNativeRecoveryCodeAsync(user, "ABCDE12345", It.IsAny<CancellationToken>()),
+            customCodeAccepted ? Times.Never() : Times.Once());
+        identity.SignInManager.Verify(manager => manager.SignInWithClaimsAsync(user, false, It.IsAny<IEnumerable<Claim>>()),
+            customCodeAccepted || nativeCodeAccepted ? Times.Once() : Times.Never());
+        identity.UserManager.Verify(manager => manager.AccessFailedAsync(user),
+            customCodeAccepted || nativeCodeAccepted ? Times.Never() : Times.Once());
     }
 
     [Fact]
@@ -316,7 +361,7 @@ public sealed class MigrationPageIssuanceGateTests
             Input = new LoginTotpModel.InputModel { TotpCode = "123456" },
             ReturnUrl = "/continue"
         };
-        SetHttpContext(model);
+        SetMfaHttpContext(model, user);
 
         var result = await model.OnPostAsync();
 
@@ -373,7 +418,7 @@ public sealed class MigrationPageIssuanceGateTests
             RememberMe = true,
             ReturnUrl = "/continue"
         };
-        SetHttpContext(model);
+        SetMfaHttpContext(model, user);
 
         var result = await model.OnPostAsync();
 
@@ -411,7 +456,7 @@ public sealed class MigrationPageIssuanceGateTests
             Input = new LoginMfaModel.InputModel { TotpCode = "123456" },
             ReturnUrl = "/continue"
         };
-        SetHttpContext(model);
+        SetMfaHttpContext(model, user);
 
         var result = await model.OnPostAsync();
 
@@ -465,7 +510,7 @@ public sealed class MigrationPageIssuanceGateTests
             RememberMe = true,
             ReturnUrl = "/continue"
         };
-        SetHttpContext(model);
+        SetMfaHttpContext(model, user);
 
         var result = await model.OnPostAsync();
 
@@ -500,7 +545,7 @@ public sealed class MigrationPageIssuanceGateTests
             Input = new LoginEmailOtpModel.InputModel { EmailCode = "123456" },
             ReturnUrl = "/continue"
         };
-        SetHttpContext(model);
+        SetMfaHttpContext(model, user);
 
         var result = await model.OnPostAsync();
 
@@ -667,6 +712,7 @@ public sealed class MigrationPageIssuanceGateTests
         signInManager
             .Setup(manager => manager.GetTwoFactorAuthenticationUserAsync())
             .ReturnsAsync(user);
+        userManager.Setup(manager => manager.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
         return (userManager, signInManager);
     }
 
@@ -727,9 +773,9 @@ public sealed class MigrationPageIssuanceGateTests
     private static void SetMfaHttpContext(PageModel model, ApplicationUser user)
     {
         SetHttpContext(model);
-        var nonce = MfaEnrollmentSession.BeginInitial(model.HttpContext.Session, user.Id);
+        var nonce = MfaEnrollmentSession.BeginInitial(model.HttpContext.Session, user.Id, securityStamp: user.SecurityStamp);
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), nonce], IdentityConstants.TwoFactorUserIdScheme));
+            [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim("AspNet.Identity.SecurityStamp", user.SecurityStamp!), nonce], IdentityConstants.TwoFactorUserIdScheme));
         var authentication = new Mock<IAuthenticationService>();
         authentication.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
             .ReturnsAsync(AuthenticateResult.NoResult());
@@ -753,6 +799,7 @@ public sealed class MigrationPageIssuanceGateTests
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         return new ApplicationDbContext(options);
     }

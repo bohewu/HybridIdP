@@ -125,6 +125,7 @@ public sealed class DeviceFlowGlobalMfaSystemTests(OperationalAdminBootstrapReal
         using var approvalForm = new FormUrlEncodedContent(
         [
             new("user_code", userCode),
+            new("submit", "accept"),
             new(DeviceVerificationSession.FormFieldName, HiddenValue(verificationHtml, DeviceVerificationSession.FormFieldName)),
             new("__RequestVerificationToken", HiddenValue(verificationHtml, "__RequestVerificationToken"))
         ]);

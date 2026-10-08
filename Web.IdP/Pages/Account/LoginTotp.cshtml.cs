@@ -134,14 +134,16 @@ public partial class LoginTotpModel : PageModel
                 }
 
                 AuthenticationMethodSession.Add(
-                    HttpContext.Session,
+                    HttpContext.Session, user,
                     AuthConstants.Amr.Mfa,
                     AuthConstants.Amr.Otp);
-                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, user);
 
                 RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
-                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
+                AccountSecurityOperationSession.MarkVerified(HttpContext, user, "totp");
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user, "totp");
                 await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
+                AuthenticationMethodSession.Consume(HttpContext.Session);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 
                 _logger.LogInformation("User logged in with TOTP 2FA.");
@@ -173,7 +175,9 @@ public partial class LoginTotpModel : PageModel
         if (!string.IsNullOrWhiteSpace(Input.RecoveryCode))
         {
             var cleanCode = Input.RecoveryCode.Replace(" ", "").Replace("-", "");
-            var succeeded = await _mfaService.ValidateNativeRecoveryCodeAsync(user, cleanCode, cancellationToken);
+            var usedCustomCode = await _mfaService.ValidateRecoveryCodeAsync(user, cleanCode, cancellationToken);
+            var succeeded = usedCustomCode ||
+                await _mfaService.ValidateNativeRecoveryCodeAsync(user, cleanCode, cancellationToken);
             
             if (succeeded)
             {
@@ -182,16 +186,20 @@ public partial class LoginTotpModel : PageModel
                     return RedirectToPage("./Login");
                 }
 
-                AuthenticationMethodSession.Add(HttpContext.Session, AuthConstants.Amr.Mfa);
-                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+                AuthenticationMethodSession.Add(HttpContext.Session, user, AuthConstants.Amr.Mfa);
+                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, user);
 
                 RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
-                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
+                AccountSecurityOperationSession.MarkVerified(HttpContext, user, "recovery");
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user, "recovery");
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
+                AuthenticationMethodSession.Consume(HttpContext.Session);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 _logger.LogInformation("User logged in with recovery code.");
                 
-                var remainingCodes = await _userManager.CountRecoveryCodesAsync(user);
+                var remainingCodes = usedCustomCode
+                    ? await _mfaService.CountRecoveryCodesAsync(user, cancellationToken)
+                    : await _userManager.CountRecoveryCodesAsync(user);
                 if (remainingCodes <= 3)
                 {
                     _logger.LogWarning("User {UserName} has only {Count} recovery codes left.", user.UserName, remainingCodes);
@@ -218,23 +226,7 @@ public partial class LoginTotpModel : PageModel
     private async Task<ApplicationUser?> GetTwoFactorUserAsync()
     {
         // Try standard Identity method first
-        var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
-        
-        // Fallback: manually look up user from cookie if Identity method fails (Guid key issue)
-        if (user == null)
-        {
-            var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-            if (twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
-            {
-                var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
-                {
-                    user = await _userManager.FindByIdAsync(userId.ToString());
-                }
-            }
-        }
-        
-        return user;
+        return await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
     }
 
     private async Task<bool> CanIssueFullCookieAsync(

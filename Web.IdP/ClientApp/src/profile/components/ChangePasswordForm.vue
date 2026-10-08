@@ -198,9 +198,10 @@ import { usePasswordValidation } from '@/composables/usePasswordValidation'
 const { getPasswordRequirements } = usePasswordValidation()
 
 const requirements = computed(() => getPasswordRequirements(form.value.newPassword, policy.value))
+const passwordsMatch = computed(() => form.value.newPassword === form.value.confirmPassword)
 
 const allPasswordChecksPass = computed(() => {
-  if (!requirements.value.length) return false
+  // The server validates policy even when its optional client checklist is unavailable.
   return requirements.value.every(r => r.valid)
 })
 

@@ -33,6 +33,7 @@ public class ClientsController : ControllerBase
     private readonly PrivilegedTestAdminBootstrapOptions _privilegedTestAdminBootstrapOptions;
     private readonly IHostEnvironment _hostEnvironment;
     private readonly IApiScopeUsagePolicy _scopeUsage;
+    private readonly IAuditService _audit;
 
     public ClientsController(
         IClientService clientService,
@@ -40,7 +41,8 @@ public class ClientsController : ControllerBase
         IOptions<ClientAdminApiHardeningOptions> clientAdminApiHardeningOptions,
         IOptions<PrivilegedTestAdminBootstrapOptions> privilegedTestAdminBootstrapOptions,
         IHostEnvironment hostEnvironment,
-        IApiScopeUsagePolicy scopeUsage)
+        IApiScopeUsagePolicy scopeUsage,
+        IAuditService audit)
     {
         _clientService = clientService;
         _allowedScopesService = allowedScopesService;
@@ -48,6 +50,7 @@ public class ClientsController : ControllerBase
         _privilegedTestAdminBootstrapOptions = privilegedTestAdminBootstrapOptions.Value;
         _hostEnvironment = hostEnvironment;
         _scopeUsage = scopeUsage;
+        _audit = audit;
     }
 
     /// <summary>
@@ -346,6 +349,7 @@ public class ClientsController : ControllerBase
             }
 
             await _allowedScopesService.SetAllowedScopesAsync(clientId, request.Scopes);
+            await _audit.LogAdministrativeEventAsync("ClientAllowedScopesChanged", "Client", clientId.ToString(), "Allowed scopes updated.", cancellationToken);
             return Ok(new { message = "Allowed scopes updated successfully." });
         }
         catch (UnauthorizedAccessException ex)
@@ -451,6 +455,7 @@ public class ClientsController : ControllerBase
             }
 
             await _allowedScopesService.SetRequiredScopesAsync(clientId, request.Scopes);
+            await _audit.LogAdministrativeEventAsync("ClientRequiredScopesChanged", "Client", clientId.ToString(), "Required scopes updated.", cancellationToken);
             return Ok(new { message = "Required scopes updated successfully." });
         }
         catch (InvalidOperationException ex)

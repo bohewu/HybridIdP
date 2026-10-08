@@ -198,14 +198,14 @@
             </svg>
             <span class="text-sm text-gray-900">{{ provider.displayName }}</span>
           </div>
-          <a :href="`/Account/LinkExternalLogin/Challenge?provider=${provider.scheme}`"
+          <button type="button" @click="linkAccount(provider.scheme)" :disabled="linking"
              class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border border-blue-200 rounded-md transition-colors focus:outline-none cursor-pointer"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
             <span>{{ t('profile.common.linkAccount', { provider: provider.displayName }) }}</span>
-          </a>
+          </button>
         </li>
       </ul>
     </div>
@@ -215,6 +215,8 @@
 <script setup>
 import { ref, computed, defineProps, defineEmits } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { beginExternalLoginLink } from '@/services/accountApi'
+import { useCsrfToken } from '@/composables/useCsrfToken'
 
 const props = defineProps({
   profile: {
@@ -227,6 +229,19 @@ const emit = defineEmits(['updated'])
 
 const { t } = useI18n()
 const removingLogins = ref({}) // track removal status by providerKey
+const linking = ref(false)
+const { csrfToken } = useCsrfToken('profile-app')
+const linkAccount = async (provider) => {
+  linking.value = true
+  try {
+    const result = await beginExternalLoginLink(provider, csrfToken.value)
+    if (!result.loginUrl) throw new Error('freshAuthenticationRequired')
+    window.location.assign(result.loginUrl)
+  } catch {
+    alert(t('profile.common.errors.freshAuthenticationRequired'))
+    linking.value = false
+  }
+}
 
 const canRemove = computed(() => {
   // Always allow removal attempt; backend will prevent removing the last login method
@@ -258,7 +273,7 @@ const removeLogin = async (login) => {
       emit('updated')
     } else {
       console.error('Failed to remove login')
-      alert(t('profile.removeLoginFailed') || 'Failed to remove login')
+      alert(t('profile.common.removeLoginFailed'))
     }
   } catch (e) {
     console.error('Error removing login:', e)

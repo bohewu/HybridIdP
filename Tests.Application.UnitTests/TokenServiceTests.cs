@@ -30,6 +30,38 @@ namespace Tests.Application.UnitTests
     public class TokenServiceTests
     {
         [Theory]
+        [InlineData("amr", "pwd", false)]
+        [InlineData("amr", "hwk", false)]
+        [InlineData("amr", "pwd", true)]
+        [InlineData(ClaimTypes.AuthenticationMethod, "hwk", true)]
+        public async Task HandleTokenRequestAsync_AuthorizationCode_ShouldRequirePerformedMfa_WhenGlobalPolicyChanges(
+            string claimType, string primaryAmr, bool completedMfa)
+        {
+            var policy = new SecurityPolicy { MfaEnforcementGracePeriodDays = 30 };
+            _mockSecurityPolicyService.Setup(service => service.GetCurrentPolicyAsync()).ReturnsAsync(policy);
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true, UserName = "stale-code-user" };
+            var principal = SetupAuthorizationCodeGrant(user);
+            principal.SetClaims(claimType, completedMfa
+                ? ImmutableArray.Create(primaryAmr, AuthConstants.Amr.Mfa)
+                : ImmutableArray.Create(primaryAmr, AuthConstants.Amr.UserPresence));
+            principal.SetClaim(Claims.AuthenticationTime, DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds());
+            _mockApplicationManager.Setup(manager => manager.GetPropertiesAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateClientProperties(requireMfa: false));
+
+            policy.EnforceMandatoryMfaEnrollment = true;
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(GrantTypes.AuthorizationCode), principal);
+
+            _mockSecurityPolicyService.Verify(service => service.GetCurrentPolicyAsync(), Times.Once);
+            if (!completedMfa) AssertInvalidGrant(result);
+            else
+            {
+                var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+                Assert.Equal<string>(principal.GetClaims(claimType), issued.GetClaims(claimType));
+                Assert.Equal(principal.GetClaim(Claims.AuthenticationTime), issued.GetClaim(Claims.AuthenticationTime));
+            }
+        }
+
+        [Theory]
         [InlineData("pwd", false)]
         [InlineData("hwk", false)]
         [InlineData("pwd", true)]
@@ -515,7 +547,7 @@ namespace Tests.Application.UnitTests
             // Arrange
             var request = CreateRequest(GrantTypes.Password, username: "user", password: "${TEST_FIXTURE_003}", scope: "openid");
             var userId = Guid.NewGuid();
-            var user = new ApplicationUser { Id = userId, UserName = "user", Email = "user@test.com" };
+            var user = new ApplicationUser { Id = userId, UserName = "user", Email = "user@test.com", LastPasswordChangeDate = DateTime.UtcNow };
             
             _mockUserManager.Setup(m => m.FindByNameAsync("user")).ReturnsAsync(user);
             _mockUserManager.Setup(m => m.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
@@ -677,6 +709,9 @@ namespace Tests.Application.UnitTests
                 IsActive = true
             };
             SetupPasswordGrant(user, passwordIsValid: false);
+            user.LastPasswordChangeDate = null;
+            _mockSecurityPolicyService.Setup(service => service.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy { PasswordExpirationDays = 30 });
             EnableDirectoryAuthentication();
             _mockCredentialMigrationStateStore
                 .Setup(store => store.FindAsync(user.Id, It.IsAny<CancellationToken>()))
@@ -697,6 +732,25 @@ namespace Tests.Application.UnitTests
 
             Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
             _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, It.IsAny<string>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(30)]
+        [InlineData(0)]
+        public async Task HandleTokenRequestAsync_Password_UnknownDate_ObeysLocalExpiration(int expirationDays)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "unknown-age", IsActive = true };
+            SetupPasswordGrant(user);
+            user.LastPasswordChangeDate = null;
+            _mockSecurityPolicyService.Setup(service => service.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy { PasswordExpirationDays = expirationDays });
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.Password, username: user.UserName, password: "${TEST_FIXTURE_001}"), null);
+
+            if (expirationDays > 0) AssertPasswordGrantRejected(result);
+            else Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            Assert.Null(user.LastPasswordChangeDate);
         }
 
         [Fact]
@@ -1053,7 +1107,7 @@ namespace Tests.Application.UnitTests
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        public async Task HandleTokenRequestAsync_Password_MandatoryMfaWithPasskey_ShouldCountOnlyActiveCredentials(bool disabled)
+        public async Task HandleTokenRequestAsync_Password_MandatoryMfaWithPasskey_ShouldRejectWithoutAssertion(bool disabled)
         {
             var user = new ApplicationUser
             {
@@ -1073,14 +1127,30 @@ namespace Tests.Application.UnitTests
                     password: "${TEST_FIXTURE_001}"),
                 null);
 
-            if (disabled)
+            AssertPasswordGrantRejected(result);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task HandleTokenRequestAsync_Password_ShouldRejectEnrolledPasskeyWithoutAssertion_EvenDuringGrace(bool notified)
+        {
+            var user = new ApplicationUser
             {
-                AssertPasswordGrantRejected(result);
-            }
-            else
-            {
-                Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
-            }
+                Id = Guid.NewGuid(), UserName = "enrolled-grace-user", IsActive = true,
+                MfaRequirementNotifiedAt = notified ? DateTime.UtcNow.AddHours(-1) : null
+            };
+            var originalNotification = user.MfaRequirementNotifiedAt;
+            SetupPasswordGrant(user);
+            SetupMockUserCredentials(new UserCredential { UserId = user.Id });
+            SetupMandatoryMfaPolicy(gracePeriodDays: 3);
+
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.Password, username: user.UserName, password: "${TEST_FIXTURE_001}"), null);
+
+            AssertPasswordGrantRejected(result);
+            Assert.Equal(originalNotification, user.MfaRequirementNotifiedAt);
+            _mockUserManager.Verify(manager => manager.UpdateAsync(user), Times.Never);
         }
 
         [Fact]
@@ -1731,6 +1801,8 @@ namespace Tests.Application.UnitTests
             bool isLockedOut = false,
             bool passwordIsValid = true)
         {
+            // Ordinary successful-grant fixtures have known, current local password age.
+            user.LastPasswordChangeDate ??= DateTime.UtcNow;
             var clientApp = new object();
             _mockApplicationManager
                 .Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))

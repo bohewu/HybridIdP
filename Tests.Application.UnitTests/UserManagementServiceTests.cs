@@ -492,6 +492,94 @@ public class UserManagementServiceTests : IDisposable
 
     #region UpdateUserAsync Tests
 
+    [Theory]
+    [InlineData(true, "other@example.test", true, true)]
+    [InlineData(false, "other@example.test", true, true)]
+    [InlineData(true, "FACTOR@example.test", true, true)]
+    [InlineData(false, "FACTOR@example.test", true, true)]
+    [InlineData(true, "factor@example.test ", true, true)]
+    [InlineData(false, "factor@example.test ", true, true)]
+    [InlineData(true, null, true, true)]
+    [InlineData(false, null, true, true)]
+    [InlineData(true, "factor@example.test", true, false)]
+    [InlineData(false, "factor@example.test", true, false)]
+    [InlineData(true, "factor@example.test", false, true)]
+    [InlineData(false, "factor@example.test", false, true)]
+    public async Task UpdateUser_ShouldRejectEnrolledEmailChangesBeforeMutation(
+        bool updateRoles, string? email, bool originalConfirmed, bool requestedConfirmed)
+    {
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Original" };
+        var user = new ApplicationUser
+        {
+            UserName = "factor-user", Email = "factor@example.test",
+            EmailConfirmed = originalConfirmed, EmailMfaEnabled = true,
+            FirstName = "Original", Person = person, PersonId = person.Id
+        };
+        Assert.True((await _userManager.CreateAsync(user)).Succeeded);
+        var stamp = user.SecurityStamp;
+        var request = new UpdateUserDto
+        {
+            Email = email!, EmailConfirmed = requestedConfirmed,
+            FirstName = "Changed", IsActive = false, Roles = []
+        };
+
+        var result = updateRoles
+            ? await _service.UpdateUserAsync(user.Id, request)
+            : await _service.UpdateUserWithoutRolesAsync(user.Id, request);
+
+        Assert.False(result.Success);
+        Assert.Equal("EmailMfaAddressChangeRequiresRemoval", Assert.Single(result.Errors));
+        Assert.Equal("Original", user.FirstName);
+        Assert.Equal("Original", person.FirstName);
+        Assert.Equal(stamp, user.SecurityStamp);
+        Assert.True(user.IsActive);
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+        var persisted = await _context.Users.Include(candidate => candidate.Person).SingleAsync();
+        Assert.Equal("factor@example.test", persisted.Email);
+        Assert.Equal(originalConfirmed, persisted.EmailConfirmed);
+        Assert.True(persisted.EmailMfaEnabled);
+        Assert.Equal("Original", persisted.Person!.FirstName);
+        _mockEventPublisher.Verify(p => p.PublishAsync(It.IsAny<UserUpdatedEvent>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task UpdateUser_ShouldPreserveOrdinaryEdits_WhenEmailIsUnchangedOrUnenrolled(
+        bool updateRoles, bool enrolled)
+    {
+        var person = new Person { Id = Guid.NewGuid(), FirstName = "Original" };
+        var user = new ApplicationUser
+        {
+            UserName = "profile-user", Email = "factor@example.test", EmailConfirmed = enrolled,
+            EmailMfaEnabled = enrolled, Person = person, PersonId = person.Id
+        };
+        Assert.True((await _userManager.CreateAsync(user)).Succeeded);
+        var stamp = user.SecurityStamp;
+        var request = new UpdateUserDto
+        {
+            Email = enrolled ? user.Email : "changed@example.test", EmailConfirmed = true,
+            FirstName = "Updated", IsActive = true, Roles = []
+        };
+
+        var result = updateRoles
+            ? await _service.UpdateUserAsync(user.Id, request)
+            : await _service.UpdateUserWithoutRolesAsync(user.Id, request);
+
+        Assert.True(result.Success);
+        _context.ChangeTracker.Clear();
+        var persisted = await _context.Users.Include(candidate => candidate.Person).SingleAsync();
+        Assert.Equal(request.Email, persisted.Email);
+        Assert.True(persisted.EmailConfirmed);
+        Assert.Equal(enrolled, persisted.EmailMfaEnabled);
+        Assert.Equal(stamp, persisted.SecurityStamp);
+        Assert.Equal("Updated", persisted.FirstName);
+        Assert.Equal("Updated", persisted.Person!.FirstName);
+    }
+
     [Fact]
     public async Task UpdateUserAsync_ShouldUpdateUser_WhenValidDataProvided()
     {

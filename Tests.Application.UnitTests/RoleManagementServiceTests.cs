@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Identity;
 using Moq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Infrastructure.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using System.Text.Json;
 
 namespace Tests.Application.UnitTests;
 
@@ -110,7 +114,38 @@ public class RoleManagementServiceTests
         Assert.Contains("roles.read", detail.Permissions);
         Assert.Equal(2, detail.UserCount);
         Assert.Equal(2, detail.Users.Count);
-        Assert.All(detail.Users, u => Assert.Contains("Editors", u.Roles));
+        Assert.All(detail.Users, u => Assert.Null(u.Roles));
+        Assert.Equal(new[] { "alice", "bob" }, detail.Users.Select(user => user.DisplayName));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetRoleById_ShouldExposeOnlyDisplayIdentityUnlessAuthorityHasUsersRead(bool canReadUsers)
+    {
+        var role = new ApplicationRole { Id = Guid.NewGuid(), Name = "Editors" };
+        CreateService([role], out var roles, out var users, out var events);
+        roles.Setup(value => value.FindByIdAsync(role.Id.ToString())).ReturnsAsync(role);
+        var member = new ApplicationUser { Id = Guid.NewGuid(), UserName = "email@example.test", Email = "private@example.test", IsActive = true };
+        users.Setup(value => value.GetUsersInRoleAsync(role.Name)).ReturnsAsync([member]);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity("test"));
+        var boundary = new Mock<IAdministrativeAuthorizationBoundary>();
+        boundary.Setup(value => value.ResolveAsync()).ReturnsAsync(new AdministrativeAuthority(principal, false, new HashSet<string>()));
+        var authorization = new Mock<Microsoft.AspNetCore.Authorization.IAuthorizationService>();
+        authorization.Setup(value => value.AuthorizeAsync(principal, null, "users.read"))
+            .ReturnsAsync(canReadUsers ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var service = new RoleManagementService(roles.Object, users.Object, events.Object, boundary.Object, authorization.Object);
+        var detail = await service.GetRoleByIdAsync(role.Id);
+        var result = Assert.Single(detail!.Users);
+        Assert.Equal(member.Id.ToString(), result.DisplayName);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        if (canReadUsers)
+        {
+            Assert.Equal(member.Email, json.RootElement.GetProperty("email").GetString());
+            Assert.True(json.RootElement.GetProperty("isActive").GetBoolean());
+            Assert.Equal("Editors", json.RootElement.GetProperty("roles")[0].GetString());
+        }
+        else Assert.Equal(new[] { "id", "displayName" }, json.RootElement.EnumerateObject().Select(property => property.Name));
     }
 
     [Fact]

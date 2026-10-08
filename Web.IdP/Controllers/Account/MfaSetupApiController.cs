@@ -129,6 +129,8 @@ public partial class MfaSetupApiController : ControllerBase
         var previousStamp = user.SecurityStamp;
         var setupInfo = await _mfaService.GetTotpSetupInfoAsync(user, ct);
         await PendingExternalLoginLink.CarryInitialEnrollmentStampAsync(HttpContext, user, previousStamp);
+        if (!await MfaEnrollmentSession.CarryAuthorizedStampAsync(HttpContext, user, previousStamp, ct))
+            return StatusCode(403, new { error = "freshAuthenticationRequired" });
 
         return Ok(new MfaSetupTotpResponse
         {
@@ -175,15 +177,16 @@ public partial class MfaSetupApiController : ControllerBase
 
             // UX Improvement: Sign in user fully so they can access the app immediately
             // This prevents redirection back to Login page and ensures AMR claims are correct
-            AuthenticationMethodSession.Add(
-                HttpContext.Session,
+            await AuthenticationMethodSession.AddForEnrollmentAsync(
+                HttpContext, user,
                 AuthConstants.Amr.Mfa,
                 AuthConstants.Amr.Otp);
             await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
             await _signInManager.SignInWithClaimsAsync(
                 user,
                 isPersistent: false,
-                AuthenticationMethodSession.CreateClaims(HttpContext.Session));
+                AuthenticationMethodSession.CreateClaims(HttpContext.Session, user));
+            AuthenticationMethodSession.Consume(HttpContext.Session);
 
             // Generate recovery codes
             var recoveryCodes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
@@ -316,15 +319,16 @@ public partial class MfaSetupApiController : ControllerBase
             return Unauthorized();
         }
 
-        AuthenticationMethodSession.Add(
-            HttpContext.Session,
+        await AuthenticationMethodSession.AddForEnrollmentAsync(
+            HttpContext, user,
             AuthConstants.Amr.Mfa,
             AuthConstants.Amr.Otp);
         await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user);
         await _signInManager.SignInWithClaimsAsync(
             user,
             isPersistent: false,
-            AuthenticationMethodSession.CreateClaims(HttpContext.Session));
+            AuthenticationMethodSession.CreateClaims(HttpContext.Session, user));
+        AuthenticationMethodSession.Consume(HttpContext.Session);
         MfaEnrollmentSession.Consume(HttpContext.Session);
 
         return Ok(new { success = true });
@@ -367,18 +371,7 @@ public partial class MfaSetupApiController : ControllerBase
         if (user != null)
             return user;
 
-        // Try TwoFactorUserIdScheme (partial authentication during MFA setup)
-        var twoFactorResult = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-        if (twoFactorResult.Succeeded && twoFactorResult.Principal != null)
-        {
-            var userId = twoFactorResult.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
-            {
-                return await _userManager.FindByIdAsync(userGuid.ToString());
-            }
-        }
-
-        return null;
+        return await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
     }
 
     private async Task<bool> CanIssueFullCookieAsync(

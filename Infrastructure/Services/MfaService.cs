@@ -162,7 +162,7 @@ public class MfaService : IMfaService
 
     public async Task<bool> ValidateRecoveryCodeAsync(ApplicationUser user, string code, CancellationToken ct = default)
     {
-        if (string.IsNullOrEmpty(user.RecoveryCodes))
+        if ((!user.TwoFactorEnabled && !user.EmailMfaEnabled) || string.IsNullOrEmpty(user.RecoveryCodes))
         {
             return false;
         }
@@ -199,6 +199,7 @@ public class MfaService : IMfaService
 
     public Task<bool> ValidateNativeRecoveryCodeAsync(ApplicationUser user, string code, CancellationToken ct = default)
     {
+        if (!user.TwoFactorEnabled && !user.EmailMfaEnabled) return Task.FromResult(false);
         // Identity's generated codes contain a hyphen; the existing login form accepts either spelling.
         var normalized = code.Replace(" ", "").Replace("-", "");
         if (normalized.Length == 10) normalized = normalized.Insert(5, "-");
@@ -320,7 +321,7 @@ public class MfaService : IMfaService
 
         // Hash the code before storing
         user.EmailMfaCode = _passwordHasher.HashPassword(user, code);
-        user.EmailMfaCodeExpiry = _timeProvider.GetUtcNow().DateTime.AddMinutes(EmailMfaCodeLifetimeMinutes);
+        user.EmailMfaCodeExpiry = _timeProvider.GetUtcNow().UtcDateTime.AddMinutes(EmailMfaCodeLifetimeMinutes);
         user.EmailMfaVerificationAttempts = 0;
 
         await _userManager.UpdateAsync(user);
@@ -361,7 +362,7 @@ public class MfaService : IMfaService
         }
 
         if (!user.EmailMfaCodeExpiry.HasValue ||
-            user.EmailMfaCodeExpiry.Value <= _timeProvider.GetUtcNow().DateTime)
+            user.EmailMfaCodeExpiry.Value <= _timeProvider.GetUtcNow().UtcDateTime)
         {
             // Code expired, clear it
             user.EmailMfaCode = null;
@@ -375,10 +376,11 @@ public class MfaService : IMfaService
         var reservation = await _emailMfaAttemptStore.TryReserveAttemptAsync(
             user.Id,
             pendingCodeHash,
-            _timeProvider.GetUtcNow().DateTime,
+            _timeProvider.GetUtcNow().UtcDateTime,
             MaxEmailMfaVerificationAttempts,
             ct);
-        if (reservation == EmailMfaAttemptReservation.Rejected)
+        if (reservation == EmailMfaAttemptReservation.Rejected || user.EmailMfaCode != pendingCodeHash ||
+            !user.EmailMfaCodeExpiry.HasValue || user.EmailMfaCodeExpiry.Value <= _timeProvider.GetUtcNow().UtcDateTime)
         {
             return false;
         }
@@ -465,6 +467,10 @@ public class MfaService : IMfaService
         {
             user.TwoFactorEnabled = false;
             user.LastTotpValidatedWindow = null;
+            user.RecoveryCodes = null;
+            var nativeCodes = await _dbContext.UserTokens.Where(token => token.UserId == user.Id &&
+                token.LoginProvider == "[AspNetUserStore]" && token.Name == "RecoveryCodes").ToListAsync(ct);
+            _dbContext.UserTokens.RemoveRange(nativeCodes);
         }
         else
         {
@@ -472,7 +478,9 @@ public class MfaService : IMfaService
             user.EmailMfaCode = null;
             user.EmailMfaCodeExpiry = null;
             user.EmailMfaVerificationAttempts = 0;
+            if (!user.TwoFactorEnabled) user.RecoveryCodes = null;
         }
+        user.SecurityStamp = Guid.NewGuid().ToString();
         if (retirePasskeys)
             foreach (var passkey in passkeys) passkey.DisabledAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
 

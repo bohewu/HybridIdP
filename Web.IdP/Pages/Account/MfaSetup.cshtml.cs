@@ -148,17 +148,22 @@ public class MfaSetupModel : PageModel
 
         MfaEnrollmentSession.Consume(HttpContext.Session);
         PendingExternalLoginLink.Cancel(HttpContext);
-        AuthorizationAuthenticationSession.PreserveTime(HttpContext, User);
+        // Skipping enrollment proves no new credential; retain only this subject's pending primary ceremony time.
+        HttpContext.Items[AuthorizationAuthenticationSession.PreserveTimeKey] =
+            AuthenticationMethodSession.GetAuthenticationTime(HttpContext.Session, user)?.ToUnixTimeSeconds()
+                .ToString(System.Globalization.CultureInfo.InvariantCulture);
         await _signInManager.SignInWithClaimsAsync(user, isPersistent: false,
-            AuthenticationMethodSession.CreateClaims(HttpContext.Session));
+            AuthenticationMethodSession.CreateClaims(HttpContext.Session, user));
+        AuthenticationMethodSession.Consume(HttpContext.Session);
         return this.SafeRedirect(ReturnUrl, "~/");
     }
 
     private async Task<ApplicationUser?> GetTwoFactorUserAsync()
     {
-        // First try the standard Identity TFA state (stored in a cookie by SignInManager)
-        var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
-        if (user != null) return user;
+        var authentication = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+        if (authentication.Succeeded)
+            return await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
+        ApplicationUser? user = null;
 
         // If not in TFA state, check if the user is already fully authenticated (step-up enrollment scenario)
         if (User.Identity?.IsAuthenticated == true)
@@ -167,16 +172,6 @@ public class MfaSetupModel : PageModel
             if (user != null) return user;
         }
 
-        // Fallback for manual check of the 2FA principal
-        var twoFactorPrincipal = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-        if (twoFactorPrincipal.Succeeded && twoFactorPrincipal.Principal != null)
-        {
-            var userIdClaim = twoFactorPrincipal.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
-            {
-                user = await _userManager.FindByIdAsync(userId.ToString());
-            }
-        }
         
         return user;
     }

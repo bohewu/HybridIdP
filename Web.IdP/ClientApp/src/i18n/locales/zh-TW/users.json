@@ -155,7 +155,12 @@
     "disabled": "未啟用兩步驟驗證",
     "reset": "重設 MFA",
     "resetConfirm": "確定要重設此使用者的 MFA 嗎？他們需要重新設定兩步驟驗證。",
-    "resetSuccess": "MFA 已成功重設。"
+    "resetSuccess": "MFA 已成功重設。",
+    "reasonPrompt": "請輸入重設 MFA 的原因（最多 500 字）。",
+    "reauthenticate": "請先使用已綁定的 MFA 方式驗證身分，再重設此使用者的 MFA。",
+    "verifiedRetry": "身分驗證完成。請選擇同一位使用者，再次執行重設 MFA。",
+    "mfaRequired": "請先為管理員帳號設定 MFA，才能重設其他使用者的 MFA。",
+    "resetDenied": "MFA 重設遭拒或未能完成。請確認權限後重試。"
   },
   "recoveryAssistance": {
     "target": "帳號：{name}",

@@ -11,23 +11,29 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Web.IdP.Controllers.Account;
 using Web.IdP.Services;
+using Web.IdP.Helpers;
+using Tests.Web.IdP.UnitTests.TestSupport;
+using Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
 
 public class LinkExternalLoginControllerSecurityTests
 {
     [Theory]
-    [InlineData(ExternalSignInCompletionStatus.Succeeded)]
-    [InlineData(ExternalSignInCompletionStatus.TotpRequired)]
-    [InlineData(ExternalSignInCompletionStatus.EmailOtpRequired)]
-    [InlineData(ExternalSignInCompletionStatus.MfaEnrollmentRequired)]
-    [InlineData(ExternalSignInCompletionStatus.PasskeyRequired)]
-    public async Task Callback_ProviderClaimsIncludeMfa_DelegatesCorrelatedInfoWithoutPrematureLink(ExternalSignInCompletionStatus status)
+    [InlineData(ExternalSignInCompletionStatus.Succeeded, false)]
+    [InlineData(ExternalSignInCompletionStatus.Succeeded, true)]
+    [InlineData(ExternalSignInCompletionStatus.TotpRequired, true)]
+    [InlineData(ExternalSignInCompletionStatus.EmailOtpRequired, true)]
+    [InlineData(ExternalSignInCompletionStatus.MfaEnrollmentRequired, true)]
+    [InlineData(ExternalSignInCompletionStatus.PasskeyRequired, true)]
+    public async Task Callback_ProviderClaimsIncludeMfa_RequiresFreshCorrelatedOperationProof(ExternalSignInCompletionStatus status, bool fresh)
     {
         var user = new ApplicationUser
         {
             Id = Guid.NewGuid(),
             UserName = "linked-user",
+            SecurityStamp = "existing",
             IsActive = true
         };
         var expectedXsrf = user.Id.ToString();
@@ -87,16 +93,29 @@ public class LinkExternalLoginControllerSecurityTests
                 IdentityConstants.ExternalScheme,
                 It.IsAny<AuthenticationProperties>()))
             .Returns(Task.CompletedTask);
-        var services = new ServiceCollection()
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        using var services = new ServiceCollection()
             .AddSingleton(authenticationService.Object)
+            .AddSingleton<IApplicationDbContext>(db)
+            .AddSingleton(userManager.Object)
             .BuildServiceProvider();
         var httpContext = new DefaultHttpContext
         {
             RequestServices = services,
             User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
+                [new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim(userManager.Object.Options.ClaimsIdentity.SecurityStampClaimType, user.SecurityStamp)],
                 IdentityConstants.ApplicationScheme))
         };
+        httpContext.Session = new MemorySession();
+        authenticationService.Setup(service => service.AuthenticateAsync(httpContext, IdentityConstants.ApplicationScheme))
+            .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(httpContext.User, IdentityConstants.ApplicationScheme)));
+        if (fresh)
+        {
+            var nonce = await AccountSecurityOperationSession.BeginAsync(httpContext, user, AccountSecurityOperationSession.ExternalLinkPurpose, externalInfo.LoginProvider);
+            AccountSecurityOperationSession.MarkVerified(httpContext, user, "password");
+            externalInfo.AuthenticationProperties = new AuthenticationProperties();
+            externalInfo.AuthenticationProperties.Items[AccountSecurityOperationSession.CorrelationProperty] = nonce;
+        }
 
         var coordinator = new Mock<IExternalSignInCoordinator>();
         coordinator.Setup(x => x.LinkAsync(httpContext, user, externalInfo, It.IsAny<CancellationToken>()))
@@ -112,7 +131,9 @@ public class LinkExternalLoginControllerSecurityTests
 
         var result = await controller.Callback();
 
-        if (status == ExternalSignInCompletionStatus.Succeeded)
+        if (!fresh)
+            Assert.Equal("/Account/Profile?error=FreshAuthenticationRequired", Assert.IsType<RedirectResult>(result).Url);
+        else if (status == ExternalSignInCompletionStatus.Succeeded)
             Assert.Equal("/Account/Profile?success=LinkAdded", Assert.IsType<RedirectResult>(result).Url);
         else Assert.IsType<RedirectToPageResult>(result);
         signInManager.Verify(
@@ -123,11 +144,11 @@ public class LinkExternalLoginControllerSecurityTests
                 user,
                 externalInfo.LoginProvider,
                 It.IsAny<CancellationToken>()),
-            Times.Once);
+            fresh ? Times.Once() : Times.Never());
         userManager.Verify(
             manager => manager.AddLoginAsync(user, externalInfo),
             Times.Never);
-        coordinator.Verify(x => x.LinkAsync(httpContext, user, externalInfo, It.IsAny<CancellationToken>()), Times.Once);
+        coordinator.Verify(x => x.LinkAsync(httpContext, user, externalInfo, It.IsAny<CancellationToken>()), fresh ? Times.Once() : Times.Never());
         signInManager.Verify(
             manager => manager.RefreshSignInAsync(It.IsAny<ApplicationUser>()),
             Times.Never);
@@ -142,7 +163,7 @@ public class LinkExternalLoginControllerSecurityTests
                 httpContext,
                 IdentityConstants.ExternalScheme,
                 It.IsAny<AuthenticationProperties>()),
-            status == ExternalSignInCompletionStatus.Succeeded ? Times.Once() : Times.Never());
+            !fresh || status == ExternalSignInCompletionStatus.Succeeded ? Times.Once() : Times.Never());
     }
 
     [Fact]

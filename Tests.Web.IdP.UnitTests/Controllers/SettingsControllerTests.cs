@@ -17,6 +17,7 @@ public class SettingsControllerTests
 {
     private readonly Mock<ISettingsService> _settings = new();
     private readonly Mock<IEmailService> _emailService = new();
+    private readonly Mock<IAuditService> _audit = new();
     private readonly SettingsController _controller;
 
     public SettingsControllerTests()
@@ -28,7 +29,7 @@ public class SettingsControllerTests
             _settings.Object,
             _emailService.Object,
             new ConfigurationBuilder().Build(),
-            emailOptions.Object);
+            emailOptions.Object, _audit.Object);
 
         _controller.ControllerContext = new ControllerContext
         {
@@ -146,7 +147,7 @@ public class SettingsControllerTests
             _settings.Object,
             Mock.Of<IEmailService>(),
             configuration,
-            emailOptions.Object);
+            emailOptions.Object, _audit.Object);
 
         _settings
             .Setup(service => service.GetByPrefixAsync(
@@ -194,6 +195,7 @@ public class SettingsControllerTests
         Assert.Equal(
             "System-managed settings cannot be modified",
             payload.GetProperty("error").GetString());
+        _audit.VerifyNoOtherCalls();
         _settings.Verify(
             service => service.SetValueAsync(
                 It.IsAny<string>(),
@@ -262,6 +264,8 @@ public class SettingsControllerTests
             new UpdateSettingRequest("HybridAuth"));
 
         Assert.IsType<OkObjectResult>(result);
+        _audit.Verify(audit => audit.LogAdministrativeEventAsync("SettingUpdated", "Setting",
+            SettingKeys.Branding.AppName, "Setting value updated.", It.IsAny<CancellationToken>()), Times.Once);
         _settings.Verify(
             service => service.SetValueAsync(
                 SettingKeys.Branding.AppName,
@@ -269,6 +273,19 @@ public class SettingsControllerTests
                 "TestUser",
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Theory]
+    [InlineData("(set)", false)]
+    [InlineData("synthetic-value", true)]
+    public async Task UpdateSetting_SensitiveKey_ShouldAuditOnlyActualWriteWithoutValue(string value, bool written)
+    {
+        var result = await _controller.UpdateSetting(SettingKeys.Email.SmtpPassword, new UpdateSettingRequest(value));
+
+        Assert.IsType<OkObjectResult>(result);
+        _audit.Verify(audit => audit.LogAdministrativeEventAsync("SettingUpdated", "Setting", SettingKeys.Email.SmtpPassword,
+            "Setting value updated.", It.IsAny<CancellationToken>()), written ? Times.Once() : Times.Never());
+        if (!written) _audit.VerifyNoOtherCalls();
     }
 
     [Fact]

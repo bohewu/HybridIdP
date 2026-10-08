@@ -71,4 +71,12 @@ describe('UserList role-management authorization', () => {
     expect(createWrapper(false, true).find('[data-testid="credential-recovery-action"]').exists()).toBe(true)
     expect(createWrapper(false, false).find('[data-testid="credential-recovery-action"]').exists()).toBe(false)
   })
+
+  it('requires the dedicated MFA-reset permission instead of users.update', async () => {
+    const wrapper = createWrapper(false, true)
+    await wrapper.setProps({ users: [{ id: 'mfa-user', roles: ['User'], isActive: true, twoFactorEnabled: true }] })
+    expect(wrapper.find('[data-testid="reset-mfa-action"]').exists()).toBe(false)
+    await wrapper.setProps({ canResetMfa: true, canUpdate: false })
+    expect(wrapper.find('[data-testid="reset-mfa-action"]').exists()).toBe(true)
+  })
 })

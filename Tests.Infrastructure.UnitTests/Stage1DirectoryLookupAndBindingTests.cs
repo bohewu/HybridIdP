@@ -6,6 +6,7 @@ using Infrastructure;
 using Infrastructure.Directory;
 using Infrastructure.Options;
 using Infrastructure.Services;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -44,8 +45,12 @@ public sealed class Stage1DirectoryLookupAndBindingTests
         Assert.Null(result.Identity);
     }
 
-    [Fact]
-    public async Task BindAndRefreshAsync_EligibleIdentity_StoresImmutableBindingAndAllowlistedProfile()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    public async Task BindAndRefreshAsync_EligibleIdentity_StoresImmutableBindingAndAllowlistedProfile(
+        bool emailMfaEnabled, bool emailConfirmed)
     {
         await using var context = CreateContext();
         var person = new Person { Id = Guid.NewGuid(), Email = "old@example.test", FirstName = "Old" };
@@ -55,6 +60,8 @@ public sealed class Stage1DirectoryLookupAndBindingTests
             UserName = "local",
             PersonId = person.Id,
             Email = "old@example.test",
+            EmailMfaEnabled = emailMfaEnabled,
+            EmailConfirmed = emailConfirmed,
             FirstName = "Old"
         };
         context.Persons.Add(person);
@@ -96,17 +103,64 @@ public sealed class Stage1DirectoryLookupAndBindingTests
         Assert.Equal("opaque-subject", binding.StableSubject);
         Assert.Equal(directoryObjectId, binding.DirectoryObjectId);
         Assert.Equal("ACCOUNT", binding.NormalizedCanonicalAccountAlias);
+        context.ChangeTracker.Clear();
         var refreshedUser = await context.Users.SingleAsync();
         var refreshedPerson = await context.Persons.SingleAsync();
         Assert.Equal("Display Name", refreshedUser.Nickname);
         Assert.Equal("Given", refreshedUser.FirstName);
         Assert.Equal("Surname", refreshedUser.LastName);
-        Assert.Equal("new@example.test", refreshedUser.Email);
+        Assert.Equal(emailMfaEnabled ? "old@example.test" : "new@example.test", refreshedUser.Email);
+        Assert.Equal(emailMfaEnabled, refreshedUser.EmailMfaEnabled);
+        Assert.Equal(emailConfirmed, refreshedUser.EmailConfirmed);
         Assert.Equal("Department", refreshedUser.Department);
         Assert.Equal("Title", refreshedUser.JobTitle);
         Assert.Equal("Employee", refreshedUser.EmployeeId);
         Assert.Equal("Display Name", refreshedPerson.Nickname);
         Assert.Equal("new@example.test", refreshedPerson.Email);
+    }
+
+    [Fact]
+    public async Task BindAndRefreshAsync_ShouldReturnConflictWithoutPartialWrites_WhenEnrollmentChangedAfterRead()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        var person = new Person { Id = Guid.NewGuid(), Email = "contact@example.test" };
+        var user = new ApplicationUser
+        {
+            UserName = "local", Email = "factor@example.test", EmailConfirmed = true,
+            EmailMfaCode = "original-pending-hash", EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5),
+            EmailMfaVerificationAttempts = 2,
+            Person = person, PersonId = person.Id, ConcurrencyStamp = "before-enrollment"
+        };
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+        await using (var enrollmentContext = new ApplicationDbContext(options))
+        {
+            var enrolled = await enrollmentContext.Users.SingleAsync();
+            enrolled.EmailMfaEnabled = true;
+            enrolled.ConcurrencyStamp = "after-enrollment";
+            await enrollmentContext.SaveChangesAsync();
+        }
+
+        var outcome = await new Stage1BindingRefreshService(context).BindAndRefreshAsync(new Stage1BindingRefreshRequest(
+            user.Id, "example.provider", "subject", ManagedIdentity("account", profile: new AssuredProfile
+            {
+                Email = "upstream@example.test", AssuredFields = [AssuredProfileField.Email]
+            })));
+
+        Assert.Equal(Stage1BindingRefreshOutcome.Conflict, outcome);
+        context.ChangeTracker.Clear();
+        Assert.Empty(await context.ProviderSubjectDirectoryBindings.ToListAsync());
+        Assert.Equal("contact@example.test", (await context.Persons.SingleAsync()).Email);
+        var persisted = await context.Users.SingleAsync();
+        Assert.Equal("factor@example.test", persisted.Email);
+        Assert.Equal("original-pending-hash", persisted.EmailMfaCode);
+        Assert.NotNull(persisted.EmailMfaCodeExpiry);
+        Assert.Equal(2, persisted.EmailMfaVerificationAttempts);
+        Assert.True(persisted.EmailMfaEnabled);
     }
 
     [Fact]

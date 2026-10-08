@@ -76,7 +76,7 @@ public partial class PasskeyController : ControllerBase
             return Unauthorized();
         }
 
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireCurrentStamp: true))
         {
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
@@ -143,7 +143,7 @@ public partial class PasskeyController : ControllerBase
             return Unauthorized();
         }
 
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireCurrentStamp: true))
         {
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         }
@@ -191,7 +191,7 @@ public partial class PasskeyController : ControllerBase
                 }
 
                 AuthenticationMethodSession.Add(
-                    HttpContext.Session,
+                    HttpContext.Session, user,
                     Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
                     Core.Domain.Constants.AuthConstants.Amr.UserPresence,
                     Core.Domain.Constants.AuthConstants.Amr.Mfa);
@@ -199,7 +199,8 @@ public partial class PasskeyController : ControllerBase
                 await _signInManager.SignInWithClaimsAsync(
                     user,
                     isPersistent: false,
-                    AuthenticationMethodSession.CreateClaims(HttpContext.Session));
+                    AuthenticationMethodSession.CreateClaims(HttpContext.Session, user));
+                AuthenticationMethodSession.Consume(HttpContext.Session);
             }
 
             return Ok(new { success = true });
@@ -387,7 +388,7 @@ public partial class PasskeyController : ControllerBase
             if (result.UserVerified)
             {
                 AuthenticationMethodSession.Replace(
-                    HttpContext.Session,
+                    HttpContext.Session, result.User,
                     Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
                     Core.Domain.Constants.AuthConstants.Amr.UserPresence,
                     Core.Domain.Constants.AuthConstants.Amr.Mfa);
@@ -395,18 +396,25 @@ public partial class PasskeyController : ControllerBase
             else
             {
                 AuthenticationMethodSession.Replace(
-                    HttpContext.Session,
+                    HttpContext.Session, result.User,
                     Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
                     Core.Domain.Constants.AuthConstants.Amr.UserPresence);
             }
 
             // Issue cookie with amr claims
-            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, result.User);
 
             RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, result.User.Id, hardware: true);
             if (result.UserVerified)
-                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, result.User);
+            {
+                var credentialId = clientResponse.TryGetProperty("id", out var id) && id.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(
+                        Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlDecode(id.GetString()!)) : null;
+                AccountSecurityOperationSession.MarkVerified(HttpContext, result.User, "passkey", credentialId);
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, result.User, "passkey", credentialId);
+            }
             await _signInManager.SignInWithClaimsAsync(result.User, isPersistent: false, claims);
+            AuthenticationMethodSession.Consume(HttpContext.Session);
             await _userManagementService.UpdateLastLoginAsync(result.User.Id, ct);
             LogPasskeyLogin(result.User.UserName);
             return Ok(new { success = true, username = result.User.UserName });
@@ -423,16 +431,7 @@ public partial class PasskeyController : ControllerBase
             return user;
         }
 
-        var partial = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
-        if (!partial.Succeeded || partial.Principal?.Identity?.IsAuthenticated != true)
-        {
-            return null;
-        }
-
-        var subject = partial.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        return Guid.TryParse(subject, out var userId)
-            ? await _userManager.FindByIdAsync(userId.ToString())
-            : null;
+        return await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
     }
 
     private async Task<ApplicationUser?> GetApplicationCookieUserAsync()

@@ -137,6 +137,22 @@ public sealed class DeviceVerificationSessionTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TryConsume_ConsentDecision_RequiresPreviouslyResolvedInteraction(bool resolved)
+    {
+        var session = new MemorySession();
+        var principal = CreatePrincipal("user-1");
+        var interaction = CreateInteraction("client-1", "ABCD-EFGH");
+        var token = DeviceVerificationSession.Issue(session, principal,
+            resolved ? interaction : AuthenticateResult.NoResult());
+
+        Assert.Equal(resolved, DeviceVerificationSession.TryConsume(session, principal, interaction,
+            token, requireResolvedInteraction: true));
+        Assert.False(DeviceVerificationSession.TryConsume(session, principal, interaction, token));
+    }
+
     [Fact]
     public void TryConsume_ExpiredIntent_ReturnsFalse()
     {

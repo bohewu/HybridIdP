@@ -39,6 +39,17 @@ async function recoveryRequest(path = '', method = 'GET', body = null, csrfToken
   return { ...data, httpOk: response.ok, httpStatus: response.status };
 }
 
+export async function beginExternalLoginLink(provider, csrfToken) {
+  const response = await fetch(`/Account/LinkExternalLogin/Reauthenticate?provider=${encodeURIComponent(provider)}`, {
+    method: 'POST',
+    headers: { 'X-XSRF-TOKEN': csrfToken },
+    credentials: 'include'
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || 'freshAuthenticationRequired');
+  return result;
+}
+
 export const accountApi = {
   async getMyRoles() {
     const response = await fetch('/api/my/roles', createFetchOptions());

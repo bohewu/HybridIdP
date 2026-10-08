@@ -274,13 +274,14 @@ public partial class LoginModel : PageModel
                 if (isAbnormal)
                 {
                     loginHistory.IsFlaggedAbnormal = true;
+                    var currentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
+                    loginHistory.IsSuccessful = !currentPolicy.BlockAbnormalLogin;
                     // Record login first so we have the record
                     await _loginHistoryService.RecordLoginAsync(loginHistory);
                     
                     await _notificationService.NotifyAbnormalLoginAsync(result.User!.Id.ToString(), loginHistory);
 
                     // Check if we should block abnormal logins
-                    var currentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
                     if (currentPolicy.BlockAbnormalLogin)
                     {
                         LogAbnormalLoginBlocked(result.User!.UserName, loginHistory.IpAddress);
@@ -296,8 +297,9 @@ public partial class LoginModel : PageModel
                 }
 
                 AuthenticationMethodSession.Replace(
-                    HttpContext.Session,
+                    HttpContext.Session, result.User!,
                     AuthConstants.Amr.Password);
+                AccountSecurityOperationSession.MarkVerified(HttpContext, result.User, "password");
 
                 // Check if user has MFA enabled - redirect to MFA verification page
                 // Support both TOTP MFA (TwoFactorEnabled) and Email MFA (EmailMfaEnabled)
@@ -305,8 +307,7 @@ public partial class LoginModel : PageModel
                 {
                     // Store user ID for 2FA verification
                     // Identity's GetTwoFactorAuthenticationUserAsync expects ClaimTypes.NameIdentifier
-                    var identity = new System.Security.Claims.ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
-                    identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, result.User.Id.ToString()));
+                    var identity = TwoFactorAuthenticationSession.CreateIdentity(result.User, _userManager);
                     await HttpContext.SignInAsync(
                         IdentityConstants.TwoFactorUserIdScheme,
                         new System.Security.Claims.ClaimsPrincipal(identity));
@@ -373,9 +374,9 @@ public partial class LoginModel : PageModel
                                 if (!isGracePeriodActive)
                                 {
                                     // Store user ID for 2FA setup access using partial authentication
-                                    var identity = new System.Security.Claims.ClaimsIdentity(IdentityConstants.TwoFactorUserIdScheme);
-                                    identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, result.User.Id.ToString()));
-                                    identity.AddClaim(MfaEnrollmentSession.BeginInitial(HttpContext.Session, result.User.Id));
+                                    var identity = TwoFactorAuthenticationSession.CreateIdentity(result.User, _userManager);
+                                    identity.AddClaim(MfaEnrollmentSession.BeginInitial(HttpContext.Session, result.User.Id,
+                                        securityStamp: result.User.SecurityStamp));
                                     await HttpContext.SignInAsync(IdentityConstants.TwoFactorUserIdScheme, new System.Security.Claims.ClaimsPrincipal(identity));
 
                                     return RedirectToPage("./MfaSetup", new { returnUrl });
@@ -384,7 +385,7 @@ public partial class LoginModel : PageModel
                             
                             // Normal flow or Grace Period Active
                             // Issue cookie with amr claim
-                            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+                            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, result.User!);
                             
                             // Note: SignInAsync below merges these claims into the principal
                             if (!await _lifecycleEligibility.IsEligibleAsync(result.User!.Id, cancellationToken))
@@ -393,13 +394,14 @@ public partial class LoginModel : PageModel
                                 return Page();
                             }
                             await _signInManager.SignInWithClaimsAsync(result.User, Input.RememberMe, claims);
+                            AuthenticationMethodSession.Consume(HttpContext.Session);
                             await _userManagementService.UpdateLastLoginAsync(result.User.Id, cancellationToken);
                             return this.SafeRedirect(returnUrl);
                         }
                     }
                 }
 
-                var amrClaimsList = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+                var amrClaimsList = AuthenticationMethodSession.CreateClaims(HttpContext.Session, result.User!);
 
                 // Sign in user (role claims are automatically added by Identity)
                 if (!await _lifecycleEligibility.IsEligibleAsync(result.User!.Id, cancellationToken))
@@ -408,6 +410,7 @@ public partial class LoginModel : PageModel
                     return Page();
                 }
                 await _signInManager.SignInWithClaimsAsync(result.User!, isPersistent: Input.RememberMe, amrClaimsList);
+                AuthenticationMethodSession.Consume(HttpContext.Session);
                 await _userManagementService.UpdateLastLoginAsync(result.User!.Id, cancellationToken);
                 LogUserSignedIn(result.User!.UserName);
                 
