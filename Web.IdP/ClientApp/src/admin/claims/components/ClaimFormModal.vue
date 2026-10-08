@@ -2,6 +2,8 @@
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseModal from '@/components/common/BaseModal.vue'
+import ClaimConditionEditor from './ClaimConditionEditor.vue'
+import { countConditionNodes } from '../claimConditions'
 
 const { t } = useI18n()
 
@@ -26,6 +28,9 @@ const propertyPathOptions = [
 ]
 
 const props = defineProps({
+  profileSchema: { type: Object, default: () => ({ enabled: false, sources: [] }) },
+  profileSchemaLoading: { type: Boolean, default: false },
+  profileSchemaError: { type: Boolean, default: false },
   show: {
     type: Boolean,
     default: false
@@ -56,6 +61,19 @@ const formData = ref({
 
 const useCustomPath = ref(false)
 const conditionText = ref('')
+const conditionMode = ref('visual')
+const profileProperties = computed(() => props.profileSchema.sources.find(source => source.name === formData.value.providerProfileSource)?.properties || {})
+const directProfileType = computed(() => profileProperties.value[formData.value.userPropertyPath])
+const conditionTree = computed({
+  get() {
+    try {
+      const rule = JSON.parse(conditionText.value)
+      return countConditionNodes(rule) <= 32 ? rule : null
+    } catch { return null }
+  },
+  set(rule) { conditionText.value = JSON.stringify(rule, null, 2) }
+})
+const conditionNodes = computed(() => conditionTree.value ? countConditionNodes(conditionTree.value) : 0)
 const useCondition = ref(false)
 const conditionError = ref('')
 const customPathValue = ref('')
@@ -92,6 +110,7 @@ const resetForm = () => {
   condition: null
   }
   conditionText.value = ''
+  conditionMode.value = 'visual'
   useCondition.value = false
   conditionError.value = ''
   useCustomPath.value = false
@@ -161,7 +180,16 @@ watch(useCustomPath, (val) => {
   }
 })
 
-watch(useCondition, value => { if (value) formData.value.dataType = 'Boolean' })
+watch(useCondition, value => {
+  if (value) {
+    formData.value.dataType = 'Boolean'
+    if (!conditionText.value) conditionTree.value = { operator: 'All', children: [{ operator: 'Equals', property: '', value: '' }] }
+  } else if (directProfileType.value) formData.value.dataType = directProfileType.value
+})
+watch(directProfileType, value => { if (value && !useCondition.value) formData.value.dataType = value })
+watch(() => formData.value.providerProfileSource, value => {
+  if (!value && formData.value.dataType === 'StringArray') formData.value.dataType = 'String'
+})
 
 watch(() => formData.value.name, (val) => {
   if (!val || claimTypeManuallyEdited.value) {
@@ -190,7 +218,7 @@ const handleSubmit = async () => {
   if (formData.value.providerProfileSource && useCondition.value) {
     try {
       const rule = JSON.parse(conditionText.value)
-      if (!rule || typeof rule !== 'object' || Array.isArray(rule)) throw new Error('Invalid rule')
+      if (countConditionNodes(rule) > 32) throw new Error('Invalid rule')
       formData.value.condition = rule
       formData.value.dataType = 'Boolean'
       formData.value.userPropertyPath = ''
@@ -287,9 +315,17 @@ const handleClose = () => {
 
         <div v-if="!claim?.isStandard" class="mb-5">
           <label class="block text-sm font-medium text-gray-700 mb-1.5" for="profile-source">{{ t('claims.form.profileSource') }}</label>
-          <input id="profile-source" v-model="formData.providerProfileSource" maxlength="64" type="text"
+          <select id="profile-source" v-model="formData.providerProfileSource" :disabled="profileSchemaLoading || profileSchemaError"
             class="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm h-10 px-3"
-            data-test-id="claim-profile-source-input" />
+            data-test-id="claim-profile-source-input">
+            <option value="">{{ t('claims.form.localSource') }}</option>
+            <option v-if="formData.providerProfileSource && !profileSchema.sources.some(source => source.name === formData.providerProfileSource)"
+              :value="formData.providerProfileSource" disabled>{{ formData.providerProfileSource }} ({{ t('claims.form.unavailableProperty') }})</option>
+            <option v-for="source in profileSchema.sources" :key="source.name" :value="source.name">{{ source.name }}</option>
+          </select>
+          <p v-if="profileSchemaLoading" class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.schemaLoading') }}</p>
+          <p v-if="profileSchemaError" role="alert" class="mt-1.5 text-xs text-red-700">{{ t('claims.form.schemaError') }}</p>
+          <p v-if="formData.providerProfileSource && !profileSchema.enabled" class="mt-1.5 text-xs text-amber-700">{{ t('claims.form.profileDisabled') }}</p>
           <p class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.profileSourceHelp') }}</p>
           <label v-if="formData.providerProfileSource" class="flex items-center mt-3 gap-2">
             <input v-model="useCondition" type="checkbox" data-test-id="claim-condition-checkbox" />
@@ -297,8 +333,17 @@ const handleClose = () => {
           </label>
         </div>
         <div v-if="formData.providerProfileSource && useCondition" class="mb-5">
-          <label class="block text-sm font-medium text-gray-700 mb-1.5" for="claim-condition">{{ t('claims.form.condition') }}</label>
-          <textarea id="claim-condition" v-model="conditionText" rows="8" maxlength="16384" required
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ t('claims.form.useCondition') }}</label>
+          <div class="flex gap-2 mb-3">
+            <button v-for="mode in ['visual', 'json']" :key="mode" type="button" @click="conditionMode = mode"
+              :aria-pressed="conditionMode === mode" :data-test-id="`condition-mode-${mode}`"
+              class="rounded-md border px-3 py-1.5 text-sm" :class="conditionMode === mode ? 'bg-google-50 border-google-500' : 'border-gray-300'">{{ t(`claims.form.conditionModes.${mode}`) }}</button>
+          </div>
+          <ClaimConditionEditor v-if="conditionMode === 'visual' && conditionTree" v-model="conditionTree"
+            :properties="profileProperties" :total-nodes="conditionNodes" />
+          <p v-else-if="conditionMode === 'visual'" role="alert" class="text-sm text-red-700">{{ t('claims.form.conditionInvalid') }}</p>
+          <textarea v-if="conditionMode === 'json'" id="claim-condition" v-model="conditionText" rows="8" maxlength="16384" required
+            :aria-label="t('claims.form.condition')"
             class="block w-full rounded-md border-gray-300 shadow-sm font-mono text-sm px-3 py-2"
             data-test-id="claim-condition-input"></textarea>
           <p class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.conditionHelp') }}</p>
@@ -307,6 +352,13 @@ const handleClose = () => {
         <!-- User Property Path -->
         <div v-if="!formData.providerProfileSource || !useCondition" class="mb-5">
           <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ t('claims.form.userPropertyPath') }} *</label>
+          <select v-if="formData.providerProfileSource" v-model="formData.userPropertyPath" required
+            :disabled="profileSchemaLoading || profileSchemaError"
+            class="block w-full rounded-md border-gray-300 h-10 px-3" data-test-id="claim-profile-property-select">
+            <option value="" disabled>{{ t('claims.form.selectPropertyPath') }}</option>
+            <option v-if="formData.userPropertyPath && !directProfileType" :value="formData.userPropertyPath" disabled>{{ formData.userPropertyPath }} ({{ t('claims.form.unavailableProperty') }})</option>
+            <option v-for="(type, key) in profileProperties" :key="key" :value="key">{{ key }} ({{ type }})</option>
+          </select>
           
           <!-- Select for common paths -->
           <select
@@ -325,7 +377,7 @@ const handleClose = () => {
           
           <!-- Custom path input -->
           <input
-            v-else
+            v-if="useCustomPath && !formData.providerProfileSource"
             v-model="formData.userPropertyPath"
             type="text"
             required
@@ -336,7 +388,7 @@ const handleClose = () => {
           />
           
           <!-- Toggle for custom path -->
-          <label class="flex items-center mt-2" v-if="!claim?.isStandard && !isProtected">
+          <label class="flex items-center mt-2" v-if="!formData.providerProfileSource && !claim?.isStandard && !isProtected">
             <input
               v-model="useCustomPath"
               type="checkbox"
@@ -354,11 +406,12 @@ const handleClose = () => {
           <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ t('claims.form.dataType') }} *</label>
           <select
             v-model="formData.dataType"
-            :disabled="claim?.isStandard || isProtected || (formData.providerProfileSource && useCondition)"
+            :disabled="claim?.isStandard || isProtected || !!formData.providerProfileSource"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
              data-test-id="claim-data-type-select"
           >
             <option value="String">{{ t('claims.form.dataTypes.string') }}</option>
+            <option v-if="formData.providerProfileSource" value="StringArray">{{ t('claims.form.dataTypes.stringArray') }}</option>
             <option value="Boolean">{{ t('claims.form.dataTypes.boolean') }}</option>
             <option value="Integer">{{ t('claims.form.dataTypes.integer') }}</option>
             <option value="DateTime">{{ t('claims.form.dataTypes.dateTime') }}</option>

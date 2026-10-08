@@ -108,14 +108,18 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
                 {
                     if (!configured.AllowedProperties.TryGetValue(def.UserPropertyPath, out var type) ||
                         type != def.DataType || !properties.TryGetValue(def.UserPropertyPath, out var property) ||
-                        (type == "Boolean" ? property.ValueKind is not (JsonValueKind.True or JsonValueKind.False) :
-                            property.ValueKind != JsonValueKind.String)) continue;
-                    value = type == "Boolean" ? (property.GetBoolean() ? "true" : "false") : property.GetString();
+                        !ProviderProfileContract.IsValueOfType(property, type)) continue;
+                    value = type switch
+                    {
+                        "Boolean" => property.GetBoolean() ? "true" : "false",
+                        "StringArray" => ProviderProfileContract.NormalizeValue(property).GetRawText(),
+                        _ => property.GetString()
+                    };
                 }
             }
             else
             {
-                if (def.ConditionJson is not null || !ClaimSourcePropertyPolicy.TryResolve(user, def.UserPropertyPath, out var resolvedValue))
+                if (def.DataType == "StringArray" || def.ConditionJson is not null || !ClaimSourcePropertyPolicy.TryResolve(user, def.UserPropertyPath, out var resolvedValue))
                 {
                     LogRejectedClaimSource(def.ClaimType, def.UserPropertyPath);
                     continue;
@@ -143,6 +147,10 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
             if (def.DataType == "Boolean" && bool.TryParse(value, out var boolVal))
             {
                  identity.AddClaim(new Claim(def.ClaimType, boolVal.ToString().ToLowerInvariant(), ClaimValueTypes.Boolean));
+            }
+            else if (def.DataType == "StringArray")
+            {
+                identity.AddClaim(new Claim(def.ClaimType, value!, Microsoft.IdentityModel.JsonWebTokens.JsonClaimValueTypes.JsonArray));
             }
             else
             {

@@ -21,9 +21,11 @@ public static class ClaimConditionPolicy
                 !schema.TryGetValue(node.Property, out var type)) return false;
             return node.Operator switch
             {
-                "Equals" => type == "Boolean" ? value.ValueKind is JsonValueKind.True or JsonValueKind.False :
+                "Equals" or "NotEquals" => type == "Boolean" ? value.ValueKind is JsonValueKind.True or JsonValueKind.False :
                     type == "String" && IsString(value),
                 "StartsWith" => type == "String" && IsString(value) && value.GetString()!.Length > 0,
+                "Contains" => IsString(value) && (type == "StringArray" ||
+                    type == "String" && value.GetString()!.Length > 0),
                 _ => false
             };
         }
@@ -38,17 +40,24 @@ public static class ClaimConditionPolicy
         bool HasAllInputs(ClaimCondition node) => node.Children is not null
             ? node.Children.All(HasAllInputs)
             : properties.TryGetValue(node.Property!, out var value) &&
-              (schema[node.Property!] == "Boolean" ? value.ValueKind is JsonValueKind.True or JsonValueKind.False : IsString(value));
+              ProviderProfileContract.IsValueOfType(value, schema[node.Property!]);
 
         bool EvaluateKnown(ClaimCondition node) => node.Operator switch
         {
             "All" => node.Children!.All(EvaluateKnown),
             "Any" => node.Children!.Any(EvaluateKnown),
             "StartsWith" => properties[node.Property!].GetString()!.StartsWith(node.Value!.Value.GetString()!, StringComparison.Ordinal),
-            _ => schema[node.Property!] == "Boolean"
-                ? properties[node.Property!].GetBoolean() == node.Value!.Value.GetBoolean()
-                : string.Equals(properties[node.Property!].GetString(), node.Value!.Value.GetString(), StringComparison.Ordinal)
+            "Contains" => schema[node.Property!] == "StringArray"
+                ? properties[node.Property!].EnumerateArray().Any(item => string.Equals(
+                    item.GetString(), node.Value!.Value.GetString(), StringComparison.Ordinal))
+                : properties[node.Property!].GetString()!.Contains(node.Value!.Value.GetString()!, StringComparison.Ordinal),
+            "NotEquals" => !Equal(node),
+            _ => Equal(node)
         };
+
+        bool Equal(ClaimCondition node) => schema[node.Property!] == "Boolean"
+                ? properties[node.Property!].GetBoolean() == node.Value!.Value.GetBoolean()
+                : string.Equals(properties[node.Property!].GetString(), node.Value!.Value.GetString(), StringComparison.Ordinal);
     }
 
     private static bool IsString(JsonElement value) => value.ValueKind == JsonValueKind.String &&

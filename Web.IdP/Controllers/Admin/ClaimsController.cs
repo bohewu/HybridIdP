@@ -26,6 +26,10 @@ public class ClaimsController : ControllerBase
         _claimsService = claimsService;
     }
 
+    [HasPermission(Permissions.Claims.Read)]
+    [HttpGet("profile-sources")]
+    public ActionResult<ProviderProfileSchemaDto> GetProfileSources() => Ok(_claimsService.GetProviderProfileSchema());
+
     /// <summary>
     /// Get all user claim definitions with filtering, sorting, and pagination.
     /// </summary>

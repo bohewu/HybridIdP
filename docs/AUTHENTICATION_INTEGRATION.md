@@ -34,7 +34,8 @@ Each contract has an independently configured endpoint and secret. Profile JSON
 and its local hash never become credential, lifecycle, role or recovery authority.
 The initial confirmation-age default is five minutes, configurable down to zero;
 choose the deployment policy before production activation. Conditional mappings
-use approved inputs and bounded Equals/StartsWith/All/Any rules, without code
+use approved Boolean/String/StringArray inputs and bounded
+Equals/NotEquals/StartsWith/Contains/All (AND)/Any (OR) rules, without code
 execution. Missing/stale/rejected inputs omit dependent claims.
 
 For browser-based federation, the repository also has external-login flows

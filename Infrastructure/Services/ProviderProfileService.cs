@@ -95,7 +95,7 @@ public sealed class ProviderProfileService(
             requestingAccount is not { IsActive: true, IsDeleted: false } || requestingAccount.PersonId != personId ||
             currentPerson is null || !currentPerson.CanAuthenticate()) return Empty;
         var properties = result?.ExtraProperties.Where(p => source.AllowedProperties.TryGetValue(p.Key, out var type) &&
-            (type == "Boolean" ? p.Value.ValueKind is JsonValueKind.True or JsonValueKind.False : p.Value.ValueKind == JsonValueKind.String))
+            ProviderProfileContract.IsValueOfType(p.Value, type))
             .ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
         snapshot = matching ? snapshot! : new ProfileSnapshot
         {
@@ -130,8 +130,8 @@ public sealed class ProviderProfileService(
             writer.WriteStartObject();
             foreach (var (key, value) in properties.OrderBy(p => p.Key, StringComparer.Ordinal))
             {
-                if (value.ValueKind == JsonValueKind.String) writer.WriteString(key, value.GetString());
-                else writer.WriteBoolean(key, value.GetBoolean());
+                writer.WritePropertyName(key);
+                ProviderProfileContract.NormalizeValue(value).WriteTo(writer);
             }
             writer.WriteEndObject();
         }

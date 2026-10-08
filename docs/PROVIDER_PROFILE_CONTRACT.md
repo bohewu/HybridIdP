@@ -36,7 +36,12 @@ Return HTTP 200 with `Content-Type: application/json` and all four fields:
   "contractVersion": "1.0",
   "providerNamespace": "example.provider",
   "stableSubject": "opaque-subject",
-  "extraProperties": { "is_student": true, "student_id": "4-example" }
+  "extraProperties": {
+    "is_student": true,
+    "student_id": "4-example",
+    "categories": ["student", "graduate"],
+    "affiliations": []
+  }
 }
 ```
 
@@ -44,10 +49,20 @@ Version and tuple must exactly match the request. `extraProperties` is the compl
 current set, including an empty object when no properties remain. Missing keys
 remove their old values. Property names contain 1-64 ASCII letters, digits,
 underscore, hyphen or dot. At most 32 properties are permitted. Values are JSON
-strings (at most 1024 characters) or booleans; nulls, numbers, arrays and objects
-are invalid. Duplicate JSON member names are invalid. Consumers ignore unknown
-envelope members and import only deployment-approved keys with the configured
-String/Boolean type. No academic property name or prefix is built into the OSS.
+booleans, strings, or string arrays. These types coexist per property; scalars
+are never converted to arrays. Strings are at most 1024 UTF-16 code units,
+including each array element (a supplementary Unicode character counts as two).
+Arrays contain at most 32 raw elements BEFORE deduplication. Null, number,
+object, mixed/non-string or nested-array values invalidate the entire response,
+even on an unapproved key. Duplicate JSON member names are invalid. Consumers
+ignore unknown envelope members and import only deployment-approved keys with
+the exact configured Boolean/String/StringArray type. No academic property name
+or prefix is built into the OSS. JSON Schema maxLength counts Unicode code points;
+the stricter UTF-16 runtime limit is normative.
+
+StringArray has set semantics: validate raw limits, then deduplicate and sort with
+ordinal comparison. Preserve case, whitespace and empty strings. `[]` is a
+confirmed empty set; a missing key is unknown and removes its previous value.
 
 Use HTTP 404 for an unknown subject, 401/403 for failed service authorization, and
 503 for unavailable data. Consumers accept only 200 JSON success and treat every
@@ -63,7 +78,11 @@ set. Schema: [response schema](contracts/provider-profile/v1.0/response.schema.j
 
 HybridIdP stores each approved source separately in nullable Person JSON, with
 the exact tuple, source account, confirmation state/time and an IdP-local SHA256
-hash. The hash uses ordinal key ordering and typed JSON values. It detects local
+hash. The hash uses ordinal key ordering and typed, normalized JSON values. Array
+order and duplicates do not change it; changed members, scalar/array type changes
+and removed keys do. An AllowedProperties type change invalidates cached source
+confirmation and requires a fresh fetch; an old scalar is never reused as an array.
+It detects local
 value changes; it proves neither source freshness nor authorization. An unchanged
 hash still advances confirmation time and re-evaluates the current claim rules.
 Failed confirmation leaves historical values in storage but prevents projection.
@@ -77,12 +96,43 @@ request). This is a deployment policy, not a guaranteed freshness SLA. Existing
 JWTs remain unchanged until normal expiry.
 
 A custom claim selects one configured source. It maps one approved property
-directly, or evaluates a Boolean rule with Equals, StartsWith, All and Any. Rules
+directly, or evaluates a Boolean rule with Equals, NotEquals, StartsWith, Contains,
+All and Any. Direct StringArray mappings emit actual JSON arrays in tokens and
+UserInfo for zero, one or many elements, never CSV or a JSON-encoded string.
+After cryptographic token validation, the consumer restores approved array shape
+from the validated payload (the inner token for JWE); it neither guesses an empty
+array from absent claims nor fetches current Profile data to rewrite issued tokens.
+Missing/unconfirmed direct properties remain absent even with AlwaysInclude.
+Rules
 have at most four levels, 32 nodes and eight children per group. Every referenced
 input must be available and correctly typed before evaluation; unknown inputs
 omit the claim rather than asserting false. Comparisons are ordinal. Known
 results are JSON booleans in tokens and UserInfo. Granted scopes still control
 disclosure; protected protocol/security claims cannot be mapped.
+
+| Operator | Inputs and meaning |
+|---|---|
+| Equals / NotEquals | Typed String or Boolean equality / inequality; no array equality or implicit conversion. |
+| StartsWith | String with a nonempty String prefix. |
+| Contains | String with a nonempty substring, or StringArray with an exact String member (including an empty string). |
+| All | AND: every child condition must match. |
+| Any | OR: at least one child condition must match. |
+
+All/Any contain condition nodes in `children`, with optional nested groups.
+Every referenced input must be known before evaluating any group, even when an
+OR could short-circuit. A known empty array with Contains evaluates false; a
+missing array is unknown and omits the claim. NotEquals never negates unknown.
+These rules are profile projection, not automatic IdP role assignment.
+
+In Admin Claims, select a configured Profile source and its approved property for
+a direct mapping; its data type is selected automatically. For a derived Boolean,
+use the visual condition builder with typed values and nested AND/OR groups, or
+the synchronized Advanced JSON mode. Choices come from deployment AllowedProperties
+through the Claims.Read-protected `GET /api/admin/claims/profile-sources`. This
+endpoint returns only Enabled, source names and property-key/type pairs. It never
+returns endpoints, secrets, provider identities or profile values. The UI does not
+edit deployment policy. Missing configuration and load errors remain visible;
+server approval/type/rule validation remains authoritative on every save.
 
 ```json
 {

@@ -8,6 +8,7 @@ namespace Core.Application;
 /// </summary>
 public interface IClaimsService
 {
+    ProviderProfileSchemaDto GetProviderProfileSchema();
     /// <summary>
     /// Get paginated list of claim definitions with optional search, sorting, and filtering.
     /// </summary>

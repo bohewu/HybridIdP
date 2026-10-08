@@ -298,11 +298,17 @@ public partial class ClaimsService : IClaimsService
         };
     }
 
+    public ProviderProfileSchemaDto GetProviderProfileSchema() => new(_profileOptions.Enabled,
+        _profileOptions.Sources.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
+            new ProviderProfileSourceSchemaDto(pair.Key, pair.Value.AllowedProperties
+                .OrderBy(property => property.Key, StringComparer.Ordinal)
+                .ToDictionary(property => property.Key, property => property.Value, StringComparer.Ordinal))).ToArray());
+
     private string ValidateSource(string? source, ClaimCondition? condition, string path, string type, string claimType)
     {
         if (string.IsNullOrEmpty(source))
         {
-            if (condition is not null || !ClaimSourcePropertyPolicy.TryNormalize(path, out var normalized))
+            if (type == "StringArray" || condition is not null || !ClaimSourcePropertyPolicy.TryNormalize(path, out var normalized))
                 throw new ArgumentException("UserPropertyPath must reference an approved profile property.");
             return normalized;
         }

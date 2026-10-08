@@ -12,7 +12,12 @@
       "maxProperties": 32,
       "propertyNames": { "pattern": "^[A-Za-z0-9_.-]{1,64}$" },
       "additionalProperties": {
-        "oneOf": [{ "type": "boolean" }, { "type": "string", "maxLength": 1024 }]
+        "$comment": "Per-property Boolean, String or StringArray. Runtime string limit is 1024 UTF-16 code units (also for array elements). Array maxItems applies BEFORE deduplication; do not require uniqueItems.",
+        "oneOf": [
+          { "type": "boolean" },
+          { "type": "string", "maxLength": 1024 },
+          { "type": "array", "maxItems": 32, "items": { "type": "string", "maxLength": 1024 } }
+        ]
       }
     }
   }

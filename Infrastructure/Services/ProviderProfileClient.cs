@@ -31,7 +31,11 @@ public sealed class ProviderProfileClient(HttpClient httpClient)
                 new JsonDocumentOptions { MaxDepth = 8 }, timeout.Token);
             if (!HasUniqueMembers(document.RootElement)) return null;
             var result = document.RootElement.Deserialize<ProviderProfileResult>(JsonSerializerOptions.Web);
-            return result?.IsValidFor(request) == true ? result : null;
+            return result?.IsValidFor(request) == true ? result with
+            {
+                ExtraProperties = result.ExtraProperties.ToDictionary(pair => pair.Key,
+                    pair => ProviderProfileContract.NormalizeValue(pair.Value), StringComparer.Ordinal)
+            } : null;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException or IOException)

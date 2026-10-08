@@ -171,6 +171,9 @@
       :show="showModal"
       :claim="editingClaim"
       :error="modalError"
+      :profile-schema="profileSchema"
+      :profile-schema-loading="profileSchemaLoading"
+      :profile-schema-error="profileSchemaError"
       @close="closeModal"
       @save="saveClaim"
     />
@@ -184,6 +187,7 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import SearchInput from '@/components/common/SearchInput.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import ClaimFormModal from './components/ClaimFormModal.vue'
+import { getProfileSchema } from './services/profileSchema'
 
 const { t } = useI18n()
 
@@ -193,6 +197,21 @@ const error = ref(null)
 const showModal = ref(false)
 const editingClaim = ref(null)
 const modalError = ref(null)
+const profileSchema = ref({ enabled: false, sources: [] })
+const profileSchemaLoading = ref(false)
+const profileSchemaError = ref(false)
+
+async function loadProfileSchema() {
+  profileSchemaLoading.value = true
+  profileSchemaError.value = false
+  try {
+    profileSchema.value = await getProfileSchema()
+  } catch {
+    profileSchemaError.value = true
+  } finally {
+    profileSchemaLoading.value = false
+  }
+}
 
 // Pagination and filtering
 const search = ref('')
@@ -244,12 +263,14 @@ const handlePageSizeChange = (newSize) => {
 }
 
 function openCreateModal() {
+  loadProfileSchema()
   editingClaim.value = null
   modalError.value = null
   showModal.value = true
 }
 
 function openEditModal(claim) {
+  loadProfileSchema()
   editingClaim.value = claim
   modalError.value = null
   showModal.value = true

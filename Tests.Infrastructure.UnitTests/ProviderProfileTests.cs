@@ -18,6 +18,88 @@ public sealed class ProviderProfileTests
 {
     private static readonly Dictionary<string, string> Schema = new() { ["flag"] = "Boolean", ["code"] = "String" };
 
+    [Fact]
+    public async Task FetchAsync_ShouldPreserveMixedScalarTypesAndNormalizeArraySets()
+    {
+        var handler = new UpstreamStubHandler((_, _) => Task.FromResult(Response(Success(
+            "{\"flag\":true,\"code\":\"4\",\"categories\":[\"b\",\" a\",\"B\",\"b\",\"\"],\"empty\":[]}"))));
+        var result = await new ProviderProfileClient(new HttpClient(handler)).FetchAsync(Request(), Source(), CancellationToken.None);
+        Assert.NotNull(result);
+        Assert.True(result.ExtraProperties["flag"].GetBoolean());
+        Assert.Equal("4", result.ExtraProperties["code"].GetString());
+        Assert.Equal(new[] { "", " a", "B", "b" }, result.ExtraProperties["categories"].EnumerateArray().Select(item => item.GetString()));
+        Assert.Equal(0, result.ExtraProperties["empty"].GetArrayLength());
+        Assert.False(result.ExtraProperties.ContainsKey("missing"));
+    }
+
+    [Theory]
+    [InlineData("[null]")]
+    [InlineData("[1]")]
+    [InlineData("[true]")]
+    [InlineData("[{}]")]
+    [InlineData("[[]]")]
+    [InlineData("[\"valid\",1]")]
+    public async Task FetchAsync_ShouldRejectEntireResponseForInvalidUnapprovedArray(string array)
+    {
+        var handler = new UpstreamStubHandler((_, _) => Task.FromResult(Response(Success("{\"flag\":true,\"unapproved\":" + array + "}"))));
+        Assert.Null(await new ProviderProfileClient(new HttpClient(handler)).FetchAsync(Request(), Source(), CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(32, 1024, true)]
+    [InlineData(33, 1, false)]
+    [InlineData(1, 1025, false)]
+    public async Task FetchAsync_ShouldEnforceRawCountBeforeDedupAndUtf16Length(int count, int length, bool accepted)
+    {
+        var value = new string('a', length);
+        var json = JsonSerializer.Serialize(new { categories = Enumerable.Repeat(value, count).ToArray() });
+        var handler = new UpstreamStubHandler((_, _) => Task.FromResult(Response(Success(json))));
+        var result = await new ProviderProfileClient(new HttpClient(handler)).FetchAsync(Request(), Source(), CancellationToken.None);
+        Assert.Equal(accepted, result is not null);
+        if (result is not null) Assert.Equal(1, result.ExtraProperties["categories"].GetArrayLength());
+        var supplementary = string.Concat(Enumerable.Repeat(char.ConvertFromUtf32(0x1F600), 513));
+        Assert.False(ProviderProfileContract.IsValueOfType(JsonSerializer.SerializeToElement(new[] { supplementary }), "StringArray"));
+    }
+
+    [Fact]
+    public void Hash_ShouldNormalizeArraySetsAndDistinguishEmptyAbsentAndScalar()
+    {
+        string Hash(string json) => ProviderProfileService.ComputePropertyHash(Properties(json));
+        Assert.Equal(Hash("{\"categories\":[\"b\",\"a\",\"a\"]}"), Hash("{\"categories\":[\"a\",\"b\"]}"));
+        Assert.NotEqual(Hash("{\"categories\":[\"a\"]}"), Hash("{\"categories\":[\"A\"]}"));
+        Assert.NotEqual(Hash("{\"categories\":[\"a\"]}"), Hash("{\"categories\":[\" a\"]}"));
+        Assert.NotEqual(Hash("{\"categories\":[\"a\"]}"), Hash("{\"categories\":\"a\"}"));
+        Assert.NotEqual(Hash("{\"categories\":[]}"), Hash("{}"));
+    }
+
+    [Fact]
+    public async Task GetPropertiesAsync_ShouldRequireNewConfirmationAfterScalarToArrayPolicyChange()
+    {
+        await using var db = Context();
+        var user = await SeedAsync(db);
+        var source = Source();
+        var json = Success("{\"code\":\"4\"}");
+        var status = HttpStatusCode.OK;
+        var handler = new UpstreamStubHandler((_, _) => Task.FromResult(Response(json, status)));
+        var config = Options.Create(new ProviderProfileOptions { Enabled = true, Sources = new() { ["source"] = source } });
+        var service = new ProviderProfileService(db, new ProviderProfileClient(new HttpClient(handler)), config);
+        Assert.Equal("4", (await service.GetPropertiesAsync(user, "source"))["code"].GetString());
+        source.AllowedProperties["code"] = "StringArray";
+        status = HttpStatusCode.ServiceUnavailable;
+        Assert.Empty(await service.GetPropertiesAsync(user, "source"));
+        Assert.Equal(2, handler.CallCount);
+        Assert.DoesNotContain("\"code\":\"4\"", db.Persons.Single().ProviderProfilesJson!);
+        status = HttpStatusCode.OK;
+        json = Success("{\"code\":[]}");
+        // A new issuance scope retries the failed confirmation.
+        service = new ProviderProfileService(db, new ProviderProfileClient(new HttpClient(handler)), config);
+        Assert.Equal(0, (await service.GetPropertiesAsync(user, "source"))["code"].GetArrayLength());
+        source.AllowedProperties["flag"] = "StringArray";
+        json = Success("{}");
+        Assert.Empty(await service.GetPropertiesAsync(user, "source"));
+        Assert.DoesNotContain("\"code\":[]", db.Persons.Single().ProviderProfilesJson!);
+    }
+
     [Theory]
     [InlineData("{\"contractVersion\":\"2.0\",\"providerNamespace\":\"provider\",\"stableSubject\":\"subject\",\"extraProperties\":{}}")]
     [InlineData("{\"contractVersion\":\"1.0\",\"providerNamespace\":\"Provider\",\"stableSubject\":\"subject\",\"extraProperties\":{}}")]
@@ -50,6 +132,8 @@ public sealed class ProviderProfileTests
         var first = Properties("{\"flag\":true,\"code\":\"4\"}");
         Assert.Equal(ProviderProfileService.ComputePropertyHash(first),
             ProviderProfileService.ComputePropertyHash(Properties("{\"code\":\"4\",\"flag\":true}")));
+        Assert.Equal(ProviderProfileService.ComputePropertyHash(first),
+            ProviderProfileService.ComputePropertyHash(Properties("{\"code\":\"\\u0034\",\"flag\":true}")));
         Assert.NotEqual(ProviderProfileService.ComputePropertyHash(first),
             ProviderProfileService.ComputePropertyHash(Properties("{\"code\":\"4\",\"flag\":\"true\"}")));
         Assert.NotEqual(ProviderProfileService.ComputePropertyHash(first),
@@ -144,7 +228,7 @@ public sealed class ProviderProfileTests
     private static ProviderProfileSourceOptions Source() => new()
     {
         ProviderNamespace = "provider", Endpoint = "https://profile.example.test/profile",
-        SharedSecret = "synthetic-profile-secret", AllowedProperties = Schema
+        SharedSecret = "synthetic-profile-secret", AllowedProperties = new(Schema, StringComparer.Ordinal)
     };
     private static Dictionary<string, JsonElement> Properties(string json) => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
     private static string Success(string properties) => "{\"contractVersion\":\"1.0\",\"providerNamespace\":\"provider\",\"stableSubject\":\"subject\",\"extraProperties\":" + properties + "}";

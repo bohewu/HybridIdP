@@ -42,7 +42,8 @@ public class ClaimDefinition
     public string? ConditionJson { get; set; }
 
     /// <summary>
-    /// Data type of the claim value (String, Boolean, Integer, DateTime, JSON).
+    /// Data type of the claim value (String, Boolean, Integer, DateTime, JSON,
+    /// or StringArray for an approved Provider Profile property).
     /// </summary>
     public required string DataType { get; set; }
 

@@ -18,7 +18,7 @@ public sealed class ProviderProfileSourceOptions
     public string SharedSecret { get; set; } = string.Empty;
     public bool AllowPrivateNetworkHttp { get; set; }
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(5);
-    // Only String and Boolean are accepted; names and types are deployment policy.
+    // String, Boolean and StringArray are per-property deployment policy.
     public Dictionary<string, string> AllowedProperties { get; set; } = new(StringComparer.Ordinal);
 }
 
@@ -36,7 +36,7 @@ public sealed class ProviderProfileOptionsValidator : IValidateOptions<ProviderP
                 source.ProviderNamespace.Length > 200 || source.Timeout <= TimeSpan.Zero ||
                 source.Timeout > TimeSpan.FromSeconds(30) || source.AllowedProperties.Count > 32 ||
                 source.AllowedProperties.Any(p => !ProviderProfileContract.IsValidKey(p.Key) ||
-                    p.Value is not ("String" or "Boolean")))
+                    p.Value is not ("String" or "Boolean" or "StringArray")))
                 return ValidateOptionsResult.Fail("Invalid profile source, timeout or approved property schema.");
 
             if (options.Enabled && (!Uri.TryCreate(source.Endpoint, UriKind.Absolute, out var endpoint) ||

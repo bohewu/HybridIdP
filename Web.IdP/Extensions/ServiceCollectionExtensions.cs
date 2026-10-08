@@ -649,6 +649,7 @@ public static class ServiceCollectionExtensions
             })
             .AddServer(options =>
             {
+                options.AddEventHandler(RestoreProviderProfileArrayClaims.Descriptor);
                 // Production startup requires a fixed issuer. Development and test
                 // environments may omit it and use OpenIddict's request-derived issuer.
                 var issuerUri = configuration["OpenIddict:Issuer"];

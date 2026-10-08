@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Core.Application;
+using Core.Application.DTOs;
 using Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -63,6 +65,21 @@ public class UserInfoService : IUserInfoService
             // Skip if already added (e.g., "sub" is always included)
             if (userinfo.ContainsKey(claimType)) continue;
 
+            if (scopeClaim.ClaimDefinition.DataType == "StringArray")
+            {
+                var claims = principal.FindAll(claimType).ToList();
+                if (scopeClaim.ClaimDefinition.ProviderProfileSource is null || claims.Count != 1 ||
+                    claims[0].ValueType != Microsoft.IdentityModel.JsonWebTokens.JsonClaimValueTypes.JsonArray) continue;
+                try
+                {
+                    using var array = JsonDocument.Parse(claims[0].Value);
+                    if (ProviderProfileContract.IsValueOfType(array.RootElement, "StringArray"))
+                        userinfo[claimType] = ProviderProfileContract.NormalizeValue(array.RootElement)
+                            .EnumerateArray().Select(item => item.GetString()!).ToArray();
+                }
+                catch (JsonException) { }
+                continue;
+            }
             var value = principal.GetClaim(claimType);
             if (value is null && scopeClaim.ClaimDefinition.ProviderProfileSource is not null) continue;
 
