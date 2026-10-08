@@ -53,7 +53,9 @@ public sealed record ProofRequest
 /// </summary>
 public sealed record ProofResult
 {
+    [JsonRequired]
     public string ContractVersion { get; init; } = ProviderProofContract.CurrentVersion;
+    [JsonRequired]
     public ProofOutcome Outcome { get; init; }
     public string? ProviderNamespace { get; init; }
     public string? StableSubject { get; init; }
@@ -98,6 +100,7 @@ public sealed record ProofResult
         if (string.IsNullOrWhiteSpace(ProviderNamespace) ||
             string.IsNullOrWhiteSpace(StableSubject) ||
             string.IsNullOrWhiteSpace(CanonicalAccount) ||
+            ProviderNamespace.Length > 200 || StableSubject.Length > 256 || CanonicalAccount.Length > 256 ||
             Assurance is not { StableSubjectAssured: true, CanonicalAccountAssured: true })
         {
             error = "Successful proof results require assured identity fields.";

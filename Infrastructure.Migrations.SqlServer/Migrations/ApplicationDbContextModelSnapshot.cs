@@ -372,6 +372,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("ConditionJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("DataType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -396,6 +399,9 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ProviderProfileSource")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UserPropertyPath")
                         .IsRequired()
@@ -1090,6 +1096,10 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                     b.Property<string>("ProfileUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ProviderProfilesJson")
+                        .IsConcurrencyToken()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ResidentCertificateNumber")
                         .HasMaxLength(64)

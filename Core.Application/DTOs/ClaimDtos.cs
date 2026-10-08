@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace Core.Application.DTOs;
 
 /// <summary>
@@ -12,6 +15,14 @@ public sealed class ClaimDefinitionDto
     public string ClaimType { get; set; } = string.Empty;
     public string UserPropertyPath { get; set; } = string.Empty;
     public string DataType { get; set; } = string.Empty;
+    public string? ProviderProfileSource { get; set; }
+    [JsonIgnore]
+    public string? ConditionJson { get; set; }
+    public ClaimCondition? Condition
+    {
+        get => ConditionJson is null ? null : JsonSerializer.Deserialize<ClaimCondition>(ConditionJson);
+        set => ConditionJson = value is null ? null : JsonSerializer.Serialize(value);
+    }
     public bool IsStandard { get; set; }
     public bool IsRequired { get; set; }
     public int ScopeCount { get; set; }
@@ -27,7 +38,9 @@ public record CreateClaimRequest(
     string ClaimType,
     string? UserPropertyPath,
     string? DataType,
-    bool? IsRequired
+    bool? IsRequired,
+    string? ProviderProfileSource = null,
+    ClaimCondition? Condition = null
 );
 
 /// <summary>
@@ -39,5 +52,7 @@ public record UpdateClaimRequest(
     string? ClaimType,
     string? UserPropertyPath,
     string? DataType,
-    bool? IsRequired
+    bool? IsRequired,
+    string? ProviderProfileSource = null,
+    ClaimCondition? Condition = null
 );

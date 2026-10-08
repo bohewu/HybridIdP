@@ -2,6 +2,9 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Security;
 using Core.Domain.Entities;
+using System.Text.Json;
+using Infrastructure.Options;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -12,10 +15,13 @@ public partial class ClaimsService : IClaimsService
     private readonly IApplicationDbContext _db;
     private readonly ILogger<ClaimsService>? _logger;
 
-    public ClaimsService(IApplicationDbContext db, ILogger<ClaimsService>? logger = null)
+    private readonly ProviderProfileOptions _profileOptions;
+
+    public ClaimsService(IApplicationDbContext db, ILogger<ClaimsService>? logger = null, IOptions<ProviderProfileOptions>? profileOptions = null)
     {
         _db = db;
         _logger = logger;
+        _profileOptions = profileOptions?.Value ?? new ProviderProfileOptions();
     }
 
     public async Task<(IEnumerable<ClaimDefinitionDto> items, int totalCount)> GetClaimsAsync(
@@ -81,6 +87,8 @@ public partial class ClaimsService : IClaimsService
                 ClaimType = c.ClaimType,
                 UserPropertyPath = c.UserPropertyPath,
                 DataType = c.DataType,
+                ProviderProfileSource = c.ProviderProfileSource,
+                ConditionJson = c.ConditionJson,
                 IsStandard = c.IsStandard,
                 IsRequired = c.IsRequired,
                 ScopeCount = c.ScopeClaims.Count
@@ -104,6 +112,8 @@ public partial class ClaimsService : IClaimsService
                 ClaimType = c.ClaimType,
                 UserPropertyPath = c.UserPropertyPath,
                 DataType = c.DataType,
+                ProviderProfileSource = c.ProviderProfileSource,
+                ConditionJson = c.ConditionJson,
                 IsStandard = c.IsStandard,
                 IsRequired = c.IsRequired,
                 ScopeCount = c.ScopeClaims.Count
@@ -135,15 +145,9 @@ public partial class ClaimsService : IClaimsService
             throw new InvalidOperationException($"A claim with name '{request.Name}' already exists.");
         }
 
-        var requestedPath = request.UserPropertyPath ?? request.Name;
-        if (!ClaimSourcePropertyPolicy.TryNormalize(requestedPath, out var userPropertyPath))
-        {
-            throw new ArgumentException(
-                "UserPropertyPath must reference an approved profile property.",
-                nameof(request.UserPropertyPath));
-        }
+        var userPropertyPath = ValidateSource(request.ProviderProfileSource, request.Condition,
+            request.UserPropertyPath ?? request.Name, request.DataType ?? "String", request.ClaimType);
 
-        // Create new claim with defaults
         var claim = new ClaimDefinition
         {
             Name = request.Name,
@@ -151,6 +155,8 @@ public partial class ClaimsService : IClaimsService
             Description = request.Description,
             ClaimType = request.ClaimType,
             UserPropertyPath = userPropertyPath,
+            ProviderProfileSource = string.IsNullOrEmpty(request.ProviderProfileSource) ? null : request.ProviderProfileSource,
+            ConditionJson = request.Condition is null ? null : JsonSerializer.Serialize(request.Condition),
             DataType = request.DataType ?? "String",
             IsStandard = false, // Custom claims are always non-standard
             IsRequired = request.IsRequired ?? false
@@ -173,6 +179,8 @@ public partial class ClaimsService : IClaimsService
             ClaimType = claim.ClaimType,
             UserPropertyPath = claim.UserPropertyPath,
             DataType = claim.DataType,
+            ProviderProfileSource = claim.ProviderProfileSource,
+            ConditionJson = claim.ConditionJson,
             IsStandard = claim.IsStandard,
             IsRequired = claim.IsRequired,
             ScopeCount = 0
@@ -193,6 +201,8 @@ public partial class ClaimsService : IClaimsService
         // Standard claims protection: Only DisplayName and Description can be updated
         if (claim.IsStandard)
         {
+            if (!string.IsNullOrEmpty(request.ProviderProfileSource) || request.Condition is not null)
+                throw new InvalidOperationException("Standard claim sources cannot be changed.");
             // Check if trying to update protected fields
             if (!string.IsNullOrWhiteSpace(request.ClaimType) ||
                 !string.IsNullOrWhiteSpace(request.UserPropertyPath) ||
@@ -217,19 +227,20 @@ public partial class ClaimsService : IClaimsService
         }
         else
         {
-            string? userPropertyPath = null;
-            if (!string.IsNullOrWhiteSpace(request.UserPropertyPath))
+            var source = request.ProviderProfileSource is null ? claim.ProviderProfileSource :
+                string.IsNullOrEmpty(request.ProviderProfileSource) ? null : request.ProviderProfileSource;
+            var condition = request.ProviderProfileSource is null && request.Condition is null
+                ? (claim.ConditionJson is null ? null : JsonSerializer.Deserialize<ClaimCondition>(claim.ConditionJson))
+                : request.Condition;
+            string userPropertyPath;
+            try
             {
-                if (!ClaimSourcePropertyPolicy.TryNormalize(
-                        request.UserPropertyPath,
-                        out var normalizedPath))
-                {
-                    throw new InvalidOperationException(
-                        "UserPropertyPath must reference an approved profile property.");
-                }
-
-                userPropertyPath = normalizedPath;
+                userPropertyPath = ValidateSource(source, condition, request.UserPropertyPath ?? claim.UserPropertyPath,
+                    request.DataType ?? claim.DataType, request.ClaimType ?? claim.ClaimType);
             }
+            catch (ArgumentException ex) { throw new InvalidOperationException(ex.Message, ex); }
+            claim.ProviderProfileSource = source;
+            claim.ConditionJson = condition is null ? null : JsonSerializer.Serialize(condition);
 
             // Custom claims: All fields can be updated
             if (!string.IsNullOrWhiteSpace(request.DisplayName))
@@ -279,10 +290,40 @@ public partial class ClaimsService : IClaimsService
             ClaimType = claim.ClaimType,
             UserPropertyPath = claim.UserPropertyPath,
             DataType = claim.DataType,
+            ProviderProfileSource = claim.ProviderProfileSource,
+            ConditionJson = claim.ConditionJson,
             IsStandard = claim.IsStandard,
             IsRequired = claim.IsRequired,
             ScopeCount = claim.ScopeClaims.Count
         };
+    }
+
+    public ProviderProfileSchemaDto GetProviderProfileSchema() => new(_profileOptions.Enabled,
+        _profileOptions.Sources.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
+            new ProviderProfileSourceSchemaDto(pair.Key, pair.Value.AllowedProperties
+                .OrderBy(property => property.Key, StringComparer.Ordinal)
+                .ToDictionary(property => property.Key, property => property.Value, StringComparer.Ordinal))).ToArray());
+
+    private string ValidateSource(string? source, ClaimCondition? condition, string path, string type, string claimType)
+    {
+        if (string.IsNullOrEmpty(source))
+        {
+            if (type == "StringArray" || condition is not null || !ClaimSourcePropertyPolicy.TryNormalize(path, out var normalized))
+                throw new ArgumentException("UserPropertyPath must reference an approved profile property.");
+            return normalized;
+        }
+        if (ClaimSourcePropertyPolicy.IsProtectedProviderClaimType(claimType) ||
+            !_profileOptions.Sources.TryGetValue(source, out var configured))
+            throw new ArgumentException("Select a configured Profile source and an unprotected claim type.");
+        if (condition is not null)
+        {
+            if (type != "Boolean" || !ClaimConditionPolicy.IsValid(condition, configured.AllowedProperties))
+                throw new ArgumentException("Invalid Boolean condition or unapproved input property.");
+            return string.Empty;
+        }
+        if (!configured.AllowedProperties.TryGetValue(path, out var configuredType) || configuredType != type)
+            throw new ArgumentException("Profile property and data type must match the approved source schema.");
+        return path;
     }
 
     public async Task DeleteClaimAsync(int id)

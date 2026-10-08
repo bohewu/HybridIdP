@@ -1,61 +1,47 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Tests.LegacyApi.Controllers;
 
+// Development-only generic Proof/Profile fixture; no directory or credential writes.
 [ApiController]
-[Route("api/[controller]")]
-public class AuthenticateController : ControllerBase
+[Route("api/authenticate")]
+public class AuthenticateController(IConfiguration configuration) : ControllerBase
 {
-    private const string LegacySecret = "LegacyDev@123";
-
     [HttpPost("login")]
     public IActionResult Login([FromHeader(Name = "X-Internal-Secret")] string secret, [FromBody] LoginRequest request)
     {
-        if (secret != LegacySecret)
+        if (!IsAuthorized(secret)) return Unauthorized();
+        if (request.ContractVersion != "1.0" || string.IsNullOrWhiteSpace(request.AccountName)) return BadRequest();
+        if (request.Password != "password")
+            return Ok(new { contractVersion = "1.0", outcome = request.Password == "lockout" ? "Locked" : "InvalidCredentials" });
+        return Ok(new
         {
-            return Unauthorized(new { message = "Invalid secret" });
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
-        {
-             return BadRequest(new { message = "Username and password are required" });
-        }
-
-        // Mock Logic:
-        // Password "password" -> Success
-        // Password "lockout" -> Locked
-        // Others -> Invalid
-
-        if (request.Password == "password")
-        {
-             return Ok(new 
-             {
-                 Authenticated = true,
-                 UserId = "1001",
-                 SsoUuid = Guid.NewGuid().ToString(),
-                 Username = request.Username,
-                 Email = $"{request.Username}@example.com",
-                 NationalId = "M123456789",
-                 PassportNumber = (string?)null,
-                 ResidentCertificateNumber = (string?)null
-             });
-        }
-        else if (request.Password == "lockout")
-        {
-             return Ok(new 
-             {
-                 Authenticated = false,
-                 IsLocked = true,
-                 LockoutEnd = DateTime.UtcNow.AddMinutes(15)
-             });
-        }
-
-        return Ok(new { Authenticated = false });
+            contractVersion = "1.0", outcome = "Authenticated", providerNamespace = "example.provider",
+            stableSubject = "fixture-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.AccountName))),
+            canonicalAccount = request.AccountName,
+            assurance = new { stableSubjectAssured = true, canonicalAccountAssured = true },
+            requiredActions = Array.Empty<string>()
+        });
     }
 
-    public class LoginRequest
+    [HttpPost("profile")]
+    public IActionResult Profile([FromHeader(Name = "X-Internal-Secret")] string secret, [FromBody] ProfileRequest request)
     {
-        public string Username { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
+        if (!IsAuthorized(secret)) return Unauthorized();
+        if (request.ContractVersion != "1.0" || request.ProviderNamespace != "example.provider" ||
+            !request.StableSubject.StartsWith("fixture-", StringComparison.Ordinal)) return NotFound();
+        return Ok(new
+        {
+            request.ContractVersion, request.ProviderNamespace, request.StableSubject,
+            extraProperties = new Dictionary<string, object> { ["example_flag"] = true, ["example_code"] = "4-example" }
+        });
     }
+
+    private bool IsAuthorized(string secret) => !string.IsNullOrEmpty(configuration["FixtureSecret"]) &&
+        secret == configuration["FixtureSecret"];
+
+    public sealed record LoginRequest(string ContractVersion, string AccountName, string Password);
+    public sealed record ProfileRequest(string ContractVersion, string ProviderNamespace, string StableSubject);
 }

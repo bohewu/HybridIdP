@@ -6,6 +6,9 @@ public sealed class ProviderProofOptions
 {
     public const string Section = "ProviderProof";
 
+    public bool Enabled { get; set; }
+    public string? TrustedProviderNamespace { get; set; }
+
     public string? Endpoint { get; set; }
     public string? SharedSecret { get; set; }
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(5);
@@ -30,7 +33,7 @@ public sealed class ProviderProofOptionsValidator : IValidateOptions<ProviderPro
             failures.Add("Provider proof timeout must be between zero and thirty seconds.");
         }
 
-        if (_directoryOptions.Value.Enabled)
+        if (options.Enabled || _directoryOptions.Value.Enabled)
         {
             if (!Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint) ||
                 (endpoint.Scheme != Uri.UriSchemeHttps &&
@@ -44,6 +47,10 @@ public sealed class ProviderProofOptionsValidator : IValidateOptions<ProviderPro
                 failures.Add("Enabled directory integration requires a provider shared secret.");
             }
         }
+
+        if (options.Enabled && (string.IsNullOrWhiteSpace(options.TrustedProviderNamespace) ||
+            options.TrustedProviderNamespace.Length > 200 || options.TrustedProviderNamespace == "Legacy"))
+            failures.Add("Independent Proof login requires an explicit, non-Legacy provider namespace.");
 
         return failures.Count == 0
             ? ValidateOptionsResult.Success

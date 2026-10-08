@@ -18,6 +18,8 @@ services:
       - CredentialMigration__Enabled=${CREDENTIALMIGRATION__ENABLED:-false}
       - CredentialMigration__EmailOtpPolicyFloor=${CREDENTIALMIGRATION__EMAILOTPPOLICYFLOOR:-Disabled}
       - CredentialMigration__OperatorCutoff=${CREDENTIALMIGRATION__OPERATORCUTOFF:-false}
+      - ProviderProof__Enabled=${ProviderProof__Enabled:-false}
+      - ProviderProof__TrustedProviderNamespace=${ProviderProof__TrustedProviderNamespace:-}
       - ProviderProof__Endpoint=${PROVIDERPROOF__ENDPOINT:-}
       - ProviderProof__SharedSecret=${PROVIDERPROOF__SHAREDSECRET:-}
       - ProviderProof__AllowPrivateNetworkHttp=${PROVIDERPROOF__ALLOWPRIVATENETWORKHTTP:-true}

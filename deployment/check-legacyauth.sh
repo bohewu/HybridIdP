@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # check-legacyauth.sh
-# Test LegacyAuth endpoint connectivity for HybridIdP.
+# Test Provider Proof endpoint connectivity for HybridIdP.
 #
 # Run from deployment/ directory.
 #
@@ -31,18 +31,18 @@ LOGIN_URL=""
 if [ -f "$ENV_PATH" ]; then
     info "Found .env file at: $ENV_PATH"
     
-    # Parse LegacyAuth__LoginUrl from .env
-    LOGIN_URL=$(grep -E "^LegacyAuth__LoginUrl=" "$ENV_PATH" | cut -d'=' -f2- | tr -d "'" | tr -d '"' | xargs)
+    # Parse ProviderProof__Endpoint from .env
+    LOGIN_URL=$(grep -E "^ProviderProof__Endpoint=" "$ENV_PATH" | cut -d'=' -f2- | tr -d "'" | tr -d '"' | xargs)
 fi
 
 # 2. If not found, prompt user
 if [ -z "$LOGIN_URL" ]; then
     if [ -f "$ENV_PATH" ]; then
-        warn "Could not find LegacyAuth__LoginUrl in .env."
+        warn "Could not find ProviderProof__Endpoint in .env."
     else
         warn ".env file not found."
     fi
-    read -p "Enter LegacyAuth Login URL (e.g. https://legacy-system.internal/api/authenticate/login): " LOGIN_URL
+    read -p "Enter Provider Proof Login URL (e.g. https://legacy-system.internal/api/authenticate/login): " LOGIN_URL
 fi
 
 if [ -z "$LOGIN_URL" ]; then
@@ -232,6 +232,6 @@ fi
 
 echo ""
 echo -e "${YELLOW}Next Steps:${NC}"
-echo "  1. Ensure LegacyAuth__Secret is correctly configured."
+echo "  1. Ensure ProviderProof__SharedSecret is correctly configured."
 echo "  2. Test actual login with a legacy user account."
 exit 0

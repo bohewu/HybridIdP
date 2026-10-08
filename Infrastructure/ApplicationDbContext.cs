@@ -662,6 +662,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.Entity<Person>(entity =>
         {
             entity.HasKey(e => e.Id);
+            // Optimistic concurrency prevents simultaneous source refreshes losing each other's values.
+            entity.Property(e => e.ProviderProfilesJson).IsConcurrencyToken();
             
             // Index on Email for matching during JIT provisioning
             entity.HasIndex(e => e.Email);

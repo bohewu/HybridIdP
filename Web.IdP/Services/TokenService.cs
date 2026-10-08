@@ -409,6 +409,7 @@ namespace Web.IdP.Services
                 foreach (var claim in identity.Claims.Where(c => c.Type is "role" or "app_role" or "permission" or "active_role" ||
                     c.Type == ClaimTypes.Role || c.Type == global::Infrastructure.Authorization.AdministrativeClientGrant.ApplicationClaim).ToList())
                     identity.RemoveClaim(claim);
+                await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, principal.GetScopes(), cancellationToken);
                 await _claimsEnricher.AddAppSpecificRolesAsync(identity, user, request.ClientId ?? string.Empty, cancellationToken);
                 Web.IdP.Helpers.UserTokenClaimScopes.Apply(identity);
             }
@@ -800,6 +801,7 @@ namespace Web.IdP.Services
 
         private static IEnumerable<string> GetDestinations(Claim claim)
         {
+            if (claim.Type == ClaimsEnrichmentService.ProfileClaimMarker) yield break;
             switch (claim.Type)
             {
                 case "auth_time":

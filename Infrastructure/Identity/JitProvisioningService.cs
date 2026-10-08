@@ -217,7 +217,17 @@ public class JitProvisioningService : IJitProvisioningService
         }
 
         // Step 4: Create new ApplicationUser (linked to Person)
-        username ??= $"{externalAuth.Provider}_{externalAuth.ProviderKey}";
+        var providerUserName = $"{externalAuth.Provider}_{externalAuth.ProviderKey}";
+        var allowedCharacters = _userManager.Options.User.AllowedUserNameCharacters;
+        if (providerUserName.Length > 256 ||
+            (!string.IsNullOrEmpty(allowedCharacters) && providerUserName.Any(c => !allowedCharacters.Contains(c))))
+        {
+            // Local usernames are constrained presentation identifiers, not provider identity keys.
+            // Keep the opaque tuple unchanged in the external-login link, including repeat login.
+            providerUserName = "provider_" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new[] { externalAuth.Provider, externalAuth.ProviderKey })));
+        }
+        username ??= providerUserName;
         var newUser = usernameUser;
         if (newUser == null)
         {

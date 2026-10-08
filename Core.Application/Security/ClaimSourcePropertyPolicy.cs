@@ -54,6 +54,15 @@ public static class ClaimSourcePropertyPolicy
 
     public static IEnumerable<string> AllowedPaths => Accessors.Keys;
 
+    public static bool IsProtectedClaimType(string type) => type is
+        "permission" or "active_role" or "role" or "app_role" or "idp_admin_application" or
+        "sub" or "scope" or "scp" or "client_id" or "azp" or "amr" or "acr" or "auth_time" or
+        "iss" or "aud" or "exp" or "iat" or "nbf" or "jti" or "nonce" or "sid" or "at_hash" or "c_hash" or "cnf" ||
+        type.StartsWith("oi_", StringComparison.Ordinal) || type == System.Security.Claims.ClaimTypes.Role;
+
+    public static bool IsProtectedProviderClaimType(string type) => IsProtectedClaimType(type) ||
+        type is "email_verified" or "phone_number_verified";
+
     public static bool TryNormalize(string? path, out string normalizedPath)
     {
         normalizedPath = Normalize(path);

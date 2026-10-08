@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    Test LegacyAuth endpoint connectivity for HybridIdP.
+    Test Provider Proof endpoint connectivity for HybridIdP.
     
 .DESCRIPTION
     This script reads the deployment/.env file (if available) or prompts for
-    LegacyAuth endpoint details, then tests HTTP connectivity to the endpoint.
+    Provider Proof endpoint details, then tests HTTP connectivity to the endpoint.
     
 .NOTES
     Run from deployment/ directory.
@@ -29,7 +29,7 @@ if (Test-Path $EnvPath) {
     $envLines = Get-Content $EnvPath
     
     foreach ($line in $envLines) {
-        if ($line -match "LegacyAuth__LoginUrl=['`"]?(.+?)['`"]?\s*$") {
+        if ($line -match "ProviderProof__Endpoint=['`"]?(.+?)['`"]?\s*$") {
             $loginUrl = $matches[1].Trim()
             break
         }
@@ -40,8 +40,8 @@ if (Test-Path $EnvPath) {
 
 # 2. If not found, prompt user
 if (-not $loginUrl) {
-    Write-Warn "Could not find LegacyAuth__LoginUrl in .env."
-    $loginUrl = Read-Host "Enter LegacyAuth Login URL (e.g. https://legacy-system.internal/api/authenticate/login)"
+    Write-Warn "Could not find ProviderProof__Endpoint in .env."
+    $loginUrl = Read-Host "Enter Provider Proof Login URL (e.g. https://legacy-system.internal/api/authenticate/login)"
 }
 
 if (-not $loginUrl) {
@@ -216,6 +216,6 @@ if (-not $networkName) {
 
 Write-Host ""
 Write-Host "Next Steps:" -ForegroundColor Yellow
-Write-Host "  1. Ensure LegacyAuth__Secret is correctly configured."
+Write-Host "  1. Ensure ProviderProof__SharedSecret is correctly configured."
 Write-Host "  2. Test actual login with a legacy user account."
 exit 0
