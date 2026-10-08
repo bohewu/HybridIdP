@@ -10,6 +10,27 @@ public sealed class ClaimConditionPolicyTests
     private static readonly Dictionary<string, string> Schema = new() { ["is_student"] = "Boolean", ["student_id"] = "String" };
 
     [Theory]
+    [InlineData("\"4\"", true)]
+    [InlineData("\"3\"", false)]
+    [InlineData("\"40\"", false)]
+    [InlineData("4", null)]
+    [InlineData(null, null)]
+    public void Evaluate_ShouldMatchMasterDivisionExactlyAndOmitMissingOrWrongType(string? divisionJson, bool? expected)
+    {
+        var schema = new Dictionary<string, string> { ["divis"] = "String" };
+        var rule = new ClaimCondition
+        {
+            Operator = "All",
+            Children = [new() { Operator = "Equals", Property = "divis", Value = JsonSerializer.SerializeToElement("4") }]
+        };
+        var properties = new Dictionary<string, JsonElement>();
+        if (divisionJson is not null)
+            properties["divis"] = JsonSerializer.Deserialize<JsonElement>(divisionJson);
+
+        Assert.Equal(expected, ClaimConditionPolicy.Evaluate(rule, schema, properties));
+    }
+
+    [Theory]
     [InlineData("String", "\"graduate student\"", "student", true)]
     [InlineData("String", "\"Student\"", "student", false)]
     [InlineData("StringArray", "[\"student\",\"staff\"]", "student", true)]
